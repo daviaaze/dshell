@@ -1,13 +1,16 @@
 import Gtk from "gi://Gtk?version=4.0"
 import Powerprofiles from "./powerprofiles"
+import AutoCpufreq from "./autoCpufreq"
+import AutoCpufreqLib from "#/lib/autoCpufreq"
 import ColorScheme from "./colorScheme"
 import Bluetooth from "./bluetooth"
 import Caffeinated from "./caffeinated"
 
 export const ButtonGrid = ({ cols = 2 }:
   { cols?: number }) => {
+  const autoCpufreq = AutoCpufreqLib.get_default()
   const items = [
-    <Powerprofiles />,
+    autoCpufreq.available ? <AutoCpufreq /> : <Powerprofiles />,
     <ColorScheme />,
     <Bluetooth />,
     <Caffeinated />

@@ -4,6 +4,7 @@ import Network from "gi://AstalNetwork"
 import Batery from "gi://AstalBattery"
 import Wireplumber from "gi://AstalWp"
 import PowerProf from "gi://AstalPowerProfiles"
+import AutoCpufreq from "#/lib/autoCpufreq"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import { Accessor, createBinding, createComputed } from "gnim"
@@ -14,16 +15,28 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
   const battery = Batery.get_default()
   const network = Network.get_default()
   const powerprof = PowerProf.get_default()
+  const autoCpufreq = AutoCpufreq.get_default()
   const notifd = Notifd.get_default()
   const bluetooth = Bluetooth.get_default()
 
-  const ProfileIndicator = () => <Gtk.Image
-    visible={createBinding(powerprof, "activeProfile")
-      .as(p => p !== "balanced")}
-    iconName={createBinding(powerprof, "iconName")}
-    tooltipMarkup={createBinding(powerprof, "active_profile")
-      .as(String)}
-    pixelSize={18} />
+  const ProfileIndicator = () => {
+    if (autoCpufreq.available) {
+      return <Gtk.Image
+        visible={createBinding(autoCpufreq, "activeProfile")
+          .as(p => p !== "balanced")}
+        iconName={createBinding(autoCpufreq, "iconName")}
+        tooltipMarkup={createBinding(autoCpufreq, "activeProfile")
+          .as(String)}
+        pixelSize={18} />
+    }
+    return <Gtk.Image
+      visible={createBinding(powerprof, "activeProfile")
+        .as(p => p !== "balanced")}
+      iconName={createBinding(powerprof, "iconName")}
+      tooltipMarkup={createBinding(powerprof, "activeProfile")
+        .as(String)}
+      pixelSize={18} />
+  }
 
   const DNDIndicator = () => <Gtk.Image
     visible={createBinding(notifd, "dontDisturb")}
