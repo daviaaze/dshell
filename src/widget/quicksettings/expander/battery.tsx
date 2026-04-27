@@ -1,16 +1,31 @@
 import AstalBattery from "gi://AstalBattery";
-import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 import { createBinding, createComputed } from "gnim";
 
 const battery = AstalBattery.get_default()
+
+function fmtDuration(seconds: number): string {
+  const abs = Math.abs(Math.round(seconds))
+  const h = Math.floor(abs / 3600)
+  const m = Math.floor((abs % 3600) / 60)
+  const s = abs % 60
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+}
+
+function fmtDurationHMS(seconds: number): string {
+  const abs = Math.abs(Math.round(seconds))
+  const h = Math.floor(abs / 3600)
+  const m = Math.floor((abs % 3600) / 60)
+  const s = abs % 60
+  return `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`
+}
 
 const timeTo = createComputed([
   createBinding(battery, "charging"),
   createBinding(battery, "timeToEmpty"),
   createBinding(battery, "timeToFull")],
   (charging, timeToEmpty, timeToFull) =>
-    charging ? timeToFull : -timeToEmpty)
+    charging ? timeToFull : timeToEmpty)
 
 export const BatteryIcon = () =>
   <Gtk.Box
@@ -30,10 +45,8 @@ export const BatteryIcon = () =>
       <Gtk.Label
         label={timeTo(timeTo =>
           timeTo === 0 ? "Full" :
-            (GLib.DateTime
-              .new_from_unix_utc(timeTo)
-              .format("%T")) +
-            (timeTo < 0 ? " to empty" : " to full")
+            fmtDuration(timeTo) +
+            (battery.get_charging() ? " to full" : " to empty")
         )}
       />
     </Gtk.Box>
@@ -53,18 +66,17 @@ export const Battery = () => <Gtk.Box
   <Gtk.Label
     halign={Gtk.Align.START}
     label={timeTo(timeTo =>
-      `${timeTo < 0 ?
-        "Discharged" : "Charged"
-      } in: ${GLib.DateTime
-        .new_from_unix_utc(timeTo)
-        .format("%kh %Mm %Ss")}`
+      `${battery.get_charging() ?
+        "Charged" : "Discharged"
+      } in: ${fmtDurationHMS(timeTo)}`
     )}
   />
   <Gtk.Label
     halign={Gtk.Align.START}
     label={createBinding(battery, "energyRate")(rate =>
       `Rate of ${battery.get_charging() ?
-        "Charge" : "discharge"}: ${rate.toFixed(2)}W`)}
+        "Charge" : "discharge"
+      }: ${rate.toFixed(2)}W`)}
   />
   <Gtk.Label
     halign={Gtk.Align.START}
@@ -79,4 +91,3 @@ export const Battery = () => <Gtk.Box
       .as(p => `${(p * 100).toFixed(0)}%`)} />
   </Gtk.LevelBar>
 </Gtk.Box>
-
