@@ -9,27 +9,70 @@ import Gtk from "gi://Gtk?version=4.0"
 import { createRoot, createState, For, onCleanup, onMount } from "gnim"
 import { app } from "#/App"
 import { screenlocked, setScreelocked } from ".."
+import FingerprintAuth from "#/lib/fingerprint"
 
 const createLocks = (onUnlock: () => void) => {
   const { LEFT, RIGHT, TOP, BOTTOM } = Astal.WindowAnchor
   const lock = SessionLock.Instance.new()
   const [time, setTime] = createState(GLib.DateTime.new_now_local())
+  const [authStatus, setAuthStatus] = createState("")
+  const fingerprint = FingerprintAuth.get_default()
 
   setInterval(() => {
     setTime(GLib.DateTime.new_now_local())
   }, 1000);
 
+  const doUnlock = () => {
+    fingerprint.stop()
+    lock.unlock()
+    app.lockscreen.forEach(w => w.destroy())
+    setScreelocked(false)
+    onUnlock()
+  }
+
   const unlock = (self: Gtk.PasswordEntry) => {
     AstalAuth.Pam.authenticate(self.get_text(), (_, res) => {
       try {
         AstalAuth.Pam.authenticate_finish(res)
-        lock.unlock()
-        app.lockscreen.forEach(w => w.destroy())
-        setScreelocked(false)
-        onUnlock()
-      } catch (e) { console.log(e) }
+        doUnlock()
+      } catch (e) {
+        console.log(e)
+        setAuthStatus("Authentication failed")
+      }
     })
   }
+
+  // Initialize fingerprint on mount
+  fingerprint.init().then(() => {
+    if (fingerprint.available) {
+      setAuthStatus("Touch fingerprint reader")
+      fingerprint.start()
+    }
+  })
+
+  fingerprint.connect("verified", () => {
+    doUnlock()
+  })
+
+  fingerprint.connect("failed", (_, reason) => {
+    if (reason === "verify-no-match") {
+      setAuthStatus("Fingerprint did not match")
+      setTimeout(() => {
+        if (fingerprint.available) {
+          setAuthStatus("Touch fingerprint reader")
+          fingerprint.start()
+        }
+      }, 500)
+    } else {
+      setAuthStatus("Fingerprint error")
+    }
+  })
+
+  fingerprint.connect("statusChanged", (_, status) => {
+    if (status === "verify-retry" || status === "verify-swipe-too-short") {
+      setAuthStatus("Try again...")
+    }
+  })
 
   return <For each={monitors()}>
     {(monitor: Gdk.Monitor) =>
@@ -37,6 +80,7 @@ const createLocks = (onUnlock: () => void) => {
         $={self => {
           app.lockscreen.push(self)
           onCleanup(() => {
+            fingerprint.stop()
             app.lockscreen = app.lockscreen.filter(l => l !== self)
           })
         }}
@@ -95,6 +139,15 @@ const createLocks = (onUnlock: () => void) => {
               placeholderText={"password"}
               showPeekIcon
               onActivate={unlock} />
+            <Gtk.Label
+              visible={authStatus.as(s => s.length > 0)}
+              cssClasses={["caption"]}
+              label={authStatus}
+            />
+            <Gtk.Spinner
+              visible={createBinding(fingerprint, "verifying")}
+              spinning
+            />
           </Gtk.Box>
         </Gtk.CenterBox>
       </Astal.Window>}

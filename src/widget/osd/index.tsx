@@ -9,17 +9,27 @@ import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import { app } from "#/App"
 
+const MUTED_SPEAKER_ICON = "audio-volume-muted-symbolic"
+
 export default () => {
   const brightness = Brightness.get_default()
   const audio = Wireplumber.get_default()!.audio
   const hyprland = AstalHyprland.get_default()
+
+  const speakerIcon = createComputed([
+    createBinding(audio.defaultSpeaker, "volume"),
+    createBinding(audio.defaultSpeaker, "mute"),
+    createBinding(audio.defaultSpeaker, "volumeIcon"),
+  ], (volume, mute, volumeIcon) =>
+    (mute || volume === 0) ? MUTED_SPEAKER_ICON : volumeIcon
+  )
 
   const popupList: GObject.Object[] = [
     <Popup
       connectable={audio.defaultSpeaker}
       signal={"notify::volume"}
       widget={Slider({
-        iconName: createBinding(audio.defaultSpeaker, "volumeIcon"),
+        iconName: speakerIcon,
         value: createBinding(audio.defaultSpeaker, "volume")
       })} />,
 

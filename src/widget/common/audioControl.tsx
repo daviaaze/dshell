@@ -1,15 +1,28 @@
 import Wireplumber from "gi://AstalWp"
 import Gtk from "gi://Gtk?version=4.0"
-import { Accessor, createBinding, createState, For } from "gnim"
+import { Accessor, createBinding, createComputed, createState, For } from "gnim"
 import { Slider } from "./slider"
 
 interface AudioControlProps {
   defaultDevice: Wireplumber.Endpoint
   devices: Accessor<Wireplumber.Endpoint[]>
   visible?: Accessor<boolean> | boolean
+  mutedIcon: string
 }
 
-export const AudioEndpointControl = ({ defaultDevice, devices, visible }: AudioControlProps) => {
+export const getVolumeIcon = (
+  device: Wireplumber.Endpoint,
+  mutedIcon: string
+): Accessor<string> =>
+  createComputed([
+    createBinding(device, "volume"),
+    createBinding(device, "mute"),
+    createBinding(device, "volumeIcon"),
+  ], (volume, mute, volumeIcon) =>
+    (mute || volume === 0) ? mutedIcon : volumeIcon
+  )
+
+export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIcon }: AudioControlProps) => {
   const [revealed, setRevealed] = createState(false)
   const radioGroup = new Gtk.CheckButton()
 
@@ -36,7 +49,7 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible }: AudioC
       <Slider
         min={0}
         max={100}
-        icon={createBinding(device, "volumeIcon")}
+        icon={getVolumeIcon(device, mutedIcon)}
         value={createBinding(device, 'volume')
           .as(v => v * 100)}
         setValue={value => device.set_volume(value / 100)}
@@ -51,7 +64,7 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible }: AudioC
       orientation={Gtk.Orientation.VERTICAL}>
       <Gtk.Box spacing={4}>
         <Slider
-          icon={createBinding(defaultDevice, "volumeIcon")}
+          icon={getVolumeIcon(defaultDevice, mutedIcon)}
           min={0}
           max={100}
           value={createBinding(defaultDevice, 'volume')
@@ -75,4 +88,4 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible }: AudioC
       </Gtk.Revealer>
     </Gtk.Box>
   )
-} 
+}

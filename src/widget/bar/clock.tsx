@@ -3,6 +3,13 @@ import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import { Accessor, createState } from "gnim"
 
+function updateCalendar(calendar: Gtk.Calendar) {
+  const now = GLib.DateTime.new_now_local()
+  calendar.year = now.get_year()
+  calendar.month = now.get_month() - 1
+  calendar.day = now.get_day_of_month()
+}
+
 export default ({ vertical }: { vertical: Accessor<boolean> }) => {
 
   const [time, setTime] = createState(new GLib.DateTime)
@@ -24,8 +31,14 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       valign={Gtk.Align.CENTER}
       halign={Gtk.Align.CENTER}
       cssClasses={[]}
-      hasArrow={false}>
-      <Gtk.Calendar />
+      hasArrow={false}
+      $={self => self.connect("show", () => {
+        const calendar = self.child as Gtk.Calendar | null
+        if (calendar) updateCalendar(calendar)
+      })}>
+      <Gtk.Calendar
+        $={self => updateCalendar(self)}
+      />
     </Gtk.Popover> as Gtk.Popover}>
     <Gtk.Box
       halign={Gtk.Align.CENTER}

@@ -5,6 +5,8 @@ import AutoCpufreqLib from "#/lib/autoCpufreq"
 import ColorScheme from "./colorScheme"
 import Bluetooth from "./bluetooth"
 import Caffeinated from "./caffeinated"
+import Network from "./network"
+import Screenshot from "./screenshot"
 
 export const ButtonGrid = ({ cols = 2 }:
   { cols?: number }) => {
@@ -13,6 +15,8 @@ export const ButtonGrid = ({ cols = 2 }:
     autoCpufreq.available ? <AutoCpufreq /> : <Powerprofiles />,
     <ColorScheme />,
     <Bluetooth />,
+    <Network />,
+    <Screenshot />,
     <Caffeinated />
   ];
 

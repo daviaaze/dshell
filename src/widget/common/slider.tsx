@@ -1,6 +1,6 @@
 import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { Accessor } from "gnim"
+import { Accessor, createState } from "gnim"
 
 type SliderProps = {
   icon: Accessor<string> | string,
@@ -10,26 +10,46 @@ type SliderProps = {
   value: Accessor<number>,
   setValue: (value: number) => void,
 }
-export const Slider = (props: SliderProps) =>
-  <Gtk.Box
-    cssClasses={["slider"]}
-    spacing={4}
-    visible={props.visible}>
-    <Gtk.Image iconName={props.icon} />
-    <Astal.Slider
-      hexpand
-      min={props.min}
-      max={props.max}
-      $={self => self.set_value(props.value.get())}
-      onChangeValue={({ value }) =>
-        props.setValue(value)
-      }
-      value={props.value} />
-    <Gtk.Label
-      cssClasses={["heading"]}
-      label={props.value(v => v
-        .toFixed(0)
-        .toString()
-        .concat("%"))
-      } />
-  </Gtk.Box> 
+
+const DEBOUNCE_MS = 80
+
+export const Slider = (props: SliderProps) => {
+  const [displayValue, setDisplayValue] = createState(props.value.get())
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+  const debouncedSetValue = (value: number) => {
+    setDisplayValue(value)
+    if (debounceTimer !== null) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      props.setValue(value)
+      debounceTimer = null
+    }, DEBOUNCE_MS)
+  }
+
+  props.value.subscribe((v) => {
+    if (debounceTimer === null) setDisplayValue(v)
+  })
+
+  return (
+    <Gtk.Box
+      cssClasses={["slider"]}
+      spacing={4}
+      visible={props.visible}>
+      <Gtk.Image iconName={props.icon} />
+      <Astal.Slider
+        hexpand
+        min={props.min}
+        max={props.max}
+        $={self => self.set_value(displayValue.get())}
+        onChangeValue={({ value }) => debouncedSetValue(value)}
+        value={displayValue} />
+      <Gtk.Label
+        cssClasses={["heading"]}
+        label={displayValue(v => v
+          .toFixed(0)
+          .toString()
+          .concat("%"))
+        } />
+    </Gtk.Box>
+  )
+}

@@ -4,6 +4,7 @@ import { Battery, BatteryIcon } from "./battery"
 // import { Media, MediaIcon } from "./media"
 import { Calendar, CalendarIcon } from "./calendar"
 import { Weather, WeatherIcon } from "./weather"
+import { WorldClock } from "./worldClock"
 import Adw from "gi://Adw?version=1"
 
 export const Expander = () => {
@@ -43,6 +44,7 @@ export const Expander = () => {
         <Battery />
         <Weather />
         <Calendar />
+        <WorldClock />
       </Gtk.Box>
     </Gtk.Revealer>
   </Gtk.Box>

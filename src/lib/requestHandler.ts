@@ -1,6 +1,7 @@
 import { app } from "#/App";
 import { launcherOpen, qsOpen, setLauncherOpen, setQsOpen } from "#/widget";
 import { setScreelocked } from "#/widget";
+import Screenshot from "#/lib/screenshot";
 import Gio from "gi://Gio?version=2.0";
 
 export const requestHandler =
@@ -21,5 +22,12 @@ export const requestHandler =
           setQsOpen(!qsOpen.get())
           break
       }
+    else if (args[1] === "screenshot")
+      Screenshot.get_default().screenshot(true)
+    else if (args[1] === "screenshot-area")
+      Screenshot.get_default().screenshot(false)
+    else if (args[1] === "record")
+      Screenshot.get_default().toggleRecording()
+
     cmd.done()
   }

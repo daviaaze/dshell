@@ -65,6 +65,10 @@
       wrapperPackages = with pkgs; [
         brightnessctl
         bash
+        grim
+        slurp
+        wf-recorder
+        wl-clipboard
       ];
     in
     {

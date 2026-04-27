@@ -35,6 +35,10 @@ export const weatherSchema = new Schema({
   .key("longitude", "d", {
     default: 0.0,
   })
+  .key("auto-location", "b", {
+    default: false,
+    summary: "Automatically detect location for weather"
+  })
 
 export const generalSchema = new Schema({
   id: id + ".general",
@@ -48,6 +52,10 @@ export const generalSchema = new Schema({
   })
   .key("wallpaper-night", "s", {
     default: `${datadir}/shade-shell/wp-night.jpg`,
+  })
+  .key("timezones", "as", {
+    default: ["America/New_York", "Europe/London", "Asia/Tokyo"],
+    summary: "List of IANA timezone identifiers for the world clock"
   })
 
 export default defineSchemaList([barSchema, generalSchema, weatherSchema])

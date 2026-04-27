@@ -12,6 +12,7 @@ export const AudioConfig = () =>
       .as(s => s.length > 0)}
     defaultDevice={audio.defaultSpeaker}
     devices={createBinding(audio, 'speakers')}
+    mutedIcon="audio-volume-muted-symbolic"
   />
 
 export const MicConfig = () =>
@@ -20,6 +21,7 @@ export const MicConfig = () =>
       .as(m => m.length > 0)}
     defaultDevice={audio.defaultMicrophone}
     devices={createBinding(audio, "microphones")}
+    mutedIcon="microphone-sensitivity-muted-symbolic"
   />
 
 export const BrightnessSlider = () => {

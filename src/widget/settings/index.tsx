@@ -4,6 +4,8 @@ import Bar from "./bar";
 import { app } from "#/App";
 import Weather from "./weather";
 import General from "./general";
+import Clock from "./clock";
+import Network from "./network";
 
 export default () => {
   return <Adw.Window
@@ -23,6 +25,8 @@ export default () => {
       <Adw.PreferencesPage>
         <General />
         <Bar />
+        <Clock />
+        <Network />
         <Weather />
       </Adw.PreferencesPage>
     </Gtk.Box>

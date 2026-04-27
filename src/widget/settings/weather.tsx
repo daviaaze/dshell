@@ -11,6 +11,14 @@ export default () => {
   return <Adw.PreferencesGroup
     title={"Weather"}
     description={"Weather options"}>
+    <Adw.SwitchRow
+      title={"Auto Location"}
+      subtitle={"Automatically detect your location"}
+      active={settings.autoLocation}
+      onNotifyActive={self =>
+        settings.setAutoLocation(self.active)
+      }
+    />
     <Adw.SpinRow
       title={"Latitude"}
       value={settings.latitude}
@@ -32,8 +40,13 @@ export default () => {
         settings.setLongitude(self.value)
       } />
     <Adw.ButtonRow
+      startIconName={"find-location-symbolic"}
+      title={"Detect Location Now"}
+      onActivated={() => weather.detectLocation()}
+    />
+    <Adw.ButtonRow
       startIconName={"view-refresh-symbolic"}
-      title={"update"}
+      title={"Update Weather"}
       onActivated={() =>
         weather.location = GWeather.Location.get_world()
           ?.find_nearest_city(
