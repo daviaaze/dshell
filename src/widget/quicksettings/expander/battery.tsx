@@ -40,7 +40,7 @@ export const BatteryIcon = () =>
     <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
       <Gtk.Label
         label={createBinding(battery, "percentage")
-          .as(p => (p * 100).toString() + "%")}
+          .as(p => (p * 100).toFixed(0) + "%")}
       />
       <Gtk.Label
         label={timeTo(timeTo =>
