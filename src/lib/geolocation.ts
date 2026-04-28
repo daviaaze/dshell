@@ -32,7 +32,7 @@ export default class Geolocation extends GObject.Object {
   get available() { return this.#available }
 
   @signal(Number, Number)
-  declare locationChanged: (lat: number, lon: number) => void
+  locationChanged(_lat: number, _lon: number) {}
 
   detect() {
     this.#tryGeoClue().then(found => {

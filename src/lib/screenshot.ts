@@ -20,10 +20,10 @@ export default class Screenshot extends GObject.Object {
   get recording() { return this.#recording }
 
   @signal()
-  declare recordingStarted: () => void
+  recordingStarted() {}
 
   @signal()
-  declare recordingStopped: () => void
+  recordingStopped() {}
 
   screenshot(fullscreen: boolean) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")

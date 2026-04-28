@@ -26,13 +26,13 @@ export default class FingerprintAuth extends GObject.Object {
   get verifying() { return this.#verifying }
 
   @signal()
-  declare verified: () => void
+  verified() {}
 
   @signal(String)
-  declare failed: (reason: string) => void
+  failed(_reason: string) {}
 
   @signal(String)
-  declare statusChanged: (status: string) => void
+  statusChanged(_status: string) {}
 
   async init() {
     try {

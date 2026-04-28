@@ -7,7 +7,6 @@
     "strict": true,
     "moduleResolution": "Bundler",
     "skipLibCheck": true,
-    "experimentalDecorators": true,
     "paths": { "#/*": ["./src/*"] },
     "jsx": "react-jsx",
     "jsxImportSource": "gnim/gtk4"
