@@ -27,6 +27,7 @@ custom_target(
     '--format=esm',
     '--sourcemap=inline',
     '--loader:.css=text',
+    '--tsconfig=@SOURCE_ROOT@/tsconfig.json',
     '--define:import.meta.name="' + name + '"',
     '--define:import.meta.version="' + version + '"',
     '--define:import.meta.domain="' + domain + '"',
