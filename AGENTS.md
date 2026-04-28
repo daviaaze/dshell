@@ -281,6 +281,36 @@ The network widget only shows a password prompt when `ap.requires_password && ap
 
 Consider prompting for a password on activation failure, or always allowing password override for networks requiring auth.
 
+### AstalIO.Process `exec_async` vs `subprocess`
+`AstalIO.Process.exec_async` and `exec_asyncv` execute a command and return its **stdout as a string** when the process exits. They do **not** return a process handle — you cannot kill or signal the spawned process afterward.
+
+For long-running processes that need to be controlled (e.g., `wf-recorder`), use `AstalIO.Process.subprocess()` or `subprocessv()` instead. These return a live `AstalIO.Process` instance with:
+- `.kill()` — force quit (SIGKILL)
+- `.signal(n)` — send arbitrary signal (e.g., `.signal(2)` for SIGINT)
+- `.connect("exit", (code, terminated) => ...)` — fired when the process terminates
+
+**Example pattern for a controllable subprocess:**
+```ts
+const proc = AstalIO.Process.subprocessv(["wf-recorder", "-f", filename])
+proc.connect("exit", () => {
+  this.recording = false
+})
+// Later:
+proc.signal(2) // graceful stop with SIGINT
+```
+
+The Vala VAPI files in the Nix store (e.g., `/nix/store/...-astal-0.1.0-dev/share/vala/vapi/astal-io-0.1.vapi`) are the authoritative source for Astal API shape when types are missing or unclear.
+
+### Adwaita Icon Name Pitfalls
+Not all logically-named icons exist in `adwaita-icon-theme`. Always verify icon names against the actual theme before using them.
+
+**Known missing / incorrect names:**
+| Incorrect | Correct |
+|-----------|---------|
+| `media-record-stop-symbolic` | `media-playback-stop-symbolic` |
+
+When an icon appears broken or missing at runtime, check the theme first with `gtk4-icon-browser` (if available) or search the installed icon directories under `/run/current-system/sw/share/icons` or the Nix store.
+
 ---
 
 ## Testing

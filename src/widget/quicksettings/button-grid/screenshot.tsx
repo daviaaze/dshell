@@ -38,7 +38,7 @@ export default () => {
       </Gtk.Popover> as Gtk.Popover}>
     <Adw.ButtonContent
       iconName={createBinding(screenshot, "recording").as(rec =>
-        rec ? "media-record-stop-symbolic" : "camera-video-symbolic"
+        rec ? "media-playback-stop-symbolic" : "camera-video-symbolic"
       )}
       label={createBinding(screenshot, "recording").as(rec =>
         rec ? "Stop Recording" : "Record"

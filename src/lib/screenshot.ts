@@ -68,20 +68,22 @@ export default class Screenshot extends GObject.Object {
         this.notify("recording")
         this.recordingStarted()
 
-        AstalIO.Process.exec_async(
-          `wf-recorder -f "${filename}"`,
-          () => {
-            this.#recording = false
-            this.notify("recording")
-            this.recordingStopped()
-          }
-        )
+        this.#recordingProcess = AstalIO.Process.subprocessv([
+          "wf-recorder", "-f", filename,
+        ])
+
+        this.#recordingProcess.connect("exit", () => {
+          this.#recording = false
+          this.notify("recording")
+          this.recordingStopped()
+          this.#recordingProcess = null
+        })
       }
     )
   }
 
   stopRecording() {
-    if (!this.#recording) return
-    AstalIO.Process.exec_async("killall -INT wf-recorder", () => {})
+    if (!this.#recording || !this.#recordingProcess) return
+    this.#recordingProcess.signal(2)
   }
 }
