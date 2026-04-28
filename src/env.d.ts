@@ -4,6 +4,7 @@ export declare global {
     version: string
     domain: string
     datadir: string
+    bindir: string
   }
 
   declare module "*.css" {

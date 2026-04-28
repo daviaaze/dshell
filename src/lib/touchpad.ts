@@ -1,9 +1,9 @@
 import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib?version=2.0"
-import Gio from "gi://Gio?version=2.0"
 import GObject, { getter, register, setter } from "gnim/gobject"
 
 const LOCK_FILE = "/tmp/shade-touchpad-disabled.pid"
+const SCRIPT_PATH = `${(import.meta as any).bindir || "/usr/local/bin"}/toggle-touchpad.py`
 
 const TOGGLE_SCRIPT = `import fcntl, os, signal, sys
 
@@ -19,7 +19,7 @@ def find_touchpad():
                 name = f.read().strip().lower()
                 if "touchpad" in name:
                     return f"/dev/input/{evdev}"
-        except:
+        except Exception:
             continue
     return None
 
@@ -40,7 +40,7 @@ def disable():
     for fd in (0, 1, 2):
         try:
             os.close(fd)
-        except:
+        except Exception:
             pass
     fd = os.open(DEVICE, os.O_RDWR | os.O_NONBLOCK)
     fcntl.ioctl(fd, EVIOCGRAB, 1)
@@ -60,7 +60,7 @@ def enable():
         pass
     try:
         os.remove(LOCK_FILE)
-    except:
+    except Exception:
         pass
     print("enabled")
 
@@ -82,6 +82,7 @@ export default class Touchpad extends GObject.Object {
 
   #available = false
   #disabled = false
+  #scriptPath = ""
 
   @getter(Boolean)
   get available() {
@@ -103,63 +104,41 @@ export default class Touchpad extends GObject.Object {
   toggle() {
     this.#ensureScript()
     AstalIO.Process.exec_async(
-      "python3 /tmp/shade-touchpad-toggle.py",
-      (out: string) => {
-        print("touchpad toggle:", out.trim())
+      `python3 ${this.#scriptPath}`,
+      () => {
         this.#checkState()
       }
     )
   }
 
   #ensureScript() {
-    if (GLib.file_test("/tmp/shade-touchpad-toggle.py", GLib.FileTest.EXISTS)) return
-
-    try {
-      const file = Gio.File.new_for_path("/tmp/shade-touchpad-toggle.py")
-      file.replace_contents(
-        TOGGLE_SCRIPT,
-        null,
-        false,
-        Gio.FileCreateFlags.REPLACE_DESTINATION,
-        null
-      )
-      const info = file.query_info("unix::mode", Gio.FileQueryInfoFlags.NONE, null)
-      info.set_attribute_uint32("unix::mode", 0o755)
-      file.set_attributes_from_info(info, Gio.FileQueryInfoFlags.NONE, null)
-    } catch (e) {
-      print("Failed to write touchpad toggle script:", (e as Error).message)
+    if (GLib.file_test(SCRIPT_PATH, GLib.FileTest.EXISTS)) {
+      this.#scriptPath = SCRIPT_PATH
+      return
     }
+
+    const fallback = "/tmp/shade-touchpad-toggle.py"
+    if (!GLib.file_test(fallback, GLib.FileTest.EXISTS)) {
+      try {
+        GLib.file_set_contents(fallback, TOGGLE_SCRIPT)
+        AstalIO.Process.exec(`chmod +x ${fallback}`)
+      } catch (e) {
+        print("Failed to write touchpad toggle script:", (e as Error).message)
+        return
+      }
+    }
+    this.#scriptPath = fallback
   }
 
   #hasTouchpad(): boolean {
-    const dir = Gio.File.new_for_path("/sys/class/input")
     try {
-      const enumerator = dir.enumerate_children(
-        "standard::name",
-        Gio.FileQueryInfoFlags.NONE,
-        null
+      const out = AstalIO.Process.exec(
+        "bash -c 'for f in /sys/class/input/event*/device/name; do if grep -qi touchpad \"$f\" 2>/dev/null; then echo yes; break; fi; done'"
       )
-      let fileInfo
-      while ((fileInfo = enumerator.next_file(null)) !== null) {
-        const name = fileInfo.get_name()
-        if (!name.startsWith("event")) continue
-        const nameFile = Gio.File.new_for_path(`/sys/class/input/${name}/device/name`)
-        try {
-          const [, contents] = nameFile.load_contents(null)
-          const deviceName = new TextDecoder().decode(contents).trim().toLowerCase()
-          if (deviceName.includes("touchpad")) {
-            enumerator.close(null)
-            return true
-          }
-        } catch {
-          continue
-        }
-      }
-      enumerator.close(null)
+      return out.trim() === "yes"
     } catch {
-      // directory doesn't exist or no access
+      return false
     }
-    return false
   }
 
   #checkState() {
@@ -171,7 +150,6 @@ export default class Touchpad extends GObject.Object {
     this.#available = this.#hasTouchpad()
     this.#checkState()
     if (this.#available) {
-      this.#ensureScript()
       GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
         this.#checkState()
         return GLib.SOURCE_CONTINUE

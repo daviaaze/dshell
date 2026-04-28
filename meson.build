@@ -32,6 +32,7 @@ custom_target(
     '--define:import.meta.version="' + version + '"',
     '--define:import.meta.domain="' + domain + '"',
     '--define:import.meta.datadir="' + datadir + '"',
+    '--define:import.meta.bindir="' + bindir + '"',
   ],
   output: name,
   install: true,
@@ -68,6 +69,7 @@ configure_file(
 )
 
 install_data(['data/wp-day.jpg', 'data/wp-night.jpg'])
+install_data('data/scripts/toggle-touchpad.py', install_dir: bindir)
 
 import('gnome').post_install(
   # gtk_update_icon_cache: true,
