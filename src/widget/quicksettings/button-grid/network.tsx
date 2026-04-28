@@ -5,8 +5,20 @@ import { createBinding, createState, For } from "gnim"
 
 const network = Network.get_default()
 
+function toArray<T>(list: any): T[] {
+  if (!list) return []
+  if (Array.isArray(list)) return list
+  const arr: T[] = []
+  let l = list
+  while (l) {
+    arr.push(l.data)
+    l = l.next
+  }
+  return arr
+}
+
 export default () => {
-  const wifi = network.wifi
+  const wifiBinding = createBinding(network, "wifi")
 
   const [connectingAp, setConnectingAp] = createState<string | null>(null)
   const [passwordDialog, setPasswordDialog] = createState<{
@@ -14,8 +26,9 @@ export default () => {
     entry: Gtk.Entry
   } | null>(null)
 
-  const WifiPopover = () => {
-    if (!wifi) return <Gtk.Label label="No WiFi device found" />
+  const WifiPopover = ({ wifi }: { wifi: Network.Wifi }) => {
+    const aps = createBinding(wifi, "accessPoints")
+      .as(points => toArray<Network.AccessPoint>(points))
 
     return <Gtk.Box
       cssClasses={["linked"]}
@@ -44,7 +57,7 @@ export default () => {
         <Gtk.Box
           orientation={Gtk.Orientation.VERTICAL}
           spacing={4}>
-          <For each={createBinding(wifi, "accessPoints")}>
+          <For each={aps}>
             {(ap: Network.AccessPoint) => {
               const isActive = createBinding(wifi, "activeAccessPoint")
                 .as(active => active?.bssid === ap.bssid)
@@ -53,10 +66,13 @@ export default () => {
               return <Gtk.Button
                 onClicked={() => {
                   if (isActive.get()) {
-                    wifi.deactivate_connection().catch(() => {})
+                    wifi.deactivate_connection()
+                      .catch((e: Error) => print("deactivate failed:", e.message))
                     return
                   }
-                  if (ap.requires_password && ap.get_connections().length === 0) {
+                  const conns = ap.get_connections()
+                  const hasSaved = conns && conns.length > 0
+                  if (ap.requires_password && !hasSaved) {
                     const entry = new Gtk.Entry({
                       placeholderText: "Password",
                       visibility: false,
@@ -65,11 +81,12 @@ export default () => {
                     return
                   }
                   setConnectingAp(ap.bssid)
-                  ap.activate().then(() => {
-                    setConnectingAp(null)
-                  }).catch(() => {
-                    setConnectingAp(null)
-                  })
+                  ap.activate()
+                    .then(() => setConnectingAp(null))
+                    .catch((e: Error) => {
+                      print("activate failed:", e.message)
+                      setConnectingAp(null)
+                    })
                 }}>
                 <Gtk.Box spacing={8}>
                   <Gtk.Image
@@ -117,11 +134,12 @@ export default () => {
             const ap = dialog.ap
             setPasswordDialog(null)
             setConnectingAp(ap.bssid)
-            ap.activate(pw).then(() => {
-              setConnectingAp(null)
-            }).catch(() => {
-              setConnectingAp(null)
-            })
+            ap.activate(pw)
+              .then(() => setConnectingAp(null))
+              .catch((e: Error) => {
+                print("activate with password failed:", e.message)
+                setConnectingAp(null)
+              })
           }}>
           <Gtk.Image iconName="go-next-symbolic" />
         </Gtk.Button>
@@ -133,33 +151,16 @@ export default () => {
     </Gtk.Revealer>
   }
 
-  if (!wifi) {
-    return <Adw.SplitButton
-      cssClasses={["raised"]}
-      widthRequest={150}
-      popover={
-        <Gtk.Popover cssClasses={[]}>
-          <Gtk.Label
-            marginStart={12}
-            marginEnd={12}
-            marginTop={12}
-            marginBottom={12}
-            label="No WiFi device"
-          />
-        </Gtk.Popover> as Gtk.Popover}>
-      <Adw.ButtonContent
-        iconName="network-wireless-offline-symbolic"
-        label="No WiFi" />
-    </Adw.SplitButton>
-  }
-
   return <Adw.SplitButton
     cssClasses={["raised"]}
     widthRequest={150}
     $={self => {
       self.connect("clicked", () => {
+        const wifi = wifiBinding.get()
+        if (!wifi) return
         if (wifi.state === Network.DeviceState.ACTIVATED) {
-          wifi.deactivate_connection().catch(() => {})
+          wifi.deactivate_connection()
+            .catch((e: Error) => print("deactivate failed:", e.message))
         } else {
           wifi.enabled = !wifi.enabled
         }
@@ -175,14 +176,25 @@ export default () => {
           marginEnd={8}
           marginTop={8}
           marginBottom={8}>
-          <WifiPopover />
+          {wifiBinding.as(wifi =>
+            wifi
+              ? <WifiPopover wifi={wifi} />
+              : <Gtk.Label
+                  marginStart={12}
+                  marginEnd={12}
+                  marginTop={12}
+                  marginBottom={12}
+                  label="No WiFi device" />
+          )}
           <PasswordDialog />
         </Gtk.Box>
       </Gtk.Popover> as Gtk.Popover}>
     <Adw.ButtonContent
-      iconName={createBinding(wifi, "iconName")}
-      label={createBinding(wifi, "ssid").as(ssid =>
-        ssid ?? (wifi.enabled ? "WiFi" : "WiFi Off")
+      iconName={wifiBinding.as(wifi =>
+        wifi?.iconName ?? "network-wireless-offline-symbolic"
+      )}
+      label={wifiBinding.as(wifi =>
+        wifi?.ssid ?? (wifi?.enabled ? "WiFi" : "WiFi Off")
       )} />
   </Adw.SplitButton>
 }

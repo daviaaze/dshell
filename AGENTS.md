@@ -217,6 +217,72 @@ Properties use `@getter(Type)` and `@setter(Type)` decorators for GObject integr
 
 ---
 
+## Known Pitfalls and Lessons Learned
+
+### AstalNetwork `wifi` Property Is Set Once at Construction
+`AstalNetwork.Network.get_default().wifi` is initialized inside the GObject `construct` block and **never updated** afterward. If the WiFi device wasn't available when AstalNetwork first initialized (e.g., NetworkManager still starting, rfkill soft block, or resume from sleep), `wifi` will be `null` forever.
+
+**Always use `createBinding(network, "wifi")` instead of `const wifi = network.wifi`.** The status bar (`systemIndicators.tsx`) already does this correctly; the Quick Settings network widget historically did not.
+
+### `GLib.List` Is Not Iterable in GJS
+AstalNetwork's `wifi.accessPoints` returns `GLib.List<AccessPoint>`, but Gnim's `For` component spreads its input with `[...iterable]`. `GLib.List` does **not** implement the JS iterator protocol in GJS, so `For` will throw a TypeError and crash the entire parent component.
+
+**Convert to a JS array before passing to `For`:**
+```ts
+function toArray<T>(list: any): T[] {
+  if (!list) return []
+  if (Array.isArray(list)) return list
+  const arr: T[] = []
+  let l = list
+  while (l) {
+    arr.push(l.data)
+    l = l.next
+  }
+  return arr
+}
+
+// Usage
+const aps = createBinding(wifi, "accessPoints")
+  .as(points => toArray<Network.AccessPoint>(points))
+
+<For each={aps}>...</For>
+```
+
+The project already follows this pattern in `src/lib/monitors.ts` for `Gio.ListStore` (using `Array.from()`). Apply the same conversion for any GObject property returning `GLib.List`, `Gio.ListModel`, etc.
+
+### Avoid Silent `.catch(() => {})`
+The network widget (and other Astal interaction code) historically swallowed all errors with empty catch handlers. This makes debugging impossible when NetworkManager rejects a connection or PAM authentication fails.
+
+**Use `print()` to log errors:**
+```ts
+ap.activate()
+  .then(() => setConnectingAp(null))
+  .catch((e: Error) => {
+    print("activate failed:", e.message)
+    setConnectingAp(null)
+  })
+```
+
+GJS provides the global `print()` function. It is already used in `bluetooth.tsx` and other files.
+
+### Build Tooling Quirks
+- **`pnpm run lint`** may fail with `TypeError: util.styleText is not a function` depending on the Node.js version in the environment. This is an ESLint 10 compatibility issue, not a code issue.
+- **`tsc --noEmit`** will report many errors for missing GIR types (e.g., `gi://AstalNetwork`, `gi://Gtk`). These are expected unless `pnpm run types` has been run to regenerate `@girs/`.
+- The **actual build** is performed by **esbuild via Meson**, which does not type-check. TypeScript errors in source files generally do not block the build.
+
+### Quick Settings vs. Settings WiFi UX
+- **Quick Settings** (`widget/quicksettings/button-grid/network.tsx`) is the only place with a network list, scan button, and password dialog. The main `Adw.SplitButton` click toggles WiFi on/off or disconnects; the **dropdown arrow** reveals the network list.
+- **Settings** (`widget/settings/network.tsx`) only shows a WiFi on/off toggle, signal strength, and a scan button. It has **no network list or connection management UI**.
+
+### Password Dialog Logic for Saved Connections
+The network widget only shows a password prompt when `ap.requires_password && ap.get_connections().length === 0`. This means:
+- **New networks**: password dialog shows correctly.
+- **Saved networks with outdated/wrong passwords**: the widget tries to activate the saved connection without prompting for a new password, and fails silently.
+
+Consider prompting for a password on activation failure, or always allowing password override for networks requiring auth.
+
+---
+
 ## Testing
 
 **There are no automated tests.** No test framework is installed or configured. There are no test files, spec files, or test scripts. Testing is done manually via the NixOS VM or by running the shell directly in a Hyprland session.
