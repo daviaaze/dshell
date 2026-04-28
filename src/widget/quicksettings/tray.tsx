@@ -26,7 +26,7 @@ export const TrayBox = () => {
     <Gtk.Button
       cssClasses={["circular", "destructive-action"]}
       onClicked={() => {
-        AstalIO.Process.exec_asyncv(["bash", "-c", "systemctl poweroff"]);
+        AstalIO.Process.exec_async("systemctl poweroff", () => {});
       }}
     >
       <Gtk.Image iconName={"system-shutdown-symbolic"} />
