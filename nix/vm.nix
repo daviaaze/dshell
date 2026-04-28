@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -26,6 +26,12 @@
     cores = 3;
   };
 
+  programs.shade = {
+    enable = true;
+    defaultBrowser = "firefox";
+    defaultTerminal = "com.mitchellh.ghostty";
+  };
+
   environment.systemPackages = with pkgs;[
     firefox
     moonlight-qt
@@ -33,11 +39,10 @@
     btop
   ];
 
-  programs.shade.enable = true;
   programs.shade.hyprland.settings = {
     bind = [
-      "SUPERSHIFT,Return,exec,${lib.getExe pkgs.uwsm} app -- ghostty"
-      "SUPERSHIFT,B,exec,${lib.getExe pkgs.uwsm} app -- firefox"
+      "SUPERSHIFT,Return,exec,${lib.getExe pkgs.uwsm} app -- ${config.programs.shade.defaultTerminal}"
+      "SUPERSHIFT,B,exec,${lib.getExe pkgs.uwsm} app -- ${config.programs.shade.defaultBrowser}"
     ];
   };
 

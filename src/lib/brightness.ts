@@ -1,4 +1,5 @@
 import AstalIO from "gi://AstalIO?version=0.1";
+import Gio from "gi://Gio?version=2.0";
 import { register, Object, getter, setter } from "gnim/gobject";
 
 const get = (args: string) => Number(AstalIO.Process.exec(`brightnessctl ${args}`));
@@ -14,8 +15,11 @@ export default class Brightness extends Object {
     return this.instance;
   }
 
+  #screenMonitor?: Gio.FileMonitor;
+  #kbdMonitor?: Gio.FileMonitor;
+
   #kbdMax = get(`--device ${kbd} max`);
-  #kbd = get(`--device ${kbd} get`);
+  #kbd = get(`--device ${kbd} get`) / (get(`--device ${kbd} max`) || 1);
   #screenMax = get("max");
   #screen = get("get") / (get("max") || 1);
 
@@ -31,7 +35,7 @@ export default class Brightness extends Object {
     AstalIO.Process.exec_async(
       `brightnessctl -d ${kbd} s ${value} -q`,
       () => {
-        this.#kbd = value;
+        this.#kbd = value / (this.#kbdMax || 1);
         this.notify("kbd");
       }
     );
@@ -63,16 +67,22 @@ export default class Brightness extends Object {
     const screenPath = `/sys/class/backlight/${screen}/brightness`;
     const kbdPath = `/sys/class/leds/${kbd}/brightness`;
 
-    AstalIO.monitor_file(screenPath, async (f) => {
-      const v = await AstalIO.read_file_async(f);
-      this.#screen = Number(v) / this.#screenMax;
-      this.notify("screen");
+    this.#screenMonitor = AstalIO.monitor_file(screenPath, (f: string) => {
+      AstalIO.read_file_async(f)
+        .then((v) => {
+          this.#screen = Number(v) / this.#screenMax;
+          this.notify("screen");
+        })
+        .catch((e: Error) => print("failed to read screen brightness:", e.message));
     });
 
-    AstalIO.monitor_file(kbdPath, async (f) => {
-      const v = await AstalIO.read_file_async(f);
-      this.#kbd = Number(v) / this.#kbdMax;
-      this.notify("kbd");
+    this.#kbdMonitor = AstalIO.monitor_file(kbdPath, (f: string) => {
+      AstalIO.read_file_async(f)
+        .then((v) => {
+          this.#kbd = Number(v) / this.#kbdMax;
+          this.notify("kbd");
+        })
+        .catch((e: Error) => print("failed to read kbd brightness:", e.message));
     });
   }
 }

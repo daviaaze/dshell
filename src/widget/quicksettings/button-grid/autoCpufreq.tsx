@@ -1,4 +1,4 @@
-import AutoCpufreq from "#/lib/autoCpufreq"
+import AutoCpufreq, { iconForProfile } from "#/lib/autoCpufreq"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding } from "gnim"
@@ -41,7 +41,7 @@ export default () => <Adw.SplitButton
       </Gtk.Box>
     </Gtk.Popover> as Gtk.Popover}>
   <Adw.ButtonContent
-    iconName={createBinding(profile, "iconName")}
+    iconName={createBinding(profile, "activeProfile").as(iconForProfile)}
     label={createBinding(profile, "activeProfile")(p =>
       p === "power-saver" ?
         "Power Saver" :

@@ -31,6 +31,21 @@ in
         '';
       };
     };
+    defaultBrowser = lib.mkOption {
+      type = lib.types.str;
+      default = "firefox";
+      description = "Desktop file name of the default web browser";
+    };
+    defaultFileManager = lib.mkOption {
+      type = lib.types.str;
+      default = "org.gnome.Nautilus";
+      description = "Desktop file name of the default file manager";
+    };
+    defaultTerminal = lib.mkOption {
+      type = lib.types.str;
+      default = "com.mitchellh.ghostty";
+      description = "Desktop file name of the default terminal emulator";
+    };
   };
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
@@ -38,6 +53,7 @@ in
         environment.systemPackages = [
           pkg
           pkgs.adwaita-icon-theme
+          pkgs.brightnessctl
         ];
         security.pam.services.astal-auth = {};
         programs.hyprland.settings.exec-once = [ "uwsm-app -t service -- shade-shell" ];

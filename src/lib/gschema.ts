@@ -54,7 +54,7 @@ export const generalSchema = new Schema({
     default: `${datadir}/shade-shell/wp-night.jpg`,
   })
   .key("timezones", "as", {
-    default: ["America/New_York", "Europe/London", "Asia/Tokyo"],
+    default: ["America/Sao_Paulo", "Australia/Sydney"],
     summary: "List of IANA timezone identifiers for the world clock"
   })
 

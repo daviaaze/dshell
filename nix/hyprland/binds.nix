@@ -1,14 +1,15 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 let
   uwsm-app = app : "${pkgs.uwsm}/bin/uwsm-app -t service -- ${app}.desktop";
+  cfg = config.programs.shade;
 in
 {
   programs.hyprland.settings = {
     bind = [
-      "SUPER,Return,exec,${uwsm-app "com.mitchellh.ghostty"}"
-      "SUPER,B,exec,${uwsm-app "firefox"}"
+      "SUPER,Return,exec,${uwsm-app cfg.defaultTerminal}"
+      "SUPER,B,exec,${uwsm-app cfg.defaultBrowser}"
       "SUPER,V,exec,pkill pwvucontrol || pwvucontrol"
-      "SUPER,E,exec,${uwsm-app "org.gnome.Nautilus"}"
+      "SUPER,E,exec,${uwsm-app cfg.defaultFileManager}"
       "SUPERSHIFT,v,exec,pkill wvkbd || ${lib.getExe pkgs.wvkbd}"
 
       "SUPER, PRINT, exec, ${lib.getExe pkgs.hyprshot} -m window"
@@ -68,6 +69,12 @@ in
       ",XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
     ];
 
+    bindl = [
+      ", XF86TouchpadToggle, exec, python3 /tmp/shade-touchpad-toggle.py"
+      ",XF86MonBrightnessUp, exec, ${lib.getExe pkgs.brightnessctl} set +5%"
+      ",XF86MonBrightnessDown, exec, ${lib.getExe pkgs.brightnessctl} set -5%"
+    ];
+
     bindle = [
       ", XF86AudioRaiseVolume, exec, wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+"
       ", XF86AudioLowerVolume, exec, wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-"
@@ -89,8 +96,6 @@ in
       "SUPERCONTROL,l,resizeactive,64 0"
       "SUPERCONTROL,i,resizeactive,0 -64"
       "SUPERCONTROL,k,resizeactive,0 64"
-      ",XF86MonBrightnessUp, exec, brightnessctl set +5%"
-      ",XF86MonBrightnessDown, exec, brightnessctl set -5%"
     ];
   };
 }

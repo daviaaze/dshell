@@ -24,6 +24,8 @@ pkgs.stdenv.mkDerivation {
       pnpm
     ];
 
+    CI = "true";
+
     pnpmDeps = pkgs.pnpm.fetchDeps {
       inherit pname version src;
       fetcherVersion = 2;

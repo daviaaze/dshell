@@ -4,7 +4,7 @@ import Network from "gi://AstalNetwork"
 import Batery from "gi://AstalBattery"
 import Wireplumber from "gi://AstalWp"
 import PowerProf from "gi://AstalPowerProfiles"
-import AutoCpufreq from "#/lib/autoCpufreq"
+import AutoCpufreq, { iconForProfile } from "#/lib/autoCpufreq"
 import Screenshot from "#/lib/screenshot"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
@@ -28,7 +28,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       return <Gtk.Image
         visible={createBinding(autoCpufreq, "activeProfile")
           .as(p => p !== "balanced")}
-        iconName={createBinding(autoCpufreq, "iconName")}
+        iconName={createBinding(autoCpufreq, "activeProfile").as(iconForProfile)}
         tooltipMarkup={createBinding(autoCpufreq, "activeProfile")
           .as(String)}
         pixelSize={18} />

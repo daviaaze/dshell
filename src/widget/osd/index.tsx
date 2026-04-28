@@ -10,6 +10,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import { app } from "#/App"
 
 const MUTED_SPEAKER_ICON = "audio-volume-muted-symbolic"
+const MUTED_MIC_ICON = "microphone-sensitivity-muted-symbolic"
 
 export default () => {
   const brightness = Brightness.get_default()
@@ -24,10 +25,26 @@ export default () => {
     (mute || volume === 0) ? MUTED_SPEAKER_ICON : volumeIcon
   )
 
+  const micIcon = createComputed([
+    createBinding(audio.defaultMicrophone, "volume"),
+    createBinding(audio.defaultMicrophone, "mute"),
+    createBinding(audio.defaultMicrophone, "volumeIcon"),
+  ], (volume, mute, volumeIcon) =>
+    (mute || volume === 0) ? MUTED_MIC_ICON : volumeIcon
+  )
+
   const popupList: GObject.Object[] = [
     <Popup
       connectable={audio.defaultSpeaker}
       signal={"notify::volume"}
+      widget={Slider({
+        iconName: speakerIcon,
+        value: createBinding(audio.defaultSpeaker, "volume")
+      })} />,
+
+    <Popup
+      connectable={audio.defaultSpeaker}
+      signal={"notify::mute"}
       widget={Slider({
         iconName: speakerIcon,
         value: createBinding(audio.defaultSpeaker, "volume")
@@ -39,6 +56,30 @@ export default () => {
       widget={Slider({
         iconName: "display-brightness-symbolic",
         value: createBinding(brightness, "screen"),
+      })} />,
+
+    <Popup
+      connectable={brightness}
+      signal={"notify::kbd"}
+      widget={Slider({
+        iconName: "keyboard-brightness-symbolic",
+        value: createBinding(brightness, "kbd"),
+      })} />,
+
+    <Popup
+      connectable={audio.defaultMicrophone}
+      signal={"notify::volume"}
+      widget={Slider({
+        iconName: micIcon,
+        value: createBinding(audio.defaultMicrophone, "volume"),
+      })} />,
+
+    <Popup
+      connectable={audio.defaultMicrophone}
+      signal={"notify::mute"}
+      widget={Slider({
+        iconName: micIcon,
+        value: createBinding(audio.defaultMicrophone, "volume"),
       })} />,
   ];
 

@@ -1,32 +1,11 @@
 import AstalIO from "gi://AstalIO?version=0.1";
 import GObject, { getter, register, setter } from "gnim/gobject";
 
-const GOVERNOR_PATH = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor";
-const OVERRIDE_PATH = "/opt/auto-cpufreq/override.pickle";
-
-function readFile(path: string): string {
-  try {
-    return AstalIO.Process.exec(`cat ${path} 2>/dev/null`).trim();
-  } catch {
-    return "";
-  }
-}
-
 function readOverride(): string {
   try {
-    return AstalIO.Process.exec(
-      `python3 -c "import pickle; print(pickle.load(open('${OVERRIDE_PATH}','rb')))" 2>/dev/null`
-    ).trim();
+    return AstalIO.Process.exec("auto-cpufreq --get-state 2>/dev/null").trim();
   } catch {
     return "";
-  }
-}
-
-function governorToProfile(governor: string): string {
-  switch (governor) {
-    case "powersave": return "power-saver";
-    case "performance": return "performance";
-    default: return "balanced";
   }
 }
 
@@ -39,7 +18,7 @@ function profileToForce(profile: string): string {
   }
 }
 
-function iconForProfile(profile: string): string {
+export function iconForProfile(profile: string): string {
   switch (profile) {
     case "power-saver": return "power-profile-power-saver-symbolic";
     case "performance": return "power-profile-performance-symbolic";
@@ -56,7 +35,6 @@ export default class AutoCpufreq extends GObject.Object {
   }
 
   #activeProfile = "balanced";
-  #iconName = "power-profile-balanced-symbolic";
   #available = false;
 
   @getter(Boolean)
@@ -73,14 +51,7 @@ export default class AutoCpufreq extends GObject.Object {
   set activeProfile(value: string) {
     if (this.#activeProfile === value) return;
     this.#activeProfile = value;
-    this.#iconName = iconForProfile(value);
     this.notify("activeProfile");
-    this.notify("iconName");
-  }
-
-  @getter(String)
-  get iconName() {
-    return this.#iconName;
   }
 
   get active_profile() {
@@ -94,9 +65,14 @@ export default class AutoCpufreq extends GObject.Object {
     } else if (override === "performance") {
       this.activeProfile = "performance";
     } else {
-      const governor = readFile(GOVERNOR_PATH);
-      this.activeProfile = governorToProfile(governor);
+      // auto-cpufreq is auto-managing (no override or "default")
+      this.activeProfile = "balanced";
     }
+  }
+
+  #poll() {
+    this.#updateState();
+    setTimeout(() => this.#poll(), 5000);
   }
 
   set_active_profile(profile: string) {
@@ -141,9 +117,7 @@ export default class AutoCpufreq extends GObject.Object {
     this.#available = this.#detect();
     if (this.#available) {
       this.#updateState();
-      AstalIO.monitor_file(GOVERNOR_PATH, () => {
-        this.#updateState();
-      });
+      this.#poll();
     }
   }
 }

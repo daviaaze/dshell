@@ -1,7 +1,8 @@
 import GLib from "gi://GLib"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
-import { Accessor, createState } from "gnim"
+import { Accessor, createState, For } from "gnim"
+import { useSettings } from "#/lib/settings"
 
 function updateCalendar(calendar: Gtk.Calendar) {
   const now = GLib.DateTime.new_now_local()
@@ -10,8 +11,23 @@ function updateCalendar(calendar: Gtk.Calendar) {
   calendar.day = now.get_day_of_month()
 }
 
-export default ({ vertical }: { vertical: Accessor<boolean> }) => {
+function fmtOffset(local: GLib.TimeZone, remote: GLib.TimeZone): string {
+  const now = GLib.DateTime.new_now(local)
+  const remoteNow = now.to_timezone(remote)
+  const localOffset = now.get_utc_offset() / GLib.TIME_SPAN_HOUR
+  const remoteOffset = remoteNow.get_utc_offset() / GLib.TIME_SPAN_HOUR
+  const diff = remoteOffset - localOffset
+  if (diff === 0) return "same time"
+  const sign = diff > 0 ? "+" : ""
+  return `${sign}${diff.toFixed(0)}h`
+}
 
+function cityName(tzId: string): string {
+  return tzId.split("/").pop()?.replaceAll("_", " ") ?? tzId
+}
+
+export default ({ vertical }: { vertical: Accessor<boolean> }) => {
+  const { general } = useSettings()
   const [time, setTime] = createState(new GLib.DateTime)
   setInterval(() => {
     setTime(GLib.DateTime.new_now_local())
@@ -21,6 +37,9 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
   const month = time.as(t => t.format("%b")!)
   const hour = time.as(t => t.format("%H")!)
   const minute = time.as(t => t.format("%M")!)
+
+  const localTz = GLib.TimeZone.new_local()
+  let calendarRef: Gtk.Calendar | null = null
 
   return <Gtk.MenuButton
     direction={vertical.as(v => v ?
@@ -33,12 +52,56 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       cssClasses={[]}
       hasArrow={false}
       $={self => self.connect("show", () => {
-        const calendar = self.child as Gtk.Calendar | null
-        if (calendar) updateCalendar(calendar)
+        if (calendarRef) updateCalendar(calendarRef)
       })}>
-      <Gtk.Calendar
-        $={self => updateCalendar(self)}
-      />
+      <Gtk.Box
+        spacing={12}
+        orientation={Gtk.Orientation.VERTICAL}
+        marginTop={12}
+        marginBottom={12}
+        marginStart={12}
+        marginEnd={12}>
+        <Gtk.Calendar
+          $={self => {
+            calendarRef = self
+            updateCalendar(self)
+          }}
+        />
+        <Gtk.Separator />
+        <Gtk.Box
+          spacing={8}
+          orientation={Gtk.Orientation.VERTICAL}>
+          <Gtk.Label
+            cssClasses={["title-3"]}
+            label="World Clock"
+            halign={Gtk.Align.CENTER}
+          />
+          <For each={general.timezones}>
+            {(tzId: string) => {
+              const tz = GLib.TimeZone.new(tzId)
+              const tzTime = time.as(t => t.to_timezone(tz))
+              return <Gtk.Box spacing={8}>
+                <Gtk.Label
+                  hexpand
+                  halign={Gtk.Align.START}
+                  cssClasses={["heading"]}
+                  label={cityName(tzId)}
+                />
+                <Gtk.Label
+                  halign={Gtk.Align.END}
+                  cssClasses={["numeric"]}
+                  label={tzTime.as(t => t.format("%H:%M") ?? "--:--")}
+                />
+                <Gtk.Label
+                  halign={Gtk.Align.END}
+                  cssClasses={["caption"]}
+                  label={fmtOffset(localTz, tz)}
+                />
+              </Gtk.Box>
+            }}
+          </For>
+        </Gtk.Box>
+      </Gtk.Box>
     </Gtk.Popover> as Gtk.Popover}>
     <Gtk.Box
       halign={Gtk.Align.CENTER}
