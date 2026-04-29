@@ -18,7 +18,7 @@
 
 ## P0 — Crash / Data Loss (Fix Immediately)
 
-### P0.1 — Bar crashes on workspace client iteration (`GLib.List` not iterable)
+### P0.1 — Bar crashes on workspace client iteration (`GLib.List` not iterable) **[FIXED]**
 - **File:** `src/widget/bar/workspaces.tsx`
 - **Problem:** `createBinding(ws, "clients")` returns a `GLib.List`. The `For` component spreads it with `[...iterable]`. `GLib.List` does **not** implement the JS iterator protocol in GJS. This throws a `TypeError` and crashes the entire bar.
 - **Fix:** Import the `toArray<T>()` helper from `network.tsx` and convert clients before passing to `For`:
@@ -29,14 +29,14 @@
 
 ---
 
-### P0.2 — OSD forced to monitor 1 regardless of focus
+### P0.2 — OSD forced to monitor 1 regardless of focus **[FIXED]**
 - **File:** `src/widget/osd/index.tsx`
 - **Problem:** `monitor={createBinding(hyprland, "focusedMonitor")(m => m.id && 1)}` — `m.id && 1` evaluates to `1` for any truthy monitor ID. OSD always appears on monitor 1, not the focused monitor.
 - **Fix:** Change to `m => m.id`.
 
 ---
 
-### P0.3 — Settings wallpaper file dialog crashes on cancel
+### P0.3 — Settings wallpaper file dialog crashes on cancel **[FIXED]**
 - **File:** `src/widget/settings/general.tsx`
 - **Problem:** `fileDialog.open_finish(res).get_path() ?? ""` — if the user cancels, `open_finish` may throw or return an object without `get_path()`. The unguarded access crashes.
 - **Fix:** Wrap in `try/catch`:
@@ -49,70 +49,70 @@
 
 ---
 
-### P0.4 — Weather null dereference in bar and QS
+### P0.4 — Weather null dereference in bar and QS **[FIXED]**
 - **Files:** `src/widget/bar/weather.tsx`, `src/widget/quicksettings/expander/weather.tsx`
 - **Problem:** `weather.as(w => w.get_icon_name())` and `weatherInfo.as(w => w.get_icon_name())` assume `info` is never null. During initialization or with an invalid location, `info` is null and these crash.
 - **Fix:** Use `With` or `.as(w => w?.get_icon_name() ?? "")` with a fallback icon.
 
 ---
 
-### P0.5 — Brightness module crashes on import (desktop PCs, VMs)
+### P0.5 — Brightness module crashes on import (desktop PCs, VMs) **[FIXED]**
 - **File:** `src/lib/brightness.ts`
 - **Problem:** Module-level code runs `brightnessctl` and `bash` at import time. If `/sys/class/backlight` is empty (no backlight on desktop/VM), `head -1` returns empty string. `brightnessctl --device "" max` throws, crashing the entire shell on startup.
 - **Fix:** Wrap the initial hardware probe in `try/catch`. Default to `available = false` if no devices are found. Defer detection to first use or constructor, not module top-level.
 
 ---
 
-### P0.6 — Disk usage formula is mathematically wrong
+### P0.6 — Disk usage formula is mathematically wrong **[FIXED]**
 - **File:** `src/widget/bar/systemUsage.tsx`
 - **Problem:** `setDisk(diskTop.bavail / diskTop.bfree)` computes the ratio of *available* to *free* blocks, not used space. This is nonsensical. It should be `1 - (bavail / blocks)` or `(blocks - bfree) / blocks`. Also `bfree` can be 0, causing NaN.
 - **Fix:** Use `glibtop_fsusage` fields correctly: `used = (fs.blocks - fs.bavail) / fs.blocks`.
 
 ---
 
-### P0.7 — Temperature reading blocks UI thread every second
+### P0.7 — Temperature reading blocks UI thread every second **[FIXED]**
 - **File:** `src/widget/bar/systemUsage.tsx`
 - **Problem:** `AstalIO.Process.exec(`cat ${settings.bar.tempPath.get()}`)` is a **synchronous blocking call** inside a 1-second interval. If the file doesn't exist, `cat` hangs or fails, freezing the entire UI thread for 1 second every second.
 - **Fix:** Use `Gio.File.new_for_path(path).load_contents_async()` or `AstalIO.Process.exec_async`. Never use synchronous exec in UI code.
 
 ---
 
-### P0.8 — Hyprland config syntax errors (`bindm` malformed)
+### P0.8 — Hyprland config syntax errors (`bindm` malformed) **[FIXED]**
 - **File:** `nix/hyprland/binds.nix`
 - **Problem:** `"SUPER,SHIFT, movewindow"` and `"SUPER,CONTROL,resizewindow"` are invalid. `SHIFT` and `CONTROL` are modifiers, not keys. `bindm` requires `MOD, KEY, dispatcher`. Hyprland will reject the config.
 - **Fix:** Use `bindm = SUPER, mouse:272, movewindow` and `bindm = SUPER, mouse:273, resizewindow` (standard Hyprland mouse binds). Remove the malformed lines.
 
 ---
 
-### P0.9 — Touchpad script path/name mismatch
+### P0.9 — Touchpad script path/name mismatch **[FIXED]**
 - **Files:** `nix/hyprland/binds.nix`, `src/lib/touchpad.ts`, `meson.build`
 - **Problem:** The script is installed as `toggle-touchpad.py` in `bindir`, but the Hyprland bind looks for `python3 /tmp/shade-touchpad-toggle.py`. The `touchpad.ts` fallback also writes to `/tmp/shade-touchpad-toggle.py`. Three different names/paths.
 - **Fix:** Standardize on one name and path. Use the installed bindir path in the Hyprland config, or use a GJS-native implementation and eliminate the Python script entirely.
 
 ---
 
-### P0.10 — Wallpaper installed to wrong directory
+### P0.10 — Wallpaper installed to wrong directory **[FIXED]**
 - **Files:** `meson.build`, `src/lib/gschema.ts`
 - **Problem:** `meson.build` installs wallpapers to `datadir` (e.g. `/usr/share/wp-day.jpg`), but `gschema.ts` references `${datadir}/shade-shell/wp-day.jpg`. Wallpapers won't be found at runtime.
 - **Fix:** Either install to `datadir / 'shade-shell'` in `meson.build`, or update the schema default to point to `datadir` directly.
 
 ---
 
-### P0.11 — `dev` script does not compile schemas
+### P0.11 — `dev` script does not compile schemas **[FIXED]**
 - **File:** `package.json`
 - **Problem:** The `dev` script copies `.xml` files but never runs `glib_compile_schemas`. GSettings won't find the schemas, and the shell crashes on startup.
 - **Fix:** Add `glib_compile_schemas ./dist/share/glib-2.0/schemas` after the copy step.
 
 ---
 
-### P0.12 — `plugin.dynamic-cursors` config without loading plugin
+### P0.12 — `plugin.dynamic-cursors` config without loading plugin **[FIXED]**
 - **File:** `nix/hyprland/default.nix`
 - **Problem:** Lines 181-198 configure `plugin.dynamic-cursors`, but the `plugins` list is commented out. Hyprland may error or warn on unknown plugin keys.
 - **Fix:** Remove the plugin config or uncomment the plugin import.
 
 ---
 
-### P0.13 — App launcher crashes on empty search + Enter
+### P0.13 — App launcher crashes on empty search + Enter **[FIXED]**
 - **File:** `src/widget/applauncher/index.tsx`
 - **Problem:** `onActivate` does `apps.fuzzy_query(self.text)[0].launch()` without checking if the array is non-empty. Pressing Enter with no matches crashes.
 - **Fix:** Guard with `if (results.length > 0) results[0].launch()`.
@@ -126,7 +126,7 @@
 
 ---
 
-### P0.15 — Keyboard brightness setter broken (missing `%` suffix)
+### P0.15 — Keyboard brightness setter broken (missing `%` suffix) **[FIXED]**
 - **File:** `src/lib/brightness.ts`
 - **Problem:** `set kbd(value)` runs `brightnessctl -d ${kbd} s ${value} -q` where `value` is 0–1. It sets absolute brightness to 0 or 1 instead of a percentage. Compare with `set screen(percent)` which correctly uses `${Math.floor(percent * 100)}%`.
 - **Fix:** Append `%` to the keyboard brightness value.
@@ -135,7 +135,7 @@
 
 ## P1 — Bugs / Leaks / Race Conditions
 
-### P1.1 — `setInterval` leaks everywhere (memory + CPU waste)
+### P1.1 — `setInterval` leaks everywhere (memory + CPU waste) **[FIXED]**
 - **Files:** `src/widget/bar/clock.tsx`, `src/widget/bar/systemUsage.tsx`, `src/widget/quicksettings/expander/worldClock.tsx`, `src/widget/lockscreen/index.tsx`
 - **Problem:** Every `setInterval` in the codebase is never cleared. If bars are destroyed (monitor disconnect), or the lock screen is unlocked, intervals continue firing forever.
 - **Fix:** Store interval IDs and clear them in `onCleanup`. Consider using `GLib.timeout_add` with source IDs instead of `setInterval` for better GJS integration.
@@ -219,7 +219,7 @@
 
 ---
 
-### P1.11 — Notification popup dismisses while being read
+### P1.11 — Notification popup dismisses while being read **[FIXED]**
 - **File:** `src/widget/notifications/index.tsx`
 - **Problem:** Auto-dismiss timer (5s) is not cancelable. If the user hovers over a notification, it still disappears.
 - **Fix:** Clear the timeout on mouse enter, restart on mouse leave.
@@ -245,21 +245,21 @@
 
 ---
 
-### P1.14 — OSD popup timeout doesn't reset on re-trigger
+### P1.14 — OSD popup timeout doesn't reset on re-trigger **[FIXED]**
 - **File:** `src/widget/osd/popup.tsx`
 - **Problem:** If the signal fires while already revealed, the popup stays visible but does NOT reset the 2-second timeout. A second volume change 1.5s after the first hides at 2s (original timeout), not 3.5s.
 - **Fix:** Clear and restart the timeout on every signal emission.
 
 ---
 
-### P1.15 — `colorSchemeName` always returns "Auto"
+### P1.15 — `colorSchemeName` always returns "Auto" **[FIXED]**
 - **File:** `src/lib/colorScheme.ts`
 - **Problem:** Both `LIGHT` and `DARK` cases return `"Auto"`. This is clearly a bug or unfinished code.
 - **Fix:** Return `"Light"` and `"Dark"` respectively.
 
 ---
 
-### P1.16 — `network.wifi` direct access in settings (AGENTS.md pitfall)
+### P1.16 — `network.wifi` direct access in settings (AGENTS.md pitfall) **[FIXED]**
 - **File:** `src/widget/settings/network.tsx`
 - **Problem:** `const wifi = network.wifi` is evaluated once at construction. If the WiFi device appears later (e.g., after rfkill unblock), the settings panel shows null forever.
 - **Fix:** Use `createBinding(network, "wifi")` with `With` or conditional rendering.
@@ -272,28 +272,28 @@
 
 ---
 
-### P1.18 — Media player icon name mangled
+### P1.18 — Media player icon name mangled **[FIXED]**
 - **File:** `src/widget/quicksettings/expander/media.tsx`
 - **Problem:** `iconName={"media-skip-backwiconNameard-symbolic"}` is a garbled string.
 - **Fix:** Correct to `"media-skip-backward-symbolic"`.
 
 ---
 
-### P1.19 — Media player `exact_query` non-null assertion
+### P1.19 — Media player `exact_query` non-null assertion **[FIXED]**
 - **File:** `src/widget/quicksettings/expander/media.tsx`
 - **Problem:** `apps.exact_query(entry)[0]!.iconName` will crash if the query returns empty.
 - **Fix:** Use `?.iconName ?? "audio-x-generic-symbolic"`.
 
 ---
 
-### P1.20 — App launcher no "no results" state + no keyboard nav
+### P1.20 — App launcher no "no results" state + no keyboard nav **[FIXED]**
 - **File:** `src/widget/applauncher/index.tsx`
 - **Problem:** Empty search shows nothing. Arrow keys and Escape don't work.
 - **Fix:** Add an `Adw.StatusPage` for empty state. Add key controller for Escape (close) and arrow keys (navigate list).
 
 ---
 
-### P1.21 — `setScreelocked` typo propagates
+### P1.21 — `setScreelocked` typo propagates **[FIXED]**
 - **Files:** `src/widget/index.tsx`, `src/widget/lockscreen/index.tsx`, `src/widget/quicksettings/tray.tsx`, `src/lib/requestHandler.ts`
 - **Problem:** The misspelling `Screelocked` (missing 'n') is exported and imported in multiple files.
 - **Fix:** Rename to `setScreenlocked` everywhere.
@@ -362,7 +362,7 @@
 
 ---
 
-### P2.8 — Power button is instant shutdown
+### P2.8 — Power button is instant shutdown **[FIXED]**
 - **File:** `src/widget/quicksettings/tray.tsx`
 - **Problem:** One misclick shuts down the computer. No confirmation.
 - **Fix:** At minimum, add a confirmation dialog. Ideally, replace with a power menu (see ROADMAP.md).
@@ -390,7 +390,7 @@
 
 ---
 
-### P2.12 — Settings network panel uses direct property access
+### P2.12 — Settings network panel uses direct property access **[FIXED]**
 - **File:** `src/widget/settings/network.tsx`
 - **Problem:** Same AGENTS.md pitfall as other network widgets. `wifi` and `wired` are read once at construction.
 - **Fix:** Use `createBinding`.
@@ -418,7 +418,7 @@
 
 ---
 
-### P2.16 — `dev` script uses `;` (continues on failure)
+### P2.16 — `dev` script uses `;` (continues on failure) **[FIXED]**
 - **File:** `package.json`
 - **Problem:** `cp ... ; pnpm run build ; ...` continues even if copy or build fails.
 - **Fix:** Use `&&` instead of `;`.
@@ -432,14 +432,14 @@
 
 ---
 
-### P2.18 — Missing `meta` in Nix derivation
+### P2.18 — Missing `meta` in Nix derivation **[FIXED]**
 - **File:** `nix/desktop-shell.nix`
 - **Problem:** No `description`, `license`, `homepage`, `maintainers`, `platforms`.
 - **Fix:** Add standard `meta` fields.
 
 ---
 
-### P2.19 — No `package` option in NixOS module
+### P2.19 — No `package` option in NixOS module **[FIXED]**
 - **File:** `nix/module.nix`
 - **Problem:** Users cannot override the shade-shell package.
 - **Fix:** Add `programs.shade.package` option.
@@ -453,21 +453,21 @@
 
 ---
 
-### P2.21 — Deeply personal config in distributed module
+### P2.21 — Deeply personal config in distributed module **[FIXED]**
 - **File:** `nix/hyprland/default.nix`
 - **Problem:** `kb_layout = "br,us"`, `natural_scroll = true`, Catppuccin colors, `ghostty` scratchpad. A NixOS module for other users shouldn't impose keyboard layouts and color themes.
 - **Fix:** Make these options with sensible defaults (e.g., `us` layout, no theme enforcement).
 
 ---
 
-### P2.22 — `hyprshot`, `playerctl`, `pwvucontrol`, `wvkbd` not in dependencies
+### P2.22 — `hyprshot`, `playerctl`, `pwvucontrol`, `wvkbd` not in dependencies **[FIXED]**
 - **Files:** `nix/hyprland/binds.nix`
 - **Problem:** These are referenced in keybinds but not declared in `wrapperPackages` or `environment.systemPackages`.
 - **Fix:** Add to wrapper packages or module config.
 
 ---
 
-### P2.23 — `layerrule` syntax may be incorrect
+### P2.23 — `layerrule` syntax may be incorrect **[FIXED]**
 - **File:** `nix/module.nix`
 - **Problem:** `layerrule= blur on, match:namespace gtk4-layer-shell` — `match:` prefix and spacing may not be valid Hyprland syntax.
 - **Fix:** Verify against current Hyprland docs. Likely should be `layerrule = blur, gtk4-layer-shell`.

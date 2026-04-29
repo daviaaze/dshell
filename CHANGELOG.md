@@ -10,9 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Media player widget** re-enabled in Quick Settings expander — shows active MPRIS players with cover art, controls, and playback status
-
-### Added
-
 - **Power menu** in Quick Settings tray — replaces instant shutdown with a popover containing Lock, Log Out, Suspend, Reboot, and Power Off options
 
 ### Fixed
@@ -21,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings wallpaper dialog** no longer crashes when user cancels the file picker
 - **Weather widgets** (bar and QS expander) now handle null `info` gracefully during initialization
 - **Settings network panel** now uses reactive `createBinding` for wifi/wired instead of one-time property access
+- **Temperature reading** in systemUsage is now async via Gio instead of blocking the UI thread every second
+- **`setInterval` leaks** eliminated across bar clock, systemUsage, world clock, and lock screen — now use `GLib.timeout_add` with proper `GLib.source_remove` cleanup
+- **Workspace client iteration** no longer crashes — `GLib.List` from AstalHyprland is converted to JS array before passing to `For`
+- **Notification popups** no longer dismiss while being hovered — timeout pauses on mouse enter and resumes on leave
+- **OSD popups** now reset their timeout on every re-trigger instead of using the original timeout
+- **App launcher** now shows "No apps found" when search yields no results and closes on Escape key
 - **OSD monitor** now correctly tracks focused monitor instead of hardcoding monitor 1
 - **Disk usage** formula fixed to show actual used percentage
 - **App launcher** no longer crashes on empty search + Enter
@@ -30,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Brightness module** no longer crashes on startup when no backlight devices exist (desktop PCs, VMs)
 - **`dev` script** now compiles schemas with `glib_compile_schemas` and uses `&&` chaining
 - **Wallpaper install path** now correctly installs to `datadir/shade-shell/`
+- **Nix module** fixed: `bindm` syntax, removed unloaded plugin config, added `package` option, fixed `layerrule` syntax, neutralized personal defaults, added missing wrapper packages
 
 ## [0.2.1] - 2026-04-29
 

@@ -31,7 +31,7 @@
 
 ### 0.1 — Re-enable Media Player Widget
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Trivial
 - **Why:** Fully implemented in `src/widget/quicksettings/expander/media.tsx` but commented out in `expander/index.tsx`.
 - **Files:**
@@ -51,7 +51,7 @@
 
 ### 0.2 — Replace Instant Shutdown with Power Menu
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Why:** Currently the power button in Quick Settings tray immediately calls `systemctl poweroff`. Every other shell shows a confirmation menu with Lock / Log Out / Suspend / Reboot / Power Off.
 - **Files:**
@@ -538,8 +538,8 @@
 | Wallpaper | ✅ | — | — | — | — |
 | Settings GUI | ✅ | — | — | — | — |
 | Screenshot/Recording | ✅ | — | — | — | — |
-| Media Player | ❌ (ready) | 0.1 | — | — | — |
-| Power Menu | ❌ | 0.2 | — | — | — |
+| Media Player | ✅ | 0.1 | — | — | — |
+| Power Menu | ✅ | 0.2 | — | — | — |
 | Keyboard Layout | ❌ | 0.3 | — | — | — |
 | Polkit Agent | ❌ | 0.4 | — | — | — |
 | Clipboard History | ❌ | — | 1.1 | — | — |
