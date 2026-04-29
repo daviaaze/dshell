@@ -28,13 +28,13 @@ export const WeatherButton = ({ vertical }:
     >
       <Gtk.Image
         pixelSize={22}
-        iconName={weather.as(w => w.get_icon_name())}
+        iconName={weather.as(w => w?.get_icon_name() ?? "")}
       />
       <Gtk.Label
         cssClasses={["heading"]}
-        label={weather.as(w => w.get_value_temp(
+        label={weather.as(w => w ? w.get_value_temp(
           GWeather.TemperatureUnit.CENTIGRADE)[1]
-          .toFixed() + "°C"
+          .toFixed() + "°C" : ""
         )}
       />
     </Gtk.Box>

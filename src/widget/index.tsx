@@ -10,7 +10,7 @@ import { Wallpaper } from "./wallpaper"
 
 export const [launcherOpen, setLauncherOpen] = createState(false)
 export const [qsOpen, setQsOpen] = createState(false)
-export const [screenlocked, setScreelocked] = createState(false)
+export const [screenlocked, setScreenlocked] = createState(false)
 
 export const widgets = () => {
   Wallpaper()

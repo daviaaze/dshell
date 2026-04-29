@@ -39,9 +39,12 @@ export default () => {
       subtitle={settings.wallpaperDay}
       iconName={"image-x-generic-symbolic"}
       onActivated={() => {
-        fileDialog.open(app.settings, null, (_, res) =>
-          settings.setWallpaperDay(
-            fileDialog.open_finish(res).get_path() ?? ""))
+        fileDialog.open(app.settings, null, (_, res) => {
+          try {
+            const path = fileDialog.open_finish(res)?.get_path()
+            if (path) settings.setWallpaperDay(path)
+          } catch { /* user cancelled */ }
+        })
       }}>
       {/* <Gtk.Image file={settings.wallpaperDay} /> */}
     </Adw.ActionRow>
@@ -51,9 +54,12 @@ export default () => {
       subtitle={settings.wallpaperNight}
       iconName={"image-x-generic-symbolic"}
       onActivated={() => {
-        fileDialog.open(app.settings, null, (_, res) =>
-          settings.setWallpaperNight(
-            fileDialog.open_finish(res).get_path() ?? ""))
+        fileDialog.open(app.settings, null, (_, res) => {
+          try {
+            const path = fileDialog.open_finish(res)?.get_path()
+            if (path) settings.setWallpaperNight(path)
+          } catch { /* user cancelled */ }
+        })
       }}>
       {/* <Gtk.Image file={settings.wallpaperNight} /> */}
     </Adw.ActionRow>

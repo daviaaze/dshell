@@ -8,7 +8,7 @@ import GLib from "gi://GLib?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
 import { createRoot, createState, For, onCleanup, onMount } from "gnim"
 import { app } from "#/App"
-import { screenlocked, setScreelocked } from ".."
+import { screenlocked, setScreenlocked } from ".."
 import FingerprintAuth from "#/lib/fingerprint"
 
 const createLocks = (onUnlock: () => void) => {
@@ -26,7 +26,7 @@ const createLocks = (onUnlock: () => void) => {
     fingerprint.stop()
     lock.unlock()
     app.lockscreen.forEach(w => w.destroy())
-    setScreelocked(false)
+    setScreenlocked(false)
     onUnlock()
   }
 

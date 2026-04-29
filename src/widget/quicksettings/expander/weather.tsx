@@ -11,17 +11,17 @@ export const WeatherIcon = () => {
     halign={Gtk.Align.CENTER} >
     <Gtk.Image
       iconName={createBinding(weather, "info")
-        .as(w => w.get_icon_name())}
+        .as(w => w?.get_icon_name() ?? "")}
       pixelSize={20}
     />
     <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
       <Gtk.Label
         label={createBinding(weather, "info")
-          .as(w => w.get_temp_summary())}
+          .as(w => w?.get_temp_summary() ?? "")}
       />
       <Gtk.Label
         label={createBinding(weather, "info")
-          .as(w => w.get_weather_summary())}
+          .as(w => w?.get_weather_summary() ?? "")}
       />
     </Gtk.Box>
   </Gtk.Box >
@@ -38,16 +38,16 @@ export const Weather = () => {
       <Gtk.Label
         cssClasses={["title-3"]}
         halign={Gtk.Align.END}
-        label={weatherInfo.as(w => w.get_temp_summary())}
+        label={weatherInfo.as(w => w?.get_temp_summary() ?? "")}
       />
       <Gtk.Label
         cssClasses={["title-3"]}
         halign={Gtk.Align.END}
-        label={weatherInfo.as(w => w.get_sky())}
+        label={weatherInfo.as(w => w?.get_sky() ?? "")}
       />
       <Gtk.Label
         halign={Gtk.Align.END}
-        label={weatherInfo.as(w => `Feels like ${w.get_apparent()}`)}
+        label={weatherInfo.as(w => w ? `Feels like ${w.get_apparent()}` : "")}
       />
     </Gtk.Box>
 
@@ -63,7 +63,7 @@ export const Weather = () => {
     />
     <Gtk.Box>
       <Gtk.Image
-        iconName={weatherInfo.as(w => w.get_icon_name())}
+        iconName={weatherInfo.as(w => w?.get_icon_name() ?? "")}
         pixelSize={48}
       />
       <InfoBox />

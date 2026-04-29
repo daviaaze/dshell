@@ -4,8 +4,8 @@ import AstalIO from "gi://AstalIO?version=0.1";
 import Tray from "gi://AstalTray";
 import Gtk from "gi://Gtk?version=4.0";
 import { Accessor, createBinding, For } from "gnim";
-import { setQsOpen } from "..";
-import { setScreelocked } from "..";
+import { setQsOpen, setScreenlocked } from "..";
+import { PowerMenu } from "#/widget/common/powerMenu";
 
 
 export const TrayBox = () => {
@@ -15,23 +15,21 @@ export const TrayBox = () => {
     <Gtk.Button
       cssClasses={["circular"]}
       onClicked={() => {
-        setScreelocked(true)
+        setScreenlocked(true)
       }}
     >
       <Gtk.Image iconName={"system-lock-screen-symbolic"} />
     </Gtk.Button>
   );
 
-  const PowerButton = () => (
-    <Gtk.Button
+  const PowerButton = () => {
+    const menu = PowerMenu()
+    return <Gtk.MenuButton
       cssClasses={["circular", "destructive-action"]}
-      onClicked={() => {
-        AstalIO.Process.exec_async("systemctl poweroff", () => {});
-      }}
-    >
+      popover={menu}>
       <Gtk.Image iconName={"system-shutdown-symbolic"} />
-    </Gtk.Button>
-  );
+    </Gtk.MenuButton>
+  };
 
   const RotateButton = () => {
     const barCfg = useSettings().bar
