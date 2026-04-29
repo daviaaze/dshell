@@ -33,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Brightness module** no longer crashes on startup when no backlight devices exist (desktop PCs, VMs)
 - **`dev` script** now compiles schemas with `glib_compile_schemas` and uses `&&` chaining
 - **Wallpaper install path** now correctly installs to `datadir/shade-shell/`
-- **Nix module** fixed: `bindm` syntax, removed unloaded plugin config, added `package` option, fixed `layerrule` syntax, neutralized personal defaults, added missing wrapper packages
+- **Nix module** fixed: `bindm` syntax, removed unloaded plugin config, added `package` option, fixed `layerrule` syntax (`blur on`, `ignore_alpha`), neutralized personal defaults, added missing wrapper packages
 
 ## [0.2.1] - 2026-04-29
 
