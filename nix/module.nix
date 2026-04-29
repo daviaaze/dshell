@@ -67,10 +67,10 @@ in
         programs.hyprland.settings.exec-once = [ "uwsm-app -t service -- shade-shell" ];
       })
       (lib.mkIf cfg.shell.blur.enable {
-        programs.hyprland.extraConfig = ''
-          layerrule = blur, gtk4-layer-shell
-          layerrule = ignorealpha 0, gtk4-layer-shell
-        '';
+        programs.hyprland.settings.layerrule = [
+          "blur on, match:namespace gtk4-layer-shell"
+          "ignore_alpha 0, match:namespace gtk4-layer-shell"
+        ];
       })
     ]
   );
