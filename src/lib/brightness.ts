@@ -3,8 +3,14 @@ import Gio from "gi://Gio?version=2.0";
 import { register, Object, getter, setter } from "gnim/gobject";
 
 const get = (args: string) => Number(AstalIO.Process.exec(`brightnessctl ${args}`));
-const screen = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/backlight | head -1"`);
-const kbd = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/leds | head -1"`);
+let screen = ""
+let kbd = ""
+try {
+  screen = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/backlight | head -1"`)
+  kbd = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/leds | head -1"`)
+} catch (e: any) {
+  print("brightness hardware probe failed:", e.message)
+}
 
 @register({ GTypeName: "Brightness" })
 export default class Brightness extends Object {
@@ -18,10 +24,11 @@ export default class Brightness extends Object {
   #screenMonitor?: Gio.FileMonitor;
   #kbdMonitor?: Gio.FileMonitor;
 
-  #kbdMax = get(`--device ${kbd} max`);
-  #kbd = get(`--device ${kbd} get`) / (get(`--device ${kbd} max`) || 1);
-  #screenMax = get("max");
-  #screen = get("get") / (get("max") || 1);
+  #available = screen !== "" || kbd !== ""
+  #kbdMax = kbd ? get(`--device ${kbd} max`) : 0;
+  #kbd = kbd ? get(`--device ${kbd} get`) / (get(`--device ${kbd} max`) || 1) : 0;
+  #screenMax = screen ? get("max") : 0;
+  #screen = screen ? get("get") / (get("max") || 1) : 0;
 
   @getter(Number)
   get kbd() {
@@ -30,10 +37,10 @@ export default class Brightness extends Object {
 
   @setter(Number)
   set kbd(value) {
-    if (value < 0 || value > this.#kbdMax) return;
+    if (!kbd || value < 0 || value > this.#kbdMax) return;
 
     AstalIO.Process.exec_async(
-      `brightnessctl -d ${kbd} s ${value} -q`,
+      `brightnessctl -d ${kbd} s ${Math.floor(value * 100)}% -q`,
       () => {
         this.#kbd = value / (this.#kbdMax || 1);
         this.notify("kbd");
@@ -48,8 +55,8 @@ export default class Brightness extends Object {
 
   @setter(Number)
   set screen(percent) {
+    if (!screen) return;
     if (percent < 0) percent = 0;
-
     if (percent > 1) percent = 1;
 
     AstalIO.Process.exec_async(
@@ -64,25 +71,28 @@ export default class Brightness extends Object {
   constructor() {
     super();
 
-    const screenPath = `/sys/class/backlight/${screen}/brightness`;
-    const kbdPath = `/sys/class/leds/${kbd}/brightness`;
+    if (screen) {
+      const screenPath = `/sys/class/backlight/${screen}/brightness`;
+      this.#screenMonitor = AstalIO.monitor_file(screenPath, (f: string) => {
+        AstalIO.read_file_async(f)
+          .then((v) => {
+            this.#screen = Number(v) / this.#screenMax;
+            this.notify("screen");
+          })
+          .catch((e: Error) => print("failed to read screen brightness:", e.message));
+      });
+    }
 
-    this.#screenMonitor = AstalIO.monitor_file(screenPath, (f: string) => {
-      AstalIO.read_file_async(f)
-        .then((v) => {
-          this.#screen = Number(v) / this.#screenMax;
-          this.notify("screen");
-        })
-        .catch((e: Error) => print("failed to read screen brightness:", e.message));
-    });
-
-    this.#kbdMonitor = AstalIO.monitor_file(kbdPath, (f: string) => {
-      AstalIO.read_file_async(f)
-        .then((v) => {
-          this.#kbd = Number(v) / this.#kbdMax;
-          this.notify("kbd");
-        })
-        .catch((e: Error) => print("failed to read kbd brightness:", e.message));
-    });
+    if (kbd) {
+      const kbdPath = `/sys/class/leds/${kbd}/brightness`;
+      this.#kbdMonitor = AstalIO.monitor_file(kbdPath, (f: string) => {
+        AstalIO.read_file_async(f)
+          .then((v) => {
+            this.#kbd = Number(v) / this.#kbdMax;
+            this.notify("kbd");
+          })
+          .catch((e: Error) => print("failed to read kbd brightness:", e.message));
+      });
+    }
   }
 }

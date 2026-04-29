@@ -1,4 +1,4 @@
-project('shade-shell', version: '0.1.0')
+project('shade-shell', version: '0.2.1')
 
 domain = 'com.caioasmuniz.shade_shell'
 name = meson.project_name()
@@ -68,7 +68,7 @@ configure_file(
   install_dir: datadir / 'applications',
 )
 
-install_data(['data/wp-day.jpg', 'data/wp-night.jpg'])
+install_data(['data/wp-day.jpg', 'data/wp-night.jpg'], install_dir : datadir / 'shade-shell')
 install_data('data/scripts/toggle-touchpad.py', install_dir: bindir)
 
 import('gnome').post_install(

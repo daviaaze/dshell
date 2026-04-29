@@ -28,6 +28,12 @@ export const requestHandler =
       Screenshot.get_default().screenshot(false)
     else if (args[1] === "record")
       Screenshot.get_default().toggleRecording()
+    else if (args[1] === "record-area")
+      Screenshot.get_default().recordArea()
+    else if (args[1] === "record-window")
+      Screenshot.get_default().recordWindow()
+    else if (args[1] === "record-output")
+      Screenshot.get_default().recordOutput()
 
     cmd.done()
   }

@@ -45,9 +45,9 @@ export class ColorScheme extends Object {
       case DarkModes.AUTO:
         return "Auto"
       case DarkModes.LIGHT:
-        return "Auto"
+        return "Light"
       case DarkModes.DARK:
-        return "Auto"
+        return "Dark"
     }
   }
 

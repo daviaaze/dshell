@@ -32,7 +32,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
 
     const diskTop = new GTop.glibtop_fsusage()
     GTop.glibtop_get_fsusage(diskTop, "/");
-    setDisk(diskTop.bavail / diskTop.bfree);
+    setDisk((diskTop.blocks - diskTop.bavail) / diskTop.blocks);
 
     if (settings.bar.tempPath.get())
       setTemp(parseInt(

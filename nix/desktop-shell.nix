@@ -7,7 +7,7 @@
 }:
 let
   pname = "shade-shell";
-  version = "0.0.0";
+  version = "0.2.1";
   src = ../.;
 in
 pkgs.stdenv.mkDerivation {

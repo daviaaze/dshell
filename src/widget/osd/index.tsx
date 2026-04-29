@@ -90,7 +90,7 @@ export default () => {
     application={app}
     margin={24}
     layer={Astal.Layer.OVERLAY}
-    monitor={createBinding(hyprland, "focusedMonitor")(m => m.id && 1)}
+    monitor={createBinding(hyprland, "focusedMonitor").as(m => m.id)}
     cssClasses={[]}
     anchor={Astal.WindowAnchor.BOTTOM}
     visible={createComputed(

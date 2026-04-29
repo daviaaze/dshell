@@ -26,7 +26,7 @@ const PlayerApp = ({ player }: { player: Mpris.Player }) =>
       tooltipText={createBinding(player, "identity")
         .as(id => id || "")}
       iconName={createBinding(player, "entry")
-        .as(entry => apps.exact_query(entry)[0]!.iconName)} />
+        .as(entry => apps.exact_query(entry)[0]?.iconName ?? "audio-x-generic-symbolic")} />
     <Gtk.Label label={createBinding(player, "identity")
       .as(id => id || "")} />
   </Gtk.Box>
@@ -58,7 +58,7 @@ const PlaybackButtons = ({ player }: { player: Mpris.Player }) =>
     <Gtk.Button
       onClicked={() => player.previous()}
       visible={player.canGoPrevious}>
-      <Gtk.Image iconName={"media-skip-backwiconNameard-symbolic"} />
+      <Gtk.Image iconName={"media-skip-backward-symbolic"} />
     </Gtk.Button>
 
     <Gtk.Button

@@ -1,5 +1,6 @@
+import AstalHyprland from "gi://AstalHyprland?version=0.1"
 import AstalIO from "gi://AstalIO?version=0.1"
-import GObject, { getter, register, signal } from "gnim/gobject"
+import GObject, { getter, register, setter, signal } from "gnim/gobject"
 
 const SCREENSHOT_DIR = `${AstalIO.Process.exec("echo $HOME").trim()}/Pictures/Screenshots`
 const RECORDING_DIR = `${AstalIO.Process.exec("echo $HOME").trim()}/Videos`
@@ -15,9 +16,19 @@ export default class Screenshot extends GObject.Object {
 
   #recording = false
   #recordingProcess: AstalIO.Process | null = null
+  #audio = false
 
   @getter(Boolean)
   get recording() { return this.#recording }
+
+  @getter(Boolean)
+  @setter(Boolean)
+  get audio() { return this.#audio }
+  set audio(value: boolean) {
+    if (this.#audio === value) return
+    this.#audio = value
+    this.notify("audio")
+  }
 
   @signal()
   recordingStarted() {}
@@ -55,7 +66,7 @@ export default class Screenshot extends GObject.Object {
     }
   }
 
-  startRecording() {
+  startRecording(options: { geometry?: string, output?: string } = {}) {
     if (this.#recording) return
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
@@ -68,9 +79,18 @@ export default class Screenshot extends GObject.Object {
         this.notify("recording")
         this.recordingStarted()
 
-        this.#recordingProcess = AstalIO.Process.subprocessv([
-          "wf-recorder", "-f", filename,
-        ])
+        const args = ["wf-recorder", "-f", filename]
+        if (options.geometry) {
+          args.push("-g", options.geometry)
+        }
+        if (options.output) {
+          args.push("-o", options.output)
+        }
+        if (this.#audio) {
+          args.push("-a")
+        }
+
+        this.#recordingProcess = AstalIO.Process.subprocessv(args)
 
         this.#recordingProcess.connect("exit", () => {
           this.#recording = false
@@ -80,6 +100,36 @@ export default class Screenshot extends GObject.Object {
         })
       }
     )
+  }
+
+  recordArea() {
+    if (this.#recording) return
+    AstalIO.Process.exec_async(
+      `slurp`,
+      (out) => {
+        const geometry = out.trim()
+        if (geometry) this.startRecording({ geometry })
+      }
+    )
+  }
+
+  recordOutput(outputName?: string) {
+    if (this.#recording) return
+    if (!outputName) {
+      const hyprland = AstalHyprland.get_default()
+      outputName = hyprland.focused_monitor?.name
+    }
+    if (!outputName) return
+    this.startRecording({ output: outputName })
+  }
+
+  recordWindow() {
+    if (this.#recording) return
+    const hyprland = AstalHyprland.get_default()
+    const client = hyprland.focused_client
+    if (!client) return
+    const geometry = `${client.x},${client.y} ${client.width}x${client.height}`
+    this.startRecording({ geometry })
   }
 
   stopRecording() {

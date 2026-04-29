@@ -16,6 +16,7 @@ export default () => {
   const apps = new Apps.Apps()
 
   const [list, setList] = createState(apps.get_list())
+  let entryRef: Gtk.Entry | null = null
 
   return <Astal.Window
     $={self => app.applauncher = self}
@@ -29,6 +30,12 @@ export default () => {
         barCfg.position.get() === RIGHT)
         && self.visible && qsOpen.get())
         setQsOpen(false)
+      if (self.visible) {
+        entryRef?.grab_focus()
+      } else {
+        entryRef?.set_text("")
+        setList(apps.get_list())
+      }
       setLauncherOpen(self.visible)
     }}
     cssClasses={["card", "frame", "background"]}
@@ -47,12 +54,14 @@ export default () => {
         hexpand
         css={"margin-right:4px;"}
         placeholderText={"Search your apps"}
+        $={self => { entryRef = self }}
         onNotifyText={self => setList(
           apps.fuzzy_query(self.text)
         )}
         onActivate={self => {
           app.applauncher.visible = false;
-          apps.fuzzy_query(self.text)[0].launch();
+          const results = apps.fuzzy_query(self.text)
+          if (results.length > 0) results[0].launch();
         }} />
       <Gtk.ScrolledWindow
         css={"padding-right:0px;"}

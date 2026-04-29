@@ -8,7 +8,7 @@
 
 - **Name**: `shade-shell`
 - **Domain**: `com.caioasmuniz.shade_shell`
-- **Version**: `0.1.0`
+- **Version**: `0.2.1`
 - **Description**: "Skill's Hyprland Adwaita Desktop Environment"
 - **Runtime**: GJS (GNOME JavaScript / SpiderMonkey)
 - **Compositor**: Hyprland
@@ -33,6 +33,42 @@ The shell is designed to be launched once per session via `uwsm-app -t service -
 | **Lock Screen** | `Gtk4SessionLock` + PAM (`astal-auth`) based lock screen across all monitors. |
 | **Wallpaper** | Per-monitor background window with automatic day/night switching based on the color scheme. |
 | **Settings** | Built-in Libadwaita preferences window (General, Bar, Weather). |
+
+---
+
+## Versioning and Releases
+
+Shade follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`). The version is declared in three places that **must always be kept in sync**:
+
+1. `meson.build` — `project('shade-shell', version: 'X.Y.Z')`
+2. `package.json` — `"version": "X.Y.Z"`
+3. `nix/desktop-shell.nix` — `version = "X.Y.Z";`
+
+Additionally, `AGENTS.md` lists the current version in the Project Overview section.
+
+### Changelog
+
+All notable changes are recorded in `CHANGELOG.md` using the [Keep a Changelog](https://keepachangelog.com/) format.
+
+**Workflow rule:** Every change that affects user-visible behavior, fixes a bug, or adds a feature must:
+1. Update `CHANGELOG.md` under `[Unreleased]` (or the new version section if bumping)
+2. If the change is a feature addition or breaking change, bump the version in all three files above
+3. Commit the version + changelog changes together
+
+**When to bump:**
+- `PATCH` — bug fixes, minor corrections
+- `MINOR` — new features, enhancements (e.g. new recording modes, new widgets)
+- `MAJOR` — breaking changes to config, CLI, or behavior
+
+### Example commit message
+
+```
+bump: 0.2.0
+
+feat(recording): add area, window, and output recording modes
+
+CHANGELOG.md updated.
+```
 
 ---
 

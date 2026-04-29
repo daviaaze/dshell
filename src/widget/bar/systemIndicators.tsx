@@ -47,11 +47,30 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
     iconName="notifications-disabled-symbolic"
     pixelSize={18} />
 
-  const BluetoothIndicator = () => <Gtk.Image
-    iconName="bluetooth-active-symbolic"
-    visible={createBinding(bluetooth, "adapter")
-      .as(adapter => adapter && adapter.powered)}
-    pixelSize={18} />
+  const BluetoothIndicator = () => {
+    const isConnected = createBinding(bluetooth, "devices")
+      .as(devices => {
+        if (!devices) return false
+        const arr = Array.isArray(devices) ? devices : Array.from(devices)
+        return arr.some((d: any) => d.connected)
+      })
+    const tooltip = createBinding(bluetooth, "devices")
+      .as(devices => {
+        if (!devices) return ""
+        const arr = Array.isArray(devices) ? devices : Array.from(devices)
+        const connected = arr.filter((d: any) => d.connected).map((d: any) => d.name)
+        return connected.length > 0 ? connected.join(", ") : "Bluetooth"
+      })
+
+    return <Gtk.Image
+      iconName={isConnected.as(c => c
+        ? "bluetooth-active-symbolic"
+        : "bluetooth-symbolic")}
+      visible={createBinding(bluetooth, "adapter")
+        .as(adapter => adapter && adapter.powered)}
+      tooltipMarkup={tooltip}
+      pixelSize={18} />
+  }
 
   const NetworkIndicator = () => {
     const icon = createComputed([
@@ -101,6 +120,15 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
     iconName={createBinding(battery, "batteryIconName")}
     tooltipMarkup={createBinding(battery, "percentage")
       .as((p) => (p * 100).toFixed(0).toString() + "%")}
+    cssClasses={createBinding(battery, "warning_level").as(level => {
+      if (level === Batery.WarningLevel.CRITICIAL ||
+          level === Batery.WarningLevel.ACTION)
+        return ["error"]
+      if (level === Batery.WarningLevel.LOW ||
+          level === Batery.WarningLevel.DISCHARGING)
+        return ["warning"]
+      return []
+    })}
     pixelSize={18} />
 
   const RecordingIndicator = () => <Gtk.Image

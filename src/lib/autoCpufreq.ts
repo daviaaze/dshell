@@ -2,11 +2,26 @@ import AstalIO from "gi://AstalIO?version=0.1";
 import GObject, { getter, register, setter } from "gnim/gobject";
 
 function readOverride(): string {
-  try {
-    return AstalIO.Process.exec("auto-cpufreq --get-state 2>/dev/null").trim();
-  } catch {
-    return "";
+  const picklePaths = [
+    "/opt/auto-cpufreq/override.pickle",
+    "/var/snap/auto-cpufreq/current/override.pickle",
+  ];
+
+  for (const path of picklePaths) {
+    try {
+      const out = AstalIO.Process.exec(
+        `python3 -c "import pickle; print(pickle.load(open('${path}', 'rb')))" 2>/dev/null`
+      ).trim();
+      if (out === "powersave" || out === "performance" || out === "default") {
+        return out;
+      }
+    } catch (e: any) {
+      // Path likely doesn't exist or Python failed — try next
+      continue;
+    }
   }
+
+  return "";
 }
 
 function profileToForce(profile: string): string {
@@ -81,7 +96,14 @@ export default class AutoCpufreq extends GObject.Object {
 
     AstalIO.Process.exec_async(
       `pkexec auto-cpufreq --force=${force}`,
-      () => this.#updateState()
+      (res) => {
+        try {
+          AstalIO.Process.exec_async_finish(res);
+        } catch (e: any) {
+          print("auto-cpufreq force failed:", e.message);
+        }
+        this.#updateState();
+      }
     );
   }
 
