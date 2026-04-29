@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Media player widget** re-enabled in Quick Settings expander — shows active MPRIS players with cover art, controls, and playback status
+
+### Fixed
+
+- **OSD monitor** now correctly tracks focused monitor instead of hardcoding monitor 1
+- **Disk usage** formula fixed to show actual used percentage
+- **App launcher** no longer crashes on empty search + Enter
+- **Media player** skip-backward icon name and null-safe app icon lookup
+- **Color scheme** names now correctly return "Light" and "Dark" instead of "Auto"
+- **Keyboard brightness** setter now uses percentage (`%`) instead of absolute value
+- **Brightness module** no longer crashes on startup when no backlight devices exist (desktop PCs, VMs)
+- **`dev` script** now compiles schemas with `glib_compile_schemas` and uses `&&` chaining
+- **Wallpaper install path** now correctly installs to `datadir/shade-shell/`
+
 ## [0.2.1] - 2026-04-29
 
 ### Fixed
