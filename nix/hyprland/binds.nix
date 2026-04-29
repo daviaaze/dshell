@@ -82,9 +82,7 @@ in
 
     bindm = [
       "SUPER,mouse:272,movewindow"
-      "SUPER,SHIFT, movewindow"
       "SUPER,mouse:273,resizewindow"
-      "SUPER,CONTROL,resizewindow"
     ];
 
     binde = [

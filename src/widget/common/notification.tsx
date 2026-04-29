@@ -3,16 +3,26 @@ import Gtk from "gi://Gtk?version=4.0";
 import GLib from "gi://GLib";
 import { For, createBinding } from "gnim"
 
-export default ({ notif, closeAction }: {
+export default ({ notif, closeAction, pauseDismiss, resumeDismiss }: {
   notif: Notifd.Notification,
   closeAction: (notif: Notifd.Notification, self: Gtk.Widget) => void,
+  pauseDismiss?: () => void,
+  resumeDismiss?: () => void,
 }) =>
   <Gtk.Box
     name={notif.id.toString()}
     cssClasses={["card", "frame"]}
     css={"box-shadow:none;"}
     spacing={8}
-    orientation={Gtk.Orientation.VERTICAL}>
+    orientation={Gtk.Orientation.VERTICAL}
+    $={self => {
+      if (pauseDismiss && resumeDismiss) {
+        const controller = Gtk.EventControllerMotion.new()
+        controller.connect("enter", pauseDismiss)
+        controller.connect("leave", resumeDismiss)
+        self.add_controller(controller)
+      }
+    }}>
     <Gtk.Box spacing={8}>
       <Gtk.Image
         pixelSize={24}

@@ -11,6 +11,42 @@ export default () => {
   const hyprland = Hyprland.get_default();
 
   const [notifs, setNotifs] = createState<Notifd.Notification[]>([])
+  const timeouts = new Map<number, number>()
+
+  const addNotif = (id: number) => {
+    const n = notifd.get_notification(id)
+    if (!n) return
+    setNotifs(prev => prev.concat(n))
+    timeouts.set(id, setTimeout(() => {
+      setNotifs(prev => prev.filter(x => x.id !== id))
+      timeouts.delete(id)
+    }, 5000))
+  }
+
+  const removeNotif = (id: number) => {
+    const tid = timeouts.get(id)
+    if (tid) {
+      clearTimeout(tid)
+      timeouts.delete(id)
+    }
+    setNotifs(prev => prev.filter(x => x.id !== id))
+  }
+
+  const pauseDismiss = (id: number) => {
+    const tid = timeouts.get(id)
+    if (tid) {
+      clearTimeout(tid)
+      timeouts.delete(id)
+    }
+  }
+
+  const resumeDismiss = (id: number) => {
+    if (timeouts.has(id)) return
+    timeouts.set(id, setTimeout(() => {
+      setNotifs(prev => prev.filter(x => x.id !== id))
+      timeouts.delete(id)
+    }, 5000))
+  }
 
   return <Astal.Window
     $={self => app.notifications = self}
@@ -24,22 +60,19 @@ export default () => {
       Astal.WindowAnchor.RIGHT |
       Astal.WindowAnchor.TOP |
       Astal.WindowAnchor.BOTTOM}
-    monitor={createBinding(hyprland, "focusedMonitor")(m => m.id)}
+    monitor={createBinding(hyprland, "focusedMonitor").as(m => m.id)}
     application={app}>
     <Gtk.Box
       orientation={Gtk.Orientation.VERTICAL}
       spacing={4}
       $={() => notifd.connect("notified",
-        (self, id) => {
-          setTimeout(() =>
-            setNotifs(notifs.get().filter(n => id !== n.id)), 5000)
-          setNotifs(notifs.get().concat(notifd.get_notification(id)))
-        })}>
+        (_, id) => addNotif(id))}>
       <For each={notifs(n => n.reverse())}>
         {(n: Notifd.Notification) =>
           <Notification
-            closeAction={() => setNotifs(
-              notifs.get().filter(notif => n !== notif))}
+            closeAction={() => removeNotif(n.id)}
+            pauseDismiss={() => pauseDismiss(n.id)}
+            resumeDismiss={() => resumeDismiss(n.id)}
             notif={n} />
         }
       </For>

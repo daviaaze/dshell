@@ -1,7 +1,7 @@
 import GLib from "gi://GLib"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
-import { Accessor, createState, For } from "gnim"
+import { Accessor, createState, For, onCleanup } from "gnim"
 import { useSettings } from "#/lib/settings"
 
 function updateCalendar(calendar: Gtk.Calendar) {
@@ -29,9 +29,11 @@ function cityName(tzId: string): string {
 export default ({ vertical }: { vertical: Accessor<boolean> }) => {
   const { general } = useSettings()
   const [time, setTime] = createState(new GLib.DateTime)
-  setInterval(() => {
+  const clockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
     setTime(GLib.DateTime.new_now_local())
-  }, 1000);
+    return GLib.SOURCE_CONTINUE
+  })
+  onCleanup(() => GLib.source_remove(clockTimeout))
 
   const day = time.as(t => t.get_day_of_month().toString())
   const month = time.as(t => t.format("%b")!)

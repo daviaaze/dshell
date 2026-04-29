@@ -86,11 +86,11 @@ in
             ];
 
             input = {
-              kb_layout = "br,us";
+              kb_layout = "us";
               follow_mouse = 1;
               accel_profile = "flat";
               touchpad = {
-                natural_scroll = true;
+                natural_scroll = false;
                 scroll_factor = 0.5;
               };
             };
@@ -100,8 +100,8 @@ in
               gaps_out = 4;
               float_gaps = 4;
               border_size = 2;
-              "col.active_border" = "0xffa6e3a1";
-              "col.inactive_border" = "0xFF313244";
+              "col.active_border" = "0xff3584e4";
+              "col.inactive_border" = "0xff9a9996";
               resize_on_border = true;
               hover_icon_on_border = true;
               snap = {
@@ -111,8 +111,8 @@ in
             };
 
             group = {
-              "col.border_active" = "0xff1e1e2e";
-              "col.border_inactive" = "0xffcba6f7";
+              "col.border_active" = "0xff3584e4";
+              "col.border_inactive" = "0xff9a9996";
             };
 
             gesture = [
@@ -161,7 +161,7 @@ in
               vfr = true;
               vrr = 1;
               enable_swallow = true;
-              swallow_regex = "ghostty";
+              swallow_regex = "";
               layers_hog_keyboard_focus = true;
               focus_on_activate = true;
               disable_splash_rendering = true;
@@ -178,24 +178,7 @@ in
               preserve_split = true;
             };
 
-            plugin = {
-              dynamic-cursors = {
-                enabled = true;
-                mode = "none";
-                shake = {
-                  enabled = true;
-                  threshold = 3.0;
-                  timeout = 1000;
-                  limit = 4.0;
-                  speed = 0.0;
-                };
-                hyprcursor = {
-                  enabled = true;
-                  nearest = false;
-                  fallback = "default";
-                };
-              };
-            };
+
 
             layerrule = [
               "no_anim on, match:namespace selection"

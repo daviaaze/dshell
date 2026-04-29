@@ -3,7 +3,9 @@ import { useSettings } from "../../lib/settings";
 import Gtk from "gi://Gtk?version=4.0";
 import Gdk from "gi://Gdk?version=4.0";
 import AstalIO from "gi://AstalIO?version=0.1";
-import { Accessor, createState } from "gnim";
+import Gio from "gi://Gio?version=2.0";
+import GLib from "gi://GLib?version=2.0";
+import { Accessor, createState, onCleanup } from "gnim";
 
 
 export default ({ vertical }: { vertical: Accessor<boolean> }) => {
@@ -16,7 +18,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
   const [temp, setTemp] = createState(0)
   const INTERVAL = 1000;
 
-  setInterval(() => {
+  const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, INTERVAL, () => {
     const cpuTop = new GTop.glibtop_cpu()
     GTop.glibtop_get_cpu(cpuTop);
     const total = cpuTop.total - lastCpuTop.get().total;
@@ -34,13 +36,27 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
     GTop.glibtop_get_fsusage(diskTop, "/");
     setDisk((diskTop.blocks - diskTop.bavail) / diskTop.blocks);
 
-    if (settings.bar.tempPath.get())
-      setTemp(parseInt(
-        AstalIO.Process.exec(`cat ${settings.bar.tempPath}`)
-      ) / 100000)
-    else
+    const tempPath = settings.bar.tempPath.get()
+    if (tempPath) {
+      const file = Gio.File.new_for_path(tempPath)
+      file.load_contents_async(null, (_source, res) => {
+        try {
+          const [success, contents] = file.load_contents_finish(res)
+          if (success) {
+            const value = parseInt(new TextDecoder().decode(contents))
+            setTemp(value / 100000)
+          }
+        } catch (e: any) {
+          print("failed to read temperature:", e.message)
+          setTemp(-1)
+        }
+      })
+    } else {
       setTemp(-1)
-  }, INTERVAL)
+    }
+    return GLib.SOURCE_CONTINUE
+  })
+  onCleanup(() => GLib.source_remove(timeoutId))
 
   const Indicator = ({ value, label, unit, vertical, visible = true }:
     {

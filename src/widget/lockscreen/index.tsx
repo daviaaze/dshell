@@ -18,9 +18,10 @@ const createLocks = (onUnlock: () => void) => {
   const [authStatus, setAuthStatus] = createState("")
   const fingerprint = FingerprintAuth.get_default()
 
-  setInterval(() => {
+  const lockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
     setTime(GLib.DateTime.new_now_local())
-  }, 1000);
+    return GLib.SOURCE_CONTINUE
+  })
 
   const doUnlock = () => {
     fingerprint.stop()
@@ -81,6 +82,7 @@ const createLocks = (onUnlock: () => void) => {
           app.lockscreen.push(self)
           onCleanup(() => {
             fingerprint.stop()
+            GLib.source_remove(lockTimeout)
             app.lockscreen = app.lockscreen.filter(l => l !== self)
           })
         }}

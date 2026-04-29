@@ -1,4 +1,5 @@
 {
+  lib,
   pkgs,
   buildInputs,
   nativeBuildInputs,
@@ -46,5 +47,12 @@ pkgs.stdenv.mkDerivation {
       "${pkgs.gtk4-layer-shell}/lib/libgtk4-layer-shell.so"
       )'';
 
-  meta.mainProgram = "${pname}";
+  meta = {
+    mainProgram = pname;
+    description = "Shade — Skill's Hyprland Adwaita Desktop Environment";
+    homepage = "https://github.com/caioasmuniz/shade";
+    license = lib.licenses.gpl3Only;
+    platforms = lib.platforms.linux;
+    maintainers = [ ];
+  };
 }

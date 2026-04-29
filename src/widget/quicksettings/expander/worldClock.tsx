@@ -1,6 +1,6 @@
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib"
-import { createBinding, createState, For } from "gnim"
+import { createBinding, createState, For, onCleanup } from "gnim"
 import { useSettings } from "#/lib/settings"
 
 function fmtOffset(local: GLib.TimeZone, remote: GLib.TimeZone): string {
@@ -22,9 +22,11 @@ export const WorldClock = () => {
   const { general } = useSettings()
   const [time, setTime] = createState(GLib.DateTime.new_now_local())
 
-  setInterval(() => {
+  const worldClockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
     setTime(GLib.DateTime.new_now_local())
-  }, 1000)
+    return GLib.SOURCE_CONTINUE
+  })
+  onCleanup(() => GLib.source_remove(worldClockTimeout))
 
   const localTz = GLib.TimeZone.new_local()
 

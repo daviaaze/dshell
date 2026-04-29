@@ -2,7 +2,8 @@ import Apps from "gi://AstalApps"
 import Hyprland from "gi://AstalHyprland"
 import Astal from "gi://Astal?version=4.0";
 import Gtk from "gi://Gtk?version=4.0";
-import { createBinding, createState, For } from "gnim";
+import Gdk from "gi://Gdk?version=4.0";
+import { createBinding, createState, For, With } from "gnim";
 import AppButton from "./appButton";
 import { useSettings } from "../../lib/settings";
 import { app } from "#/App";
@@ -62,7 +63,18 @@ export default () => {
           app.applauncher.visible = false;
           const results = apps.fuzzy_query(self.text)
           if (results.length > 0) results[0].launch();
-        }} />
+        }}>
+        <Gtk.EventControllerKey
+          $={self => {
+            self.connect("key-pressed", (_, keyval) => {
+              if (keyval === Gdk.KEY_Escape) {
+                app.applauncher.visible = false
+                return true
+              }
+              return false
+            })
+          }} />
+      </Gtk.Entry>
       <Gtk.ScrolledWindow
         css={"padding-right:0px;"}
         hscrollbarPolicy={Gtk.PolicyType.NEVER}
@@ -71,9 +83,18 @@ export default () => {
           orientation={Gtk.Orientation.VERTICAL}
           css={"padding-right: 12px;"}
           spacing={8}>
-          <For each={list}>
-            {app => <AppButton application={app} />}
-          </For>
+          <With value={list.as(l => l.length === 0)}>
+            {empty => empty ?
+              <Gtk.Label
+                cssClasses={["title-3"]}
+                marginTop={24}
+                marginBottom={24}
+                label="No apps found" />
+              : <For each={list}>
+                {app => <AppButton application={app} />}
+              </For>
+            }
+          </With>
         </Gtk.Box>
       </Gtk.ScrolledWindow>
     </Gtk.Box >

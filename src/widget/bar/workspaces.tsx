@@ -4,6 +4,18 @@ import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, For, Accessor, With } from "gnim"
 
+function toArray<T>(list: any): T[] {
+  if (!list) return []
+  if (Array.isArray(list)) return list
+  const arr: T[] = []
+  let l = list
+  while (l) {
+    arr.push(l.data)
+    l = l.next
+  }
+  return arr
+}
+
 const hyprland = Hyprland.get_default()
 
 const apps = new Apps.Apps({
@@ -49,7 +61,7 @@ export default ({ monitor, vertical }:
           )
         }
       >
-        <For each={createBinding(ws, "clients")}>
+        <For each={createBinding(ws, "clients").as(c => toArray<Hyprland.Client>(c))}>
           {(client: Hyprland.Client) =>
             <Adw.Toggle
               name={client.address}
@@ -64,7 +76,7 @@ export default ({ monitor, vertical }:
               </Gtk.Image> as Gtk.Widget} />}
         </For>
         {/* create toggle when ws is empty */}
-        <With value={createBinding(ws, "clients").as(c => c.length < 1)}>
+        <With value={createBinding(ws, "clients").as(c => toArray<Hyprland.Client>(c).length < 1)}>
           {(c: boolean) => c ?
             <Adw.Toggle /> : null}
         </With>

@@ -13,19 +13,21 @@ export default ({ widget, connectable, signal }: {
     revealChild={false}
     visible={false}
     transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
-    $={self =>
+    $={self => {
+      let timeoutId: number | null = null
+      let visibilityTimeoutId: number | null = null
       connectable.connect(signal, () => {
-        if (!self.revealChild) {
-          self.visible = true
-          self.revealChild = true
-          setTimeout(() => {
-            self.revealChild = false
-            setTimeout(() =>
-              self.visible = false
-              , 200)
-          }, TIMEOUT_MS)
-        }
+        if (timeoutId) clearTimeout(timeoutId)
+        if (visibilityTimeoutId) clearTimeout(visibilityTimeoutId)
+        self.visible = true
+        self.revealChild = true
+        timeoutId = setTimeout(() => {
+          self.revealChild = false
+          visibilityTimeoutId = setTimeout(() =>
+            self.visible = false
+            , 200)
+        }, TIMEOUT_MS)
       })
-    }>
+    }}>
     {widget}
   </Gtk.Revealer>

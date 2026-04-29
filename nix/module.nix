@@ -7,7 +7,6 @@ inputs:
 }:
 let
   cfg = config.programs.shade;
-  pkg = inputs.self.packages.${pkgs.system}.default;
 in
 {
   imports = [
@@ -17,6 +16,11 @@ in
 
   options.programs.shade = {
     enable = lib.mkEnableOption "Enables the shade desktop environment";
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = inputs.self.packages.${pkgs.system}.default;
+      description = "The shade-shell package to use";
+    };
     shell = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -51,17 +55,21 @@ in
     lib.mkMerge [
       (lib.mkIf cfg.shell.enable {
         environment.systemPackages = [
-          pkg
+          cfg.package
           pkgs.adwaita-icon-theme
           pkgs.brightnessctl
+          pkgs.hyprshot
+          pkgs.playerctl
+          pkgs.pwvucontrol
+          pkgs.wvkbd
         ];
         security.pam.services.astal-auth = {};
         programs.hyprland.settings.exec-once = [ "uwsm-app -t service -- shade-shell" ];
       })
       (lib.mkIf cfg.shell.blur.enable {
         programs.hyprland.extraConfig = ''
-          layerrule=  blur on, match:namespace gtk4-layer-shell
-          layerrule= ignore_alpha 0, match:namespace gtk4-layer-shell
+          layerrule = blur, gtk4-layer-shell
+          layerrule = ignorealpha 0, gtk4-layer-shell
         '';
       })
     ]
