@@ -1,7 +1,7 @@
 import Gtk from "gi://Gtk?version=4.0"
 import { createState } from "gnim"
 import { Battery, BatteryIcon } from "./battery"
-// import { Media, MediaIcon } from "./media"
+import { Media, MediaIcon } from "./media"
 import { Calendar, CalendarIcon } from "./calendar"
 import { Weather, WeatherIcon } from "./weather"
 import { WorldClock } from "./worldClock"
@@ -20,7 +20,7 @@ export const Expander = () => {
         halign={Gtk.Align.CENTER}
         // spacing={4}
         hexpand>
-        {/* <MediaIcon /> */}
+        <MediaIcon />
         <CalendarIcon />
         <BatteryIcon />
         <WeatherIcon />
@@ -40,7 +40,7 @@ export const Expander = () => {
       <Gtk.Box
         spacing={4}
         orientation={Gtk.Orientation.VERTICAL}>
-        {/* <Media /> */}
+        <Media />
         <Battery />
         <Weather />
         <Calendar />
