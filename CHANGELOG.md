@@ -11,8 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Media player widget** re-enabled in Quick Settings expander — shows active MPRIS players with cover art, controls, and playback status
 
+### Added
+
+- **Power menu** in Quick Settings tray — replaces instant shutdown with a popover containing Lock, Log Out, Suspend, Reboot, and Power Off options
+
 ### Fixed
 
+- **`setScreelocked` typo** fixed to `setScreenlocked` across all files (index, lockscreen, requestHandler, tray)
+- **Settings wallpaper dialog** no longer crashes when user cancels the file picker
+- **Weather widgets** (bar and QS expander) now handle null `info` gracefully during initialization
+- **Settings network panel** now uses reactive `createBinding` for wifi/wired instead of one-time property access
 - **OSD monitor** now correctly tracks focused monitor instead of hardcoding monitor 1
 - **Disk usage** formula fixed to show actual used percentage
 - **App launcher** no longer crashes on empty search + Enter
