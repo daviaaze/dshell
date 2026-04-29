@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Notification popups** no longer dismiss while being hovered — timeout pauses on mouse enter and resumes on leave
 - **OSD popups** now reset their timeout on every re-trigger instead of using the original timeout
 - **App launcher** now shows "No apps found" when search yields no results and closes on Escape key
+- **App launcher / Quick Settings crash** fixed — removed `<For>` nested inside `<With>` which caused gnim to throw "nesting Fragments are not yet supported" and prevented all widgets after `applauncher()` from mounting
 - **OSD monitor** now correctly tracks focused monitor instead of hardcoding monitor 1
 - **Disk usage** formula fixed to show actual used percentage
 - **App launcher** no longer crashes on empty search + Enter

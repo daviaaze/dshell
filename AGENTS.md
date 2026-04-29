@@ -347,6 +347,62 @@ Not all logically-named icons exist in `adwaita-icon-theme`. Always verify icon 
 
 When an icon appears broken or missing at runtime, check the theme first with `gtk4-icon-browser` (if available) or search the installed icon directories under `/run/current-system/sw/share/icons` or the Nix store.
 
+### Getting Runtime Logs
+Shade-shell is launched via `uwsm-app -t service -- shade-shell`, which redirects stdout/stderr to `/run/systemd/journal/stdout`. There is no dedicated log file.
+
+**Query logs by executable name:**
+```bash
+journalctl --user _COMM=shade-shell --boot 0 -n 200 --no-pager
+```
+
+**Query logs by PID (find it with `ps aux | grep shade`):**
+```bash
+journalctl --user _PID=4841 --boot 0 -n 200 --no-pager
+```
+
+**Broad search for GJS / GTK / Shade errors:**
+```bash
+journalctl --user --boot 0 -n 500 --no-pager | grep -iE "shade-shell|JS ERROR|gjs\["
+```
+
+Always check logs when a widget silently fails to appear — the error may be in an unrelated widget that mounts earlier.
+
+### Gnim: `<For>` Cannot Be Nested Inside `<With>`
+Gnim throws **`Error: nesting Fragments are not yet supported`** when a `<For>` component is placed inside a `<With>` component's callback:
+
+```tsx
+// ❌ CRASHES
+<With value={list.as(l => l.length === 0)}>
+  {empty => empty ? <Gtk.Label ... />
+    : <For each={list}>...</For>   // ← nested For inside With
+  }
+</With>
+```
+
+**Workaround:** Use a reactive `visible` binding instead of conditional rendering, or keep `<For>` as a sibling:
+
+```tsx
+// ✅ Safe — For is a sibling, not nested inside With
+<Gtk.Label visible={list.as(l => l.length === 0)} label="No apps found" />
+<For each={list}>{app => <AppButton application={app} />}</For>
+```
+
+### Widget Mount Order Matters
+`src/widget/index.tsx` mounts components sequentially inside `widgets()`:
+
+```tsx
+ Wallpaper()
+ bar()
+ osd()
+ applauncher()     // ← exception here
+ notifications()   // never reached
+ quicksettings()   // never reached
+ LockScreen()      // never reached
+ settings()        // never reached
+```
+
+An unhandled exception during JSX rendering in an early widget (e.g., `applauncher`) **prevents all subsequent widgets from mounting**, even though they are unrelated. If the bar and OSD work but later widgets are missing, the root cause is almost certainly a crash in the first failing widget. Fix the crash there, not in the missing widgets.
+
 ---
 
 ## Testing

@@ -80,6 +80,7 @@
             nativeBuildInputs
             wrapperPackages
             ;
+          lib = pkgs.lib;
         };
       };
 

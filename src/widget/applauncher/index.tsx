@@ -3,7 +3,7 @@ import Hyprland from "gi://AstalHyprland"
 import Astal from "gi://Astal?version=4.0";
 import Gtk from "gi://Gtk?version=4.0";
 import Gdk from "gi://Gdk?version=4.0";
-import { createBinding, createState, For, With } from "gnim";
+import { createBinding, createState, For } from "gnim";
 import AppButton from "./appButton";
 import { useSettings } from "../../lib/settings";
 import { app } from "#/App";
@@ -83,18 +83,15 @@ export default () => {
           orientation={Gtk.Orientation.VERTICAL}
           css={"padding-right: 12px;"}
           spacing={8}>
-          <With value={list.as(l => l.length === 0)}>
-            {empty => empty ?
-              <Gtk.Label
-                cssClasses={["title-3"]}
-                marginTop={24}
-                marginBottom={24}
-                label="No apps found" />
-              : <For each={list}>
-                {app => <AppButton application={app} />}
-              </For>
-            }
-          </With>
+          <Gtk.Label
+            visible={list.as(l => l.length === 0)}
+            cssClasses={["title-3"]}
+            marginTop={24}
+            marginBottom={24}
+            label="No apps found" />
+          <For each={list}>
+            {app => <AppButton application={app} />}
+          </For>
         </Gtk.Box>
       </Gtk.ScrolledWindow>
     </Gtk.Box >
