@@ -1,6 +1,6 @@
 import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { Accessor, createState } from "gnim"
+import { Accessor, createState, onCleanup } from "gnim"
 
 type SliderProps = {
   icon: Accessor<string> | string,
@@ -26,9 +26,11 @@ export const Slider = (props: SliderProps) => {
     }, DEBOUNCE_MS)
   }
 
-  props.value.subscribe((v) => {
+  const unsub = props.value.subscribe((v) => {
     if (debounceTimer === null) setDisplayValue(v)
   })
+
+  onCleanup(() => unsub())
 
   return (
     <Gtk.Box

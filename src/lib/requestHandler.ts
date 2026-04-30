@@ -1,25 +1,33 @@
-import { app } from "#/App";
-import { launcherOpen, qsOpen, setLauncherOpen, setQsOpen } from "#/widget";
-import { setScreenlocked } from "#/widget";
+import ShellState from "#/lib/shellState";
+import WindowManager from "#/lib/windowManager";
 import Screenshot from "#/lib/screenshot";
+import { openSettings } from "#/widget";
+import { toggleWindowSwitcher } from "#/widget/windowswitcher";
 import Gio from "gi://Gio?version=2.0";
 
 export const requestHandler =
   (cmd: Gio.ApplicationCommandLine) => {
     const args = cmd.get_arguments()
+    const state = ShellState.get_default()
 
     if (args[1] === "lockscreen")
-      setScreenlocked(true)
+      state.screenlocked = true
     else if (args[1] === "toggle")
       switch (args[2]) {
         case "bar":
-          app.bar.forEach(bar => bar.visible = !bar.visible)
+          WindowManager.get_default().bars.forEach(bar => bar.visible = !bar.visible)
           break
         case "applauncher":
-          setLauncherOpen(!launcherOpen.get())
+          state.toggleLauncher()
           break
         case "quicksettings":
-          setQsOpen(!qsOpen.get())
+          state.toggleQuickSettings()
+          break
+        case "settings":
+          openSettings()
+          break
+        case "windowswitcher":
+          toggleWindowSwitcher()
           break
       }
     else if (args[1] === "screenshot")

@@ -68,6 +68,8 @@ export default class Screenshot extends GObject.Object {
 
   startRecording(options: { geometry?: string, output?: string } = {}) {
     if (this.#recording) return
+    this.#recording = true
+    this.notify("recording")
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
     const filename = `${RECORDING_DIR}/${timestamp}.mp4`
@@ -75,8 +77,6 @@ export default class Screenshot extends GObject.Object {
     AstalIO.Process.exec_async(
       `mkdir -p ${RECORDING_DIR}`,
       () => {
-        this.#recording = true
-        this.notify("recording")
         this.recordingStarted()
 
         const args = ["wf-recorder", "-f", filename]
@@ -104,11 +104,19 @@ export default class Screenshot extends GObject.Object {
 
   recordArea() {
     if (this.#recording) return
+    this.#recording = true
+    this.notify("recording")
     AstalIO.Process.exec_async(
       `slurp`,
       (out) => {
         const geometry = out.trim()
-        if (geometry) this.startRecording({ geometry })
+        if (geometry) {
+          this.#recording = false
+          this.startRecording({ geometry })
+        } else {
+          this.#recording = false
+          this.notify("recording")
+        }
       }
     )
   }

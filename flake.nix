@@ -31,6 +31,7 @@
         tray
         wireplumber
         astal4
+        cava
       ];
 
       nativeBuildInputs = with pkgs; [
@@ -69,6 +70,10 @@
         slurp
         wf-recorder
         wl-clipboard
+        cliphist
+        hyprsunset
+        hypridle
+        matugen
       ];
     in
     {

@@ -7,7 +7,8 @@ import Popup from "./popup"
 import GObject from "gnim/gobject"
 import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { app } from "#/App"
+import { app } from "#/App";
+import WindowManager from "#/lib/windowManager"
 
 const MUTED_SPEAKER_ICON = "audio-volume-muted-symbolic"
 const MUTED_MIC_ICON = "microphone-sensitivity-muted-symbolic"
@@ -84,7 +85,7 @@ export default () => {
   ];
 
   return <Astal.Window
-    $={self => app.osd = self}
+    $={self => WindowManager.get_default().setOsd(self)}
     name={"osd"}
     widthRequest={250}
     application={app}

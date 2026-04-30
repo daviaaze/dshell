@@ -10,6 +10,7 @@ import { gettext } from "gettext";
 import { SettingsProvider } from "./lib/settings";
 import { requestHandler } from "./lib/requestHandler";
 import { widgets } from "./widget";
+import WindowManager from "./lib/windowManager";
 import css from "./shade.css"
 
 @register()
@@ -37,11 +38,16 @@ export class ShadeShell extends Adw.Application {
   }
 
   private initCss() {
+    const display = Gdk.Display.get_default()
+    if (!display) {
+      print("Shade: No display available. Cannot initialize CSS.")
+      return
+    }
     const provider = new Gtk.CssProvider()
     provider.load_from_data(css, -1)
 
     Gtk.StyleContext.add_provider_for_display(
-      Gdk.Display.get_default()!,
+      display,
       provider,
       Gtk.STYLE_PROVIDER_PRIORITY_USER,
     )

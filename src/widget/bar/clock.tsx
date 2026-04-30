@@ -3,27 +3,13 @@ import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import { Accessor, createState, For, onCleanup } from "gnim"
 import { useSettings } from "#/lib/settings"
+import { fmtOffset, cityName } from "#/lib/time"
 
 function updateCalendar(calendar: Gtk.Calendar) {
   const now = GLib.DateTime.new_now_local()
   calendar.year = now.get_year()
   calendar.month = now.get_month() - 1
   calendar.day = now.get_day_of_month()
-}
-
-function fmtOffset(local: GLib.TimeZone, remote: GLib.TimeZone): string {
-  const now = GLib.DateTime.new_now(local)
-  const remoteNow = now.to_timezone(remote)
-  const localOffset = now.get_utc_offset() / GLib.TIME_SPAN_HOUR
-  const remoteOffset = remoteNow.get_utc_offset() / GLib.TIME_SPAN_HOUR
-  const diff = remoteOffset - localOffset
-  if (diff === 0) return "same time"
-  const sign = diff > 0 ? "+" : ""
-  return `${sign}${diff.toFixed(0)}h`
-}
-
-function cityName(tzId: string): string {
-  return tzId.split("/").pop()?.replaceAll("_", " ") ?? tzId
 }
 
 export default ({ vertical }: { vertical: Accessor<boolean> }) => {

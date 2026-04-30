@@ -1,13 +1,11 @@
 import Astal from "gi://Astal?version=4.0"
 import Gio from "gi://Gio?version=2.0"
-import Gly from "gi://Gly"
-import GlyGtk4 from "gi://GlyGtk4"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import { createBinding, createComputed, For, onCleanup } from "gnim"
 import { ColorScheme, DarkModes } from "#/lib/colorScheme"
 import { useSettings } from "#/lib/settings"
-import { app } from "#/App"
+import WindowManager from "#/lib/windowManager"
 import { monitors } from "#/lib/monitors"
 
 export const Wallpaper = () => {
@@ -27,13 +25,13 @@ export const Wallpaper = () => {
     }
   )
 
-  return <For each={monitors()}>
+  return <For each={monitors}>
     {(monitor: Gdk.Monitor) =>
       <Astal.Window
         $={self => {
-          app.wallpaper.push(self)
+          WindowManager.get_default().registerWallpaper(self)
           onCleanup(() => {
-            app.wallpaper = app.wallpaper.filter(w => w !== self)
+            WindowManager.get_default().unregisterWallpaper(self)
             self.destroy()
           })
         }}
@@ -50,9 +48,7 @@ export const Wallpaper = () => {
       >
         <Gtk.Picture
           contentFit={Gtk.ContentFit.COVER}
-          paintable={wp.as(wp => GlyGtk4.frame_get_texture(
-            Gly.Loader.new(wp).load().next_frame()
-          ))}
+          file={wp}
         />
       </Astal.Window>}
   </For>

@@ -73,5 +73,76 @@ export default () => {
       onEntryActivated={self => bar.setSystemMonitor(self.text)}
       onApply={self => bar.setSystemMonitor(self.text)}
     />
+
+    <Adw.PreferencesGroup
+      title="Dock"
+      description="Taskbar at the bottom of the screen">
+      <Adw.SwitchRow
+        title="Enable Dock"
+        active={bar.dockEnabled}
+        onNotifyActive={self => bar.setDockEnabled(self.active)}
+      />
+      <Adw.SwitchRow
+        title="Auto Hide"
+        active={bar.dockAutoHide}
+        onNotifyActive={self => bar.setDockAutoHide(self.active)}
+      />
+      <Adw.SpinRow
+        title="Icon Size"
+        adjustment={
+          <Gtk.Adjustment
+            lower={24}
+            upper={64}
+            stepIncrement={4}
+            value={bar.dockIconSize}
+          /> as Gtk.Adjustment}
+        onNotifyValue={self => bar.setDockIconSize(self.value)}
+      />
+    </Adw.PreferencesGroup>
+
+    <Adw.PreferencesGroup
+      title="Modules"
+      description="Toggle visibility of bar components">
+      <Adw.SwitchRow
+        title="Launcher Button"
+        active={bar.showLauncher}
+        onNotifyActive={self => bar.setShowLauncher(self.active)}
+      />
+      <Adw.SwitchRow
+        title="Workspaces"
+        active={bar.showWorkspaces}
+        onNotifyActive={self => bar.setShowWorkspaces(self.active)}
+      />
+      <Adw.SwitchRow
+        title="Window Title"
+        active={bar.showWindowTitle}
+        onNotifyActive={self => bar.setShowWindowTitle(self.active)}
+      />
+      <Adw.SwitchRow
+        title="System Resources"
+        active={bar.showSystemResources}
+        onNotifyActive={self => bar.setShowSystemResources(self.active)}
+      />
+      <Adw.SwitchRow
+        title="Clock"
+        active={bar.showClock}
+        onNotifyActive={self => bar.setShowClock(self.active)}
+      />
+      <Adw.SwitchRow
+        title="Weather"
+        active={bar.showWeather}
+        onNotifyActive={self => bar.setShowWeather(self.active)}
+      />
+      <Adw.SwitchRow
+        title="System Indicators"
+        active={bar.showSystemIndicators}
+        onNotifyActive={self => bar.setShowSystemIndicators(self.active)}
+      />
+      <Adw.SwitchRow
+        title="Keyboard Layout"
+        active={bar.showKeyboardLayout}
+        onNotifyActive={self => bar.setShowKeyboardLayout(self.active)}
+      />
+    </Adw.PreferencesGroup>
   </Adw.PreferencesGroup>
 }

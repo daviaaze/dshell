@@ -1,75 +1,12 @@
 import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib?version=2.0"
+import Gio from "gi://Gio?version=2.0"
 import GObject, { getter, register, setter } from "gnim/gobject"
 
-const LOCK_FILE = "/tmp/shade-touchpad-disabled.pid"
+const XDG_RUNTIME_DIR = GLib.getenv("XDG_RUNTIME_DIR") || `/run/user/${GLib.getuid()}`
+const RUNTIME_DIR = `${XDG_RUNTIME_DIR}/shade`
+const LOCK_FILE = `${RUNTIME_DIR}/touchpad-disabled.pid`
 const SCRIPT_PATH = `${(import.meta as any).bindir || "/usr/local/bin"}/toggle-touchpad.py`
-
-const TOGGLE_SCRIPT = `import fcntl, os, signal, sys
-
-LOCK_FILE = "/tmp/shade-touchpad-disabled.pid"
-
-def find_touchpad():
-    for evdev in sorted(os.listdir("/dev/input")):
-        if not evdev.startswith("event"):
-            continue
-        name_path = f"/sys/class/input/{evdev}/device/name"
-        try:
-            with open(name_path) as f:
-                name = f.read().strip().lower()
-                if "touchpad" in name:
-                    return f"/dev/input/{evdev}"
-        except Exception:
-            continue
-    return None
-
-DEVICE = find_touchpad()
-EVIOCGRAB = 0x40044590
-
-def disable():
-    if not DEVICE:
-        print("No touchpad found", file=sys.stderr)
-        sys.exit(1)
-    pid = os.fork()
-    if pid > 0:
-        with open(LOCK_FILE, "w") as f:
-            f.write(str(pid))
-        print("disabled")
-        return
-    os.setsid()
-    for fd in (0, 1, 2):
-        try:
-            os.close(fd)
-        except Exception:
-            pass
-    fd = os.open(DEVICE, os.O_RDWR | os.O_NONBLOCK)
-    fcntl.ioctl(fd, EVIOCGRAB, 1)
-    while True:
-        signal.pause()
-
-def enable():
-    if not os.path.exists(LOCK_FILE):
-        print("already enabled")
-        return
-    with open(LOCK_FILE) as f:
-        pid = int(f.read().strip())
-    try:
-        os.kill(pid, signal.SIGTERM)
-        os.waitpid(pid, 0)
-    except (ProcessLookupError, ChildProcessError):
-        pass
-    try:
-        os.remove(LOCK_FILE)
-    except Exception:
-        pass
-    print("enabled")
-
-if __name__ == "__main__":
-    if os.path.exists(LOCK_FILE):
-        enable()
-    else:
-        disable()
-`
 
 @register({ GTypeName: "Touchpad" })
 export default class Touchpad extends GObject.Object {
@@ -82,7 +19,7 @@ export default class Touchpad extends GObject.Object {
 
   #available = false
   #disabled = false
-  #scriptPath = ""
+  #pollTimer: number | null = null
 
   @getter(Boolean)
   get available() {
@@ -102,32 +39,16 @@ export default class Touchpad extends GObject.Object {
   }
 
   toggle() {
-    this.#ensureScript()
+    if (!GLib.file_test(SCRIPT_PATH, GLib.FileTest.EXISTS)) {
+      print("Touchpad toggle script not found at:", SCRIPT_PATH)
+      return
+    }
     AstalIO.Process.exec_async(
-      `python3 ${this.#scriptPath}`,
+      `SHADE_LOCK_FILE="${LOCK_FILE}" python3 ${SCRIPT_PATH}`,
       () => {
         this.#checkState()
       }
     )
-  }
-
-  #ensureScript() {
-    if (GLib.file_test(SCRIPT_PATH, GLib.FileTest.EXISTS)) {
-      this.#scriptPath = SCRIPT_PATH
-      return
-    }
-
-    const fallback = "/tmp/shade-touchpad-toggle.py"
-    if (!GLib.file_test(fallback, GLib.FileTest.EXISTS)) {
-      try {
-        GLib.file_set_contents(fallback, TOGGLE_SCRIPT)
-        AstalIO.Process.exec(`chmod +x ${fallback}`)
-      } catch (e) {
-        print("Failed to write touchpad toggle script:", (e as Error).message)
-        return
-      }
-    }
-    this.#scriptPath = fallback
   }
 
   #hasTouchpad(): boolean {
@@ -142,18 +63,45 @@ export default class Touchpad extends GObject.Object {
   }
 
   #checkState() {
-    this.disabled = GLib.file_test(LOCK_FILE, GLib.FileTest.EXISTS)
+    if (!GLib.file_test(LOCK_FILE, GLib.FileTest.EXISTS)) {
+      this.disabled = false
+      return
+    }
+    try {
+      const [, contents] = GLib.file_get_contents(LOCK_FILE)
+      const pid = parseInt(new TextDecoder().decode(contents).trim(), 10)
+      if (!isNaN(pid)) {
+        const procDir = Gio.File.new_for_path(`/proc/${pid}`)
+        if (procDir.query_exists(null)) {
+          this.disabled = true
+          return
+        }
+      }
+      // Stale lock file — clean up
+      GLib.unlink(LOCK_FILE)
+    } catch {
+      // Ignore errors, assume enabled
+    }
+    this.disabled = false
   }
 
   constructor() {
     super()
+    GLib.mkdir_with_parents(RUNTIME_DIR, 0o700)
     this.#available = this.#hasTouchpad()
     this.#checkState()
     if (this.#available) {
-      GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+      this.#pollTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
         this.#checkState()
         return GLib.SOURCE_CONTINUE
       })
+    }
+  }
+
+  dispose() {
+    if (this.#pollTimer !== null) {
+      GLib.source_remove(this.#pollTimer)
+      this.#pollTimer = null
     }
   }
 }

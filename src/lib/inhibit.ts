@@ -1,4 +1,4 @@
-import { app } from "#/App";
+import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0";
 import GObject, { getter, register, setter } from "gnim/gobject"
 
@@ -12,6 +12,7 @@ export default class Inhibit extends GObject.Object {
 
   #idle: boolean
   #cookie: number
+  #app: Adw.Application | null = null
 
   @getter(Boolean)
   get idle() {
@@ -22,14 +23,24 @@ export default class Inhibit extends GObject.Object {
   set idle(state) {
     if (state === this.#idle)
       return
-    if (state)
-      this.#cookie = app.inhibit(null,
+    if (state) {
+      if (this.#cookie !== 0)
+        this.#app?.uninhibit(this.#cookie)
+      this.#cookie = this.#app?.inhibit(null,
         Gtk.ApplicationInhibitFlags.IDLE,
-        "toggled by shade-shell")
-    else
-      app.uninhibit(this.#cookie)
+        "toggled by shade-shell") ?? 0
+    } else {
+      if (this.#cookie !== 0) {
+        this.#app?.uninhibit(this.#cookie)
+        this.#cookie = 0
+      }
+    }
     this.#idle = state
     this.notify("idle")
+  }
+
+  init(app: Adw.Application) {
+    this.#app = app
   }
 
   constructor() {

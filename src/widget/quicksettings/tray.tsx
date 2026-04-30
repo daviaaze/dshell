@@ -1,11 +1,11 @@
-import { app } from "#/App";
 import { useSettings } from "#/lib/settings";
 import AstalIO from "gi://AstalIO?version=0.1";
 import Tray from "gi://AstalTray";
 import Gtk from "gi://Gtk?version=4.0";
 import { Accessor, createBinding, For } from "gnim";
-import { setQsOpen, setScreenlocked } from "..";
+import ShellState from "#/lib/shellState";
 import { PowerMenu } from "#/widget/common/powerMenu";
+import { openSettings } from "#/widget";
 
 
 export const TrayBox = () => {
@@ -15,7 +15,7 @@ export const TrayBox = () => {
     <Gtk.Button
       cssClasses={["circular"]}
       onClicked={() => {
-        setScreenlocked(true)
+        ShellState.get_default().screenlocked = true
       }}
     >
       <Gtk.Image iconName={"system-lock-screen-symbolic"} />
@@ -49,8 +49,8 @@ export const TrayBox = () => {
   const SettingsButton = () => <Gtk.Button
     cssClasses={["circular"]}
     onClicked={() => {
-      app.settings.visible = true;
-      setQsOpen(false);
+      openSettings()
+      ShellState.get_default().qsOpen = false;
     }}>
     <Gtk.Image iconName={"preferences-system-symbolic"} />
   </Gtk.Button>

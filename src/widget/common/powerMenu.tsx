@@ -1,6 +1,6 @@
 import Gtk from "gi://Gtk?version=4.0"
 import AstalIO from "gi://AstalIO?version=0.1"
-import { setScreenlocked } from "#/widget"
+import ShellState from "#/lib/shellState"
 
 export const PowerMenu = () => {
   const popover = <Gtk.Popover
@@ -12,7 +12,7 @@ export const PowerMenu = () => {
       <Gtk.Button
         cssClasses={["flat"]} 
         onClicked={() => {
-          setScreenlocked(true)
+          ShellState.get_default().screenlocked = true
           popover.popdown()
         }}>
         <Gtk.Box spacing={8}>

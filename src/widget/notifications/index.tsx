@@ -5,6 +5,7 @@ import Gtk from "gi://Gtk?version=4.0";
 import { For, createBinding, createState, createComputed } from "gnim";
 import Notification from "../common/notification";
 import { app } from "#/App";
+import WindowManager from "#/lib/windowManager";
 
 export default () => {
   const notifd = Notifd.get_default();
@@ -49,7 +50,7 @@ export default () => {
   }
 
   return <Astal.Window
-    $={self => app.notifications = self}
+    $={self => WindowManager.get_default().setNotifications(self)}
     name={"notifications"}
     margin={12}
     cssClasses={["notifications"]}

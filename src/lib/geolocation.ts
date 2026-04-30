@@ -21,6 +21,7 @@ export default class Geolocation extends GObject.Object {
   #latitude = 0
   #longitude = 0
   #available = false
+  #detecting = false
 
   @getter(Number)
   get latitude() { return this.#latitude }
@@ -35,9 +36,16 @@ export default class Geolocation extends GObject.Object {
   locationChanged(_lat: number, _lon: number) {}
 
   detect() {
+    if (this.#detecting) return
+    this.#detecting = true
     this.#tryGeoClue().then(found => {
+      this.#detecting = false
       if (!found) this.#tryIpGeolocation()
-    }).catch(() => this.#tryIpGeolocation())
+    }).catch((e) => {
+      this.#detecting = false
+      print("GeoClue detection failed:", (e as Error).message)
+      this.#tryIpGeolocation()
+    })
   }
 
   async #tryGeoClue(): Promise<boolean> {
@@ -55,6 +63,7 @@ export default class Geolocation extends GObject.Object {
             try {
               resolve(Gio.DBusProxy.new_for_bus_finish(res))
             } catch (e) {
+              print("GeoClue Manager proxy failed:", (e as Error).message)
               reject(e)
             }
           }
@@ -69,7 +78,10 @@ export default class Geolocation extends GObject.Object {
         null
       )?.get_child_value(0)?.get_string()?.[0]
 
-      if (!clientPath) return false
+      if (!clientPath) {
+        print("GeoClue: GetClient returned no path")
+        return false
+      }
 
       const client = await new Promise<Gio.DBusProxy>((resolve, reject) => {
         Gio.DBusProxy.new_for_bus(
@@ -84,6 +96,7 @@ export default class Geolocation extends GObject.Object {
             try {
               resolve(Gio.DBusProxy.new_for_bus_finish(res))
             } catch (e) {
+              print("GeoClue Client proxy failed:", (e as Error).message)
               reject(e)
             }
           }
@@ -105,14 +118,25 @@ export default class Geolocation extends GObject.Object {
               client.call_finish(res)
               resolve()
             } catch (e) {
+              print("GeoClue Start failed:", (e as Error).message)
               reject(e)
             }
           }
         )
       })
 
-      const locationPath = client.get_cached_property("Location")?.get_string()?.[0]
-      if (!locationPath) return false
+      // Retry reading cached property a few times — GeoClue updates asynchronously
+      let locationPath: string | null = null
+      for (let i = 0; i < 5; i++) {
+        locationPath = client.get_cached_property("Location")?.get_string()?.[0] ?? null
+        if (locationPath) break
+        await new Promise<void>(r => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => { r(); return GLib.SOURCE_REMOVE }))
+      }
+
+      if (!locationPath) {
+        print("GeoClue: No location path after retries")
+        return false
+      }
 
       const location = await new Promise<Gio.DBusProxy>((resolve, reject) => {
         Gio.DBusProxy.new_for_bus(
@@ -127,6 +151,7 @@ export default class Geolocation extends GObject.Object {
             try {
               resolve(Gio.DBusProxy.new_for_bus_finish(res))
             } catch (e) {
+              print("GeoClue Location proxy failed:", (e as Error).message)
               reject(e)
             }
           }
@@ -140,7 +165,8 @@ export default class Geolocation extends GObject.Object {
 
       this.#update(lat, lon)
       return true
-    } catch {
+    } catch (e) {
+      print("GeoClue detection failed:", (e as Error).message)
       return false
     }
   }
@@ -153,8 +179,12 @@ export default class Geolocation extends GObject.Object {
           const data = JSON.parse(out)
           if (data.latitude && data.longitude) {
             this.#update(data.latitude, data.longitude)
+          } else {
+            print("IP geolocation: no coordinates in response")
           }
-        } catch { /* ignore */ }
+        } catch (e) {
+          print("IP geolocation failed:", (e as Error).message)
+        }
       }
     )
   }

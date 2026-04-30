@@ -6,9 +6,9 @@ import Gdk from "gi://Gdk?version=4.0"
 import SessionLock from "gi://Gtk4SessionLock"
 import GLib from "gi://GLib?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { createRoot, createState, For, onCleanup, onMount } from "gnim"
-import { app } from "#/App"
-import { screenlocked, setScreenlocked } from ".."
+import { createBinding, createRoot, createState, For, onCleanup, onMount } from "gnim"
+import WindowManager from "#/lib/windowManager"
+import ShellState from "#/lib/shellState"
 import FingerprintAuth from "#/lib/fingerprint"
 
 const createLocks = (onUnlock: () => void) => {
@@ -26,8 +26,8 @@ const createLocks = (onUnlock: () => void) => {
   const doUnlock = () => {
     fingerprint.stop()
     lock.unlock()
-    app.lockscreen.forEach(w => w.destroy())
-    setScreenlocked(false)
+    WindowManager.get_default().lockscreens.forEach(w => w.destroy())
+    ShellState.get_default().screenlocked = false
     onUnlock()
   }
 
@@ -51,11 +51,11 @@ const createLocks = (onUnlock: () => void) => {
     }
   })
 
-  fingerprint.connect("verified", () => {
+  const verifiedId = fingerprint.connect("verified", () => {
     doUnlock()
   })
 
-  fingerprint.connect("failed", (_, reason) => {
+  const failedId = fingerprint.connect("failed", (_, reason) => {
     if (reason === "verify-no-match") {
       setAuthStatus("Fingerprint did not match")
       setTimeout(() => {
@@ -69,29 +69,32 @@ const createLocks = (onUnlock: () => void) => {
     }
   })
 
-  fingerprint.connect("statusChanged", (_, status) => {
+  const statusId = fingerprint.connect("statusChanged", (_, status) => {
     if (status === "verify-retry" || status === "verify-swipe-too-short") {
       setAuthStatus("Try again...")
     }
   })
 
-  return <For each={monitors()}>
+  return <For each={monitors}>
     {(monitor: Gdk.Monitor) =>
       <Astal.Window
         $={self => {
-          app.lockscreen.push(self)
+          WindowManager.get_default().registerLockscreen(self)
           onCleanup(() => {
             fingerprint.stop()
+            fingerprint.disconnect(verifiedId)
+            fingerprint.disconnect(failedId)
+            fingerprint.disconnect(statusId)
             GLib.source_remove(lockTimeout)
-            app.lockscreen = app.lockscreen.filter(l => l !== self)
+            WindowManager.get_default().unregisterLockscreen(self)
           })
         }}
         onRealize={() => {
-          for (const window of app.lockscreen) {
+          for (const window of WindowManager.get_default().lockscreens) {
             if (!window.get_realized()) return
           }
           lock.lock()
-          for (const window of app.lockscreen) {
+          for (const window of WindowManager.get_default().lockscreens) {
             lock.assign_window_to_monitor(
               window, window.get_current_monitor()
             )
@@ -158,6 +161,8 @@ const createLocks = (onUnlock: () => void) => {
 
 export const LockScreen = () => {
   let locked = false
+
+  const screenlocked = createBinding(ShellState.get_default(), "screenlocked")
 
   onCleanup(
     screenlocked.subscribe(() => {

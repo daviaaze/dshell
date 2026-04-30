@@ -49,6 +49,25 @@ export default ({ notif, closeAction, pauseDismiss, resumeDismiss }: {
       label={GLib.DateTime
         .new_from_unix_local(notif.time)
         .format("%H:%M:%S") || "ERROR"} />
+    <Gtk.ProgressBar
+      fraction={0}
+      cssClasses={["osd"]}
+      $={self => {
+        let elapsed = 0
+        const interval = 50
+        const total = 5000
+        const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, interval, () => {
+          if (!self.get_parent()) return GLib.SOURCE_REMOVE
+          elapsed += interval
+          const remaining = Math.max(0, total - elapsed)
+          self.set_fraction(remaining / total)
+          if (remaining <= 0) return GLib.SOURCE_REMOVE
+          return GLib.SOURCE_CONTINUE
+        })
+        self.connect("destroy", () => {
+          GLib.source_remove(timer)
+        })
+      }} />
     <Gtk.Box cssClasses={["actions"]} spacing={4}>
       <For each={createBinding(notif, "actions")}>
         {(action: Notifd.Action) => <Gtk.Button

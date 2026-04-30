@@ -4,6 +4,7 @@ import Apps from "gi://AstalApps"
 import Gtk from "gi://Gtk?version=4.0";
 import { For, createBinding } from "gnim";
 import Adw from "gi://Adw?version=1";
+import CavaVisualizer from "../cava";
 
 const mpris = Mpris.get_default();
 const apps = new Apps.Apps()
@@ -121,6 +122,7 @@ export const Media = () => <Gtk.Box
   spacing={4}
   visible={createBinding(mpris, "players")
     .as(p => p.length > 0)}>
+  <CavaVisualizer />
   <For each={createBinding(mpris, "players")}>
     {(player: Mpris.Player) =>
       <Gtk.Box

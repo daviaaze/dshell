@@ -5,15 +5,20 @@ import AutoCpufreqLib from "#/lib/autoCpufreq"
 import ColorScheme from "./colorScheme"
 import Bluetooth from "./bluetooth"
 import Caffeinated from "./caffeinated"
-import Network from "./network"
+import Network from "../network"
 import Screenshot from "./screenshot"
 import Touchpad from "./touchpad"
 import TouchpadLib from "#/lib/touchpad"
+import NightLight from "./nightLight"
+import NightLightLib from "#/lib/nightLight"
+import IdleControls from "./idleControls"
+import HypridleLib from "#/lib/hypridle"
 
 export const ButtonGrid = ({ cols = 2 }:
   { cols?: number }) => {
   const autoCpufreq = AutoCpufreqLib.get_default()
   const touchpad = TouchpadLib.get_default()
+  const nightLight = NightLightLib.get_default()
   const items = [
     autoCpufreq.available ? <AutoCpufreq /> : <Powerprofiles />,
     <ColorScheme />,
@@ -21,6 +26,8 @@ export const ButtonGrid = ({ cols = 2 }:
     <Network />,
     <Screenshot />,
     <Caffeinated />,
+    nightLight.available ? <NightLight /> : null,
+    HypridleLib.get_default().available ? <IdleControls /> : null,
     touchpad.available ? <Touchpad /> : null
   ];
 

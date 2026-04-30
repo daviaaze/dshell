@@ -1,4 +1,5 @@
 import AstalIO from "gi://AstalIO?version=0.1";
+import GLib from "gi://GLib?version=2.0";
 import GObject, { getter, register, setter } from "gnim/gobject";
 
 function readOverride(): string {
@@ -51,6 +52,7 @@ export default class AutoCpufreq extends GObject.Object {
 
   #activeProfile = "balanced";
   #available = false;
+  #pollTimer: number | null = null;
 
   @getter(Boolean)
   get available() {
@@ -87,10 +89,14 @@ export default class AutoCpufreq extends GObject.Object {
 
   #poll() {
     this.#updateState();
-    setTimeout(() => this.#poll(), 5000);
+    this.#pollTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
+      this.#updateState();
+      return GLib.SOURCE_CONTINUE;
+    });
   }
 
   set_active_profile(profile: string) {
+    if (!this.#available) return;
     const force = profileToForce(profile);
     if (!force) return;
 
@@ -118,7 +124,7 @@ export default class AutoCpufreq extends GObject.Object {
     // Check daemon is running (systemd service or snap)
     const services = [
       "systemctl is-active auto-cpufreq 2>/dev/null || echo inactive",
-      "systemctl is-active snap.auto-cpufreq.service.service 2>/dev/null || echo inactive",
+      "systemctl is-active snap.auto-cpufreq.service 2>/dev/null || echo inactive",
     ];
 
     for (const cmd of services) {
@@ -140,6 +146,13 @@ export default class AutoCpufreq extends GObject.Object {
     if (this.#available) {
       this.#updateState();
       this.#poll();
+    }
+  }
+
+  dispose() {
+    if (this.#pollTimer !== null) {
+      GLib.source_remove(this.#pollTimer);
+      this.#pollTimer = null;
     }
   }
 }

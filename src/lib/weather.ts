@@ -1,6 +1,6 @@
 import GWeather from "gi://GWeather?version=4.0"
+import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register, setter } from "gnim/gobject"
-import { useSettings } from "./settings";
 import Geolocation from "./geolocation";
 
 @register({ GTypeName: "Weather" })
@@ -16,6 +16,7 @@ export default class Weather extends GObject.Object {
   #weather: GWeather.Info
   #location: GWeather.Location | undefined
   #geo = Geolocation.get_default()
+  #updateTimer: number | null = null
 
   @getter(GWeather.Info)
   get info() {
@@ -41,17 +42,57 @@ export default class Weather extends GObject.Object {
     this.#geo.detect()
   }
 
-  constructor() {
-    super()
-
-    const settings = useSettings().weather
-
+  init(settings: { latitude: { get(): number }, longitude: { get(): number }, autoLocation: { get(): boolean, subscribe(cb: (v: boolean) => void): () => void }, setLatitude(lat: number): void, setLongitude(lon: number): void }) {
     this.#location = GWeather.Location.get_world()
       ?.find_nearest_city(
         settings.latitude.get(),
         settings.longitude.get())
 
-    this.#weather = GWeather.Info.new(this.#location)
+    if (this.#location) {
+      this.#weather.set_location(this.#location)
+      this.#weather.update()
+    }
+
+    this.#updateTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0.25 * 3600000, () => {
+      this.#weather.update()
+      return GLib.SOURCE_CONTINUE
+    })
+
+    let geoHandlerId: number | null = null
+
+    const connectGeo = () => {
+      if (geoHandlerId !== null) {
+        this.#geo.locationChanged.disconnect(geoHandlerId)
+        geoHandlerId = null
+      }
+      geoHandlerId = this.#geo.locationChanged.connect((_, lat, lon) => {
+        settings.setLatitude(lat)
+        settings.setLongitude(lon)
+        this.updateFromCoords(lat, lon)
+      })
+    }
+
+    // Auto-location on startup if enabled
+    if (settings.autoLocation.get()) {
+      connectGeo()
+      this.detectLocation()
+    }
+
+    settings.autoLocation.subscribe((enabled) => {
+      if (enabled) {
+        connectGeo()
+        this.detectLocation()
+      } else if (geoHandlerId !== null) {
+        this.#geo.locationChanged.disconnect(geoHandlerId)
+        geoHandlerId = null
+      }
+    })
+  }
+
+  constructor() {
+    super()
+
+    this.#weather = GWeather.Info.new(null)
 
     this.#weather.set_application_id(import.meta.domain)
     this.#weather.set_enabled_providers(GWeather.Provider.MET_NO)
@@ -59,32 +100,5 @@ export default class Weather extends GObject.Object {
 
     this.#weather.connect("updated",
       () => this.notify("info"))
-
-    this.#weather.update()
-
-    setInterval(() =>
-      this.#weather.update(),
-      0.25 * 3600000)
-
-    // Auto-location on startup if enabled
-    if (settings.autoLocation.get()) {
-      this.#geo.locationChanged.connect((_, lat, lon) => {
-        settings.setLatitude(lat)
-        settings.setLongitude(lon)
-        this.updateFromCoords(lat, lon)
-      })
-      this.detectLocation()
-    }
-
-    settings.autoLocation.subscribe((enabled) => {
-      if (enabled) {
-        this.#geo.locationChanged.connect((_, lat, lon) => {
-          settings.setLatitude(lat)
-          settings.setLongitude(lon)
-          this.updateFromCoords(lat, lon)
-        })
-        this.detectLocation()
-      }
-    })
   }
 }

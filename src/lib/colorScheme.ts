@@ -3,7 +3,6 @@ import Weather from "./weather";
 import GLib from "gi://GLib?version=2.0";
 import Gio from "gi://Gio?version=2.0";
 import { createSettings, Schema } from "gnim-schemas";
-import { useSettings } from "./settings";
 import { Setter } from "gnim";
 
 export enum DarkModes {
@@ -20,9 +19,9 @@ export class ColorScheme extends Object {
     return this.instance;
   }
 
-  #daytime: boolean
+  #daytime: boolean = true
   #colorScheme: DarkModes = 0
-  #weather: Weather
+  #weather: Weather | null = null
   #gsettings: {
     setColorScheme: Setter<string>;
     setGtkTheme: Setter<string>;
@@ -85,6 +84,7 @@ export class ColorScheme extends Object {
       Math.abs(GLib.DateTime.new_from_unix_local(unixTime)
         .difference(GLib.DateTime.new_now_local()))
 
+    if (!this.#weather) return
     const interval = this.#daytime ?
       msUntil(this.#weather.info.get_value_sunset()[1])
       : msUntil(this.#weather.info.get_value_sunrise()[1])
@@ -93,6 +93,18 @@ export class ColorScheme extends Object {
       this.#daytime = !this.#daytime
       this.timeout()
     }, interval / GLib.TIME_SPAN_MILLISECOND);
+  }
+
+  init(weather: Weather, settings: { colorScheme: { get(): DarkModes, subscribe(cb: () => void): () => void } }) {
+    this.#weather = weather
+    this.#daytime = this.#weather.info.is_daytime()
+    const colorSchemeSetting = settings.colorScheme
+    this.colorScheme = colorSchemeSetting.get()
+
+    colorSchemeSetting.subscribe(() =>
+      this.colorScheme = colorSchemeSetting.get())
+
+    this.timeout()
   }
 
   constructor() {
@@ -108,15 +120,5 @@ export class ColorScheme extends Object {
       })
         .key("color-scheme", "s", { default: "prefer-light" })
         .key("gtk-theme", "s", { default: "Adwaita" }))
-
-    this.#weather = Weather.get_default()
-    this.#daytime = this.#weather.info.is_daytime()
-    const settings = useSettings().general.colorScheme
-    this.colorScheme = settings.get()
-
-    settings.subscribe(() =>
-      this.colorScheme = settings.get())
-
-    this.timeout()
   }
 }
