@@ -1,7 +1,7 @@
 import Network from "gi://AstalNetwork"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createState, For, With } from "gnim"
+import { createBinding, createComputed, createState, For, With } from "gnim"
 
 const network = Network.get_default()
 
@@ -122,7 +122,7 @@ export default () => {
         </Gtk.Button>
       </Gtk.Box>
       <Gtk.ScrolledWindow
-        maxContentHeight={300}
+        propagateNaturalHeight={true}
         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
         <Gtk.Box
           orientation={Gtk.Orientation.VERTICAL}
@@ -140,6 +140,15 @@ export default () => {
               const isConnecting = connectingAp.as(c =>
                 apBssid !== null && c !== null && bssidEquals(c, ap.bssid)
               )
+
+              const apStatus = createComputed([
+                isActive,
+                isConnecting,
+              ], (active, connecting) => {
+                if (active) return "active"
+                if (connecting) return "connecting"
+                return "idle"
+              })
 
               return <Gtk.Button
                 onClicked={() => {
@@ -176,20 +185,20 @@ export default () => {
                     halign={Gtk.Align.START}
                     label={apSsid}
                   />
-                  <With value={isActive}>
-                    {(active: boolean) => active
-                      ? <Gtk.Image
+                  <With value={apStatus}>
+                    {(status: "active" | "connecting" | "idle") => {
+                      if (status === "active")
+                        return <Gtk.Image
                           iconName="emblem-ok-symbolic"
                           pixelSize={16}
                         />
-                      : <With value={isConnecting}>
-                          {(connecting: boolean) => connecting
-                            ? <Gtk.Spinner
-                                spinning
-                                marginEnd={4}
-                              />
-                            : null}
-                        </With>}
+                      if (status === "connecting")
+                        return <Gtk.Spinner
+                          spinning
+                          marginEnd={4}
+                        />
+                      return null
+                    }}
                   </With>
                 </Gtk.Box>
               </Gtk.Button>
@@ -233,6 +242,8 @@ export default () => {
     </Gtk.Revealer>
   }
 
+  const isConnecting = connectingAp.as(c => c !== null)
+
   return <Adw.SplitButton
     cssClasses={["raised"]}
     widthRequest={150}
@@ -271,12 +282,24 @@ export default () => {
           <PasswordDialog />
         </Gtk.Box>
       </Gtk.Popover> as Gtk.Popover}>
-    <Adw.ButtonContent
-      iconName={wifiBinding.as(wifi =>
-        wifi?.iconName ?? "network-wireless-offline-symbolic"
-      )}
-      label={wifiBinding.as(wifi =>
-        wifi?.ssid ?? (wifi?.enabled ? "WiFi" : "WiFi Off")
-      )} />
+    <Gtk.Box
+      spacing={8}
+      valign={Gtk.Align.CENTER}
+      halign={Gtk.Align.CENTER}>
+      {isConnecting.as(connecting => connecting
+        ? <Gtk.Spinner spinning />
+        : <Gtk.Image
+            iconName={wifiBinding.as(wifi =>
+              wifi?.iconName || "network-wireless-offline-symbolic"
+            )}
+          />)}
+      <Gtk.Label
+        label={wifiBinding.as(wifi => {
+          const ssid = wifi?.ssid
+          if (!ssid || ssid === "..." || ssid.trim() === "")
+            return wifi?.enabled ? "WiFi" : "WiFi Off"
+          return ssid
+        })} />
+    </Gtk.Box>
   </Adw.SplitButton>
 }

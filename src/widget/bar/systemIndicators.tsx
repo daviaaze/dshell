@@ -77,12 +77,15 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       createBinding(network, "primary"),
       createBinding(network, "wifi"),
       createBinding(network, "wired")],
-      (primary, wifi, wired) =>
-        primary === Network.Primary.WIFI ?
-          wifi.iconName :
-          primary === Network.Primary.WIRED ?
-            wired.iconName :
-            "network-no-route-symbolic")
+      (primary, wifi, wired) => {
+        if (primary === Network.Primary.WIFI) {
+          return wifi?.iconName || "network-wireless-offline-symbolic"
+        }
+        if (primary === Network.Primary.WIRED) {
+          return wired?.iconName || "network-wired-offline-symbolic"
+        }
+        return "network-no-route-symbolic"
+      })
     return <Gtk.Image
       iconName={icon}
       visible={createBinding(network, "primary")
