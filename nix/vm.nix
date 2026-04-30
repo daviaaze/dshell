@@ -28,8 +28,11 @@
 
   programs.shade = {
     enable = true;
-    defaultBrowser = "firefox";
-    defaultTerminal = "com.mitchellh.ghostty";
+    desktop = {
+      enable = true;
+      defaultBrowser = "firefox";
+      defaultTerminal = "com.mitchellh.ghostty";
+    };
   };
 
   environment.systemPackages = with pkgs;[
@@ -39,10 +42,10 @@
     btop
   ];
 
-  programs.shade.hyprland.settings = {
+  programs.shade.desktop.hyprland.settings = {
     bind = [
-      "SUPERSHIFT,Return,exec,${lib.getExe pkgs.uwsm} app -- ${config.programs.shade.defaultTerminal}"
-      "SUPERSHIFT,B,exec,${lib.getExe pkgs.uwsm} app -- ${config.programs.shade.defaultBrowser}"
+      "SUPERSHIFT,Return,exec,${lib.getExe pkgs.uwsm} app -- ${config.programs.shade.desktop.defaultTerminal}"
+      "SUPERSHIFT,B,exec,${lib.getExe pkgs.uwsm} app -- ${config.programs.shade.desktop.defaultBrowser}"
     ];
   };
 

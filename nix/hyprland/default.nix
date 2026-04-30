@@ -5,14 +5,14 @@
   ...
 }:
 let
-  cfg = config.programs.shade.hyprland;
+  cfg = config.programs.shade.desktop.hyprland;
 in
 {
   imports = [
     ./binds.nix
   ];
 
-  options.programs.shade.hyprland = {
+  options.programs.shade.desktop.hyprland = {
     enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -71,10 +71,6 @@ in
           withUWSM = true;
           package = pkgs.hyprland;
           portalPackage = pkgs.xdg-desktop-portal-hyprland;
-
-          # plugins = [
-          #   pkgs.hyprlandPlugins.hypr-dynamic-cursors
-          # ];
 
           settings = {
             monitor = [
@@ -177,8 +173,6 @@ in
               pseudotile = 1;
               preserve_split = true;
             };
-
-
 
             layerrule = [
               "no_anim on, match:namespace selection"

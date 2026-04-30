@@ -4,7 +4,7 @@ import os
 import signal
 import sys
 
-LOCK_FILE = "/tmp/shade-touchpad-disabled.pid"
+LOCK_FILE = os.environ.get("SHADE_LOCK_FILE", "/tmp/shade-touchpad-disabled.pid")
 
 
 def find_touchpad():

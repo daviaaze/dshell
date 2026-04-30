@@ -1,7 +1,7 @@
 { pkgs, lib, config, ... }:
 let
   uwsm-app = app : "${pkgs.uwsm}/bin/uwsm-app -t service -- ${app}.desktop";
-  cfg = config.programs.shade;
+  cfg = config.programs.shade.desktop;
 in
 {
   programs.hyprland.settings = {
@@ -31,6 +31,7 @@ in
       "SUPER,Insert,movetoworkspace,special:scratchpad"
       "SUPER,Pause,movetoworkspace,special:scratchpad"
       "SUPER,S,togglesplit"
+      "SUPER,TAB,exec,shade-shell toggle windowswitcher"
 
       ",XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
       ",XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"
@@ -70,7 +71,7 @@ in
     ];
 
     bindl = [
-      ", XF86TouchpadToggle, exec, python3 /tmp/shade-touchpad-toggle.py"
+      ", XF86TouchpadToggle, exec, ${pkgs.python3}/bin/python3 ${config.programs.shade.package}/bin/toggle-touchpad.py"
       ",XF86MonBrightnessUp, exec, ${lib.getExe pkgs.brightnessctl} set +5%"
       ",XF86MonBrightnessDown, exec, ${lib.getExe pkgs.brightnessctl} set -5%"
     ];
