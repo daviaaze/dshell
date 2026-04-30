@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "eslint . --fix",
     "types": "npx @ts-for-gir/cli generate -o @girs --ignoreVersionConflicts",
-    "build": "meson setup --prefix \"$(pwd)/dist\" build --wipe ; meson install -C build",
+    "build": "meson setup build --wipe && meson compile -C build",
     "dev": "nix run . --"
   },
   "devDependencies": {

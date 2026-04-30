@@ -116,8 +116,8 @@ pnpm run lint
 # Regenerate GIR TypeScript types into @girs/
 pnpm run types
 
-# Full build: wipes Meson build dir, bundles, compiles schemas, installs to ./dist
-# Note: ./dist/bin/shade-shell is unwrapped and not runnable directly
+# Validate build: compiles TypeScript bundle and generates gschema XML
+# Does NOT produce a runnable binary — use nix build for that
 pnpm run build
 
 # Development: build via Nix and run with proper wrappers
@@ -127,12 +127,15 @@ pnpm run dev
 ### Manual Build Steps
 
 ```bash
-# Setup and build (validates Meson install only — binary is unwrapped)
-meson setup --prefix "$(pwd)/dist" build --wipe
-meson install -C build
+# Setup and compile (validates bundle + schema generation)
+meson setup build --wipe
+meson compile -C build
 ```
 
-> **Note:** `./dist/bin/shade-shell` is **unwrapped** — it lacks `GI_TYPELIB_PATH`, `LD_PRELOAD`, and `PATH` setup. It will crash with "Typelib not found" if run directly. Use `nix build` or `nix run` for a working binary.
+> **Note:** `meson compile` only validates that the bundle compiles. It does **not**
+> produce a runnable binary. The bundle requires `GI_TYPELIB_PATH`, `LD_PRELOAD`,
+> and `PATH` wrappers that only `nix build` provides. Use `nix build` or `nix run`
+> for a working binary.
 
 ### Nix Dev Shell
 
