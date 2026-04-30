@@ -19,6 +19,9 @@
         nixfmt-rfc-style
         nix-output-monitor
         d-spy
+        python3
+        python3Packages.vncdo
+        python3Packages.mcp
       ]);
   };
 }
