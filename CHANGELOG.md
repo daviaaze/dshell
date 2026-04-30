@@ -11,9 +11,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Media player widget** re-enabled in Quick Settings expander — shows active MPRIS players with cover art, controls, and playback status
 - **Power menu** in Quick Settings tray — replaces instant shutdown with a popover containing Lock, Log Out, Suspend, Reboot, and Power Off options
+- **`ShellState` singleton** (`src/lib/shellState.ts`) — centralizes reactive state for launcher, quick settings, and screen lock; decouples CLI layer from widgets
+- **`WindowManager` singleton** (`src/lib/windowManager.ts`) — replaces direct `app.*` window mutations with a typed registry
+- **`MonitorService` singleton** (`src/lib/monitors.ts`) — deduplicates monitor tracking and fixes hot-plug via proper `items-changed` signal
+- **Utility modules** — `src/lib/gjsUtils.ts` (`toArray`, `listLength`), `src/lib/audio.ts` (`getVolumeIcon`), `src/lib/time.ts` (`fmtOffset`, `cityName`)
+- **Widget mount isolation** — each widget in `widget/index.tsx` is wrapped in `try/catch` so one failure does not prevent others from mounting
+- **Bar indicator decomposition** — `systemIndicators.tsx` split into individual components under `src/widget/bar/indicators/`
+- **Network widget decomposition** — `network.tsx` split into `utils.ts`, `apList.tsx`, `passwordDialog.tsx`, `wifiPopover.tsx`, and `index.tsx`
+- **NixOS module layering** — new `programs.shade.desktop` option group; Hyprland imports are now conditional on `desktop.enable` instead of unconditional
+- **Lazy-loaded Settings window** — `Adw.PreferencesWindow` is no longer created eagerly on startup; created on first open via `shade-shell toggle settings`
+- **Touchpad Python script extraction** — removed embedded script from `touchpad.ts`; script lives in `data/scripts/toggle-touchpad.py` (already installed by Meson); no `/tmp` fallback
+- **Window title in bar** — shows active window title + app icon in the bar center; hidden on empty workspace
+- **Keyboard layout indicator** — shows current XKB layout short code (e.g., "US", "BR") in system indicators; click cycles layout
+- **Bar module toggles** — all bar components (launcher, workspaces, window title, system resources, clock, weather, system indicators, keyboard layout) can be shown/hidden individually from Settings → Bar
+- **System updates checker** — `UpdatesService` singleton detects OS (NixOS, Arch, Fedora) and polls for pending updates every 30 min; shows count badge in bar system indicators; click to refresh
+- **Night Light** — `NightLight` singleton manages `hyprsunset` subprocess for blue light filtering; QS toggle with temperature slider (2000K–6500K) and auto-schedule via sunrise/sunset; settings in Settings → General
+- **Idle / Auto-Lock controls** — `Hypridle` singleton generates `~/.config/hypr/hypridle.conf` dynamically and manages `hypridle` subprocess; QS toggle with lock timeout and dim-before-lock options; respects Caffeinated inhibit state
+- **Clipboard History** — launcher prefix mode: typing `>` switches to clipboard search via `cliphist`; shows text preview and image indicators; Enter copies selected item back to clipboard
+- **Per-Application Volume Mixer** — `AppMixer` polls `pw-dump` for audio output streams; shows app icon, name, mute toggle, and volume slider for each active stream in Quick Settings below speaker slider
+- **Notification History** — `NotificationHistory` singleton persists last 100 notifications to `$XDG_CACHE_HOME/shade/notifications.json`; QS notification list has history view with timestamps and per-entry delete; popup shows countdown progress bar
+- **Dynamic Theming (Material You)** — `Theming` singleton runs `matugen` on wallpaper change to extract accent colors; injects CSS via `Gtk.CssProvider`; toggle and regenerate button in Settings → General
+- **Window Switcher (Alt-Tab)** — `src/widget/windowswitcher/` with MRU sorting, keyboard navigation (Tab/Shift+Tab/Enter/Escape/Q), app icons, and workspace badges; bound to `Super+Tab` in Hyprland config
+- **Dock / Taskbar** — `src/widget/dock/` with pinned + running apps, active/running indicators, left-click focus/launch, right-click context menu (Focus/Close/Pin); settings in Settings → Bar
+- **CAVA Audio Visualizer** — `AstalCava` integration rendering frequency bars in Quick Settings media expander when enabled; bar count and framerate configurable via GSettings
 
 ### Fixed
 
+- **P0/P1 crash bugs** — display null guard, slider subscription leak, fingerprint listener accumulation, wallpaper async loading, screenshot race condition, auto-cpufreq timeout leak, inhibit cookie leak, weather signal leak, geolocation dedup + retry, touchpad stale lock file
+- **Service initialization order** — `Weather`, `ColorScheme`, and `Inhibit` no longer call `useSettings()` in constructors; they use explicit `init()` methods
 - **`setScreelocked` typo** fixed to `setScreenlocked` across all files (index, lockscreen, requestHandler, tray)
 - **Settings wallpaper dialog** no longer crashes when user cancels the file picker
 - **Weather widgets** (bar and QS expander) now handle null `info` gracefully during initialization
@@ -35,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`dev` script** now compiles schemas with `glib_compile_schemas` and uses `&&` chaining
 - **Wallpaper install path** now correctly installs to `datadir/shade-shell/`
 - **Nix module** fixed: `bindm` syntax, removed unloaded plugin config, added `package` option, fixed `layerrule` syntax (`blur on`, `ignore_alpha`), neutralized personal defaults, added missing wrapper packages
+- **Flake wrapper packages** expanded: added `cliphist`, `hyprsunset`, `hypridle`, `matugen`; added `astal-cava` to build inputs
+- **Hyprland binds** added `SUPER+TAB` for window switcher; fixed `XF86TouchpadToggle` to use installed script path instead of `/tmp`
 
 ## [0.2.1] - 2026-04-29
 

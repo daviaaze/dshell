@@ -38,7 +38,7 @@
 
 ### A.1 — Fix Remaining P0/P1 Crash Bugs
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P0
 - **Cross-refs:** AUDIT.md P0.14, P1.2–P1.13, P1.17
@@ -70,7 +70,7 @@
 
 ### A.2 — Extract `ShellState` Singleton
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P1
 - **Cross-refs:** AUDIT.md P2.5, P2.8
@@ -117,7 +117,7 @@
 
 ### A.3 — Extract `WindowManager` Singleton
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P1
 
@@ -156,7 +156,7 @@
 
 ### A.4 — Fix Service Initialization Order
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P1
 - **Cross-refs:** AUDIT.md P2.5
@@ -190,7 +190,7 @@
 
 ### A.5 — Extract Utility Modules
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P1
 - **Cross-refs:** AUDIT.md P2.1–P2.3, P2.6
@@ -226,7 +226,7 @@
 
 ### B.1 — Decompose `systemIndicators.tsx`
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P1
 
@@ -266,7 +266,7 @@
 
 ### B.2 — Decompose `network.tsx`
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P1
 
@@ -290,7 +290,7 @@
 
 ### B.3 — Introduce Widget Mount Isolation
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P1
 
@@ -322,7 +322,7 @@
 
 ### B.4 — Extract `MonitorService` Singleton
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P1
 
@@ -355,7 +355,7 @@
 
 ### C.1 — Restructure NixOS Module (Shell / Desktop Layers)
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** High
 - **Priority:** P2
 - **Cross-refs:** AUDIT.md P2.20, P2.21
@@ -405,7 +405,7 @@
 
 ### C.2 — Lazy-Load Settings Window
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P2
 - **Cross-refs:** AUDIT.md P3.1
@@ -433,7 +433,7 @@
 
 ### C.3 — Extract Touchpad Python Script
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P1
 - **Cross-refs:** AUDIT.md P1.13, P2.20; ROADMAP 1.9
@@ -463,7 +463,7 @@
 
 ### D.1 — Clipboard History Manager
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.1
@@ -482,7 +482,7 @@
 
 ### D.2 — Night Light / Blue Light Filter
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low–Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.2
@@ -500,7 +500,7 @@
 
 ### D.3 — Per-Application Volume Mixer
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.3
@@ -518,7 +518,7 @@
 
 ### D.4 — Idle / Auto-Lock / Screen Dimming
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.5
@@ -537,7 +537,7 @@
 
 ### D.5 — System Updates Checker
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.4
@@ -550,11 +550,18 @@
 
 **Acceptance:** See ROADMAP 1.4.
 
+**Implementation notes:**
+- `UpdatesService` GObject singleton with `@getter/@setter` for `count` and `checking`
+- OS detection via `/etc/os-release` (supports NixOS, Arch, Fedora)
+- `exec_asyncv` with backend-specific output parsing; handles non-zero exit codes (e.g., dnf exits 100 when updates exist)
+- Bar schema key `show-updates` (default true)
+- Indicator widget at `src/widget/bar/indicators/updates.tsx` — clickable to trigger manual check, tooltip shows status
+
 ---
 
 ### D.6 — Bar Module Toggle UI
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 2.4
@@ -572,7 +579,7 @@
 
 ### D.7 — Notification History & Enhanced Popups
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.7
@@ -592,7 +599,7 @@
 
 ### D.8 — Window Title in Bar
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 0.5
@@ -611,7 +618,7 @@
 
 ### D.9 — Keyboard Layout Indicator
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 0.3
@@ -635,7 +642,7 @@
 
 ### E.1 — Dynamic Wallpaper-Driven Theming (Material You)
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P3
 - **Cross-refs:** ROADMAP 3.1
@@ -654,7 +661,7 @@
 
 ### E.2 — Window Switcher (Alt-Tab Replacement)
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** High
 - **Priority:** P3
 - **Cross-refs:** ROADMAP 2.1
@@ -673,7 +680,7 @@
 
 ### E.3 — Dock / Taskbar
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Priority:** P3
 - **Cross-refs:** ROADMAP 2.2
@@ -692,7 +699,7 @@
 
 ### E.4 — CAVA Audio Visualizer
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Priority:** P3
 - **Cross-refs:** ROADMAP 3.2
