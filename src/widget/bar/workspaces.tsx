@@ -3,18 +3,7 @@ import Apps from "gi://AstalApps"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, For, Accessor, With } from "gnim"
-
-function toArray<T>(list: any): T[] {
-  if (!list) return []
-  if (Array.isArray(list)) return list
-  const arr: T[] = []
-  let l = list
-  while (l) {
-    arr.push(l.data)
-    l = l.next
-  }
-  return arr
-}
+import { toArray } from "#/lib/gjsUtils"
 
 const hyprland = Hyprland.get_default()
 

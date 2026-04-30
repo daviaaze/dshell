@@ -3,6 +3,7 @@ import Gdk from "gi://Gdk?version=4.0";
 import Gtk from "gi://Gtk?version=4.0";
 import { For, onCleanup } from "gnim";
 import { app } from "#/App";
+import WindowManager from "#/lib/windowManager";
 import { Gdk2HyprMonitor, monitors } from "#/lib/monitors";
 import { useSettings } from "#/lib/settings";
 import SystemIndicators from "./systemIndicators";
@@ -11,20 +12,23 @@ import Workspaces from "./workspaces";
 import Clock from "./clock";
 import Launcher from "./launcher";
 import { WeatherButton } from "./weather";
+import WindowTitle from "./windowTitle";
+import KeyboardIndicator from "./indicators/keyboard";
 
 export default () => {
-  const { position } = useSettings().bar
+  const bar = useSettings().bar
+  const { position } = bar
   const { TOP, BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor
   const vertical = position.as((p) =>
     p === LEFT || p === RIGHT)
 
-  return <For each={monitors()}>
+  return <For each={monitors}>
     {(monitor: Gdk.Monitor) =>
       <Astal.Window
         $={self => {
-          app.bar.push(self)
+          WindowManager.get_default().registerBar(self)
           onCleanup(() => {
-            app.bar = app.bar.filter(bar => bar !== self)
+            WindowManager.get_default().unregisterBar(self)
             self.destroy()
           })
         }}
@@ -57,17 +61,27 @@ export default () => {
               Gtk.Orientation.VERTICAL :
               Gtk.Orientation.HORIZONTAL)}>
 
-            <Launcher />
-            <Gtk.Separator />
-            <SystemUsage vertical={vertical} />
+            <Launcher visible={bar.showLauncher} />
+            <Gtk.Separator visible={bar.showLauncher} />
+            <SystemUsage vertical={vertical} visible={bar.showSystemResources} />
 
           </Gtk.Box>
 
-          <Workspaces
-            $type={"center"}
-            vertical={vertical}
-            monitor={Gdk2HyprMonitor(monitor)}
-          />
+          <Gtk.Box
+            $type="center"
+            spacing={8}
+            valign={Gtk.Align.CENTER}
+            halign={Gtk.Align.CENTER}
+            orientation={vertical.as(v => v ?
+              Gtk.Orientation.VERTICAL :
+              Gtk.Orientation.HORIZONTAL)}>
+            <Workspaces
+              vertical={vertical}
+              monitor={Gdk2HyprMonitor(monitor)}
+              visible={bar.showWorkspaces}
+            />
+            <WindowTitle visible={bar.showWindowTitle} />
+          </Gtk.Box>
 
           <Gtk.Box
             $type="end"
@@ -75,11 +89,11 @@ export default () => {
             orientation={vertical.as(v => v ?
               Gtk.Orientation.VERTICAL :
               Gtk.Orientation.HORIZONTAL)}>
-            <Clock vertical={vertical} />
-            <Gtk.Separator />
-            <WeatherButton vertical={vertical} />
-            <Gtk.Separator />
-            <SystemIndicators vertical={vertical} />
+            <Clock vertical={vertical} visible={bar.showClock} />
+            <Gtk.Separator visible={bar.showClock.as(v => v && bar.showWeather.get())} />
+            <WeatherButton vertical={vertical} visible={bar.showWeather} />
+            <Gtk.Separator visible={bar.showWeather.as(v => v && bar.showSystemIndicators.get())} />
+            <SystemIndicators vertical={vertical} visible={bar.showSystemIndicators} />
 
           </Gtk.Box>
         </Gtk.CenterBox>

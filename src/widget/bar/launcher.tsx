@@ -1,13 +1,14 @@
 import Gdk from "gi://Gdk?version=4.0";
 import Gtk from "gi://Gtk?version=4.0";
-import { launcherOpen, setLauncherOpen } from "..";
+import ShellState from "#/lib/shellState"
+import { createBinding } from "gnim"
 
 export default () => {
   return <Gtk.ToggleButton
     cursor={Gdk.Cursor.new_from_name("pointer", null)}
-    active={launcherOpen}
+    active={createBinding(ShellState.get_default(), "launcherOpen")}
     onClicked={() =>
-      setLauncherOpen(!launcherOpen.get())
+      ShellState.get_default().toggleLauncher()
     }>
     <Gtk.Image
       iconName={"nix-snowflake"}
