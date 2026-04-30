@@ -117,22 +117,22 @@ pnpm run lint
 pnpm run types
 
 # Full build: wipes Meson build dir, bundles, compiles schemas, installs to ./dist
+# Note: ./dist/bin/shade-shell is unwrapped and not runnable directly
 pnpm run build
 
-# Development build + run with local schema directory
+# Development: build via Nix and run with proper wrappers
 pnpm run dev
 ```
 
 ### Manual Build Steps
 
 ```bash
-# Setup and build
+# Setup and build (validates Meson install only — binary is unwrapped)
 meson setup --prefix "$(pwd)/dist" build --wipe
 meson install -C build
-
-# Run with local schemas
-GSETTINGS_SCHEMA_DIR="$(pwd)/dist/share/glib-2.0/schemas" ./dist/bin/shade-shell
 ```
+
+> **Note:** `./dist/bin/shade-shell` is **unwrapped** — it lacks `GI_TYPELIB_PATH`, `LD_PRELOAD`, and `PATH` setup. It will crash with "Typelib not found" if run directly. Use `nix build` or `nix run` for a working binary.
 
 ### Nix Dev Shell
 
