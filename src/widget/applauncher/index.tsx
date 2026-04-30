@@ -5,11 +5,16 @@ import Gtk from "gi://Gtk?version=4.0";
 import Gdk from "gi://Gdk?version=4.0";
 import { createBinding, createState, For } from "gnim";
 import AppButton from "./appButton";
+import ClipboardButton from "./clipboardButton";
+import { searchClipboard } from "#/lib/clipboard";
 import { useSettings } from "../../lib/settings";
 import { app } from "#/App";
-import { launcherOpen, qsOpen, setLauncherOpen, setQsOpen } from "..";
+import WindowManager from "#/lib/windowManager";
+import ShellState from "#/lib/shellState"
 
 const { TOP, BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor
+
+type LauncherMode = "apps" | "clipboard"
 
 export default () => {
   const barCfg = useSettings().bar
@@ -17,27 +22,40 @@ export default () => {
   const apps = new Apps.Apps()
 
   const [list, setList] = createState(apps.get_list())
+  const [mode, setMode] = createState<LauncherMode>("apps")
   let entryRef: Gtk.Entry | null = null
 
+  const updateSearch = (text: string) => {
+    if (text.startsWith(">")) {
+      setMode("clipboard")
+      const query = text.slice(1).trim()
+      setList(searchClipboard(query) as any)
+    } else {
+      setMode("apps")
+      setList(apps.fuzzy_query(text) as any)
+    }
+  }
+
   return <Astal.Window
-    $={self => app.applauncher = self}
+    $={self => WindowManager.get_default().setApplauncher(self)}
     valign={Gtk.Align.CENTER}
     name={"applauncher"}
     margin={12}
     application={app}
-    visible={launcherOpen}
+    visible={createBinding(ShellState.get_default(), "launcherOpen")}
     onNotifyVisible={self => {
       if ((barCfg.position.get() === LEFT ||
         barCfg.position.get() === RIGHT)
-        && self.visible && qsOpen.get())
-        setQsOpen(false)
+        && self.visible && ShellState.get_default().qsOpen)
+        ShellState.get_default().qsOpen = false
       if (self.visible) {
         entryRef?.grab_focus()
       } else {
         entryRef?.set_text("")
-        setList(apps.get_list())
+        setList(apps.get_list() as any)
+        setMode("apps")
       }
-      setLauncherOpen(self.visible)
+      ShellState.get_default().launcherOpen = self.visible
     }}
     cssClasses={["card", "frame", "background"]}
     css={"padding-right:0px;"}
@@ -54,27 +72,36 @@ export default () => {
       <Gtk.Entry
         hexpand
         css={"margin-right:4px;"}
-        placeholderText={"Search your apps"}
-        $={self => { entryRef = self }}
-        onNotifyText={self => setList(
-          apps.fuzzy_query(self.text)
+        placeholderText={mode.as(m =>
+          m === "clipboard" ? "Search clipboard history..." : "Search your apps"
         )}
+        $={self => { entryRef = self }}
+        onNotifyText={self => updateSearch(self.text)}
         onActivate={self => {
-          app.applauncher.visible = false;
-          const results = apps.fuzzy_query(self.text)
-          if (results.length > 0) results[0].launch();
+          WindowManager.get_default().applauncher!.visible = false;
+          if (mode.get() === "apps") {
+            const results = apps.fuzzy_query(self.text)
+            if (results.length > 0) results[0].launch();
+          }
         }}>
         <Gtk.EventControllerKey
           $={self => {
             self.connect("key-pressed", (_, keyval) => {
               if (keyval === Gdk.KEY_Escape) {
-                app.applauncher.visible = false
+                WindowManager.get_default().applauncher!.visible = false
                 return true
               }
               return false
             })
           }} />
       </Gtk.Entry>
+      <Gtk.Label
+        visible={mode.as(m => m === "clipboard")}
+        halign={Gtk.Align.START}
+        marginStart={4}
+        cssClasses={["caption"]}
+        label="Clipboard History — type &gt; to search"
+      />
       <Gtk.ScrolledWindow
         css={"padding-right:0px;"}
         hscrollbarPolicy={Gtk.PolicyType.NEVER}
@@ -88,9 +115,15 @@ export default () => {
             cssClasses={["title-3"]}
             marginTop={24}
             marginBottom={24}
-            label="No apps found" />
+            label={mode.as(m =>
+              m === "clipboard" ? "No clipboard items" : "No apps found"
+            )}
+          />
           <For each={list}>
-            {app => <AppButton application={app} />}
+            {item => mode.get() === "clipboard"
+              ? <ClipboardButton item={item as any} />
+              : <AppButton application={item as any} />
+            }
           </For>
         </Gtk.Box>
       </Gtk.ScrolledWindow>
