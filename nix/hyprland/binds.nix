@@ -73,7 +73,7 @@ in
     bindl = [
       ", XF86TouchpadToggle, exec, ${pkgs.python3}/bin/python3 ${config.programs.shade.package}/bin/toggle-touchpad.py"
       ",XF86MonBrightnessUp, exec, ${lib.getExe pkgs.brightnessctl} set +5%"
-      ",XF86MonBrightnessDown, exec, ${lib.getExe pkgs.brightnessctl} set -5%"
+      ",XF86MonBrightnessDown, exec, ${lib.getExe pkgs.brightnessctl} set 5%-"
     ];
 
     bindle = [
