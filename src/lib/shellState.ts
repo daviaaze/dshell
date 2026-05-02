@@ -1,4 +1,6 @@
+import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register, setter } from "gnim/gobject"
+import logger from "#/lib/logger"
 
 @register({ GTypeName: "ShellState" })
 export default class ShellState extends GObject.Object {
@@ -20,8 +22,9 @@ export default class ShellState extends GObject.Object {
 
   @setter(Boolean)
   set launcherOpen(v: boolean) {
+    logger.log(`ShellState.launcherOpen ${this.#launcherOpen} -> ${v}`)
     this.#launcherOpen = v
-    this.notify("launcherOpen")
+    this.notify("launcher-open")
   }
 
   @getter(Boolean)
@@ -31,8 +34,9 @@ export default class ShellState extends GObject.Object {
 
   @setter(Boolean)
   set qsOpen(v: boolean) {
+    logger.log(`ShellState.qsOpen ${this.#qsOpen} -> ${v}`)
     this.#qsOpen = v
-    this.notify("qsOpen")
+    this.notify("qs-open")
   }
 
   @getter(Boolean)

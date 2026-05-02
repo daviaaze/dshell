@@ -11,6 +11,7 @@ import { SettingsProvider } from "./lib/settings";
 import { requestHandler } from "./lib/requestHandler";
 import { widgets } from "./widget";
 import WindowManager from "./lib/windowManager";
+import logger from "./lib/logger";
 import css from "./shade.css"
 
 @register()
@@ -40,7 +41,7 @@ export class ShadeShell extends Adw.Application {
   private initCss() {
     const display = Gdk.Display.get_default()
     if (!display) {
-      print("Shade: No display available. Cannot initialize CSS.")
+      logger.warn("No display available. Cannot initialize CSS.")
       return
     }
     const provider = new Gtk.CssProvider()
@@ -54,6 +55,7 @@ export class ShadeShell extends Adw.Application {
   }
 
   vfunc_command_line(cmd: Gio.ApplicationCommandLine) {
+    logger.log(`vfunc_command_line isRemote=${cmd.isRemote}`)
     if (cmd.isRemote)
       requestHandler(cmd)
     else {

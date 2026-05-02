@@ -47,7 +47,11 @@ export default class Theming extends GObject.Object {
 
   #enabled = false
   #cssProvider: Gtk.CssProvider | null = null
-  #settings: any = null
+  #settings: {
+    dynamicThemingEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
+    wallpaperDay: { get(): string, subscribe(cb: () => void): () => void }
+    wallpaperNight: { get(): string, subscribe(cb: () => void): () => void }
+  } | null = null
 
   @getter(Boolean)
   get enabled() { return this.#enabled }
@@ -72,20 +76,24 @@ export default class Theming extends GObject.Object {
     } catch { return false }
   }
 
-  init(settings: any) {
+  init(settings: {
+    dynamicThemingEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
+    wallpaperDay: { get(): string, subscribe(cb: () => void): () => void }
+    wallpaperNight: { get(): string, subscribe(cb: () => void): () => void }
+  }) {
     this.#settings = settings
-    this.#enabled = settings.get_boolean("dynamic-theming-enabled")
+    this.#enabled = settings.dynamicThemingEnabled.get()
 
-    settings.connect("changed", () => {
-      const newEnabled = settings.get_boolean("dynamic-theming-enabled")
+    settings.dynamicThemingEnabled.subscribe(() => {
+      const newEnabled = settings.dynamicThemingEnabled.get()
       if (newEnabled !== this.#enabled) {
         this.enabled = newEnabled
       }
     })
 
     // Listen for wallpaper changes
-    settings.connect("changed::wallpaper-day", () => this.#onWallpaperChange())
-    settings.connect("changed::wallpaper-night", () => this.#onWallpaperChange())
+    settings.wallpaperDay.subscribe(() => this.#onWallpaperChange())
+    settings.wallpaperNight.subscribe(() => this.#onWallpaperChange())
 
     if (this.#enabled) {
       this.#regenerate()
@@ -112,22 +120,23 @@ export default class Theming extends GObject.Object {
 
   #regenerate() {
     if (!this.#settings) return
-    const wallpaper = this.#settings.get_string("wallpaper-day")
+    const wallpaper = this.#settings.wallpaperDay.get()
     if (!wallpaper || !GLib.file_test(wallpaper, GLib.FileTest.EXISTS)) {
       print("[Theming] wallpaper not found:", wallpaper)
       return
     }
 
-    AstalIO.Process.exec_asyncv(["matugen", "image", wallpaper, "--json"])
-      .then((out: string) => {
+    AstalIO.Process.exec_asyncv(["matugen", "image", wallpaper, "--json"], (_, res) => {
+      try {
+        const out = AstalIO.Process.exec_asyncv_finish(res)
         const colors = parseMatugenJson(out)
         if (colors) {
           this.#applyColors(colors)
         }
-      })
-      .catch((e: Error) => {
-        print("[Theming] matugen failed:", e.message)
-      })
+      } catch (e) {
+        print("[Theming] matugen failed:", (e as Error).message)
+      }
+    })
   }
 
   #applyColors(colors: { primary: string, secondary: string, error: string }) {

@@ -13,13 +13,13 @@ export default ({ value, iconName }: {
       pixelSize={20} />
     <Gtk.LevelBar
       hexpand
-      $={self => self.set_value(value.get())}
+      $={self => self.set_value(value.get() ?? 0)}
       value={value}
     />
     <Gtk.Label
       cssClasses={["heading"]}
       label={value(v =>
-        Math.floor(v * 100)
+        Math.floor((v ?? 0) * 100)
           .toString()
           .concat("%"))
       }

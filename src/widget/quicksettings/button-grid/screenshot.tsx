@@ -3,15 +3,18 @@ import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding } from "gnim"
 
-const screenshot = Screenshot.get_default()
-
 export default () => {
+  const screenshot = Screenshot.get_default()
   return <Adw.SplitButton
     cssClasses={["raised"]}
     widthRequest={150}
     $={self => {
       self.connect("clicked", () => {
         screenshot.toggleRecording()
+      })
+      self.connect("destroy", () => {
+        const popover = self.popover
+        if (popover?.parent) popover.unparent()
       })
     }}
     popover={

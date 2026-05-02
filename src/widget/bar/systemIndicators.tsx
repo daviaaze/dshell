@@ -11,7 +11,6 @@ import BatteryIndicator from "./indicators/battery"
 import { SpeakerIndicator, MicrophoneIndicator } from "./indicators/audio"
 import DNDIndicator from "./indicators/dnd"
 import KeyboardIndicator from "./indicators/keyboard"
-import UpdatesIndicator from "./indicators/updates"
 
 export default ({ vertical }: { vertical: Accessor<boolean> }) => {
   const audio = Wireplumber.get_default()!.audio
@@ -40,7 +39,6 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       <BluetoothIndicator />
       <NetworkIndicator />
       <KeyboardIndicator />
-      <UpdatesIndicator />
       <BatteryIndicator />
       <MicrophoneIndicator />
       <SpeakerIndicator />

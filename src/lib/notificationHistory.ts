@@ -55,6 +55,15 @@ export default class NotificationHistory extends GObject.Object {
     super()
     this.#history = loadHistory()
 
+    // Defer Notifd init to avoid blocking main loop for 25s
+    // when another notification daemon is already registered.
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      this.#initNotifd()
+      return GLib.SOURCE_REMOVE
+    })
+  }
+
+  #initNotifd() {
     const notifd = Notifd.get_default()
     notifd.connect("notified", (_, id) => {
       const n = notifd.get_notification(id)

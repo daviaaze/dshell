@@ -19,7 +19,12 @@ export default class Hypridle extends GObject.Object {
   #dimTimeout = 240
   #dimEnabled = true
   #process: AstalIO.Process | null = null
-  #settings: any = null
+  #settings: {
+    autoLockEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
+    idleTimeout: { get(): number, subscribe(cb: () => void): () => void }
+    screenDimEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
+    screenDimTimeout: { get(): number, subscribe(cb: () => void): () => void }
+  } | null = null
   #inhibitId: number | null = null
 
   @getter(Boolean)
@@ -76,21 +81,38 @@ export default class Hypridle extends GObject.Object {
     } catch { return false }
   }
 
-  init(settings: any) {
+  init(settings: {
+    autoLockEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
+    idleTimeout: { get(): number, subscribe(cb: () => void): () => void }
+    screenDimEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
+    screenDimTimeout: { get(): number, subscribe(cb: () => void): () => void }
+  }) {
     this.#settings = settings
-    this.#enabled = settings.get_boolean("auto-lock-enabled")
-    this.#idleTimeout = settings.get_int("idle-timeout")
-    this.#dimEnabled = settings.get_boolean("screen-dim-enabled")
-    this.#dimTimeout = settings.get_int("screen-dim-timeout")
+    this.#enabled = settings.autoLockEnabled.get()
+    this.#idleTimeout = settings.idleTimeout.get()
+    this.#dimEnabled = settings.screenDimEnabled.get()
+    this.#dimTimeout = settings.screenDimTimeout.get()
 
-    settings.connect("changed", () => {
-      this.#enabled = settings.get_boolean("auto-lock-enabled")
-      this.#idleTimeout = settings.get_int("idle-timeout")
-      this.#dimEnabled = settings.get_boolean("screen-dim-enabled")
-      this.#dimTimeout = settings.get_int("screen-dim-timeout")
+    settings.autoLockEnabled.subscribe(() => {
+      this.#enabled = settings.autoLockEnabled.get()
       this.notify("enabled")
+      this.#apply()
+    })
+
+    settings.idleTimeout.subscribe(() => {
+      this.#idleTimeout = settings.idleTimeout.get()
       this.notify("idleTimeout")
+      this.#apply()
+    })
+
+    settings.screenDimEnabled.subscribe(() => {
+      this.#dimEnabled = settings.screenDimEnabled.get()
       this.notify("dimEnabled")
+      this.#apply()
+    })
+
+    settings.screenDimTimeout.subscribe(() => {
+      this.#dimTimeout = settings.screenDimTimeout.get()
       this.notify("dimTimeout")
       this.#apply()
     })

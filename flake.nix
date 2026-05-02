@@ -64,6 +64,7 @@
         ++ astalPackages;
 
       wrapperPackages = with pkgs; [
+        hyprland
         brightnessctl
         bash
         grim
@@ -74,6 +75,7 @@
         hyprsunset
         hypridle
         matugen
+        glib.bin
       ];
     in
     {
@@ -85,6 +87,7 @@
             nativeBuildInputs
             wrapperPackages
             ;
+          inherit (pkgs) pnpmConfigHook fetchPnpmDeps;
           lib = pkgs.lib;
         };
       };

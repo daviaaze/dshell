@@ -1,0 +1,14 @@
+[Unit]
+Description=Shade — Hyprland Adwaita Desktop Environment
+Documentation=https://github.com/caioasmuniz/shade
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=@wrapper_bin@/shade-shell
+Restart=on-failure
+RestartSec=3
+Type=exec
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,3 +1,23 @@
+---
+name: shade-shell
+license: GPL-3.0-only
+description: >
+  Agent guide for shade-shell — a personal desktop shell for Hyprland on Linux,
+  written in TypeScript and rendered with GTK 4 / Libadwaita via GJS,
+  using Astal (AyLur's toolkit) and Gnim.
+metadata:
+  author: caioasmuniz
+  version: "0.2.1"
+  repository: https://github.com/caioasmuniz/shade
+  runtime: GJS (GNOME JavaScript / SpiderMonkey)
+  compositor: Hyprland
+  ui_toolkit: GTK 4 + Libadwaita
+  reactive_framework: Gnim
+  build_system: Meson + esbuild
+  package_manager: pnpm
+  environment: Nix Flake
+---
+
 # Shade - Agent's Guide
 
 > **Shade** is a personal desktop shell for Hyprland on Linux, written in TypeScript and rendered with GTK 4 / Libadwaita via GJS. It provides a complete custom desktop environment including a status bar, application launcher, quick settings panel, on-screen display, lock screen, notification popups, and wallpaper support.
@@ -5,6 +25,39 @@
 ---
 
 ## Project Overview
+
+### Systemd User Service
+
+Shade runs as a **systemd user service** with automatic restart on crash:
+
+```nix
+# NixOS module (nix/module.nix)
+systemd.user.services.shade-shell = {
+  after = [ "graphical-session.target" ];
+  partOf = [ "graphical-session.target" ];
+  wantedBy = [ "graphical-session.target" ];
+  serviceConfig = {
+    ExecStart = "${cfg.package}/bin/shade-shell";
+    Restart = "on-failure";
+    RestartSec = "3";
+    Type = "exec";
+  };
+};
+```
+
+This replaces the old `uwsm-app -t service -- shade-shell` approach. Benefits:
+- **Auto-restart**: Shell comes back within 3s if it crashes
+- **No overhead**: No `uwsm-app` wrapper (~50ms saved per boot)
+- **Proper lifecycle**: Starts with the graphical session, stops when it ends
+- **Logging**: All stdout/stderr go to journald automatically
+- **Resource accounting**: Use `systemctl --user status shade-shell` to see memory/CPU
+
+For non-NixOS users, the service file is installed to `${datadir}/systemd/user/shade-shell.service` and can be enabled with:
+```bash
+systemctl --user enable --now shade-shell
+```
+
+---
 
 - **Name**: `shade-shell`
 - **Domain**: `com.caioasmuniz.shade_shell`
@@ -19,7 +72,7 @@
 - **Package Manager**: pnpm
 - **Environment**: Nix Flake
 
-The shell is designed to be launched once per session via `uwsm-app -t service -- shade-shell`. Remote invocations (e.g., `shade-shell toggle bar`) communicate with the running instance through `Gio.Application` command-line handling.
+The shell runs as a **systemd user service**, started when the graphical session begins and automatically restarted on crash. Remote invocations (e.g., `shade-shell toggle bar`) communicate with the running instance through `Gio.Application` command-line handling.
 
 ### Major Components
 
@@ -174,6 +227,8 @@ src/
 │   ├── colorScheme.ts      # Light/dark/auto theme with sunrise/sunset logic
 │   ├── gschema.ts          # GSettings schema definitions for gnim-schemas
 │   ├── inhibit.ts          # Idle inhibit (caffeinated) singleton
+│   ├── keybinds.ts         # Keybinding manager (registers with Hyprland via hyprctl)
+│   ├── logger.ts           # Shared logging utility with timestamps
 │   ├── monitors.ts         # Reactive Gdk monitor tracking + Hyprland mapping
 │   ├── requestHandler.ts   # CLI remote command handler (toggle, lockscreen)
 │   ├── settings.ts         # GSettings provider + gnim context for reactive settings
@@ -257,6 +312,99 @@ Properties use `@getter(Type)` and `@setter(Type)` decorators for GObject integr
 ---
 
 ## Known Pitfalls and Lessons Learned
+
+### `GObject.notify()` Property Name Must Be Kebab-Case
+When using `@setter(Boolean)` from `gnim/gobject`, the property is registered with a **kebab-cased** name (e.g., `launcher-open` for the JS name `launcherOpen`). Calling `this.notify("launcherOpen")` (camelCase) **does not emit `notify::launcher-open`** — GObject requires the kebab-cased property name. The signal never fires, so `createBinding` subscribers never update.
+
+**Always use kebab-case in `notify()`:**
+```ts
+// ❌ WRONG — signal never fires
+set launcherOpen(v: boolean) {
+  this.#launcherOpen = v
+  this.notify("launcherOpen")    // emits notify::launcherOpen
+}
+
+// ✅ CORRECT
+set launcherOpen(v: boolean) {
+  this.#launcherOpen = v
+  this.notify("launcher-open")   // emits notify::launcher-open
+}
+```
+
+Remember: `createBinding(obj, "launcherOpen")` internally calls `kebabify("launcherOpen")` → `"launcher-open"`, and subscribes to `notify::launcher-open`.
+
+### AstalNotifd: `get_default()` Blocks the Main Loop for 25 Seconds
+`Notifd.get_default()` performs a D-Bus proxy handshake. If another notification daemon (dunst, mako, etc.) is already registered on the session bus at `/org/freedesktop/Notifications`, the D-Bus call **blocks for 25 seconds** before timing out. During this time, the GJS main loop is entirely blocked — no idle callbacks, timeouts, or widget updates can fire.
+
+**Never call `Notifd.get_default()` directly in a constructor or during widget mounting.** Always defer it via `GLib.idle_add`:
+
+```ts
+// ❌ WRONG — blocks for 25s on startup
+const notifd = Notifd.get_default()
+
+// ✅ CORRECT — deferred to idle callback
+globalThis.__notifdReady = false
+const [notifd, setNotifd] = createState<Notifd.Notifd | null>(null)
+onMount(() => {
+  GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+    setNotifd(Notifd.get_default())
+    return GLib.SOURCE_REMOVE
+  })
+})
+```
+
+This applies to **any** code path that calls `Notifd.get_default()` — including indirect callers like `NotificationHistory`'s constructor.
+
+### D-Bus Remote Commands: Don't Spawn the Full Application
+Running `shade-shell toggle applauncher` from the command line spawns a new GJS process that loads the entire bundled application (1001KB JS, all GI modules), does GTK initialization, and then sends a D-Bus message to the running instance. This takes **~1 second per invocation**. The actual command handling after the D-Bus message arrives is ~30ms.
+
+**For keybindings, use a lightweight D-Bus tool instead of spawning the application:**
+
+```bash
+# Recommended: use gdbus (a ~7ms C binary)
+gdbus call --session \
+  --dest com.caioasmuniz.shade_shell \
+  --object-path /com/caioasmuniz/shade_shell \
+  --method org.gtk.Application.CommandLine \
+  /com/caioasmuniz/shade_shell \
+  "[b'shade-shell', b'toggle', b'applauncher']" \
+  "{}"
+```
+
+The helper script at `data/scripts/shade-toggle.sh` wraps this. It's installed to `$out/bin/shade-toggle.sh`.
+
+### `gnim/gobject` `@signal()` Decorator: Use GObject Types, Not JS Constructors
+The `@signal()` decorator from `gnim/gobject` expects **GObject type constants** (like `GObject.TYPE_STRING`) as param types, not JavaScript constructors like `String` or `Number`:
+
+```ts
+// ❌ WRONG — String doesn't have $gtype, signal registration fails
+@signal(String)
+failed(_reason: string) {}
+
+// ✅ CORRECT — uses proper GObject type
+@signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
+failed(_reason: string) {}
+```
+
+Only `Function`, `Array`, `Date`, `Map`, and `Set` have `$gtype` defined by default in `gnim/gobject`. All other JS constructors will cause silent signal registration failure (resulting in "No signal 'X' on object 'Y'" errors at runtime).
+
+### NotificationHistory Constructor Triggers 25s Notifd Block
+The `NotificationHistory` singleton in `src/lib/notificationHistory.ts` used to call `Notifd.get_default()` directly in its constructor. Since `NotificationHistory.get_default()` is called during `NotificationList` rendering (a sub-component of Quick Settings), this blocked the entire widget mounting sequence for 25 seconds.
+
+**Always defer D-Bus-heavy initializations in singletons to `GLib.idle_add`.**
+
+### Shared Logger Utility
+All logging should use the shared `logger` utility instead of raw `print()`:
+
+```ts
+import logger from "#/lib/logger"
+
+logger.log("message")    // prints: [Shade] HH:MM:SS.ffffff - message
+logger.warn("warning")   // same format, via console.warn
+logger.error("error")    // same format, via console.error
+```
+
+Every log is automatically prefixed with `[Shade]` and a microsecond-precision timestamp, making it easy to correlate events across different components in journalctl output.
 
 ### AstalNetwork `wifi` Property Is Set Once at Construction
 `AstalNetwork.Network.get_default().wifi` is initialized inside the GObject `construct` block and **never updated** afterward. If the WiFi device wasn't available when AstalNetwork first initialized (e.g., NetworkManager still starting, rfkill soft block, or resume from sleep), `wifi` will be `null` forever.
@@ -351,11 +499,16 @@ Not all logically-named icons exist in `adwaita-icon-theme`. Always verify icon 
 When an icon appears broken or missing at runtime, check the theme first with `gtk4-icon-browser` (if available) or search the installed icon directories under `/run/current-system/sw/share/icons` or the Nix store.
 
 ### Getting Runtime Logs
-Shade-shell is launched via `uwsm-app -t service -- shade-shell`, which redirects stdout/stderr to `/run/systemd/journal/stdout`. There is no dedicated log file.
+Shade-shell runs as a systemd user service. All stdout/stderr go to journald.
 
 **Query logs by executable name:**
 ```bash
 journalctl --user _COMM=shade-shell --boot 0 -n 200 --no-pager
+```
+
+**Check service status:**
+```bash
+systemctl --user status shade-shell
 ```
 
 **Query logs by PID (find it with `ps aux | grep shade`):**
@@ -427,7 +580,7 @@ programs.shade.enable = true;
 Enabling this:
 - Installs the `shade-shell` package and `adwaita-icon-theme`.
 - Configures PAM for `astal-auth`.
-- Starts the shell via `uwsm-app -t service -- shade-shell` on Hyprland launch.
+- Starts the shell as a systemd user service on graphical session start.
 - Optionally enables Hyprland layer blur rules for `gtk4-layer-shell`.
 
 ### Nix Derivation

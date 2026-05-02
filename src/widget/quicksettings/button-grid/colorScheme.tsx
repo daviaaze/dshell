@@ -10,6 +10,12 @@ export default () => {
   return <Adw.SplitButton
     cssClasses={["raised"]}
     widthRequest={150}
+    $={self => {
+      self.connect("destroy", () => {
+        const popover = self.popover
+        if (popover?.parent) popover.unparent()
+      })
+    }}
     onClicked={() => {
       if (colorScheme.colorScheme === DarkModes.LIGHT)
         return colorScheme.colorScheme = DarkModes.DARK

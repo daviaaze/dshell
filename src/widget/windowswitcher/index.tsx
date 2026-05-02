@@ -44,8 +44,9 @@ export default () => {
   const clientsList = clientsBinding.as(c => getSortedClients(c, mru))
 
   const clampUnsubscribe = clientsList.subscribe(list => {
-    if (selectedIndex.get() >= list.length) {
-      setSelectedIndex(Math.max(0, list.length - 1))
+    const len = list?.length ?? 0
+    if (selectedIndex.get() >= len) {
+      setSelectedIndex(Math.max(0, len - 1))
     }
   })
 
@@ -66,7 +67,7 @@ export default () => {
   }
 
   const handleKeyPressed = (_: Gtk.EventControllerKey, keyval: number): boolean => {
-    const clients = clientsList.get()
+    const clients = clientsList.get() ?? []
 
     switch (keyval) {
       case Gdk.KEY_Tab:
@@ -110,7 +111,7 @@ export default () => {
     if ((keyval === Gdk.KEY_Super_L || keyval === Gdk.KEY_Super_R ||
          keyval === Gdk.KEY_Meta_L || keyval === Gdk.KEY_Meta_R) && !superReleased) {
       superReleased = true
-      const clients = clientsList.get()
+      const clients = clientsList.get() ?? []
       if (clients[selectedIndex.get()]) {
         doFocus(clients[selectedIndex.get()])
       } else {
@@ -124,7 +125,7 @@ export default () => {
   let boxRef: Gtk.Box | null = null
 
   const onOpen = () => {
-    const clients = clientsList.get()
+    const clients = clientsList.get() ?? []
     setSelectedIndex(clients.length > 1 ? 1 : 0)
     superPressed = false
     superReleased = false
@@ -171,7 +172,10 @@ export default () => {
         {(client: AstalHyprland.Client) =>
           <SwitcherItem
             client={client}
-            selected={selectedIndex.as(idx => clientsList.get()[idx]?.address === client.address)}
+            selected={selectedIndex.as(idx => {
+            const clients = clientsList.get() ?? []
+            return clients[idx]?.address === client.address
+          })}
           />
         }
       </For>

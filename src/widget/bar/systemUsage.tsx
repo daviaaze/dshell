@@ -104,7 +104,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       settings.bar.systemMonitor ?
         AstalIO.Process.exec_async((
           settings.bar.systemMonitor as Accessor<any>)
-          .get()
+          .get(), () => {}
         ) : null}>
     <Gtk.Box
       orientation={vertical.as(v => v ?

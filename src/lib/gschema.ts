@@ -56,10 +56,6 @@ export const barSchema = new Schema({
     default: true,
     summary: "Show system indicators (network, battery, audio, etc.) in the bar"
   })
-  .key("show-updates", "b", {
-    default: true,
-    summary: "Show pending system updates indicator in the bar"
-  })
   .key("dock-enabled", "b", {
     default: false,
     summary: "Show the dock/taskbar at the bottom of the screen"

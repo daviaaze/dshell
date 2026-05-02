@@ -28,10 +28,10 @@ export default class FingerprintAuth extends GObject.Object {
   @signal()
   verified() {}
 
-  @signal(String)
+  @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
   failed(_reason: string) {}
 
-  @signal(String)
+  @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
   statusChanged(_status: string) {}
 
   async init() {

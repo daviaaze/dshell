@@ -3,12 +3,12 @@ import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding } from "gnim"
 
-const profile = AutoCpufreq.get_default()
-
-export default () => <Adw.SplitButton
+export default () => {
+  const profile = AutoCpufreq.get_default()
+  return <Adw.SplitButton
   cssClasses={["raised"]}
   widthRequest={150}
-  $={self =>
+  $={self => {
     self.connect("clicked", () => {
       const p = profile.get_active_profile()
       if (p === "power-saver")
@@ -17,7 +17,12 @@ export default () => <Adw.SplitButton
         profile.set_active_profile("performance")
       else
         profile.set_active_profile("power-saver")
-    })}
+    })
+    self.connect("destroy", () => {
+      const popover = self.popover
+      if (popover?.parent) popover.unparent()
+    })
+  }}
   popover={
     <Gtk.Popover cssClasses={[]}>
       <Gtk.Box
@@ -49,4 +54,5 @@ export default () => <Adw.SplitButton
           "Balanced" :
           "Performance"
     )} />
-</Adw.SplitButton>
+  </Adw.SplitButton>
+}

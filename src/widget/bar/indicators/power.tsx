@@ -2,10 +2,13 @@ import Gtk from "gi://Gtk?version=4.0"
 import PowerProf from "gi://AstalPowerProfiles"
 import { createBinding } from "gnim"
 import AutoCpufreq, { iconForProfile } from "#/lib/autoCpufreq"
+import logger from "#/lib/logger"
 
 export default () => {
   const autoCpufreq = AutoCpufreq.get_default()
+  logger.log("PowerIndicator: PowerProf.get_default()...")
   const powerprof = PowerProf.get_default()
+  logger.log("PowerIndicator: PowerProf done")
 
   if (autoCpufreq.available) {
     return <Gtk.Image

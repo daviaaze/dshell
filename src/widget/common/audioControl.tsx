@@ -1,13 +1,13 @@
 import Wireplumber from "gi://AstalWp"
 import Gtk from "gi://Gtk?version=4.0"
-import { Accessor, createBinding, createComputed, createState, For } from "gnim"
+import { Accessor, createBinding, createComputed, createState, For, With } from "gnim"
 import { Slider } from "./slider"
 import { getVolumeIcon } from "#/lib/audio"
 
 export { getVolumeIcon }
 
 interface AudioControlProps {
-  defaultDevice: Wireplumber.Endpoint
+  defaultDevice: Accessor<Wireplumber.Endpoint | null>
   devices: Accessor<Wireplumber.Endpoint[]>
   visible?: Accessor<boolean> | boolean
   mutedIcon: string
@@ -54,14 +54,18 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIco
       cssClasses={["audio-config"]}
       orientation={Gtk.Orientation.VERTICAL}>
       <Gtk.Box spacing={4}>
-        <Slider
-          icon={getVolumeIcon(defaultDevice, mutedIcon)}
-          min={0}
-          max={100}
-          value={createBinding(defaultDevice, 'volume')
-            .as(v => v * 100)}
-          setValue={value => defaultDevice.set_volume(value / 100)}
-        />
+        <With value={defaultDevice}>
+          {device => device ? (
+            <Slider
+              icon={getVolumeIcon(device, mutedIcon)}
+              min={0}
+              max={100}
+              value={createBinding(device, 'volume')
+                .as(v => v * 100)}
+              setValue={value => device.set_volume(value / 100)}
+            />
+          ) : null}
+        </With>
         <Gtk.Button
           onClicked={() =>
             setRevealed(!revealed.get())}

@@ -5,6 +5,7 @@ import { createBinding } from "gnim";
 import { app } from "#/App";
 import WindowManager from "#/lib/windowManager";
 import { useSettings } from "../../lib/settings";
+import logger from "#/lib/logger";
 import { NotificationList } from "./notificationList";
 import { TrayBox } from "./tray";
 import { AudioConfig, BrightnessSlider, MicConfig } from "./sliders";
@@ -20,12 +21,17 @@ export default () => {
   const { TOP, BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor
 
   return <Astal.Window
-    $={self => WindowManager.get_default().setQuicksettings(self)}
+    $={self => {
+      WindowManager.get_default().setQuicksettings(self)
+      self.connect("realize", () => logger.log("quicksettings realized"))
+      self.connect("map", () => logger.log("quicksettings mapped"))
+    }}
     margin={12}
     application={app}
     name={"quicksettings"}
     visible={createBinding(ShellState.get_default(), "qsOpen")}
     onNotifyVisible={self => {
+      logger.log(`quicksettings visible -> ${self.visible}`)
       if ((barCfg.position.get() === LEFT ||
         barCfg.position.get() === RIGHT)
         && self.visible && ShellState.get_default().launcherOpen)
@@ -37,14 +43,14 @@ export default () => {
     anchor={barCfg.position.as(p =>
       TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM
     )}
+    widthRequest={420}
     monitor={createBinding(hyprland, "focusedMonitor")
       .as(m => m.id)}>
     <Gtk.ScrolledWindow
       propagateNaturalHeight
       hscrollbarPolicy={Gtk.PolicyType.NEVER}
       vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-      vexpand
-      hexpand>
+      vexpand>
       <Gtk.Box spacing={8}
         css={"padding-right: 12px;"}
         orientation={Gtk.Orientation.VERTICAL}>

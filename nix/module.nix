@@ -9,7 +9,7 @@ let
   cfg = config.programs.shade;
 in
 {
-  imports = lib.mkIf cfg.desktop.enable [
+  imports = [
     inputs.hyprland.nixosModules.default
     ./hyprland
   ];
@@ -70,7 +70,19 @@ in
           pkgs.wvkbd
         ];
         security.pam.services.astal-auth = {};
-        programs.hyprland.settings.exec-once = [ "uwsm-app -t service -- shade-shell" ];
+        # Start shade-shell as a systemd user service with auto-restart on failure
+        systemd.user.services.shade-shell = {
+          description = "Shade — Hyprland Adwaita Desktop Environment";
+          after = [ "graphical-session.target" ];
+          partOf = [ "graphical-session.target" ];
+          wantedBy = [ "graphical-session.target" ];
+          serviceConfig = {
+            ExecStart = "${cfg.package}/bin/shade-shell";
+            Restart = "on-failure";
+            RestartSec = "3";
+            Type = "exec";
+          };
+        };
       })
       (lib.mkIf (cfg.shell.enable && cfg.shell.blur.enable) {
         programs.hyprland.settings.layerrule = [

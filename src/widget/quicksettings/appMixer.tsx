@@ -2,9 +2,12 @@ import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, For } from "gnim"
 import AppMixer from "#/lib/appMixer"
 import { Slider } from "../common/slider"
+import logger from "#/lib/logger"
 
 export default () => {
+  logger.log("AppMixer: get_default()")
   const mixer = AppMixer.get_default()
+  logger.log("AppMixer: done")
 
   return <Gtk.Box
     visible={createBinding(mixer, "streams").as(s => s.length > 0)}

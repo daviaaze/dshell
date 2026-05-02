@@ -1,11 +1,13 @@
 import AstalBluetooth from "gi://AstalBluetooth"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createState, For } from "gnim"
-
-const bluetooth = AstalBluetooth.get_default()
+import { createBinding, createComputed, createState, For } from "gnim"
+import logger from "#/lib/logger"
 
 export default () => {
+  logger.log("Bluetooth: get_default()")
+  const bluetooth = AstalBluetooth.get_default()
+  logger.log("Bluetooth: done")
   const [connectingAddress, setConnectingAddress] = createState<string | null>(null)
 
   const isConnecting = connectingAddress.as(addr => addr !== null)
@@ -21,6 +23,10 @@ export default () => {
       })
       self.connect("activate", () => {
         bluetooth.adapter.discoverable = true
+      })
+      self.connect("destroy", () => {
+        const popover = self.popover
+        if (popover?.parent) popover.unparent()
       })
     }}
     popover={
@@ -84,22 +90,18 @@ export default () => {
           </For>
         </Gtk.Box>
       </ Gtk.Popover> as Gtk.Popover}>
-    <Gtk.Box
-      spacing={8}
-      valign={Gtk.Align.CENTER}
-      halign={Gtk.Align.CENTER}>
-      {isConnecting.as(connecting => connecting
-        ? <Gtk.Spinner spinning />
-        : <Gtk.Image
-            iconName={createBinding(bluetooth, "isPowered")
-              .as(isPowered => isPowered ?
-                "bluetooth-symbolic" :
-                "bluetooth-disabled-symbolic"
-              )}
-          />)}
-      <Gtk.Label
-        label={createBinding(bluetooth, "isPowered")
-          .as(isPowered => isPowered ? "Bluetooth" : "Bluetooth Off")} />
-    </Gtk.Box>
+    <Adw.ButtonContent
+      iconName={createComputed([
+        isConnecting,
+        createBinding(bluetooth, "isPowered")
+      ], (connecting, powered) =>
+        connecting
+          ? "content-loading-symbolic"
+          : powered
+            ? "bluetooth-symbolic"
+            : "bluetooth-disabled-symbolic"
+      )}
+      label={createBinding(bluetooth, "isPowered")
+        .as(isPowered => isPowered ? "Bluetooth" : "Bluetooth Off")} />
   </Adw.SplitButton>
 }

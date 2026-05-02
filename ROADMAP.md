@@ -77,7 +77,7 @@
 
 ### 0.3 — Add Keyboard Layout Indicator to Bar
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Why:** Essential for multi-language users. Shows current XKB layout and allows switching. Standard in Waybar, HyprPanel, and GNOME.
 - **Files:**
@@ -133,7 +133,7 @@
 
 ### 0.5 — Window Title in Bar
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Why:** Standard in nearly every bar (Waybar, HyprPanel, faiyt-ags). Shows what window is focused and which app it belongs to. Currently Shade only shows workspace indicators with client icons, but no prominent active window title.
 - **Files:**
@@ -309,7 +309,7 @@
 
 ### 1.1 — Clipboard History Manager
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Why:** `cliphist` + `wl-clipboard` is in virtually every Hyprland dotfile. Integrating it into Shade eliminates an external dependency and feels native. The launcher is the ideal place for this — prefix-based search (`> `) keeps it fast.
 - **Files:**
@@ -350,7 +350,7 @@
 
 ### 1.2 — Night Light / Blue Light Filter Toggle
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low–Medium
 - **Why:** GNOME, KDE, macOS, and Windows all have this. Users expect it in Quick Settings. Reduces eye strain in evening hours.
 - **Files:**
@@ -391,7 +391,7 @@
 
 ### 1.3 — Per-Application Volume Mixer
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Why:** Current audio controls only show ENDPOINTS (output devices like headphones vs speakers). Users want to control STREAMS per-app: "Discord at 30%, Spotify at 80%, Firefox muted." This is standard in GNOME Settings, pavucontrol, and HyprPanel.
 - **Files:**
@@ -429,7 +429,7 @@
 
 ### 1.4 — System Updates Checker
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Why:** One-click visibility into pending updates is a standard bar feature (HyprPanel, Waybar custom scripts, GNOME extensions). For NixOS users, knowing when `nix flake update` has new inputs is valuable.
 - **Files:**
@@ -468,7 +468,7 @@
 
 ### 1.5 — Idle / Auto-Lock / Screen Dimming Controls
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Why:** Users expect Quick Settings toggles for screen auto-lock and idle timeout. Currently Shade only has a manual "Lock" button. `hypridle` is the standard Hyprland idle manager but Shade has no UI for it.
 - **Files:**
@@ -554,7 +554,7 @@
 
 ### 1.7 — Notification History & Enhanced Popups
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Why:** Current notifications auto-dismiss after 5s and are lost forever. The popup already pauses on hover, but there is no persistent log, no dismiss countdown, and no per-app control. colorshell, faiyt-ags, and HyprPanel all keep history.
 - **Files:**
@@ -719,7 +719,7 @@
 
 ### 2.1 — Window Switcher (Alt-Tab Replacement)
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** High
 - **Why:** The single biggest UX gap vs. GNOME/KDE. Tiling WMs without a visual Alt-Tab switcher feel incomplete. `hyprshell` exists solely because of this need. Currently users must rely on workspace indicators or Hyprland's built-in (invisible) switcher.
 - **Files:**
@@ -765,7 +765,7 @@
 
 ### 2.2 — Dock / Taskbar for Running Apps
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Why:** The bar workspaces show clients per workspace, but there is no persistent taskbar showing running apps across all workspaces. GNOME's `dash-to-dock` is the most popular extension ever for a reason. A dock provides familiar window management.
 - **Files:**
@@ -848,7 +848,7 @@
 
 ### 2.4 — Bar Module Toggle UI
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Why:** HyprPanel and faiyt-ags let users enable/disable individual bar modules from a settings UI. Shade's bar layout is currently hardcoded in `bar/index.tsx` — every module is always visible. Users on small screens or minimal setups want to hide e.g., weather, system resources, or world clock.
 - **Files:**
@@ -890,7 +890,7 @@
 
 ### 3.1 — Dynamic Wallpaper-Driven Theming (Material You)
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Medium
 - **Why:** `matugen`, `pywal`, and Material You color extraction are extremely popular in the r/unixporn and Hyprland communities. matshell, colorshell, and Ateon all have this. The entire shell adapting to the wallpaper is a major visual differentiator.
 - **Files:**
@@ -939,7 +939,7 @@
 
 ### 3.2 — CAVA Audio Visualizer
 
-- **Status:** `[TODO]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Why:** Eye candy. Popular in AGS rices and HyprPanel. matshell ships an extensive library of CAVA styles. `libastal-cava` exists as an Astal service.
 - **Files:**

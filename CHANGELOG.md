@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Shared logger utility** (`src/lib/logger.ts`) — replaces all inline `const timestamp = ...` patterns with `logger.log()` that auto-prefixes every message with `[Shade] HH:MM:SS.ffffff -`
+- **Keybinding manager** (`src/lib/keybinds.ts`) — Shade now registers its own keybindings dynamically via `hyprctl keyword` at startup instead of relying on static Hyprland config; keybindings live in code, not Nix config
+- **Lightweight D-Bus dispatcher** (`data/scripts/shade-toggle.sh`) — shell script that sends remote commands to the running Shade instance via `gdbus` (~7ms overhead) instead of spawning a full GJS process (~1s overhead)
+- **SKILL.md** — pi-agent skill definition with YAML frontmatter for the agent skills ecosystem
+- **YAML frontmatter in AGENTS.md** — metadata fields for pi-agent integration
 - **Media player widget** re-enabled in Quick Settings expander — shows active MPRIS players with cover art, controls, and playback status
 - **Power menu** in Quick Settings tray — replaces instant shutdown with a popover containing Lock, Log Out, Suspend, Reboot, and Power Off options
 - **`ShellState` singleton** (`src/lib/shellState.ts`) — centralizes reactive state for launcher, quick settings, and screen lock; decouples CLI layer from widgets
@@ -41,6 +46,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Service initialization order** — `Weather`, `ColorScheme`, and `Inhibit` no longer call `useSettings()` in constructors; they use explicit `init()` methods
 - **`setScreelocked` typo** fixed to `setScreenlocked` across all files (index, lockscreen, requestHandler, tray)
 - **Settings wallpaper dialog** no longer crashes when user cancels the file picker
+- **`GObject.notify()` property names** fixed to use kebab-case (`"launcher-open"` instead of `"launcherOpen"`) in `ShellState` setters — signals were silently not firing, breaking all reactive bindings
+- **`AstalNotifd` 25-second D-Bus timeout** avoided in `NotificationHistory` constructor — deferred `Notifd.get_default()` to `GLib.idle_add` to prevent blocking the main loop
+- **Notification popup widget** no longer crashes with "out of tracking context" — restructured to mount immediately in Gnim scope and defer only `Notifd.get_default()` via `onMount` + `GLib.idle_add`
+- **`@signal()` decorator in `FingerprintAuth`** fixed — uses proper GObject types (`GObject.TYPE_STRING`) instead of raw `String` constructor, which caused `No signal 'statusChanged'` errors
+- **Tray icon null safety** — `gicon` null guard added to prevent `string_to_string` assertion failures
+- **Notification null safety** — `notif.app_icon`, `notif.summary`, `notif.body` guards against null values
+- **Startup time reduced** — removed 25-second Notifd D-Bus timeout from startup sequence by deferring initialization
+- **README.md** rewritten with full project documentation, architecture overview, and quick-start guide
 - **Weather widgets** (bar and QS expander) now handle null `info` gracefully during initialization
 - **Settings network panel** now uses reactive `createBinding` for wifi/wired instead of one-time property access
 - **Temperature reading** in systemUsage is now async via Gio instead of blocking the UI thread every second

@@ -6,10 +6,12 @@ import { Accessor, createBinding, For } from "gnim";
 import ShellState from "#/lib/shellState";
 import { PowerMenu } from "#/widget/common/powerMenu";
 import { openSettings } from "#/widget";
-
+import logger from "#/lib/logger"
 
 export const TrayBox = () => {
+  logger.log("Tray: get_default()...")
   const tray = Tray.get_default();
+  logger.log("Tray: done")
 
   const LockButton = () => (
     <Gtk.Button
@@ -26,7 +28,12 @@ export const TrayBox = () => {
     const menu = PowerMenu()
     return <Gtk.MenuButton
       cssClasses={["circular", "destructive-action"]}
-      popover={menu}>
+      popover={menu}
+      $={self => {
+        self.connect("destroy", () => {
+          if (menu.parent) menu.unparent()
+        })
+      }}>
       <Gtk.Image iconName={"system-shutdown-symbolic"} />
     </Gtk.MenuButton>
   };
@@ -65,12 +72,10 @@ export const TrayBox = () => {
           $={self => {
             self.insert_action_group("dbusmenu", item.actionGroup)
           }}
-          tooltipMarkup={createBinding(item, "tooltipMarkup")}
           popover={undefined}
-          //actionGroup={bind(item, "actionGroup").as(ag => ["dbusmenu", ag])}
           menuModel={item.menuModel}
           tooltip_markup={createBinding(item, "tooltip_markup")}>
-          <Gtk.Image gicon={item.gicon} />
+          <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />
         </Gtk.MenuButton>
       )}
     </For>

@@ -26,12 +26,13 @@ export default ({ notif, closeAction, pauseDismiss, resumeDismiss }: {
     <Gtk.Box spacing={8}>
       <Gtk.Image
         pixelSize={24}
+        visible={!!notif.app_icon}
         iconName={notif.app_icon} />
       <Gtk.Label
         wrap
         hexpand
         cssClasses={["title-4"]}
-        label={notif.summary} />
+        label={notif.summary || ""} />
       <Gtk.Button
         halign={Gtk.Align.END}
         valign={Gtk.Align.CENTER}
@@ -44,7 +45,7 @@ export default ({ notif, closeAction, pauseDismiss, resumeDismiss }: {
       maxWidthChars={25}
       cssClasses={["body"]}
       useMarkup={notif.body.startsWith('<')}
-      label={notif.body} />
+      label={notif.body || ""} />
     <Gtk.Label
       label={GLib.DateTime
         .new_from_unix_local(notif.time)

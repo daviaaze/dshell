@@ -30,10 +30,15 @@ export default () => {
         </Gtk.Box>
       </Gtk.Popover> as Gtk.Popover}
     widthRequest={150}
-    $={self =>
+    $={self => {
       self.connect("clicked", () => {
         touchpad.toggle()
-      })}>
+      })
+      self.connect("destroy", () => {
+        const popover = self.popover
+        if (popover?.parent) popover.unparent()
+      })
+    }}>
     <Adw.ButtonContent
       iconName={createBinding(touchpad, "disabled")
         .as(disabled => disabled ?

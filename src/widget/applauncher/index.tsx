@@ -11,6 +11,7 @@ import { useSettings } from "../../lib/settings";
 import { app } from "#/App";
 import WindowManager from "#/lib/windowManager";
 import ShellState from "#/lib/shellState"
+import logger from "#/lib/logger"
 
 const { TOP, BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor
 
@@ -37,13 +38,18 @@ export default () => {
   }
 
   return <Astal.Window
-    $={self => WindowManager.get_default().setApplauncher(self)}
+    $={self => {
+      WindowManager.get_default().setApplauncher(self)
+      self.connect("realize", () => logger.log("applauncher realized"))
+      self.connect("map", () => logger.log("applauncher mapped"))
+    }}
     valign={Gtk.Align.CENTER}
     name={"applauncher"}
     margin={12}
     application={app}
     visible={createBinding(ShellState.get_default(), "launcherOpen")}
     onNotifyVisible={self => {
+      logger.log(`applauncher visible -> ${self.visible}`)
       if ((barCfg.position.get() === LEFT ||
         barCfg.position.get() === RIGHT)
         && self.visible && ShellState.get_default().qsOpen)

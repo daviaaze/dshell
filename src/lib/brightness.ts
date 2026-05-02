@@ -73,25 +73,37 @@ export default class Brightness extends Object {
 
     if (screen) {
       const screenPath = `/sys/class/backlight/${screen}/brightness`;
-      this.#screenMonitor = AstalIO.monitor_file(screenPath, (f: string) => {
-        AstalIO.read_file_async(f)
-          .then((v) => {
-            this.#screen = Number(v) / this.#screenMax;
-            this.notify("screen");
-          })
-          .catch((e: Error) => print("failed to read screen brightness:", e.message));
+      const screenFile = Gio.File.new_for_path(screenPath);
+      this.#screenMonitor = AstalIO.monitor_file(screenPath, () => {
+        screenFile.load_contents_async(null, (_source, res) => {
+          try {
+            const [success, contents] = screenFile.load_contents_finish(res)
+            if (success) {
+              this.#screen = Number(new TextDecoder().decode(contents)) / this.#screenMax;
+              this.notify("screen");
+            }
+          } catch (e: any) {
+            print("failed to read screen brightness:", e.message)
+          }
+        })
       });
     }
 
     if (kbd) {
       const kbdPath = `/sys/class/leds/${kbd}/brightness`;
-      this.#kbdMonitor = AstalIO.monitor_file(kbdPath, (f: string) => {
-        AstalIO.read_file_async(f)
-          .then((v) => {
-            this.#kbd = Number(v) / this.#kbdMax;
-            this.notify("kbd");
-          })
-          .catch((e: Error) => print("failed to read kbd brightness:", e.message));
+      const kbdFile = Gio.File.new_for_path(kbdPath);
+      this.#kbdMonitor = AstalIO.monitor_file(kbdPath, () => {
+        kbdFile.load_contents_async(null, (_source, res) => {
+          try {
+            const [success, contents] = kbdFile.load_contents_finish(res)
+            if (success) {
+              this.#kbd = Number(new TextDecoder().decode(contents)) / this.#kbdMax;
+              this.notify("kbd");
+            }
+          } catch (e: any) {
+            print("failed to read kbd brightness:", e.message)
+          }
+        })
       });
     }
   }

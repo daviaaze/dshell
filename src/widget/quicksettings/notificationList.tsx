@@ -3,15 +3,26 @@ import Notifd from "gi://AstalNotifd";
 import Gtk from "gi://Gtk?version=4.0";
 import Gdk from "gi://Gdk?version=4.0";
 import GLib from "gi://GLib?version=2.0";
-import { createBinding, createState, For } from "gnim";
+import { createBinding, createState, For, onMount } from "gnim";
 import Notification from "../common/notification";
 import NotificationHistory from "#/lib/notificationHistory";
 
-export const NotificationList = () => {
-  const notifd = Notifd.get_default();
-  const history = NotificationHistory.get_default();
-  const [showHistory, setShowHistory] = createState(false);
-
+/**
+ * Inner content component — only mounted once Notifd is initialized.
+ * Avoids the 25s D-Bus proxy timeout when another notification daemon
+ * (dunst, mako, etc.) is already registered on the session bus.
+ */
+const NotificationListContent = ({
+  notifd,
+  history,
+  showHistory,
+  setShowHistory,
+}: {
+  notifd: Notifd.Notifd
+  history: NotificationHistory
+  showHistory: ReturnType<typeof createState<boolean>>[0]
+  setShowHistory: ReturnType<typeof createState<boolean>>[1]
+}) => {
   const Header = () => {
     const DNDButton = () => <Gtk.ToggleButton
       onClicked={self => notifd.dontDisturb = self.active}
@@ -186,4 +197,49 @@ export const NotificationList = () => {
         iconName={"user-offline-symbolic"} />
     </Gtk.Box>
   </Gtk.Box >
+}
+
+export const NotificationList = () => {
+  const [notifd, setNotifd] = createState<Notifd.Notifd | null>(null)
+  const history = NotificationHistory.get_default()
+  const [showHistory, setShowHistory] = createState(false)
+
+  // Defer Notifd initialization to avoid blocking the main loop
+  // when another notification daemon is already registered.
+  onMount(() => {
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      setNotifd(Notifd.get_default())
+      return GLib.SOURCE_REMOVE
+    })
+  })
+
+  return <Gtk.Box
+    orientation={Gtk.Orientation.VERTICAL}
+    cssClasses={["notif-list"]}
+    spacing={4}>
+    {/* Loading placeholder shown until Notifd is ready */}
+    <Gtk.Box
+      visible={notifd.as(n => n === null)}
+      orientation={Gtk.Orientation.VERTICAL}
+      spacing={12}
+      valign={Gtk.Align.CENTER}
+      halign={Gtk.Align.CENTER}
+      vexpand>
+      <Gtk.Spinner spinning cssClasses={["suggested-action"]} />
+      <Gtk.Label
+        cssClasses={["caption"]}
+        label="Loading notifications…" />
+    </Gtk.Box>
+    {/* Wrap in For to defer child evaluation until notifd is non-null.
+        Gnim does not support nested For inside With; using a singleton
+        array works around this limitation. */}
+    <For each={notifd.as(n => n ? [n] : [] as Notifd.Notifd[])}>
+      {(n: Notifd.Notifd) => <NotificationListContent
+        notifd={n}
+        history={history}
+        showHistory={showHistory}
+        setShowHistory={setShowHistory}
+      />}
+    </For>
+  </Gtk.Box>
 }

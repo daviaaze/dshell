@@ -10,6 +10,12 @@ export default () => {
     cssClasses={createBinding(hypridle, "enabled")
       .as(e => e ? ["raised"] : ["raised", "flat"])}
     widthRequest={150}
+    $={self => {
+      self.connect("destroy", () => {
+        const popover = self.popover
+        if (popover?.parent) popover.unparent()
+      })
+    }}
     onClicked={() => {
       hypridle.enabled = !hypridle.enabled
     }}

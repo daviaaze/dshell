@@ -14,6 +14,12 @@ export const WeatherButton = ({ vertical }:
       Gtk.ArrowType.RIGHT :
       Gtk.ArrowType.UP)}
     cursor={Gdk.Cursor.new_from_name("pointer", null)}
+    $={self => {
+      self.connect("destroy", () => {
+        const popover = self.popover
+        if (popover?.parent) popover.unparent()
+      })
+    }}
     popover={<Gtk.Popover
       valign={Gtk.Align.CENTER}
       halign={Gtk.Align.CENTER}

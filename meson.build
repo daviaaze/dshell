@@ -70,6 +70,17 @@ configure_file(
 
 install_data(['data/wp-day.jpg', 'data/wp-night.jpg'], install_dir : datadir / 'shade-shell')
 install_data('data/scripts/toggle-touchpad.py', install_dir: bindir)
+install_data('data/scripts/shade-toggle.sh', install_dir: bindir)
+
+# Install systemd user service for non-NixOS users (NixOS module uses its own)
+configure_file(
+  input: 'data/shade-shell.service.in',
+  output: 'shade-shell.service',
+  configuration: {
+    'wrapper_bin': bindir,
+  },
+  install_dir: datadir / 'systemd' / 'user',
+)
 
 import('gnome').post_install(
   # gtk_update_icon_cache: true,

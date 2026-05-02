@@ -33,7 +33,14 @@ export default () => {
     <Adw.ActionRow
       title="Timezones"
       subtitle={general.timezones.as(tzs => tzs.join(", "))}>
-      <Gtk.MenuButton $type="suffix">
+      <Gtk.MenuButton
+        $type="suffix"
+        $={self => {
+          self.connect("destroy", () => {
+            const popover = self.popover
+            if (popover?.parent) popover.unparent()
+          })
+        }}>
         <Gtk.Button
           cssClasses={["circular"]}
           iconName="list-add-symbolic"

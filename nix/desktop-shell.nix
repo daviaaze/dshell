@@ -4,12 +4,40 @@
   buildInputs,
   nativeBuildInputs,
   wrapperPackages,
+  pnpmConfigHook,
+  fetchPnpmDeps,
   ...
 }:
 let
   pname = "shade-shell";
   version = "0.2.1";
-  src = ../.;
+  src = lib.cleanSourceWith {
+    filter = path: type:
+      let
+        base = baseNameOf path;
+      in
+        ! (
+          lib.hasSuffix "~" base
+          || lib.hasSuffix ".o" base
+          || lib.hasSuffix ".so" base
+          || lib.hasSuffix ".qcow2" base
+          || base == ".git"
+          || base == "CVS"
+          || base == ".svn"
+          || base == ".hg"
+          || base == ".DS_Store"
+          || base == "__pycache__"
+          || base == "node_modules"
+          || base == "build"
+          || base == "dist"
+          || base == "@girs"
+          || base == ".direnv"
+          || base == "test-output"
+          || base == "result"
+          || lib.hasPrefix "result-" base
+        );
+    src = ../.;
+  };
 in
 pkgs.stdenv.mkDerivation {
   inherit
@@ -21,13 +49,13 @@ pkgs.stdenv.mkDerivation {
   src = pkgs.stdenv.mkDerivation {
     inherit src pname version;
     nativeBuildInputs = with pkgs; [
-      pnpm.configHook
+      pnpmConfigHook
       pnpm
     ];
 
     CI = "true";
 
-    pnpmDeps = pkgs.pnpm.fetchDeps {
+    pnpmDeps = fetchPnpmDeps {
       inherit pname version src;
       fetcherVersion = 2;
       hash = "sha256-FntfL6r9YuHAKXxR3FOwh8/8j0ODtZJAsAnGYdYkG6s=";

@@ -11,13 +11,13 @@ function readOverride(): string {
   for (const path of picklePaths) {
     try {
       const out = AstalIO.Process.exec(
-        `python3 -c "import pickle; print(pickle.load(open('${path}', 'rb')))" 2>/dev/null`
+        `python3 -c "import pickle; print(pickle.load(open('${path}', 'rb')))"`
       ).trim();
       if (out === "powersave" || out === "performance" || out === "default") {
         return out;
       }
     } catch (e: any) {
-      // Path likely doesn't exist or Python failed — try next
+      print("auto-cpufreq: failed to read override at", path, e.message);
       continue;
     }
   }
@@ -96,17 +96,27 @@ export default class AutoCpufreq extends GObject.Object {
   }
 
   set_active_profile(profile: string) {
-    if (!this.#available) return;
+    if (!this.#available) {
+      print("auto-cpufreq: not available, cannot set profile");
+      return;
+    }
     const force = profileToForce(profile);
-    if (!force) return;
+    if (!force) {
+      print("auto-cpufreq: unknown profile", profile);
+      return;
+    }
 
-    AstalIO.Process.exec_async(
-      `pkexec auto-cpufreq --force=${force}`,
-      (res) => {
+    print(`auto-cpufreq: setting profile to ${profile} (force=${force})`);
+
+    AstalIO.Process.exec_asyncv(
+      ["pkexec", "auto-cpufreq", `--force=${force}`],
+      (_, res) => {
         try {
-          AstalIO.Process.exec_async_finish(res);
+          AstalIO.Process.exec_asyncv_finish(res);
+          print("auto-cpufreq: force succeeded");
         } catch (e: any) {
-          print("auto-cpufreq force failed:", e.message);
+          print("auto-cpufreq: force failed:", e.message);
+          print("auto-cpufreq: ensure a polkit agent is running (e.g. lxqt-policykit-agent, polkit-gnome-authentication-agent-1)");
         }
         this.#updateState();
       }
@@ -116,8 +126,9 @@ export default class AutoCpufreq extends GObject.Object {
   #detect(): boolean {
     // Check binary exists
     try {
-      AstalIO.Process.exec("auto-cpufreq --version 2>/dev/null");
-    } catch {
+      AstalIO.Process.exec("auto-cpufreq --version");
+    } catch (e: any) {
+      print("auto-cpufreq: binary not found or failed:", e.message);
       return false;
     }
 

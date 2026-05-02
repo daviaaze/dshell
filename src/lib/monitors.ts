@@ -1,8 +1,10 @@
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
 import Gdk from "gi://Gdk?version=4.0"
 import Gio from "gi://Gio?version=2.0"
+import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register } from "gnim/gobject"
 import { createBinding } from "gnim"
+import logger from "#/lib/logger"
 
 const Gdk2HyprMonitor =
   (GMonitor: Gdk.Monitor) => {
@@ -28,13 +30,25 @@ class MonitorService extends GObject.Object {
     return this.#monitors
   }
 
+  #initialized = false
+
   constructor() {
     super()
+    this.#tryInit()
+  }
+
+  #tryInit() {
+    if (this.#initialized) return
     const display = Gdk.Display.get_default()
     if (!display) {
-      print("Shade: No display available for monitor tracking")
+      logger.log("No display available for monitor tracking, retrying...")
+      GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+        this.#tryInit()
+        return GLib.SOURCE_REMOVE
+      })
       return
     }
+    this.#initialized = true
     const monitorList = display.get_monitors()
     this.#update(monitorList)
 

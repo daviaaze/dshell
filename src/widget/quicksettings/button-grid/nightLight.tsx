@@ -10,6 +10,12 @@ export default () => {
     cssClasses={createBinding(nightLight, "enabled")
       .as(e => e ? ["raised", "suggested-action"] : ["raised"])}
     widthRequest={150}
+    $={self => {
+      self.connect("destroy", () => {
+        const popover = self.popover
+        if (popover?.parent) popover.unparent()
+      })
+    }}
     onClicked={() => {
       nightLight.enabled = !nightLight.enabled
     }}

@@ -1,13 +1,15 @@
 import Network from "gi://AstalNetwork"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createState, With } from "gnim"
+import { createBinding, createComputed, createState, With } from "gnim"
+import logger from "#/lib/logger"
 import WifiPopover from "./wifiPopover"
 import PasswordDialog from "./passwordDialog"
 
-const network = Network.get_default()
-
 export default () => {
+  logger.log("Network: get_default()")
+  const network = Network.get_default()
+  logger.log("Network: wifi binding")
   const wifiBinding = createBinding(network, "wifi")
 
   const [connectingAp, setConnectingAp] = createState<string | null>(null)
@@ -31,6 +33,10 @@ export default () => {
         } else {
           wifi.enabled = !wifi.enabled
         }
+      })
+      self.connect("destroy", () => {
+        const popover = self.popover
+        if (popover?.parent) popover.unparent()
       })
     }}
     popover={
@@ -65,24 +71,20 @@ export default () => {
           />
         </Gtk.Box>
       </Gtk.Popover> as Gtk.Popover}>
-    <Gtk.Box
-      spacing={8}
-      valign={Gtk.Align.CENTER}
-      halign={Gtk.Align.CENTER}>
-      {isConnecting.as(connecting => connecting
-        ? <Gtk.Spinner spinning />
-        : <Gtk.Image
-            iconName={wifiBinding.as(wifi =>
-              wifi?.iconName || "network-wireless-offline-symbolic"
-            )}
-          />)}
-      <Gtk.Label
-        label={wifiBinding.as(wifi => {
-          const ssid = wifi?.ssid
-          if (!ssid || ssid === "..." || ssid.trim() === "")
-            return wifi?.enabled ? "WiFi" : "WiFi Off"
-          return ssid
-        })} />
-    </Gtk.Box>
+    <Adw.ButtonContent
+      iconName={createComputed([
+        isConnecting,
+        wifiBinding
+      ], (connecting, wifi) =>
+        connecting
+          ? "content-loading-symbolic"
+          : wifi?.iconName || "network-wireless-offline-symbolic"
+      )}
+      label={wifiBinding.as(wifi => {
+        const ssid = wifi?.ssid
+        if (!ssid || ssid === "..." || ssid.trim() === "")
+          return wifi?.enabled ? "WiFi" : "WiFi Off"
+        return ssid.length > 12 ? ssid.slice(0, 12) + "…" : ssid
+      })} />
   </Adw.SplitButton>
 }

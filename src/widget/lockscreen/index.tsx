@@ -37,7 +37,7 @@ const createLocks = (onUnlock: () => void) => {
         AstalAuth.Pam.authenticate_finish(res)
         doUnlock()
       } catch (e) {
-        console.log(e)
+        print("Authentication failed:", e)
         setAuthStatus("Authentication failed")
       }
     })

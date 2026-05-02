@@ -186,10 +186,6 @@ in
       }
       (lib.mkIf cfg.binds.enable {
         programs.hyprland.extraConfig = ''
-          bind=SUPER,Space,exec, shade-shell toggle applauncher
-          bind=SUPER,n,exec, shade-shell toggle quicksettings
-          bind=SUPER,w,exec, shade-shell toggle bar
-
           gesture= 3,right, dispatcher,exec, shade-shell toggle applauncher
           gesture= 3,left, dispatcher,exec, shade-shell toggle quicksettings
         '';

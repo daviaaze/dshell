@@ -18,11 +18,10 @@ export default class NightLight extends GObject.Object {
   #pollTimer: number | null = null
   #colorScheme: ColorScheme | null = null
   #settings: {
-    get_boolean(key: string): boolean
-    get_int(key: string): number
-    set_boolean(key: string, val: boolean): void
-    set_int(key: string, val: number): void
-    connect(changed: string, cb: () => void): number
+    nightLightEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
+    nightLightTemperature: { get(): number, subscribe(cb: () => void): () => void }
+    nightLightAutoSchedule: { get(): boolean, subscribe(cb: () => void): () => void }
+    setNightLightEnabled: (v: boolean) => void
   } | null = null
 
   @getter(Boolean)
@@ -68,35 +67,42 @@ export default class NightLight extends GObject.Object {
   }
 
   init(settings: {
-    get_boolean(key: string): boolean
-    get_int(key: string): number
-    set_boolean(key: string, val: boolean): void
-    set_int(key: string, val: number): void
-    connect(changed: string, cb: () => void): number
+    nightLightEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
+    nightLightTemperature: { get(): number, subscribe(cb: () => void): () => void }
+    nightLightAutoSchedule: { get(): boolean, subscribe(cb: () => void): () => void }
+    setNightLightEnabled: (v: boolean) => void
   }, colorScheme: ColorScheme) {
     this.#settings = settings
     this.#colorScheme = colorScheme
-    this.#enabled = settings.get_boolean("night-light-enabled")
-    this.#temperature = settings.get_int("night-light-temperature")
-    this.#autoSchedule = settings.get_boolean("night-light-auto-schedule")
+    this.#enabled = settings.nightLightEnabled.get()
+    this.#temperature = settings.nightLightTemperature.get()
+    this.#autoSchedule = settings.nightLightAutoSchedule.get()
 
-    settings.connect("changed", () => {
-      const newEnabled = settings.get_boolean("night-light-enabled")
-      const newTemp = settings.get_int("night-light-temperature")
-      const newAuto = settings.get_boolean("night-light-auto-schedule")
+    settings.nightLightEnabled.subscribe(() => {
+      const newEnabled = settings.nightLightEnabled.get()
       if (newEnabled !== this.#enabled) {
         this.#enabled = newEnabled
         this.notify("enabled")
+        this.#sync()
       }
+    })
+
+    settings.nightLightTemperature.subscribe(() => {
+      const newTemp = settings.nightLightTemperature.get()
       if (newTemp !== this.#temperature) {
         this.#temperature = newTemp
         this.notify("temperature")
+        if (this.#enabled) this.#sync()
       }
+    })
+
+    settings.nightLightAutoSchedule.subscribe(() => {
+      const newAuto = settings.nightLightAutoSchedule.get()
       if (newAuto !== this.#autoSchedule) {
         this.#autoSchedule = newAuto
         this.notify("autoSchedule")
+        this.#checkSchedule()
       }
-      this.#sync()
     })
 
     this.#sync()
@@ -141,7 +147,7 @@ export default class NightLight extends GObject.Object {
     if (this.#enabled !== shouldBeOn) {
       this.enabled = shouldBeOn
       if (this.#settings) {
-        this.#settings.set_boolean("night-light-enabled", shouldBeOn)
+        this.#settings.setNightLightEnabled(shouldBeOn)
       }
     }
   }

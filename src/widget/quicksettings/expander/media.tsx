@@ -1,12 +1,13 @@
 import Astal from "gi://Astal?version=4.0";
 import Mpris from "gi://AstalMpris";
 import Apps from "gi://AstalApps"
+import Gio from "gi://Gio?version=2.0"
 import Gtk from "gi://Gtk?version=4.0";
 import { For, createBinding } from "gnim";
 import Adw from "gi://Adw?version=1";
+import logger from "#/lib/logger";
 import CavaVisualizer from "../cava";
 
-const mpris = Mpris.get_default();
 const apps = new Apps.Apps()
 
 function lengthStr(length: number) {
@@ -33,10 +34,15 @@ const PlayerApp = ({ player }: { player: Mpris.Player }) =>
   </Gtk.Box>
 
 const CoverArt = ({ player }: { player: Mpris.Player }) =>
-  <Gtk.Image
-    file={createBinding(player, "coverArt")}
+  <Gtk.Picture
+    visible={createBinding(player, "coverArt").as(c => !!c)}
+    file={createBinding(player, "coverArt").as(path =>
+      path ? Gio.File.new_for_path(path) : null
+    )}
     cssClasses={["thumbnail"]}
-    hexpand
+    contentFit={Gtk.ContentFit.COVER}
+    widthRequest={120}
+    heightRequest={120}
   />
 
 const TitleArtist = ({ player }: { player: Mpris.Player }) =>
@@ -51,7 +57,9 @@ const TitleArtist = ({ player }: { player: Mpris.Player }) =>
     />
     <Gtk.Label
       cssClasses={["artist"]}
-      label={createBinding(player, "artist")} />
+      label={createBinding(player, "artist")}
+      maxWidthChars={10}
+      ellipsize={3} />
   </Gtk.Box>
 
 const PlaybackButtons = ({ player }: { player: Mpris.Player }) =>
@@ -101,8 +109,11 @@ const PlaybackStatus = ({ player }: { player: Mpris.Player }) =>
     </Gtk.CenterBox>
   </Gtk.Box>
 
-export const MediaIcon = () =>
-  <Gtk.Box spacing={4}
+export const MediaIcon = () => {
+  logger.log("MediaIcon: Mpris.get_default()...")
+  const mpris = Mpris.get_default()
+  logger.log("MediaIcon: Mpris done")
+  return <Gtk.Box spacing={4}
     visible={createBinding(mpris, "players")
       .as(p => p.length > 0)}>
     <Gtk.Image
@@ -116,26 +127,32 @@ export const MediaIcon = () =>
         .as(p => p[0] ? p[0].identity : "")}
     />
   </Gtk.Box>
+}
 
-export const Media = () => <Gtk.Box
-  orientation={Gtk.Orientation.VERTICAL}
-  spacing={4}
-  visible={createBinding(mpris, "players")
-    .as(p => p.length > 0)}>
-  <CavaVisualizer />
-  <For each={createBinding(mpris, "players")}>
-    {(player: Mpris.Player) =>
-      <Gtk.Box
-        cssClasses={["card"]}
-        orientation={Gtk.Orientation.VERTICAL}
-        hexpand>
-        <PlayerApp player={player} />
-        <Gtk.Box>
-          <CoverArt player={player} />
-          <TitleArtist player={player} />
+export const Media = () => {
+  logger.log("Media: Mpris.get_default()...")
+  const mpris = Mpris.get_default()
+  logger.log("Media: Mpris done")
+  return <Gtk.Box
+    orientation={Gtk.Orientation.VERTICAL}
+    spacing={4}
+    visible={createBinding(mpris, "players")
+      .as(p => p.length > 0)}>
+    <CavaVisualizer />
+    <For each={createBinding(mpris, "players")}>
+      {(player: Mpris.Player) =>
+        <Gtk.Box
+          cssClasses={["card"]}
+          orientation={Gtk.Orientation.VERTICAL}
+          hexpand>
+          <PlayerApp player={player} />
+          <Gtk.Box>
+            <CoverArt player={player} />
+            <TitleArtist player={player} />
+          </Gtk.Box>
+          <PlaybackStatus player={player} />
         </Gtk.Box>
-        <PlaybackStatus player={player} />
-      </Gtk.Box>
-    }
-  </For>
-</Gtk.Box >
+      }
+    </For>
+  </Gtk.Box>
+}

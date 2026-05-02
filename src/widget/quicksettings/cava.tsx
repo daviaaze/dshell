@@ -17,14 +17,13 @@ const AstalCava = (() => {
 
 export default () => {
   const settings = useSettings().general
-  const enabled = createBinding(settings, "cavaEnabled")
 
   if (!AstalCava) {
     return <Gtk.Box visible={false} />
   }
 
   return <Gtk.Box
-    visible={enabled}
+    visible={settings.cavaEnabled}
     orientation={Gtk.Orientation.HORIZONTAL}
     spacing={2}
     halign={Gtk.Align.CENTER}
@@ -33,8 +32,8 @@ export default () => {
     marginBottom={8}
     $={self => {
       const cava = new AstalCava.Cava()
-      cava.bars = settings.get_int("cava-bars") || 16
-      cava.framerate = settings.get_int("cava-framerate") || 60
+      cava.bars = settings.cavaBars.get() || 16
+      cava.framerate = settings.cavaFramerate.get() || 60
       cava.active = true
 
       const bars: Gtk.LevelBar[] = []
