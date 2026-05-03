@@ -3,8 +3,6 @@ import logger from "#/lib/logger"
 import Powerprofiles from "./powerprofiles"
 
 logger.log("ButtonGrid: loading")
-import AutoCpufreq from "./autoCpufreq"
-import AutoCpufreqLib from "#/lib/autoCpufreq"
 import ColorScheme from "./colorScheme"
 import Bluetooth from "./bluetooth"
 import Caffeinated from "./caffeinated"
@@ -20,11 +18,10 @@ import HypridleLib from "#/lib/hypridle"
 export const ButtonGrid = ({ cols = 2 }:
   { cols?: number }) => {
   logger.log("ButtonGrid: rendering")
-  const autoCpufreq = AutoCpufreqLib.get_default()
   const touchpad = TouchpadLib.get_default()
   const nightLight = NightLightLib.get_default()
   const items = [
-    autoCpufreq.available ? <AutoCpufreq /> : <Powerprofiles />,
+    <Powerprofiles />,
     <ColorScheme />,
     <Bluetooth />,
     <Network />,
