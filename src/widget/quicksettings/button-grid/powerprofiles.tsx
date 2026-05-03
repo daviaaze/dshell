@@ -2,61 +2,55 @@ import Powerprofiles from "gi://AstalPowerProfiles"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding } from "gnim"
+import { QuickToggleButton } from "#/widget/common/quickToggleButton"
+import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import logger from "#/lib/logger"
 
 export default () => {
   logger.log("Powerprofiles: get_default()...")
   const profile = Powerprofiles.get_default()
   logger.log("Powerprofiles: get_default() done")
-  return <Adw.SplitButton
-  cssClasses={["raised"]}
-  hexpand
-  $={self => {
-    self.connect("clicked", () => {
-      const p = profile.get_active_profile()
-      if (p === "power-saver")
-        profile.set_active_profile("balanced")
-      else if (p === "balanced")
-        profile.set_active_profile("performance")
-      else
-        profile.set_active_profile("power-saver")
-    })
-    self.connect("destroy", () => {
-      const popover = self.popover
-      if (popover?.parent) popover.unparent()
-    })
-  }}
-  popover={
-    <Gtk.Popover cssClasses={[]}>
-      <Gtk.Box
-        cssClasses={["linked"]}
-        orientation={Gtk.Orientation.VERTICAL}>
+
+  const popover = (
+    <Gtk.Popover>
+      <LinkedPopoverBox>
         <Gtk.Button onClicked={() => profile.set_active_profile("power-saver")}>
           <Adw.ButtonContent
-            iconName={"power-profile-power-saver-symbolic"}
+            iconName="power-profile-power-saver-symbolic"
             label="Power Saver" />
         </Gtk.Button>
         <Gtk.Button onClicked={() => profile.set_active_profile("balanced")}>
           <Adw.ButtonContent
-            iconName={"power-profile-balanced-symbolic"}
+            iconName="power-profile-balanced-symbolic"
             label="Balanced" />
         </Gtk.Button>
         <Gtk.Button onClicked={() => profile.set_active_profile("performance")}>
           <Adw.ButtonContent
-            iconName={"power-profile-performance-symbolic"}
+            iconName="power-profile-performance-symbolic"
             label="Performance" />
         </Gtk.Button>
-      </Gtk.Box>
-    </Gtk.Popover> as Gtk.Popover}>
-  <Adw.ButtonContent
-    iconName={createBinding(profile, "iconName")}
-    label={createBinding(profile, "activeProfile")(p =>
-      p === "power-saver" ?
-        "Power Saver" :
-        p === "balanced" ?
-          "Balanced" :
-          "Performance"
-    )} />
-  </Adw.SplitButton>
-}
+      </LinkedPopoverBox>
+    </Gtk.Popover>
+  ) as Gtk.Popover
 
+  return (
+    <QuickToggleButton
+      icon={createBinding(profile, "iconName")}
+      label={createBinding(profile, "activeProfile").as(p =>
+        p === "power-saver" ? "Power Saver" :
+        p === "balanced" ? "Balanced" :
+        "Performance"
+      )}
+      onClick={() => {
+        const p = profile.get_active_profile()
+        if (p === "power-saver")
+          profile.set_active_profile("balanced")
+        else if (p === "balanced")
+          profile.set_active_profile("performance")
+        else
+          profile.set_active_profile("power-saver")
+      }}
+      popover={popover}
+    />
+  )
+}

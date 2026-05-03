@@ -1,66 +1,59 @@
-import { useSettings } from "#/lib/settings";
-import AstalIO from "gi://AstalIO?version=0.1";
-import Tray from "gi://AstalTray";
-import Gtk from "gi://Gtk?version=4.0";
-import { Accessor, createBinding, For } from "gnim";
-import ShellState from "#/lib/shellState";
-import { PowerMenu } from "#/widget/common/powerMenu";
-import { openSettings } from "#/widget";
+import { useSettings } from "#/lib/settings"
+import Tray from "gi://AstalTray"
+import Gtk from "gi://Gtk?version=4.0"
+import { Accessor, createBinding, For } from "gnim"
+import ShellState from "#/lib/shellState"
+import { PowerMenu } from "#/widget/common/powerMenu"
+import { IconButton, IconMenuButton } from "#/widget/common/iconButton"
+import { openSettings } from "#/widget"
 import logger from "#/lib/logger"
 
 export const TrayBox = () => {
   logger.log("Tray: get_default()...")
-  const tray = Tray.get_default();
+  const tray = Tray.get_default()
   logger.log("Tray: done")
 
   const LockButton = () => (
-    <Gtk.Button
-      cssClasses={["circular"]}
+    <IconButton
+      icon="system-lock-screen-symbolic"
       onClicked={() => {
         ShellState.get_default().screenlocked = true
       }}
-    >
-      <Gtk.Image iconName={"system-lock-screen-symbolic"} />
-    </Gtk.Button>
-  );
+    />
+  )
 
   const PowerButton = () => {
     const menu = PowerMenu()
-    return <Gtk.MenuButton
-      cssClasses={["circular", "destructive-action"]}
+    return <IconMenuButton
+      icon="system-shutdown-symbolic"
+      cssClasses={["destructive-action"]}
       popover={menu}
-      $={self => {
-        self.connect("destroy", () => {
-          if (menu.parent) menu.unparent()
-        })
-      }}>
-      <Gtk.Image iconName={"system-shutdown-symbolic"} />
-    </Gtk.MenuButton>
-  };
+    />
+  }
 
   const RotateButton = () => {
     const barCfg = useSettings().bar
-    return <Gtk.Button
-      cssClasses={["circular"]}
+    return <IconButton
+      icon="object-rotate-right-symbolic"
       onClicked={() => {
         if ((barCfg.position as Accessor<any>).get() > 8)
           barCfg.setPosition(2)
         else
           barCfg.setPosition(
             (barCfg.position as Accessor<any>).get() * 2)
-      }}>
-      <Gtk.Image iconName={"object-rotate-right-symbolic"} />
-    </Gtk.Button>
+      }}
+    />
   }
 
-  const SettingsButton = () => <Gtk.Button
-    cssClasses={["circular"]}
-    onClicked={() => {
-      openSettings()
-      ShellState.get_default().qsOpen = false;
-    }}>
-    <Gtk.Image iconName={"preferences-system-symbolic"} />
-  </Gtk.Button>
+  const SettingsButton = () => (
+    <IconButton
+      icon="preferences-system-symbolic"
+      onClicked={() => {
+        openSettings()
+        ShellState.get_default().qsOpen = false
+      }}
+    />
+  )
 
   return <Gtk.Box
     spacing={4}

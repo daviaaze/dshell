@@ -2,6 +2,7 @@ import Weather from "#/lib/weather"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import { Accessor, createBinding } from "gnim"
+import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
 import { Weather as WeatherWidget } from "../quicksettings/expander/weather"
 import GWeather from "gi://GWeather?version=4.0"
 
@@ -14,12 +15,7 @@ export const WeatherButton = ({ vertical }:
       Gtk.ArrowType.RIGHT :
       Gtk.ArrowType.UP)}
     cursor={Gdk.Cursor.new_from_name("pointer", null)}
-    $={self => {
-      self.connect("destroy", () => {
-        const popover = self.popover
-        if (popover?.parent) popover.unparent()
-      })
-    }}
+    $={usePopoverCleanup}
     popover={<Gtk.Popover
       valign={Gtk.Align.CENTER}
       halign={Gtk.Align.CENTER}

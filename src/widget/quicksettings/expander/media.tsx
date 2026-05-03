@@ -113,13 +113,14 @@ export const MediaIcon = () => {
   logger.log("MediaIcon: Mpris.get_default()...")
   const mpris = Mpris.get_default()
   logger.log("MediaIcon: Mpris done")
-  return <Gtk.Box spacing={4}
+  return <Gtk.Box
+    spacing={4}
     marginStart={8}
     marginEnd={8}
     visible={createBinding(mpris, "players")
       .as(p => p.length > 0)}>
     <Gtk.Image
-      iconName={"media-playback-start-symbolic"}
+      iconName="media-playback-start-symbolic"
       pixelSize={20}
     />
     <Adw.WindowTitle

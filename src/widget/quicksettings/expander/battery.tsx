@@ -1,6 +1,7 @@
-import AstalBattery from "gi://AstalBattery";
-import Gtk from "gi://Gtk?version=4.0";
-import { createBinding, createComputed } from "gnim";
+import AstalBattery from "gi://AstalBattery"
+import Gtk from "gi://Gtk?version=4.0"
+import { createBinding, createComputed } from "gnim"
+import { IconInfoRow } from "#/widget/common/iconInfoRow"
 
 function fmtDuration(seconds: number): string {
   const abs = Math.abs(Math.round(seconds))
@@ -27,31 +28,19 @@ export const BatteryIcon = () => {
     (charging, timeToEmpty, timeToFull) =>
       charging ? timeToFull : timeToEmpty)
 
-  return <Gtk.Box
-    spacing={4}
-    marginStart={8}
-    marginEnd={8}
-    hexpand
-    halign={Gtk.Align.CENTER}
-    visible={createBinding(battery, "isPresent")}>
-    <Gtk.Image
-      iconName={createBinding(battery, "iconName")}
-      pixelSize={20}
+  return (
+    <IconInfoRow
+      visible={createBinding(battery, "isPresent")}
+      icon={createBinding(battery, "iconName")}
+      primary={createBinding(battery, "percentage")
+        .as(p => (p * 100).toFixed(0) + "%")}
+      secondary={timeTo(timeTo =>
+        timeTo === 0 ? "Full" :
+          fmtDuration(timeTo) +
+          (battery.get_charging() ? " to full" : " to empty")
+      )}
     />
-    <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
-      <Gtk.Label
-        label={createBinding(battery, "percentage")
-          .as(p => (p * 100).toFixed(0) + "%")}
-      />
-      <Gtk.Label
-        label={timeTo(timeTo =>
-          timeTo === 0 ? "Full" :
-            fmtDuration(timeTo) +
-            (battery.get_charging() ? " to full" : " to empty")
-        )}
-      />
-    </Gtk.Box>
-  </Gtk.Box>
+  )
 }
 
 export const Battery = () => {

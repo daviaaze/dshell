@@ -1,5 +1,6 @@
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib"
+import { IconInfoRow } from "#/widget/common/iconInfoRow"
 
 function updateCalendar(calendar: Gtk.Calendar) {
   const now = GLib.DateTime.new_now_local()
@@ -14,27 +15,11 @@ export const Calendar = () =>
     $={self => updateCalendar(self)}
   />
 
-export const CalendarIcon = () =>
-  <Gtk.Box
-    spacing={4}
-    marginStart={8}
-    marginEnd={8}
-    hexpand
-    halign={Gtk.Align.CENTER}>
-    <Gtk.Image
-      iconName={"x-office-calendar-symbolic"}
-      pixelSize={20}
-    />
-    <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
-      <Gtk.Label
-        label={GLib.DateTime
-          .new_now_local()
-          .format("%A") ?? ""}
-      />
-      <Gtk.Label
-        label={GLib.DateTime
-          .new_now_local()
-          .format("%x") ?? ""}
-      />
-    </Gtk.Box>
-  </Gtk.Box>
+export const CalendarIcon = () => {
+  const now = GLib.DateTime.new_now_local()
+  return <IconInfoRow
+    icon="x-office-calendar-symbolic"
+    primary={now.format("%A") ?? ""}
+    secondary={now.format("%x") ?? ""}
+  />
+}

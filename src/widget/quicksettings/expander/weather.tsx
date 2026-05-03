@@ -1,32 +1,18 @@
-import GWeather from "#/lib/weather";
-import Gtk from "gi://Gtk?version=4.0";
-import { createBinding } from "gnim";
-
+import GWeather from "#/lib/weather"
+import Gtk from "gi://Gtk?version=4.0"
+import { createBinding } from "gnim"
+import { IconInfoRow } from "#/widget/common/iconInfoRow"
 
 export const WeatherIcon = () => {
   const weather = GWeather.get_default()
-  return < Gtk.Box
-    spacing={4}
-    marginStart={8}
-    marginEnd={8}
-    hexpand
-    halign={Gtk.Align.CENTER} >
-    <Gtk.Image
-      iconName={createBinding(weather, "info")
-        .as(w => w?.get_icon_name() ?? "")}
-      pixelSize={20}
-    />
-    <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
-      <Gtk.Label
-        label={createBinding(weather, "info")
-          .as(w => w?.get_temp_summary() ?? "")}
-      />
-      <Gtk.Label
-        label={createBinding(weather, "info")
-          .as(w => w?.get_weather_summary() ?? "")}
-      />
-    </Gtk.Box>
-  </Gtk.Box >
+  return <IconInfoRow
+    icon={createBinding(weather, "info")
+      .as(w => w?.get_icon_name() ?? "")}
+    primary={createBinding(weather, "info")
+      .as(w => w?.get_temp_summary() ?? "")}
+    secondary={createBinding(weather, "info")
+      .as(w => w?.get_weather_summary() ?? "")}
+  />
 }
 
 export const Weather = () => {

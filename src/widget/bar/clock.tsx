@@ -3,6 +3,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import { Accessor, createState, For, onCleanup } from "gnim"
 import { useSettings } from "#/lib/settings"
+import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
 import { fmtOffset, cityName } from "#/lib/time"
 
 function updateCalendar(calendar: Gtk.Calendar) {
@@ -34,12 +35,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       Gtk.ArrowType.RIGHT :
       Gtk.ArrowType.UP)}
     cursor={Gdk.Cursor.new_from_name("pointer", null)}
-    $={self => {
-      self.connect("destroy", () => {
-        const popover = self.popover
-        if (popover?.parent) popover.unparent()
-      })
-    }}
+    $={usePopoverCleanup}
     popover={<Gtk.Popover
       valign={Gtk.Align.CENTER}
       halign={Gtk.Align.CENTER}

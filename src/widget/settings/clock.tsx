@@ -1,8 +1,9 @@
-import { useSettings } from "#/lib/settings";
-import Adw from "gi://Adw?version=1";
-import Gtk from "gi://Gtk?version=4.0";
-import GLib from "gi://GLib";
-import { createBinding, For } from "gnim";
+import { useSettings } from "#/lib/settings"
+import Adw from "gi://Adw?version=1"
+import Gtk from "gi://Gtk?version=4.0"
+import GLib from "gi://GLib"
+import { createBinding, For } from "gnim"
+import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
 
 const PRESET_TIMEZONES = [
   "UTC",
@@ -35,12 +36,7 @@ export default () => {
       subtitle={general.timezones.as(tzs => tzs.join(", "))}>
       <Gtk.MenuButton
         $type="suffix"
-        $={self => {
-          self.connect("destroy", () => {
-            const popover = self.popover
-            if (popover?.parent) popover.unparent()
-          })
-        }}>
+        $={usePopoverCleanup}>
         <Gtk.Button
           cssClasses={["circular"]}
           iconName="list-add-symbolic"
