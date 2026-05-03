@@ -20,6 +20,15 @@ export default () => {
 
   const isConnecting = connectingAp.as(c => c !== null)
 
+  // Bind to wifi properties directly so they update after sleep/resume.
+  // network.wifi never changes reference, but its properties do.
+  const wifi = network.wifi
+  const wifiIconName = wifi
+    ? createBinding(wifi, "iconName").as(icon => icon || "network-wireless-offline-symbolic")
+    : () => "network-wireless-offline-symbolic"
+  const wifiSsid = wifi ? createBinding(wifi, "ssid") : () => null
+  const wifiEnabled = wifi ? createBinding(wifi, "enabled") : () => false
+
   return <Adw.SplitButton
     cssClasses={["raised"]}
     widthRequest={150}
@@ -74,16 +83,13 @@ export default () => {
     <Adw.ButtonContent
       iconName={createComputed([
         isConnecting,
-        wifiBinding
-      ], (connecting, wifi) =>
-        connecting
-          ? "content-loading-symbolic"
-          : wifi?.iconName || "network-wireless-offline-symbolic"
+        wifiIconName,
+      ], (connecting, icon) =>
+        connecting ? "content-loading-symbolic" : icon
       )}
-      label={wifiBinding.as(wifi => {
-        const ssid = wifi?.ssid
+      label={wifiSsid.as(ssid => {
         if (!ssid || ssid === "..." || ssid.trim() === "")
-          return wifi?.enabled ? "WiFi" : "WiFi Off"
+          return wifiEnabled.get() ? "WiFi" : "WiFi Off"
         return ssid.length > 12 ? ssid.slice(0, 12) + "…" : ssid
       })} />
   </Adw.SplitButton>

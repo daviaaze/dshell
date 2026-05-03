@@ -12,8 +12,8 @@ export default () => {
     self.connect("clicked", () => {
       const p = profile.get_active_profile()
       if (p === "power-saver")
-        profile.set_active_profile("balanced")
-      else if (p === "balanced")
+        profile.set_active_profile("auto")
+      else if (p === "auto")
         profile.set_active_profile("performance")
       else
         profile.set_active_profile("power-saver")
@@ -33,10 +33,10 @@ export default () => {
             iconName={"power-profile-power-saver-symbolic"}
             label="Power Saver" />
         </Gtk.Button>
-        <Gtk.Button onClicked={() => profile.set_active_profile("balanced")}>
+        <Gtk.Button onClicked={() => profile.set_active_profile("auto")}>
           <Adw.ButtonContent
             iconName={"power-profile-balanced-symbolic"}
-            label="Balanced" />
+            label="Auto" />
         </Gtk.Button>
         <Gtk.Button onClicked={() => profile.set_active_profile("performance")}>
           <Adw.ButtonContent
@@ -50,8 +50,8 @@ export default () => {
     label={createBinding(profile, "activeProfile")(p =>
       p === "power-saver" ?
         "Power Saver" :
-        p === "balanced" ?
-          "Balanced" :
+        p === "auto" ?
+          "Auto" :
           "Performance"
     )} />
   </Adw.SplitButton>

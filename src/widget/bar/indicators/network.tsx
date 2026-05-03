@@ -4,20 +4,22 @@ import { createBinding, createComputed } from "gnim"
 
 export default () => {
   const network = Network.get_default()
+  const wifi = network.wifi
+  const wired = network.wired
 
   const icon = createComputed([
     createBinding(network, "primary"),
-    createBinding(network, "wifi"),
-    createBinding(network, "wired")],
-    (primary, wifi, wired) => {
-      if (primary === Network.Primary.WIFI) {
-        return wifi?.iconName || "network-wireless-offline-symbolic"
-      }
-      if (primary === Network.Primary.WIRED) {
-        return wired?.iconName || "network-wired-offline-symbolic"
-      }
-      return "network-no-route-symbolic"
-    })
+    wifi ? createBinding(wifi, "iconName") : () => "network-wireless-offline-symbolic",
+    wired ? createBinding(wired, "iconName") : () => "network-wired-offline-symbolic",
+  ], (primary, wifiIcon, wiredIcon) => {
+    if (primary === Network.Primary.WIFI) {
+      return wifiIcon || "network-wireless-offline-symbolic"
+    }
+    if (primary === Network.Primary.WIRED) {
+      return wiredIcon || "network-wired-offline-symbolic"
+    }
+    return "network-no-route-symbolic"
+  })
 
   return <Gtk.Image
     iconName={icon}

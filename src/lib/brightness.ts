@@ -1,16 +1,9 @@
 import AstalIO from "gi://AstalIO?version=0.1";
-import Gio from "gi://Gio?version=2.0";
 import { register, Object, getter, setter } from "gnim/gobject";
 
 const get = (args: string) => Number(AstalIO.Process.exec(`brightnessctl ${args}`));
-let screen = ""
-let kbd = ""
-try {
-  screen = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/backlight | head -1"`)
-  kbd = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/leds | head -1"`)
-} catch (e: any) {
-  print("brightness hardware probe failed:", e.message)
-}
+const screen = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/backlight | head -1"`);
+const kbd = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/leds | head -1"`);
 
 @register({ GTypeName: "Brightness" })
 export default class Brightness extends Object {
@@ -21,14 +14,10 @@ export default class Brightness extends Object {
     return this.instance;
   }
 
-  #screenMonitor?: Gio.FileMonitor;
-  #kbdMonitor?: Gio.FileMonitor;
-
-  #available = screen !== "" || kbd !== ""
-  #kbdMax = kbd ? get(`--device ${kbd} max`) : 0;
-  #kbd = kbd ? get(`--device ${kbd} get`) / (get(`--device ${kbd} max`) || 1) : 0;
-  #screenMax = screen ? get("max") : 0;
-  #screen = screen ? get("get") / (get("max") || 1) : 0;
+  #kbdMax = get(`--device ${kbd} max`);
+  #kbd = get(`--device ${kbd} get`);
+  #screenMax = get("max");
+  #screen = get("get") / (get("max") || 1);
 
   @getter(Number)
   get kbd() {
@@ -37,12 +26,12 @@ export default class Brightness extends Object {
 
   @setter(Number)
   set kbd(value) {
-    if (!kbd || value < 0 || value > this.#kbdMax) return;
+    if (value < 0 || value > this.#kbdMax) return;
 
     AstalIO.Process.exec_async(
-      `brightnessctl -d ${kbd} s ${Math.floor(value * 100)}% -q`,
+      `brightnessctl -d ${kbd} s ${value} -q`,
       () => {
-        this.#kbd = value / (this.#kbdMax || 1);
+        this.#kbd = value;
         this.notify("kbd");
       }
     );
@@ -55,8 +44,8 @@ export default class Brightness extends Object {
 
   @setter(Number)
   set screen(percent) {
-    if (!screen) return;
     if (percent < 0) percent = 0;
+
     if (percent > 1) percent = 1;
 
     AstalIO.Process.exec_async(
@@ -71,40 +60,19 @@ export default class Brightness extends Object {
   constructor() {
     super();
 
-    if (screen) {
-      const screenPath = `/sys/class/backlight/${screen}/brightness`;
-      const screenFile = Gio.File.new_for_path(screenPath);
-      this.#screenMonitor = AstalIO.monitor_file(screenPath, () => {
-        screenFile.load_contents_async(null, (_source, res) => {
-          try {
-            const [success, contents] = screenFile.load_contents_finish(res)
-            if (success) {
-              this.#screen = Number(new TextDecoder().decode(contents)) / this.#screenMax;
-              this.notify("screen");
-            }
-          } catch (e: any) {
-            print("failed to read screen brightness:", e.message)
-          }
-        })
-      });
-    }
+    const screenPath = `/sys/class/backlight/${screen}/brightness`;
+    const kbdPath = `/sys/class/leds/${kbd}/brightness`;
 
-    if (kbd) {
-      const kbdPath = `/sys/class/leds/${kbd}/brightness`;
-      const kbdFile = Gio.File.new_for_path(kbdPath);
-      this.#kbdMonitor = AstalIO.monitor_file(kbdPath, () => {
-        kbdFile.load_contents_async(null, (_source, res) => {
-          try {
-            const [success, contents] = kbdFile.load_contents_finish(res)
-            if (success) {
-              this.#kbd = Number(new TextDecoder().decode(contents)) / this.#kbdMax;
-              this.notify("kbd");
-            }
-          } catch (e: any) {
-            print("failed to read kbd brightness:", e.message)
-          }
-        })
-      });
-    }
+    AstalIO.monitor_file(screenPath, async (f) => {
+      const v = await AstalIO.read_file_async(f);
+      this.#screen = Number(v) / this.#screenMax;
+      this.notify("screen");
+    });
+
+    AstalIO.monitor_file(kbdPath, async (f) => {
+      const v = await AstalIO.read_file_async(f);
+      this.#kbd = Number(v) / this.#kbdMax;
+      this.notify("kbd");
+    });
   }
 }
