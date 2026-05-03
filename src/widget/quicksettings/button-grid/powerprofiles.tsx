@@ -10,7 +10,7 @@ export default () => {
   logger.log("Powerprofiles: get_default() done")
   return <Adw.SplitButton
   cssClasses={["raised"]}
-  widthRequest={150}
+  hexpand
   $={self => {
     self.connect("clicked", () => {
       const p = profile.get_active_profile()

@@ -29,6 +29,8 @@ export const BatteryIcon = () => {
 
   return <Gtk.Box
     spacing={4}
+    marginStart={8}
+    marginEnd={8}
     hexpand
     halign={Gtk.Align.CENTER}
     visible={createBinding(battery, "isPresent")}>

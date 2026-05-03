@@ -16,7 +16,7 @@ export default () => {
     visible={createBinding(bluetooth, "adapters")
       .as(a => a.length > 0)}
     cssClasses={["raised"]}
-    widthRequest={150}
+    hexpand
     $={self => {
       self.connect("clicked", () => {
         bluetooth.adapter.powered = !bluetooth.adapter.powered

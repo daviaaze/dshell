@@ -62,9 +62,10 @@ export const TrayBox = () => {
     <Gtk.Image iconName={"preferences-system-symbolic"} />
   </Gtk.Button>
 
-  return <Gtk.FlowBox
-    rowSpacing={4}
-    columnSpacing={4}>
+  return <Gtk.Box
+    spacing={4}
+    homogeneous
+    halign={Gtk.Align.CENTER}>
     <For each={createBinding(tray, "items")}>
       {((item: Tray.TrayItem) =>
         <Gtk.MenuButton
@@ -83,5 +84,5 @@ export const TrayBox = () => {
     <RotateButton />
     <LockButton />
     <PowerButton />
-  </Gtk.FlowBox>
+  </Gtk.Box>
 }

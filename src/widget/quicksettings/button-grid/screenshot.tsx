@@ -7,7 +7,7 @@ export default () => {
   const screenshot = Screenshot.get_default()
   return <Adw.SplitButton
     cssClasses={["raised"]}
-    widthRequest={150}
+    hexpand
     $={self => {
       self.connect("clicked", () => {
         screenshot.toggleRecording()

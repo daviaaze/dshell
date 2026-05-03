@@ -15,10 +15,14 @@ export const Expander = () => {
       setVisible(!visible.get())}
     active={visible}
     cssClasses={["flat"]}>
-    <Gtk.Box>
+    <Gtk.Box
+      spacing={8}
+      marginStart={8}
+      marginEnd={8}
+      marginTop={8}
+      marginBottom={8}>
       <Adw.WrapBox
         halign={Gtk.Align.CENTER}
-        // spacing={4}
         hexpand>
         <MediaIcon />
         <CalendarIcon />

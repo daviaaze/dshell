@@ -31,7 +31,7 @@ export default () => {
 
   return <Adw.SplitButton
     cssClasses={["raised"]}
-    widthRequest={150}
+    hexpand
     $={self => {
       self.connect("clicked", () => {
         const wifi = wifiBinding.get()

@@ -9,7 +9,7 @@ export default () => {
   return <Adw.SplitButton
     cssClasses={createBinding(hypridle, "enabled")
       .as(e => e ? ["raised"] : ["raised", "flat"])}
-    widthRequest={150}
+    hexpand
     $={self => {
       self.connect("destroy", () => {
         const popover = self.popover

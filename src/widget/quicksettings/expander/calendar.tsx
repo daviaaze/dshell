@@ -17,6 +17,8 @@ export const Calendar = () =>
 export const CalendarIcon = () =>
   <Gtk.Box
     spacing={4}
+    marginStart={8}
+    marginEnd={8}
     hexpand
     halign={Gtk.Align.CENTER}>
     <Gtk.Image

@@ -27,7 +27,7 @@ export default () => {
           </Gtk.Button>
         </Gtk.Box>
       </Gtk.Popover> as Gtk.Popover}
-    widthRequest={150}
+    hexpand
     $={self => {
       self.connect("clicked", () => {
         inhibit.idle = !inhibit.idle

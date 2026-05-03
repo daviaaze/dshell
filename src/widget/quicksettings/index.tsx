@@ -39,7 +39,6 @@ export default () => {
       ShellState.get_default().qsOpen = self.visible
     }}
     cssClasses={["card", "frame", "background"]}
-    css={"padding-right:0px;"}
     anchor={barCfg.position.as(p =>
       TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM
     )}
@@ -52,7 +51,10 @@ export default () => {
       vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
       vexpand>
       <Gtk.Box spacing={8}
-        css={"padding-right: 12px;"}
+        marginStart={12}
+        marginEnd={12}
+        marginTop={12}
+        marginBottom={12}
         orientation={Gtk.Orientation.VERTICAL}>
         <ButtonGrid />
         <BrightnessSlider />

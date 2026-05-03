@@ -7,6 +7,8 @@ export const WeatherIcon = () => {
   const weather = GWeather.get_default()
   return < Gtk.Box
     spacing={4}
+    marginStart={8}
+    marginEnd={8}
     hexpand
     halign={Gtk.Align.CENTER} >
     <Gtk.Image

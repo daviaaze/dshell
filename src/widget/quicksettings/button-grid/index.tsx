@@ -34,7 +34,11 @@ export const ButtonGrid = ({ cols = 2 }:
 
   const visibleItems = items.filter(Boolean)
 
-  return <Gtk.Grid rowSpacing={4} columnSpacing={4}
+  return <Gtk.Grid
+    rowSpacing={4}
+    columnSpacing={4}
+    columnHomogeneous
+    hexpand
     $={(self) => visibleItems.forEach(
       (item, index) =>
         self.attach(

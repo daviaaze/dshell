@@ -114,6 +114,8 @@ export const MediaIcon = () => {
   const mpris = Mpris.get_default()
   logger.log("MediaIcon: Mpris done")
   return <Gtk.Box spacing={4}
+    marginStart={8}
+    marginEnd={8}
     visible={createBinding(mpris, "players")
       .as(p => p.length > 0)}>
     <Gtk.Image
