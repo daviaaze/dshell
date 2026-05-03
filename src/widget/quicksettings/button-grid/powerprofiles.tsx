@@ -35,7 +35,7 @@ export default () => {
 
   return (
     <QuickToggleButton
-      icon={createBinding(profile, "iconName")}
+      icon={createBinding(profile, "iconName").as(i => i ?? "")}
       label={createBinding(profile, "activeProfile").as(p =>
         p === "power-saver" ? "Power Saver" :
         p === "balanced" ? "Balanced" :

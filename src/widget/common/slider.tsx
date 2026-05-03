@@ -14,7 +14,8 @@ type SliderProps = {
 const DEBOUNCE_MS = 80
 
 export const Slider = (props: SliderProps) => {
-  const [displayValue, setDisplayValue] = createState(props.value.get())
+  const safe = (v: number) => Number.isFinite(v) ? v : 0
+  const [displayValue, setDisplayValue] = createState(safe(props.value.get()))
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
   const debouncedSetValue = (value: number) => {
@@ -26,8 +27,8 @@ export const Slider = (props: SliderProps) => {
     }, DEBOUNCE_MS)
   }
 
-  props.value.subscribe((v) => {
-    if (debounceTimer === null) setDisplayValue(v)
+  props.value.subscribe(() => {
+    if (debounceTimer === null) setDisplayValue(safe(props.value.get()))
   })
 
   return (
@@ -40,12 +41,12 @@ export const Slider = (props: SliderProps) => {
         hexpand
         min={props.min}
         max={props.max}
-        $={self => self.set_value(displayValue.get())}
-        onChangeValue={({ value }) => debouncedSetValue(value)}
+        $={self => self.set_value(safe(displayValue.get()))}
+        onChangeValue={({ value }) => debouncedSetValue(safe(value))}
         value={displayValue} />
       <Gtk.Label
         cssClasses={["heading"]}
-        label={displayValue(v => v
+        label={displayValue(v => (v ?? 0)
           .toFixed(0)
           .toString()
           .concat("%"))

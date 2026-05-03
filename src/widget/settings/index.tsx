@@ -29,5 +29,5 @@ export const createSettingsWindow = () => {
         <Weather />
       </Adw.PreferencesPage>
     </Gtk.Box>
-  </Adw.Window >
+  </Adw.Window>
 }

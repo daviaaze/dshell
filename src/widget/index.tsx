@@ -21,11 +21,10 @@ import WindowManager from "#/lib/windowManager"
 import logger from "#/lib/logger"
 
 export const openSettings = () => {
-  let win = WindowManager.get_default().settings
-  if (!win) {
-    win = createSettingsWindow()
+  const win = WindowManager.get_default().settings
+  if (win) {
+    win.present()
   }
-  win.present()
 }
 
 export const widgets = () => {
@@ -67,5 +66,10 @@ export const widgets = () => {
   logger.log("windowswitcher mounted")
   safe("notifications", notifications)
   logger.log("notifications mounted")
+  safe("settings", () => {
+    const win = createSettingsWindow()
+    WindowManager.get_default().setSettings(win)
+  })
+  logger.log("settings mounted")
   logger.log("widgets() done")
 }

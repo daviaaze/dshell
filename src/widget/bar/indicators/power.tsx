@@ -11,8 +11,8 @@ export default () => {
   return <Gtk.Image
     visible={createBinding(powerprof, "activeProfile")
       .as(p => p !== "balanced")}
-    iconName={createBinding(powerprof, "iconName")}
+    iconName={createBinding(powerprof, "iconName").as(i => i ?? "")}
     tooltipMarkup={createBinding(powerprof, "activeProfile")
-      .as(String)}
+      .as(p => p ?? "")}
     pixelSize={18} />
 }
