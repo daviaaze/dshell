@@ -42,10 +42,7 @@ export default () => {
                 setPasswordDialog={setPasswordDialog}
               />
             : <Gtk.Label
-                marginStart={12}
-                marginEnd={12}
-                marginTop={12}
-                marginBottom={12}
+                cssClasses={["popover-padded-lg"]}
                 label="No WiFi device" />}
         </With>
         <PasswordDialog
