@@ -12,19 +12,13 @@ export default () => {
   return <Gtk.Box
     visible={createBinding(mixer, "streams").as(s => s.length > 0)}
     spacing={8}
-    cssClasses={["card"]}
-    orientation={Gtk.Orientation.VERTICAL}
-    marginTop={8}>
+    cssClasses={["card", "popover-padded"]}
+    orientation={Gtk.Orientation.VERTICAL}>
     <Gtk.Label
       halign={Gtk.Align.START}
-      marginStart={8}
-      marginTop={8}
       cssClasses={["caption-heading"]}
       label="Applications" />
     <Gtk.Box
-      marginStart={8}
-      marginEnd={8}
-      marginBottom={8}
       spacing={8}
       orientation={Gtk.Orientation.VERTICAL}>
       <For each={createBinding(mixer, "streams")}>

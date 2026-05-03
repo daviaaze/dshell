@@ -28,8 +28,7 @@ export default () => {
     spacing={2}
     halign={Gtk.Align.CENTER}
     valign={Gtk.Align.END}
-    marginTop={8}
-    marginBottom={8}
+    cssClasses={["popover-padded"]}
     $={self => {
       const cava = new AstalCava.Cava()
       cava.bars = settings.cavaBars.get() || 16

@@ -77,9 +77,7 @@ export default () => {
         onNotifyActive={self => settings.setDynamicThemingEnabled(self.active)}
       />
       <Gtk.Button
-        cssClasses={["suggested-action"]}
-        marginTop={8}
-        marginBottom={8}
+        cssClasses={["suggested-action", "popover-padded"]}
         halign={Gtk.Align.CENTER}
         label="Regenerate from Wallpaper"
         onClicked={() => Theming.get_default().regenerate()} />

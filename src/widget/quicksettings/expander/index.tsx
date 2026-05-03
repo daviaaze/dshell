@@ -17,10 +17,7 @@ export const Expander = () => {
     cssClasses={["flat"]}>
     <Gtk.Box
       spacing={8}
-      marginStart={8}
-      marginEnd={8}
-      marginTop={8}
-      marginBottom={8}>
+      cssClasses={["popover-padded"]}>
       <Adw.WrapBox
         halign={Gtk.Align.CENTER}
         hexpand>
