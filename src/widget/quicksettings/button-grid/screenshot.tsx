@@ -13,10 +13,7 @@ export default () => {
       <Gtk.Box
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
-        marginStart={8}
-        marginEnd={8}
-        marginTop={8}
-        marginBottom={8}>
+        cssClasses={["popover-padded"]}>
         <LinkedPopoverBox>
           <Gtk.Button onClicked={() => screenshot.screenshot(true)}>
             <Adw.ButtonContent

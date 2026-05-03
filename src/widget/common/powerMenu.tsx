@@ -8,7 +8,7 @@ export const PowerMenu = () => {
     <Gtk.Box
       orientation={Gtk.Orientation.VERTICAL}
       spacing={4}
-      css={"padding: 12px;"}>
+      cssClasses={["popover-padded-lg"]}>
       <Gtk.Button
         cssClasses={["flat"]} 
         onClicked={() => {

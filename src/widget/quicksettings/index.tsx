@@ -51,10 +51,7 @@ export default () => {
       vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
       vexpand>
       <Gtk.Box spacing={8}
-        marginStart={12}
-        marginEnd={12}
-        marginTop={12}
-        marginBottom={12}
+        cssClasses={["popover-padded-lg"]}
         orientation={Gtk.Orientation.VERTICAL}>
         <ButtonGrid />
         <BrightnessSlider />

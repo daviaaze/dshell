@@ -47,10 +47,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       <Gtk.Box
         spacing={12}
         orientation={Gtk.Orientation.VERTICAL}
-        marginTop={12}
-        marginBottom={12}
-        marginStart={12}
-        marginEnd={12}>
+        cssClasses={["popover-padded-lg"]}>
         <Gtk.Calendar
           $={self => {
             calendarRef = self

@@ -10,13 +10,9 @@ export default () => {
   const popover = (
     <Gtk.Popover>
       <Gtk.Box
-        cssClasses={["toolbar"], ["linked"]}
+        cssClasses={["toolbar"], ["linked"], ["popover-padded"]}
         orientation={Gtk.Orientation.VERTICAL}
-        spacing={8}
-        marginTop={8}
-        marginBottom={8}
-        marginStart={8}
-        marginEnd={8}>
+        spacing={8}>
         <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
           <Gtk.Label label="Temperature" />
           <Gtk.Scale
