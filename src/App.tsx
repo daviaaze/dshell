@@ -8,7 +8,7 @@ import { createRoot } from "gnim";
 import { register } from "gnim/gobject"
 import { gettext } from "gettext";
 import { SettingsProvider } from "./lib/settings";
-import { requestHandler } from "./lib/requestHandler";
+import { registerActions, requestHandler } from "./lib/requestHandler";
 import { widgets } from "./widget";
 import WindowManager from "./lib/windowManager";
 import logger from "./lib/logger";
@@ -36,6 +36,7 @@ export class ShadeShell extends Adw.Application {
     this.bar = []
     this.wallpaper = []
     this.lockscreen = []
+    registerActions(this)
   }
 
   private initCss() {
@@ -57,7 +58,7 @@ export class ShadeShell extends Adw.Application {
   vfunc_command_line(cmd: Gio.ApplicationCommandLine) {
     logger.log(`vfunc_command_line isRemote=${cmd.isRemote}`)
     if (cmd.isRemote)
-      requestHandler(cmd)
+      requestHandler(cmd, this)
     else {
       createRoot((dispose) => {
         this.connect("shutdown", dispose)

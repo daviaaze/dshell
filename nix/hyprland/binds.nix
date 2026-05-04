@@ -2,6 +2,8 @@
 let
   uwsm-app = app : "${pkgs.uwsm}/bin/uwsm-app -t service -- ${app}.desktop";
   cfg = config.programs.shade.desktop;
+  gdbus = lib.getExe' pkgs.glib "gdbus";
+  shade-action = action: "${gdbus} call --session --dest com.caioasmuniz.shade_shell --object-path /com/caioasmuniz/shade_shell --method org.gtk.Application.ActivateAction '${action}' '[]' '{}' >/dev/null 2>&1";
 in
 {
   programs.hyprland.settings = {
@@ -31,7 +33,10 @@ in
       "SUPER,Insert,movetoworkspace,special:scratchpad"
       "SUPER,Pause,movetoworkspace,special:scratchpad"
       "SUPER,S,togglesplit"
-      "SUPER,TAB,exec,shade-shell toggle windowswitcher"
+      "SUPER,Space,exec,${shade-action "toggle-applauncher"}"
+      "SUPER,n,exec,${shade-action "toggle-quicksettings"}"
+      "SUPER,w,exec,${shade-action "toggle-bar"}"
+      "SUPER,TAB,exec,${shade-action "toggle-windowswitcher"}"
 
       ",XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
       ",XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"

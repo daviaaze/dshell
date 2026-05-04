@@ -9,7 +9,6 @@ import windowswitcher from "./windowswitcher"
 import { createSettingsWindow } from "./settings"
 import { Wallpaper } from "./wallpaper"
 import Weather from "#/lib/weather"
-import KeybindsManager from "#/lib/keybinds"
 import { ColorScheme } from "#/lib/colorScheme"
 import Inhibit from "#/lib/inhibit"
 import NightLight from "#/lib/nightLight"
@@ -44,9 +43,6 @@ export const widgets = () => {
       logger.log(`Widget ${name} failed to mount:`, e)
     }
   }
-
-  // Register global keybindings with Hyprland
-  KeybindsManager.get_default().register()
 
   safe("wallpaper", Wallpaper)
   logger.log("wallpaper mounted")
