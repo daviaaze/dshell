@@ -1,12 +1,11 @@
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
-import Apps from "gi://AstalApps"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import Pango from "gi://Pango?version=1.0"
 import { createBinding } from "gnim"
+import { getAppIcon } from "#/lib/apps"
 
 const hyprland = AstalHyprland.get_default()
-const apps = new Apps.Apps()
 
 export default () => {
   const client = createBinding(hyprland, "focusedClient")
@@ -18,8 +17,7 @@ export default () => {
 
   const appIcon = client.as(c => {
     if (!c || c.address === "0x0") return ""
-    const app = apps.fuzzy_query(c.class)?.[0]
-    return app?.iconName || "application-x-executable-symbolic"
+    return getAppIcon(c)
   })
 
   const visible = client.as(c => c && c.address !== "0x0")

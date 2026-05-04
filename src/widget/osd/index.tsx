@@ -37,15 +37,7 @@ export default () => {
   const popupList: GObject.Object[] = [
     <Popup
       connectable={audio.defaultSpeaker}
-      signal={"notify::volume"}
-      widget={Slider({
-        iconName: speakerIcon,
-        value: createBinding(audio.defaultSpeaker, "volume")
-      })} />,
-
-    <Popup
-      connectable={audio.defaultSpeaker}
-      signal={"notify::mute"}
+      signals={["notify::volume", "notify::mute"]}
       widget={Slider({
         iconName: speakerIcon,
         value: createBinding(audio.defaultSpeaker, "volume")
@@ -53,7 +45,7 @@ export default () => {
 
     <Popup
       connectable={brightness}
-      signal={"notify::screen"}
+      signals={["notify::screen"]}
       widget={Slider({
         iconName: "display-brightness-symbolic",
         value: createBinding(brightness, "screen"),
@@ -61,7 +53,7 @@ export default () => {
 
     <Popup
       connectable={brightness}
-      signal={"notify::kbd"}
+      signals={["notify::kbd"]}
       widget={Slider({
         iconName: "keyboard-brightness-symbolic",
         value: createBinding(brightness, "kbd"),
@@ -69,15 +61,7 @@ export default () => {
 
     <Popup
       connectable={audio.defaultMicrophone}
-      signal={"notify::volume"}
-      widget={Slider({
-        iconName: micIcon,
-        value: createBinding(audio.defaultMicrophone, "volume"),
-      })} />,
-
-    <Popup
-      connectable={audio.defaultMicrophone}
-      signal={"notify::mute"}
+      signals={["notify::volume", "notify::mute"]}
       widget={Slider({
         iconName: micIcon,
         value: createBinding(audio.defaultMicrophone, "volume"),

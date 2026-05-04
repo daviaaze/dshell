@@ -1,22 +1,8 @@
 import Gtk from "gi://Gtk?version=4.0"
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
-import Apps from "gi://AstalApps"
 import Pango from "gi://Pango?version=1.0"
 import { Accessor } from "gnim"
-
-const apps = new Apps.Apps()
-
-const getIcon = (client: AstalHyprland.Client) => {
-  switch (client.class) {
-    case "code-url-handler":
-      return "vscode"
-    default:
-      return apps.fuzzy_query(client.class)[0]?.iconName ||
-        apps.fuzzy_query(client.title)[0]?.iconName ||
-        apps.fuzzy_query(client.initialTitle)[0]?.iconName ||
-        "image-missing-symbolic"
-  }
-}
+import { getAppIcon } from "#/lib/apps"
 
 export default ({ client, selected }: {
   client: AstalHyprland.Client
@@ -30,7 +16,7 @@ export default ({ client, selected }: {
       : "padding: 10px 14px; border-radius: 12px;")}
     valign={Gtk.Align.CENTER}>
     <Gtk.Image
-      iconName={getIcon(client)}
+      iconName={getAppIcon(client)}
       pixelSize={48}
       valign={Gtk.Align.CENTER}
     />

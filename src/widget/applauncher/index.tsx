@@ -1,4 +1,3 @@
-import Apps from "gi://AstalApps"
 import Hyprland from "gi://AstalHyprland"
 import Astal from "gi://Astal?version=4.0";
 import Gtk from "gi://Gtk?version=4.0";
@@ -7,6 +6,7 @@ import { createBinding, createState, For } from "gnim";
 import AppButton from "./appButton";
 import ClipboardButton from "./clipboardButton";
 import { searchClipboard } from "#/lib/clipboard";
+import { getAppList, fuzzyQuery } from "#/lib/apps";
 import { useSettings } from "../../lib/settings";
 import { app } from "#/App";
 import WindowManager from "#/lib/windowManager";
@@ -20,9 +20,7 @@ type LauncherMode = "apps" | "clipboard"
 export default () => {
   const barCfg = useSettings().bar
   const hyprland = Hyprland.get_default()
-  const apps = new Apps.Apps()
-
-  const [list, setList] = createState(apps.get_list())
+  const [list, setList] = createState(getAppList() as any)
   const [mode, setMode] = createState<LauncherMode>("apps")
   let entryRef: Gtk.Entry | null = null
 
@@ -33,7 +31,7 @@ export default () => {
       setList(searchClipboard(query) as any)
     } else {
       setMode("apps")
-      setList(apps.fuzzy_query(text) as any)
+      setList(fuzzyQuery(text) as any)
     }
   }
 
@@ -58,7 +56,7 @@ export default () => {
         entryRef?.grab_focus()
       } else {
         entryRef?.set_text("")
-        setList(apps.get_list() as any)
+        setList(getAppList() as any)
         setMode("apps")
       }
       ShellState.get_default().launcherOpen = self.visible
@@ -86,7 +84,7 @@ export default () => {
         onActivate={self => {
           WindowManager.get_default().applauncher!.visible = false;
           if (mode.get() === "apps") {
-            const results = apps.fuzzy_query(self.text)
+            const results = fuzzyQuery(self.text)
             if (results.length > 0) results[0].launch();
           }
         }}>

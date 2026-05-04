@@ -1,12 +1,10 @@
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
-import Apps from "gi://AstalApps"
 import GLib from "gi://GLib?version=2.0"
 import { useSettings } from "#/lib/settings"
 import { toArray } from "#/lib/gjsUtils"
-
-const apps = new Apps.Apps()
+import { getAppList, exactQuery } from "#/lib/apps"
 
 interface DockItemProps {
   desktopFile: string
@@ -18,9 +16,9 @@ interface DockItemProps {
 export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
   const { bar } = useSettings()
 
-  const app = toArray<Apps.Application>(apps.get_list())
+  const app = toArray(getAppList())
     .find(a => a.entry === desktopFile) ||
-    apps.fuzzy_query(desktopFile.replace(".desktop", ""))?.[0]
+    exactQuery(desktopFile.replace(".desktop", ""))?.[0]
 
   const iconName = app?.iconName || "application-x-executable-symbolic"
   const running = clients.length > 0

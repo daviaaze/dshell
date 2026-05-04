@@ -8,8 +8,6 @@ import Bluetooth from "./bluetooth"
 import Caffeinated from "./caffeinated"
 import Network from "../network"
 import Screenshot from "./screenshot"
-import Touchpad from "./touchpad"
-import TouchpadLib from "#/lib/touchpad"
 import NightLight from "./nightLight"
 import NightLightLib from "#/lib/nightLight"
 import IdleControls from "./idleControls"
@@ -18,7 +16,6 @@ import HypridleLib from "#/lib/hypridle"
 export const ButtonGrid = ({ cols = 2 }:
   { cols?: number }) => {
   logger.log("ButtonGrid: rendering")
-  const touchpad = TouchpadLib.get_default()
   const nightLight = NightLightLib.get_default()
   const items = [
     <Powerprofiles />,
@@ -29,7 +26,6 @@ export const ButtonGrid = ({ cols = 2 }:
     <Caffeinated />,
     nightLight.available ? <NightLight /> : null,
     HypridleLib.get_default().available ? <IdleControls /> : null,
-    touchpad.available ? <Touchpad /> : null
   ];
 
   const visibleItems = items.filter(Boolean)

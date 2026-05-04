@@ -1,14 +1,12 @@
 import Astal from "gi://Astal?version=4.0";
 import Mpris from "gi://AstalMpris";
-import Apps from "gi://AstalApps"
 import Gio from "gi://Gio?version=2.0"
 import Gtk from "gi://Gtk?version=4.0";
 import { For, createBinding } from "gnim";
 import Adw from "gi://Adw?version=1";
 import logger from "#/lib/logger";
 import CavaVisualizer from "../cava";
-
-const apps = new Apps.Apps()
+import { exactQuery } from "#/lib/apps"
 
 function lengthStr(length: number) {
   const min = Math.floor(length / 60);
@@ -28,7 +26,7 @@ const PlayerApp = ({ player }: { player: Mpris.Player }) =>
       tooltipText={createBinding(player, "identity")
         .as(id => id || "")}
       iconName={createBinding(player, "entry")
-        .as(entry => apps.exact_query(entry)[0]?.iconName ?? "audio-x-generic-symbolic")} />
+        .as(entry => exactQuery(entry)[0]?.iconName ?? "audio-x-generic-symbolic")} />
     <Gtk.Label label={createBinding(player, "identity")
       .as(id => id || "")} />
   </Gtk.Box>

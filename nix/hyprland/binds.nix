@@ -71,10 +71,6 @@ in
     ];
 
     bindl = [
-      # Fn+F8 on IdeaPad — KEY_TOUCHPAD_TOGGLE (530) from ideapad-extra-buttons device
-      ", code:530, exec, ${pkgs.python3}/bin/python3 ${config.programs.shade.package}/bin/toggle-touchpad.py"
-      # Fn+F5 on some laptops — XF86TouchpadToggle (538) from main keyboard
-      ", XF86TouchpadToggle, exec, ${pkgs.python3}/bin/python3 ${config.programs.shade.package}/bin/toggle-touchpad.py"
       ",XF86MonBrightnessUp, exec, ${lib.getExe pkgs.brightnessctl} set +5%"
       ",XF86MonBrightnessDown, exec, ${lib.getExe pkgs.brightnessctl} set 5%-"
     ];

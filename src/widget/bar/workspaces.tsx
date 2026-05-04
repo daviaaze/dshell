@@ -1,30 +1,13 @@
 import Hyprland from "gi://AstalHyprland"
-import Apps from "gi://AstalApps"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, For, Accessor, With } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
+import { getAppIcon } from "#/lib/apps"
 
 const hyprland = Hyprland.get_default()
 
-const apps = new Apps.Apps({
-  nameMultiplier: 4,
-  entryMultiplier: 1,
-  executableMultiplier: 1,
-  descriptionMultiplier: 1,
-})
 
-const getIcon = (client: Hyprland.Client) => {
-  switch (client.class) {
-    case "code-url-handler":
-      return "vscode"
-    default:
-      return apps.fuzzy_query(client.class)[0]?.iconName ||
-        apps.fuzzy_query(client.title)[0]?.iconName ||
-        apps.fuzzy_query(client.initialTitle)[0]?.iconName ||
-        "image-missing-symbolic"
-  }
-}
 
 export default ({ monitor, vertical }:
   { monitor: Hyprland.Monitor, vertical: Accessor<boolean> }) =>
@@ -54,9 +37,9 @@ export default ({ monitor, vertical }:
           {(client: Hyprland.Client) =>
             <Adw.Toggle
               name={client.address}
-              iconName={getIcon(client)}
+              iconName={getAppIcon(client)}
               child={<Gtk.Image
-                iconName={getIcon(client)}
+                iconName={getAppIcon(client)}
                 pixelSize={24}
               >
                 <Gtk.GestureClick

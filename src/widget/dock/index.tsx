@@ -1,21 +1,15 @@
 import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
-import Apps from "gi://AstalApps"
 import { createBinding, For, createComputed, onCleanup } from "gnim"
 import WindowManager from "#/lib/windowManager"
 import { useSettings } from "#/lib/settings"
 import { app } from "#/App"
 import DockItem from "./item"
 import { toArray } from "#/lib/gjsUtils"
+import { getDesktopFileForClient } from "#/lib/apps"
 
 const hyprland = AstalHyprland.get_default()
-const apps = new Apps.Apps()
-
-function getDesktopFileForClient(client: AstalHyprland.Client): string | null {
-  const app = apps.fuzzy_query(client.class)?.[0]
-  return app?.entry || null
-}
 
 export default () => {
   const { bar } = useSettings()
