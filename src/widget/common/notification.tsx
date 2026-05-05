@@ -70,12 +70,12 @@ export default ({ notif, closeAction, pauseDismiss, resumeDismiss }: {
         })
       }} />
     <Gtk.Box cssClasses={["actions"]} spacing={4}>
-      <For each={createBinding(notif, "actions")}>
-        {(action: Notifd.Action) => <Gtk.Button
-          onClicked={() =>
-            notif.invoke(action.id)}>
-          <Gtk.Label label={action.label} />
-        </Gtk.Button>
+      <For each={createBinding(notif, "actions").as(actions =>
+        actions.filter(a => a.label && a.label.trim() !== ""))}>
+        {(action: Notifd.Action) =>
+          <Gtk.Button onClicked={() => notif.invoke(action.id)}>
+            <Gtk.Label label={action.label} />
+          </Gtk.Button>
         }
       </For>
     </Gtk.Box>
