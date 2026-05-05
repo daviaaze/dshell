@@ -3,7 +3,7 @@ let
   uwsm-app = app : "${pkgs.uwsm}/bin/uwsm-app -t service -- ${app}.desktop";
   cfg = config.programs.shade.desktop;
   gdbus = lib.getExe' pkgs.glib "gdbus";
-  shade-action = action: "${gdbus} call --session --dest com.caioasmuniz.shade_shell --object-path /com/caioasmuniz/shade_shell --method org.gtk.Application.ActivateAction '${action}' '[]' '{}' >/dev/null 2>&1";
+  shade-action = action: "${gdbus} call --session --dest com.caioasmuniz.shade_shell --object-path /com/caioasmuniz/shade_shell --method org.gtk.Actions.Activate '${action}' '[]' '{}' >/dev/null 2>&1";
 in
 {
   programs.hyprland.settings = {
