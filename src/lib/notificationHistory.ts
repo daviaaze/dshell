@@ -1,4 +1,5 @@
 import Notifd from "gi://AstalNotifd"
+import Gio from "gi://Gio"
 import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register } from "gnim/gobject"
 
@@ -24,7 +25,7 @@ function loadHistory(): HistoryEntry[] {
 
 function saveHistory(history: HistoryEntry[]) {
   try {
-    const dir = GLib.File.new_for_path(CACHE_DIR)
+    const dir = Gio.File.new_for_path(CACHE_DIR)
     if (!dir.query_exists(null)) {
       dir.make_directory_with_parents(null)
     }

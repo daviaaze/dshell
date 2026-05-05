@@ -69,7 +69,7 @@ const createLocks = (onUnlock: () => void) => {
     }
   })
 
-  const statusId = fingerprint.connect("statusChanged", (_, status) => {
+  const statusId = fingerprint.connect("status-changed", (_, status) => {
     if (status === "verify-retry" || status === "verify-swipe-too-short") {
       setAuthStatus("Try again...")
     }

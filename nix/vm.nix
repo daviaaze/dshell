@@ -13,7 +13,7 @@
     enable = true;
     settings = {
       initial_session = {
-        command = "${lib.getExe pkgs.uwsm} start hyprland-uwsm.desktop";
+        command = "${pkgs.bash}/bin/bash -lc 'exec ${lib.getExe pkgs.uwsm} start hyprland-uwsm.desktop'";
         user = "test";
       };
     };

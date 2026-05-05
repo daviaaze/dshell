@@ -77,7 +77,12 @@ in
           partOf = [ "graphical-session.target" ];
           wantedBy = [ "graphical-session.target" ];
           serviceConfig = {
-            ExecStart = "${cfg.package}/bin/shade-shell";
+            ExecStart = "${pkgs.writeShellScript "shade-shell-launch" ''
+              if [ -f /etc/set-environment ]; then
+                . /etc/set-environment
+              fi
+              exec ${cfg.package}/bin/shade-shell
+            ''}";
             Restart = "on-failure";
             RestartSec = "3";
             Type = "exec";
