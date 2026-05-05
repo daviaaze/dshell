@@ -7,6 +7,7 @@ import { PowerMenu } from "#/widget/common/powerMenu"
 import { IconButton, IconMenuButton } from "#/widget/common/iconButton"
 import { openSettings } from "#/widget"
 import logger from "#/lib/logger"
+import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
 
 export const TrayBox = () => {
   logger.log("Tray: get_default()...")
@@ -65,6 +66,7 @@ export const TrayBox = () => {
           cssClasses={["circular"]}
           $={self => {
             self.insert_action_group("dbusmenu", item.actionGroup)
+            usePopoverCleanup(self)
           }}
           popover={undefined}
           menuModel={item.menuModel}

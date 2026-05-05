@@ -172,15 +172,24 @@ export default class Geolocation extends GObject.Object {
   }
 
   #tryIpGeolocation() {
-    AstalIO.Process.exec_async(
-      `curl -s --max-time 5 "https://ipapi.co/json/"`,
-      (out) => {
+    AstalIO.Process.exec_asyncv(
+      ["curl", "-s", "--max-time", "5", "https://ipapi.co/json/"],
+      (_, res) => {
         try {
+          const out = AstalIO.Process.exec_asyncv_finish(res)
+          if (!out) {
+            print("IP geolocation: curl produced no output")
+            return
+          }
           const data = JSON.parse(out)
-          if (data.latitude && data.longitude) {
+          if (!data) {
+            print("IP geolocation: parsed response is null")
+            return
+          }
+          if (typeof data.latitude === "number" && typeof data.longitude === "number") {
             this.#update(data.latitude, data.longitude)
           } else {
-            print("IP geolocation: no coordinates in response")
+            print("IP geolocation: no coordinates in response:", out.slice(0, 200))
           }
         } catch (e) {
           print("IP geolocation failed:", (e as Error).message)

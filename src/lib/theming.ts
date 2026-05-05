@@ -126,7 +126,7 @@ export default class Theming extends GObject.Object {
       return
     }
 
-    AstalIO.Process.exec_asyncv(["matugen", "image", wallpaper, "--json"], (_, res) => {
+    AstalIO.Process.exec_asyncv(["matugen", "image", wallpaper, "--json", "hex"], (_, res) => {
       try {
         const out = AstalIO.Process.exec_asyncv_finish(res)
         const colors = parseMatugenJson(out)

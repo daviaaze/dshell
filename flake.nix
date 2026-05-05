@@ -67,6 +67,7 @@
         hyprland
         brightnessctl
         bash
+        curl
         grim
         slurp
         wf-recorder
@@ -76,6 +77,8 @@
         hypridle
         matugen
         glib.bin
+        uwsm
+        pipewire
       ];
     in
     {

@@ -53,7 +53,6 @@ export default () => {
             >
               {PRESET_TIMEZONES.map(tz => (
                 <Gtk.Button
-                  key={tz}
                   onClicked={() => {
                     const current = general.timezones.get() as string[]
                     if (!current.includes(tz)) {

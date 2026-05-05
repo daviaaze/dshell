@@ -1,5 +1,6 @@
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
+import { usePopoverCleanup } from "./popoverCleanup"
 
 interface IconButtonProps {
   icon: string
@@ -28,7 +29,8 @@ export const IconMenuButton = (props: IconMenuButtonProps) => (
     cssClasses={["circular", ...(props.cssClasses ?? [])]}
     popover={props.popover}
     tooltipText={props.tooltipText}
-    cursor={props.cursor}>
+    cursor={props.cursor}
+    $={usePopoverCleanup}>
     <Gtk.Image iconName={props.icon} />
   </Gtk.MenuButton>
 )

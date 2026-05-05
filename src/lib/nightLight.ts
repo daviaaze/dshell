@@ -55,7 +55,7 @@ export default class NightLight extends GObject.Object {
     if (this.#autoSchedule === v) return
     this.#autoSchedule = v
     this.#checkSchedule()
-    this.notify("autoSchedule")
+    this.notify("auto-schedule")
   }
 
   @getter(Boolean)
@@ -100,7 +100,7 @@ export default class NightLight extends GObject.Object {
       const newAuto = settings.nightLightAutoSchedule.get()
       if (newAuto !== this.#autoSchedule) {
         this.#autoSchedule = newAuto
-        this.notify("autoSchedule")
+        this.notify("auto-schedule")
         this.#checkSchedule()
       }
     })

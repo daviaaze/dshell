@@ -2,6 +2,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
 import GLib from "gi://GLib?version=2.0"
+import { onCleanup } from "gnim"
 import { useSettings } from "#/lib/settings"
 import { toArray } from "#/lib/gjsUtils"
 import { getAppList, exactQuery } from "#/lib/apps"
@@ -94,7 +95,10 @@ export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
   return <Gtk.Button
     $={self => {
       popover.set_parent(self)
-      self.connect("destroy", () => popover.unparent())
+      onCleanup(() => {
+        popover.popdown()
+        popover.unparent()
+      })
     }}
     cssClasses={["flat", "circular"]}
     cursor={Gdk.Cursor.new_from_name("pointer", null)}

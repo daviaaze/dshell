@@ -62,10 +62,10 @@ export default class Weather extends GObject.Object {
 
     const connectGeo = () => {
       if (geoHandlerId !== null) {
-        this.#geo.locationChanged.disconnect(geoHandlerId)
+        this.#geo.disconnect(geoHandlerId)
         geoHandlerId = null
       }
-      geoHandlerId = this.#geo.locationChanged.connect((_, lat, lon) => {
+      geoHandlerId = this.#geo.connect("location-changed", (_, lat, lon) => {
         settings.setLatitude(lat)
         settings.setLongitude(lon)
         this.updateFromCoords(lat, lon)
@@ -83,7 +83,7 @@ export default class Weather extends GObject.Object {
         connectGeo()
         this.detectLocation()
       } else if (geoHandlerId !== null) {
-        this.#geo.locationChanged.disconnect(geoHandlerId)
+        this.#geo.disconnect(geoHandlerId)
         geoHandlerId = null
       }
     })
