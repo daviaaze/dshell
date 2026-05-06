@@ -59,11 +59,44 @@ in
       {
         services.power-profiles-daemon.enable = true;
 
-        xdg.portal.extraPortals = [ pkgs.xdg-desktop-portal-hyprland ];
+        # gvfs is required for the default file manager (Nautilus) to show
+        # disk sizes, mount volumes, and provide trash/computer/network
+        # locations in the sidebar.
+        services.gvfs.enable = true;
+
+        xdg.portal = {
+          enable = lib.mkDefault true;
+          extraPortals = [
+            pkgs.xdg-desktop-portal-gtk
+            pkgs.xdg-desktop-portal-hyprland
+            pkgs.xdg-desktop-portal-wlr
+          ];
+          config = {
+            common = {
+              default = [
+                "hyprland"
+                "gtk"
+              ];
+              "org.freedesktop.impl.portal.Screencast" = "hyprland";
+              "org.freedesktop.impl.portal.Screenshot" = "hyprland";
+            };
+          };
+        };
+
         environment.sessionVariables = {
           MOZ_ENABLE_WAYLAND = "1";
           NIXOS_OZONE_WL = "1";
           SDL_VIDEODRIVER = "wayland";
+        };
+
+        # Explicitly configure UWSM compositor instead of relying on Hyprland
+        # package's built-in desktop file, which may not work correctly with
+        # NixOS's UWSM module. The NixOS-generated desktop file uses the
+        # compositor binary path directly, which is more reliable.
+        programs.uwsm.waylandCompositors.hyprland = {
+          prettyName = "Hyprland";
+          comment = "Hyprland compositor managed by UWSM";
+          binPath = "/run/current-system/sw/bin/start-hyprland";
         };
 
         programs.hyprland = {

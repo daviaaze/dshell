@@ -96,6 +96,7 @@
       };
 
       nixosModules.default = import ./nix/module.nix inputs;
+      homeManagerModules.default = import ./nix/home inputs;
 
       devShells.${system} = import ./nix/devshell.nix {
         inherit

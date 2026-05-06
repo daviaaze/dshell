@@ -4,6 +4,18 @@ let
   cfg = config.programs.shade.desktop;
   gdbus = lib.getExe' pkgs.glib "gdbus";
   shade-action = action: "${gdbus} call --session --dest com.caioasmuniz.shade_shell --object-path /com/caioasmuniz/shade_shell --method org.gtk.Actions.Activate '${action}' '[]' '{}' >/dev/null 2>&1";
+
+  # Toggle screen recording with wl-screenrec. Notifies on start/stop.
+  screenrec = pkgs.writeShellScript "shade-screenrec" ''
+    mkdir -p ~/Videos
+    if pgrep -x wl-screenrec >/dev/null; then
+      pkill -INT -x wl-screenrec
+      ${pkgs.libnotify}/bin/notify-send "Recording stopped"
+    else
+      ${pkgs.wl-screenrec}/bin/wl-screenrec -f "$HOME/Videos/rec_$(date +%F-%H%M%S).mp4" &
+      ${pkgs.libnotify}/bin/notify-send "Recording started"
+    fi
+  '';
 in
 {
   programs.hyprland.settings = {
@@ -12,7 +24,8 @@ in
       "SUPER,B,exec,${uwsm-app cfg.defaultBrowser}"
       "SUPER,V,exec,pkill pwvucontrol || pwvucontrol"
       "SUPER,E,exec,${uwsm-app cfg.defaultFileManager}"
-      "SUPERSHIFT,v,exec,pkill wvkbd || ${lib.getExe pkgs.wvkbd}"
+      "SUPERSHIFT,V,exec,pkill wofi || ${pkgs.cliphist}/bin/cliphist list | ${pkgs.wofi}/bin/wofi --dmenu | ${pkgs.cliphist}/bin/cliphist decode | ${pkgs.wl-clipboard}/bin/wl-copy"
+      "SUPERALT,R,exec,${screenrec}"
 
       "SUPER, PRINT, exec, ${lib.getExe pkgs.hyprshot} -m window"
       ", PRINT, exec, ${lib.getExe pkgs.hyprshot} -m output"
