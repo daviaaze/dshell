@@ -5,6 +5,7 @@ import { Media, MediaIcon } from "./media"
 import { Calendar, CalendarIcon } from "./calendar"
 import { Weather, WeatherIcon } from "./weather"
 import { WorldClock } from "./worldClock"
+import AppMixer from "../appMixer"
 import Adw from "gi://Adw?version=1"
 
 export const Expander = () => {
@@ -41,6 +42,7 @@ export const Expander = () => {
       <Gtk.Box
         spacing={4}
         orientation={Gtk.Orientation.VERTICAL}>
+        <AppMixer />
         <Media />
         <Battery />
         <Weather />

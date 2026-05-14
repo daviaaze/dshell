@@ -8,7 +8,7 @@ export default () => {
   const hypridle = Hypridle.get_default()
 
   const popover = (
-    <Gtk.Popover>
+    <Gtk.Popover cssClasses={[]}>
       <Gtk.Box
         cssClasses={["toolbar"], ["linked"], ["popover-padded"]}
         orientation={Gtk.Orientation.VERTICAL}

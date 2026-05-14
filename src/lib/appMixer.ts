@@ -39,6 +39,34 @@ function parseStreams(): AudioStream[] {
   }
 }
 
+function parseCaptureStreams(): AudioStream[] {
+  try {
+    const out = AstalIO.Process.exec("pw-dump")
+    const data = JSON.parse(out)
+    const streams: AudioStream[] = []
+    for (const item of data) {
+      const info = item.info || {}
+      const props = info.props || {}
+      const mediaClass = props["media.class"] || ""
+      if (mediaClass.includes("Stream") && mediaClass.includes("Audio") && mediaClass.includes("Input")) {
+        const streamProps = info.params?.Props?.[0] || {}
+        streams.push({
+          id: item.id,
+          name: props["node.name"] || "Unknown",
+          appName: props["application.name"] || props["node.name"] || "Unknown",
+          iconName: props["application.icon-name"] || "audio-x-generic-symbolic",
+          volume: streamProps.volume ?? 1.0,
+          muted: streamProps.mute ?? false,
+        })
+      }
+    }
+    return streams
+  } catch (e) {
+    print("[AppMixer] failed to parse capture streams:", (e as Error).message)
+    return []
+  }
+}
+
 @register({ GTypeName: "AppMixer" })
 export default class AppMixer extends GObject.Object {
   static instance: AppMixer
@@ -48,11 +76,17 @@ export default class AppMixer extends GObject.Object {
   }
 
   #streams: AudioStream[] = []
+  #captureStreams: AudioStream[] = []
   #timer: number | null = null
 
   @getter(Array)
   get streams() {
     return this.#streams
+  }
+
+  @getter(Array)
+  get captureStreams() {
+    return this.#captureStreams
   }
 
   constructor() {
@@ -66,9 +100,17 @@ export default class AppMixer extends GObject.Object {
 
   #update() {
     const newStreams = parseStreams()
-    if (JSON.stringify(newStreams) !== JSON.stringify(this.#streams)) {
+    const newCaptureStreams = parseCaptureStreams()
+    const streamsChanged = JSON.stringify(newStreams) !== JSON.stringify(this.#streams)
+    const captureChanged = JSON.stringify(newCaptureStreams) !== JSON.stringify(this.#captureStreams)
+
+    if (streamsChanged) {
       this.#streams = newStreams
       this.notify("streams")
+    }
+    if (captureChanged) {
+      this.#captureStreams = newCaptureStreams
+      this.notify("capture-streams")
     }
   }
 

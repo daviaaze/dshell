@@ -4,6 +4,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, createComputed, createState, For } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
+import { toArray } from "#/lib/gjsUtils"
 import logger from "#/lib/logger"
 
 export default () => {
@@ -15,7 +16,7 @@ export default () => {
   const isConnecting = connectingAddress.as(addr => addr !== null)
 
   const popover = (
-    <Gtk.Popover>
+    <Gtk.Popover cssClasses={[]}>
       <LinkedPopoverBox>
         <For each={createBinding(bluetooth, "devices")}>
           {(device: AstalBluetooth.Device) => {
@@ -45,7 +46,7 @@ export default () => {
             }}>
               <Gtk.Box spacing={8}>
                 <Gtk.Image
-                  iconName={device.icon}
+                  iconName={device.icon || "bluetooth-symbolic"}
                   pixelSize={16}
                 />
                 <Gtk.Label
@@ -53,16 +54,16 @@ export default () => {
                   halign={Gtk.Align.START}
                   label={device.name}
                 />
-                {deviceConnecting.as(connecting => connecting
-                  ? <Gtk.Spinner
-                      spinning
-                      marginEnd={4}
-                    />
-                  : <Gtk.Image
-                      visible={createBinding(device, "connected")}
-                      iconName="emblem-ok-symbolic"
-                      pixelSize={16}
-                    />)}
+                <Gtk.Spinner
+                  visible={deviceConnecting}
+                  spinning
+                  marginEnd={4}
+                />
+                <Gtk.Image
+                  visible={createBinding(device, "connected")}
+                  iconName="emblem-ok-symbolic"
+                  pixelSize={16}
+                />
               </Gtk.Box>
             </Gtk.Button>
           }}
@@ -85,8 +86,13 @@ export default () => {
             ? "bluetooth-symbolic"
             : "bluetooth-disabled-symbolic"
       )}
-      label={createBinding(bluetooth, "isPowered")
-        .as(isPowered => isPowered ? "Bluetooth" : "Bluetooth Off")}
+      label={createBinding(bluetooth, "devices")
+        .as(devices => {
+          if (!bluetooth.isPowered) return "Bluetooth Off"
+          const connected = toArray<AstalBluetooth.Device>(devices)
+            .find(d => d.connected)
+          return connected ? connected.name : "Bluetooth"
+        })}
       onClick={() => {
         bluetooth.adapter.powered = !bluetooth.adapter.powered
       }}

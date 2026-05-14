@@ -12,7 +12,7 @@ export default () => {
   logger.log("Powerprofiles: get_default() done")
 
   const popover = (
-    <Gtk.Popover>
+    <Gtk.Popover cssClasses={[]}>
       <LinkedPopoverBox>
         <Gtk.Button onClicked={() => profile.set_active_profile("power-saver")}>
           <Adw.ButtonContent

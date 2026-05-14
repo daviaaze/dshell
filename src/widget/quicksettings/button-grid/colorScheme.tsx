@@ -9,7 +9,7 @@ export default () => {
   const colorScheme = ColorScheme.get_default()
 
   const popover = (
-    <Gtk.Popover>
+    <Gtk.Popover cssClasses={[]}>
       <LinkedPopoverBox>
         <Gtk.Button onClicked={() => colorScheme.colorScheme = DarkModes.AUTO}>
           <Adw.ButtonContent

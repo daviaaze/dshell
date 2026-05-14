@@ -9,7 +9,7 @@ export default () => {
   const screenshot = Screenshot.get_default()
 
   const popover = (
-    <Gtk.Popover>
+    <Gtk.Popover cssClasses={[]}>
       <Gtk.Box
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
@@ -40,7 +40,7 @@ export default () => {
           </Gtk.Button>
           <Gtk.Button onClicked={() => screenshot.recordWindow()}>
             <Adw.ButtonContent
-              iconName="window-symbolic"
+              iconName="focus-windows-symbolic"
               label="Record Window" />
           </Gtk.Button>
           <Gtk.Button onClicked={() => screenshot.recordOutput()}>

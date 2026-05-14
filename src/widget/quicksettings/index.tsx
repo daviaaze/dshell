@@ -9,7 +9,6 @@ import logger from "#/lib/logger";
 import { NotificationList } from "./notificationList";
 import { TrayBox } from "./tray";
 import { AudioConfig, BrightnessSlider, MicConfig } from "./sliders";
-import AppMixer from "./appMixer";
 import { ButtonGrid } from "./button-grid";
 import { Expander } from "./expander";
 import ShellState from "#/lib/shellState"
@@ -56,7 +55,6 @@ export default () => {
         <ButtonGrid />
         <BrightnessSlider />
         <AudioConfig />
-        <AppMixer />
         <MicConfig />
         <TrayBox />
         <Expander />

@@ -31,7 +31,7 @@ export default () => {
   const wifiEnabled = wifi ? createBinding(wifi, "enabled") : () => false
 
   const popover = (
-    <Gtk.Popover>
+    <Gtk.Popover cssClasses={[]}>
       <LinkedPopoverBox>
         <With value={wifiBinding}>
           {(wifi: Network.Wifi | null) => wifi

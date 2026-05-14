@@ -9,7 +9,7 @@ export default () => {
   const inhibit = Inhibit.get_default()
 
   const popover = (
-    <Gtk.Popover>
+    <Gtk.Popover cssClasses={[]}>
       <LinkedPopoverBox>
         <Gtk.Button onClicked={() => inhibit.idle = true}>
           <Adw.ButtonContent
