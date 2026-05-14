@@ -53,11 +53,16 @@ export default () => {
         && self.visible && ShellState.get_default().qsOpen)
         ShellState.get_default().qsOpen = false
       if (self.visible) {
+        const query = ShellState.get_default().launcherQuery
+        if (query && entryRef) {
+          entryRef.set_text(query)
+        }
         entryRef?.grab_focus()
       } else {
         entryRef?.set_text("")
         setList(getAppList() as any)
         setMode("apps")
+        ShellState.get_default().launcherQuery = ""
       }
       ShellState.get_default().launcherOpen = self.visible
     }}

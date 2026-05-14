@@ -18,7 +18,6 @@ in
       wl-screenrec
       cliphist
       wl-clip-persist
-      wofi
       brightnessctl
       playerctl
       libnotify

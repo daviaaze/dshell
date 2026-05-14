@@ -24,7 +24,7 @@ in
       "SUPER,B,exec,${uwsm-app cfg.defaultBrowser}"
       "SUPER,V,exec,pkill pwvucontrol || pwvucontrol"
       "SUPER,E,exec,${uwsm-app cfg.defaultFileManager}"
-      "SUPERSHIFT,V,exec,pkill wofi || ${pkgs.cliphist}/bin/cliphist list | ${pkgs.wofi}/bin/wofi --dmenu | ${pkgs.cliphist}/bin/cliphist decode | ${pkgs.wl-clipboard}/bin/wl-copy"
+      "SUPERSHIFT,V,exec,${shade-action "toggle-clipboard"}"
       "SUPERALT,R,exec,${screenrec}"
 
       "SUPER, PRINT, exec, ${lib.getExe pkgs.hyprshot} -m window"
@@ -45,7 +45,7 @@ in
       ",Insert,togglespecialworkspace,scratchpad"
       "SUPER,Insert,movetoworkspace,special:scratchpad"
       "SUPER,Pause,movetoworkspace,special:scratchpad"
-      "SUPER,S,togglesplit"
+      "SUPER,S,layoutmsg,togglesplit"
       "SUPER,Space,exec,${shade-action "toggle-applauncher"}"
       "SUPER,n,exec,${shade-action "toggle-quicksettings"}"
       "SUPER,w,exec,${shade-action "toggle-bar"}"

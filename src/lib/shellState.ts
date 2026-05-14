@@ -12,12 +12,24 @@ export default class ShellState extends GObject.Object {
   }
 
   #launcherOpen = false
+  #launcherQuery = ""
   #qsOpen = false
   #screenlocked = false
 
   @getter(Boolean)
   get launcherOpen() {
     return this.#launcherOpen
+  }
+
+  @getter(String)
+  get launcherQuery() {
+    return this.#launcherQuery
+  }
+
+  @setter(String)
+  set launcherQuery(v: string) {
+    this.#launcherQuery = v
+    this.notify("launcher-query")
   }
 
   @setter(Boolean)
@@ -51,7 +63,23 @@ export default class ShellState extends GObject.Object {
   }
 
   toggleLauncher() {
+    this.launcherQuery = ""
     this.launcherOpen = !this.#launcherOpen
+  }
+
+  openClipboard() {
+    this.launcherQuery = ">"
+    this.launcherOpen = true
+  }
+
+  toggleClipboard() {
+    if (this.#launcherOpen && this.#launcherQuery === ">") {
+      this.launcherQuery = ""
+      this.launcherOpen = false
+    } else {
+      this.launcherQuery = ">"
+      this.launcherOpen = true
+    }
   }
 
   toggleQuickSettings() {

@@ -17,6 +17,8 @@ export function registerActions(app: Gio.Application) {
     "toggle-bar": () => wm.bars.forEach(bar => bar.visible = !bar.visible),
     "toggle-windowswitcher": () => toggleWindowSwitcher(),
     "toggle-settings": () => openSettings(),
+    "toggle-clipboard": () => state.toggleClipboard(),
+    "open-clipboard": () => state.openClipboard(),
     "lockscreen": () => { state.screenlocked = true },
     "screenshot": () => screenshot.screenshot(true),
     "screenshot-area": () => screenshot.screenshot(false),
@@ -50,6 +52,8 @@ export const requestHandler =
       activate("lockscreen")
     else if (args[1] === "toggle")
       activate(`toggle-${args[2]}`)
+    else if (args[1] === "clipboard")
+      activate("toggle-clipboard")
     else if (args[1] === "screenshot")
       activate("screenshot")
     else if (args[1] === "screenshot-area")

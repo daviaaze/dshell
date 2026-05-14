@@ -17,6 +17,8 @@ export default class Screenshot extends GObject.Object {
   #recording = false
   #recordingProcess: AstalIO.Process | null = null
   #audio = false
+  #recordingStartTime = 0
+  #recordingFile = ""
 
   @getter(Boolean)
   get recording() { return this.#recording }
@@ -68,54 +70,82 @@ export default class Screenshot extends GObject.Object {
 
   startRecording(options: { geometry?: string, output?: string } = {}) {
     if (this.#recording) return
-    this.#recording = true
-    this.notify("recording")
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
     const filename = `${RECORDING_DIR}/${timestamp}.mp4`
 
+    AstalIO.Process.exec(`mkdir -p ${RECORDING_DIR}`)
+
+    const args = ["wf-recorder", "-f", filename]
+    if (options.geometry) {
+      args.push("-g", options.geometry)
+    }
+    if (options.output) {
+      args.push("-o", options.output)
+    }
+    if (this.#audio) {
+      args.push("-a")
+    }
+
+    let proc: AstalIO.Process
+    try {
+      proc = AstalIO.Process.subprocessv(args)
+    } catch (e) {
+      print(`error: failed to spawn wf-recorder: ${e.message}`)
+      AstalIO.Process.exec_async(
+        `notify-send -a shade-shell -i dialog-error-symbolic "Recording failed" "Could not start wf-recorder"`,
+        () => {}
+      )
+      return
+    }
+
+    this.#recording = true
+    this.#recordingFile = filename
+    this.#recordingStartTime = Date.now()
+    this.#recordingProcess = proc
+    this.notify("recording")
+    this.recordingStarted()
+
     AstalIO.Process.exec_async(
-      `mkdir -p ${RECORDING_DIR}`,
-      () => {
-        this.recordingStarted()
-
-        const args = ["wf-recorder", "-f", filename]
-        if (options.geometry) {
-          args.push("-g", options.geometry)
-        }
-        if (options.output) {
-          args.push("-o", options.output)
-        }
-        if (this.#audio) {
-          args.push("-a")
-        }
-
-        this.#recordingProcess = AstalIO.Process.subprocessv(args)
-
-        this.#recordingProcess.connect("exit", () => {
-          this.#recording = false
-          this.notify("recording")
-          this.recordingStopped()
-          this.#recordingProcess = null
-        })
-      }
+      `notify-send -a shade-shell -i media-record-symbolic "Recording started" "${filename}"`,
+      () => {}
     )
+
+    proc.connect("exit", () => {
+      const durationMs = Date.now() - this.#recordingStartTime
+      const durationStr = this.#formatDuration(durationMs)
+      AstalIO.Process.exec_async(
+        `notify-send -a shade-shell -i media-playback-stop-symbolic "Recording stopped" "Duration: ${durationStr}\nSaved to: ${this.#recordingFile}"`,
+        () => {}
+      )
+      this.#recording = false
+      this.notify("recording")
+      this.recordingStopped()
+      this.#recordingProcess = null
+      this.#recordingFile = ""
+      this.#recordingStartTime = 0
+    })
+  }
+
+  #formatDuration(ms: number): string {
+    const totalSeconds = Math.round(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`
+    }
+    return `${seconds}s`
   }
 
   recordArea() {
     if (this.#recording) return
-    this.#recording = true
-    this.notify("recording")
     AstalIO.Process.exec_async(
       `slurp`,
       (out) => {
+        if (!out) return
         const geometry = out.trim()
         if (geometry) {
-          this.#recording = false
           this.startRecording({ geometry })
-        } else {
-          this.#recording = false
-          this.notify("recording")
         }
       }
     )
@@ -141,7 +171,7 @@ export default class Screenshot extends GObject.Object {
   }
 
   stopRecording() {
-    if (!this.#recording || !this.#recordingProcess) return
+    if (!this.#recordingProcess) return
     this.#recordingProcess.signal(2)
   }
 }
