@@ -49,8 +49,10 @@ export function searchClipboard(query: string): ClipboardItem[] {
 export function copyClipboardItem(id: string) {
   try {
     AstalIO.Process.exec_async(
-      `cliphist decode ${id} | wl-copy`,
-      () => {}
+      `sh -c 'cliphist decode "${id}" | wl-copy'`,
+      (out) => {
+        if (out) print("[Clipboard] copy output:", out)
+      }
     )
   } catch (e) {
     print("[Clipboard] failed to copy item:", (e as Error).message)
@@ -60,7 +62,7 @@ export function copyClipboardItem(id: string) {
 export function deleteClipboardItem(id: string) {
   try {
     AstalIO.Process.exec_async(
-      `cliphist delete ${id}`,
+      `cliphist delete "${id}"`,
       () => {}
     )
   } catch (e) {
