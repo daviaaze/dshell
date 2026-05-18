@@ -22,6 +22,10 @@ export class ColorScheme extends Object {
   #daytime: boolean = true
   #colorScheme: DarkModes = 0
   #weather: Weather | null = null
+  #shadeSettings: {
+    colorScheme: { get(): DarkModes, subscribe(cb: () => void): () => void }
+    setColorScheme: (v: DarkModes) => void
+  } | null = null
   #gsettings: {
     setColorScheme: Setter<string>;
     setGtkTheme: Setter<string>;
@@ -67,6 +71,7 @@ export class ColorScheme extends Object {
     this.notify("color-scheme")
     this.notify("color-scheme-name")
     this.notify("icon-name")
+    this.#shadeSettings?.setColorScheme(this.#colorScheme)
   }
 
   @getter(String)
@@ -95,14 +100,22 @@ export class ColorScheme extends Object {
     }, interval / GLib.TIME_SPAN_MILLISECOND);
   }
 
-  init(weather: Weather, settings: { colorScheme: { get(): DarkModes, subscribe(cb: () => void): () => void } }) {
+  init(weather: Weather, settings: {
+    colorScheme: { get(): DarkModes, subscribe(cb: () => void): () => void }
+    setColorScheme: (v: DarkModes) => void
+  }) {
     this.#weather = weather
     this.#daytime = this.#weather.info.is_daytime()
+    this.#shadeSettings = settings
     const colorSchemeSetting = settings.colorScheme
     this.colorScheme = colorSchemeSetting.get()
 
-    colorSchemeSetting.subscribe(() =>
-      this.colorScheme = colorSchemeSetting.get())
+    colorSchemeSetting.subscribe(() => {
+      const newValue = colorSchemeSetting.get()
+      if (newValue !== this.#colorScheme) {
+        this.colorScheme = newValue
+      }
+    })
 
     this.timeout()
   }

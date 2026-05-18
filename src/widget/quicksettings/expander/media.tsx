@@ -64,7 +64,7 @@ const PlaybackButtons = ({ player }: { player: Mpris.Player }) =>
   <Gtk.Box>
     <Gtk.Button
       onClicked={() => player.previous()}
-      visible={player.canGoPrevious}>
+      visible={createBinding(player, "canGoPrevious")}>
       <Gtk.Image iconName={"media-skip-backward-symbolic"} />
     </Gtk.Button>
 
@@ -80,7 +80,7 @@ const PlaybackButtons = ({ player }: { player: Mpris.Player }) =>
     </Gtk.Button>
     <Gtk.Button
       onClicked={() => player.next()}
-      visible={player.canGoNext}>
+      visible={createBinding(player, "canGoNext")}>
       <Gtk.Image iconName={"media-skip-forward-symbolic"} />
     </Gtk.Button>
   </Gtk.Box>
