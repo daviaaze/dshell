@@ -9,6 +9,7 @@ export interface AudioStream {
   iconName: string
   volume: number
   muted: boolean
+  targetNode: number | null
 }
 
 function parseStreams(): AudioStream[] {
@@ -29,6 +30,7 @@ function parseStreams(): AudioStream[] {
           iconName: props["application.icon-name"] || "audio-x-generic-symbolic",
           volume: streamProps.volume ?? 1.0,
           muted: streamProps.mute ?? false,
+          targetNode: null,
         })
       }
     }
@@ -57,6 +59,7 @@ function parseCaptureStreams(): AudioStream[] {
           iconName: props["application.icon-name"] || "audio-x-generic-symbolic",
           volume: streamProps.volume ?? 1.0,
           muted: streamProps.mute ?? false,
+          targetNode: null,
         })
       }
     }
@@ -65,6 +68,22 @@ function parseCaptureStreams(): AudioStream[] {
     print("[AppMixer] failed to parse capture streams:", (e as Error).message)
     return []
   }
+}
+
+function parseTargets(): Map<number, number> {
+  const targets = new Map<number, number>()
+  try {
+    const out = AstalIO.Process.exec("pw-metadata -n default")
+    for (const line of out.split("\n")) {
+      const match = line.match(/id:(\d+)\s+key:'target\.node'\s+value:'(\d+)'/)
+      if (match) {
+        targets.set(parseInt(match[1]), parseInt(match[2]))
+      }
+    }
+  } catch (e) {
+    print("[AppMixer] failed to parse targets:", (e as Error).message)
+  }
+  return targets
 }
 
 @register({ GTypeName: "AppMixer" })
@@ -78,6 +97,8 @@ export default class AppMixer extends GObject.Object {
   #streams: AudioStream[] = []
   #captureStreams: AudioStream[] = []
   #timer: number | null = null
+  #lastModified = new Map<number, number>()
+  static readonly MODIFY_GRACE_MS = 3000
 
   @getter(Array)
   get streams() {
@@ -106,6 +127,25 @@ export default class AppMixer extends GObject.Object {
   #update() {
     const newStreams = parseStreams()
     const newCaptureStreams = parseCaptureStreams()
+    const targets = parseTargets()
+    const now = Date.now()
+
+    for (const s of newStreams) {
+      s.targetNode = targets.get(s.id) ?? null
+      const lastMod = this.#lastModified.get(s.id)
+      if (lastMod && now - lastMod < AppMixer.MODIFY_GRACE_MS) {
+        const existing = this.#streams.find(x => x.id === s.id)
+        if (existing) {
+          s.volume = existing.volume
+          s.muted = existing.muted
+          s.targetNode = existing.targetNode
+        }
+      }
+    }
+    for (const s of newCaptureStreams) {
+      s.targetNode = targets.get(s.id) ?? null
+    }
+
     const streamsChanged = JSON.stringify(newStreams) !== JSON.stringify(this.#streams)
     const captureChanged = JSON.stringify(newCaptureStreams) !== JSON.stringify(this.#captureStreams)
 
@@ -123,22 +163,51 @@ export default class AppMixer extends GObject.Object {
     }
   }
 
+  #optimisticUpdate(id: number, patch: Partial<AudioStream>) {
+    const idx = this.#streams.findIndex(s => s.id === id)
+    if (idx === -1) return
+    this.#streams = [
+      ...this.#streams.slice(0, idx),
+      { ...this.#streams[idx], ...patch },
+      ...this.#streams.slice(idx + 1)
+    ]
+    this.#lastModified.set(id, Date.now())
+    this.notify("streams")
+  }
+
   setVolume(id: number, volume: number) {
+    const clamped = Math.max(0, Math.min(1, volume))
     try {
-      AstalIO.Process.exec(`wpctl set-volume ${id} ${Math.max(0, Math.min(1, volume)).toFixed(2)}`)
-      this.#update()
+      AstalIO.Process.exec(`wpctl set-volume ${id} ${clamped.toFixed(2)}`)
     } catch (e) {
-      print("[AppMixer] setVolume failed:", (e as Error).message)
+      print("[AppMixer] setVolume wpctl failed:", (e as Error).message)
+      return
     }
+    this.#optimisticUpdate(id, { volume: clamped })
   }
 
   setMute(id: number, muted: boolean) {
     try {
-      AstalIO.Process.exec(`wpctl ${muted ? "mute" : "unmute"} ${id}`)
-      this.#update()
+      AstalIO.Process.exec(`wpctl set-mute ${id} ${muted ? "1" : "0"}`)
     } catch (e) {
-      print("[AppMixer] setMute failed:", (e as Error).message)
+      print("[AppMixer] setMute wpctl failed:", (e as Error).message)
+      return
     }
+    this.#optimisticUpdate(id, { muted })
+  }
+
+  setTargetNode(id: number, nodeId: number) {
+    try {
+      if (nodeId === -1) {
+        AstalIO.Process.exec(`pw-metadata -n default -d ${id} target.node`)
+      } else {
+        AstalIO.Process.exec(`pw-metadata -n default ${id} target.node ${nodeId}`)
+      }
+    } catch (e) {
+      print("[AppMixer] setTargetNode failed:", (e as Error).message)
+      return
+    }
+    this.#optimisticUpdate(id, { targetNode: nodeId === -1 ? null : nodeId })
   }
 
   dispose() {

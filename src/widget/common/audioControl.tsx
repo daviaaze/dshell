@@ -23,21 +23,22 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIco
   const DeviceWidget = ({ device }:
     { device: Wireplumber.Endpoint }) =>
     <Gtk.Box
-      spacing={4}
+      spacing={8}
       orientation={Gtk.Orientation.VERTICAL}>
-      <Gtk.Box spacing={4}>
+      <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
         <Gtk.CheckButton
           group={radioGroup}
-          cssClasses={["selection-mode"]}
           active={createBinding(device, "isDefault")}
           onNotifyActive={({ active }) => {
-            device.isDefault = active
+            if (active) device.isDefault = true
           }} />
         <Gtk.Label
           label={device.description}
-          maxWidthChars={10}
+          maxWidthChars={30}
+          ellipsize={3}
           hexpand
-          wrap
+          halign={Gtk.Align.START}
+          cssClasses={["body"]}
         />
       </Gtk.Box>
       <Slider
@@ -51,7 +52,8 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIco
     </Gtk.Box>
 
   const DevicesList = () => (
-    <Gtk.Box cssClasses={["card"]}
+    <Gtk.Box cssClasses={["card", "popover-padded"]}
+      spacing={12}
       orientation={Gtk.Orientation.VERTICAL}>
       <For each={devices}>
         {d => <DeviceWidget device={d} />}
@@ -73,7 +75,8 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIco
       </Gtk.Box>
       <Gtk.Box
         visible={tab.as(t => t === "devices")}
-        cssClasses={["card"]}
+        cssClasses={["card", "popover-padded"]}
+        spacing={12}
         orientation={Gtk.Orientation.VERTICAL}>
         <For each={devices}>
           {d => <DeviceWidget device={d} />}
@@ -81,6 +84,8 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIco
       </Gtk.Box>
       <Gtk.Box
         visible={tab.as(t => t === "apps")}
+        cssClasses={["card", "popover-padded"]}
+        spacing={12}
         orientation={Gtk.Orientation.VERTICAL}>
         <AppMixer />
       </Gtk.Box>
