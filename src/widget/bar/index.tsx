@@ -9,6 +9,7 @@ import { useSettings } from "#/lib/settings";
 import SystemIndicators from "./systemIndicators";
 import SystemUsage from "./systemUsage";
 import Workspaces from "./workspaces";
+import BluetoothAudio from "./indicators/bluetoothAudio"
 import Clock from "./clock";
 import Launcher from "./launcher";
 import { WeatherButton } from "./weather";
@@ -89,6 +90,7 @@ export default () => {
             orientation={vertical.as(v => v ?
               Gtk.Orientation.VERTICAL :
               Gtk.Orientation.HORIZONTAL)}>
+            <BluetoothAudio />
             <Clock vertical={vertical} visible={bar.showClock} />
             <Gtk.Separator visible={bar.showClock.as(v => v && bar.showWeather.get())} />
             <WeatherButton vertical={vertical} visible={bar.showWeather} />
