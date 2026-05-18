@@ -10,7 +10,6 @@ export default () => {
   logger.log("AppMixer: done")
 
   return <Gtk.Box
-    visible={createBinding(mixer, "streams").as(s => s.length > 0)}
     spacing={8}
     cssClasses={["card", "popover-padded"]}
     orientation={Gtk.Orientation.VERTICAL}>

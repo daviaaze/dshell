@@ -2,6 +2,7 @@ import { monitors } from "#/lib/monitors"
 import Adw from "gi://Adw?version=1"
 import Astal from "gi://Astal?version=4.0"
 import AstalAuth from "gi://AstalAuth?version=0.1"
+import AstalIO from "gi://AstalIO?version=0.1"
 import Gdk from "gi://Gdk?version=4.0"
 import SessionLock from "gi://Gtk4SessionLock"
 import GLib from "gi://GLib?version=2.0"
@@ -23,12 +24,29 @@ const createLocks = (onUnlock: () => void) => {
     return GLib.SOURCE_CONTINUE
   })
 
+  // Save screen brightness at lock time so we can restore it exactly on unlock
+  let savedBrightness = ""
+  try {
+    savedBrightness = AstalIO.Process.exec("brightnessctl get").trim()
+  } catch (e) {
+    print("[LockScreen] could not save brightness:", e)
+  }
+
   const doUnlock = () => {
     fingerprint.stop()
     lock.unlock()
     WindowManager.get_default().lockscreens.forEach(w => w.destroy())
     ShellState.get_default().screenlocked = false
     onUnlock()
+
+    // Restore exact brightness saved at lock time
+    if (savedBrightness) {
+      try {
+        AstalIO.Process.exec(`brightnessctl set ${savedBrightness}`)
+      } catch (e) {
+        print("[LockScreen] failed to restore brightness:", e)
+      }
+    }
   }
 
   const unlock = (self: Gtk.PasswordEntry) => {

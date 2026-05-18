@@ -1,8 +1,9 @@
 import Wireplumber from "gi://AstalWp"
 import Gtk from "gi://Gtk?version=4.0"
-import { Accessor, createBinding, createComputed, createState, For, With } from "gnim"
+import { Accessor, createBinding, createState, For, With } from "gnim"
 import { Slider } from "./slider"
 import { getVolumeIcon } from "#/lib/audio"
+import AppMixer from "#/widget/quicksettings/appMixer"
 
 export { getVolumeIcon }
 
@@ -11,10 +12,12 @@ interface AudioControlProps {
   devices: Accessor<Wireplumber.Endpoint[]>
   visible?: Accessor<boolean> | boolean
   mutedIcon: string
+  showAppMixer?: boolean
 }
 
-export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIcon }: AudioControlProps) => {
+export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIcon, showAppMixer }: AudioControlProps) => {
   const [revealed, setRevealed] = createState(false)
+  const [tab, setTab] = createState<"devices" | "apps">("devices")
   const radioGroup = new Gtk.CheckButton()
 
   const DeviceWidget = ({ device }:
@@ -47,6 +50,43 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIco
       />
     </Gtk.Box>
 
+  const DevicesList = () => (
+    <Gtk.Box cssClasses={["card"]}
+      orientation={Gtk.Orientation.VERTICAL}>
+      <For each={devices}>
+        {d => <DeviceWidget device={d} />}
+      </For>
+    </Gtk.Box>
+  )
+
+  const TabbedContent = () => (
+    <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
+      <Gtk.Box spacing={0} halign={Gtk.Align.CENTER} cssClasses={["linked"]}>
+        <Gtk.ToggleButton
+          active={tab.as(t => t === "devices")}
+          onClicked={() => setTab("devices")}
+          label="Devices" />
+        <Gtk.ToggleButton
+          active={tab.as(t => t === "apps")}
+          onClicked={() => setTab("apps")}
+          label="Applications" />
+      </Gtk.Box>
+      <Gtk.Box
+        visible={tab.as(t => t === "devices")}
+        cssClasses={["card"]}
+        orientation={Gtk.Orientation.VERTICAL}>
+        <For each={devices}>
+          {d => <DeviceWidget device={d} />}
+        </For>
+      </Gtk.Box>
+      <Gtk.Box
+        visible={tab.as(t => t === "apps")}
+        orientation={Gtk.Orientation.VERTICAL}>
+        <AppMixer />
+      </Gtk.Box>
+    </Gtk.Box>
+  )
+
   return (
     <Gtk.Box
       visible={visible}
@@ -74,12 +114,7 @@ export const AudioEndpointControl = ({ defaultDevice, devices, visible, mutedIco
         />
       </Gtk.Box>
       <Gtk.Revealer revealChild={revealed}>
-        <Gtk.Box cssClasses={["card"]}
-          orientation={Gtk.Orientation.VERTICAL}>
-          <For each={devices}>
-            {d => <DeviceWidget device={d} />}
-          </For>
-        </Gtk.Box>
+        {showAppMixer ? <TabbedContent /> : <DevicesList />}
       </Gtk.Revealer>
     </Gtk.Box>
   )

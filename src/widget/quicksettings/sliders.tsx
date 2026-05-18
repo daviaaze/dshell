@@ -15,6 +15,7 @@ export const AudioConfig = () => {
     defaultDevice={createBinding(audio, "defaultSpeaker")}
     devices={createBinding(audio, 'speakers')}
     mutedIcon="audio-volume-muted-symbolic"
+    showAppMixer
   />
 }
 

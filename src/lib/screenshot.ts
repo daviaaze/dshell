@@ -102,12 +102,14 @@ export default class Screenshot extends GObject.Object {
       args.push("-a")
     }
 
+    print(`[Screenshot] starting wf-recorder with args: ${args.join(" ")}`)
+
     let proc: AstalIO.Process
     try {
       proc = AstalIO.Process.subprocessv(args)
     } catch (e) {
-      print(`error: failed to spawn wf-recorder: ${e.message}`)
-      this.#notify("Recording failed", "Could not start wf-recorder", "dialog-error-symbolic")
+      print(`[Screenshot] failed to spawn wf-recorder: ${e.message}`)
+      this.#notify("Recording failed", `Could not start wf-recorder: ${e.message}`, "dialog-error-symbolic")
       return
     }
 
@@ -123,7 +125,22 @@ export default class Screenshot extends GObject.Object {
     proc.connect("exit", () => {
       const durationMs = Date.now() - this.#recordingStartTime
       const durationStr = this.#formatDuration(durationMs)
-      this.#notify("Recording stopped", `Duration: ${durationStr}\nSaved to: ${this.#recordingFile}`, "media-playback-stop-symbolic")
+      print(`[Screenshot] wf-recorder exited after ${durationStr} (${durationMs}ms)`)
+
+      if (durationMs < 1000) {
+        this.#notify(
+          "Recording failed",
+          `wf-recorder exited immediately. Check geometry/output and that no other recorder is running.`,
+          "dialog-error-symbolic"
+        )
+      } else {
+        this.#notify(
+          "Recording stopped",
+          `Duration: ${durationStr}\nSaved to: ${this.#recordingFile}`,
+          "media-playback-stop-symbolic"
+        )
+      }
+
       this.#recording = false
       this.notify("recording")
       this.recordingStopped()
@@ -148,8 +165,12 @@ export default class Screenshot extends GObject.Object {
     AstalIO.Process.exec_async(
       `slurp`,
       (out) => {
-        if (!out) return
+        if (!out) {
+          print("[Screenshot] slurp returned no output (cancelled?)")
+          return
+        }
         const geometry = out.trim()
+        print(`[Screenshot] slurp geometry: "${geometry}"`)
         if (geometry) {
           this.startRecording({ geometry })
         }
@@ -162,8 +183,12 @@ export default class Screenshot extends GObject.Object {
     if (!outputName) {
       const hyprland = AstalHyprland.get_default()
       outputName = hyprland.focused_monitor?.name
+      print(`[Screenshot] focused monitor name: ${outputName}`)
     }
-    if (!outputName) return
+    if (!outputName) {
+      print("[Screenshot] no output name, cannot record output")
+      return
+    }
     this.startRecording({ output: outputName })
   }
 
@@ -171,8 +196,12 @@ export default class Screenshot extends GObject.Object {
     if (this.#recording) return
     const hyprland = AstalHyprland.get_default()
     const client = hyprland.focused_client
-    if (!client) return
+    if (!client) {
+      print("[Screenshot] no focused client, cannot record window")
+      return
+    }
     const geometry = `${client.x},${client.y} ${client.width}x${client.height}`
+    print(`[Screenshot] window geometry: ${geometry}`)
     this.startRecording({ geometry })
   }
 

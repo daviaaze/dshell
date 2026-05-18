@@ -34,7 +34,12 @@ export default class FingerprintAuth extends GObject.Object {
   @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
   statusChanged(_status: string) {}
 
+  #initialized = false
+  #claimed = false
+
   async init() {
+    if (this.#initialized) return
+    this.#initialized = true
     try {
       const manager = await this.#getProxy(FPRINTD_MANAGER, "net.reactivated.Fprint.Manager")
       const devices = manager.call_sync(
@@ -63,19 +68,18 @@ export default class FingerprintAuth extends GObject.Object {
           this.statusChanged(status)
 
           if (done) {
+            this.#verifying = false
+            this.notify("verifying")
             if (status === "verify-match") {
-              this.#verifying = false
-              this.notify("verifying")
               this.verified()
             } else {
-              this.#verifying = false
-              this.notify("verifying")
               this.failed(status)
             }
           }
         }
       })
-    } catch {
+    } catch (e) {
+      print("[Fingerprint] init failed:", e)
       this.#available = false
       this.notify("available")
     }
@@ -84,19 +88,31 @@ export default class FingerprintAuth extends GObject.Object {
   start() {
     if (!this.#available || !this.#deviceProxy) return
     try {
+      if (!this.#claimed) {
+        this.#deviceProxy.call_sync(
+          "Claim",
+          GLib.Variant.new("(s)", [GLib.get_user_name()]),
+          Gio.DBusCallFlags.NONE,
+          -1,
+          null
+        )
+        this.#claimed = true
+      }
       this.#verifying = true
       this.notify("verifying")
       this.#deviceProxy.call_sync(
         "VerifyStart",
-        GLib.Variant.new("(s)", ["any"]),
+        GLib.Variant.new("(s)", [""]),
         Gio.DBusCallFlags.NONE,
         -1,
         null
       )
     } catch (e) {
+      print("[Fingerprint] start failed:", e)
       this.#verifying = false
       this.notify("verifying")
       this.failed(String(e))
+      this.#release()
     }
   }
 
@@ -110,9 +126,28 @@ export default class FingerprintAuth extends GObject.Object {
         -1,
         null
       )
-    } catch { /* ignore */ }
+    } catch (e) {
+      print("[Fingerprint] VerifyStop failed:", e)
+    }
     this.#verifying = false
     this.notify("verifying")
+    this.#release()
+  }
+
+  #release() {
+    if (!this.#claimed || !this.#deviceProxy) return
+    try {
+      this.#deviceProxy.call_sync(
+        "Release",
+        null,
+        Gio.DBusCallFlags.NONE,
+        -1,
+        null
+      )
+    } catch (e) {
+      print("[Fingerprint] Release failed:", e)
+    }
+    this.#claimed = false
   }
 
   async #getProxy(objectPath: string, interfaceName: string): Promise<Gio.DBusProxy> {
