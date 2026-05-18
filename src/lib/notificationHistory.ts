@@ -2,6 +2,7 @@ import Notifd from "gi://AstalNotifd"
 import Gio from "gi://Gio"
 import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register } from "gnim/gobject"
+import logger from "#/lib/logger"
 
 const CACHE_DIR = `${GLib.get_user_cache_dir()}/shade`
 const HISTORY_FILE = `${CACHE_DIR}/notifications.json`
@@ -31,7 +32,7 @@ function saveHistory(history: HistoryEntry[]) {
     }
     GLib.file_set_contents(HISTORY_FILE, new TextEncoder().encode(JSON.stringify(history)))
   } catch (e) {
-    print("[NotificationHistory] save failed:", (e as Error).message)
+    logger.error("history", "save failed:", e)
   }
 }
 

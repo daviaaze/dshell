@@ -2,6 +2,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import { Accessor } from "gnim"
 import Network from "gi://AstalNetwork"
 import { bssidOf } from "./utils"
+import logger from "#/lib/logger"
 
 interface PasswordDialogProps {
   passwordDialog: Accessor<{ ap: Network.AccessPoint, entry: Gtk.Entry } | null>
@@ -28,7 +29,7 @@ export default ({ passwordDialog, setPasswordDialog, setConnectingAp }: Password
           ap.activate(pw)
             .then(() => setConnectingAp(null))
             .catch((e: Error) => {
-              print("activate with password failed:", e.message)
+              logger.error("network", "activate with password failed:", e)
               setConnectingAp(null)
             })
         }}>

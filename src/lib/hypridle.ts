@@ -3,6 +3,7 @@ import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
 import Inhibit from "#/lib/inhibit"
+import logger from "#/lib/logger"
 
 const CONFIG_PATH = `${GLib.get_user_config_dir()}/hypr/hypridle.conf`
 
@@ -176,7 +177,7 @@ export default class Hypridle extends GObject.Object {
       const config = lines.join('\n') + '\n'
       GLib.file_set_contents(CONFIG_PATH, new TextEncoder().encode(config))
     } catch (e) {
-      print("[Hypridle] failed to write config:", (e as Error).message)
+      logger.error("hypridle", "failed to write config:", e)
     }
   }
 
@@ -185,7 +186,7 @@ export default class Hypridle extends GObject.Object {
     try {
       this.#process = AstalIO.Process.subprocessv(["hypridle"])
     } catch (e) {
-      print("[Hypridle] failed to start:", (e as Error).message)
+      logger.error("hypridle", "failed to start:", e)
     }
   }
 

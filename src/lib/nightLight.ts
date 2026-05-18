@@ -2,6 +2,7 @@ import GObject, { getter, register, setter } from "gnim/gobject"
 import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib?version=2.0"
 import { ColorScheme } from "#/lib/colorScheme"
+import logger from "#/lib/logger"
 
 @register({ GTypeName: "NightLight" })
 export default class NightLight extends GObject.Object {
@@ -125,7 +126,7 @@ export default class NightLight extends GObject.Object {
         "hyprsunset", "--temperature", this.#temperature.toString()
       ])
     } catch (e) {
-      print("[NightLight] failed to start hyprsunset:", (e as Error).message)
+      logger.error("nightlight", "failed to start hyprsunset:", e)
     }
   }
 

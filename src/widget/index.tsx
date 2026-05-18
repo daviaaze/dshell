@@ -18,7 +18,7 @@ import { initAutoSwitch } from "#/lib/audioAutoSwitch"
 import { app } from "#/App"
 import { useSettings } from "#/lib/settings"
 import WindowManager from "#/lib/windowManager"
-import logger from "#/lib/logger"
+import logger, { perf, safeTry } from "#/lib/logger"
 
 export const openSettings = () => {
   const win = WindowManager.get_default().settings
@@ -28,6 +28,7 @@ export const openSettings = () => {
 }
 
 export const widgets = () => {
+  perf.start("services-init", "mount")
   logger.log("widgets() starting...")
   const s = useSettings()
   Weather.get_default().init(s.weather)
@@ -37,37 +38,31 @@ export const widgets = () => {
   Hypridle.get_default().init(s.general)
   Theming.get_default().init(s.general)
   initAutoSwitch()
+  perf.stop("services-init", "mount")
 
   const safe = (name: string, fn: () => void) => {
+    perf.start(`widget-${name}`, "mount")
     try {
       fn()
+      logger.info("mount", `${name} mounted in ${perf.stop(`widget-${name}`, "mount").toFixed(1)}ms`)
     } catch (e) {
-      logger.log(`Widget ${name} failed to mount:`, e)
+      logger.error("mount", `Widget ${name} FAILED to mount:`, e)
     }
   }
 
   safe("wallpaper", Wallpaper)
-  logger.log("wallpaper mounted")
   safe("bar", bar)
-  logger.log("bar mounted")
   safe("dock", dock)
-  logger.log("dock mounted")
   safe("osd", osd)
-  logger.log("osd mounted")
   safe("applauncher", applauncher)
-  logger.log("applauncher mounted")
   safe("quicksettings", quicksettings)
-  logger.log("quicksettings mounted")
   safe("lockscreen", LockScreen)
-  logger.log("lockscreen mounted")
   safe("windowswitcher", windowswitcher)
-  logger.log("windowswitcher mounted")
   safe("notifications", notifications)
-  logger.log("notifications mounted")
   safe("settings", () => {
     const win = createSettingsWindow()
     WindowManager.get_default().setSettings(win)
   })
-  logger.log("settings mounted")
   logger.log("widgets() done")
+  perf.stop("widgets-mount", "mount")
 }

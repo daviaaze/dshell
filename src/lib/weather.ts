@@ -1,7 +1,8 @@
 import GWeather from "gi://GWeather?version=4.0"
 import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register, setter } from "gnim/gobject"
-import Geolocation from "./geolocation";
+import Geolocation from "./geolocation"
+import logger from "#/lib/logger"
 
 @register({ GTypeName: "Weather" })
 export default class Weather extends GObject.Object {
@@ -101,10 +102,11 @@ export default class Weather extends GObject.Object {
 
     this.#weather.connect("updated",
       () => {
-        print("Weather: updated signal, valid=", this.#weather.is_valid(),
-          "temp=", this.#weather.get_temp_summary() || "null",
-          "sky=", this.#weather.get_sky() || "null",
-          "loc=", this.#weather.get_location_name() || "null")
+        logger.info("weather",
+          `updated: valid=${this.#weather.is_valid()}` +
+          ` temp=${this.#weather.get_temp_summary() || "null"}` +
+          ` sky=${this.#weather.get_sky() || "null"}` +
+          ` loc=${this.#weather.get_location_name() || "null"}`)
         this.notify("info")
       })
   }

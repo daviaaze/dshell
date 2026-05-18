@@ -10,6 +10,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, createRoot, createState, For, onCleanup, onMount } from "gnim"
 import WindowManager from "#/lib/windowManager"
 import ShellState from "#/lib/shellState"
+import logger from "#/lib/logger"
 import FingerprintAuth from "#/lib/fingerprint"
 
 const createLocks = (onUnlock: () => void) => {
@@ -29,7 +30,7 @@ const createLocks = (onUnlock: () => void) => {
   try {
     savedBrightness = AstalIO.Process.exec("brightnessctl get").trim()
   } catch (e) {
-    print("[LockScreen] could not save brightness:", e)
+    logger.warn("lockscreen", "could not save brightness:", e)
   }
 
   const doUnlock = () => {
@@ -44,7 +45,7 @@ const createLocks = (onUnlock: () => void) => {
       try {
         AstalIO.Process.exec(`brightnessctl set ${savedBrightness}`)
       } catch (e) {
-        print("[LockScreen] failed to restore brightness:", e)
+        logger.warn("lockscreen", "failed to restore brightness:", e)
       }
     }
   }
@@ -55,7 +56,7 @@ const createLocks = (onUnlock: () => void) => {
         AstalAuth.Pam.authenticate_finish(res)
         doUnlock()
       } catch (e) {
-        print("Authentication failed:", e)
+        logger.warn("lockscreen", "Authentication failed:", e)
         setAuthStatus("Authentication failed")
       }
     })

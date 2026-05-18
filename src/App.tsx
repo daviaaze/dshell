@@ -11,7 +11,7 @@ import { SettingsProvider } from "./lib/settings";
 import { registerActions, requestHandler } from "./lib/requestHandler";
 import { widgets } from "./widget";
 import WindowManager from "./lib/windowManager";
-import logger from "./lib/logger";
+import logger, { perf } from "./lib/logger";
 import css from "./shade.css"
 
 @register()
@@ -40,9 +40,10 @@ export class ShadeShell extends Adw.Application {
   }
 
   private initCss() {
+    perf.start("initCss", "mount")
     const display = Gdk.Display.get_default()
     if (!display) {
-      logger.warn("No display available. Cannot initialize CSS.")
+      logger.warn("app", "No display available. Cannot initialize CSS.")
       return
     }
     const provider = new Gtk.CssProvider()
@@ -53,13 +54,16 @@ export class ShadeShell extends Adw.Application {
       provider,
       Gtk.STYLE_PROVIDER_PRIORITY_USER,
     )
+    logger.debug("mount", "CSS provider registered")
+    perf.stop("initCss", "mount")
   }
 
   vfunc_command_line(cmd: Gio.ApplicationCommandLine) {
-    logger.log(`vfunc_command_line isRemote=${cmd.isRemote}`)
+    logger.debug("app", `vfunc_command_line isRemote=${cmd.isRemote}`)
     if (cmd.isRemote)
       requestHandler(cmd, this)
     else {
+      perf.start("widgets-mount", "mount")
       createRoot((dispose) => {
         this.connect("shutdown", dispose)
         this.initCss()

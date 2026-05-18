@@ -3,6 +3,7 @@ import AstalIO from "gi://AstalIO?version=0.1"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
+import logger from "#/lib/logger"
 
 interface MatugenColors {
   colors?: {
@@ -32,7 +33,7 @@ function parseMatugenJson(json: string): { primary: string, secondary: string, e
       error: colors.error || "#c01c28",
     }
   } catch (e) {
-    print("[Theming] failed to parse matugen output:", (e as Error).message)
+    logger.error("theme", "failed to parse matugen output:", e)
     return null
   }
 }
@@ -112,7 +113,7 @@ export default class Theming extends GObject.Object {
 
   regenerate() {
     if (!this.available) {
-      print("[Theming] matugen not available")
+      logger.warn("theme", "matugen not available")
       return
     }
     this.#regenerate()
@@ -122,7 +123,7 @@ export default class Theming extends GObject.Object {
     if (!this.#settings) return
     const wallpaper = this.#settings.wallpaperDay.get()
     if (!wallpaper || !GLib.file_test(wallpaper, GLib.FileTest.EXISTS)) {
-      print("[Theming] wallpaper not found:", wallpaper)
+      logger.warn("theme", `wallpaper not found: ${wallpaper}`)
       return
     }
 
@@ -134,7 +135,7 @@ export default class Theming extends GObject.Object {
           this.#applyColors(colors)
         }
       } catch (e) {
-        print("[Theming] matugen failed:", (e as Error).message)
+        logger.error("theme", "matugen execution failed:", e)
       }
     })
   }
@@ -158,6 +159,7 @@ export default class Theming extends GObject.Object {
         this.#cssProvider,
         Gtk.STYLE_PROVIDER_PRIORITY_USER + 1
       )
+      logger.debug("theme", `applied colors — primary: ${colors.primary}`)
     }
   }
 

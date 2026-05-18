@@ -161,5 +161,13 @@ export const generalSchema = new Schema({
     default: 60,
     summary: "CAVA visualizer framerate"
   })
+  .key("debug-enabled", "b", {
+    default: false,
+    summary: "Enable DEBUG-level logging (very verbose)"
+  })
+  .key("debug-categories", "as", {
+    default: [],
+    summary: "Debug categories to enable (empty = all). Categories: mount, state, theme, dbus, exec, perf, memory"
+  })
 
 export default defineSchemaList([barSchema, generalSchema, weatherSchema])

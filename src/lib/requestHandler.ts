@@ -38,13 +38,13 @@ export function registerActions(app: Gio.Application) {
 export const requestHandler =
   (cmd: Gio.ApplicationCommandLine, app: Gio.Application) => {
     const args = cmd.get_arguments()
-    logger.log(`requestHandler args=${args.slice(1).join(" ")}`)
+    logger.debug("dbus", `requestHandler args=${args.slice(1).join(" ")}`)
 
     const activate = (name: string) => {
       if (app.lookup_action(name)) {
         app.activate_action(name, null)
       } else {
-        logger.warn(`unknown action: ${name}`)
+        logger.warn("dbus", `unknown action: ${name}`)
       }
     }
 
@@ -67,6 +67,6 @@ export const requestHandler =
     else if (args[1] === "record-output")
       activate("record-output")
 
-    logger.log("requestHandler done")
+    logger.debug("dbus", "requestHandler done")
     cmd.done()
   }

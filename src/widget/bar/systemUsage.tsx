@@ -6,6 +6,7 @@ import AstalIO from "gi://AstalIO?version=0.1";
 import Gio from "gi://Gio?version=2.0";
 import GLib from "gi://GLib?version=2.0";
 import { Accessor, createState, onCleanup } from "gnim";
+import logger from "#/lib/logger"
 
 
 export default ({ vertical }: { vertical: Accessor<boolean> }) => {
@@ -47,7 +48,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
             setTemp(value / 100000)
           }
         } catch (e: any) {
-          print("failed to read temperature:", e.message)
+          logger.error("systemUsage", "failed to read temperature:", e)
           setTemp(-1)
         }
       })

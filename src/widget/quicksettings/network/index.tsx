@@ -4,6 +4,7 @@ import { createBinding, createComputed, createState, With } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import logger from "#/lib/logger"
+import logger from "#/lib/logger"
 import WifiPopover from "./wifiPopover"
 import PasswordDialog from "./passwordDialog"
 
@@ -72,7 +73,7 @@ export default () => {
         if (!wifi) return
         if (wifi.state === Network.DeviceState.ACTIVATED) {
           wifi.deactivate_connection()
-            .catch((e: Error) => print("deactivate failed:", e.message))
+            .catch((e: Error) => logger.error("network", "deactivate failed:", e.message))
         } else {
           wifi.enabled = !wifi.enabled
         }

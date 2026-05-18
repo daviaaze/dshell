@@ -3,6 +3,7 @@ import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, createComputed, createState, For } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
+import logger from "#/lib/logger"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import { toArray } from "#/lib/gjsUtils"
 import logger from "#/lib/logger"
@@ -29,7 +30,7 @@ export default () => {
                   try {
                     device.disconnect_device_finish(res)
                   } catch (e) {
-                    print(e)
+                    logger.error("bluetooth", "disconnect failed:", e)
                   }
                 })
               } else {
@@ -39,7 +40,7 @@ export default () => {
                   try {
                     device.connect_device_finish(res)
                   } catch (e) {
-                    print(e)
+                    logger.error("bluetooth", "connect failed:", e)
                   }
                 })
               }

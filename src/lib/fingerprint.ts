@@ -1,6 +1,7 @@
 import GObject, { getter, register, signal } from "gnim/gobject"
 import Gio from "gi://Gio"
 import GLib from "gi://GLib"
+import logger from "#/lib/logger"
 
 const FPRINTD_SERVICE = "net.reactivated.Fprint"
 const FPRINTD_MANAGER = "/net/reactivated/Fprint/Manager"
@@ -79,7 +80,7 @@ export default class FingerprintAuth extends GObject.Object {
         }
       })
     } catch (e) {
-      print("[Fingerprint] init failed:", e)
+      logger.error("fingerprint", "init failed:", e)
       this.#available = false
       this.notify("available")
     }
@@ -108,7 +109,7 @@ export default class FingerprintAuth extends GObject.Object {
         null
       )
     } catch (e) {
-      print("[Fingerprint] start failed:", e)
+      logger.error("fingerprint", "start failed:", e)
       this.#verifying = false
       this.notify("verifying")
       this.failed(String(e))
@@ -127,7 +128,7 @@ export default class FingerprintAuth extends GObject.Object {
         null
       )
     } catch (e) {
-      print("[Fingerprint] VerifyStop failed:", e)
+      logger.error("fingerprint", "VerifyStop failed:", e)
     }
     this.#verifying = false
     this.notify("verifying")
@@ -145,7 +146,7 @@ export default class FingerprintAuth extends GObject.Object {
         null
       )
     } catch (e) {
-      print("[Fingerprint] Release failed:", e)
+      logger.error("fingerprint", "Release failed:", e)
     }
     this.#claimed = false
   }

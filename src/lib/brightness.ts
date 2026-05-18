@@ -1,6 +1,7 @@
 import AstalIO from "gi://AstalIO?version=0.1";
 import Gio from "gi://Gio?version=2.0";
 import { register, Object, getter, setter } from "gnim/gobject";
+import logger from "#/lib/logger"
 
 const get = (args: string) => Number(AstalIO.Process.exec(`brightnessctl ${args}`));
 let screen = ""
@@ -9,7 +10,7 @@ try {
   screen = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/backlight | head -1"`)
   kbd = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/leds | head -1"`)
 } catch (e: any) {
-  print("brightness hardware probe failed:", e.message)
+  logger.warn("hw", "brightness hardware probe failed:", e.message)
 }
 
 @register({ GTypeName: "Brightness" })
@@ -79,7 +80,7 @@ export default class Brightness extends Object {
           this.#screen = Number(v) / this.#screenMax;
           this.notify("screen");
         } catch (e: any) {
-          print("failed to read screen brightness:", e.message);
+          logger.error("hw", "failed to read screen brightness:", e)
         }
       });
     }
@@ -92,7 +93,7 @@ export default class Brightness extends Object {
           this.#kbd = Number(v) / this.#kbdMax;
           this.notify("kbd");
         } catch (e: any) {
-          print("failed to read kbd brightness:", e.message);
+          logger.error("hw", "failed to read kbd brightness:", e)
         }
       });
     }

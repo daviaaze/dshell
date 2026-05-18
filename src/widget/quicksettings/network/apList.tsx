@@ -3,6 +3,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, createComputed, Accessor, For, With } from "gnim"
 import { toArray, listLength } from "#/lib/gjsUtils"
 import { ssidOf, bssidOf, bssidEquals } from "./utils"
+import logger from "#/lib/logger"
 
 interface ApListProps {
   wifi: Network.Wifi
@@ -43,7 +44,7 @@ export default ({ wifi, connectingAp, setConnectingAp, setPasswordDialog }: ApLi
         onClicked={() => {
           if (isActive.get()) {
             wifi.deactivate_connection()
-              .catch((e: Error) => print("deactivate failed:", e.message))
+              .catch((e: Error) => logger.error("network", "deactivate failed:", e.message))
             return
           }
           const conns = ap.get_connections()
@@ -58,7 +59,7 @@ export default ({ wifi, connectingAp, setConnectingAp, setPasswordDialog }: ApLi
           ap.activate()
             .then(() => setConnectingAp(null))
             .catch((e: Error) => {
-              print("activate failed:", e.message)
+              logger.error("network", "activate failed:", e.message)
               setConnectingAp(null)
             })
         }}>

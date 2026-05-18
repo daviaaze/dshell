@@ -1,6 +1,7 @@
 import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register, signal } from "gnim/gobject"
+import logger from "#/lib/logger"
 
 interface KeyboardDevice {
   name: string
@@ -91,7 +92,7 @@ export default class KeyboardLayout extends GObject.Object {
         )
       }
     } catch (e) {
-      print("Failed to cycle keyboard layout:", (e as Error).message)
+      logger.error("keyboard", "Failed to cycle layout:", e)
     }
   }
 

@@ -2,6 +2,7 @@ import GObject, { getter, register, signal } from "gnim/gobject"
 import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib"
 import Gio from "gi://Gio"
+import logger from "#/lib/logger"
 
 interface GeoClueLocation {
   Latitude: GLib.Variant<number>
@@ -43,7 +44,7 @@ export default class Geolocation extends GObject.Object {
       if (!found) this.#tryIpGeolocation()
     }).catch((e) => {
       this.#detecting = false
-      print("GeoClue detection failed:", (e as Error).message)
+      logger.error("geo", "GeoClue detection failed:", e)
       this.#tryIpGeolocation()
     })
   }
@@ -63,7 +64,7 @@ export default class Geolocation extends GObject.Object {
             try {
               resolve(Gio.DBusProxy.new_for_bus_finish(res))
             } catch (e) {
-              print("GeoClue Manager proxy failed:", (e as Error).message)
+              logger.error("geo", "Manager proxy failed:", e)
               reject(e)
             }
           }
@@ -79,7 +80,7 @@ export default class Geolocation extends GObject.Object {
       )?.get_child_value(0)?.get_string()?.[0]
 
       if (!clientPath) {
-        print("GeoClue: GetClient returned no path")
+        logger.warn("geo", "GetClient returned no path")
         return false
       }
 
@@ -98,7 +99,7 @@ export default class Geolocation extends GObject.Object {
               try {
                 resolve(Gio.DBusProxy.new_for_bus_finish(res))
               } catch (e) {
-                print("GeoClue Client proxy failed:", (e as Error).message)
+                logger.error("geo", "Client proxy failed:", e)
                 reject(e)
               }
             }
@@ -127,7 +128,7 @@ export default class Geolocation extends GObject.Object {
         signalId = client!.connect("g-signal", (_proxy, _sender, signalName, params) => {
           if (signalName === "LocationUpdated") {
             const newPath = params.get_child_value(1).get_string()?.[0]
-            print("GeoClue: LocationUpdated signal:", newPath)
+            logger.debug("geo", `LocationUpdated signal: ${newPath}`)
             if (newPath && newPath !== "/") latestLocation = newPath
           }
         })
@@ -142,10 +143,10 @@ export default class Geolocation extends GObject.Object {
             (_, res) => {
               try {
                 client!.call_finish(res)
-                print("GeoClue: Start succeeded")
+                logger.debug("geo", "Start succeeded")
                 resolve()
               } catch (e) {
-                print("GeoClue Start failed:", (e as Error).message)
+                logger.error("geo", "Start failed:", e)
                 reject(e)
               }
             }
@@ -169,11 +170,11 @@ export default class Geolocation extends GObject.Object {
         if (signalId) client!.disconnect(signalId)
 
         if (!locationPath) {
-          print("GeoClue: No location path after retries")
+          logger.warn("geo", "No location path after retries")
           return false
         }
 
-        print("GeoClue: Creating Location proxy for", locationPath)
+        logger.debug("geo", `Creating Location proxy for ${locationPath}`)
         const location = await new Promise<Gio.DBusProxy>((resolve, reject) => {
           Gio.DBusProxy.new_for_bus(
             Gio.BusType.SYSTEM,
@@ -187,7 +188,7 @@ export default class Geolocation extends GObject.Object {
               try {
                 resolve(Gio.DBusProxy.new_for_bus_finish(res))
               } catch (e) {
-                print("GeoClue Location proxy failed:", (e as Error).message)
+                logger.error("geo", "Location proxy failed:", e)
                 reject(e)
               }
             }
@@ -196,7 +197,7 @@ export default class Geolocation extends GObject.Object {
 
         const lat = location.get_cached_property("Latitude")?.get_double() ?? 0
         const lon = location.get_cached_property("Longitude")?.get_double() ?? 0
-        print("GeoClue: coordinates", lat, lon)
+        logger.info("geo", `coordinates lat=${lat} lon=${lon}`)
 
         this.#update(lat, lon)
         return true
@@ -207,7 +208,7 @@ export default class Geolocation extends GObject.Object {
         }
       }
     } catch (e) {
-      print("GeoClue detection failed:", (e as Error).message)
+      logger.error("geo", "GeoClue detection failed:", e)
       return false
     }
   }
@@ -219,21 +220,21 @@ export default class Geolocation extends GObject.Object {
         try {
           const out = AstalIO.Process.exec_asyncv_finish(res)
           if (!out) {
-            print("IP geolocation: curl produced no output")
+            logger.warn("geo", "curl produced no output")
             return
           }
           const data = JSON.parse(out)
           if (!data) {
-            print("IP geolocation: parsed response is null")
+            logger.warn("geo", "parsed response is null")
             return
           }
           if (typeof data.latitude === "number" && typeof data.longitude === "number") {
             this.#update(data.latitude, data.longitude)
           } else {
-            print("IP geolocation: no coordinates in response:", out.slice(0, 200))
+            logger.warn("geo", `no coordinates in response: ${out.slice(0, 200)}`)
           }
         } catch (e) {
-          print("IP geolocation failed:", (e as Error).message)
+          logger.error("geo", "IP geolocation failed:", e)
         }
       }
     )

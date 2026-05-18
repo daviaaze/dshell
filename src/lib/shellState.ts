@@ -34,7 +34,7 @@ export default class ShellState extends GObject.Object {
 
   @setter(Boolean)
   set launcherOpen(v: boolean) {
-    logger.log(`ShellState.launcherOpen ${this.#launcherOpen} -> ${v}`)
+    logger.debug("state", `ShellState.launcherOpen ${this.#launcherOpen} -> ${v}`)
     this.#launcherOpen = v
     this.notify("launcher-open")
   }
@@ -46,7 +46,7 @@ export default class ShellState extends GObject.Object {
 
   @setter(Boolean)
   set qsOpen(v: boolean) {
-    logger.log(`ShellState.qsOpen ${this.#qsOpen} -> ${v}`)
+    logger.debug("state", `ShellState.qsOpen ${this.#qsOpen} -> ${v}`)
     this.#qsOpen = v
     this.notify("qs-open")
   }
@@ -58,6 +58,7 @@ export default class ShellState extends GObject.Object {
 
   @setter(Boolean)
   set screenlocked(v: boolean) {
+    logger.info("state", `ShellState.screenlocked ${this.#screenlocked} -> ${v}`)
     this.#screenlocked = v
     this.notify("screenlocked")
   }

@@ -1,6 +1,7 @@
 import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register } from "gnim/gobject"
+import logger from "#/lib/logger"
 
 export interface AudioStream {
   id: number
@@ -36,7 +37,7 @@ function parseStreams(): AudioStream[] {
     }
     return streams
   } catch (e) {
-    print("[AppMixer] failed to parse streams:", (e as Error).message)
+    logger.error("audio", "failed to parse streams:", e)
     return []
   }
 }
@@ -65,7 +66,7 @@ function parseCaptureStreams(): AudioStream[] {
     }
     return streams
   } catch (e) {
-    print("[AppMixer] failed to parse capture streams:", (e as Error).message)
+    logger.error("audio", "failed to parse capture streams:", e)
     return []
   }
 }
@@ -81,7 +82,7 @@ function parseTargets(): Map<number, number> {
       }
     }
   } catch (e) {
-    print("[AppMixer] failed to parse targets:", (e as Error).message)
+    logger.error("audio", "failed to parse targets:", e)
   }
   return targets
 }
@@ -180,7 +181,7 @@ export default class AppMixer extends GObject.Object {
     try {
       AstalIO.Process.exec(`wpctl set-volume ${id} ${clamped.toFixed(2)}`)
     } catch (e) {
-      print("[AppMixer] setVolume wpctl failed:", (e as Error).message)
+      logger.error("audio", "setVolume wpctl failed:", e)
       return
     }
     this.#optimisticUpdate(id, { volume: clamped })
@@ -190,7 +191,7 @@ export default class AppMixer extends GObject.Object {
     try {
       AstalIO.Process.exec(`wpctl set-mute ${id} ${muted ? "1" : "0"}`)
     } catch (e) {
-      print("[AppMixer] setMute wpctl failed:", (e as Error).message)
+      logger.error("audio", "setMute wpctl failed:", e)
       return
     }
     this.#optimisticUpdate(id, { muted })
@@ -204,7 +205,7 @@ export default class AppMixer extends GObject.Object {
         AstalIO.Process.exec(`pw-metadata -n default ${id} target.node ${nodeId}`)
       }
     } catch (e) {
-      print("[AppMixer] setTargetNode failed:", (e as Error).message)
+      logger.error("audio", "setTargetNode failed:", e)
       return
     }
     this.#optimisticUpdate(id, { targetNode: nodeId === -1 ? null : nodeId })
