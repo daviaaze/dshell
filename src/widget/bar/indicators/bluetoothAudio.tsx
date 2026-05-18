@@ -32,7 +32,6 @@ export default () => {
 
   return (
     <Gtk.Button
-      cssClasses={["flat"]}
       visible={deviceInfo.as(d => d !== null)}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
       tooltipMarkup={deviceInfo.as(d =>
