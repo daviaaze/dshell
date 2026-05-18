@@ -13,9 +13,14 @@ function batteryIcon(level: number): string {
   return "battery-full-symbolic"
 }
 
+function batteryColor(level: number): string {
+  if (level < 20) return "color: #e03e3e;"
+  if (level < 50) return "color: #f5c211;"
+  return ""
+}
+
 export default () => {
   const bluetooth = Bluetooth.get_default()
-  const isPowered = createBinding(bluetooth, "isPowered")
 
   const deviceInfo = createComputed([
     createBinding(bluetooth, "is-connected"),
@@ -27,7 +32,6 @@ export default () => {
       if (bat >= 0) {
         return {
           name: d.name || "Device",
-          icon: d.icon || "bluetooth-symbolic",
           battery: bat * 100,
         }
       }
@@ -41,8 +45,10 @@ export default () => {
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
       spacing={4}>
       <Gtk.Image
-        iconName={deviceInfo.as(d => d?.icon || "bluetooth-symbolic")}
-        pixelSize={18} />
+        iconName="audio-headphones-symbolic"
+        pixelSize={18}
+        css={deviceInfo.as(d =>
+          d ? batteryColor(d.battery) : "")} />
       <Gtk.Image
         iconName={deviceInfo.as(d =>
           d ? batteryIcon(d.battery) : "")}
