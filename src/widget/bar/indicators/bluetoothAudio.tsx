@@ -31,14 +31,18 @@ export default () => {
   })
 
   return (
-    <Gtk.Image
-      iconName="audio-headphones-symbolic"
-      pixelSize={18}
+    <Gtk.Button
+      cssClasses={["flat"]}
       visible={deviceInfo.as(d => d !== null)}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
-      css={deviceInfo.as(d =>
-        d ? batteryColor(d.battery) : "")}
       tooltipMarkup={deviceInfo.as(d =>
-        d ? `${d.name}: ${d.battery.toFixed(0)}%` : "")} />
+        d ? `${d.name}: ${d.battery.toFixed(0)}%` : "")}
+    >
+      <Gtk.Image
+        iconName="audio-headphones-symbolic"
+        pixelSize={18}
+        css={deviceInfo.as(d =>
+          d ? batteryColor(d.battery) : "")} />
+    </Gtk.Button>
   )
 }
