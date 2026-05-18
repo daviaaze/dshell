@@ -60,6 +60,8 @@ in
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
       (lib.mkIf cfg.shell.enable {
+        services.geoclue2.enable = lib.mkDefault true;
+
         environment.systemPackages = [
           cfg.package
           pkgs.adwaita-icon-theme

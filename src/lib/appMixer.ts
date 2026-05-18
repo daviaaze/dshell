@@ -89,6 +89,11 @@ export default class AppMixer extends GObject.Object {
     return this.#captureStreams
   }
 
+  @getter(Boolean)
+  get microphoneInUse() {
+    return this.#captureStreams.length > 0
+  }
+
   constructor() {
     super()
     this.#update()
@@ -108,9 +113,13 @@ export default class AppMixer extends GObject.Object {
       this.#streams = newStreams
       this.notify("streams")
     }
+    const hadCapture = this.#captureStreams.length > 0
     if (captureChanged) {
       this.#captureStreams = newCaptureStreams
       this.notify("capture-streams")
+    }
+    if (hadCapture !== (newCaptureStreams.length > 0)) {
+      this.notify("microphone-in-use")
     }
   }
 

@@ -1,6 +1,6 @@
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib"
-import { createBinding, createState, For, onCleanup } from "gnim"
+import { createState, For, onCleanup } from "gnim"
 import { useSettings } from "#/lib/settings"
 import { fmtOffset, cityName } from "#/lib/time"
 
@@ -17,9 +17,9 @@ export const WorldClock = () => {
   const localTz = GLib.TimeZone.new_local()
 
   return <Gtk.Box
-    spacing={8}
+    spacing={4}
     orientation={Gtk.Orientation.VERTICAL}
-    cssClasses={["card"]}
+    cssClasses={["card p-12"]}
   >
     <Gtk.Label
       cssClasses={["title-3"]}
@@ -30,21 +30,21 @@ export const WorldClock = () => {
       {(tzId: string) => {
         const tz = GLib.TimeZone.new(tzId)
         const tzTime = time.as(t => t.to_timezone(tz))
-        return <Gtk.Box spacing={8}>
+        return <Gtk.Box spacing={8} marginStart={8}>
           <Gtk.Label
             hexpand
             halign={Gtk.Align.START}
-            cssClasses={["heading"]}
+            cssClasses={["heading", "title-4"]}
             label={cityName(tzId)}
           />
           <Gtk.Label
             halign={Gtk.Align.END}
-            cssClasses={["numeric"]}
+            cssClasses={["numeric", "title-4"]}
             label={tzTime.as(t => t.format("%H:%M") ?? "--:--")}
           />
           <Gtk.Label
             halign={Gtk.Align.END}
-            cssClasses={["caption"]}
+            cssClasses={["caption", "dim-label"]}
             label={fmtOffset(localTz, tz)}
           />
         </Gtk.Box>

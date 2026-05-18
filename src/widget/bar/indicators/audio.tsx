@@ -22,8 +22,7 @@ export const MicrophoneIndicator = () => {
   const audio = Wireplumber.get_default()!.audio
   const mixer = AppMixer.get_default()
   return <Gtk.Image
-    visible={createBinding(mixer, "capture-streams")
-      .as(streams => streams.length > 0)}
+    visible={createBinding(mixer, "microphone-in-use")}
     iconName={getVolumeIcon(audio.default_microphone, MUTED_MIC_ICON)}
     tooltipMarkup={createBinding(audio.default_microphone, "volume")
       .as(v => (v * 100).toFixed(0).toString() + "%")}

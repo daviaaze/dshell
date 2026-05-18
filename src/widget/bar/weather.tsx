@@ -3,7 +3,7 @@ import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import { Accessor, createBinding } from "gnim"
 import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
-import { Weather as WeatherWidget } from "../quicksettings/expander/weather"
+import { Weather as WeatherWidget } from "#/widget/common/weatherWidget"
 import GWeather from "gi://GWeather?version=4.0"
 
 export const WeatherButton = ({ vertical }:

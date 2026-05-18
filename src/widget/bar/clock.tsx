@@ -67,21 +67,21 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
             {(tzId: string) => {
               const tz = GLib.TimeZone.new(tzId)
               const tzTime = time.as(t => t.to_timezone(tz))
-              return <Gtk.Box spacing={8}>
+              return <Gtk.Box spacing={8} marginStart={8} marginEnd={8}>
                 <Gtk.Label
                   hexpand
                   halign={Gtk.Align.START}
-                  cssClasses={["heading"]}
+                  cssClasses={["heading", "title-4"]}
                   label={cityName(tzId)}
                 />
                 <Gtk.Label
                   halign={Gtk.Align.END}
-                  cssClasses={["numeric"]}
+                  cssClasses={["numeric", "title-4"]}
                   label={tzTime.as(t => t.format("%H:%M") ?? "--:--")}
                 />
                 <Gtk.Label
                   halign={Gtk.Align.END}
-                  cssClasses={["caption"]}
+                  cssClasses={["caption", "dim-label"]}
                   label={fmtOffset(localTz, tz)}
                 />
               </Gtk.Box>

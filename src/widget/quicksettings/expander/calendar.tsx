@@ -11,7 +11,7 @@ function updateCalendar(calendar: Gtk.Calendar) {
 
 export const Calendar = () =>
   <Gtk.Calendar
-    cssClasses={["card"]}
+    cssClasses={["card p-12"]}
     $={self => updateCalendar(self)}
   />
 

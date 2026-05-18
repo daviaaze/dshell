@@ -30,6 +30,7 @@ export default () => {
     valign={Gtk.Align.END}
     cssClasses={["popover-padded"]}
     $={self => {
+      if (!settings.cavaEnabled.get()) return
       const cava = new AstalCava.Cava()
       cava.bars = settings.cavaBars.get() || 16
       cava.framerate = settings.cavaFramerate.get() || 60

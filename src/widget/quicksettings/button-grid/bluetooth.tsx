@@ -61,7 +61,7 @@ export default () => {
                 />
                 <Gtk.Image
                   visible={createBinding(device, "connected")}
-                  iconName="emblem-ok-symbolic"
+                  iconName="selection-mode-symbolic"
                   pixelSize={16}
                 />
               </Gtk.Box>
@@ -86,13 +86,15 @@ export default () => {
             ? "bluetooth-symbolic"
             : "bluetooth-disabled-symbolic"
       )}
-      label={createBinding(bluetooth, "devices")
-        .as(devices => {
-          if (!bluetooth.isPowered) return "Bluetooth Off"
-          const connected = toArray<AstalBluetooth.Device>(devices)
-            .find(d => d.connected)
-          return connected ? connected.name : "Bluetooth"
-        })}
+      label={createComputed([
+        createBinding(bluetooth, "isPowered"),
+        createBinding(bluetooth, "is-connected")
+      ], (powered, _connected) => {
+        if (!powered) return "Bluetooth Off"
+        const connected = toArray<AstalBluetooth.Device>(bluetooth.devices)
+          .find(d => d.connected)
+        return connected ? connected.name : "Bluetooth"
+      })}
       onClick={() => {
         bluetooth.adapter.powered = !bluetooth.adapter.powered
       }}

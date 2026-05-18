@@ -2,7 +2,7 @@ import { useSettings } from "#/lib/settings"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib"
-import { createBinding, For } from "gnim"
+import { For } from "gnim"
 import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
 
 const PRESET_TIMEZONES = [

@@ -187,7 +187,6 @@ in
             misc = {
               animate_manual_resizes = true;
               animate_mouse_windowdragging = false;
-              vfr = true;
               vrr = 1;
               enable_swallow = true;
               swallow_regex = "";
@@ -203,7 +202,6 @@ in
             };
 
             dwindle = {
-              pseudotile = 1;
               preserve_split = true;
             };
 
