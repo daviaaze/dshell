@@ -28,7 +28,7 @@ export default () => {
         return {
           name: d.name || "Device",
           icon: d.icon || "bluetooth-symbolic",
-          battery: bat,
+          battery: bat * 100,
         }
       }
     }
