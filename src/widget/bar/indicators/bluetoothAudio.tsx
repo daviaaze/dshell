@@ -39,7 +39,7 @@ export default () => {
     <Gtk.Box
       visible={deviceInfo.as(d => d !== null)}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
-      spacing={2}>
+      spacing={4}>
       <Gtk.Image
         iconName={deviceInfo.as(d => d?.icon || "bluetooth-symbolic")}
         pixelSize={18} />
