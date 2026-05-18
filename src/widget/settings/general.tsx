@@ -17,32 +17,19 @@ export default () => {
         <Adw.ToggleGroup $type="suffix"
           cssClasses={["round"]}
           valign={Gtk.Align.CENTER}
-          onNotifyActive={self => {
-            const nameToValue: Record<string, number> = {
-              auto: 0,
-              light: 1,
-              dark: 2,
-            }
-            settings.setColorScheme(nameToValue[self.active] ?? 0)
-          }}
-          active={
-            settings.colorScheme.as((v: number) =>
-              v === 0 ? "auto" : v === 1 ? "light" : "dark"
-            )
-          }
+          onNotifyActive={self =>
+            settings.setColorScheme(self.active)}
+          active={settings.colorScheme}
         >
           <Adw.Toggle
-            name="auto"
             label={"Auto"}
             iconName={"night-light-symbolic"}
           />
           <Adw.Toggle
-            name="light"
             label={"Light"}
             iconName={"weather-clear-symbolic"}
           />
           <Adw.Toggle
-            name="dark"
             label={"Dark"}
             iconName={"weather-clear-night-symbolic"}
           />
