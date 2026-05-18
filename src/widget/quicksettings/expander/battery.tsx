@@ -52,9 +52,15 @@ export const Battery = () => {
     (charging, timeToEmpty, timeToFull) =>
       charging ? timeToFull : timeToEmpty)
 
+  const chargingLabel = createBinding(battery, "charging")
+    .as(c => c ? "Charged in:" : "Discharged in:")
+
+  const rateLabel = createBinding(battery, "charging")
+    .as(c => c ? "Rate of Charge:" : "Rate of discharge:")
+
   return <Gtk.Box
     orientation={Gtk.Orientation.VERTICAL}
-    cssClasses={["card"]}
+    cssClasses={["card", "p-12"]}
     spacing={4}
     visible={createBinding(battery, "isPresent")}
   >
@@ -63,26 +69,20 @@ export const Battery = () => {
       label={"Battery Info"}
       halign={Gtk.Align.CENTER}
     />
-    <Gtk.Label
-      halign={Gtk.Align.START}
-      label={timeTo(timeTo =>
-        `${battery.get_charging() ?
-          "Charged" : "Discharged"
-        } in: ${fmtDurationHMS(timeTo)}`
-      )}
-    />
-    <Gtk.Label
-      halign={Gtk.Align.START}
-      label={createBinding(battery, "energyRate")(rate =>
-        `Rate of ${battery.get_charging() ?
-          "Charge" : "discharge"
-        }: ${rate.toFixed(2)}W`)}
-    />
-    <Gtk.Label
-      halign={Gtk.Align.START}
-      label={createBinding(battery, "energy")(energy =>
-        `Energy: ${energy.toFixed(2)}/${battery.energyFull.toFixed(0)}Wh`)}
-    />
+    <Gtk.Box spacing={8} halign={Gtk.Align.START}>
+      <Gtk.Label cssClasses={["heading"]} label={chargingLabel} />
+      <Gtk.Label label={timeTo.as(t => fmtDurationHMS(t))} />
+    </Gtk.Box>
+    <Gtk.Box spacing={8} halign={Gtk.Align.START}>
+      <Gtk.Label cssClasses={["heading"]} label={rateLabel} />
+      <Gtk.Label label={createBinding(battery, "energyRate")
+        .as(r => `${r.toFixed(2)}W`)} />
+    </Gtk.Box>
+    <Gtk.Box spacing={8} halign={Gtk.Align.START}>
+      <Gtk.Label cssClasses={["heading"]} label={"Energy:"} />
+      <Gtk.Label label={createBinding(battery, "energy")
+        .as(e => `${e.toFixed(2)}/${battery.energyFull.toFixed(0)}Wh`)} />
+    </Gtk.Box>
     <Gtk.LevelBar
       value={createBinding(battery, "percentage")}
       widthRequest={100}

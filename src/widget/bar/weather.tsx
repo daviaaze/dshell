@@ -21,7 +21,9 @@ export const WeatherButton = ({ vertical }:
       halign={Gtk.Align.CENTER}
       cssClasses={[]}
       hasArrow={false}>
+      <Gtk.Box cssClasses={["popover-padded-lg"]}>
       <WeatherWidget />
+      </Gtk.Box>
     </Gtk.Popover> as Gtk.Popover}>
     <Gtk.Box orientation={vertical.as(v => v ?
       Gtk.Orientation.VERTICAL :

@@ -142,7 +142,7 @@ export const Media = () => {
     <For each={createBinding(mpris, "players")}>
       {(player: Mpris.Player) =>
         <Gtk.Box
-          cssClasses={["card p-12"]}
+          cssClasses={["card", "p-12"]}
           orientation={Gtk.Orientation.VERTICAL}
           hexpand>
           <PlayerApp player={player} />

@@ -19,7 +19,7 @@ export const WorldClock = () => {
   return <Gtk.Box
     spacing={4}
     orientation={Gtk.Orientation.VERTICAL}
-    cssClasses={["card p-12"]}
+    cssClasses={["card", "p-12"]}
   >
     <Gtk.Label
       cssClasses={["title-3"]}

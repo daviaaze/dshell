@@ -30,6 +30,7 @@ export default class Weather extends GObject.Object {
     this.#weather.set_location(location)
     this.#weather.update()
     this.notify("location")
+    this.notify("info")
   }
 
   updateFromCoords(lat: number, lon: number) {
@@ -99,6 +100,12 @@ export default class Weather extends GObject.Object {
     this.#weather.set_contact_info("caiomuniz888@gmail.com")
 
     this.#weather.connect("updated",
-      () => this.notify("info"))
+      () => {
+        print("Weather: updated signal, valid=", this.#weather.is_valid(),
+          "temp=", this.#weather.get_temp_summary() || "null",
+          "sky=", this.#weather.get_sky() || "null",
+          "loc=", this.#weather.get_location_name() || "null")
+        this.notify("info")
+      })
   }
 }

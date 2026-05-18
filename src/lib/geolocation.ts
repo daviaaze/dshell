@@ -83,88 +83,129 @@ export default class Geolocation extends GObject.Object {
         return false
       }
 
-      const client = await new Promise<Gio.DBusProxy>((resolve, reject) => {
-        Gio.DBusProxy.new_for_bus(
-          Gio.BusType.SYSTEM,
-          Gio.DBusProxyFlags.NONE,
-          null,
-          "org.freedesktop.GeoClue2",
-          clientPath,
-          "org.freedesktop.GeoClue2.Client",
-          null,
-          (_, res) => {
-            try {
-              resolve(Gio.DBusProxy.new_for_bus_finish(res))
-            } catch (e) {
-              print("GeoClue Client proxy failed:", (e as Error).message)
-              reject(e)
+      let client: Gio.DBusProxy | null = null
+      try {
+        client = await new Promise<Gio.DBusProxy>((resolve, reject) => {
+          Gio.DBusProxy.new_for_bus(
+            Gio.BusType.SYSTEM,
+            Gio.DBusProxyFlags.NONE,
+            null,
+            "org.freedesktop.GeoClue2",
+            clientPath,
+            "org.freedesktop.GeoClue2.Client",
+            null,
+            (_, res) => {
+              try {
+                resolve(Gio.DBusProxy.new_for_bus_finish(res))
+              } catch (e) {
+                print("GeoClue Client proxy failed:", (e as Error).message)
+                reject(e)
+              }
             }
+          )
+        })
+
+        const conn = client.get_connection()
+        const setProp = (iface: string, prop: string, value: GLib.Variant) => {
+          conn.call_sync(
+            "org.freedesktop.GeoClue2",
+            clientPath,
+            "org.freedesktop.DBus.Properties",
+            "Set",
+            new GLib.Variant("(ssv)", [iface, prop, value]),
+            null,
+            Gio.DBusCallFlags.NONE,
+            -1,
+            null
+          )
+        }
+        setProp("org.freedesktop.GeoClue2.Client", "DesktopId", new GLib.Variant("s", "com.caioasmuniz.shade_shell"))
+        setProp("org.freedesktop.GeoClue2.Client", "RequestedAccuracyLevel", new GLib.Variant("u", 4))
+
+        let latestLocation: string | null = null
+        let signalId = 0
+        signalId = client!.connect("g-signal", (_proxy, _sender, signalName, params) => {
+          if (signalName === "LocationUpdated") {
+            const newPath = params.get_child_value(1).get_string()?.[0]
+            print("GeoClue: LocationUpdated signal:", newPath)
+            if (newPath && newPath !== "/") latestLocation = newPath
           }
-        )
-      })
+        })
 
-      client.set_cached_property("DesktopId", new GLib.Variant("s", "com.caioasmuniz.shade_shell"))
-      client.set_cached_property("RequestedAccuracyLevel", new GLib.Variant("u", 4))
-
-      await new Promise<void>((resolve, reject) => {
-        client.call(
-          "Start",
-          null,
-          Gio.DBusCallFlags.NONE,
-          -1,
-          null,
-          (_, res) => {
-            try {
-              client.call_finish(res)
-              resolve()
-            } catch (e) {
-              print("GeoClue Start failed:", (e as Error).message)
-              reject(e)
+        await new Promise<void>((resolve, reject) => {
+          client!.call(
+            "Start",
+            null,
+            Gio.DBusCallFlags.NONE,
+            -1,
+            null,
+            (_, res) => {
+              try {
+                client!.call_finish(res)
+                print("GeoClue: Start succeeded")
+                resolve()
+              } catch (e) {
+                print("GeoClue Start failed:", (e as Error).message)
+                reject(e)
+              }
             }
-          }
-        )
-      })
+          )
+        })
 
-      // Retry reading cached property a few times — GeoClue updates asynchronously
-      let locationPath: string | null = null
-      for (let i = 0; i < 5; i++) {
-        locationPath = client.get_cached_property("Location")?.get_string()?.[0] ?? null
-        if (locationPath) break
-        await new Promise<void>(r => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => { r(); return GLib.SOURCE_REMOVE }))
+        let locationPath: string | null = null
+        for (let i = 0; i < 60; i++) {
+          if (latestLocation && latestLocation !== "/") {
+            locationPath = latestLocation
+            break
+          }
+          const cached = client.get_cached_property("Location")?.get_string()?.[0] ?? null
+          if (cached && cached !== "/") {
+            locationPath = cached
+            break
+          }
+          await new Promise<void>(r => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => { r(); return GLib.SOURCE_REMOVE }))
+        }
+
+        if (signalId) client!.disconnect(signalId)
+
+        if (!locationPath) {
+          print("GeoClue: No location path after retries")
+          return false
+        }
+
+        print("GeoClue: Creating Location proxy for", locationPath)
+        const location = await new Promise<Gio.DBusProxy>((resolve, reject) => {
+          Gio.DBusProxy.new_for_bus(
+            Gio.BusType.SYSTEM,
+            Gio.DBusProxyFlags.NONE,
+            null,
+            "org.freedesktop.GeoClue2",
+            locationPath!,
+            "org.freedesktop.GeoClue2.Location",
+            null,
+            (_, res) => {
+              try {
+                resolve(Gio.DBusProxy.new_for_bus_finish(res))
+              } catch (e) {
+                print("GeoClue Location proxy failed:", (e as Error).message)
+                reject(e)
+              }
+            }
+          )
+        })
+
+        const lat = location.get_cached_property("Latitude")?.get_double() ?? 0
+        const lon = location.get_cached_property("Longitude")?.get_double() ?? 0
+        print("GeoClue: coordinates", lat, lon)
+
+        this.#update(lat, lon)
+        return true
+      } finally {
+        if (client) {
+          try { client.call_sync("Stop", null, Gio.DBusCallFlags.NONE, -1, null) }
+          catch (e) { /* ignore */ }
+        }
       }
-
-      if (!locationPath) {
-        print("GeoClue: No location path after retries")
-        return false
-      }
-
-      const location = await new Promise<Gio.DBusProxy>((resolve, reject) => {
-        Gio.DBusProxy.new_for_bus(
-          Gio.BusType.SYSTEM,
-          Gio.DBusProxyFlags.NONE,
-          null,
-          "org.freedesktop.GeoClue2",
-          locationPath,
-          "org.freedesktop.GeoClue2.Location",
-          null,
-          (_, res) => {
-            try {
-              resolve(Gio.DBusProxy.new_for_bus_finish(res))
-            } catch (e) {
-              print("GeoClue Location proxy failed:", (e as Error).message)
-              reject(e)
-            }
-          }
-        )
-      })
-
-      const lat = location.get_cached_property("Latitude")?.get_double() ?? 0
-      const lon = location.get_cached_property("Longitude")?.get_double() ?? 0
-
-      client.call_sync("Stop", null, Gio.DBusCallFlags.NONE, -1, null)
-
-      this.#update(lat, lon)
-      return true
     } catch (e) {
       print("GeoClue detection failed:", (e as Error).message)
       return false

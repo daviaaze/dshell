@@ -4,7 +4,7 @@ import { Weather as WeatherWidget } from "#/widget/common/weatherWidget"
 
 export const Weather = () => {
   return <Gtk.Box
-    cssClasses={["card p-12"]}
+    cssClasses={["card", "p-12"]}
     orientation={Gtk.Orientation.VERTICAL}
 
   >
