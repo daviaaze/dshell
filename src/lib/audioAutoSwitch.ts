@@ -6,7 +6,10 @@ export function initAutoSwitch() {
   const audio = Wireplumber.get_default()!.audio
   let knownIds = new Set<number>()
 
-  createBinding(audio, "speakers").subscribe(speakers => {
+  const binding = createBinding(audio, "speakers")
+  binding.subscribe(() => {
+    const speakers = binding.get()
+    if (!speakers) return
     const currentIds = new Set(speakers.map(s => s.id))
 
     for (const speaker of speakers) {
