@@ -160,8 +160,8 @@ export default class Hypridle extends GObject.Object {
           '',
           'listener {',
           `  timeout = ${this.#dimTimeout}`,
-          '  on-timeout = brightnessctl -s set 10%',
-          '  on-resume = brightnessctl -r',
+          '  on-timeout = sh -c \'brightnessctl get > /tmp/shade-brightness-resume && brightnessctl set 10%\'',
+          '  on-resume = sh -c \'[ -f /tmp/shade-brightness-resume ] && brightnessctl set $(cat /tmp/shade-brightness-resume) && rm -f /tmp/shade-brightness-resume\'',
           '}'
         )
       }

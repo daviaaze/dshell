@@ -9,7 +9,8 @@ import { Accessor, createState, onCleanup } from "gnim";
 import logger from "#/lib/logger"
 
 
-export default ({ vertical }: { vertical: Accessor<boolean> }) => {
+export default ({ vertical, visible = true }:
+  { vertical: Accessor<boolean>, visible?: boolean | Accessor<boolean> }) => {
   const settings = useSettings()
 
   const [lastCpuTop, setLastCpuTop] = createState(new GTop.glibtop_cpu())
@@ -100,6 +101,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
     </Gtk.Box>
 
   return <Gtk.Button
+    visible={visible}
     cursor={Gdk.Cursor.new_from_name("pointer", null)}
     onClicked={() =>
       settings.bar.systemMonitor ?

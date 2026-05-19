@@ -2,12 +2,12 @@ import AstalHyprland from "gi://AstalHyprland?version=0.1"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import Pango from "gi://Pango?version=1.0"
-import { createBinding } from "gnim"
+import { Accessor, createBinding, createComputed } from "gnim"
 import { getAppIcon } from "#/lib/apps"
 
 const hyprland = AstalHyprland.get_default()
 
-export default () => {
+export default ({ visible: settingsVisible }: { visible: Accessor<boolean> }) => {
   const client = createBinding(hyprland, "focusedClient")
 
   const title = client.as(c => {
@@ -20,7 +20,10 @@ export default () => {
     return getAppIcon(c)
   })
 
-  const visible = client.as(c => c && c.address !== "0x0")
+  const clientExists = client.as(c => c && c.address !== "0x0")
+
+  // Only visible when both settings say "show" AND a client exists
+  const visible = createComputed(() => settingsVisible() && clientExists())
 
   return <Gtk.Box
     visible={visible}

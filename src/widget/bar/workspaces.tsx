@@ -9,9 +9,10 @@ const hyprland = Hyprland.get_default()
 
 
 
-export default ({ monitor, vertical }:
-  { monitor: Hyprland.Monitor, vertical: Accessor<boolean> }) =>
+export default ({ monitor, vertical, visible = true }:
+  { monitor: Hyprland.Monitor, vertical: Accessor<boolean>, visible?: boolean | Accessor<boolean> }) =>
   <Gtk.Box
+    visible={visible}
     orientation={vertical.as(v => v ?
       Gtk.Orientation.VERTICAL :
       Gtk.Orientation.HORIZONTAL)}

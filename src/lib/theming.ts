@@ -143,10 +143,15 @@ export default class Theming extends GObject.Object {
   #applyColors(colors: { primary: string, secondary: string, error: string }) {
     this.#clear()
 
+    // Override accent colors at PRIORITY_USER + 1 — shade.css tokens at
+    // PRIORITY_USER provide fallbacks. Libadwaita uses these named colors
+    // for buttons, toggles, sliders, focus rings, etc.
     const css = `
       @define-color accent_color ${colors.primary};
       @define-color accent_bg_color ${colors.primary};
+      @define-color accent_fg_color white;
       @define-color destructive_color ${colors.error};
+      @define-color destructive_bg_color ${colors.error};
     `
 
     this.#cssProvider = new Gtk.CssProvider()

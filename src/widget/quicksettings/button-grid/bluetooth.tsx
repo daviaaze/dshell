@@ -6,7 +6,6 @@ import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import logger from "#/lib/logger"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import { toArray } from "#/lib/gjsUtils"
-import logger from "#/lib/logger"
 
 export default () => {
   logger.log("Bluetooth: get_default()")

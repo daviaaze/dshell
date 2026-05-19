@@ -6,11 +6,14 @@ import Weather from "./weather";
 import General from "./general";
 import Clock from "./clock";
 import Network from "./network";
+import { app } from "#/App";
+import logger from "#/lib/logger";
 
 export const createSettingsWindow = () => {
   return <Adw.Window
     $={self => WindowManager.get_default().setSettings(self)}
     hideOnClose
+    application={app}
     name={"settings"}
     cssClasses={["background"]}
     title={"Shade Settings"}>

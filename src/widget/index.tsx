@@ -22,8 +22,12 @@ import logger, { perf, safeTry } from "#/lib/logger"
 
 export const openSettings = () => {
   const win = WindowManager.get_default().settings
+  logger.debug("app", `openSettings: win=${win ? "found" : "NULL"}`)
   if (win) {
+    logger.debug("app", `openSettings: calling present() on ${win.name}`)
     win.present()
+  } else {
+    logger.error("app", "openSettings: no settings window registered")
   }
 }
 

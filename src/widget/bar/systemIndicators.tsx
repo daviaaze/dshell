@@ -11,10 +11,12 @@ import BatteryIndicator from "./indicators/battery"
 import { SpeakerIndicator, MicrophoneIndicator } from "./indicators/audio"
 import DNDIndicator from "./indicators/dnd"
 
-export default ({ vertical }: { vertical: Accessor<boolean> }) => {
+export default ({ vertical, visible = true }:
+  { vertical: Accessor<boolean>, visible?: boolean | Accessor<boolean> }) => {
   const audio = Wireplumber.get_default()!.audio
 
   return <Gtk.ToggleButton
+    visible={visible}
     cursor={Gdk.Cursor.new_from_name("pointer", null)}
     active={createBinding(ShellState.get_default(), "qsOpen")}
     onClicked={() => ShellState.get_default().toggleQuickSettings()}

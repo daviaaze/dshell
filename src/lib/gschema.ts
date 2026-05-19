@@ -56,6 +56,10 @@ export const barSchema = new Schema({
     default: true,
     summary: "Show system indicators (network, battery, audio, etc.) in the bar"
   })
+  .key("show-bluetooth-battery", "b", {
+    default: true,
+    summary: "Show connected bluetooth device battery level in the bar"
+  })
   .key("dock-enabled", "b", {
     default: false,
     summary: "Show the dock/taskbar at the bottom of the screen"

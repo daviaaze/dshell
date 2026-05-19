@@ -3,6 +3,7 @@ import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, createComputed } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
+import { useSettings } from "#/lib/settings"
 
 function batteryColor(level: number): string {
   if (level < 20) return "color: #e03e3e;"
@@ -12,6 +13,7 @@ function batteryColor(level: number): string {
 
 export default () => {
   const bluetooth = Bluetooth.get_default()
+  const { bar } = useSettings()
 
   const deviceInfo = createComputed([
     createBinding(bluetooth, "is-connected"),
@@ -30,9 +32,13 @@ export default () => {
     return null
   })
 
+  const visible = createComputed(() =>
+    deviceInfo() !== null && bar.showBluetoothBattery()
+  )
+
   return (
     <Gtk.Button
-      visible={deviceInfo.as(d => d !== null)}
+      visible={visible}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
       tooltipMarkup={deviceInfo.as(d =>
         d ? `${d.name}: ${d.battery.toFixed(0)}%` : "")}

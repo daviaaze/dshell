@@ -13,7 +13,8 @@ function updateCalendar(calendar: Gtk.Calendar) {
   calendar.day = now.get_day_of_month()
 }
 
-export default ({ vertical }: { vertical: Accessor<boolean> }) => {
+export default ({ vertical, visible = true }:
+  { vertical: Accessor<boolean>, visible?: boolean | Accessor<boolean> }) => {
   const { general } = useSettings()
   const [time, setTime] = createState(new GLib.DateTime)
   const clockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
@@ -35,6 +36,7 @@ export default ({ vertical }: { vertical: Accessor<boolean> }) => {
       Gtk.ArrowType.RIGHT :
       Gtk.ArrowType.UP)}
     cursor={Gdk.Cursor.new_from_name("pointer", null)}
+    visible={visible}
     $={usePopoverCleanup}
     popover={<Gtk.Popover
       valign={Gtk.Align.CENTER}

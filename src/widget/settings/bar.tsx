@@ -139,6 +139,12 @@ export default () => {
         onNotifyActive={self => bar.setShowSystemIndicators(self.active)}
       />
       <Adw.SwitchRow
+        title="Bluetooth Battery"
+        subtitle="Show connected bluetooth device battery level"
+        active={bar.showBluetoothBattery}
+        onNotifyActive={self => bar.setShowBluetoothBattery(self.active)}
+      />
+      <Adw.SwitchRow
         title="Keyboard Layout"
         active={bar.showKeyboardLayout}
         onNotifyActive={self => bar.setShowKeyboardLayout(self.active)}
