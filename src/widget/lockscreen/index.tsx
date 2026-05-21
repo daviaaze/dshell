@@ -25,10 +25,20 @@ const createLocks = (onUnlock: () => void) => {
     return GLib.SOURCE_CONTINUE
   })
 
-  // Save screen brightness at lock time so we can restore it exactly on unlock
+  // Save screen brightness at lock time so we can restore it exactly on unlock.
+  // If hypridle already dimmed the screen, the original brightness was saved to
+  // /tmp/shade-brightness-resume — use that file instead of capturing the dimmed value.
   let savedBrightness = ""
   try {
-    savedBrightness = AstalIO.Process.exec("brightnessctl get").trim()
+    const resumeFile = GLib.file_new_for_path("/tmp/shade-brightness-resume")
+    if (resumeFile.query_exists(null)) {
+      const [, contents] = resumeFile.load_contents(null)
+      savedBrightness = new TextDecoder().decode(contents).trim()
+      // Remove the file so hypridle's on-resume doesn't try to restore too
+      resumeFile.delete(null)
+    } else {
+      savedBrightness = AstalIO.Process.exec("brightnessctl get").trim()
+    }
   } catch (e) {
     logger.warn("lockscreen", "could not save brightness:", e)
   }
