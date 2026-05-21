@@ -1,6 +1,7 @@
 import ShellState from "#/lib/shellState";
 import WindowManager from "#/lib/windowManager";
 import Screenshot from "#/lib/screenshot";
+import Touchpad from "#/lib/touchpad";
 import { openSettings } from "#/widget";
 import { toggleWindowSwitcher } from "#/widget/windowswitcher";
 import Gio from "gi://Gio?version=2.0";
@@ -10,6 +11,7 @@ export function registerActions(app: Gio.Application) {
   const state = ShellState.get_default()
   const wm = WindowManager.get_default()
   const screenshot = Screenshot.get_default()
+  const touchpad = Touchpad.get_default()
 
   const actions: Record<string, () => void> = {
     "toggle-applauncher": () => state.toggleLauncher(),
@@ -26,6 +28,7 @@ export function registerActions(app: Gio.Application) {
     "record-area": () => screenshot.recordArea(),
     "record-window": () => screenshot.recordWindow(),
     "record-output": () => screenshot.recordOutput(),
+    "toggle-touchpad": () => touchpad.toggle(),
   }
 
   for (const [name, fn] of Object.entries(actions)) {
@@ -66,6 +69,8 @@ export const requestHandler =
       activate("record-window")
     else if (args[1] === "record-output")
       activate("record-output")
+    else if (args[1] === "touchpad")
+      activate("toggle-touchpad")
 
     logger.debug("dbus", "requestHandler done")
     cmd.done()

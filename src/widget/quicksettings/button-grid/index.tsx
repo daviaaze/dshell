@@ -10,6 +10,8 @@ import Network from "../network"
 import Screenshot from "./screenshot"
 import NightLight from "./nightLight"
 import NightLightLib from "#/lib/nightLight"
+import Touchpad from "./touchpad"
+import TouchpadLib from "#/lib/touchpad"
 import IdleControls from "./idleControls"
 import HypridleLib from "#/lib/hypridle"
 
@@ -25,6 +27,7 @@ export const ButtonGrid = ({ cols = 2 }:
     <Screenshot />,
     <Caffeinated />,
     nightLight.available ? <NightLight /> : null,
+    TouchpadLib.get_default().available ? <Touchpad /> : null,
     HypridleLib.get_default().available ? <IdleControls /> : null,
   ];
 

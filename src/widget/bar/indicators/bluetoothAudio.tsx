@@ -15,11 +15,17 @@ export default () => {
   const bluetooth = Bluetooth.get_default()
   const { bar } = useSettings()
 
-  const deviceInfo = createComputed([
-    createBinding(bluetooth, "is-connected"),
-  ], (_connected) => {
-    const devices = toArray<any>(bluetooth.devices)
-    for (const d of devices) {
+  const isConnected = createBinding(bluetooth, "is-connected")
+  const devices = createBinding(bluetooth, "devices")
+
+  const deviceInfo = createComputed(() => {
+    // Track both is-connected and devices list so we recompute
+    // when either changes — critical for late-arriving battery info
+    const _connected = isConnected()
+    const list = devices()
+    if (!_connected || !list) return null
+    const arr = toArray<any>(list)
+    for (const d of arr) {
       if (!d.connected) continue
       const bat = d.battery_percentage
       if (bat >= 0) {

@@ -2,6 +2,8 @@ import Wireplumber from "gi://AstalWp"
 import { createBinding, createComputed } from "gnim"
 import Brightness from "../../lib/brightness"
 import Slider from "./slider"
+import TouchpadOsd from "./touchpad"
+import Touchpad from "#/lib/touchpad"
 import AstalHyprland from "gi://AstalHyprland"
 import Popup from "./popup"
 import GObject from "gnim/gobject"
@@ -66,6 +68,11 @@ export default () => {
         iconName: micIcon,
         value: createBinding(audio.defaultMicrophone, "volume"),
       })} />,
+
+    <Popup
+      connectable={Touchpad.get_default()}
+      signals={["toggled"]}
+      widget={<TouchpadOsd />} />,
   ];
 
   return <Astal.Window

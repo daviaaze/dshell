@@ -35,6 +35,7 @@ metadata:
 | CLI command dispatcher | `src/lib/requestHandler.ts` |
 | GSettings schema definitions | `src/lib/gschema.ts` |
 | Reactive settings context | `src/lib/settings.ts` |
+| Bluetooth device battery indicator | `src/widget/bar/indicators/bluetoothAudio.tsx` |
 | Keybinding manager (hyprctl) | `src/lib/keybinds.ts` |
 | Logger utility | `src/lib/logger.ts` |
 | Monitor tracking + Hyprland mapping | `src/lib/monitors.ts` |
@@ -85,13 +86,37 @@ function toArray<T>(list: any): T[] {
 ### 4. `AstalNetwork.Network.wifi` is set once at construction
 If the WiFi device wasn't ready when AstalNetwork initialized, `.wifi` is `null` forever. **Always** use `createBinding(network, "wifi")`, never `const wifi = network.wifi`.
 
-### 5. `<For>` cannot be nested inside `<With>`
+### 5. `createComputed` with a single dependency can miss property updates
+`AstalBluetooth.Device.battery_percentage` often arrives **after** the device connects (bluez reports battery via a separate D-Bus property). If a `createComputed` only tracks `is-connected`, it caches `null` on first evaluation and never re-evaluates — the indicator stays hidden.
+
+Always add `createBinding(bluetooth, "devices")` as an additional dependency so the computed re-evaluates when device properties update:
+
+```ts
+// ✅ CORRECT — tracks both connection state AND device list changes
+const isConnected = createBinding(bluetooth, "is-connected")
+const devices = createBinding(bluetooth, "devices")
+
+const deviceInfo = createComputed(() => {
+  const _connected = isConnected()
+  const list = devices()
+  if (!_connected || !list) return null
+  for (const d of toArray(list)) {
+    if (!d.connected) continue
+    if (d.battery_percentage >= 0) { /* use it */ }
+  }
+  return null
+})
+```
+
+This applies to any GObject property where a sub-property (like battery) can update independently of the parent property (like connection state).
+
+### 6. `<For>` cannot be nested inside `<With>`
 Gnim throws `Error: nesting Fragments are not yet supported`. Use reactive `visible` bindings instead of conditional rendering, or keep `<For>` as a sibling.
 
-### 6. Widget mount order is sequential and fragile
+### 7. Widget mount order is sequential and fragile
 `src/widget/index.tsx` mounts: `Wallpaper → bar → osd → applauncher → notifications → quicksettings → LockScreen → settings`. An unhandled exception in step *N* prevents steps *N+1…∞* from mounting. If later widgets are missing, fix the **first** crashing widget, not the missing ones.
 
-### 7. `@signal()` requires GObject types, not JS constructors
+### 8. `@signal()` requires GObject types, not JS constructors
 Only `Function`, `Array`, `Date`, `Map`, `Set` have `$gtype`. All others need explicit GObject type constants:
 
 ```ts
@@ -100,10 +125,10 @@ Only `Function`, `Array`, `Date`, `Map`, `Set` have `$gtype`. All others need ex
 failed(_reason: string) {}
 ```
 
-### 8. `AstalIO.Process.exec_async` cannot control long-running processes
+### 9. `AstalIO.Process.exec_async` cannot control long-running processes
 It returns stdout as a string on exit — no handle, no `.kill()`. For controllable subprocesses (e.g., `wf-recorder`), use `AstalIO.Process.subprocessv()`.
 
-### 9. Remote commands must use `gdbus`, not `shade-shell toggle`
+### 10. Remote commands must use `gdbus`, not `shade-shell toggle`
 Spawning the full GJS app takes ~1s. The lightweight `gdbus` helper (`shade-toggle.sh`) takes ~7ms.
 
 ---
@@ -115,6 +140,7 @@ Why non-obvious choices were made. **Do not reverse these without discussion.**
 | Decision | Rationale |
 |----------|-----------|
 | **Defer `Notifd.get_default()` via `GLib.idle_add`** | D-Bus proxy handshake blocks the main loop for 25s if another notification daemon is registered. |
+| **Track both `is-connected` and `devices` for bluetooth battery** | `battery_percentage` arrives after connection state — a `createComputed` depending only on `is-connected` caches `null` permanently. Adding `createBinding(bluetooth, "devices")` catches late property updates. |
 | **Use `gdbus` / `shade-toggle.sh` for keybindings** | Spawning `shade-shell toggle` loads the entire 1MB bundle + GI modules (~1s) just to send a D-Bus message. |
 | **No network list in Settings** | Quick Settings owns all network UX (list, scan, password dialog). Settings only toggles WiFi on/off. |
 | **No automated tests** | Manual testing only via NixOS VM (`nix run .#nixosConfigurations.vm...`). |
@@ -140,6 +166,7 @@ Things the agent must **not** generate or introduce.
 | `<For>` inside `<With>` callback | Gnim fragment nesting crash | Use `visible={...}` bindings |
 | `media-record-stop-symbolic` | Missing icon in Adwaita | `media-playback-stop-symbolic` |
 | Adding network list to Settings | Duplicates Quick Settings UX | Keep network UX in QS only |
+| Single-dep `createComputed` for late-arriving GObject properties | Caches stale `null` if the property arrives after the tracked signal | Add `createBinding(obj, "devices")` or equivalent as a secondary dep |
 
 ---
 

@@ -13,6 +13,7 @@ import { ColorScheme } from "#/lib/colorScheme"
 import Inhibit from "#/lib/inhibit"
 import NightLight from "#/lib/nightLight"
 import Hypridle from "#/lib/hypridle"
+import Touchpad from "#/lib/touchpad"
 import Theming from "#/lib/theming"
 import { initAutoSwitch } from "#/lib/audioAutoSwitch"
 import { app } from "#/App"
@@ -40,6 +41,7 @@ export const widgets = () => {
   Inhibit.get_default().init(app)
   NightLight.get_default().init(s.general, ColorScheme.get_default())
   Hypridle.get_default().init(s.general)
+  Touchpad.get_default().init()
   Theming.get_default().init(s.general)
   initAutoSwitch()
   perf.stop("services-init", "mount")
