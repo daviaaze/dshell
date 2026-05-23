@@ -1,4 +1,5 @@
 import Gtk from "gi://Gtk?version=4.0"
+import Gdk from "gi://Gdk?version=4.0"
 import { Accessor } from "gnim"
 import Network from "gi://AstalNetwork"
 import { bssidOf } from "./utils"
@@ -12,6 +13,24 @@ interface PasswordDialogProps {
   setConnectingAp: (v: string | null) => void
 }
 
+function doConnect(
+  ap: Network.AccessPoint,
+  entry: Gtk.Entry,
+  setPasswordDialog: (v: null) => void,
+  setConnectingAp: (v: string | null) => void,
+) {
+  const pw = entry.get_text()
+  setPasswordDialog(null)
+  const bssid = bssidOf(ap)
+  if (bssid) setConnectingAp(bssid)
+  ap.activate(pw)
+    .then(() => setConnectingAp(null))
+    .catch((e: Error) => {
+      logger.error("network", "activate with password failed:", e)
+      setConnectingAp(null)
+    })
+}
+
 export default ({
   passwordDialog,
   setPasswordDialog,
@@ -20,25 +39,33 @@ export default ({
   const dialog = passwordDialog.get()
   if (!dialog) return null
 
+  const { ap, entry } = dialog
+  entry.hexpand = true
+  entry.placeholderText = "Password"
+
+  // Focus the entry on reveal so the user can type immediately
+  entry.grab_focus()
+
+  // Allow Enter to submit
+  const controller = new Gtk.EventControllerKey()
+  controller.connect("key-pressed", (_ctrl, keyval) => {
+    if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
+      doConnect(ap, entry, setPasswordDialog, setConnectingAp)
+      return true
+    }
+    return false
+  })
+  entry.add_controller(controller)
+
   return (
     <Gtk.Revealer revealChild={passwordDialog.as((d) => d !== null)}>
       <Gtk.Box spacing={4}>
-        {dialog.entry}
+        {entry}
         <Gtk.Button
           cssClasses={["suggested-action"]}
-          onClicked={() => {
-            const pw = dialog.entry.get_text()
-            const ap = dialog.ap
-            setPasswordDialog(null)
-            const bssid = bssidOf(ap)
-            if (bssid) setConnectingAp(bssid)
-            ap.activate(pw)
-              .then(() => setConnectingAp(null))
-              .catch((e: Error) => {
-                logger.error("network", "activate with password failed:", e)
-                setConnectingAp(null)
-              })
-          }}
+          onClicked={() =>
+            doConnect(ap, entry, setPasswordDialog, setConnectingAp)
+          }
         >
           <Gtk.Image iconName="go-next-symbolic" />
         </Gtk.Button>
