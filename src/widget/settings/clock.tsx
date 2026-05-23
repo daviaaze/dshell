@@ -28,66 +28,63 @@ const PRESET_TIMEZONES = [
 export default () => {
   const { general } = useSettings()
 
-  return <Adw.PreferencesGroup
-    title="Clock"
-    description="World clock timezones">
-    <Adw.ActionRow
-      title="Timezones"
-      subtitle={general.timezones.as(tzs => tzs.join(", "))}>
-      <Gtk.MenuButton
-        $type="suffix"
-        $={usePopoverCleanup}>
-        <Gtk.Button
-          cssClasses={["circular"]}
-          iconName="list-add-symbolic"
-        />
-        <Gtk.Popover>
-          <Gtk.ScrolledWindow
-            maxContentHeight={300}
-            vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-          >
-            <Gtk.Box
-              orientation={Gtk.Orientation.VERTICAL}
-              spacing={4}
-              cssClasses={["linked"]}
+  return (
+    <Adw.PreferencesGroup title="Clock" description="World clock timezones">
+      <Adw.ActionRow
+        title="Timezones"
+        subtitle={general.timezones.as((tzs) => tzs.join(", "))}
+      >
+        <Gtk.MenuButton $type="suffix" $={usePopoverCleanup}>
+          <Gtk.Button cssClasses={["circular"]} iconName="list-add-symbolic" />
+          <Gtk.Popover>
+            <Gtk.ScrolledWindow
+              maxContentHeight={300}
+              vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             >
-              {PRESET_TIMEZONES.map(tz => (
-                <Gtk.Button
-                  onClicked={() => {
-                    const current = general.timezones.get() as string[]
-                    if (!current.includes(tz)) {
-                      general.setTimezones([...current, tz])
-                    }
-                  }}>
-                  <Gtk.Label label={tz.replaceAll("_", " ")} />
-                </Gtk.Button>
-              ))}
-            </Gtk.Box>
-          </Gtk.ScrolledWindow>
-        </Gtk.Popover>
-      </Gtk.MenuButton>
-    </Adw.ActionRow>
-    <For each={general.timezones}>
-      {(tz: string) => (
-        <Adw.ActionRow
-          title={tz.replaceAll("_", " ")}
-          subtitle={(() => {
-            const gtz = GLib.TimeZone.new(tz)
-            const now = GLib.DateTime.new_now(gtz)
-            return now.format("%H:%M") ?? ""
-          })()}
-        >
-          <Gtk.Button
-            $type="suffix"
-            cssClasses={["circular", "destructive-action"]}
-            iconName="list-remove-symbolic"
-            onClicked={() => {
-              const current = general.timezones.get() as string[]
-              general.setTimezones(current.filter(t => t !== tz))
-            }}
-          />
-        </Adw.ActionRow>
-      )}
-    </For>
-  </Adw.PreferencesGroup>
+              <Gtk.Box
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={4}
+                cssClasses={["linked"]}
+              >
+                {PRESET_TIMEZONES.map((tz) => (
+                  <Gtk.Button
+                    onClicked={() => {
+                      const current = general.timezones.get() as string[]
+                      if (!current.includes(tz)) {
+                        general.setTimezones([...current, tz])
+                      }
+                    }}
+                  >
+                    <Gtk.Label label={tz.replaceAll("_", " ")} />
+                  </Gtk.Button>
+                ))}
+              </Gtk.Box>
+            </Gtk.ScrolledWindow>
+          </Gtk.Popover>
+        </Gtk.MenuButton>
+      </Adw.ActionRow>
+      <For each={general.timezones}>
+        {(tz: string) => (
+          <Adw.ActionRow
+            title={tz.replaceAll("_", " ")}
+            subtitle={(() => {
+              const gtz = GLib.TimeZone.new(tz)
+              const now = GLib.DateTime.new_now(gtz)
+              return now.format("%H:%M") ?? ""
+            })()}
+          >
+            <Gtk.Button
+              $type="suffix"
+              cssClasses={["circular", "destructive-action"]}
+              iconName="list-remove-symbolic"
+              onClicked={() => {
+                const current = general.timezones.get() as string[]
+                general.setTimezones(current.filter((t) => t !== tz))
+              }}
+            />
+          </Adw.ActionRow>
+        )}
+      </For>
+    </Adw.PreferencesGroup>
+  )
 }

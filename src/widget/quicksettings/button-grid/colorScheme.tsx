@@ -11,20 +11,29 @@ export default () => {
   const popover = (
     <Gtk.Popover cssClasses={[]}>
       <LinkedPopoverBox>
-        <Gtk.Button onClicked={() => colorScheme.colorScheme = DarkModes.AUTO}>
+        <Gtk.Button
+          onClicked={() => (colorScheme.colorScheme = DarkModes.AUTO)}
+        >
           <Adw.ButtonContent
             iconName="night-light-symbolic"
-            label="Automatic" />
+            label="Automatic"
+          />
         </Gtk.Button>
-        <Gtk.Button onClicked={() => colorScheme.colorScheme = DarkModes.LIGHT}>
+        <Gtk.Button
+          onClicked={() => (colorScheme.colorScheme = DarkModes.LIGHT)}
+        >
           <Adw.ButtonContent
             iconName="weather-clear-symbolic"
-            label="Light Mode" />
+            label="Light Mode"
+          />
         </Gtk.Button>
-        <Gtk.Button onClicked={() => colorScheme.colorScheme = DarkModes.DARK}>
+        <Gtk.Button
+          onClicked={() => (colorScheme.colorScheme = DarkModes.DARK)}
+        >
           <Adw.ButtonContent
             iconName="weather-clear-night-symbolic"
-            label="Dark Mode" />
+            label="Dark Mode"
+          />
         </Gtk.Button>
       </LinkedPopoverBox>
     </Gtk.Popover>
@@ -33,20 +42,18 @@ export default () => {
   return (
     <QuickToggleButton
       icon={createBinding(colorScheme, "iconName")}
-      label={createBinding(colorScheme, "colorScheme").as(c => {
+      label={createBinding(colorScheme, "colorScheme").as((c) => {
         if (c === DarkModes.AUTO) return "Auto"
         if (c === DarkModes.LIGHT) return "Light Mode"
         return "Dark Mode"
       })}
       onClick={() => {
         if (colorScheme.colorScheme === DarkModes.LIGHT)
-          return colorScheme.colorScheme = DarkModes.DARK
+          return (colorScheme.colorScheme = DarkModes.DARK)
         if (colorScheme.colorScheme === DarkModes.DARK)
-          return colorScheme.colorScheme = DarkModes.LIGHT
-        else if (colorScheme.daytime)
-          colorScheme.colorScheme = DarkModes.DARK
-        else
-          colorScheme.colorScheme = DarkModes.LIGHT
+          return (colorScheme.colorScheme = DarkModes.LIGHT)
+        else if (colorScheme.daytime) colorScheme.colorScheme = DarkModes.DARK
+        else colorScheme.colorScheme = DarkModes.LIGHT
       }}
       popover={popover}
     />

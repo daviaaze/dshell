@@ -15,7 +15,8 @@ export const IconButton = (props: IconButtonProps) => (
     cssClasses={["circular", ...(props.cssClasses ?? [])]}
     onClicked={props.onClicked}
     tooltipText={props.tooltipText}
-    cursor={props.cursor}>
+    cursor={props.cursor}
+  >
     <Gtk.Image iconName={props.icon} />
   </Gtk.Button>
 )
@@ -30,7 +31,8 @@ export const IconMenuButton = (props: IconMenuButtonProps) => (
     popover={props.popover}
     tooltipText={props.tooltipText}
     cursor={props.cursor}
-    $={usePopoverCleanup}>
+    $={usePopoverCleanup}
+  >
     <Gtk.Image iconName={props.icon} />
   </Gtk.MenuButton>
 )

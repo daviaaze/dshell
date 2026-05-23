@@ -6,12 +6,11 @@ import logger from "#/lib/logger"
 
 @register({ GTypeName: "Weather" })
 export default class Weather extends GObject.Object {
-  static instance: Weather;
+  static instance: Weather
 
   static get_default() {
-    if (!this.instance)
-      this.instance = new Weather();
-    return this.instance;
+    if (!this.instance) this.instance = new Weather()
+    return this.instance
   }
 
   #weather: GWeather.Info
@@ -35,8 +34,7 @@ export default class Weather extends GObject.Object {
   }
 
   updateFromCoords(lat: number, lon: number) {
-    const newLoc = GWeather.Location.get_world()
-      ?.find_nearest_city(lat, lon)
+    const newLoc = GWeather.Location.get_world()?.find_nearest_city(lat, lon)
     if (newLoc) this.location = newLoc
   }
 
@@ -44,21 +42,34 @@ export default class Weather extends GObject.Object {
     this.#geo.detect()
   }
 
-  init(settings: { latitude: { get(): number }, longitude: { get(): number }, autoLocation: { get(): boolean, subscribe(cb: (v: boolean) => void): () => void }, setLatitude(lat: number): void, setLongitude(lon: number): void }) {
-    this.#location = GWeather.Location.get_world()
-      ?.find_nearest_city(
-        settings.latitude.get(),
-        settings.longitude.get())
+  init(settings: {
+    latitude: { get(): number }
+    longitude: { get(): number }
+    autoLocation: {
+      get(): boolean
+      subscribe(cb: (v: boolean) => void): () => void
+    }
+    setLatitude(lat: number): void
+    setLongitude(lon: number): void
+  }) {
+    this.#location = GWeather.Location.get_world()?.find_nearest_city(
+      settings.latitude.get(),
+      settings.longitude.get(),
+    )
 
     if (this.#location) {
       this.#weather.set_location(this.#location)
       this.#weather.update()
     }
 
-    this.#updateTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0.25 * 3600000, () => {
-      this.#weather.update()
-      return GLib.SOURCE_CONTINUE
-    })
+    this.#updateTimer = GLib.timeout_add(
+      GLib.PRIORITY_DEFAULT,
+      0.25 * 3600000,
+      () => {
+        this.#weather.update()
+        return GLib.SOURCE_CONTINUE
+      },
+    )
 
     let geoHandlerId: number | null = null
 
@@ -100,14 +111,15 @@ export default class Weather extends GObject.Object {
     this.#weather.set_enabled_providers(GWeather.Provider.MET_NO)
     this.#weather.set_contact_info("caiomuniz888@gmail.com")
 
-    this.#weather.connect("updated",
-      () => {
-        logger.info("weather",
-          `updated: valid=${this.#weather.is_valid()}` +
+    this.#weather.connect("updated", () => {
+      logger.info(
+        "weather",
+        `updated: valid=${this.#weather.is_valid()}` +
           ` temp=${this.#weather.get_temp_summary() || "null"}` +
           ` sky=${this.#weather.get_sky() || "null"}` +
-          ` loc=${this.#weather.get_location_name() || "null"}`)
-        this.notify("info")
-      })
+          ` loc=${this.#weather.get_location_name() || "null"}`,
+      )
+      this.notify("info")
+    })
   }
 }

@@ -4,7 +4,6 @@ import { createBinding, createComputed, createState, With } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import logger from "#/lib/logger"
-import logger from "#/lib/logger"
 import WifiPopover from "./wifiPopover"
 import PasswordDialog from "./passwordDialog"
 
@@ -16,35 +15,39 @@ export default () => {
 
   const [connectingAp, setConnectingAp] = createState<string | null>(null)
   const [passwordDialog, setPasswordDialog] = createState<{
-    ap: Network.AccessPoint,
+    ap: Network.AccessPoint
     entry: Gtk.Entry
   } | null>(null)
 
-  const isConnecting = connectingAp.as(c => c !== null)
+  const isConnecting = connectingAp.as((c) => c !== null)
 
-  // Bind to wifi properties directly so they update after sleep/resume.
-  // network.wifi never changes reference, but its properties do.
-  const wifi = network.wifi
-  const wifiIconName = wifi
-    ? createBinding(wifi, "iconName").as(icon => icon || "network-wireless-offline-symbolic")
-    : () => "network-wireless-offline-symbolic"
-  const wifiSsid = wifi ? createBinding(wifi, "ssid") : () => null
-  const wifiEnabled = wifi ? createBinding(wifi, "enabled") : () => false
+  // Track wifi device reactively via binding — network.wifi may be null
+  // at startup if the hardware wasn't ready, and can change after sleep/resume.
+  const wifiIconName = wifiBinding.as(
+    (wifi) => wifi?.iconName || "network-wireless-offline-symbolic",
+  )
+  const wifiSsid = wifiBinding.as((wifi) => wifi?.ssid ?? null)
+  const wifiEnabled = wifiBinding.as((wifi) => wifi?.enabled ?? false)
 
   const popover = (
     <Gtk.Popover cssClasses={[]}>
       <LinkedPopoverBox>
         <With value={wifiBinding}>
-          {(wifi: Network.Wifi | null) => wifi
-            ? <WifiPopover
+          {(wifi: Network.Wifi | null) =>
+            wifi ? (
+              <WifiPopover
                 wifi={wifi}
                 connectingAp={connectingAp}
                 setConnectingAp={setConnectingAp}
                 setPasswordDialog={setPasswordDialog}
               />
-            : <Gtk.Label
+            ) : (
+              <Gtk.Label
                 cssClasses={["popover-padded-lg"]}
-                label="No WiFi device" />}
+                label="No WiFi device"
+              />
+            )
+          }
         </With>
         <PasswordDialog
           passwordDialog={passwordDialog}
@@ -57,13 +60,10 @@ export default () => {
 
   return (
     <QuickToggleButton
-      icon={createComputed([
-        isConnecting,
-        wifiIconName,
-      ], (connecting, icon) =>
-        connecting ? "content-loading-symbolic" : icon
+      icon={createComputed([isConnecting, wifiIconName], (connecting, icon) =>
+        connecting ? "content-loading-symbolic" : icon,
       )}
-      label={wifiSsid.as(ssid => {
+      label={wifiSsid.as((ssid) => {
         if (!ssid || ssid === "..." || ssid.trim() === "")
           return wifiEnabled.get() ? "WiFi" : "WiFi Off"
         return ssid.length > 12 ? ssid.slice(0, 12) + "…" : ssid
@@ -72,8 +72,11 @@ export default () => {
         const wifi = wifiBinding.get()
         if (!wifi) return
         if (wifi.state === Network.DeviceState.ACTIVATED) {
-          wifi.deactivate_connection()
-            .catch((e: Error) => logger.error("network", "deactivate failed:", e.message))
+          wifi
+            .deactivate_connection()
+            .catch((e: Error) =>
+              logger.error("network", "deactivate failed:", e.message),
+            )
         } else {
           wifi.enabled = !wifi.enabled
         }

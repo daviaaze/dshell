@@ -8,11 +8,16 @@ export default () => {
   const powerprof = PowerProf.get_default()
   logger.log("PowerIndicator: PowerProf done")
 
-  return <Gtk.Image
-    visible={createBinding(powerprof, "activeProfile")
-      .as(p => p !== "balanced")}
-    iconName={createBinding(powerprof, "iconName").as(i => i ?? "")}
-    tooltipMarkup={createBinding(powerprof, "activeProfile")
-      .as(p => p ?? "")}
-    pixelSize={18} />
+  return (
+    <Gtk.Image
+      visible={createBinding(powerprof, "activeProfile").as(
+        (p) => p !== "balanced",
+      )}
+      iconName={createBinding(powerprof, "iconName").as((i) => i ?? "")}
+      tooltipMarkup={createBinding(powerprof, "activeProfile").as(
+        (p) => p ?? "",
+      )}
+      pixelSize={18}
+    />
+  )
 }

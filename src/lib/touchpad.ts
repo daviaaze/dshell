@@ -30,7 +30,9 @@ export default class Touchpad extends GObject.Object {
   #process: AstalIO.Process | null = null
 
   @getter(Boolean)
-  get enabled() { return this.#enabled }
+  get enabled() {
+    return this.#enabled
+  }
 
   @setter(Boolean)
   set enabled(v: boolean) {
@@ -42,7 +44,9 @@ export default class Touchpad extends GObject.Object {
   }
 
   @getter(Boolean)
-  get available() { return this.#available }
+  get available() {
+    return this.#available
+  }
 
   @signal([GObject.TYPE_BOOLEAN], GObject.TYPE_NONE)
   toggled(_enabled: boolean) {}
@@ -56,13 +60,19 @@ export default class Touchpad extends GObject.Object {
   init() {
     logger.info("touchpad", "init() called")
     this.#detectDevice()
-    logger.info("touchpad", `detectDevice done: available=${this.#available}, useEc=${this.#useEc}, eventPath=${this.#eventPath}`)
+    logger.info(
+      "touchpad",
+      `detectDevice done: available=${this.#available}, useEc=${this.#useEc}, eventPath=${this.#eventPath}`,
+    )
     if (!this.#available) {
       logger.info("touchpad", "no touchpad detected, skipping init")
       return
     }
     const mode = this.#useEc ? "EC hardware toggle" : "EVIOCGRAB fallback"
-    logger.info("touchpad", `initialized, mode=${mode}, enabled=${this.#enabled}`)
+    logger.info(
+      "touchpad",
+      `initialized, mode=${mode}, enabled=${this.#enabled}`,
+    )
   }
 
   #detectDevice() {
@@ -127,9 +137,7 @@ export default class Touchpad extends GObject.Object {
       // Disable: spawn grabber subprocess
       this.#stopProcess()
       const script = GRAB_SCRIPT.replace("__DEVICE__", this.#eventPath)
-      this.#process = AstalIO.Process.subprocessv([
-        "python3", "-c", script
-      ])
+      this.#process = AstalIO.Process.subprocessv(["python3", "-c", script])
     } else {
       // Enable: kill grabber subprocess
       this.#stopProcess()
@@ -138,7 +146,11 @@ export default class Touchpad extends GObject.Object {
 
   #stopProcess() {
     if (this.#process) {
-      try { this.#process.kill() } catch { /* already dead */ }
+      try {
+        this.#process.kill()
+      } catch {
+        /* already dead */
+      }
       this.#process = null
     }
   }

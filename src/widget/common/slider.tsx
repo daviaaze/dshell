@@ -3,18 +3,18 @@ import Gtk from "gi://Gtk?version=4.0"
 import { Accessor, createState } from "gnim"
 
 type SliderProps = {
-  icon: Accessor<string> | string,
-  visible?: Accessor<boolean> | boolean,
-  min: number,
-  max: number,
-  value: Accessor<number>,
-  setValue: (value: number) => void,
+  icon: Accessor<string> | string
+  visible?: Accessor<boolean> | boolean
+  min: number
+  max: number
+  value: Accessor<number>
+  setValue: (value: number) => void
 }
 
 const DEBOUNCE_MS = 80
 
 export const Slider = (props: SliderProps) => {
-  const safe = (v: number) => Number.isFinite(v) ? v : 0
+  const safe = (v: number) => (Number.isFinite(v) ? v : 0)
   const [displayValue, setDisplayValue] = createState(safe(props.value.get()))
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -32,25 +32,20 @@ export const Slider = (props: SliderProps) => {
   })
 
   return (
-    <Gtk.Box
-      cssClasses={["slider"]}
-      spacing={4}
-      visible={props.visible}>
+    <Gtk.Box cssClasses={["slider"]} spacing={4} visible={props.visible}>
       <Gtk.Image iconName={props.icon} />
       <Astal.Slider
         hexpand
         min={props.min}
         max={props.max}
-        $={self => self.set_value(safe(displayValue.get()))}
+        $={(self) => self.set_value(safe(displayValue.get()))}
         onChangeValue={({ value }) => debouncedSetValue(safe(value))}
-        value={displayValue} />
+        value={displayValue}
+      />
       <Gtk.Label
         cssClasses={["heading"]}
-        label={displayValue(v => (v ?? 0)
-          .toFixed(0)
-          .toString()
-          .concat("%"))
-        } />
+        label={displayValue((v) => (v ?? 0).toFixed(0).toString().concat("%"))}
+      />
     </Gtk.Box>
   )
 }

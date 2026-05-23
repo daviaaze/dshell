@@ -20,9 +20,8 @@ export const QuickToggleButton = (props: QuickToggleButtonProps) => (
     hexpand={props.hexpand ?? true}
     $={usePopoverCleanup}
     onClicked={props.onClick}
-    popover={props.popover}>
-    <Adw.ButtonContent
-      iconName={props.icon}
-      label={props.label} />
+    popover={props.popover}
+  >
+    <Adw.ButtonContent iconName={props.icon} label={props.label} />
   </Adw.SplitButton>
 )

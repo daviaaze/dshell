@@ -1,28 +1,27 @@
 import Gtk from "gi://Gtk?version=4.0"
 import { Accessor } from "gnim"
 
-export default ({ value, iconName }: {
-  value: Accessor<number>,
+export default ({
+  value,
+  iconName,
+}: {
+  value: Accessor<number>
   iconName: string | Accessor<string>
-}) =>
-  <Gtk.Box
-    cssClasses={["slider"]}
-    spacing={8}>
-    <Gtk.Image
-      iconName={iconName}
-      pixelSize={20} />
+}) => (
+  <Gtk.Box cssClasses={["slider"]} spacing={8}>
+    <Gtk.Image iconName={iconName} pixelSize={20} />
     <Gtk.LevelBar
       hexpand
-      $={self => self.set_value(value.get() ?? 0)}
+      $={(self) => self.set_value(value.get() ?? 0)}
       value={value}
     />
     <Gtk.Label
       cssClasses={["heading"]}
-      label={value(v =>
+      label={value((v) =>
         Math.floor((v ?? 0) * 100)
           .toString()
-          .concat("%"))
-      }
+          .concat("%"),
+      )}
     />
   </Gtk.Box>
-
+)

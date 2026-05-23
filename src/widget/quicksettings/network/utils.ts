@@ -13,7 +13,9 @@ export function bytesToString(value: any): string | null {
     }
     if (len === 0) return ""
     try {
-      return new TextDecoder("utf-8", { fatal: false }).decode(value.subarray(0, len))
+      return new TextDecoder("utf-8", { fatal: false }).decode(
+        value.subarray(0, len),
+      )
     } catch {
       return null
     }

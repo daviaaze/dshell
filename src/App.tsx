@@ -1,17 +1,17 @@
 import Adw from "gi://Adw"
 import Gio from "gi://Gio"
-import Gtk from "gi://Gtk?version=4.0";
-import Gdk from "gi://Gdk?version=4.0";
-import GLib from "gi://GLib?version=2.0";
-import Astal from "gi://Astal?version=4.0";
-import { createRoot } from "gnim";
+import Gtk from "gi://Gtk?version=4.0"
+import Gdk from "gi://Gdk?version=4.0"
+import GLib from "gi://GLib?version=2.0"
+import Astal from "gi://Astal?version=4.0"
+import { createRoot } from "gnim"
 import { register } from "gnim/gobject"
-import { gettext } from "gettext";
-import { SettingsProvider } from "./lib/settings";
-import { registerActions, requestHandler } from "./lib/requestHandler";
-import { widgets } from "./widget";
-import WindowManager from "./lib/windowManager";
-import logger, { perf } from "./lib/logger";
+import { gettext } from "gettext"
+import { SettingsProvider } from "./lib/settings"
+import { registerActions, requestHandler } from "./lib/requestHandler"
+import { widgets } from "./widget"
+import WindowManager from "./lib/windowManager"
+import logger, { perf } from "./lib/logger"
 import css from "./shade.css"
 
 @register()
@@ -60,8 +60,7 @@ export class ShadeShell extends Adw.Application {
 
   vfunc_command_line(cmd: Gio.ApplicationCommandLine) {
     logger.debug("app", `vfunc_command_line isRemote=${cmd.isRemote}`)
-    if (cmd.isRemote)
-      requestHandler(cmd, this)
+    if (cmd.isRemote) requestHandler(cmd, this)
     else {
       perf.start("widgets-mount", "mount")
       createRoot((dispose) => {
@@ -70,7 +69,7 @@ export class ShadeShell extends Adw.Application {
         SettingsProvider(() => widgets())
       })
     }
-    return 0;
+    return 0
   }
 }
-export const app = new ShadeShell();
+export const app = new ShadeShell()

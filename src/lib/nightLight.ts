@@ -19,14 +19,22 @@ export default class NightLight extends GObject.Object {
   #pollTimer: number | null = null
   #colorScheme: ColorScheme | null = null
   #settings: {
-    nightLightEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
-    nightLightTemperature: { get(): number, subscribe(cb: () => void): () => void }
-    nightLightAutoSchedule: { get(): boolean, subscribe(cb: () => void): () => void }
+    nightLightEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    nightLightTemperature: {
+      get(): number
+      subscribe(cb: () => void): () => void
+    }
+    nightLightAutoSchedule: {
+      get(): boolean
+      subscribe(cb: () => void): () => void
+    }
     setNightLightEnabled: (v: boolean) => void
   } | null = null
 
   @getter(Boolean)
-  get enabled() { return this.#enabled }
+  get enabled() {
+    return this.#enabled
+  }
 
   @setter(Boolean)
   set enabled(v: boolean) {
@@ -37,7 +45,9 @@ export default class NightLight extends GObject.Object {
   }
 
   @getter(Number)
-  get temperature() { return this.#temperature }
+  get temperature() {
+    return this.#temperature
+  }
 
   @setter(Number)
   set temperature(v: number) {
@@ -49,7 +59,9 @@ export default class NightLight extends GObject.Object {
   }
 
   @getter(Boolean)
-  get autoSchedule() { return this.#autoSchedule }
+  get autoSchedule() {
+    return this.#autoSchedule
+  }
 
   @setter(Boolean)
   set autoSchedule(v: boolean) {
@@ -64,15 +76,29 @@ export default class NightLight extends GObject.Object {
     try {
       AstalIO.Process.exec("which hyprsunset")
       return true
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
 
-  init(settings: {
-    nightLightEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
-    nightLightTemperature: { get(): number, subscribe(cb: () => void): () => void }
-    nightLightAutoSchedule: { get(): boolean, subscribe(cb: () => void): () => void }
-    setNightLightEnabled: (v: boolean) => void
-  }, colorScheme: ColorScheme) {
+  init(
+    settings: {
+      nightLightEnabled: {
+        get(): boolean
+        subscribe(cb: () => void): () => void
+      }
+      nightLightTemperature: {
+        get(): number
+        subscribe(cb: () => void): () => void
+      }
+      nightLightAutoSchedule: {
+        get(): boolean
+        subscribe(cb: () => void): () => void
+      }
+      setNightLightEnabled: (v: boolean) => void
+    },
+    colorScheme: ColorScheme,
+  ) {
     this.#settings = settings
     this.#colorScheme = colorScheme
     this.#enabled = settings.nightLightEnabled.get()
@@ -123,7 +149,9 @@ export default class NightLight extends GObject.Object {
     this.#stopProcess()
     try {
       this.#process = AstalIO.Process.subprocessv([
-        "hyprsunset", "--temperature", this.#temperature.toString()
+        "hyprsunset",
+        "--temperature",
+        this.#temperature.toString(),
       ])
     } catch (e) {
       logger.error("nightlight", "failed to start hyprsunset:", e)
@@ -132,13 +160,19 @@ export default class NightLight extends GObject.Object {
 
   #stopProcess() {
     if (this.#process) {
-      try { this.#process.kill() } catch { /* ignore */ }
+      try {
+        this.#process.kill()
+      } catch {
+        /* ignore */
+      }
       this.#process = null
     }
     // Also kill any stray hyprsunset processes we may have started
     try {
       AstalIO.Process.exec("pkill -f 'hyprsunset --temperature'")
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   #checkSchedule() {

@@ -21,15 +21,17 @@ export default class Hypridle extends GObject.Object {
   #dimEnabled = true
   #process: AstalIO.Process | null = null
   #settings: {
-    autoLockEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
-    idleTimeout: { get(): number, subscribe(cb: () => void): () => void }
-    screenDimEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
-    screenDimTimeout: { get(): number, subscribe(cb: () => void): () => void }
+    autoLockEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
   } | null = null
   #inhibitId: number | null = null
 
   @getter(Boolean)
-  get enabled() { return this.#enabled }
+  get enabled() {
+    return this.#enabled
+  }
 
   @setter(Boolean)
   set enabled(v: boolean) {
@@ -40,7 +42,9 @@ export default class Hypridle extends GObject.Object {
   }
 
   @getter(Number)
-  get idleTimeout() { return this.#idleTimeout }
+  get idleTimeout() {
+    return this.#idleTimeout
+  }
 
   @setter(Number)
   set idleTimeout(v: number) {
@@ -48,11 +52,13 @@ export default class Hypridle extends GObject.Object {
     if (this.#idleTimeout === v) return
     this.#idleTimeout = v
     this.#apply()
-    this.notify("idleTimeout")
+    this.notify("idle-timeout")
   }
 
   @getter(Number)
-  get dimTimeout() { return this.#dimTimeout }
+  get dimTimeout() {
+    return this.#dimTimeout
+  }
 
   @setter(Number)
   set dimTimeout(v: number) {
@@ -60,18 +66,20 @@ export default class Hypridle extends GObject.Object {
     if (this.#dimTimeout === v) return
     this.#dimTimeout = v
     this.#apply()
-    this.notify("dimTimeout")
+    this.notify("dim-timeout")
   }
 
   @getter(Boolean)
-  get dimEnabled() { return this.#dimEnabled }
+  get dimEnabled() {
+    return this.#dimEnabled
+  }
 
   @setter(Boolean)
   set dimEnabled(v: boolean) {
     if (this.#dimEnabled === v) return
     this.#dimEnabled = v
     this.#apply()
-    this.notify("dimEnabled")
+    this.notify("dim-enabled")
   }
 
   @getter(Boolean)
@@ -79,14 +87,16 @@ export default class Hypridle extends GObject.Object {
     try {
       AstalIO.Process.exec("which hypridle")
       return true
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
 
   init(settings: {
-    autoLockEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
-    idleTimeout: { get(): number, subscribe(cb: () => void): () => void }
-    screenDimEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
-    screenDimTimeout: { get(): number, subscribe(cb: () => void): () => void }
+    autoLockEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
   }) {
     this.#settings = settings
     this.#enabled = settings.autoLockEnabled.get()
@@ -102,19 +112,19 @@ export default class Hypridle extends GObject.Object {
 
     settings.idleTimeout.subscribe(() => {
       this.#idleTimeout = settings.idleTimeout.get()
-      this.notify("idleTimeout")
+      this.notify("idle-timeout")
       this.#apply()
     })
 
     settings.screenDimEnabled.subscribe(() => {
       this.#dimEnabled = settings.screenDimEnabled.get()
-      this.notify("dimEnabled")
+      this.notify("dim-enabled")
       this.#apply()
     })
 
     settings.screenDimTimeout.subscribe(() => {
       this.#dimTimeout = settings.screenDimTimeout.get()
-      this.notify("dimTimeout")
+      this.notify("dim-timeout")
       this.#apply()
     })
 
@@ -150,31 +160,31 @@ export default class Hypridle extends GObject.Object {
 
       const lines = [
         "general {",
-        '  lock_cmd = shade-shell lockscreen',
-        '  before_sleep_cmd = shade-shell lockscreen',
-        '}',
+        "  lock_cmd = shade-shell lockscreen",
+        "  before_sleep_cmd = shade-shell lockscreen",
+        "}",
       ]
 
       if (this.#dimEnabled && this.#dimTimeout < this.#idleTimeout) {
         lines.push(
-          '',
-          'listener {',
+          "",
+          "listener {",
           `  timeout = ${this.#dimTimeout}`,
-          '  on-timeout = sh -c \'brightnessctl get > /tmp/shade-brightness-resume && brightnessctl set 10%\'',
-          '  on-resume = sh -c \'[ -f /tmp/shade-brightness-resume ] && brightnessctl set $(cat /tmp/shade-brightness-resume) && rm -f /tmp/shade-brightness-resume\'',
-          '}'
+          "  on-timeout = sh -c 'brightnessctl get > /tmp/shade-brightness-resume && brightnessctl set 10%'",
+          "  on-resume = sh -c '[ -f /tmp/shade-brightness-resume ] && brightnessctl set $(cat /tmp/shade-brightness-resume) && rm -f /tmp/shade-brightness-resume'",
+          "}",
         )
       }
 
       lines.push(
-        '',
-        'listener {',
+        "",
+        "listener {",
         `  timeout = ${this.#idleTimeout}`,
-        '  on-timeout = shade-shell lockscreen',
-        '}'
+        "  on-timeout = shade-shell lockscreen",
+        "}",
       )
 
-      const config = lines.join('\n') + '\n'
+      const config = lines.join("\n") + "\n"
       GLib.file_set_contents(CONFIG_PATH, new TextEncoder().encode(config))
     } catch (e) {
       logger.error("hypridle", "failed to write config:", e)
@@ -192,12 +202,18 @@ export default class Hypridle extends GObject.Object {
 
   #stop() {
     if (this.#process) {
-      try { this.#process.kill() } catch { /* ignore */ }
+      try {
+        this.#process.kill()
+      } catch {
+        /* ignore */
+      }
       this.#process = null
     }
     try {
       AstalIO.Process.exec("pkill -x hypridle")
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   dispose() {

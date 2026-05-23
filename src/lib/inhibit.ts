@@ -1,13 +1,13 @@
 import Adw from "gi://Adw?version=1"
-import Gtk from "gi://Gtk?version=4.0";
+import Gtk from "gi://Gtk?version=4.0"
 import GObject, { getter, register, setter } from "gnim/gobject"
 
 @register({ GTypeName: "IdleInhibit" })
 export default class Inhibit extends GObject.Object {
-  static instance: Inhibit;
+  static instance: Inhibit
   static get_default() {
-    if (!this.instance) this.instance = new Inhibit();
-    return this.instance;
+    if (!this.instance) this.instance = new Inhibit()
+    return this.instance
   }
 
   #idle: boolean
@@ -16,19 +16,20 @@ export default class Inhibit extends GObject.Object {
 
   @getter(Boolean)
   get idle() {
-    return this.#idle;
+    return this.#idle
   }
 
   @setter(Boolean)
   set idle(state) {
-    if (state === this.#idle)
-      return
+    if (state === this.#idle) return
     if (state) {
-      if (this.#cookie !== 0)
-        this.#app?.uninhibit(this.#cookie)
-      this.#cookie = this.#app?.inhibit(null,
-        Gtk.ApplicationInhibitFlags.IDLE,
-        "toggled by shade-shell") ?? 0
+      if (this.#cookie !== 0) this.#app?.uninhibit(this.#cookie)
+      this.#cookie =
+        this.#app?.inhibit(
+          null,
+          Gtk.ApplicationInhibitFlags.IDLE,
+          "toggled by shade-shell",
+        ) ?? 0
     } else {
       if (this.#cookie !== 0) {
         this.#app?.uninhibit(this.#cookie)
@@ -44,8 +45,8 @@ export default class Inhibit extends GObject.Object {
   }
 
   constructor() {
-    super();
-    this.#idle = false;
-    this.#cookie = 0;
+    super()
+    this.#idle = false
+    this.#cookie = 0
   }
 }

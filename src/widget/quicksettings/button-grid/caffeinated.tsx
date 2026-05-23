@@ -11,15 +11,17 @@ export default () => {
   const popover = (
     <Gtk.Popover cssClasses={[]}>
       <LinkedPopoverBox>
-        <Gtk.Button onClicked={() => inhibit.idle = true}>
+        <Gtk.Button onClicked={() => (inhibit.idle = true)}>
           <Adw.ButtonContent
             iconName="radio-checked-symbolic"
-            label="Caffeinated on" />
+            label="Caffeinated on"
+          />
         </Gtk.Button>
-        <Gtk.Button onClicked={() => inhibit.idle = false}>
+        <Gtk.Button onClicked={() => (inhibit.idle = false)}>
           <Adw.ButtonContent
             iconName="radio-symbolic"
-            label="Caffeinated off" />
+            label="Caffeinated off"
+          />
         </Gtk.Button>
       </LinkedPopoverBox>
     </Gtk.Popover>
@@ -27,13 +29,16 @@ export default () => {
 
   return (
     <QuickToggleButton
-      cssClasses={createBinding(inhibit, "idle")
-        .as(idle => idle ? ["suggested-action", "warning"] : [])}
-      icon={createBinding(inhibit, "idle")
-        .as(idle => idle ? "radio-checked-symbolic" : "radio-symbolic")}
-      label={createBinding(inhibit, "idle")
-        .as(idle => idle ? "Caffeinated on" : "Caffeinated off")}
-      onClick={() => inhibit.idle = !inhibit.idle}
+      cssClasses={createBinding(inhibit, "idle").as((idle) =>
+        idle ? ["suggested-action", "warning"] : [],
+      )}
+      icon={createBinding(inhibit, "idle").as((idle) =>
+        idle ? "radio-checked-symbolic" : "radio-symbolic",
+      )}
+      label={createBinding(inhibit, "idle").as((idle) =>
+        idle ? "Caffeinated on" : "Caffeinated off",
+      )}
+      onClick={() => (inhibit.idle = !inhibit.idle)}
       popover={popover}
     />
   )

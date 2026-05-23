@@ -19,7 +19,7 @@ import { initAutoSwitch } from "#/lib/audioAutoSwitch"
 import { app } from "#/App"
 import { useSettings } from "#/lib/settings"
 import WindowManager from "#/lib/windowManager"
-import logger, { perf, safeTry } from "#/lib/logger"
+import logger, { perf } from "#/lib/logger"
 
 export const openSettings = () => {
   const win = WindowManager.get_default().settings
@@ -50,7 +50,10 @@ export const widgets = () => {
     perf.start(`widget-${name}`, "mount")
     try {
       fn()
-      logger.info("mount", `${name} mounted in ${perf.stop(`widget-${name}`, "mount").toFixed(1)}ms`)
+      logger.info(
+        "mount",
+        `${name} mounted in ${perf.stop(`widget-${name}`, "mount").toFixed(1)}ms`,
+      )
     } catch (e) {
       logger.error("mount", `Widget ${name} FAILED to mount:`, e)
     }

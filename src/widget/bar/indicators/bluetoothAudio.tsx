@@ -38,22 +38,23 @@ export default () => {
     return null
   })
 
-  const visible = createComputed(() =>
-    deviceInfo() !== null && bar.showBluetoothBattery()
+  const visible = createComputed(
+    () => deviceInfo() !== null && bar.showBluetoothBattery(),
   )
 
   return (
     <Gtk.Button
       visible={visible}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
-      tooltipMarkup={deviceInfo.as(d =>
-        d ? `${d.name}: ${d.battery.toFixed(0)}%` : "")}
+      tooltipMarkup={deviceInfo.as((d) =>
+        d ? `${d.name}: ${d.battery.toFixed(0)}%` : "",
+      )}
     >
       <Gtk.Image
         iconName="audio-headphones-symbolic"
         pixelSize={18}
-        css={deviceInfo.as(d =>
-          d ? batteryColor(d.battery) : "")} />
+        css={deviceInfo.as((d) => (d ? batteryColor(d.battery) : ""))}
+      />
     </Gtk.Button>
   )
 }

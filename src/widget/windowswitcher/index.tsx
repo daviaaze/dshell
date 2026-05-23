@@ -17,12 +17,15 @@ export const toggleWindowSwitcher = () => {
   }
 }
 
-const getSortedClients = (clients: any, mru: string[]): AstalHyprland.Client[] => {
+const getSortedClients = (
+  clients: any,
+  mru: string[],
+): AstalHyprland.Client[] => {
   const arr = toArray<AstalHyprland.Client>(clients)
   const sorted = mru
-    .map(addr => arr.find(c => c.address === addr))
+    .map((addr) => arr.find((c) => c.address === addr))
     .filter((c): c is AstalHyprland.Client => c !== undefined)
-  const newClients = arr.filter(c => !mru.includes(c.address))
+  const newClients = arr.filter((c) => !mru.includes(c.address))
   return [...sorted, ...newClients]
 }
 
@@ -33,17 +36,18 @@ export default () => {
 
   const updateMru = (client: AstalHyprland.Client | null) => {
     if (!client || client.address === "0x0") return
-    mru = mru.filter(addr => addr !== client.address)
+    mru = mru.filter((addr) => addr !== client.address)
     mru.unshift(client.address)
   }
 
-  const mruUnsubscribe = createBinding(hyprland, "focusedClient")
-    .subscribe(client => updateMru(client as AstalHyprland.Client | null))
+  const mruUnsubscribe = createBinding(hyprland, "focusedClient").subscribe(
+    (client) => updateMru(client as AstalHyprland.Client | null),
+  )
 
   const clientsBinding = createBinding(hyprland, "clients")
-  const clientsList = clientsBinding.as(c => getSortedClients(c, mru))
+  const clientsList = clientsBinding.as((c) => getSortedClients(c, mru))
 
-  const clampUnsubscribe = clientsList.subscribe(list => {
+  const clampUnsubscribe = clientsList.subscribe((list) => {
     const len = list?.length ?? 0
     if (selectedIndex.get() >= len) {
       setSelectedIndex(Math.max(0, len - 1))
@@ -66,20 +70,23 @@ export default () => {
     closeSwitcher()
   }
 
-  const handleKeyPressed = (_: Gtk.EventControllerKey, keyval: number): boolean => {
+  const handleKeyPressed = (
+    _: Gtk.EventControllerKey,
+    keyval: number,
+  ): boolean => {
     const clients = clientsList.get() ?? []
 
     switch (keyval) {
       case Gdk.KEY_Tab:
       case Gdk.KEY_Right:
         if (clients.length > 0) {
-          setSelectedIndex(i => (i + 1) % clients.length)
+          setSelectedIndex((i) => (i + 1) % clients.length)
         }
         return true
       case Gdk.KEY_ISO_Left_Tab:
       case Gdk.KEY_Left:
         if (clients.length > 0) {
-          setSelectedIndex(i => (i - 1 + clients.length) % clients.length)
+          setSelectedIndex((i) => (i - 1 + clients.length) % clients.length)
         }
         return true
       case Gdk.KEY_Return:
@@ -107,9 +114,17 @@ export default () => {
     return false
   }
 
-  const handleKeyReleased = (_: Gtk.EventControllerKey, keyval: number): boolean => {
-    if ((keyval === Gdk.KEY_Super_L || keyval === Gdk.KEY_Super_R ||
-         keyval === Gdk.KEY_Meta_L || keyval === Gdk.KEY_Meta_R) && !superReleased) {
+  const handleKeyReleased = (
+    _: Gtk.EventControllerKey,
+    keyval: number,
+  ): boolean => {
+    if (
+      (keyval === Gdk.KEY_Super_L ||
+        keyval === Gdk.KEY_Super_R ||
+        keyval === Gdk.KEY_Meta_L ||
+        keyval === Gdk.KEY_Meta_R) &&
+      !superReleased
+    ) {
       superReleased = true
       const clients = clientsList.get() ?? []
       if (clients[selectedIndex.get()]) {
@@ -132,60 +147,69 @@ export default () => {
     boxRef?.grab_focus()
   }
 
-  return <Astal.Window
-    $={self => {
-      switcherWindow = self
-      onCleanup(() => {
-        switcherWindow = null
-        mruUnsubscribe()
-        clampUnsubscribe()
-      })
-    }}
-    name={"windowswitcher"}
-    application={app}
-    layer={Astal.Layer.OVERLAY}
-    keymode={Astal.Keymode.EXCLUSIVE}
-    visible={false}
-    onNotifyVisible={self => {
-      if (self.visible) onOpen()
-    }}
-    anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.BOTTOM |
-      Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT}
-    monitor={createBinding(hyprland, "focusedMonitor").as(m => m.id)}
-    css={"background-color: transparent;"}
-  >
-    <Gtk.Box
-      $={self => { boxRef = self }}
-      focusable
-      halign={Gtk.Align.CENTER}
-      valign={Gtk.Align.CENTER}
-      orientation={Gtk.Orientation.VERTICAL}
-      spacing={8}
-      widthRequest={500}>
-      <Gtk.EventControllerKey
-        $={self => {
-          self.connect("key-pressed", handleKeyPressed)
-          self.connect("key-released", handleKeyReleased)
+  return (
+    <Astal.Window
+      $={(self) => {
+        switcherWindow = self
+        onCleanup(() => {
+          switcherWindow = null
+          mruUnsubscribe()
+          clampUnsubscribe()
+        })
+      }}
+      name={"windowswitcher"}
+      application={app}
+      layer={Astal.Layer.OVERLAY}
+      keymode={Astal.Keymode.EXCLUSIVE}
+      visible={false}
+      onNotifyVisible={(self) => {
+        if (self.visible) onOpen()
+      }}
+      anchor={
+        Astal.WindowAnchor.TOP |
+        Astal.WindowAnchor.BOTTOM |
+        Astal.WindowAnchor.LEFT |
+        Astal.WindowAnchor.RIGHT
+      }
+      monitor={createBinding(hyprland, "focusedMonitor").as((m) => m.id)}
+      css={"background-color: transparent;"}
+    >
+      <Gtk.Box
+        $={(self) => {
+          boxRef = self
         }}
-      />
-      <For each={clientsList}>
-        {(client: AstalHyprland.Client) =>
-          <SwitcherItem
-            client={client}
-            selected={selectedIndex.as(idx => {
-            const clients = clientsList.get() ?? []
-            return clients[idx]?.address === client.address
-          })}
-          />
-        }
-      </For>
-      <Gtk.Label
-        visible={clientsList.as(l => l.length === 0)}
-        cssClasses={["title-3"]}
-        marginTop={24}
-        marginBottom={24}
-        label="No open windows"
-      />
-    </Gtk.Box>
-  </Astal.Window>
+        focusable
+        halign={Gtk.Align.CENTER}
+        valign={Gtk.Align.CENTER}
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={8}
+        widthRequest={500}
+      >
+        <Gtk.EventControllerKey
+          $={(self) => {
+            self.connect("key-pressed", handleKeyPressed)
+            self.connect("key-released", handleKeyReleased)
+          }}
+        />
+        <For each={clientsList}>
+          {(client: AstalHyprland.Client) => (
+            <SwitcherItem
+              client={client}
+              selected={selectedIndex.as((idx) => {
+                const clients = clientsList.get() ?? []
+                return clients[idx]?.address === client.address
+              })}
+            />
+          )}
+        </For>
+        <Gtk.Label
+          visible={clientsList.as((l) => l.length === 0)}
+          cssClasses={["title-3"]}
+          marginTop={24}
+          marginBottom={24}
+          label="No open windows"
+        />
+      </Gtk.Box>
+    </Astal.Window>
+  )
 }

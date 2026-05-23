@@ -17,17 +17,20 @@ export default () => {
         <Gtk.Button onClicked={() => profile.set_active_profile("power-saver")}>
           <Adw.ButtonContent
             iconName="power-profile-power-saver-symbolic"
-            label="Power Saver" />
+            label="Power Saver"
+          />
         </Gtk.Button>
         <Gtk.Button onClicked={() => profile.set_active_profile("balanced")}>
           <Adw.ButtonContent
             iconName="power-profile-balanced-symbolic"
-            label="Balanced" />
+            label="Balanced"
+          />
         </Gtk.Button>
         <Gtk.Button onClicked={() => profile.set_active_profile("performance")}>
           <Adw.ButtonContent
             iconName="power-profile-performance-symbolic"
-            label="Performance" />
+            label="Performance"
+          />
         </Gtk.Button>
       </LinkedPopoverBox>
     </Gtk.Popover>
@@ -35,20 +38,19 @@ export default () => {
 
   return (
     <QuickToggleButton
-      icon={createBinding(profile, "iconName").as(i => i ?? "")}
-      label={createBinding(profile, "activeProfile").as(p =>
-        p === "power-saver" ? "Power Saver" :
-        p === "balanced" ? "Balanced" :
-        "Performance"
+      icon={createBinding(profile, "iconName").as((i) => i ?? "")}
+      label={createBinding(profile, "activeProfile").as((p) =>
+        p === "power-saver"
+          ? "Power Saver"
+          : p === "balanced"
+            ? "Balanced"
+            : "Performance",
       )}
       onClick={() => {
         const p = profile.get_active_profile()
-        if (p === "power-saver")
-          profile.set_active_profile("balanced")
-        else if (p === "balanced")
-          profile.set_active_profile("performance")
-        else
-          profile.set_active_profile("power-saver")
+        if (p === "power-saver") profile.set_active_profile("balanced")
+        else if (p === "balanced") profile.set_active_profile("performance")
+        else profile.set_active_profile("power-saver")
       }}
       popover={popover}
     />

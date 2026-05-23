@@ -9,22 +9,29 @@ const MUTED_MIC_ICON = "microphone-sensitivity-muted-symbolic"
 
 export const SpeakerIndicator = () => {
   const audio = Wireplumber.get_default()!.audio
-  return <Gtk.Image
-    visible={createBinding(audio, "speakers")
-      .as(rec => rec.length > 0)}
-    iconName={getVolumeIcon(audio.default_speaker, MUTED_SPEAKER_ICON)}
-    tooltipMarkup={createBinding(audio.default_speaker, "volume")
-      .as(v => "Volume: " + (v * 100).toFixed(0).toString() + "%")}
-    pixelSize={18} />
+  return (
+    <Gtk.Image
+      visible={createBinding(audio, "speakers").as((rec) => rec.length > 0)}
+      iconName={getVolumeIcon(audio.default_speaker, MUTED_SPEAKER_ICON)}
+      tooltipMarkup={createBinding(audio.default_speaker, "volume").as(
+        (v) => "Volume: " + (v * 100).toFixed(0).toString() + "%",
+      )}
+      pixelSize={18}
+    />
+  )
 }
 
 export const MicrophoneIndicator = () => {
   const audio = Wireplumber.get_default()!.audio
   const mixer = AppMixer.get_default()
-  return <Gtk.Image
-    visible={createBinding(mixer, "microphone-in-use")}
-    iconName={getVolumeIcon(audio.default_microphone, MUTED_MIC_ICON)}
-    tooltipMarkup={createBinding(audio.default_microphone, "volume")
-      .as(v => (v * 100).toFixed(0).toString() + "%")}
-    pixelSize={18} />
+  return (
+    <Gtk.Image
+      visible={createBinding(mixer, "microphone-in-use")}
+      iconName={getVolumeIcon(audio.default_microphone, MUTED_MIC_ICON)}
+      tooltipMarkup={createBinding(audio.default_microphone, "volume").as(
+        (v) => (v * 100).toFixed(0).toString() + "%",
+      )}
+      pixelSize={18}
+    />
+  )
 }

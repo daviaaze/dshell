@@ -9,17 +9,20 @@ function updateCalendar(calendar: Gtk.Calendar) {
   calendar.day = now.get_day_of_month()
 }
 
-export const Calendar = () =>
+export const Calendar = () => (
   <Gtk.Calendar
     cssClasses={["card", "p-12"]}
-    $={self => updateCalendar(self)}
+    $={(self) => updateCalendar(self)}
   />
+)
 
 export const CalendarIcon = () => {
   const now = GLib.DateTime.new_now_local()
-  return <IconInfoRow
-    icon="x-office-calendar-symbolic"
-    primary={now.format("%A") ?? ""}
-    secondary={now.format("%x") ?? ""}
-  />
+  return (
+    <IconInfoRow
+      icon="x-office-calendar-symbolic"
+      primary={now.format("%A") ?? ""}
+      secondary={now.format("%x") ?? ""}
+    />
+  )
 }

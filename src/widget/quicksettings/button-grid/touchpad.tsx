@@ -7,12 +7,14 @@ export default () => {
 
   return (
     <QuickToggleButton
-      icon={createBinding(touchpad, "enabled")
-        .as(enabled =>
-          enabled ? "input-touchpad-symbolic" : "input-touchpad-disabled-symbolic"
-        )}
-      label={createBinding(touchpad, "enabled")
-        .as(enabled => enabled ? "Touchpad" : "Touchpad Off")}
+      icon={createBinding(touchpad, "enabled").as((enabled) =>
+        enabled
+          ? "input-touchpad-symbolic"
+          : "input-touchpad-disabled-symbolic",
+      )}
+      label={createBinding(touchpad, "enabled").as((enabled) =>
+        enabled ? "Touchpad" : "Touchpad Off",
+      )}
       onClick={() => touchpad.toggle()}
     />
   )

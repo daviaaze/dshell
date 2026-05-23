@@ -23,11 +23,15 @@ export default class Screenshot extends GObject.Object {
   #recordingFile = ""
 
   @getter(Boolean)
-  get recording() { return this.#recording }
+  get recording() {
+    return this.#recording
+  }
 
   @getter(Boolean)
   @setter(Boolean)
-  get audio() { return this.#audio }
+  get audio() {
+    return this.#audio
+  }
   set audio(value: boolean) {
     if (this.#audio === value) return
     this.#audio = value
@@ -40,10 +44,14 @@ export default class Screenshot extends GObject.Object {
   @signal()
   recordingStopped() {}
 
-  #notify(title: string, body: string, icon: string = "dialog-information-symbolic") {
+  #notify(
+    title: string,
+    body: string,
+    icon: string = "dialog-information-symbolic",
+  ) {
     AstalIO.Process.exec_async(
       `notify-send -a shade-shell -i ${icon} "${title}" "${body}"`,
-      () => {}
+      () => {},
     )
   }
 
@@ -53,13 +61,10 @@ export default class Screenshot extends GObject.Object {
     const filename = `${SCREENSHOT_DIR}/${timestamp}.png`
 
     const copyToClipboard = () => {
-      AstalIO.Process.exec_async(
-        `sh -c 'wl-copy < "${filename}"'`,
-        (out) => {
-          if (out) logger.debug("screenshot", "wl-copy output:", out)
-          this.#notify("Screenshot saved", filename, "camera-photo-symbolic")
-        }
-      )
+      AstalIO.Process.exec_async(`sh -c 'wl-copy < "${filename}"'`, (out) => {
+        if (out) logger.debug("screenshot", "wl-copy output:", out)
+        this.#notify("Screenshot saved", filename, "camera-photo-symbolic")
+      })
     }
 
     if (fullscreen) {
@@ -69,9 +74,8 @@ export default class Screenshot extends GObject.Object {
         if (!out) return
         const geometry = out.trim()
         if (!geometry) return
-        AstalIO.Process.exec_async(
-          `grim -g "${geometry}" "${filename}"`,
-          () => copyToClipboard()
+        AstalIO.Process.exec_async(`grim -g "${geometry}" "${filename}"`, () =>
+          copyToClipboard(),
         )
       })
     }
@@ -85,7 +89,7 @@ export default class Screenshot extends GObject.Object {
     }
   }
 
-  startRecording(options: { geometry?: string, output?: string } = {}) {
+  startRecording(options: { geometry?: string; output?: string } = {}) {
     if (this.#recording) return
 
     GLib.mkdir_with_parents(RECORDING_DIR, 0o755)
@@ -103,14 +107,24 @@ export default class Screenshot extends GObject.Object {
       args.push("-a")
     }
 
-    logger.info("screenshot", `starting wf-recorder with args: ${args.join(" ")}`)
+    logger.info(
+      "screenshot",
+      `starting wf-recorder with args: ${args.join(" ")}`,
+    )
 
     let proc: AstalIO.Process
     try {
       proc = AstalIO.Process.subprocessv(args)
     } catch (e) {
-      logger.error("screenshot", `failed to spawn wf-recorder: ${(e as Error).message}`)
-      this.#notify("Recording failed", `Could not start wf-recorder: ${(e as Error).message}`, "dialog-error-symbolic")
+      logger.error(
+        "screenshot",
+        `failed to spawn wf-recorder: ${(e as Error).message}`,
+      )
+      this.#notify(
+        "Recording failed",
+        `Could not start wf-recorder: ${(e as Error).message}`,
+        "dialog-error-symbolic",
+      )
       return
     }
 
@@ -126,19 +140,22 @@ export default class Screenshot extends GObject.Object {
     proc.connect("exit", () => {
       const durationMs = Date.now() - this.#recordingStartTime
       const durationStr = this.#formatDuration(durationMs)
-      logger.info("screenshot", `wf-recorder exited after ${durationStr} (${durationMs}ms)`)
+      logger.info(
+        "screenshot",
+        `wf-recorder exited after ${durationStr} (${durationMs}ms)`,
+      )
 
       if (durationMs < 1000) {
         this.#notify(
           "Recording failed",
           `wf-recorder exited immediately. Check geometry/output and that no other recorder is running.`,
-          "dialog-error-symbolic"
+          "dialog-error-symbolic",
         )
       } else {
         this.#notify(
           "Recording stopped",
           `Duration: ${durationStr}\nSaved to: ${this.#recordingFile}`,
-          "media-playback-stop-symbolic"
+          "media-playback-stop-symbolic",
         )
       }
 
@@ -163,20 +180,17 @@ export default class Screenshot extends GObject.Object {
 
   recordArea() {
     if (this.#recording) return
-    AstalIO.Process.exec_async(
-      `slurp`,
-      (out) => {
-        if (!out) {
-          logger.info("screenshot", "slurp returned no output (cancelled?)")
-          return
-        }
-        const geometry = out.trim()
-        logger.debug("screenshot", `slurp geometry: "${geometry}"`)
-        if (geometry) {
-          this.startRecording({ geometry })
-        }
+    AstalIO.Process.exec_async(`slurp`, (out) => {
+      if (!out) {
+        logger.info("screenshot", "slurp returned no output (cancelled?)")
+        return
       }
-    )
+      const geometry = out.trim()
+      logger.debug("screenshot", `slurp geometry: "${geometry}"`)
+      if (geometry) {
+        this.startRecording({ geometry })
+      }
+    })
   }
 
   recordOutput(outputName?: string) {

@@ -21,7 +21,9 @@ function loadHistory(): HistoryEntry[] {
     const [, contents] = GLib.file_get_contents(HISTORY_FILE)
     const text = new TextDecoder().decode(contents)
     return JSON.parse(text)
-  } catch { return [] }
+  } catch {
+    return []
+  }
 }
 
 function saveHistory(history: HistoryEntry[]) {
@@ -30,7 +32,10 @@ function saveHistory(history: HistoryEntry[]) {
     if (!dir.query_exists(null)) {
       dir.make_directory_with_parents(null)
     }
-    GLib.file_set_contents(HISTORY_FILE, new TextEncoder().encode(JSON.stringify(history)))
+    GLib.file_set_contents(
+      HISTORY_FILE,
+      new TextEncoder().encode(JSON.stringify(history)),
+    )
   } catch (e) {
     logger.error("history", "save failed:", e)
   }
@@ -84,7 +89,7 @@ export default class NotificationHistory extends GObject.Object {
 
   add(entry: HistoryEntry) {
     // Avoid duplicates by ID
-    this.#history = this.#history.filter(h => h.id !== entry.id)
+    this.#history = this.#history.filter((h) => h.id !== entry.id)
     this.#history.unshift(entry)
     if (this.#history.length > this.#limit) {
       this.#history = this.#history.slice(0, this.#limit)
@@ -100,7 +105,7 @@ export default class NotificationHistory extends GObject.Object {
   }
 
   remove(id: number) {
-    this.#history = this.#history.filter(h => h.id !== id)
+    this.#history = this.#history.filter((h) => h.id !== id)
     saveHistory(this.#history)
     this.notify("history")
   }
@@ -115,6 +120,6 @@ export default class NotificationHistory extends GObject.Object {
   }
 
   setIgnoredApps(apps: string[]) {
-    this.#ignoredApps = apps.map(a => a.toLowerCase())
+    this.#ignoredApps = apps.map((a) => a.toLowerCase())
   }
 }

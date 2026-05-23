@@ -8,16 +8,16 @@ export default () => {
   return (
     <Gtk.Box spacing={8}>
       <Gtk.Image
-        iconName={createBinding(touchpad, "enabled").as(enabled =>
-          enabled ? "input-touchpad-symbolic" : "touchpad-disabled-symbolic"
+        iconName={createBinding(touchpad, "enabled").as((enabled) =>
+          enabled ? "input-touchpad-symbolic" : "touchpad-disabled-symbolic",
         )}
         pixelSize={20}
       />
       <Gtk.Label
         hexpand
         cssClasses={["heading"]}
-        label={createBinding(touchpad, "enabled").as(enabled =>
-          enabled ? "Touchpad On" : "Touchpad Off"
+        label={createBinding(touchpad, "enabled").as((enabled) =>
+          enabled ? "Touchpad On" : "Touchpad Off",
         )}
       />
     </Gtk.Box>

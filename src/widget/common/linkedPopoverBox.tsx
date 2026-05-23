@@ -15,7 +15,8 @@ export const LinkedPopoverBox = (props: LinkedPopoverBoxProps) => (
     marginStart={props.margin ?? 8}
     marginEnd={props.margin ?? 8}
     marginTop={props.margin ?? 8}
-    marginBottom={props.margin ?? 8}>
+    marginBottom={props.margin ?? 8}
+  >
     {props.children}
   </Gtk.Box>
 )

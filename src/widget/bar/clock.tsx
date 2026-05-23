@@ -13,115 +13,126 @@ function updateCalendar(calendar: Gtk.Calendar) {
   calendar.day = now.get_day_of_month()
 }
 
-export default ({ vertical, visible = true }:
-  { vertical: Accessor<boolean>, visible?: boolean | Accessor<boolean> }) => {
+export default ({
+  vertical,
+  visible = true,
+}: {
+  vertical: Accessor<boolean>
+  visible?: boolean | Accessor<boolean>
+}) => {
   const { general } = useSettings()
-  const [time, setTime] = createState(new GLib.DateTime)
+  const [time, setTime] = createState(new GLib.DateTime())
   const clockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
     setTime(GLib.DateTime.new_now_local())
     return GLib.SOURCE_CONTINUE
   })
   onCleanup(() => GLib.source_remove(clockTimeout))
 
-  const day = time.as(t => t.get_day_of_month().toString())
-  const month = time.as(t => t.format("%b")!)
-  const hour = time.as(t => t.format("%H")!)
-  const minute = time.as(t => t.format("%M")!)
+  const day = time.as((t) => t.get_day_of_month().toString())
+  const month = time.as((t) => t.format("%b")!)
+  const hour = time.as((t) => t.format("%H")!)
+  const minute = time.as((t) => t.format("%M")!)
 
   const localTz = GLib.TimeZone.new_local()
   let calendarRef: Gtk.Calendar | null = null
 
-  return <Gtk.MenuButton
-    direction={vertical.as(v => v ?
-      Gtk.ArrowType.RIGHT :
-      Gtk.ArrowType.UP)}
-    cursor={Gdk.Cursor.new_from_name("pointer", null)}
-    visible={visible}
-    $={usePopoverCleanup}
-    popover={<Gtk.Popover
-      valign={Gtk.Align.CENTER}
-      halign={Gtk.Align.CENTER}
-      cssClasses={[]}
-      hasArrow={false}
-      $={self => self.connect("show", () => {
-        if (calendarRef) updateCalendar(calendarRef)
-      })}>
-      <Gtk.Box
-        spacing={12}
-        orientation={Gtk.Orientation.VERTICAL}
-        cssClasses={["popover-padded-lg"]}>
-        <Gtk.Calendar
-          $={self => {
-            calendarRef = self
-            updateCalendar(self)
-          }}
-        />
-        <Gtk.Separator />
-        <Gtk.Box
-          spacing={8}
-          orientation={Gtk.Orientation.VERTICAL}>
-          <Gtk.Label
-            cssClasses={["title-3"]}
-            label="World Clock"
+  return (
+    <Gtk.MenuButton
+      direction={vertical.as((v) =>
+        v ? Gtk.ArrowType.RIGHT : Gtk.ArrowType.UP,
+      )}
+      cursor={Gdk.Cursor.new_from_name("pointer", null)}
+      visible={visible}
+      $={usePopoverCleanup}
+      popover={
+        (
+          <Gtk.Popover
+            valign={Gtk.Align.CENTER}
             halign={Gtk.Align.CENTER}
-          />
-          <For each={general.timezones}>
-            {(tzId: string) => {
-              const tz = GLib.TimeZone.new(tzId)
-              const tzTime = time.as(t => t.to_timezone(tz))
-              return <Gtk.Box spacing={8} marginStart={8} marginEnd={8}>
+            cssClasses={[]}
+            hasArrow={false}
+            $={(self) =>
+              self.connect("show", () => {
+                if (calendarRef) updateCalendar(calendarRef)
+              })
+            }
+          >
+            <Gtk.Box
+              spacing={12}
+              orientation={Gtk.Orientation.VERTICAL}
+              cssClasses={["popover-padded-lg"]}
+            >
+              <Gtk.Calendar
+                $={(self) => {
+                  calendarRef = self
+                  updateCalendar(self)
+                }}
+              />
+              <Gtk.Separator />
+              <Gtk.Box spacing={8} orientation={Gtk.Orientation.VERTICAL}>
                 <Gtk.Label
-                  hexpand
-                  halign={Gtk.Align.START}
-                  cssClasses={["heading", "title-4"]}
-                  label={cityName(tzId)}
+                  cssClasses={["title-3"]}
+                  label="World Clock"
+                  halign={Gtk.Align.CENTER}
                 />
-                <Gtk.Label
-                  halign={Gtk.Align.END}
-                  cssClasses={["numeric", "title-4"]}
-                  label={tzTime.as(t => t.format("%H:%M") ?? "--:--")}
-                />
-                <Gtk.Label
-                  halign={Gtk.Align.END}
-                  cssClasses={["caption", "dim-label"]}
-                  label={fmtOffset(localTz, tz)}
-                />
+                <For each={general.timezones}>
+                  {(tzId: string) => {
+                    const tz = GLib.TimeZone.new(tzId)
+                    const tzTime = time.as((t) => t.to_timezone(tz))
+                    return (
+                      <Gtk.Box spacing={8} marginStart={8} marginEnd={8}>
+                        <Gtk.Label
+                          hexpand
+                          halign={Gtk.Align.START}
+                          cssClasses={["heading", "title-4"]}
+                          label={cityName(tzId)}
+                        />
+                        <Gtk.Label
+                          halign={Gtk.Align.END}
+                          cssClasses={["numeric", "title-4"]}
+                          label={tzTime.as((t) => t.format("%H:%M") ?? "--:--")}
+                        />
+                        <Gtk.Label
+                          halign={Gtk.Align.END}
+                          cssClasses={["caption", "dim-label"]}
+                          label={fmtOffset(localTz, tz)}
+                        />
+                      </Gtk.Box>
+                    )
+                  }}
+                </For>
               </Gtk.Box>
-            }}
-          </For>
+            </Gtk.Box>
+          </Gtk.Popover>
+        ) as Gtk.Popover
+      }
+    >
+      <Gtk.Box
+        halign={Gtk.Align.CENTER}
+        valign={Gtk.Align.CENTER}
+        orientation={vertical.as((v) =>
+          v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
+        )}
+        spacing={vertical.as((v) => (v ? 0 : 4))}
+      >
+        <Gtk.Box
+          orientation={vertical.as((v) =>
+            v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
+          )}
+          spacing={vertical.as((v) => (v ? 0 : 4))}
+        >
+          <Gtk.Label label={hour} cssClasses={["title-1", "numeric"]} />
+          <Gtk.Label label={minute} cssClasses={["title-1", "numeric"]} />
+        </Gtk.Box>
+        <Gtk.Box
+          orientation={Gtk.Orientation.VERTICAL}
+          halign={Gtk.Align.CENTER}
+          valign={Gtk.Align.CENTER}
+        >
+          <Gtk.Label cssClasses={["caption-heading"]} label={day} />
+          <Gtk.Label cssClasses={["caption"]} label={month} />
         </Gtk.Box>
       </Gtk.Box>
-    </Gtk.Popover> as Gtk.Popover}>
-    <Gtk.Box
-      halign={Gtk.Align.CENTER}
-      valign={Gtk.Align.CENTER}
-      orientation={vertical.as(v => v ?
-        Gtk.Orientation.VERTICAL :
-        Gtk.Orientation.HORIZONTAL)}
-      spacing={vertical.as(v => v ? 0 : 4)}>
-      <Gtk.Box
-        orientation={vertical.as(v => v ?
-          Gtk.Orientation.VERTICAL :
-          Gtk.Orientation.HORIZONTAL)}
-        spacing={vertical.as(v => v ? 0 : 4)}>
-        <Gtk.Label
-          label={hour}
-          cssClasses={["title-1", "numeric"]} />
-        <Gtk.Label
-          label={minute}
-          cssClasses={["title-1", "numeric"]} />
-      </Gtk.Box>
-      <Gtk.Box
-        orientation={Gtk.Orientation.VERTICAL}
-        halign={Gtk.Align.CENTER}
-        valign={Gtk.Align.CENTER}>
-        <Gtk.Label
-          cssClasses={["caption-heading"]}
-          label={day} />
-        <Gtk.Label
-          cssClasses={["caption"]}
-          label={month} />
-      </Gtk.Box>
-    </Gtk.Box>
-  </Gtk.MenuButton >
+    </Gtk.MenuButton>
+  )
 }

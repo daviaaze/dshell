@@ -22,7 +22,9 @@ interface MatugenColors {
   }
 }
 
-function parseMatugenJson(json: string): { primary: string, secondary: string, error: string } | null {
+function parseMatugenJson(
+  json: string,
+): { primary: string; secondary: string; error: string } | null {
   try {
     const data: MatugenColors = JSON.parse(json)
     const colors = data.colors?.dark || data.colors?.light
@@ -49,13 +51,18 @@ export default class Theming extends GObject.Object {
   #enabled = false
   #cssProvider: Gtk.CssProvider | null = null
   #settings: {
-    dynamicThemingEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
-    wallpaperDay: { get(): string, subscribe(cb: () => void): () => void }
-    wallpaperNight: { get(): string, subscribe(cb: () => void): () => void }
+    dynamicThemingEnabled: {
+      get(): boolean
+      subscribe(cb: () => void): () => void
+    }
+    wallpaperDay: { get(): string; subscribe(cb: () => void): () => void }
+    wallpaperNight: { get(): string; subscribe(cb: () => void): () => void }
   } | null = null
 
   @getter(Boolean)
-  get enabled() { return this.#enabled }
+  get enabled() {
+    return this.#enabled
+  }
 
   @setter(Boolean)
   set enabled(v: boolean) {
@@ -74,13 +81,18 @@ export default class Theming extends GObject.Object {
     try {
       AstalIO.Process.exec("which matugen")
       return true
-    } catch { return false }
+    } catch {
+      return false
+    }
   }
 
   init(settings: {
-    dynamicThemingEnabled: { get(): boolean, subscribe(cb: () => void): () => void }
-    wallpaperDay: { get(): string, subscribe(cb: () => void): () => void }
-    wallpaperNight: { get(): string, subscribe(cb: () => void): () => void }
+    dynamicThemingEnabled: {
+      get(): boolean
+      subscribe(cb: () => void): () => void
+    }
+    wallpaperDay: { get(): string; subscribe(cb: () => void): () => void }
+    wallpaperNight: { get(): string; subscribe(cb: () => void): () => void }
   }) {
     this.#settings = settings
     this.#enabled = settings.dynamicThemingEnabled.get()
@@ -127,20 +139,23 @@ export default class Theming extends GObject.Object {
       return
     }
 
-    AstalIO.Process.exec_asyncv(["matugen", "image", wallpaper, "--json", "hex"], (_, res) => {
-      try {
-        const out = AstalIO.Process.exec_asyncv_finish(res)
-        const colors = parseMatugenJson(out)
-        if (colors) {
-          this.#applyColors(colors)
+    AstalIO.Process.exec_asyncv(
+      ["matugen", "image", wallpaper, "--json", "hex"],
+      (_, res) => {
+        try {
+          const out = AstalIO.Process.exec_asyncv_finish(res)
+          const colors = parseMatugenJson(out)
+          if (colors) {
+            this.#applyColors(colors)
+          }
+        } catch (e) {
+          logger.error("theme", "matugen execution failed:", e)
         }
-      } catch (e) {
-        logger.error("theme", "matugen execution failed:", e)
-      }
-    })
+      },
+    )
   }
 
-  #applyColors(colors: { primary: string, secondary: string, error: string }) {
+  #applyColors(colors: { primary: string; secondary: string; error: string }) {
     this.#clear()
 
     // Override accent colors at PRIORITY_USER + 1 — shade.css tokens at
@@ -162,7 +177,7 @@ export default class Theming extends GObject.Object {
       Gtk.StyleContext.add_provider_for_display(
         display,
         this.#cssProvider,
-        Gtk.STYLE_PROVIDER_PRIORITY_USER + 1
+        Gtk.STYLE_PROVIDER_PRIORITY_USER + 1,
       )
       logger.debug("theme", `applied colors — primary: ${colors.primary}`)
     }
@@ -172,10 +187,7 @@ export default class Theming extends GObject.Object {
     if (this.#cssProvider) {
       const display = Gdk.Display.get_default()
       if (display) {
-        Gtk.StyleContext.remove_provider_for_display(
-          display,
-          this.#cssProvider
-        )
+        Gtk.StyleContext.remove_provider_for_display(display, this.#cssProvider)
       }
       this.#cssProvider = null
     }

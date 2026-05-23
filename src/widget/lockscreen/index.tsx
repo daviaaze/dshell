@@ -7,7 +7,14 @@ import Gdk from "gi://Gdk?version=4.0"
 import SessionLock from "gi://Gtk4SessionLock"
 import GLib from "gi://GLib?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createRoot, createState, For, onCleanup, onMount } from "gnim"
+import {
+  createBinding,
+  createRoot,
+  createState,
+  For,
+  onCleanup,
+  onMount,
+} from "gnim"
 import WindowManager from "#/lib/windowManager"
 import ShellState from "#/lib/shellState"
 import logger from "#/lib/logger"
@@ -46,7 +53,7 @@ const createLocks = (onUnlock: () => void) => {
   const doUnlock = () => {
     fingerprint.stop()
     lock.unlock()
-    WindowManager.get_default().lockscreens.forEach(w => w.destroy())
+    WindowManager.get_default().lockscreens.forEach((w) => w.destroy())
     ShellState.get_default().screenlocked = false
     onUnlock()
 
@@ -104,88 +111,95 @@ const createLocks = (onUnlock: () => void) => {
     }
   })
 
-  return <For each={monitors}>
-    {(monitor: Gdk.Monitor) =>
-      <Astal.Window
-        $={self => {
-          WindowManager.get_default().registerLockscreen(self)
-          onCleanup(() => {
-            fingerprint.stop()
-            fingerprint.disconnect(verifiedId)
-            fingerprint.disconnect(failedId)
-            fingerprint.disconnect(statusId)
-            GLib.source_remove(lockTimeout)
-            WindowManager.get_default().unregisterLockscreen(self)
-          })
-        }}
-        onRealize={() => {
-          for (const window of WindowManager.get_default().lockscreens) {
-            if (!window.get_realized()) return
-          }
-          lock.lock()
-          for (const window of WindowManager.get_default().lockscreens) {
-            lock.assign_window_to_monitor(
-              window, window.get_current_monitor()
-            )
-          }
-        }}
-        gdkmonitor={monitor}
-        anchor={TOP | BOTTOM | LEFT | RIGHT}
-        visible
-        exclusivity={Astal.Exclusivity.IGNORE}
-        keymode={Astal.Keymode.EXCLUSIVE}
-      >
-        <Gtk.CenterBox
-          halign={Gtk.Align.CENTER}
-          valign={Gtk.Align.CENTER}
-          orientation={Gtk.Orientation.VERTICAL}
+  return (
+    <For each={monitors}>
+      {(monitor: Gdk.Monitor) => (
+        <Astal.Window
+          $={(self) => {
+            WindowManager.get_default().registerLockscreen(self)
+            onCleanup(() => {
+              fingerprint.stop()
+              fingerprint.disconnect(verifiedId)
+              fingerprint.disconnect(failedId)
+              fingerprint.disconnect(statusId)
+              GLib.source_remove(lockTimeout)
+              WindowManager.get_default().unregisterLockscreen(self)
+            })
+          }}
+          onRealize={() => {
+            for (const window of WindowManager.get_default().lockscreens) {
+              if (!window.get_realized()) return
+            }
+            lock.lock()
+            for (const window of WindowManager.get_default().lockscreens) {
+              lock.assign_window_to_monitor(
+                window,
+                window.get_current_monitor(),
+              )
+            }
+          }}
+          gdkmonitor={monitor}
+          anchor={TOP | BOTTOM | LEFT | RIGHT}
+          visible
+          exclusivity={Astal.Exclusivity.IGNORE}
+          keymode={Astal.Keymode.EXCLUSIVE}
         >
-          <Gtk.Box
-            $type="start"
-            orientation={Gtk.Orientation.VERTICAL}
-            marginBottom={12}
-          >
-            <Gtk.Label
-              cssClasses={["title-1", "numeric"]}
-              label={time.as(t => t.format("%R")!)}
-              css={"font-size: 4em;"}
-            />
-            <Gtk.Label
-              marginBottom={12}
-              cssClasses={["title-3", "numeric"]}
-              label={time.as(t => t.format("%A, %x")!)}
-            />
-          </Gtk.Box>
-          <Gtk.Box
-            $type="center"
-            valign={Gtk.Align.CENTER}
+          <Gtk.CenterBox
             halign={Gtk.Align.CENTER}
-            spacing={4}
-            css={"padding:8px;"}
+            valign={Gtk.Align.CENTER}
             orientation={Gtk.Orientation.VERTICAL}
-            cssClasses={["card"]}>
-            <Adw.Avatar size={64} />
-            <Gtk.Label
-              label={GLib.get_real_name()}
-              cssClasses={["title-3"]} />
-            <Gtk.PasswordEntry
-              $={(self) => onMount(() => self.grab_focus())}
-              placeholderText={"password"}
-              showPeekIcon
-              onActivate={unlock} />
-            <Gtk.Label
-              visible={authStatus.as(s => s.length > 0)}
-              cssClasses={["caption"]}
-              label={authStatus}
-            />
-            <Gtk.Spinner
-              visible={createBinding(fingerprint, "verifying")}
-              spinning
-            />
-          </Gtk.Box>
-        </Gtk.CenterBox>
-      </Astal.Window>}
-  </For>
+          >
+            <Gtk.Box
+              $type="start"
+              orientation={Gtk.Orientation.VERTICAL}
+              marginBottom={12}
+            >
+              <Gtk.Label
+                cssClasses={["title-1", "numeric"]}
+                label={time.as((t) => t.format("%R")!)}
+                css={"font-size: 4em;"}
+              />
+              <Gtk.Label
+                marginBottom={12}
+                cssClasses={["title-3", "numeric"]}
+                label={time.as((t) => t.format("%A, %x")!)}
+              />
+            </Gtk.Box>
+            <Gtk.Box
+              $type="center"
+              valign={Gtk.Align.CENTER}
+              halign={Gtk.Align.CENTER}
+              spacing={4}
+              css={"padding:8px;"}
+              orientation={Gtk.Orientation.VERTICAL}
+              cssClasses={["card"]}
+            >
+              <Adw.Avatar size={64} />
+              <Gtk.Label
+                label={GLib.get_real_name()}
+                cssClasses={["title-3"]}
+              />
+              <Gtk.PasswordEntry
+                $={(self) => onMount(() => self.grab_focus())}
+                placeholderText={"password"}
+                showPeekIcon
+                onActivate={unlock}
+              />
+              <Gtk.Label
+                visible={authStatus.as((s) => s.length > 0)}
+                cssClasses={["caption"]}
+                label={authStatus}
+              />
+              <Gtk.Spinner
+                visible={createBinding(fingerprint, "verifying")}
+                spinning
+              />
+            </Gtk.Box>
+          </Gtk.CenterBox>
+        </Astal.Window>
+      )}
+    </For>
+  )
 }
 
 export const LockScreen = () => {
@@ -204,7 +218,7 @@ export const LockScreen = () => {
           })
         })
       }
-    })
+    }),
   )
   return <></>
 }

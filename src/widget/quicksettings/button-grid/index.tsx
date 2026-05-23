@@ -6,7 +6,7 @@ logger.log("ButtonGrid: loading")
 import ColorScheme from "./colorScheme"
 import Bluetooth from "./bluetooth"
 import Caffeinated from "./caffeinated"
-import Network from "../network"
+import Network from "#/widget/quicksettings/network"
 import Screenshot from "./screenshot"
 import NightLight from "./nightLight"
 import NightLightLib from "#/lib/nightLight"
@@ -15,8 +15,7 @@ import TouchpadLib from "#/lib/touchpad"
 import IdleControls from "./idleControls"
 import HypridleLib from "#/lib/hypridle"
 
-export const ButtonGrid = ({ cols = 2 }:
-  { cols?: number }) => {
+export const ButtonGrid = ({ cols = 2 }: { cols?: number }) => {
   logger.log("ButtonGrid: rendering")
   const nightLight = NightLightLib.get_default()
   const items = [
@@ -29,23 +28,27 @@ export const ButtonGrid = ({ cols = 2 }:
     nightLight.available ? <NightLight /> : null,
     TouchpadLib.get_default().available ? <Touchpad /> : null,
     HypridleLib.get_default().available ? <IdleControls /> : null,
-  ];
+  ]
 
   const visibleItems = items.filter(Boolean)
 
-  return <Gtk.Grid
-    rowSpacing={4}
-    columnSpacing={4}
-    columnHomogeneous
-    hexpand
-    $={(self) => visibleItems.forEach(
-      (item, index) =>
-        self.attach(
-          item as Gtk.Widget,
-          index % cols,
-          Math.floor(index / cols),
-          1, 1
+  return (
+    <Gtk.Grid
+      rowSpacing={4}
+      columnSpacing={4}
+      columnHomogeneous
+      hexpand
+      $={(self) =>
+        visibleItems.forEach((item, index) =>
+          self.attach(
+            item as Gtk.Widget,
+            index % cols,
+            Math.floor(index / cols),
+            1,
+            1,
+          ),
         )
-    )}>
-  </Gtk.Grid>
+      }
+    ></Gtk.Grid>
+  )
 }

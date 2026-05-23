@@ -32,7 +32,7 @@ function getExecutableName(exec: string): string {
 }
 
 export function getAppForClient(
-  client: Hyprland.Client
+  client: Hyprland.Client,
 ): Apps.Application | null {
   const cls = client.class?.toLowerCase()
   const title = client.title?.toLowerCase()
@@ -95,7 +95,7 @@ export function getAppIcon(client: Hyprland.Client): string {
 }
 
 export function getDesktopFileForClient(
-  client: Hyprland.Client
+  client: Hyprland.Client,
 ): string | null {
   const app = getAppForClient(client)
   return app?.entry || null

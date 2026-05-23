@@ -3,7 +3,7 @@
 import Gettext from "gettext"
 import GLib from "gi://GLib?version=2.0"
 import { exit, programArgs, programInvocationName } from "system"
-import { app } from "../src/App"
+import { app } from "#/App"
 import logger, { initLoggerFromSettings, perf } from "#/lib/logger"
 
 perf.start("main.ts startup")
@@ -17,8 +17,7 @@ Gettext.bindtextdomain(import.meta.domain, localedir)
 Gettext.textdomain(import.meta.domain)
 
 logger.log("calling app.runAsync")
-const exitCode = await app.runAsync([
-  programInvocationName, ...programArgs])
+const exitCode = await app.runAsync([programInvocationName, ...programArgs])
 
 perf.stop("main.ts startup")
 logger.log(`exiting with ${exitCode}`)

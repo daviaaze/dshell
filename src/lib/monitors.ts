@@ -6,13 +6,13 @@ import GObject, { getter, register } from "gnim/gobject"
 import { createBinding } from "gnim"
 import logger from "#/lib/logger"
 
-const Gdk2HyprMonitor =
-  (GMonitor: Gdk.Monitor) => {
-    const hyprland = AstalHyprland.get_default()
-    const monitor = hyprland.get_monitors()
-      .find(m => m.model === GMonitor.model)
-    return monitor ?? hyprland.get_monitor(0)
-  }
+const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor) => {
+  const hyprland = AstalHyprland.get_default()
+  const monitor = hyprland
+    .get_monitors()
+    .find((m) => m.model === GMonitor.model)
+  return monitor ?? hyprland.get_monitor(0)
+}
 
 @register({ GTypeName: "MonitorService" })
 class MonitorService extends GObject.Object {

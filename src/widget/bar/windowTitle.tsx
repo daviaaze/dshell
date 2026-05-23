@@ -7,41 +7,44 @@ import { getAppIcon } from "#/lib/apps"
 
 const hyprland = AstalHyprland.get_default()
 
-export default ({ visible: settingsVisible }: { visible: Accessor<boolean> }) => {
+export default ({
+  visible: settingsVisible,
+}: {
+  visible: Accessor<boolean>
+}) => {
   const client = createBinding(hyprland, "focusedClient")
 
-  const title = client.as(c => {
+  const title = client.as((c) => {
     if (!c || c.address === "0x0") return ""
     return c.title || c.class || ""
   })
 
-  const appIcon = client.as(c => {
+  const appIcon = client.as((c) => {
     if (!c || c.address === "0x0") return ""
     return getAppIcon(c)
   })
 
-  const clientExists = client.as(c => c && c.address !== "0x0")
+  const clientExists = client.as((c) => c && c.address !== "0x0")
 
   // Only visible when both settings say "show" AND a client exists
   const visible = createComputed(() => settingsVisible() && clientExists())
 
-  return <Gtk.Box
-    visible={visible}
-    spacing={8}
-    valign={Gtk.Align.CENTER}
-    halign={Gtk.Align.CENTER}
-    cssClasses={["linked"]}>
-    <Gtk.Image
+  return (
+    <Gtk.Box
       visible={visible}
-      iconName={appIcon}
-      pixelSize={16}
-    />
-    <Gtk.Label
-      visible={visible}
-      label={title}
-      maxWidthChars={40}
-      ellipsize={Pango.EllipsizeMode.END}
-      tooltipMarkup={title}
-    />
-  </Gtk.Box>
+      spacing={8}
+      valign={Gtk.Align.CENTER}
+      halign={Gtk.Align.CENTER}
+      cssClasses={["linked"]}
+    >
+      <Gtk.Image visible={visible} iconName={appIcon} pixelSize={16} />
+      <Gtk.Label
+        visible={visible}
+        label={title}
+        maxWidthChars={40}
+        ellipsize={Pango.EllipsizeMode.END}
+        tooltipMarkup={title}
+      />
+    </Gtk.Box>
+  )
 }

@@ -17,8 +17,8 @@ interface DockItemProps {
 export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
   const { bar } = useSettings()
 
-  const app = toArray(getAppList())
-    .find(a => a.entry === desktopFile) ||
+  const app =
+    toArray(getAppList()).find((a) => a.entry === desktopFile) ||
     exactQuery(desktopFile.replace(".desktop", ""))?.[0]
 
   const iconName = app?.iconName || "application-x-executable-symbolic"
@@ -41,103 +41,110 @@ export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
   const handlePinToggle = () => {
     const current = bar.dockPinnedApps.get() as string[]
     if (pinned) {
-      bar.dockPinnedApps.set(current.filter(d => d !== desktopFile))
+      bar.dockPinnedApps.set(current.filter((d) => d !== desktopFile))
     } else {
       bar.dockPinnedApps.set([...current, desktopFile])
     }
   }
 
-  const popover = <Gtk.Popover
-    cssClasses={["menu"]}
-    hasArrow={false}>
-    <Gtk.Box
-      orientation={Gtk.Orientation.VERTICAL}
-      spacing={4}
-      css={"padding: 8px;"}>
-      <Gtk.Button
-        cssClasses={["flat"]}
-        visible={running}
-        onClicked={() => {
-          handleLeftClick()
-          popover.popdown()
-        }}>
-        <Gtk.Box spacing={8}>
-          <Gtk.Image iconName="focus-windows-symbolic" />
-          <Gtk.Label label="Focus" />
-        </Gtk.Box>
-      </Gtk.Button>
-      <Gtk.Button
-        cssClasses={["flat"]}
-        visible={running}
-        onClicked={() => {
-          handleClose()
-          popover.popdown()
-        }}>
-        <Gtk.Box spacing={8}>
-          <Gtk.Image iconName="window-close-symbolic" />
-          <Gtk.Label label="Close" />
-        </Gtk.Box>
-      </Gtk.Button>
-      <Gtk.Button
-        cssClasses={["flat"]}
-        onClicked={() => {
-          handlePinToggle()
-          popover.popdown()
-        }}>
-        <Gtk.Box spacing={8}>
-          <Gtk.Image iconName={pinned ? "edit-delete-symbolic" : "list-add-symbolic"} />
-          <Gtk.Label label={pinned ? "Unpin" : "Pin"} />
-        </Gtk.Box>
-      </Gtk.Button>
-    </Gtk.Box>
-  </Gtk.Popover> as Gtk.Popover
+  const popover = (
+    <Gtk.Popover cssClasses={["menu"]} hasArrow={false}>
+      <Gtk.Box
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={4}
+        css={"padding: 8px;"}
+      >
+        <Gtk.Button
+          cssClasses={["flat"]}
+          visible={running}
+          onClicked={() => {
+            handleLeftClick()
+            popover.popdown()
+          }}
+        >
+          <Gtk.Box spacing={8}>
+            <Gtk.Image iconName="focus-windows-symbolic" />
+            <Gtk.Label label="Focus" />
+          </Gtk.Box>
+        </Gtk.Button>
+        <Gtk.Button
+          cssClasses={["flat"]}
+          visible={running}
+          onClicked={() => {
+            handleClose()
+            popover.popdown()
+          }}
+        >
+          <Gtk.Box spacing={8}>
+            <Gtk.Image iconName="window-close-symbolic" />
+            <Gtk.Label label="Close" />
+          </Gtk.Box>
+        </Gtk.Button>
+        <Gtk.Button
+          cssClasses={["flat"]}
+          onClicked={() => {
+            handlePinToggle()
+            popover.popdown()
+          }}
+        >
+          <Gtk.Box spacing={8}>
+            <Gtk.Image
+              iconName={pinned ? "edit-delete-symbolic" : "list-add-symbolic"}
+            />
+            <Gtk.Label label={pinned ? "Unpin" : "Pin"} />
+          </Gtk.Box>
+        </Gtk.Button>
+      </Gtk.Box>
+    </Gtk.Popover>
+  ) as Gtk.Popover
 
-  return <Gtk.Button
-    $={self => {
-      popover.set_parent(self)
-      onCleanup(() => {
-        popover.popdown()
-        popover.unparent()
-      })
-    }}
-    cssClasses={["flat", "circular"]}
-    cursor={Gdk.Cursor.new_from_name("pointer", null)}
-    onClicked={handleLeftClick}
-    tooltipText={app?.name || desktopFile.replace(".desktop", "")}>
-    <Gtk.GestureClick
-      $={self => {
-        self.set_button(Gdk.BUTTON_SECONDARY)
-        self.connect("pressed", () => popover.popup())
+  return (
+    <Gtk.Button
+      $={(self) => {
+        popover.set_parent(self)
+        onCleanup(() => {
+          popover.popdown()
+          popover.unparent()
+        })
       }}
-    />
-    <Gtk.Box
-      orientation={Gtk.Orientation.VERTICAL}
-      spacing={4}
-      halign={Gtk.Align.CENTER}
-      valign={Gtk.Align.CENTER}>
-      <Gtk.Image
-        iconName={iconName}
-        pixelSize={bar.dockIconSize.get()}
+      cssClasses={["flat", "circular"]}
+      cursor={Gdk.Cursor.new_from_name("pointer", null)}
+      onClicked={handleLeftClick}
+      tooltipText={app?.name || desktopFile.replace(".desktop", "")}
+    >
+      <Gtk.GestureClick
+        $={(self) => {
+          self.set_button(Gdk.BUTTON_SECONDARY)
+          self.connect("pressed", () => popover.popup())
+        }}
       />
-      {active ? (
-        <Gtk.Box
-          css={`
-            min-width: 16px;
-            min-height: 3px;
-            border-radius: 2px;
-            background-color: @accent_color;
-          `}
-        />
-      ) : running ? (
-        <Gtk.Box
-          css={`
-            min-width: 4px;
-            min-height: 4px;
-            border-radius: 2px;
-            background-color: @accent_color;
-          `}
-        />
-      ) : null}
-    </Gtk.Box>
-  </Gtk.Button>
+      <Gtk.Box
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={4}
+        halign={Gtk.Align.CENTER}
+        valign={Gtk.Align.CENTER}
+      >
+        <Gtk.Image iconName={iconName} pixelSize={bar.dockIconSize.get()} />
+        {active ? (
+          <Gtk.Box
+            css={`
+              min-width: 16px;
+              min-height: 3px;
+              border-radius: 2px;
+              background-color: @accent_color;
+            `}
+          />
+        ) : running ? (
+          <Gtk.Box
+            css={`
+              min-width: 4px;
+              min-height: 4px;
+              border-radius: 2px;
+              background-color: @accent_color;
+            `}
+          />
+        ) : null}
+      </Gtk.Box>
+    </Gtk.Button>
+  )
 }

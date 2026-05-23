@@ -22,31 +22,49 @@ export default class WindowManager extends GObject.Object {
   #dock: Astal.Window | null = null
 
   @getter(Array)
-  get bars() { return this.#bars }
+  get bars() {
+    return this.#bars
+  }
 
   @getter(Array)
-  get wallpapers() { return this.#wallpapers }
+  get wallpapers() {
+    return this.#wallpapers
+  }
 
   @getter(Array)
-  get lockscreens() { return this.#lockscreens }
+  get lockscreens() {
+    return this.#lockscreens
+  }
 
   @getter(Object)
-  get quicksettings() { return this.#quicksettings }
+  get quicksettings() {
+    return this.#quicksettings
+  }
 
   @getter(Object)
-  get osd() { return this.#osd }
+  get osd() {
+    return this.#osd
+  }
 
   @getter(Object)
-  get applauncher() { return this.#applauncher }
+  get applauncher() {
+    return this.#applauncher
+  }
 
   @getter(Object)
-  get notifications() { return this.#notifications }
+  get notifications() {
+    return this.#notifications
+  }
 
   @getter(Object)
-  get settings() { return this.#settings }
+  get settings() {
+    return this.#settings
+  }
 
   @getter(Object)
-  get dock() { return this.#dock }
+  get dock() {
+    return this.#dock
+  }
 
   registerBar(win: Astal.Window) {
     this.#bars.push(win)
@@ -54,7 +72,7 @@ export default class WindowManager extends GObject.Object {
   }
 
   unregisterBar(win: Astal.Window) {
-    this.#bars = this.#bars.filter(b => b !== win)
+    this.#bars = this.#bars.filter((b) => b !== win)
     this.notify("bars")
   }
 
@@ -64,7 +82,7 @@ export default class WindowManager extends GObject.Object {
   }
 
   unregisterWallpaper(win: Astal.Window) {
-    this.#wallpapers = this.#wallpapers.filter(w => w !== win)
+    this.#wallpapers = this.#wallpapers.filter((w) => w !== win)
     this.notify("wallpapers")
   }
 
@@ -74,7 +92,7 @@ export default class WindowManager extends GObject.Object {
   }
 
   unregisterLockscreen(win: Astal.Window) {
-    this.#lockscreens = this.#lockscreens.filter(l => l !== win)
+    this.#lockscreens = this.#lockscreens.filter((l) => l !== win)
     this.notify("lockscreens")
   }
 

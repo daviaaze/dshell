@@ -1,10 +1,10 @@
-import ShellState from "#/lib/shellState";
-import WindowManager from "#/lib/windowManager";
-import Screenshot from "#/lib/screenshot";
-import Touchpad from "#/lib/touchpad";
-import { openSettings } from "#/widget";
-import { toggleWindowSwitcher } from "#/widget/windowswitcher";
-import Gio from "gi://Gio?version=2.0";
+import ShellState from "#/lib/shellState"
+import WindowManager from "#/lib/windowManager"
+import Screenshot from "#/lib/screenshot"
+import Touchpad from "#/lib/touchpad"
+import { openSettings } from "#/widget"
+import { toggleWindowSwitcher } from "#/widget/windowswitcher"
+import Gio from "gi://Gio?version=2.0"
 import logger from "#/lib/logger"
 
 export function registerActions(app: Gio.Application) {
@@ -16,15 +16,17 @@ export function registerActions(app: Gio.Application) {
   const actions: Record<string, () => void> = {
     "toggle-applauncher": () => state.toggleLauncher(),
     "toggle-quicksettings": () => state.toggleQuickSettings(),
-    "toggle-bar": () => wm.bars.forEach(bar => bar.visible = !bar.visible),
+    "toggle-bar": () => wm.bars.forEach((bar) => (bar.visible = !bar.visible)),
     "toggle-windowswitcher": () => toggleWindowSwitcher(),
     "toggle-settings": () => openSettings(),
     "toggle-clipboard": () => state.toggleClipboard(),
     "open-clipboard": () => state.openClipboard(),
-    "lockscreen": () => { state.screenlocked = true },
-    "screenshot": () => screenshot.screenshot(true),
+    lockscreen: () => {
+      state.screenlocked = true
+    },
+    screenshot: () => screenshot.screenshot(true),
     "screenshot-area": () => screenshot.screenshot(false),
-    "record": () => screenshot.toggleRecording(),
+    record: () => screenshot.toggleRecording(),
     "record-area": () => screenshot.recordArea(),
     "record-window": () => screenshot.recordWindow(),
     "record-output": () => screenshot.recordOutput(),
@@ -38,40 +40,32 @@ export function registerActions(app: Gio.Application) {
   }
 }
 
-export const requestHandler =
-  (cmd: Gio.ApplicationCommandLine, app: Gio.Application) => {
-    const args = cmd.get_arguments()
-    logger.debug("dbus", `requestHandler args=${args.slice(1).join(" ")}`)
+export const requestHandler = (
+  cmd: Gio.ApplicationCommandLine,
+  app: Gio.Application,
+) => {
+  const args = cmd.get_arguments()
+  logger.debug("dbus", `requestHandler args=${args.slice(1).join(" ")}`)
 
-    const activate = (name: string) => {
-      if (app.lookup_action(name)) {
-        app.activate_action(name, null)
-      } else {
-        logger.warn("dbus", `unknown action: ${name}`)
-      }
+  const activate = (name: string) => {
+    if (app.lookup_action(name)) {
+      app.activate_action(name, null)
+    } else {
+      logger.warn("dbus", `unknown action: ${name}`)
     }
-
-    if (args[1] === "lockscreen")
-      activate("lockscreen")
-    else if (args[1] === "toggle")
-      activate(`toggle-${args[2]}`)
-    else if (args[1] === "clipboard")
-      activate("toggle-clipboard")
-    else if (args[1] === "screenshot")
-      activate("screenshot")
-    else if (args[1] === "screenshot-area")
-      activate("screenshot-area")
-    else if (args[1] === "record")
-      activate("record")
-    else if (args[1] === "record-area")
-      activate("record-area")
-    else if (args[1] === "record-window")
-      activate("record-window")
-    else if (args[1] === "record-output")
-      activate("record-output")
-    else if (args[1] === "touchpad")
-      activate("toggle-touchpad")
-
-    logger.debug("dbus", "requestHandler done")
-    cmd.done()
   }
+
+  if (args[1] === "lockscreen") activate("lockscreen")
+  else if (args[1] === "toggle") activate(`toggle-${args[2]}`)
+  else if (args[1] === "clipboard") activate("toggle-clipboard")
+  else if (args[1] === "screenshot") activate("screenshot")
+  else if (args[1] === "screenshot-area") activate("screenshot-area")
+  else if (args[1] === "record") activate("record")
+  else if (args[1] === "record-area") activate("record-area")
+  else if (args[1] === "record-window") activate("record-window")
+  else if (args[1] === "record-output") activate("record-output")
+  else if (args[1] === "touchpad") activate("toggle-touchpad")
+
+  logger.debug("dbus", "requestHandler done")
+  cmd.done()
+}

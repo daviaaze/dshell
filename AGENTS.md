@@ -113,11 +113,11 @@ This applies to any GObject property where a sub-property (like battery) can upd
 ### 6. `<For>` cannot be nested inside `<With>`
 Gnim throws `Error: nesting Fragments are not yet supported`. Use reactive `visible` bindings instead of conditional rendering, or keep `<For>` as a sibling.
 
-### 7. Widget mount order is sequential and fragile
-`src/widget/index.tsx` mounts: `Wallpaper → bar → osd → applauncher → notifications → quicksettings → LockScreen → settings`. An unhandled exception in step *N* prevents steps *N+1…∞* from mounting. If later widgets are missing, fix the **first** crashing widget, not the missing ones.
+### 7. Widget mount order is sequential with error isolation
+Each widget is wrapped in `safe()` which catches and logs exceptions without blocking subsequent widgets. Mount order: `Wallpaper → bar → dock → osd → applauncher → quicksettings → lockscreen → windowswitcher → notifications → settings`. If a widget fails, the error is logged via `logger.error("mount", ...)` and the next widget continues. Check journald for the **first** error in the sequence.
 
-### 8. `@signal()` requires GObject types, not JS constructors
-Only `Function`, `Array`, `Date`, `Map`, `Set` have `$gtype`. All others need explicit GObject type constants:
+### 8. `@signal()` prefers GObject types over JS constructors
+GJS maps `Number` → `GObject.TYPE_DOUBLE`, `Boolean` → `GObject.TYPE_BOOLEAN`, `String` → `GObject.TYPE_STRING`, plus `Function`, `Array`, `Date`, `Map`, `Set` have `$gtype`. JS constructors work in practice, but for cross-version compatibility prefer explicit GObject type constants:
 
 ```ts
 // ✅ CORRECT

@@ -16,11 +16,9 @@ export const IconInfoRow = (props: IconInfoRowProps) => (
     marginEnd={8}
     hexpand
     halign={Gtk.Align.CENTER}
-    visible={props.visible ?? true}>
-    <Gtk.Image
-      iconName={props.icon}
-      pixelSize={props.pixelSize ?? 20}
-    />
+    visible={props.visible ?? true}
+  >
+    <Gtk.Image iconName={props.icon} pixelSize={props.pixelSize ?? 20} />
     <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
       <Gtk.Label label={props.primary} />
       {props.secondary && <Gtk.Label label={props.secondary} />}

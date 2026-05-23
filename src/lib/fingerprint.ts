@@ -21,10 +21,14 @@ export default class FingerprintAuth extends GObject.Object {
   #deviceProxy: Gio.DBusProxy | null = null
 
   @getter(Boolean)
-  get available() { return this.#available }
+  get available() {
+    return this.#available
+  }
 
   @getter(Boolean)
-  get verifying() { return this.#verifying }
+  get verifying() {
+    return this.#verifying
+  }
 
   @signal()
   verified() {}
@@ -42,14 +46,13 @@ export default class FingerprintAuth extends GObject.Object {
     if (this.#initialized) return
     this.#initialized = true
     try {
-      const manager = await this.#getProxy(FPRINTD_MANAGER, "net.reactivated.Fprint.Manager")
-      const devices = manager.call_sync(
-        "GetDevices",
-        null,
-        Gio.DBusCallFlags.NONE,
-        -1,
-        null
-      )?.get_child_value(0)
+      const manager = await this.#getProxy(
+        FPRINTD_MANAGER,
+        "net.reactivated.Fprint.Manager",
+      )
+      const devices = manager
+        .call_sync("GetDevices", null, Gio.DBusCallFlags.NONE, -1, null)
+        ?.get_child_value(0)
 
       if (!devices || devices.n_children() === 0) {
         this.#available = false
@@ -58,27 +61,33 @@ export default class FingerprintAuth extends GObject.Object {
       }
 
       this.#devicePath = devices.get_child_value(0).get_string()[0]
-      this.#deviceProxy = await this.#getProxy(this.#devicePath, "net.reactivated.Fprint.Device")
+      this.#deviceProxy = await this.#getProxy(
+        this.#devicePath,
+        "net.reactivated.Fprint.Device",
+      )
       this.#available = true
       this.notify("available")
 
-      this.#deviceProxy.connect("g-signal", (_proxy, _sender, signalName, params) => {
-        if (signalName === "VerifyStatus") {
-          const status = params.get_child_value(0).get_string()[0]
-          const done = params.get_child_value(1).get_boolean()
-          this.statusChanged(status)
+      this.#deviceProxy.connect(
+        "g-signal",
+        (_proxy, _sender, signalName, params) => {
+          if (signalName === "VerifyStatus") {
+            const status = params.get_child_value(0).get_string()[0]
+            const done = params.get_child_value(1).get_boolean()
+            this.statusChanged(status)
 
-          if (done) {
-            this.#verifying = false
-            this.notify("verifying")
-            if (status === "verify-match") {
-              this.verified()
-            } else {
-              this.failed(status)
+            if (done) {
+              this.#verifying = false
+              this.notify("verifying")
+              if (status === "verify-match") {
+                this.verified()
+              } else {
+                this.failed(status)
+              }
             }
           }
-        }
-      })
+        },
+      )
     } catch (e) {
       logger.error("fingerprint", "init failed:", e)
       this.#available = false
@@ -95,7 +104,7 @@ export default class FingerprintAuth extends GObject.Object {
           GLib.Variant.new("(s)", [GLib.get_user_name()]),
           Gio.DBusCallFlags.NONE,
           -1,
-          null
+          null,
         )
         this.#claimed = true
       }
@@ -106,7 +115,7 @@ export default class FingerprintAuth extends GObject.Object {
         GLib.Variant.new("(s)", [""]),
         Gio.DBusCallFlags.NONE,
         -1,
-        null
+        null,
       )
     } catch (e) {
       logger.error("fingerprint", "start failed:", e)
@@ -125,7 +134,7 @@ export default class FingerprintAuth extends GObject.Object {
         null,
         Gio.DBusCallFlags.NONE,
         -1,
-        null
+        null,
       )
     } catch (e) {
       logger.error("fingerprint", "VerifyStop failed:", e)
@@ -143,7 +152,7 @@ export default class FingerprintAuth extends GObject.Object {
         null,
         Gio.DBusCallFlags.NONE,
         -1,
-        null
+        null,
       )
     } catch (e) {
       logger.error("fingerprint", "Release failed:", e)
@@ -151,7 +160,10 @@ export default class FingerprintAuth extends GObject.Object {
     this.#claimed = false
   }
 
-  async #getProxy(objectPath: string, interfaceName: string): Promise<Gio.DBusProxy> {
+  async #getProxy(
+    objectPath: string,
+    interfaceName: string,
+  ): Promise<Gio.DBusProxy> {
     return new Promise((resolve, reject) => {
       Gio.DBusProxy.new_for_bus(
         Gio.BusType.SYSTEM,
@@ -167,7 +179,7 @@ export default class FingerprintAuth extends GObject.Object {
           } catch (e) {
             reject(e)
           }
-        }
+        },
       )
     })
   }

@@ -10,16 +10,16 @@ function createAppSettings() {
   return {
     bar: {
       barSettings,
-      ...createSettings(barSettings, barSchema)
+      ...createSettings(barSettings, barSchema),
     },
     general: {
       generalSettings,
-      ...createSettings(generalSettings, generalSchema)
+      ...createSettings(generalSettings, generalSchema),
     },
     weather: {
       weatherSettings,
-      ...createSettings(weatherSettings, weatherSchema)
-    }
+      ...createSettings(weatherSettings, weatherSchema),
+    },
   }
 }
 

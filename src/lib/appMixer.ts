@@ -13,22 +13,26 @@ export interface AudioStream {
   targetNode: number | null
 }
 
-function parseStreams(): AudioStream[] {
+function parseStreams(pwDump: string): AudioStream[] {
   try {
-    const out = AstalIO.Process.exec("pw-dump")
-    const data = JSON.parse(out)
+    const data = JSON.parse(pwDump)
     const streams: AudioStream[] = []
     for (const item of data) {
       const info = item.info || {}
       const props = info.props || {}
       const mediaClass = props["media.class"] || ""
-      if (mediaClass.includes("Stream") && mediaClass.includes("Audio") && mediaClass.includes("Output")) {
+      if (
+        mediaClass.includes("Stream") &&
+        mediaClass.includes("Audio") &&
+        mediaClass.includes("Output")
+      ) {
         const streamProps = info.params?.Props?.[0] || {}
         streams.push({
           id: item.id,
           name: props["node.name"] || "Unknown",
           appName: props["application.name"] || props["node.name"] || "Unknown",
-          iconName: props["application.icon-name"] || "audio-x-generic-symbolic",
+          iconName:
+            props["application.icon-name"] || "audio-x-generic-symbolic",
           volume: streamProps.volume ?? 1.0,
           muted: streamProps.mute ?? false,
           targetNode: null,
@@ -42,22 +46,26 @@ function parseStreams(): AudioStream[] {
   }
 }
 
-function parseCaptureStreams(): AudioStream[] {
+function parseCaptureStreams(pwDump: string): AudioStream[] {
   try {
-    const out = AstalIO.Process.exec("pw-dump")
-    const data = JSON.parse(out)
+    const data = JSON.parse(pwDump)
     const streams: AudioStream[] = []
     for (const item of data) {
       const info = item.info || {}
       const props = info.props || {}
       const mediaClass = props["media.class"] || ""
-      if (mediaClass.includes("Stream") && mediaClass.includes("Audio") && mediaClass.includes("Input")) {
+      if (
+        mediaClass.includes("Stream") &&
+        mediaClass.includes("Audio") &&
+        mediaClass.includes("Input")
+      ) {
         const streamProps = info.params?.Props?.[0] || {}
         streams.push({
           id: item.id,
           name: props["node.name"] || "Unknown",
           appName: props["application.name"] || props["node.name"] || "Unknown",
-          iconName: props["application.icon-name"] || "audio-x-generic-symbolic",
+          iconName:
+            props["application.icon-name"] || "audio-x-generic-symbolic",
           volume: streamProps.volume ?? 1.0,
           muted: streamProps.mute ?? false,
           targetNode: null,
@@ -71,11 +79,10 @@ function parseCaptureStreams(): AudioStream[] {
   }
 }
 
-function parseTargets(): Map<number, number> {
+function parseTargets(pwMetadata: string): Map<number, number> {
   const targets = new Map<number, number>()
   try {
-    const out = AstalIO.Process.exec("pw-metadata -n default")
-    for (const line of out.split("\n")) {
+    for (const line of pwMetadata.split("\n")) {
       const match = line.match(/id:(\d+)\s+key:'target\.node'\s+value:'(\d+)'/)
       if (match) {
         targets.set(parseInt(match[1]), parseInt(match[2]))
@@ -118,24 +125,47 @@ export default class AppMixer extends GObject.Object {
 
   constructor() {
     super()
-    this.#update()
+    // Initial fetch on next idle cycle to avoid blocking constructor
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      this.#fetchAndUpdate()
+      return GLib.SOURCE_REMOVE
+    })
     this.#timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
-      this.#update()
+      this.#fetchAndUpdate()
       return GLib.SOURCE_CONTINUE
     })
   }
 
-  #update() {
-    const newStreams = parseStreams()
-    const newCaptureStreams = parseCaptureStreams()
-    const targets = parseTargets()
+  #fetchAndUpdate() {
+    // Fetch pw-dump and pw-metadata asynchronously — these can block for 100-500ms
+    AstalIO.Process.exec_async("pw-dump", (_, dumpRes) => {
+      try {
+        const pwDump = AstalIO.Process.exec_async_finish(dumpRes)
+        AstalIO.Process.exec_async("pw-metadata -n default", (_, metaRes) => {
+          try {
+            const pwMetadata = AstalIO.Process.exec_async_finish(metaRes)
+            this.#update(pwDump, pwMetadata)
+          } catch (e) {
+            logger.error("audio", "pw-metadata failed:", e)
+          }
+        })
+      } catch (e) {
+        logger.error("audio", "pw-dump failed:", e)
+      }
+    })
+  }
+
+  #update(pwDump: string, pwMetadata: string) {
+    const newStreams = parseStreams(pwDump)
+    const newCaptureStreams = parseCaptureStreams(pwDump)
+    const targets = parseTargets(pwMetadata)
     const now = Date.now()
 
     for (const s of newStreams) {
       s.targetNode = targets.get(s.id) ?? null
       const lastMod = this.#lastModified.get(s.id)
       if (lastMod && now - lastMod < AppMixer.MODIFY_GRACE_MS) {
-        const existing = this.#streams.find(x => x.id === s.id)
+        const existing = this.#streams.find((x) => x.id === s.id)
         if (existing) {
           s.volume = existing.volume
           s.muted = existing.muted
@@ -147,8 +177,10 @@ export default class AppMixer extends GObject.Object {
       s.targetNode = targets.get(s.id) ?? null
     }
 
-    const streamsChanged = JSON.stringify(newStreams) !== JSON.stringify(this.#streams)
-    const captureChanged = JSON.stringify(newCaptureStreams) !== JSON.stringify(this.#captureStreams)
+    const streamsChanged =
+      JSON.stringify(newStreams) !== JSON.stringify(this.#streams)
+    const captureChanged =
+      JSON.stringify(newCaptureStreams) !== JSON.stringify(this.#captureStreams)
 
     if (streamsChanged) {
       this.#streams = newStreams
@@ -159,18 +191,18 @@ export default class AppMixer extends GObject.Object {
       this.#captureStreams = newCaptureStreams
       this.notify("capture-streams")
     }
-    if (hadCapture !== (newCaptureStreams.length > 0)) {
+    if (hadCapture !== newCaptureStreams.length > 0) {
       this.notify("microphone-in-use")
     }
   }
 
   #optimisticUpdate(id: number, patch: Partial<AudioStream>) {
-    const idx = this.#streams.findIndex(s => s.id === id)
+    const idx = this.#streams.findIndex((s) => s.id === id)
     if (idx === -1) return
     this.#streams = [
       ...this.#streams.slice(0, idx),
       { ...this.#streams[idx], ...patch },
-      ...this.#streams.slice(idx + 1)
+      ...this.#streams.slice(idx + 1),
     ]
     this.#lastModified.set(id, Date.now())
     this.notify("streams")
@@ -202,7 +234,9 @@ export default class AppMixer extends GObject.Object {
       if (nodeId === -1) {
         AstalIO.Process.exec(`pw-metadata -n default -d ${id} target.node`)
       } else {
-        AstalIO.Process.exec(`pw-metadata -n default ${id} target.node ${nodeId}`)
+        AstalIO.Process.exec(
+          `pw-metadata -n default ${id} target.node ${nodeId}`,
+        )
       }
     } catch (e) {
       logger.error("audio", "setTargetNode failed:", e)

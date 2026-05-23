@@ -10,7 +10,7 @@ export function initAutoSwitch() {
   binding.subscribe(() => {
     const speakers = binding.get()
     if (!speakers) return
-    const currentIds = new Set(speakers.map(s => s.id))
+    const currentIds = new Set(speakers.map((s) => s.id))
 
     for (const speaker of speakers) {
       // Skip devices we already knew about
@@ -21,7 +21,9 @@ export function initAutoSwitch() {
       const isBluetooth = name.startsWith("bluez_output")
 
       if (isBluetooth) {
-        logger.log(`[AudioAutoSwitch] New bluetooth device: ${speaker.description} (${name}) — switching to it`)
+        logger.log(
+          `[AudioAutoSwitch] New bluetooth device: ${speaker.description} (${name}) — switching to it`,
+        )
         speaker.isDefault = true
       }
     }

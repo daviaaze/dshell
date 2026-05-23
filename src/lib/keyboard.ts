@@ -51,10 +51,11 @@ export default class KeyboardLayout extends GObject.Object {
       const out = AstalIO.Process.exec("hyprctl devices -j")
       const data: HyprlandDevices = JSON.parse(out)
       const keyboards = data.keyboards || []
-      const mainKb = keyboards.find(k =>
-        k.name !== "wlroots-keyboard-pointer"
-        && k.name !== "wayland"
-        && k.name !== ""
+      const mainKb = keyboards.find(
+        (k) =>
+          k.name !== "wlroots-keyboard-pointer" &&
+          k.name !== "wayland" &&
+          k.name !== "",
       )
       if (mainKb) {
         const layout = parseLayoutName(mainKb.active_keymap)
@@ -69,7 +70,8 @@ export default class KeyboardLayout extends GObject.Object {
         this.#available = false
         this.notify("available")
       }
-    } catch {
+    } catch (e) {
+      logger.error("keyboard", "#update failed:", e)
       this.#available = false
       this.notify("available")
     }
@@ -80,15 +82,16 @@ export default class KeyboardLayout extends GObject.Object {
       const out = AstalIO.Process.exec("hyprctl devices -j")
       const data: HyprlandDevices = JSON.parse(out)
       const keyboards = data.keyboards || []
-      const mainKb = keyboards.find(k =>
-        k.name !== "wlroots-keyboard-pointer"
-        && k.name !== "wayland"
-        && k.name !== ""
+      const mainKb = keyboards.find(
+        (k) =>
+          k.name !== "wlroots-keyboard-pointer" &&
+          k.name !== "wayland" &&
+          k.name !== "",
       )
       if (mainKb) {
         AstalIO.Process.exec_async(
           `hyprctl switchxkblayout "${mainKb.name}" next`,
-          () => this.#update()
+          () => this.#update(),
         )
       }
     } catch (e) {

@@ -44,39 +44,93 @@
    SPACING SCALE
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.p-4  { padding: 4px;  }
-.p-6  { padding: 6px;  }
-.p-8  { padding: 8px;  }
-.p-12 { padding: 12px; }
-.p-16 { padding: 16px; }
-.p-24 { padding: 24px; }
+.p-4 {
+  padding: 4px;
+}
+.p-6 {
+  padding: 6px;
+}
+.p-8 {
+  padding: 8px;
+}
+.p-12 {
+  padding: 12px;
+}
+.p-16 {
+  padding: 16px;
+}
+.p-24 {
+  padding: 24px;
+}
 
-.m-4  { margin: 4px;  }
-.m-8  { margin: 8px;  }
-.m-12 { margin: 12px; }
-.m-16 { margin: 16px; }
+.m-4 {
+  margin: 4px;
+}
+.m-8 {
+  margin: 8px;
+}
+.m-12 {
+  margin: 12px;
+}
+.m-16 {
+  margin: 16px;
+}
 
 /* Directional margin/padding */
-.mt-4  { margin-top: 4px;  }
-.mt-8  { margin-top: 8px;  }
-.mt-12 { margin-top: 12px; }
-.mb-4  { margin-bottom: 4px;  }
-.mb-8  { margin-bottom: 8px;  }
-.mb-12 { margin-bottom: 12px; }
-.ml-4  { margin-left: 4px;  }
-.ml-8  { margin-left: 8px;  }
-.mr-4  { margin-right: 4px; }
-.mr-8  { margin-right: 8px; }
+.mt-4 {
+  margin-top: 4px;
+}
+.mt-8 {
+  margin-top: 8px;
+}
+.mt-12 {
+  margin-top: 12px;
+}
+.mb-4 {
+  margin-bottom: 4px;
+}
+.mb-8 {
+  margin-bottom: 8px;
+}
+.mb-12 {
+  margin-bottom: 12px;
+}
+.ml-4 {
+  margin-left: 4px;
+}
+.ml-8 {
+  margin-left: 8px;
+}
+.mr-4 {
+  margin-right: 4px;
+}
+.mr-8 {
+  margin-right: 8px;
+}
 
-.gap-4  { spacing: 4px;  }
-.gap-8  { spacing: 8px;  }
-.gap-12 { spacing: 12px; }
-.gap-16 { spacing: 16px; }
+.gap-4 {
+  spacing: 4px;
+}
+.gap-8 {
+  spacing: 8px;
+}
+.gap-12 {
+  spacing: 12px;
+}
+.gap-16 {
+  spacing: 16px;
+}
 
 /* Popover content padding — standard Margins inside popovers */
-.popover-padded    { margin: 8px;  }
-.popover-padded-sm { margin: 4px;  }
-.popover-padded-lg { margin: 12px; }
+.popover-padded {
+  margin: 8px;
+}
+.popover-padded-sm {
+  margin: 4px;
+}
+.popover-padded-lg {
+  margin: 12px;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TYPOGRAPHY EXTENSIONS
@@ -215,9 +269,15 @@
   padding: 0;
 }
 
-.rounded-8  { border-radius: 8px;  }
-.rounded-12 { border-radius: 12px; }
-.rounded-16 { border-radius: 16px; }
+.rounded-8 {
+  border-radius: 8px;
+}
+.rounded-12 {
+  border-radius: 12px;
+}
+.rounded-16 {
+  border-radius: 16px;
+}
 
 /* Scrollable areas — hide scrollbar chrome */
 .scroll-compact scrollbar {

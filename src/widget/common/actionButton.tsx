@@ -13,12 +13,14 @@ export const ActionButton = (props: {
   label: string
   destructive?: boolean
   onClicked: () => void
-}) =>
+}) => (
   <Gtk.Button
     cssClasses={props.destructive ? ["flat", "destructive-action"] : ["flat"]}
-    onClicked={props.onClicked}>
+    onClicked={props.onClicked}
+  >
     <Gtk.Box spacing={8}>
       <Gtk.Image iconName={props.iconName} />
       <Gtk.Label label={props.label} />
     </Gtk.Box>
   </Gtk.Button>
+)
