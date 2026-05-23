@@ -9,26 +9,11 @@ import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import { toArray } from "#/lib/gjsUtils"
 
 export default () => {
-  logger.log("Bluetooth: start")
-  const [bluetooth, setBluetooth] = createState<AstalBluetooth.Bluetooth | null>(null)
-
-  onMount(() => {
-    // Defer Bluetooth D-Bus proxy to avoid blocking the main loop
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      logger.log("Bluetooth: get_default()")
-      setBluetooth(AstalBluetooth.get_default())
-      logger.log("Bluetooth: done")
-      return GLib.SOURCE_REMOVE
-    })
-  })
-
-  return bluetooth.as((b) => {
-    if (!b) return null as any
-    return <BluetoothToggle bluetooth={b} />
-  })
-}
-
-const BluetoothToggle = ({ bluetooth }: { bluetooth: AstalBluetooth.Bluetooth }) => {
+  logger.log("Bluetooth: get_default()")
+  // ButtonGrid items only render when quicksettings opens — D-Bus
+  // services are already available by then, so synchronous call is safe.
+  const bluetooth = AstalBluetooth.get_default()
+  logger.log("Bluetooth: done")
   const [connectingAddress, setConnectingAddress] = createState<string | null>(
     null,
   )
