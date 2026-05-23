@@ -1,5 +1,6 @@
 import { useSettings } from "#/lib/settings"
 import Tray from "gi://AstalTray"
+import GLib from "gi://GLib"
 import Gtk from "gi://Gtk?version=4.0"
 import { Accessor, createBinding, For } from "gnim"
 import ShellState from "#/lib/shellState"

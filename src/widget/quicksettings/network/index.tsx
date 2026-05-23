@@ -30,7 +30,7 @@ export default () => {
   const wifiEnabled = wifiBinding.as((wifi) => wifi?.enabled ?? false)
 
   const popover = (
-    <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT} maxContentWidth={340}>
+    <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT}>
       <LinkedPopoverBox>
         <With value={wifiBinding}>
           {(wifi: Network.Wifi | null) =>
@@ -72,11 +72,14 @@ export default () => {
         const wifi = wifiBinding.get()
         if (!wifi) return
         if (wifi.state === Network.DeviceState.ACTIVATED) {
-          wifi
-            .deactivate_connection()
-            .catch((e: Error) =>
-              logger.error("network", "deactivate failed:", e.message),
-            )
+          const activeAp = wifi.active_access_point
+          if (activeAp) {
+            wifi
+              .deactivate_connection(activeAp)
+              .catch((e: Error) =>
+                logger.error("network", "deactivate failed:", e.message),
+              )
+          }
         } else {
           wifi.enabled = !wifi.enabled
         }

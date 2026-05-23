@@ -57,7 +57,8 @@ function parseCaptureStreams(pwDump: string): AudioStream[] {
       if (
         mediaClass.includes("Stream") &&
         mediaClass.includes("Audio") &&
-        mediaClass.includes("Input")
+        mediaClass.includes("Input") &&
+        !mediaClass.includes("Internal")
       ) {
         const streamProps = info.params?.Props?.[0] || {}
         streams.push({
