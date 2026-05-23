@@ -45,6 +45,7 @@ export default ({
       <Gtk.ScrolledWindow
         propagateNaturalHeight={true}
         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+        hscrollbarPolicy={Gtk.PolicyType.NEVER}
       >
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
           <ApList

@@ -87,7 +87,7 @@ export default ({
                 }
                 pixelSize={16}
               />
-              <Gtk.Label hexpand halign={Gtk.Align.START} label={apSsid} />
+              <Gtk.Label hexpand halign={Gtk.Align.START} label={apSsid} ellipsize={3} />
               <With value={apStatus}>
                 {(status: "active" | "connecting" | "idle") => {
                   if (status === "active")
