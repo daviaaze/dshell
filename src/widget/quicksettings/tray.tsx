@@ -1,8 +1,7 @@
 import { useSettings } from "#/lib/settings"
 import Tray from "gi://AstalTray"
-import GLib from "gi://GLib"
 import Gtk from "gi://Gtk?version=4.0"
-import { Accessor, createBinding, createState, For, onMount } from "gnim"
+import { Accessor, createBinding, For } from "gnim"
 import ShellState from "#/lib/shellState"
 import { PowerMenu } from "#/widget/common/powerMenu"
 import { IconButton, IconMenuButton } from "#/widget/common/iconButton"
@@ -11,18 +10,9 @@ import logger from "#/lib/logger"
 import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
 
 export const TrayBox = () => {
-  logger.log("Tray: start")
-  const [tray, setTray] = createState<Tray.Tray | null>(null)
-
-  onMount(() => {
-    // Defer Tray D-Bus proxy to avoid blocking the main loop
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      logger.log("Tray: get_default()...")
-      setTray(Tray.get_default())
-      logger.log("Tray: done")
-      return GLib.SOURCE_REMOVE
-    })
-  })
+  logger.log("Tray: get_default()...")
+  const tray = Tray.get_default()
+  logger.log("Tray: done")
 
   const LockButton = () => (
     <IconButton
@@ -70,34 +60,22 @@ export const TrayBox = () => {
 
   return (
     <Gtk.Box spacing={4} homogeneous halign={Gtk.Align.CENTER}>
-      {tray.as((t) => {
-        if (!t) return []
-        return [
-          <For each={createBinding(t, "items")}>
-            {(item: Tray.TrayItem) => (
-              <Gtk.MenuButton
-                cssClasses={["circular"]}
-                $={(self) => {
-                  self.insert_action_group("dbusmenu", item.actionGroup)
-                  usePopoverCleanup(self)
-                  GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-                    const popover = self.popover
-                    if (popover && !popover.has_css_class("tray-menu")) {
-                      popover.add_css_class("tray-menu")
-                    }
-                    return GLib.SOURCE_REMOVE
-                  })
-                }}
-                popover={undefined}
-                menuModel={item.menuModel}
-                tooltip_markup={createBinding(item, "tooltip_markup")}
-              >
-                <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />
-              </Gtk.MenuButton>
-            )}
-          </For>,
-        ]
-      })}
+      <For each={createBinding(tray, "items")}>
+        {(item: Tray.TrayItem) => (
+          <Gtk.MenuButton
+            cssClasses={["circular"]}
+            $={(self) => {
+              self.insert_action_group("dbusmenu", item.actionGroup)
+              usePopoverCleanup(self)
+            }}
+            popover={undefined}
+            menuModel={item.menuModel}
+            tooltip_markup={createBinding(item, "tooltip_markup")}
+          >
+            <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />
+          </Gtk.MenuButton>
+        )}
+      </For>
       <SettingsButton />
       <RotateButton />
       <LockButton />

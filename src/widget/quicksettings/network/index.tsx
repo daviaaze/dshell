@@ -9,8 +9,6 @@ import PasswordDialog from "./passwordDialog"
 
 export default () => {
   logger.log("Network: get_default()")
-  // ButtonGrid items only render when quicksettings opens — D-Bus
-  // services are already available by then, so synchronous call is safe.
   const network = Network.get_default()
   logger.log("Network: wifi binding")
   const wifiBinding = createBinding(network, "wifi")

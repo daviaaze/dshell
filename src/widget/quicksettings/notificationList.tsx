@@ -18,11 +18,13 @@ const NotificationListContent = ({
   history,
   showHistory,
   setShowHistory,
+  showProgress,
 }: {
   notifd: Notifd.Notifd
   history: NotificationHistory
   showHistory: ReturnType<typeof createState<boolean>>[0]
   setShowHistory: ReturnType<typeof createState<boolean>>[1]
+  showProgress: boolean
 }) => {
   const Header = () => {
     const DNDButton = () => (

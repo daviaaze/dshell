@@ -1,7 +1,6 @@
 import AstalBattery from "gi://AstalBattery"
 import Gtk from "gi://Gtk?version=4.0"
-import GLib from "gi://GLib?version=2.0"
-import { createBinding, createComputed, createState, onMount } from "gnim"
+import { createBinding, createComputed } from "gnim"
 import { IconInfoRow } from "#/widget/common/iconInfoRow"
 
 function fmtDuration(seconds: number): string {
@@ -20,9 +19,8 @@ function fmtDurationHMS(seconds: number): string {
   return `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`
 }
 
-// --- BatteryIcon (deferred D-Bus) ---
-
-const BatteryIconInner = ({ battery }: { battery: AstalBattery.Battery }) => {
+export const BatteryIcon = () => {
+  const battery = AstalBattery.get_default()
   const timeTo = createComputed(
     [
       createBinding(battery, "charging"),
@@ -50,27 +48,8 @@ const BatteryIconInner = ({ battery }: { battery: AstalBattery.Battery }) => {
   )
 }
 
-export const BatteryIcon = () => {
-  const [battery, setBattery] = createState<AstalBattery.Battery | null>(null)
-
-  onMount(() => {
-    // Defer Battery D-Bus proxy to avoid blocking the main loop
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      setBattery(AstalBattery.get_default())
-      return GLib.SOURCE_REMOVE
-    })
-  })
-
-  return (
-    <Gtk.Box>
-      {battery.as((b) => (b ? <BatteryIconInner battery={b} /> : null))}
-    </Gtk.Box>
-  )
-}
-
-// --- Battery (deferred D-Bus) ---
-
-const BatteryInner = ({ battery }: { battery: AstalBattery.Battery }) => {
+export const Battery = () => {
+  const battery = AstalBattery.get_default()
   const timeTo = createComputed(
     [
       createBinding(battery, "charging"),
@@ -132,24 +111,6 @@ const BatteryInner = ({ battery }: { battery: AstalBattery.Battery }) => {
           )}
         />
       </Gtk.LevelBar>
-    </Gtk.Box>
-  )
-}
-
-export const Battery = () => {
-  const [battery, setBattery] = createState<AstalBattery.Battery | null>(null)
-
-  onMount(() => {
-    // Defer Battery D-Bus proxy to avoid blocking the main loop
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      setBattery(AstalBattery.get_default())
-      return GLib.SOURCE_REMOVE
-    })
-  })
-
-  return (
-    <Gtk.Box>
-      {battery.as((b) => (b ? <BatteryInner battery={b} /> : null))}
     </Gtk.Box>
   )
 }
