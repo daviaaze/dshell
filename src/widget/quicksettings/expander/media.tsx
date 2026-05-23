@@ -2,7 +2,8 @@ import Astal from "gi://Astal?version=4.0"
 import Mpris from "gi://AstalMpris"
 import Gio from "gi://Gio?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { For, createBinding } from "gnim"
+import GLib from "gi://GLib?version=2.0"
+import { For, createBinding, createState, onMount } from "gnim"
 import Adw from "gi://Adw?version=1"
 import logger from "#/lib/logger"
 import CavaVisualizer from "#/widget/quicksettings/cava"
@@ -117,9 +118,9 @@ const PlaybackStatus = ({ player }: { player: Mpris.Player }) => (
   </Gtk.Box>
 )
 
-export const MediaIcon = () => {
-  logger.log("MediaIcon: Mpris.get_default()...")
-  const mpris = Mpris.get_default()
+// --- MediaIcon (deferred D-Bus) ---
+
+const MediaIconInner = ({ mpris }: { mpris: Mpris.Mpris }) => {
   logger.log("MediaIcon: Mpris done")
   return (
     <Gtk.Box
@@ -140,9 +141,25 @@ export const MediaIcon = () => {
   )
 }
 
-export const Media = () => {
-  logger.log("Media: Mpris.get_default()...")
-  const mpris = Mpris.get_default()
+export const MediaIcon = () => {
+  logger.log("MediaIcon: start")
+  const [mpris, setMpris] = createState<Mpris.Mpris | null>(null)
+
+  onMount(() => {
+    // Defer Mpris D-Bus proxy to avoid blocking the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      logger.log("MediaIcon: Mpris.get_default()...")
+      setMpris(Mpris.get_default())
+      return GLib.SOURCE_REMOVE
+    })
+  })
+
+  return mpris.as((m) => (m ? <MediaIconInner mpris={m} /> : null))
+}
+
+// --- Media (deferred D-Bus) ---
+
+const MediaInner = ({ mpris }: { mpris: Mpris.Mpris }) => {
   logger.log("Media: Mpris done")
   return (
     <Gtk.Box
@@ -169,4 +186,20 @@ export const Media = () => {
       </For>
     </Gtk.Box>
   )
+}
+
+export const Media = () => {
+  logger.log("Media: start")
+  const [mpris, setMpris] = createState<Mpris.Mpris | null>(null)
+
+  onMount(() => {
+    // Defer Mpris D-Bus proxy to avoid blocking the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      logger.log("Media: Mpris.get_default()...")
+      setMpris(Mpris.get_default())
+      return GLib.SOURCE_REMOVE
+    })
+  })
+
+  return mpris.as((m) => (m ? <MediaInner mpris={m} /> : null))
 }

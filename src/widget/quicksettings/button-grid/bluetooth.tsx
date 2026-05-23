@@ -1,16 +1,34 @@
 import AstalBluetooth from "gi://AstalBluetooth"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createComputed, createState, For } from "gnim"
+import GLib from "gi://GLib?version=2.0"
+import { createBinding, createComputed, createState, For, onMount } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import logger from "#/lib/logger"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import { toArray } from "#/lib/gjsUtils"
 
 export default () => {
-  logger.log("Bluetooth: get_default()")
-  const bluetooth = AstalBluetooth.get_default()
-  logger.log("Bluetooth: done")
+  logger.log("Bluetooth: start")
+  const [bluetooth, setBluetooth] = createState<AstalBluetooth.Bluetooth | null>(null)
+
+  onMount(() => {
+    // Defer Bluetooth D-Bus proxy to avoid blocking the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      logger.log("Bluetooth: get_default()")
+      setBluetooth(AstalBluetooth.get_default())
+      logger.log("Bluetooth: done")
+      return GLib.SOURCE_REMOVE
+    })
+  })
+
+  return bluetooth.as((b) => {
+    if (!b) return null as any
+    return <BluetoothToggle bluetooth={b} />
+  })
+}
+
+const BluetoothToggle = ({ bluetooth }: { bluetooth: AstalBluetooth.Bluetooth }) => {
   const [connectingAddress, setConnectingAddress] = createState<string | null>(
     null,
   )

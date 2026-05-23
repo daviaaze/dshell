@@ -1,6 +1,7 @@
 import Network from "gi://AstalNetwork"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createComputed, createState, With } from "gnim"
+import GLib from "gi://GLib?version=2.0"
+import { createBinding, createComputed, createState, onMount, With } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import logger from "#/lib/logger"
@@ -8,9 +9,26 @@ import WifiPopover from "./wifiPopover"
 import PasswordDialog from "./passwordDialog"
 
 export default () => {
-  logger.log("Network: get_default()")
-  const network = Network.get_default()
-  logger.log("Network: wifi binding")
+  logger.log("Network: start")
+  const [network, setNetwork] = createState<Network.Network | null>(null)
+
+  onMount(() => {
+    // Defer Network D-Bus proxy to avoid blocking the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      logger.log("Network: get_default()")
+      setNetwork(Network.get_default())
+      logger.log("Network: done")
+      return GLib.SOURCE_REMOVE
+    })
+  })
+
+  return network.as((n) => {
+    if (!n) return null as any
+    return <NetworkToggle network={n} />
+  })
+}
+
+const NetworkToggle = ({ network }: { network: Network.Network }) => {
   const wifiBinding = createBinding(network, "wifi")
 
   const [connectingAp, setConnectingAp] = createState<string | null>(null)

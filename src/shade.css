@@ -38,8 +38,7 @@ tooltip.background label {
    other popovers (clock, weather, network, etc.). */
 popover.tray-menu.background,
 popover.tray-menu > contents.background.menu {
-  box-shadow: none !important;
-  filter: none !important;
+  box-shadow: none;
 }
 
 /* Card surface — subtle elevation */
@@ -125,19 +124,6 @@ popover.tray-menu > contents.background.menu {
 }
 .mr-8 {
   margin-right: 8px;
-}
-
-.gap-4 {
-  spacing: 4px;
-}
-.gap-8 {
-  spacing: 8px;
-}
-.gap-12 {
-  spacing: 12px;
-}
-.gap-16 {
-  spacing: 16px;
 }
 
 /* Popover content padding — standard Margins inside popovers */

@@ -5,13 +5,12 @@ import Pango from "gi://Pango?version=1.0"
 import { Accessor, createBinding, createComputed } from "gnim"
 import { getAppIcon } from "#/lib/apps"
 
-const hyprland = AstalHyprland.get_default()
-
 export default ({
   visible: settingsVisible,
 }: {
   visible: Accessor<boolean>
 }) => {
+  const hyprland = AstalHyprland.get_default()
   const client = createBinding(hyprland, "focusedClient")
 
   const title = client.as((c) => {

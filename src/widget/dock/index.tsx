@@ -9,9 +9,8 @@ import DockItem from "./item"
 import { toArray } from "#/lib/gjsUtils"
 import { getDesktopFileForClient } from "#/lib/apps"
 
-const hyprland = AstalHyprland.get_default()
-
 export default () => {
+  const hyprland = AstalHyprland.get_default()
   const { bar } = useSettings()
   const { BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor
 

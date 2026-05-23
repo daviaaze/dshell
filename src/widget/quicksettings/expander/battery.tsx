@@ -1,6 +1,7 @@
 import AstalBattery from "gi://AstalBattery"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createComputed } from "gnim"
+import GLib from "gi://GLib?version=2.0"
+import { createBinding, createComputed, createState, onMount } from "gnim"
 import { IconInfoRow } from "#/widget/common/iconInfoRow"
 
 function fmtDuration(seconds: number): string {
@@ -19,8 +20,9 @@ function fmtDurationHMS(seconds: number): string {
   return `${h}h ${m.toString().padStart(2, "0")}m ${s.toString().padStart(2, "0")}s`
 }
 
-export const BatteryIcon = () => {
-  const battery = AstalBattery.get_default()
+// --- BatteryIcon (deferred D-Bus) ---
+
+const BatteryIconInner = ({ battery }: { battery: AstalBattery.Battery }) => {
   const timeTo = createComputed(
     [
       createBinding(battery, "charging"),
@@ -48,8 +50,23 @@ export const BatteryIcon = () => {
   )
 }
 
-export const Battery = () => {
-  const battery = AstalBattery.get_default()
+export const BatteryIcon = () => {
+  const [battery, setBattery] = createState<AstalBattery.Battery | null>(null)
+
+  onMount(() => {
+    // Defer Battery D-Bus proxy to avoid blocking the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      setBattery(AstalBattery.get_default())
+      return GLib.SOURCE_REMOVE
+    })
+  })
+
+  return battery.as((b) => (b ? <BatteryIconInner battery={b} /> : null))
+}
+
+// --- Battery (deferred D-Bus) ---
+
+const BatteryInner = ({ battery }: { battery: AstalBattery.Battery }) => {
   const timeTo = createComputed(
     [
       createBinding(battery, "charging"),
@@ -113,4 +130,18 @@ export const Battery = () => {
       </Gtk.LevelBar>
     </Gtk.Box>
   )
+}
+
+export const Battery = () => {
+  const [battery, setBattery] = createState<AstalBattery.Battery | null>(null)
+
+  onMount(() => {
+    // Defer Battery D-Bus proxy to avoid blocking the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      setBattery(AstalBattery.get_default())
+      return GLib.SOURCE_REMOVE
+    })
+  })
+
+  return battery.as((b) => (b ? <BatteryInner battery={b} /> : null))
 }

@@ -1,7 +1,8 @@
 import Bluetooth from "gi://AstalBluetooth"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createComputed } from "gnim"
+import GLib from "gi://GLib?version=2.0"
+import { createState, onMount } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
 import { useSettings } from "#/lib/settings"
 
@@ -11,36 +12,47 @@ function batteryColor(level: number): string {
   return ""
 }
 
-export default () => {
-  const bluetooth = Bluetooth.get_default()
-  const { bar } = useSettings()
+type DeviceInfo = { name: string; battery: number } | null
 
-  const isConnected = createBinding(bluetooth, "is-connected")
-  const devices = createBinding(bluetooth, "devices")
-
-  const deviceInfo = createComputed(() => {
-    // Track both is-connected and devices list so we recompute
-    // when either changes — critical for late-arriving battery info
-    const _connected = isConnected()
-    const list = devices()
-    if (!_connected || !list) return null
-    const arr = toArray<any>(list)
-    for (const d of arr) {
-      if (!d.connected) continue
-      const bat = d.battery_percentage
-      if (bat >= 0) {
-        return {
-          name: d.name || "Device",
-          battery: bat * 100,
-        }
+function getDeviceInfo(bt: Bluetooth.Bluetooth): DeviceInfo {
+  if (!bt.is_connected) return null
+  const list = bt.devices
+  if (!list) return null
+  const arr = toArray<any>(list)
+  for (const d of arr) {
+    if (!d.connected) continue
+    const bat = d.battery_percentage
+    if (bat >= 0) {
+      return {
+        name: d.name || "Device",
+        battery: bat * 100,
       }
     }
-    return null
-  })
+  }
+  return null
+}
 
-  const visible = createComputed(
-    () => deviceInfo() !== null && bar.showBluetoothBattery(),
-  )
+export default () => {
+  const [deviceInfo, setDeviceInfo] = createState<DeviceInfo>(null)
+  const [visible, setVisible] = createState(false)
+  const { bar } = useSettings()
+  const showBattery = bar.showBluetoothBattery
+
+  onMount(() => {
+    // Defer Bluetooth D-Bus proxy to avoid blocking the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      const bt = Bluetooth.get_default()
+      const update = () => {
+        const info = getDeviceInfo(bt)
+        setDeviceInfo(info)
+        setVisible(info !== null && showBattery())
+      }
+      update()
+      bt.connect("notify::is-connected", update)
+      bt.connect("notify::devices", update)
+      return GLib.SOURCE_REMOVE
+    })
+  })
 
   return (
     <Gtk.Button

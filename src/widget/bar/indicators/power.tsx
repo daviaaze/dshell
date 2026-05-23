@@ -1,25 +1,24 @@
 import Gtk from "gi://Gtk?version=4.0"
-import PowerProf from "gi://AstalPowerProfiles"
 import GLib from "gi://GLib?version=2.0"
 import { createState, onMount } from "gnim"
+import PowerProfiles from "#/lib/powerProfiles"
 
 export default () => {
   const [visible, setVisible] = createState(false)
   const [iconName, setIconName] = createState("")
   const [tooltip, setTooltip] = createState("")
+  const pp = PowerProfiles.get_default()
 
   onMount(() => {
-    // Defer D-Bus proxy to avoid blocking the main loop
+    const update = () => {
+      const p = pp.activeProfile
+      setVisible(p !== "balanced")
+      setIconName(pp.iconName)
+      setTooltip(p)
+    }
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      const p = PowerProf.get_default()
-      const update = () => {
-        setVisible(p.activeProfile !== "balanced")
-        setIconName(p.iconName ?? "")
-        setTooltip(p.activeProfile ?? "")
-      }
       update()
-      p.connect("notify::activeProfile", update)
-      p.connect("notify::iconName", update)
+      pp.connect("notify::activeProfile", update)
       return GLib.SOURCE_REMOVE
     })
   })
