@@ -10,7 +10,7 @@ export default () => {
       icon={createBinding(touchpad, "enabled").as((enabled) =>
         enabled
           ? "input-touchpad-symbolic"
-          : "input-touchpad-disabled-symbolic",
+          : "touchpad-disabled-symbolic",
       )}
       label={createBinding(touchpad, "enabled").as((enabled) =>
         enabled ? "Touchpad" : "Touchpad Off",

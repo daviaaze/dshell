@@ -13,14 +13,14 @@ export default () => {
       <LinkedPopoverBox>
         <Gtk.Button onClicked={() => (inhibit.idle = true)}>
           <Adw.ButtonContent
-            iconName="radio-checked-symbolic"
-            label="Caffeinated on"
+            iconName="emblem-ok-symbolic"
+            label="Keep Awake"
           />
         </Gtk.Button>
         <Gtk.Button onClicked={() => (inhibit.idle = false)}>
           <Adw.ButtonContent
-            iconName="radio-symbolic"
-            label="Caffeinated off"
+            iconName="window-close-symbolic"
+            label="Allow Sleep"
           />
         </Gtk.Button>
       </LinkedPopoverBox>
@@ -30,13 +30,13 @@ export default () => {
   return (
     <QuickToggleButton
       cssClasses={createBinding(inhibit, "idle").as((idle) =>
-        idle ? ["suggested-action", "warning"] : [],
+        idle ? ["raised", "suggested-action"] : ["raised"],
       )}
       icon={createBinding(inhibit, "idle").as((idle) =>
-        idle ? "radio-checked-symbolic" : "radio-symbolic",
+        idle ? "weather-clear-symbolic" : "weather-clear-night-symbolic",
       )}
       label={createBinding(inhibit, "idle").as((idle) =>
-        idle ? "Caffeinated on" : "Caffeinated off",
+        idle ? "Caffeinated" : "Sleep Allowed",
       )}
       onClick={() => (inhibit.idle = !inhibit.idle)}
       popover={popover}

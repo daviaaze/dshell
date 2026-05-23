@@ -30,7 +30,7 @@ export default () => {
   const wifiEnabled = wifiBinding.as((wifi) => wifi?.enabled ?? false)
 
   const popover = (
-    <Gtk.Popover cssClasses={[]}>
+    <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT} maxContentWidth={340}>
       <LinkedPopoverBox>
         <With value={wifiBinding}>
           {(wifi: Network.Wifi | null) =>
@@ -66,7 +66,7 @@ export default () => {
       label={wifiSsid.as((ssid) => {
         if (!ssid || ssid === "..." || ssid.trim() === "")
           return wifiEnabled.get() ? "WiFi" : "WiFi Off"
-        return ssid.length > 12 ? ssid.slice(0, 12) + "…" : ssid
+        return ssid.length > 24 ? ssid.slice(0, 24) + "…" : ssid
       })}
       onClick={() => {
         const wifi = wifiBinding.get()

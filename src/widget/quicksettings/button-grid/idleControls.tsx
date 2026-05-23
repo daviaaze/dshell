@@ -10,7 +10,7 @@ export default () => {
   const popover = (
     <Gtk.Popover cssClasses={[]}>
       <Gtk.Box
-        cssClasses={(["toolbar"], ["linked"], ["popover-padded"])}
+        cssClasses={["toolbar", "linked", "popover-padded"]}
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
       >
@@ -44,6 +44,30 @@ export default () => {
           <Gtk.Switch
             active={createBinding(hypridle, "dimEnabled")}
             onNotifyActive={(self) => (hypridle.dimEnabled = self.active)}
+          />
+        </Gtk.Box>
+        <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
+          <Gtk.Label label="Dim after" />
+          <Gtk.Scale
+            widthRequest={120}
+            digits={0}
+            adjustment={
+              (
+                <Gtk.Adjustment
+                  lower={30}
+                  upper={1740}
+                  stepIncrement={30}
+                  value={createBinding(hypridle, "dimTimeout")}
+                />
+              ) as Gtk.Adjustment
+            }
+            onValueChanged={(self) => (hypridle.dimTimeout = self.get_value())}
+          />
+          <Gtk.Label
+            label={createBinding(hypridle, "dimTimeout").as(
+              (t) => `${Math.round(t / 60)}m`,
+            )}
+            cssClasses={["caption"]}
           />
         </Gtk.Box>
       </Gtk.Box>

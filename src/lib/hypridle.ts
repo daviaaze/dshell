@@ -25,6 +25,10 @@ export default class Hypridle extends GObject.Object {
     idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
     screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    setAutoLockEnabled: (v: boolean) => void
+    setIdleTimeout: (v: number) => void
+    setScreenDimEnabled: (v: boolean) => void
+    setScreenDimTimeout: (v: number) => void
   } | null = null
   #inhibitId: number | null = null
 
@@ -37,6 +41,7 @@ export default class Hypridle extends GObject.Object {
   set enabled(v: boolean) {
     if (this.#enabled === v) return
     this.#enabled = v
+    this.#settings?.setAutoLockEnabled(v)
     this.#apply()
     this.notify("enabled")
   }
@@ -51,6 +56,7 @@ export default class Hypridle extends GObject.Object {
     v = Math.max(60, Math.min(1800, v))
     if (this.#idleTimeout === v) return
     this.#idleTimeout = v
+    this.#settings?.setIdleTimeout(v)
     this.#apply()
     this.notify("idle-timeout")
   }
@@ -65,6 +71,7 @@ export default class Hypridle extends GObject.Object {
     v = Math.max(30, Math.min(this.#idleTimeout - 10, v))
     if (this.#dimTimeout === v) return
     this.#dimTimeout = v
+    this.#settings?.setScreenDimTimeout(v)
     this.#apply()
     this.notify("dim-timeout")
   }
@@ -78,18 +85,14 @@ export default class Hypridle extends GObject.Object {
   set dimEnabled(v: boolean) {
     if (this.#dimEnabled === v) return
     this.#dimEnabled = v
+    this.#settings?.setScreenDimEnabled(v)
     this.#apply()
     this.notify("dim-enabled")
   }
 
   @getter(Boolean)
   get available() {
-    try {
-      AstalIO.Process.exec("which hypridle")
-      return true
-    } catch {
-      return false
-    }
+    return GLib.find_program_in_path("hypridle") !== null
   }
 
   init(settings: {
@@ -97,6 +100,10 @@ export default class Hypridle extends GObject.Object {
     idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
     screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    setAutoLockEnabled: (v: boolean) => void
+    setIdleTimeout: (v: number) => void
+    setScreenDimEnabled: (v: boolean) => void
+    setScreenDimTimeout: (v: number) => void
   }) {
     this.#settings = settings
     this.#enabled = settings.autoLockEnabled.get()

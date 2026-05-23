@@ -26,15 +26,13 @@ function parseCliphist(output: string): ClipboardItem[] {
 }
 
 export function getClipboardHistory(callback: (items: ClipboardItem[]) => void) {
-  AstalIO.Process.exec_async("cliphist list", (_, res) => {
-    try {
-      const out = AstalIO.Process.exec_async_finish(res)
-      callback(parseCliphist(out))
-    } catch (e) {
-      logger.error("clipboard", "failed to get history:", e)
-      callback([])
-    }
-  })
+  try {
+    const out = AstalIO.Process.exec("cliphist list")
+    callback(parseCliphist(out))
+  } catch (e) {
+    logger.error("clipboard", "failed to get history:", e)
+    callback([])
+  }
 }
 
 export function searchClipboard(
@@ -50,12 +48,7 @@ export function searchClipboard(
 
 export function copyClipboardItem(id: string) {
   try {
-    AstalIO.Process.exec_async(
-      `sh -c 'cliphist decode "${id}" | wl-copy'`,
-      (out) => {
-        if (out) logger.debug("clipboard", "copy output:", out)
-      },
-    )
+    AstalIO.Process.exec(`sh -c 'cliphist decode "${id}" | wl-copy'`)
   } catch (e) {
     logger.error("clipboard", "failed to copy item:", e)
   }
@@ -63,7 +56,7 @@ export function copyClipboardItem(id: string) {
 
 export function deleteClipboardItem(id: string) {
   try {
-    AstalIO.Process.exec_async(`cliphist delete "${id}"`, () => {})
+    AstalIO.Process.exec(`cliphist delete "${id}"`)
   } catch (e) {
     logger.error("clipboard", "failed to delete item:", e)
   }

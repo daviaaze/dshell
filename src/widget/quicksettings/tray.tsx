@@ -67,6 +67,13 @@ export const TrayBox = () => {
             $={(self) => {
               self.insert_action_group("dbusmenu", item.actionGroup)
               usePopoverCleanup(self)
+              GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                const popover = self.popover
+                if (popover && !popover.has_css_class("tray-menu")) {
+                  popover.add_css_class("tray-menu")
+                }
+                return GLib.SOURCE_REMOVE
+              })
             }}
             popover={undefined}
             menuModel={item.menuModel}

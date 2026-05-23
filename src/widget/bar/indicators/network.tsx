@@ -1,31 +1,38 @@
 import Network from "gi://AstalNetwork"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createComputed } from "gnim"
+import GLib from "gi://GLib?version=2.0"
+import { createState, onMount } from "gnim"
 
 export default () => {
-  const network = Network.get_default()
-  const wifi = createBinding(network, "wifi")
-  const wired = createBinding(network, "wired")
+  const [iconName, setIconName] = createState("network-no-route-symbolic")
+  const [visible, setVisible] = createState(false)
 
-  const icon = createComputed(
-    [createBinding(network, "primary"), wifi, wired],
-    (primary, wifiDevice, wiredDevice) => {
-      if (primary === Network.Primary.WIFI) {
-        return wifiDevice?.iconName || "network-wireless-offline-symbolic"
+  onMount(() => {
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      const n = Network.get_default()
+      const update = () => {
+        const primary = n.primary
+        setVisible(primary !== Network.Primary.UNKNOWN)
+        if (primary === Network.Primary.WIFI) {
+          setIconName(n.wifi?.iconName || "network-wireless-offline-symbolic")
+        } else if (primary === Network.Primary.WIRED) {
+          setIconName(n.wired?.iconName || "network-wired-offline-symbolic")
+        } else {
+          setIconName("network-no-route-symbolic")
+        }
       }
-      if (primary === Network.Primary.WIRED) {
-        return wiredDevice?.iconName || "network-wired-offline-symbolic"
-      }
-      return "network-no-route-symbolic"
-    },
-  )
+      update()
+      n.connect("notify::primary", update)
+      n.connect("notify::wifi", update)
+      n.connect("notify::wired", update)
+      return GLib.SOURCE_REMOVE
+    })
+  })
 
   return (
     <Gtk.Image
-      iconName={icon}
-      visible={createBinding(network, "primary").as(
-        (p) => p !== Network.Primary.UNKNOWN,
-      )}
+      iconName={iconName}
+      visible={visible}
       pixelSize={18}
     />
   )

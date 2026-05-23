@@ -1,40 +1,26 @@
 import AstalIO from "gi://AstalIO?version=0.1"
 import Gio from "gi://Gio?version=2.0"
+import GLib from "gi://GLib?version=2.0"
 import { register, Object, getter, setter } from "gnim/gobject"
 import logger from "#/lib/logger"
-
-const get = (args: string) =>
-  Number(AstalIO.Process.exec(`brightnessctl ${args}`))
-let screen = ""
-let kbd = ""
-try {
-  screen = AstalIO.Process.exec(
-    `bash -c "ls -w1 /sys/class/backlight | head -1"`,
-  )
-  kbd = AstalIO.Process.exec(`bash -c "ls -w1 /sys/class/leds | head -1"`)
-} catch (e: any) {
-  logger.warn("hw", "brightness hardware probe failed:", e.message)
-}
 
 @register({ GTypeName: "Brightness" })
 export default class Brightness extends Object {
   static instance: Brightness
   static get_default() {
     if (!this.instance) this.instance = new Brightness()
-
     return this.instance
   }
 
+  #screenName = ""
+  #kbdName = ""
   #screenMonitor?: Gio.FileMonitor
   #kbdMonitor?: Gio.FileMonitor
-
-  #available = screen !== "" || kbd !== ""
-  #kbdMax = kbd ? get(`--device ${kbd} max`) : 0
-  #kbd = kbd
-    ? get(`--device ${kbd} get`) / (get(`--device ${kbd} max`) || 1)
-    : 0
-  #screenMax = screen ? get("max") : 0
-  #screen = screen ? get("get") / (get("max") || 1) : 0
+  #ready = false
+  #kbdMax = 0
+  #kbd = 0
+  #screenMax = 0
+  #screen = 0
 
   @getter(Number)
   get kbd() {
@@ -43,10 +29,10 @@ export default class Brightness extends Object {
 
   @setter(Number)
   set kbd(value: number) {
-    if (!kbd || value < 0 || value > this.#kbdMax) return
+    if (!this.#kbdName || value < 0 || value > this.#kbdMax) return
 
     AstalIO.Process.exec_async(
-      `brightnessctl -d ${kbd} s ${Math.floor(value * 100)}% -q`,
+      `brightnessctl -d ${this.#kbdName} s ${Math.floor(value * 100)}% -q`,
       () => {
         this.#kbd = value / (this.#kbdMax || 1)
         this.notify("kbd")
@@ -61,7 +47,7 @@ export default class Brightness extends Object {
 
   @setter(Number)
   set screen(percent: number) {
-    if (!screen) return
+    if (!this.#screenName) return
     if (percent < 0) percent = 0
     if (percent > 1) percent = 1
 
@@ -76,9 +62,61 @@ export default class Brightness extends Object {
 
   constructor() {
     super()
+    // Defer all blocking hardware probes to avoid freezing the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      this.#init()
+      return GLib.SOURCE_REMOVE
+    })
+  }
 
-    if (screen) {
-      const screenPath = `/sys/class/backlight/${screen}/brightness`
+  #init() {
+    try {
+      this.#screenName = AstalIO.Process.exec(
+        `bash -c "ls -w1 /sys/class/backlight | head -1"`,
+      ).trim()
+    } catch {
+      /* no screen backlight */
+    }
+    try {
+      this.#kbdName = AstalIO.Process.exec(
+        `bash -c "ls -w1 /sys/class/leds | head -1"`,
+      ).trim()
+    } catch {
+      /* no keyboard backlight */
+    }
+
+    if (this.#screenName) {
+      try {
+        this.#screenMax = Number(AstalIO.Process.exec("brightnessctl max"))
+        this.#screen =
+          Number(AstalIO.Process.exec("brightnessctl get")) /
+          (this.#screenMax || 1)
+        this.notify("screen")
+      } catch (e) {
+        logger.error("hw", "failed to read screen brightness:", e)
+      }
+    }
+
+    if (this.#kbdName) {
+      try {
+        this.#kbdMax = Number(
+          AstalIO.Process.exec(`brightnessctl --device ${this.#kbdName} max`),
+        )
+        this.#kbd =
+          Number(
+            AstalIO.Process.exec(
+              `brightnessctl --device ${this.#kbdName} get`,
+            ),
+          ) / (this.#kbdMax || 1)
+        this.notify("kbd")
+      } catch (e) {
+        logger.error("hw", "failed to read kbd brightness:", e)
+      }
+    }
+
+    // Set up file monitors for real-time brightness updates
+    if (this.#screenName) {
+      const screenPath = `/sys/class/backlight/${this.#screenName}/brightness`
       this.#screenMonitor = AstalIO.monitor_file(
         screenPath,
         (f: string, _event: unknown) => {
@@ -93,8 +131,8 @@ export default class Brightness extends Object {
       )
     }
 
-    if (kbd) {
-      const kbdPath = `/sys/class/leds/${kbd}/brightness`
+    if (this.#kbdName) {
+      const kbdPath = `/sys/class/leds/${this.#kbdName}/brightness`
       this.#kbdMonitor = AstalIO.monitor_file(
         kbdPath,
         (f: string, _event: unknown) => {
@@ -108,5 +146,7 @@ export default class Brightness extends Object {
         },
       )
     }
+
+    this.#ready = true
   }
 }

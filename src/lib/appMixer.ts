@@ -137,22 +137,13 @@ export default class AppMixer extends GObject.Object {
   }
 
   #fetchAndUpdate() {
-    // Fetch pw-dump and pw-metadata asynchronously — these can block for 100-500ms
-    AstalIO.Process.exec_async("pw-dump", (_, dumpRes) => {
-      try {
-        const pwDump = AstalIO.Process.exec_async_finish(dumpRes)
-        AstalIO.Process.exec_async("pw-metadata -n default", (_, metaRes) => {
-          try {
-            const pwMetadata = AstalIO.Process.exec_async_finish(metaRes)
-            this.#update(pwDump, pwMetadata)
-          } catch (e) {
-            logger.error("audio", "pw-metadata failed:", e)
-          }
-        })
-      } catch (e) {
-        logger.error("audio", "pw-dump failed:", e)
-      }
-    })
+    try {
+      const pwDump = AstalIO.Process.exec("pw-dump")
+      const pwMetadata = AstalIO.Process.exec("pw-metadata -n default")
+      this.#update(pwDump, pwMetadata)
+    } catch (e) {
+      logger.error("audio", "pw-dump or pw-metadata failed:", e)
+    }
   }
 
   #update(pwDump: string, pwMetadata: string) {
