@@ -1,6 +1,6 @@
 import Wireplumber from "gi://AstalWp"
 import GLib from "gi://GLib?version=2.0"
-import { createState, onMount } from "gnim"
+import { createBinding, createState, onMount } from "gnim"
 import Brightness from "#/lib/brightness"
 import { AudioEndpointControl } from "#/widget/common/audioControl"
 import { Slider } from "#/widget/common/slider"

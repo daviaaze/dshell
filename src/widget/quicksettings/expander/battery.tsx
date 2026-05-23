@@ -61,7 +61,11 @@ export const BatteryIcon = () => {
     })
   })
 
-  return battery.as((b) => (b ? <BatteryIconInner battery={b} /> : null))
+  return (
+    <Gtk.Box>
+      {battery.as((b) => (b ? <BatteryIconInner battery={b} /> : null))}
+    </Gtk.Box>
+  )
 }
 
 // --- Battery (deferred D-Bus) ---
@@ -143,5 +147,9 @@ export const Battery = () => {
     })
   })
 
-  return battery.as((b) => (b ? <BatteryInner battery={b} /> : null))
+  return (
+    <Gtk.Box>
+      {battery.as((b) => (b ? <BatteryInner battery={b} /> : null))}
+    </Gtk.Box>
+  )
 }

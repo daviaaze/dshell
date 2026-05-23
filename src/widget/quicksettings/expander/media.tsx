@@ -154,7 +154,11 @@ export const MediaIcon = () => {
     })
   })
 
-  return mpris.as((m) => (m ? <MediaIconInner mpris={m} /> : null))
+  return (
+    <Gtk.Box>
+      {mpris.as((m) => (m ? <MediaIconInner mpris={m} /> : null))}
+    </Gtk.Box>
+  )
 }
 
 // --- Media (deferred D-Bus) ---
@@ -201,5 +205,9 @@ export const Media = () => {
     })
   })
 
-  return mpris.as((m) => (m ? <MediaInner mpris={m} /> : null))
+  return (
+    <Gtk.Box>
+      {mpris.as((m) => (m ? <MediaInner mpris={m} /> : null))}
+    </Gtk.Box>
+  )
 }
