@@ -95,6 +95,14 @@ export default () => {
               ? "bluetooth-symbolic"
               : "bluetooth-disabled-symbolic",
       )}
+      cssClasses={createComputed(
+        [
+          createBinding(bluetooth, "isPowered"),
+          createBinding(bluetooth, "is-connected"),
+        ],
+        (powered, connected) =>
+          powered && connected ? ["raised", "suggested-action"] : ["raised"],
+      )}
       label={createComputed(
         [
           createBinding(bluetooth, "isPowered"),
