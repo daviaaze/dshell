@@ -23,6 +23,17 @@
   background: oklab(from var(--window-bg-color) l a b / 0.75);
 }
 
+/* Tooltip — our .background rule applies to tooltip windows too,
+   making the bg transparent-light in light theme while Libadwaita
+   keeps tooltip text light/white.  Reset to proper theme colors. */
+tooltip.background {
+  background: var(--window-bg-color);
+}
+
+tooltip.background label {
+  color: var(--window-fg-color);
+}
+
 /* Card surface — subtle elevation */
 .card {
   padding: 4px;

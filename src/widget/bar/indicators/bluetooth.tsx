@@ -32,7 +32,6 @@ export default () => {
       visible={createBinding(bluetooth, "isPowered")}
       tooltipMarkup={tooltip}
       pixelSize={18}
-      cssClasses={isConnected.as((c) => (c ? ["accent"] : []))}
     />
   )
 }

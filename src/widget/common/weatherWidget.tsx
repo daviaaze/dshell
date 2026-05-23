@@ -51,7 +51,7 @@ export const Weather = () => {
 
   return (
     <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={[]} spacing={4}>
-      <Gtk.Box>
+      <Gtk.Box spacing={12}>
         <Gtk.Image
           iconName={weatherInfo.as((w) => w?.get_icon_name() ?? "")}
           pixelSize={48}
