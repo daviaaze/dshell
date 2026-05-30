@@ -8,6 +8,37 @@ import GLib from "gi://GLib?version=2.0"
 import { Accessor, createState, onCleanup } from "gnim"
 import logger from "#/lib/logger"
 
+/** Auto-discover the coretemp Package id 0 sensor path. */
+function findCoretempPath(): string | null {
+  const hwmonDir = Gio.File.new_for_path("/sys/class/hwmon")
+  let iter: Gio.FileEnumerator | null = null
+  try {
+    iter = hwmonDir.enumerate_children(
+      "standard::name",
+      Gio.FileQueryInfoFlags.NONE,
+      null,
+    )
+    let info: Gio.FileInfo | null
+    while ((info = iter.next_file(null)) !== null) {
+      const hwmonName = info.get_name()
+      const nameFile = iter.get_child(info).get_child("name")
+      try {
+        const [ok, contents] = nameFile.load_contents(null)
+        if (ok && new TextDecoder().decode(contents).trim() === "coretemp") {
+          return `/sys/class/hwmon/${hwmonName}/temp1_input`
+        }
+      } catch (_) {
+        // hwmon entry without a name file — skip
+      }
+    }
+  } catch (e: any) {
+    logger.error("systemUsage", "hwmon enumeration failed:", e.message)
+  } finally {
+    iter?.close(null)
+  }
+  return null
+}
+
 export default ({
   vertical,
   visible = true,
@@ -23,6 +54,13 @@ export default ({
   const [disk, setDisk] = createState(0)
   const [temp, setTemp] = createState(0)
   const INTERVAL = 1000
+
+  // Resolve temp path once: explicit config takes priority, then auto-discovery.
+  const tempPath = settings.bar.tempPath.get() || findCoretempPath()
+  if (!tempPath) {
+    logger.error("systemUsage", "no temperature sensor found — set bar.temp-path or ensure coretemp is loaded")
+    setTemp(-1)
+  }
 
   const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, INTERVAL, () => {
     const cpuTop = new GTop.glibtop_cpu()
@@ -42,7 +80,6 @@ export default ({
     GTop.glibtop_get_fsusage(diskTop, "/")
     setDisk((diskTop.blocks - diskTop.bavail) / diskTop.blocks)
 
-    const tempPath = settings.bar.tempPath.get()
     if (tempPath) {
       const file = Gio.File.new_for_path(tempPath)
       file.load_contents_async(null, (_source, res) => {
@@ -57,8 +94,6 @@ export default ({
           setTemp(-1)
         }
       })
-    } else {
-      setTemp(-1)
     }
     return GLib.SOURCE_CONTINUE
   })
