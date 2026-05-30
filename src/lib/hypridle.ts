@@ -2,7 +2,6 @@ import GObject, { getter, register, setter } from "gnim/gobject"
 import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
-import Inhibit from "#/lib/inhibit"
 import logger from "#/lib/logger"
 
 const CONFIG_PATH = `${GLib.get_user_config_dir()}/hypr/hypridle.conf`
@@ -25,8 +24,11 @@ export default class Hypridle extends GObject.Object {
     idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
     screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    setAutoLockEnabled: (v: boolean) => void
+    setIdleTimeout: (v: number) => void
+    setScreenDimEnabled: (v: boolean) => void
+    setScreenDimTimeout: (v: number) => void
   } | null = null
-  #inhibitId: number | null = null
 
   @getter(Boolean)
   get enabled() {
@@ -37,6 +39,7 @@ export default class Hypridle extends GObject.Object {
   set enabled(v: boolean) {
     if (this.#enabled === v) return
     this.#enabled = v
+    this.#settings?.setAutoLockEnabled(v)
     this.#apply()
     this.notify("enabled")
   }
@@ -51,6 +54,7 @@ export default class Hypridle extends GObject.Object {
     v = Math.max(60, Math.min(1800, v))
     if (this.#idleTimeout === v) return
     this.#idleTimeout = v
+    this.#settings?.setIdleTimeout(v)
     this.#apply()
     this.notify("idle-timeout")
   }
@@ -65,6 +69,7 @@ export default class Hypridle extends GObject.Object {
     v = Math.max(30, Math.min(this.#idleTimeout - 10, v))
     if (this.#dimTimeout === v) return
     this.#dimTimeout = v
+    this.#settings?.setScreenDimTimeout(v)
     this.#apply()
     this.notify("dim-timeout")
   }
@@ -78,6 +83,7 @@ export default class Hypridle extends GObject.Object {
   set dimEnabled(v: boolean) {
     if (this.#dimEnabled === v) return
     this.#dimEnabled = v
+    this.#settings?.setScreenDimEnabled(v)
     this.#apply()
     this.notify("dim-enabled")
   }
@@ -97,6 +103,10 @@ export default class Hypridle extends GObject.Object {
     idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
     screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    setAutoLockEnabled: (v: boolean) => void
+    setIdleTimeout: (v: number) => void
+    setScreenDimEnabled: (v: boolean) => void
+    setScreenDimTimeout: (v: number) => void
   }) {
     this.#settings = settings
     this.#enabled = settings.autoLockEnabled.get()
@@ -105,46 +115,48 @@ export default class Hypridle extends GObject.Object {
     this.#dimTimeout = settings.screenDimTimeout.get()
 
     settings.autoLockEnabled.subscribe(() => {
-      this.#enabled = settings.autoLockEnabled.get()
+      const v = settings.autoLockEnabled.get()
+      if (this.#enabled === v) return
+      this.#enabled = v
       this.notify("enabled")
       this.#apply()
     })
 
     settings.idleTimeout.subscribe(() => {
-      this.#idleTimeout = settings.idleTimeout.get()
+      const v = settings.idleTimeout.get()
+      if (this.#idleTimeout === v) return
+      this.#idleTimeout = v
       this.notify("idle-timeout")
       this.#apply()
     })
 
     settings.screenDimEnabled.subscribe(() => {
-      this.#dimEnabled = settings.screenDimEnabled.get()
+      const v = settings.screenDimEnabled.get()
+      if (this.#dimEnabled === v) return
+      this.#dimEnabled = v
       this.notify("dim-enabled")
       this.#apply()
     })
 
     settings.screenDimTimeout.subscribe(() => {
-      this.#dimTimeout = settings.screenDimTimeout.get()
+      const v = settings.screenDimTimeout.get()
+      if (this.#dimTimeout === v) return
+      this.#dimTimeout = v
       this.notify("dim-timeout")
       this.#apply()
     })
 
-    // When inhibit is active, pause hypridle
-    const inhibit = Inhibit.get_default()
-    this.#inhibitId = inhibit.connect("notify::idle", () => {
-      if (inhibit.idle) {
-        this.#stop()
-      } else {
-        this.#apply()
-      }
-    })
-
+    // Caffeinated mode (GTK idle inhibit) is handled BY hypridle itself.
+    // hypridle monitors the org.freedesktop.ScreenSaver D-Bus interface
+    // and automatically pauses its listeners when an inhibitor is active.
+    // We don't need to start/stop the process — just let inhibit work.
     this.#apply()
   }
 
   #apply() {
     if (!this.available) return
-    this.#writeConfig()
-    if (this.#enabled && !Inhibit.get_default().idle) {
+    if (this.#enabled) {
+      this.#writeConfig()
       this.#restart()
     } else {
       this.#stop()
@@ -192,7 +204,21 @@ export default class Hypridle extends GObject.Object {
   }
 
   #restart() {
-    this.#stop()
+    // Kill any existing hypridle process (don't call #stop() which
+    // would delete the config we just wrote)
+    if (this.#process) {
+      try {
+        this.#process.kill()
+      } catch {
+        /* ignore */
+      }
+      this.#process = null
+    }
+    try {
+      AstalIO.Process.exec("pkill -x hypridle")
+    } catch {
+      /* ignore */
+    }
     try {
       this.#process = AstalIO.Process.subprocessv(["hypridle"])
     } catch (e) {
@@ -214,13 +240,19 @@ export default class Hypridle extends GObject.Object {
     } catch {
       /* ignore */
     }
+    // Remove the config file so external hypridle instances
+    // (e.g. systemd services) don't pick up the lock listener
+    try {
+      const file = Gio.File.new_for_path(CONFIG_PATH)
+      if (file.query_exists(null)) {
+        file.delete(null)
+      }
+    } catch {
+      /* ignore */
+    }
   }
 
   dispose() {
-    if (this.#inhibitId) {
-      Inhibit.get_default().disconnect(this.#inhibitId)
-      this.#inhibitId = null
-    }
     this.#stop()
   }
 }

@@ -69,7 +69,6 @@ in
           pkgs.hyprshot
           pkgs.playerctl
           pkgs.pwvucontrol
-          pkgs.wvkbd
         ];
         security.pam.services.astal-auth = {};
         # Start shade-shell as a systemd user service with auto-restart on failure
