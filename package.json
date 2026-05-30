@@ -7,9 +7,11 @@
     "types": "npx @ts-for-gir/cli generate -o @girs --ignoreVersionConflicts",
     "check": "tsc --noEmit",
     "check:all": "pnpm run types && pnpm run lint && pnpm run check",
+    "test": "gjs -m src/lib/__tests__/hypridle.test.ts",
+    "test:all": "gjs -m src/lib/__tests__/hypridle.test.ts",
     "build": "meson setup build --wipe && meson compile -C build",
     "dev": "nix run . --",
-    "syntax": "esbuild src/main.ts --bundle --format=esm --external:gi://* --external:gnim --external:gnim/* --external:gnim-schemas --outfile=/dev/null"
+    "syntax": "mkdir -p /tmp/esbuild-check && esbuild src/main.ts --bundle --format=esm --external:gi://* --external:resource://* --external:system --external:gettext --external:gnim --external:gnim/* --external:gnim-schemas --outdir=/tmp/esbuild-check && rm -rf /tmp/esbuild-check"
   },
   "devDependencies": {
     "@eslint/js": "latest",

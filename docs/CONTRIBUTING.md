@@ -69,9 +69,31 @@ src/lib/__tests__/
 ### Running Tests
 
 ```bash
-# Run all GJS tests
+# Run Hypridle smoke tests
+pnpm run test
+
+# Or directly with gjs
 gjs -m src/lib/__tests__/hypridle.test.ts
+
+# Run all test suites
+pnpm run test:all
 ```
+
+Tests use a lightweight wrapper around GLib.Test (see `src/lib/__tests__/test-runner.ts`). The API:
+
+```typescript
+import { describe, it, expect, run } from "./test-runner"
+
+describe("MyService", () => {
+  it("should work", () => {
+    expect(actual).toBe(expected)
+  })
+})
+
+run(import.meta.url)
+```
+
+Available matchers: `toBe`, `toEqual`, `toBeGreaterThan`, `toBeLessThan`, `toBeTruthy`, `toBeFalsy`, `toThrow`.
 
 ### What to Test
 
