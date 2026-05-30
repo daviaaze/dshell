@@ -44,8 +44,8 @@ export default ({
             )}
           >
             <For
-              each={createBinding(ws, "clients").as((c) =>
-                toArray<Hyprland.Client>(c),
+              each={createBinding(ws, "clients").as((clients) =>
+                toArray<Hyprland.Client>(clients),
               )}
             >
               {(client: Hyprland.Client) => (
@@ -65,10 +65,10 @@ export default ({
             {/* create toggle when ws is empty */}
             <With
               value={createBinding(ws, "clients").as(
-                (c) => toArray<Hyprland.Client>(c).length < 1,
+                (clients) => toArray<Hyprland.Client>(clients).length < 1,
               )}
             >
-              {(c: boolean) => (c ? <Adw.Toggle /> : null)}
+              {(isEmpty: boolean) => (isEmpty ? <Adw.Toggle /> : null)}
             </With>
           </Adw.ToggleGroup>
         )}

@@ -19,7 +19,7 @@ export default () => {
     entry: Gtk.Entry
   } | null>(null)
 
-  const isConnecting = connectingAp.as((c) => c !== null)
+  const isConnecting = connectingAp.as((connecting) => connecting !== null)
 
   // Track wifi device reactively via binding — network.wifi may be null
   // at startup if the hardware wasn't ready, and can change after sleep/resume.
