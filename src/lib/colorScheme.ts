@@ -21,6 +21,7 @@ export class ColorScheme extends Object {
 
   #daytime: boolean = true
   #colorScheme: DarkModes = 0
+  #initialized = false
   #weather: Weather | null = null
   #shadeSettings: {
     colorScheme: { get(): DarkModes; subscribe(cb: () => void): () => void }
@@ -106,6 +107,11 @@ export class ColorScheme extends Object {
       setColorScheme: (v: DarkModes) => void
     },
   ) {
+    if (this.#initialized) {
+      print("[Shade] [WARN] [colorScheme] init() called but already initialized — skipping")
+      return
+    }
+    this.#initialized = true
     this.#weather = weather
     this.#daytime = this.#weather.info.is_daytime()
     this.#shadeSettings = settings

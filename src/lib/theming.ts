@@ -58,6 +58,7 @@ export default class Theming extends GObject.Object {
     wallpaperDay: { get(): string; subscribe(cb: () => void): () => void }
     wallpaperNight: { get(): string; subscribe(cb: () => void): () => void }
   } | null = null
+  #initialized = false
 
   @getter(Boolean)
   get enabled() {
@@ -94,6 +95,11 @@ export default class Theming extends GObject.Object {
     wallpaperDay: { get(): string; subscribe(cb: () => void): () => void }
     wallpaperNight: { get(): string; subscribe(cb: () => void): () => void }
   }) {
+    if (this.#initialized) {
+      logger.warn("theming", "init() called but already initialized — skipping")
+      return
+    }
+    this.#initialized = true
     this.#settings = settings
     this.#enabled = settings.dynamicThemingEnabled.get()
 

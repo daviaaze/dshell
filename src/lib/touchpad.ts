@@ -28,6 +28,7 @@ export default class Touchpad extends GObject.Object {
   #useEc = false
   #eventPath: string | null = null
   #process: AstalIO.Process | null = null
+  #initialized = false
 
   @getter(Boolean)
   get enabled() {
@@ -58,6 +59,11 @@ export default class Touchpad extends GObject.Object {
   }
 
   init() {
+    if (this.#initialized) {
+      logger.warn("touchpad", "init() called but already initialized — skipping")
+      return
+    }
+    this.#initialized = true
     logger.info("touchpad", "init() called")
     this.#detectDevice()
     logger.info(

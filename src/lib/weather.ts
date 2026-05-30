@@ -17,6 +17,7 @@ export default class Weather extends GObject.Object {
   #location: GWeather.Location | undefined
   #geo = Geolocation.get_default()
   #updateTimer: number | null = null
+  #initialized = false
 
   @getter(GWeather.Info)
   get info() {
@@ -52,6 +53,11 @@ export default class Weather extends GObject.Object {
     setLatitude(lat: number): void
     setLongitude(lon: number): void
   }) {
+    if (this.#initialized) {
+      logger.warn("weather", "init() called but already initialized — skipping")
+      return
+    }
+    this.#initialized = true
     this.#location = GWeather.Location.get_world()?.find_nearest_city(
       settings.latitude.get(),
       settings.longitude.get(),

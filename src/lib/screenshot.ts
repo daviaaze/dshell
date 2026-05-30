@@ -224,4 +224,15 @@ export default class Screenshot extends GObject.Object {
     if (!this.#recordingProcess) return
     this.#recordingProcess.signal(2)
   }
+
+  dispose() {
+    if (this.#recordingProcess) {
+      try {
+        this.#recordingProcess.signal(2)
+      } catch {
+        /* process may already be dead */
+      }
+      this.#recordingProcess = null
+    }
+  }
 }

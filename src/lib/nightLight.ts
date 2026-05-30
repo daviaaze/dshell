@@ -18,6 +18,7 @@ export default class NightLight extends GObject.Object {
   #process: AstalIO.Process | null = null
   #pollTimer: number | null = null
   #colorScheme: ColorScheme | null = null
+  #initialized = false
   #settings: {
     nightLightEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     nightLightTemperature: {
@@ -99,6 +100,11 @@ export default class NightLight extends GObject.Object {
     },
     colorScheme: ColorScheme,
   ) {
+    if (this.#initialized) {
+      logger.warn("nightLight", "init() called but already initialized — skipping")
+      return
+    }
+    this.#initialized = true
     this.#settings = settings
     this.#colorScheme = colorScheme
     this.#enabled = settings.nightLightEnabled.get()

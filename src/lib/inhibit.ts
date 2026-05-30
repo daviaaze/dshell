@@ -13,6 +13,7 @@ export default class Inhibit extends GObject.Object {
   #idle: boolean
   #cookie: number
   #app: Adw.Application | null = null
+  #initialized = false
 
   @getter(Boolean)
   get idle() {
@@ -41,6 +42,11 @@ export default class Inhibit extends GObject.Object {
   }
 
   init(app: Adw.Application) {
+    if (this.#initialized) {
+      print("[Shade] [WARN] [inhibit] init() called but already initialized — skipping")
+      return
+    }
+    this.#initialized = true
     this.#app = app
   }
 
@@ -48,5 +54,6 @@ export default class Inhibit extends GObject.Object {
     super()
     this.#idle = false
     this.#cookie = 0
+    this.#initialized = false
   }
 }
