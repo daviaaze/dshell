@@ -69,17 +69,15 @@ src/lib/__tests__/
 ### Running Tests
 
 ```bash
-# Run Hypridle smoke tests
+# Compile and run Hypridle smoke tests
 pnpm run test
 
-# Or directly with gjs
-gjs -m src/lib/__tests__/hypridle.test.ts
-
-# Run all test suites
-pnpm run test:all
+# Or in CI (compile then run in Nix dev shell)
+pnpm run test:compile
+nix develop -c gjs -m build/test/hypridle.test.js
 ```
 
-Tests use a lightweight wrapper around GLib.Test (see `src/lib/__tests__/test-runner.ts`). The API:
+Tests use a lightweight harness (see `src/lib/__tests__/test-runner.ts`). The API:
 
 ```typescript
 import { describe, it, expect, run } from "./test-runner"

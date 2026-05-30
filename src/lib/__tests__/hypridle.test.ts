@@ -243,14 +243,7 @@ describe("Hypridle enabled setter", () => {
 // ── Init / Double-Init ──────────────────────────────────────────────────────
 
 describe("Hypridle init", () => {
-  it("accepts valid settings", () => {
-    const h = Hypridle.get_default()
-    const s = mockSettings({ idleTimeout: 500 })
-    h.init(s)
-    expect(h.idleTimeout).toBe(500)
-  })
-
-  it("reads all 8 values from settings", () => {
+  it("reads all 8 values from settings on first init", () => {
     const h = Hypridle.get_default()
     const s = mockSettings({
       autoLockEnabled: false,
@@ -271,6 +264,15 @@ describe("Hypridle init", () => {
     expect(h.dpmsTimeout).toBe(500)
     expect(h.suspendEnabled).toBe(true)
     expect(h.suspendTimeout).toBe(2000)
+  })
+
+  it("guards against double-init", () => {
+    const h = Hypridle.get_default()
+    // Already initialized from previous test — init should skip
+    const s = mockSettings({ idleTimeout: 500 })
+    h.init(s)
+    // Values should NOT change because init was skipped
+    expect(h.idleTimeout).toBe(400)
   })
 })
 

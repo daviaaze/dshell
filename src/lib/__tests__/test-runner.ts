@@ -1,5 +1,8 @@
 /**
- * Thin test harness wrapping GLib.Test for GJS unit tests.
+ * Lightweight test harness for GJS unit tests.
+ *
+ * Does NOT use GLib.Test (segfaults in some GJS versions).
+ * Instead runs tests synchronously via a simple loop.
  *
  * Usage:
  *   import { describe, it, expect, run } from "./test-runner"
@@ -13,27 +16,25 @@
  *   // At end of file:
  *   run(import.meta.url)
  *
- * Run with: gjs -m src/lib/__tests__/myfile.test.ts
+ * Run: gjs -m <compiled-test-file>.js
  */
 
-import GLib from "gi://GLib?version=2.0"
-
-let currentSuite = "root"
-let testCount = 0
-let failCount = 0
-const suites: Record<string, Array<{ name: string; fn: () => void }>> = {}
+let currentSuite = ""
+const suites: Array<{ suite: string; tests: Array<{ name: string; fn: () => void }> }> = []
 
 export function describe(name: string, fn: () => void) {
   currentSuite = name
-  suites[name] = []
   fn()
-  currentSuite = "root"
+  currentSuite = ""
 }
 
 export function it(name: string, fn: () => void) {
-  const suite = suites[currentSuite] || []
-  suite.push({ name, fn })
-  suites[currentSuite] = suite
+  let entry = suites.find((s) => s.suite === currentSuite)
+  if (!entry) {
+    entry = { suite: currentSuite, tests: [] }
+    suites.push(entry)
+  }
+  entry.tests.push({ name, fn })
 }
 
 export const expect = (actual: unknown) => ({
@@ -77,32 +78,29 @@ export const expect = (actual: unknown) => ({
   },
 })
 
-export function run(importMetaUrl: string) {
-  const filePath = importMetaUrl.replace("file://", "")
+export function run(importMetaUrl?: string) {
+  let passed = 0
+  let failed = 0
 
-  for (const [suiteName, tests] of Object.entries(suites)) {
+  for (const { suite, tests } of suites) {
     for (const { name, fn } of tests) {
-      const testPath = `/${suiteName}/${name}`
-      testCount++
-      GLib.test_add_func(testPath, () => {
-        try {
-          fn()
-        } catch (e) {
-          failCount++
-          throw e
-        }
-      })
+      const label = `${suite} → ${name}`
+      try {
+        fn()
+        passed++
+        print(`  ✓ ${label}`)
+      } catch (e) {
+        failed++
+        print(`  ✗ ${label}`)
+        print(`    ${e instanceof Error ? e.message : String(e)}`)
+      }
     }
   }
 
-  print(`\n─── Running ${testCount} test(s) in ${filePath.split("/").pop()} ───\n`)
+  const total = passed + failed
+  print(`\n${passed}/${total} passed` + (failed > 0 ? `, ${failed} FAILED` : ""))
 
-  const result = GLib.test_run()
-
-  const passed = testCount - failCount
-  print(`\n${passed}/${testCount} passed${failCount > 0 ? `, ${failCount} FAILED` : ""}`)
-
-  if (failCount > 0) {
+  if (failed > 0) {
     // Exit with failure code so CI catches it
     imports.system.exit(1)
   }
