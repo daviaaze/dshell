@@ -18,16 +18,28 @@ export default class Hypridle extends GObject.Object {
   #idleTimeout = 300
   #dimTimeout = 240
   #dimEnabled = true
+  #dpmsEnabled = true
+  #dpmsTimeout = 600
+  #suspendEnabled = false
+  #suspendTimeout = 1800
   #process: AstalIO.Process | null = null
   #settings: {
     autoLockEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
     screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    dpmsEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    dpmsTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    suspendEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    suspendTimeout: { get(): number; subscribe(cb: () => void): () => void }
     setAutoLockEnabled: (v: boolean) => void
     setIdleTimeout: (v: number) => void
     setScreenDimEnabled: (v: boolean) => void
     setScreenDimTimeout: (v: number) => void
+    setDpmsEnabled: (v: boolean) => void
+    setDpmsTimeout: (v: number) => void
+    setSuspendEnabled: (v: boolean) => void
+    setSuspendTimeout: (v: number) => void
   } | null = null
 
   @getter(Boolean)
@@ -89,6 +101,64 @@ export default class Hypridle extends GObject.Object {
   }
 
   @getter(Boolean)
+  get dpmsEnabled() {
+    return this.#dpmsEnabled
+  }
+
+  @setter(Boolean)
+  set dpmsEnabled(v: boolean) {
+    if (this.#dpmsEnabled === v) return
+    this.#dpmsEnabled = v
+    this.#settings?.setDpmsEnabled(v)
+    this.#apply()
+    this.notify("dpms-enabled")
+  }
+
+  @getter(Number)
+  get dpmsTimeout() {
+    return this.#dpmsTimeout
+  }
+
+  @setter(Number)
+  set dpmsTimeout(v: number) {
+    v = Math.max(this.#idleTimeout + 10, Math.min(3600, v))
+    if (this.#dpmsTimeout === v) return
+    this.#dpmsTimeout = v
+    this.#settings?.setDpmsTimeout(v)
+    this.#apply()
+    this.notify("dpms-timeout")
+  }
+
+  @getter(Boolean)
+  get suspendEnabled() {
+    return this.#suspendEnabled
+  }
+
+  @setter(Boolean)
+  set suspendEnabled(v: boolean) {
+    if (this.#suspendEnabled === v) return
+    this.#suspendEnabled = v
+    this.#settings?.setSuspendEnabled(v)
+    this.#apply()
+    this.notify("suspend-enabled")
+  }
+
+  @getter(Number)
+  get suspendTimeout() {
+    return this.#suspendTimeout
+  }
+
+  @setter(Number)
+  set suspendTimeout(v: number) {
+    v = Math.max(this.#dpmsTimeout + 10, Math.min(7200, v))
+    if (this.#suspendTimeout === v) return
+    this.#suspendTimeout = v
+    this.#settings?.setSuspendTimeout(v)
+    this.#apply()
+    this.notify("suspend-timeout")
+  }
+
+  @getter(Boolean)
   get available() {
     try {
       AstalIO.Process.exec("which hypridle")
@@ -103,16 +173,28 @@ export default class Hypridle extends GObject.Object {
     idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
     screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    dpmsEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    dpmsTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    suspendEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
+    suspendTimeout: { get(): number; subscribe(cb: () => void): () => void }
     setAutoLockEnabled: (v: boolean) => void
     setIdleTimeout: (v: number) => void
     setScreenDimEnabled: (v: boolean) => void
     setScreenDimTimeout: (v: number) => void
+    setDpmsEnabled: (v: boolean) => void
+    setDpmsTimeout: (v: number) => void
+    setSuspendEnabled: (v: boolean) => void
+    setSuspendTimeout: (v: number) => void
   }) {
     this.#settings = settings
     this.#enabled = settings.autoLockEnabled.get()
     this.#idleTimeout = settings.idleTimeout.get()
     this.#dimEnabled = settings.screenDimEnabled.get()
     this.#dimTimeout = settings.screenDimTimeout.get()
+    this.#dpmsEnabled = settings.dpmsEnabled.get()
+    this.#dpmsTimeout = settings.dpmsTimeout.get()
+    this.#suspendEnabled = settings.suspendEnabled.get()
+    this.#suspendTimeout = settings.suspendTimeout.get()
 
     settings.autoLockEnabled.subscribe(() => {
       const v = settings.autoLockEnabled.get()
@@ -127,6 +209,15 @@ export default class Hypridle extends GObject.Object {
       if (this.#idleTimeout === v) return
       this.#idleTimeout = v
       this.notify("idle-timeout")
+      // Ensure dpms/suspend timeouts stay ahead of the lock timeout
+      if (this.#dpmsTimeout < v + 10) {
+        this.#dpmsTimeout = v + 10
+        this.notify("dpms-timeout")
+      }
+      if (this.#suspendTimeout < this.#dpmsTimeout + 10) {
+        this.#suspendTimeout = this.#dpmsTimeout + 10
+        this.notify("suspend-timeout")
+      }
       this.#apply()
     })
 
@@ -143,6 +234,43 @@ export default class Hypridle extends GObject.Object {
       if (this.#dimTimeout === v) return
       this.#dimTimeout = v
       this.notify("dim-timeout")
+      this.#apply()
+    })
+
+    settings.dpmsEnabled.subscribe(() => {
+      const v = settings.dpmsEnabled.get()
+      if (this.#dpmsEnabled === v) return
+      this.#dpmsEnabled = v
+      this.notify("dpms-enabled")
+      this.#apply()
+    })
+
+    settings.dpmsTimeout.subscribe(() => {
+      const v = settings.dpmsTimeout.get()
+      if (this.#dpmsTimeout === v) return
+      this.#dpmsTimeout = v
+      this.notify("dpms-timeout")
+      // Ensure suspend timeout stays ahead of dpms timeout
+      if (this.#suspendTimeout < v + 10) {
+        this.#suspendTimeout = v + 10
+        this.notify("suspend-timeout")
+      }
+      this.#apply()
+    })
+
+    settings.suspendEnabled.subscribe(() => {
+      const v = settings.suspendEnabled.get()
+      if (this.#suspendEnabled === v) return
+      this.#suspendEnabled = v
+      this.notify("suspend-enabled")
+      this.#apply()
+    })
+
+    settings.suspendTimeout.subscribe(() => {
+      const v = settings.suspendTimeout.get()
+      if (this.#suspendTimeout === v) return
+      this.#suspendTimeout = v
+      this.notify("suspend-timeout")
       this.#apply()
     })
 
@@ -174,9 +302,11 @@ export default class Hypridle extends GObject.Object {
         "general {",
         "  lock_cmd = shade-shell lockscreen",
         "  before_sleep_cmd = shade-shell lockscreen",
+        "  after_sleep_cmd = hyprctl dispatch dpms on",
         "}",
       ]
 
+      // Tier 1: dim screen before lock
       if (this.#dimEnabled && this.#dimTimeout < this.#idleTimeout) {
         lines.push(
           "",
@@ -188,6 +318,7 @@ export default class Hypridle extends GObject.Object {
         )
       }
 
+      // Tier 2: lock screen
       lines.push(
         "",
         "listener {",
@@ -195,6 +326,29 @@ export default class Hypridle extends GObject.Object {
         "  on-timeout = shade-shell lockscreen",
         "}",
       )
+
+      // Tier 3: turn off display (DPMS)
+      if (this.#dpmsEnabled && this.#dpmsTimeout > this.#idleTimeout) {
+        lines.push(
+          "",
+          "listener {",
+          `  timeout = ${this.#dpmsTimeout}`,
+          "  on-timeout = hyprctl dispatch dpms off",
+          "  on-resume = hyprctl dispatch dpms on",
+          "}",
+        )
+      }
+
+      // Tier 4: suspend system
+      if (this.#suspendEnabled && this.#suspendTimeout > this.#dpmsTimeout) {
+        lines.push(
+          "",
+          "listener {",
+          `  timeout = ${this.#suspendTimeout}`,
+          "  on-timeout = systemctl suspend",
+          "}",
+        )
+      }
 
       const config = lines.join("\n") + "\n"
       GLib.file_set_contents(CONFIG_PATH, new TextEncoder().encode(config))

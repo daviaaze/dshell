@@ -1,11 +1,34 @@
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding } from "gnim"
+import { createBinding, createComputed } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import Hypridle from "#/lib/hypridle"
 
 export default () => {
   const hypridle = Hypridle.get_default()
+
+  const $enabled = createBinding(hypridle, "enabled")
+  const $idleTimeout = createBinding(hypridle, "idleTimeout")
+  const $dpmsEnabled = createBinding(hypridle, "dpmsEnabled")
+  const $dpmsTimeout = createBinding(hypridle, "dpmsTimeout")
+  const $suspendEnabled = createBinding(hypridle, "suspendEnabled")
+  const $suspendTimeout = createBinding(hypridle, "suspendTimeout")
+  const $dimEnabled = createBinding(hypridle, "dimEnabled")
+
+  const chainSummary = createComputed(() => {
+    if (!$enabled()) return "Auto-lock disabled"
+    const lock = Math.round($idleTimeout() / 60)
+    let text = `Lock at ${lock}m`
+    if ($dpmsEnabled()) {
+      const dpms = Math.round($dpmsTimeout() / 60)
+      text += ` → Display off at ${dpms}m`
+    }
+    if ($suspendEnabled()) {
+      const susp = Math.round($suspendTimeout() / 60)
+      text += ` → Suspend at ${susp}m`
+    }
+    return text
+  })
 
   const popover = (
     <Gtk.Popover cssClasses={[]}>
@@ -14,6 +37,12 @@ export default () => {
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
       >
+        <Gtk.Label
+          cssClasses={["caption"]}
+          halign={Gtk.Align.CENTER}
+          label={chainSummary}
+        />
+        <Gtk.Separator />
         <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
           <Gtk.Label label="Lock after" />
           <Gtk.Scale
@@ -25,14 +54,14 @@ export default () => {
                   lower={60}
                   upper={1800}
                   stepIncrement={30}
-                  value={createBinding(hypridle, "idleTimeout")}
+                  value={$idleTimeout}
                 />
               ) as Gtk.Adjustment
             }
             onValueChanged={(self) => (hypridle.idleTimeout = self.get_value())}
           />
           <Gtk.Label
-            label={createBinding(hypridle, "idleTimeout").as(
+            label={$idleTimeout.as(
               (t) => `${Math.round(t / 60)}m`,
             )}
             cssClasses={["caption"]}
@@ -42,7 +71,7 @@ export default () => {
         <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
           <Gtk.Label label="Dim before lock" hexpand />
           <Gtk.Switch
-            active={createBinding(hypridle, "dimEnabled")}
+            active={$dimEnabled}
             onNotifyActive={(self) => (hypridle.dimEnabled = self.active)}
           />
         </Gtk.Box>
@@ -52,13 +81,13 @@ export default () => {
 
   return (
     <QuickToggleButton
-      cssClasses={createBinding(hypridle, "enabled").as((e) =>
+      cssClasses={$enabled.as((e) =>
         e ? ["raised"] : ["raised", "flat"],
       )}
-      icon={createBinding(hypridle, "enabled").as((e) =>
+      icon={$enabled.as((e) =>
         e ? "system-lock-screen-symbolic" : "system-unlock-screen-symbolic",
       )}
-      label={createBinding(hypridle, "enabled").as((e) =>
+      label={$enabled.as((e) =>
         e ? "Auto Lock" : "Auto Lock Off",
       )}
       onClick={() => (hypridle.enabled = !hypridle.enabled)}

@@ -144,6 +144,24 @@ export const generalSchema = new Schema({
     summary:
       "Seconds before lock to dim screen (must be less than idle-timeout)",
   })
+  .key("dpms-enabled", "b", {
+    default: true,
+    summary: "Turn off display after idle timeout (DPMS)",
+  })
+  .key("dpms-timeout", "i", {
+    default: 600,
+    summary:
+      "Seconds of inactivity before turning off display (must be greater than idle-timeout)",
+  })
+  .key("suspend-enabled", "b", {
+    default: false,
+    summary: "Suspend system after prolonged inactivity",
+  })
+  .key("suspend-timeout", "i", {
+    default: 1800,
+    summary:
+      "Seconds of inactivity before suspending (must be greater than dpms-timeout)",
+  })
   .key("notification-history-limit", "i", {
     default: 100,
     summary: "Maximum number of notifications to keep in history",

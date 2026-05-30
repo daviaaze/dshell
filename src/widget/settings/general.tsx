@@ -137,7 +137,7 @@ export default () => {
 
       <Adw.PreferencesGroup
         title={"Idle Management"}
-        description={"Screen lock and dimming behavior"}
+        description={"Screen lock, display power, and sleep behavior"}
       >
         <Adw.SwitchRow
           title={"Auto Lock"}
@@ -180,6 +180,49 @@ export default () => {
             ) as Gtk.Adjustment
           }
           onNotifyValue={(self) => settings.setScreenDimTimeout(self.value)}
+        />
+        <Adw.SwitchRow
+          title={"Turn Off Display"}
+          subtitle={"Power off screen after idle (DPMS)"}
+          active={settings.dpmsEnabled}
+          onNotifyActive={(self) => settings.setDpmsEnabled(self.active)}
+        />
+        <Adw.SpinRow
+          title={"Display Timeout"}
+          subtitle={"Seconds before turning off display"}
+          adjustment={
+            (
+              <Gtk.Adjustment
+                lower={70}
+                upper={3600}
+                stepIncrement={30}
+                value={settings.dpmsTimeout}
+              />
+            ) as Gtk.Adjustment
+          }
+          onNotifyValue={(self) => settings.setDpmsTimeout(self.value)}
+        />
+        <Adw.SwitchRow
+          title={"Auto Suspend"}
+          subtitle={"Suspend system after prolonged inactivity"}
+          active={settings.suspendEnabled}
+          onNotifyActive={(self) => settings.setSuspendEnabled(self.active)}
+        />
+        <Adw.SpinRow
+          title={"Suspend Timeout"}
+          subtitle={"Seconds before suspending"}
+          sensitive={settings.suspendEnabled}
+          adjustment={
+            (
+              <Gtk.Adjustment
+                lower={80}
+                upper={7200}
+                stepIncrement={60}
+                value={settings.suspendTimeout}
+              />
+            ) as Gtk.Adjustment
+          }
+          onNotifyValue={(self) => settings.setSuspendTimeout(self.value)}
         />
       </Adw.PreferencesGroup>
 
