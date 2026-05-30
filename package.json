@@ -5,8 +5,11 @@
   "scripts": {
     "lint": "eslint . --fix",
     "types": "npx @ts-for-gir/cli generate -o @girs --ignoreVersionConflicts",
+    "check": "tsc --noEmit",
+    "check:all": "pnpm run types && pnpm run lint && pnpm run check",
     "build": "meson setup build --wipe && meson compile -C build",
-    "dev": "nix run . --"
+    "dev": "nix run . --",
+    "syntax": "esbuild src/main.ts --bundle --format=esm --external:gi://* --external:gnim --external:gnim/* --external:gnim-schemas --outfile=/dev/null"
   },
   "devDependencies": {
     "@eslint/js": "latest",

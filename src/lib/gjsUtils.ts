@@ -13,14 +13,3 @@ export function toArray<T>(list: any): T[] {
   return arr
 }
 
-export function listLength(list: any): number {
-  if (!list) return 0
-  if (Array.isArray(list)) return list.length
-  let count = 0
-  let l = list
-  while (l) {
-    count++
-    l = l.next
-  }
-  return count
-}

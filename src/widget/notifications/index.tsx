@@ -105,14 +105,27 @@ export default () => {
 
   // Defer Notifd initialization — AstalNotifd blocks 25s if another
   // notification daemon (dunst, mako) is already registered.
+  // Also add a timeout guard: if the D-Bus handshake hangs, log a warning
+  // after 15 seconds so we know the widget silently never initialized.
   onMount(() => {
+    let initialized = false
+
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       const n = Notifd.get_default()
+      initialized = true
       setNotifd(n)
       setDontDisturb(n.dontDisturb)
       n.connect("notify::dontDisturb", () => {
         setDontDisturb(n.dontDisturb)
       })
+      return GLib.SOURCE_REMOVE
+    })
+
+    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 15, () => {
+      if (!initialized) {
+        print("[Shade] [WARN] [notifications] Notifd.get_default() has not completed after 15s — " +
+          "D-Bus handshake may be hung. Notifications widget will not show.")
+      }
       return GLib.SOURCE_REMOVE
     })
   })

@@ -66,6 +66,19 @@ export default class Hypridle extends GObject.Object {
     v = Math.max(60, Math.min(1800, v))
     if (this.#idleTimeout === v) return
     this.#idleTimeout = v
+    // Cross-validate: keep dim < idle < dpms < suspend
+    if (this.#dimTimeout >= v) {
+      this.#dimTimeout = Math.max(30, v - 10)
+      this.notify("dim-timeout")
+    }
+    if (this.#dpmsTimeout <= v) {
+      this.#dpmsTimeout = v + 10
+      this.notify("dpms-timeout")
+    }
+    if (this.#suspendTimeout <= this.#dpmsTimeout) {
+      this.#suspendTimeout = this.#dpmsTimeout + 10
+      this.notify("suspend-timeout")
+    }
     this.#settings?.setIdleTimeout(v)
     this.#apply()
     this.notify("idle-timeout")
@@ -124,6 +137,11 @@ export default class Hypridle extends GObject.Object {
     v = Math.max(this.#idleTimeout + 10, Math.min(3600, v))
     if (this.#dpmsTimeout === v) return
     this.#dpmsTimeout = v
+    // Cross-validate: keep dpms < suspend
+    if (this.#suspendTimeout <= v) {
+      this.#suspendTimeout = v + 10
+      this.notify("suspend-timeout")
+    }
     this.#settings?.setDpmsTimeout(v)
     this.#apply()
     this.notify("dpms-timeout")
@@ -186,6 +204,10 @@ export default class Hypridle extends GObject.Object {
     setSuspendEnabled: (v: boolean) => void
     setSuspendTimeout: (v: number) => void
   }) {
+    if (this.#settings) {
+      logger.warn("hypridle", "init() called but already initialized — skipping")
+      return
+    }
     this.#settings = settings
     this.#enabled = settings.autoLockEnabled.get()
     this.#idleTimeout = settings.idleTimeout.get()
@@ -282,12 +304,16 @@ export default class Hypridle extends GObject.Object {
   }
 
   #apply() {
-    if (!this.available) return
-    if (this.#enabled) {
-      this.#writeConfig()
-      this.#restart()
-    } else {
-      this.#stop()
+    try {
+      if (!this.available) return
+      if (this.#enabled) {
+        this.#writeConfig()
+        this.#restart()
+      } else {
+        this.#stop()
+      }
+    } catch (e) {
+      logger.error("hypridle", "unexpected error in #apply:", e)
     }
   }
 
@@ -363,15 +389,15 @@ export default class Hypridle extends GObject.Object {
     if (this.#process) {
       try {
         this.#process.kill()
-      } catch {
-        /* ignore */
+      } catch (e) {
+        logger.warn("hypridle", "failed to kill old process:", e)
       }
       this.#process = null
     }
     try {
       AstalIO.Process.exec("pkill -x hypridle")
-    } catch {
-      /* ignore */
+    } catch (e) {
+      logger.warn("hypridle", "pkill failed (hypridle may not be running):", e)
     }
     try {
       this.#process = AstalIO.Process.subprocessv(["hypridle"])
@@ -384,15 +410,15 @@ export default class Hypridle extends GObject.Object {
     if (this.#process) {
       try {
         this.#process.kill()
-      } catch {
-        /* ignore */
+      } catch (e) {
+        logger.warn("hypridle", "failed to kill process:", e)
       }
       this.#process = null
     }
     try {
       AstalIO.Process.exec("pkill -x hypridle")
     } catch {
-      /* ignore */
+      // pkill may fail if hypridle is not running — that's normal
     }
     // Remove the config file so external hypridle instances
     // (e.g. systemd services) don't pick up the lock listener
@@ -401,8 +427,8 @@ export default class Hypridle extends GObject.Object {
       if (file.query_exists(null)) {
         file.delete(null)
       }
-    } catch {
-      /* ignore */
+    } catch (e) {
+      logger.error("hypridle", "failed to delete config file:", e)
     }
   }
 

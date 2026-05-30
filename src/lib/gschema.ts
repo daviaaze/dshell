@@ -127,40 +127,50 @@ export const generalSchema = new Schema({
     summary:
       "Automatically enable night light at sunset and disable at sunrise",
   })
+  // ── Idle Management (Hypridle) ─────────────────────────────────────
+  // These keys are consumed by Hypridle which generates a hypridle.conf.
+  // The timeout chain must satisfy: dim < idle < dpms < suspend.
+  // If a key violates this ordering, Hypridle clamps it automatically.
   .key("auto-lock-enabled", "b", {
     default: true,
-    summary: "Automatically lock screen after idle timeout",
+    summary: "Automatically lock screen after idle timeout (requires hypridle)",
   })
   .key("idle-timeout", "i", {
     default: 300,
-    summary: "Idle time in seconds before auto-lock (60-1800)",
+    summary: "Seconds of inactivity before auto-lock. Valid range: 60-1800.",
+    description:
+      "After this many seconds of inactivity, the screen locks. " +
+      "dim-timeout should be lower, dpms-timeout and suspend-timeout should be higher.",
   })
   .key("screen-dim-enabled", "b", {
     default: true,
-    summary: "Dim screen before auto-lock",
+    summary: "Dim screen brightness before locking",
+    description:
+      "When enabled, the screen dims to 10% brightness screen-dim-timeout seconds " +
+      "before the lock triggers. Original brightness is restored on activity.",
   })
   .key("screen-dim-timeout", "i", {
     default: 240,
-    summary:
-      "Seconds before lock to dim screen (must be less than idle-timeout)",
+    summary: "Seconds of inactivity before dimming. Valid range: 30 to (idle-timeout - 10).",
   })
   .key("dpms-enabled", "b", {
     default: true,
-    summary: "Turn off display after idle timeout (DPMS)",
+    summary: "Turn off display(s) via DPMS after prolonged inactivity",
   })
   .key("dpms-timeout", "i", {
     default: 600,
-    summary:
-      "Seconds of inactivity before turning off display (must be greater than idle-timeout)",
+    summary: "Seconds of inactivity before DPMS off. Valid range: (idle-timeout + 10) to 3600.",
   })
   .key("suspend-enabled", "b", {
     default: false,
-    summary: "Suspend system after prolonged inactivity",
+    summary: "Suspend the system after extended inactivity",
+    description:
+      "WARNING: enabling this will suspend your machine when suspend-timeout is reached. " +
+      "Unsaved work may be lost. Disabled by default.",
   })
   .key("suspend-timeout", "i", {
     default: 1800,
-    summary:
-      "Seconds of inactivity before suspending (must be greater than dpms-timeout)",
+    summary: "Seconds of inactivity before system suspend. Valid range: (dpms-timeout + 10) to 7200.",
   })
   .key("notification-history-limit", "i", {
     default: 100,

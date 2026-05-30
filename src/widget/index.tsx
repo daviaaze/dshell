@@ -41,7 +41,11 @@ export const widgets = () => {
   Inhibit.get_default().init(app)
   NightLight.get_default().init(s.general, ColorScheme.get_default())
   Hypridle.get_default().init(s.general)
-  Touchpad.get_default().init()
+  try {
+    Touchpad.get_default().init()
+  } catch (e) {
+    logger.warn("mount", "Touchpad init skipped (no touchpad?):", e)
+  }
   Theming.get_default().init(s.general)
   initAutoSwitch()
   perf.stop("services-init", "mount")
