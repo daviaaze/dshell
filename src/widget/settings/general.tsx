@@ -3,6 +3,7 @@ import { useSettings } from "#/lib/settings"
 import Theming from "#/lib/theming"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
+import { For } from "gnim"
 
 export default () => {
   const settings = useSettings().general
@@ -254,6 +255,111 @@ export default () => {
           onNotifyValue={(self) =>
             settings.setNotificationHistoryLimit(self.value)
           }
+        />
+        <Adw.EntryRow
+          title={"Ignore App"}
+          showApplyButton
+          onApply={(self) => {
+            const name = self.text.trim()
+            if (!name) return
+            const current = settings.notificationIgnoredApps.get() as string[]
+            if (!current.includes(name)) {
+              settings.setNotificationIgnoredApps([...current, name])
+            }
+            self.text = ""
+          }}
+        />
+        <For each={settings.notificationIgnoredApps}>
+          {(app: string) => (
+            <Adw.ActionRow title={app}>
+              <Gtk.Button
+                $type="suffix"
+                cssClasses={["circular", "destructive-action"]}
+                iconName="list-remove-symbolic"
+                onClicked={() => {
+                  const current =
+                    settings.notificationIgnoredApps.get() as string[]
+                  settings.setNotificationIgnoredApps(
+                    current.filter((a) => a !== app),
+                  )
+                }}
+              />
+            </Adw.ActionRow>
+          )}
+        </For>
+      </Adw.PreferencesGroup>
+
+      <Adw.PreferencesGroup
+        title={"CAVA Visualizer"}
+        description={"Audio spectrum visualizer in media player"}
+      >
+        <Adw.SwitchRow
+          title={"Enable CAVA"}
+          subtitle={"Show audio visualizer in Quick Settings"}
+          active={settings.cavaEnabled}
+          onNotifyActive={(self) =>
+            settings.setCavaEnabled(self.active)
+          }
+        />
+        <Adw.SpinRow
+          title={"Bar Count"}
+          subtitle={"Number of frequency bars (8-32)"}
+          adjustment={
+            (
+              <Gtk.Adjustment
+                lower={8}
+                upper={32}
+                stepIncrement={2}
+                value={settings.cavaBars}
+              />
+            ) as Gtk.Adjustment
+          }
+          onNotifyValue={(self) =>
+            settings.setCavaBars(self.value)
+          }
+        />
+        <Adw.SpinRow
+          title={"Framerate"}
+          subtitle={"Visualizer refresh rate in FPS"}
+          adjustment={
+            (
+              <Gtk.Adjustment
+                lower={30}
+                upper={144}
+                stepIncrement={5}
+                value={settings.cavaFramerate}
+              />
+            ) as Gtk.Adjustment
+          }
+          onNotifyValue={(self) =>
+            settings.setCavaFramerate(self.value)
+          }
+        />
+      </Adw.PreferencesGroup>
+
+      <Adw.PreferencesGroup
+        title={"Debug"}
+        description={"Development and troubleshooting options"}
+      >
+        <Adw.SwitchRow
+          title={"Enable Debug Logging"}
+          subtitle={"Show DEBUG-level messages in journald"}
+          active={settings.debugEnabled}
+          onNotifyActive={(self) =>
+            settings.setDebugEnabled(self.active)
+          }
+        />
+        <Adw.EntryRow
+          title={"Debug Categories"}
+          showApplyButton
+          onApply={(self) => {
+            const cats = self.text
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+            settings.setDebugCategories(cats)
+            self.text = ""
+          }}
         />
       </Adw.PreferencesGroup>
     </>

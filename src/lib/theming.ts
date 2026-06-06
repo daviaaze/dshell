@@ -79,12 +79,7 @@ export default class Theming extends GObject.Object {
 
   @getter(Boolean)
   get available() {
-    try {
-      AstalIO.Process.exec("which matugen")
-      return true
-    } catch {
-      return false
-    }
+    return GLib.find_program_in_path("matugen") !== null
   }
 
   init(settings: {

@@ -178,12 +178,7 @@ export default class Hypridle extends GObject.Object {
 
   @getter(Boolean)
   get available() {
-    try {
-      AstalIO.Process.exec("which hypridle")
-      return true
-    } catch {
-      return false
-    }
+    return GLib.find_program_in_path("hypridle") !== null
   }
 
   init(settings: {

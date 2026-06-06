@@ -30,6 +30,8 @@ export default class NightLight extends GObject.Object {
       subscribe(cb: () => void): () => void
     }
     setNightLightEnabled: (v: boolean) => void
+    setNightLightTemperature: (v: number) => void
+    setNightLightAutoSchedule: (v: boolean) => void
   } | null = null
 
   @getter(Boolean)
@@ -41,6 +43,7 @@ export default class NightLight extends GObject.Object {
   set enabled(v: boolean) {
     if (this.#enabled === v) return
     this.#enabled = v
+    this.#settings?.setNightLightEnabled(v)
     this.#sync()
     this.notify("enabled")
   }
@@ -55,6 +58,7 @@ export default class NightLight extends GObject.Object {
     v = Math.max(2000, Math.min(6500, v))
     if (this.#temperature === v) return
     this.#temperature = v
+    this.#settings?.setNightLightTemperature(v)
     if (this.#enabled) this.#sync()
     this.notify("temperature")
   }
@@ -68,18 +72,14 @@ export default class NightLight extends GObject.Object {
   set autoSchedule(v: boolean) {
     if (this.#autoSchedule === v) return
     this.#autoSchedule = v
+    this.#settings?.setNightLightAutoSchedule(v)
     this.#checkSchedule()
     this.notify("auto-schedule")
   }
 
   @getter(Boolean)
   get available() {
-    try {
-      AstalIO.Process.exec("which hyprsunset")
-      return true
-    } catch {
-      return false
-    }
+    return GLib.find_program_in_path("hyprsunset") !== null
   }
 
   init(
@@ -97,6 +97,8 @@ export default class NightLight extends GObject.Object {
         subscribe(cb: () => void): () => void
       }
       setNightLightEnabled: (v: boolean) => void
+      setNightLightTemperature: (v: number) => void
+      setNightLightAutoSchedule: (v: boolean) => void
     },
     colorScheme: ColorScheme,
   ) {
@@ -187,9 +189,6 @@ export default class NightLight extends GObject.Object {
     const shouldBeOn = !isDaytime
     if (this.#enabled !== shouldBeOn) {
       this.enabled = shouldBeOn
-      if (this.#settings) {
-        this.#settings.setNightLightEnabled(shouldBeOn)
-      }
     }
   }
 

@@ -7,6 +7,7 @@ import { createBinding, createState, For, onMount } from "gnim"
 import Notification from "#/widget/common/notification"
 import NotificationHistory from "#/lib/notificationHistory"
 import { getNotifdSafe } from "#/lib/notifdGuard"
+import { useSettings } from "#/lib/settings"
 
 /**
  * Inner content component — only mounted once Notifd is initialized.
@@ -18,11 +19,13 @@ const NotificationListContent = ({
   history,
   showHistory,
   setShowHistory,
+  showProgress,
 }: {
   notifd: Notifd.Notifd
   history: NotificationHistory
   showHistory: ReturnType<typeof createState<boolean>>[0]
   setShowHistory: ReturnType<typeof createState<boolean>>[1]
+  showProgress: boolean
 }) => {
   const Header = () => {
     const DNDButton = () => (
@@ -110,12 +113,13 @@ const NotificationListContent = ({
         <Heading />
         <Notification
           notif={notifications[0]}
+          showProgress={showProgress}
           closeAction={(n) => n.dismiss()}
         />
         <Gtk.Revealer revealChild={visible}>
           <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
             {notifications.slice(1).map((notif) => (
-              <Notification notif={notif} closeAction={(n) => n.dismiss()} />
+              <Notification notif={notif} showProgress={showProgress} closeAction={(n) => n.dismiss()} />
             ))}
           </Gtk.Box>
         </Gtk.Revealer>
@@ -215,7 +219,7 @@ const NotificationListContent = ({
         >
           {(n: Notifd.Notification[]) =>
             n.length === 1 ? (
-              <Notification closeAction={(n) => n.dismiss()} notif={n[0]} />
+              <Notification closeAction={(n) => n.dismiss()} showProgress={showProgress} notif={n[0]} />
             ) : (
               <NotificationGroup notifications={n} />
             )
@@ -240,6 +244,8 @@ export const NotificationList = () => {
   const [notifd, setNotifd] = createState<Notifd.Notifd | null>(null)
   const history = NotificationHistory.get_default()
   const [showHistory, setShowHistory] = createState(false)
+  const settings = useSettings().general
+  const showProgress = settings.notificationShowProgress.get()
 
   // Defer Notifd initialization to avoid blocking the main loop
   // when another notification daemon is already registered.
@@ -279,6 +285,7 @@ export const NotificationList = () => {
             history={history}
             showHistory={showHistory}
             setShowHistory={setShowHistory}
+            showProgress={showProgress}
           />
         )}
       </For>

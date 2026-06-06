@@ -1,6 +1,7 @@
 import Gtk from "gi://Gtk?version=4.0"
 import Wireplumber from "gi://AstalWp"
-import { createBinding, For } from "gnim"
+import GLib from "gi://GLib?version=2.0"
+import { createBinding, createState, For, onMount } from "gnim"
 import AppMixer from "#/lib/appMixer"
 import logger from "#/lib/logger"
 import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
@@ -11,8 +12,18 @@ export default () => {
   logger.log("AppMixer: done")
 
   const streams = createBinding(mixer, "streams")
-  const audio = Wireplumber.get_default()!.audio
-  const speakers = createBinding(audio, "speakers")
+  const [speakers, setSpeakers] = createState<Wireplumber.Endpoint[]>([])
+
+  onMount(() => {
+    // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      const audio = Wireplumber.get_default()!.audio
+      const update = () => setSpeakers([...audio.speakers])
+      update()
+      audio.connect("notify::speakers", update)
+      return GLib.SOURCE_REMOVE
+    })
+  })
 
   return (
     <Gtk.Box spacing={12} orientation={Gtk.Orientation.VERTICAL}>

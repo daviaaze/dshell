@@ -34,6 +34,13 @@ tooltip.background label {
   color: var(--window-fg-color);
 }
 
+/* Tray popover — remove the heavy drop-shadow without affecting
+   other popovers (clock, weather, network, etc.). */
+popover.tray-menu.background,
+popover.tray-menu > contents.background.menu {
+  box-shadow: none;
+}
+
 /* Card surface — subtle elevation */
 .card {
   padding: 4px;

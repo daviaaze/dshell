@@ -1,22 +1,33 @@
 import Gtk from "gi://Gtk?version=4.0"
-import PowerProf from "gi://AstalPowerProfiles"
-import { createBinding } from "gnim"
-import logger from "#/lib/logger"
+import GLib from "gi://GLib?version=2.0"
+import { createState, onMount } from "gnim"
+import PowerProfiles from "#/lib/powerProfiles"
 
 export default () => {
-  logger.log("PowerIndicator: PowerProf.get_default()...")
-  const powerprof = PowerProf.get_default()
-  logger.log("PowerIndicator: PowerProf done")
+  const [visible, setVisible] = createState(false)
+  const [iconName, setIconName] = createState("")
+  const [tooltip, setTooltip] = createState("")
+  const pp = PowerProfiles.get_default()
+
+  onMount(() => {
+    const update = () => {
+      const p = pp.activeProfile
+      setVisible(p !== "balanced")
+      setIconName(pp.iconName)
+      setTooltip(p)
+    }
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      update()
+      pp.connect("notify::activeProfile", update)
+      return GLib.SOURCE_REMOVE
+    })
+  })
 
   return (
     <Gtk.Image
-      visible={createBinding(powerprof, "activeProfile").as(
-        (p) => p !== "balanced",
-      )}
-      iconName={createBinding(powerprof, "iconName").as((i) => i ?? "")}
-      tooltipMarkup={createBinding(powerprof, "activeProfile").as(
-        (p) => p ?? "",
-      )}
+      visible={visible}
+      iconName={iconName}
+      tooltipMarkup={tooltip}
       pixelSize={18}
     />
   )

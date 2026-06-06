@@ -1,6 +1,7 @@
 import Adw from "gi://Adw?version=1"
 import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
+import { For } from "gnim"
 import { useSettings } from "#/lib/settings"
 
 export default () => {
@@ -106,6 +107,42 @@ export default () => {
           }
           onNotifyValue={(self) => bar.setDockIconSize(self.value)}
         />
+      </Adw.PreferencesGroup>
+
+      <Adw.PreferencesGroup
+        title="Pinned Apps"
+        description="Desktop file IDs pinned to the dock"
+      >
+        <Adw.EntryRow
+          title="Add App"
+          showApplyButton
+          onApply={(self) => {
+            const id = self.text.trim()
+            if (!id) return
+            const current = bar.dockPinnedApps.get() as string[]
+            if (!current.includes(id)) {
+              bar.setDockPinnedApps([...current, id])
+            }
+            self.text = ""
+          }}
+        />
+        <For each={bar.dockPinnedApps}>
+          {(appId: string) => (
+            <Adw.ActionRow title={appId}>
+              <Gtk.Button
+                $type="suffix"
+                cssClasses={["circular", "destructive-action"]}
+                iconName="list-remove-symbolic"
+                onClicked={() => {
+                  const current = bar.dockPinnedApps.get() as string[]
+                  bar.setDockPinnedApps(
+                    current.filter((a) => a !== appId),
+                  )
+                }}
+              />
+            </Adw.ActionRow>
+          )}
+        </For>
       </Adw.PreferencesGroup>
 
       <Adw.PreferencesGroup

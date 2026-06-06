@@ -24,16 +24,11 @@ export const PowerMenu = () => {
           iconName="system-log-out-symbolic"
           label="Log Out"
           onClicked={() => {
-            AstalIO.Process.exec_async(
-              "loginctl terminate-session",
-              (_, res) => {
-                try {
-                  AstalIO.Process.exec_async_finish(res)
-                } catch (e) {
-                  logger.error("power", "loginctl failed:", e)
-                }
-              },
-            )
+            try {
+              AstalIO.Process.exec("loginctl terminate-session")
+            } catch (e) {
+              logger.error("power", "loginctl failed:", e)
+            }
             popover.popdown()
           }}
         />
@@ -41,13 +36,11 @@ export const PowerMenu = () => {
           iconName="media-playback-pause-symbolic"
           label="Suspend"
           onClicked={() => {
-            AstalIO.Process.exec_async("systemctl suspend", (_, res) => {
-              try {
-                AstalIO.Process.exec_async_finish(res)
-              } catch (e) {
-                logger.error("power", "systemctl suspend failed:", e)
-              }
-            })
+            try {
+              AstalIO.Process.exec("systemctl suspend")
+            } catch (e) {
+              logger.error("power", "systemctl suspend failed:", e)
+            }
             popover.popdown()
           }}
         />
@@ -55,13 +48,11 @@ export const PowerMenu = () => {
           iconName="system-reboot-symbolic"
           label="Reboot"
           onClicked={() => {
-            AstalIO.Process.exec_async("systemctl reboot", (_, res) => {
-              try {
-                AstalIO.Process.exec_async_finish(res)
-              } catch (e) {
-                logger.error("power", "systemctl reboot failed:", e)
-              }
-            })
+            try {
+              AstalIO.Process.exec("systemctl reboot")
+            } catch (e) {
+              logger.error("power", "systemctl reboot failed:", e)
+            }
             popover.popdown()
           }}
         />
@@ -70,13 +61,11 @@ export const PowerMenu = () => {
           label="Power Off"
           destructive
           onClicked={() => {
-            AstalIO.Process.exec_async("systemctl poweroff", (_, res) => {
-              try {
-                AstalIO.Process.exec_async_finish(res)
-              } catch (e) {
-                logger.error("power", "systemctl poweroff failed:", e)
-              }
-            })
+            try {
+              AstalIO.Process.exec("systemctl poweroff")
+            } catch (e) {
+              logger.error("power", "systemctl poweroff failed:", e)
+            }
             popover.popdown()
           }}
         />

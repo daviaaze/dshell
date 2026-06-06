@@ -45,6 +45,7 @@ export default ({
         </Gtk.Button>
       </Gtk.Box>
       <Gtk.ScrolledWindow
+        maxContentWidth={320}
         propagateNaturalHeight={true}
         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         hscrollbarPolicy={Gtk.PolicyType.NEVER}

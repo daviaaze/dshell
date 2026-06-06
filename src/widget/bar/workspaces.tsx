@@ -5,8 +5,6 @@ import { createBinding, For, Accessor, With } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
 import { getAppIcon } from "#/lib/apps"
 
-const hyprland = Hyprland.get_default()
-
 export default ({
   monitor,
   vertical,
@@ -15,8 +13,10 @@ export default ({
   monitor: Hyprland.Monitor
   vertical: Accessor<boolean>
   visible?: boolean | Accessor<boolean>
-}) =>
-  (
+}) => {
+  const hyprland = Hyprland.get_default()
+
+  return (
     <Gtk.Box
       visible={visible}
       orientation={vertical.as((v) =>
@@ -75,3 +75,4 @@ export default ({
       </For>
     </Gtk.Box>
   ) as Gtk.Box
+}

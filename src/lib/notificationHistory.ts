@@ -53,10 +53,50 @@ export default class NotificationHistory extends GObject.Object {
   #history: HistoryEntry[] = []
   #limit = 100
   #ignoredApps: string[] = []
+  #settings: {
+    notificationHistoryLimit: {
+      get(): number
+      subscribe(cb: () => void): () => void
+    }
+    notificationIgnoredApps: {
+      get(): string[]
+      subscribe(cb: () => void): () => void
+    }
+  } | null = null
 
   @getter(Array)
   get history() {
     return this.#history
+  }
+
+  init(settings: {
+    notificationHistoryLimit: {
+      get(): number
+      subscribe(cb: () => void): () => void
+    }
+    notificationIgnoredApps: {
+      get(): string[]
+      subscribe(cb: () => void): () => void
+    }
+  }) {
+    this.#settings = settings
+    this.#limit = settings.notificationHistoryLimit.get() || 100
+    this.#ignoredApps =
+      settings.notificationIgnoredApps.get()?.map((a) => a.toLowerCase()) || []
+
+    settings.notificationHistoryLimit.subscribe(() => {
+      const newLimit = settings.notificationHistoryLimit.get()
+      if (newLimit !== this.#limit) {
+        this.setLimit(newLimit)
+      }
+    })
+
+    settings.notificationIgnoredApps.subscribe(() => {
+      const newApps =
+        settings.notificationIgnoredApps.get()?.map((a) => a.toLowerCase()) ||
+        []
+      this.#ignoredApps = newApps
+    })
   }
 
   constructor() {

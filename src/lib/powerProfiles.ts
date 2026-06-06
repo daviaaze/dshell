@@ -1,0 +1,96 @@
+import Gio from "gi://Gio?version=2.0"
+import GLib from "gi://GLib?version=2.0"
+
+const BUS_NAME = "net.hadess.PowerProfiles"
+const OBJECT_PATH = "/net/hadess/PowerProfiles"
+const IFACE = "net.hadess.PowerProfiles"
+
+type Profile = "power-saver" | "balanced" | "performance"
+
+export default class PowerProfiles {
+  static instance: PowerProfiles
+  static get_default() {
+    if (!this.instance) this.instance = new PowerProfiles()
+    return this.instance
+  }
+
+  #proxy: Gio.DBusProxy | null = null
+  #listeners: Array<() => void> = []
+
+  get activeProfile(): Profile {
+    if (!this.#proxy) return "balanced"
+    const v = this.#proxy.get_cached_property("ActiveProfile")
+    return (v?.unpack() ?? "balanced") as Profile
+  }
+
+  get iconName(): string {
+    return `power-profile-${this.activeProfile}-symbolic`
+  }
+
+  set_active_profile(profile: Profile) {
+    try {
+      this.#proxy?.call_sync(
+        "org.freedesktop.DBus.Properties.Set",
+        new GLib.Variant("(ssv)", [
+          IFACE,
+          "ActiveProfile",
+          new GLib.Variant("s", profile),
+        ]),
+        Gio.DBusCallFlags.NONE,
+        -1,
+        null,
+      )
+    } catch (e) {
+      print("PowerProfiles: set_active_profile failed:", e.message)
+    }
+  }
+
+  connect(_signal: string, callback: () => void) {
+    this.#listeners.push(callback)
+    // Initialize proxy on first connect
+    if (!this.#proxy) this.#initProxy()
+  }
+
+  #initProxy() {
+    try {
+      const bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, null)
+      this.#proxy = Gio.DBusProxy.new_sync(
+        bus,
+        Gio.DBusProxyFlags.NONE,
+        null,
+        BUS_NAME,
+        OBJECT_PATH,
+        IFACE,
+        null,
+      )
+      this.#proxy.connect(
+        "g-properties-changed",
+        (_proxy: Gio.DBusProxy, changed: GLib.Variant) => {
+          const changedProps = changed.deepUnpack()
+          if ("ActiveProfile" in changedProps) {
+            for (const cb of this.#listeners) cb()
+          }
+        },
+      )
+    } catch (e) {
+      print("PowerProfiles: failed to connect to system bus:", e.message)
+    }
+  }
+}
+
+export function profileLabel(p: string): string {
+  switch (p) {
+    case "power-saver": return "Power Saver"
+    case "balanced": return "Balanced"
+    case "performance": return "Performance"
+    default: return "Balanced"
+  }
+}
+
+export function nextProfile(p: string): Profile {
+  switch (p) {
+    case "power-saver": return "balanced"
+    case "balanced": return "performance"
+    default: return "power-saver"
+  }
+}

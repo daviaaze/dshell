@@ -8,11 +8,13 @@ export default ({
   closeAction,
   pauseDismiss,
   resumeDismiss,
+  showProgress = true,
 }: {
   notif: Notifd.Notification
   closeAction: (notif: Notifd.Notification, self: Gtk.Widget) => void
   pauseDismiss?: () => void
   resumeDismiss?: () => void
+  showProgress?: boolean
 }) =>
   (
     <Gtk.Box
@@ -64,9 +66,11 @@ export default ({
         }
       />
       <Gtk.ProgressBar
+        visible={showProgress}
         fraction={0}
         cssClasses={["osd"]}
         $={(self) => {
+          if (!showProgress) return
           let elapsed = 0
           const interval = 50
           const total = 5000

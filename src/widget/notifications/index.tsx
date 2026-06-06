@@ -8,13 +8,16 @@ import Notification from "#/widget/common/notification"
 import { app } from "#/App"
 import WindowManager from "#/lib/windowManager"
 import { getNotifdSafe } from "#/lib/notifdGuard"
+import { useSettings } from "#/lib/settings"
 
 const NotificationContent = ({
   notifd,
   setNotificationCount,
+  showProgress,
 }: {
   notifd: Notifd.Notifd
   setNotificationCount: (n: number) => void
+  showProgress: boolean
 }) => {
   const [notifs, setNotifs] = createState<Notifd.Notification[]>([])
   const timeouts = new Map<number, number>()
@@ -90,6 +93,7 @@ const NotificationContent = ({
             closeAction={() => removeNotif(n.id)}
             pauseDismiss={() => pauseDismiss(n.id)}
             resumeDismiss={() => resumeDismiss(n.id)}
+            showProgress={showProgress}
             notif={n}
           />
         )}
@@ -103,6 +107,8 @@ export default () => {
   const [notificationCount, setNotificationCount] = createState(0)
   const [dontDisturb, setDontDisturb] = createState(false)
   const hyprland = Hyprland.get_default()
+  const settings = useSettings().general
+  const showProgress = settings.notificationShowProgress.get()
 
   // Defer Notifd initialization — AstalNotifd blocks 25s if another
   // notification daemon (dunst, mako) is already registered.
@@ -156,6 +162,7 @@ export default () => {
           <NotificationContent
             notifd={n}
             setNotificationCount={setNotificationCount}
+            showProgress={showProgress}
           />
         )}
       </For>

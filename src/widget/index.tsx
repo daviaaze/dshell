@@ -15,6 +15,7 @@ import NightLight from "#/lib/nightLight"
 import Hypridle from "#/lib/hypridle"
 import Touchpad from "#/lib/touchpad"
 import Theming from "#/lib/theming"
+import NotificationHistory from "#/lib/notificationHistory"
 import { initAutoSwitch } from "#/lib/audioAutoSwitch"
 import { app } from "#/App"
 import { useSettings } from "#/lib/settings"
@@ -47,6 +48,7 @@ export const widgets = () => {
     logger.warn("mount", "Touchpad init skipped (no touchpad?):", e)
   }
   Theming.get_default().init(s.general)
+  NotificationHistory.get_default().init(s.general)
   initAutoSwitch()
   perf.stop("services-init", "mount")
 

@@ -7,8 +7,6 @@ import { app } from "#/App"
 import { toArray } from "#/lib/gjsUtils"
 import SwitcherItem from "./item"
 
-const hyprland = AstalHyprland.get_default()
-
 let switcherWindow: Astal.Window | null = null
 
 export const toggleWindowSwitcher = () => {
@@ -30,6 +28,7 @@ const getSortedClients = (
 }
 
 export default () => {
+  const hyprland = AstalHyprland.get_default()
   const [selectedIndex, setSelectedIndex] = createState(0)
 
   let mru: string[] = []
