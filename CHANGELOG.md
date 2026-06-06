@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Shared logger utility** (`src/lib/logger.ts`) — replaces all inline `const timestamp = ...` patterns with `logger.log()` that auto-prefixes every message with `[Shade] HH:MM:SS.ffffff -`
 - **Keybinding manager** (`src/lib/keybinds.ts`) — Shade now registers its own keybindings dynamically via `hyprctl keyword` at startup instead of relying on static Hyprland config; keybindings live in code, not Nix config
-- **Lightweight D-Bus dispatcher** (`data/scripts/shade-toggle.sh`) — shell script that sends remote commands to the running Shade instance via `gdbus` (~7ms overhead) instead of spawning a full GJS process (~1s overhead)
 - **SKILL.md** — pi-agent skill definition with YAML frontmatter for the agent skills ecosystem
 - **YAML frontmatter in AGENTS.md** — metadata fields for pi-agent integration
 - **Media player widget** re-enabled in Quick Settings expander — shows active MPRIS players with cover art, controls, and playback status
@@ -25,11 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Network widget decomposition** — `network.tsx` split into `utils.ts`, `apList.tsx`, `passwordDialog.tsx`, `wifiPopover.tsx`, and `index.tsx`
 - **NixOS module layering** — new `programs.shade.desktop` option group; Hyprland imports are now conditional on `desktop.enable` instead of unconditional
 - **Lazy-loaded Settings window** — `Adw.PreferencesWindow` is no longer created eagerly on startup; created on first open via `shade-shell toggle settings`
-- **Touchpad Python script extraction** — removed embedded script from `touchpad.ts`; script lives in `data/scripts/toggle-touchpad.py` (already installed by Meson); no `/tmp` fallback
+- **Touchpad Python script extraction** — removed standalone `data/scripts/toggle-touchpad.py`; lightweight embedded grab script remains in `touchpad.ts`; EC hardware toggle is the preferred path
 - **Window title in bar** — shows active window title + app icon in the bar center; hidden on empty workspace
 - **Keyboard layout indicator** — shows current XKB layout short code (e.g., "US", "BR") in system indicators; click cycles layout
 - **Bar module toggles** — all bar components (launcher, workspaces, window title, system resources, clock, weather, system indicators, keyboard layout) can be shown/hidden individually from Settings → Bar
-- **System updates checker** — `UpdatesService` singleton detects OS (NixOS, Arch, Fedora) and polls for pending updates every 30 min; shows count badge in bar system indicators; click to refresh
 - **Night Light** — `NightLight` singleton manages `hyprsunset` subprocess for blue light filtering; QS toggle with temperature slider (2000K–6500K) and auto-schedule via sunrise/sunset; settings in Settings → General
 - **Idle / Auto-Lock controls** — `Hypridle` singleton generates `~/.config/hypr/hypridle.conf` dynamically and manages `hypridle` subprocess; QS toggle with lock timeout and dim-before-lock options; respects Caffeinated inhibit state
 - **Clipboard History** — launcher prefix mode: typing `>` switches to clipboard search via `cliphist`; shows text preview and image indicators; Enter copies selected item back to clipboard

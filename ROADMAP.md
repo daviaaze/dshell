@@ -167,7 +167,7 @@
 
 ### 0.6 — System Resource Monitors in Bar
 
-- **Status:** `[WIP]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Why:** A basic implementation exists in `systemUsage.tsx`, but it lacks polish, configurability, and several metrics compared to HyprPanel/faiyt-ags.
 - **Files:**
@@ -429,7 +429,7 @@
 
 ### 1.4 — System Updates Checker
 
-- **Status:** `[DONE]`
+- **Status:** `[TODO]`
 - **Effort:** Low
 - **Why:** One-click visibility into pending updates is a standard bar feature (HyprPanel, Waybar custom scripts, GNOME extensions). For NixOS users, knowing when `nix flake update` has new inputs is valuable.
 - **Files:**
@@ -523,7 +523,7 @@
 
 ### 1.6 — Audio Output/Input Device Selector
 
-- **Status:** `[WIP]`
+- **Status:** `[DONE]`
 - **Effort:** Low
 - **Why:** A basic expandable endpoint list exists in `audioControl.tsx`, but it is buried behind an expander button, lacks device-type icons, and does not prominently show the active device. matshell, HyprPanel, and faiyt-ags expose this as a clean dropdown directly on the volume slider.
 - **Files:**

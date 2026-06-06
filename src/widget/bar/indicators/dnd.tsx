@@ -2,6 +2,7 @@ import Notifd from "gi://AstalNotifd"
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
 import { createState, onMount } from "gnim"
+import { getNotifdSafe } from "#/lib/notifdGuard"
 
 export default () => {
   const [visible, setVisible] = createState(false)
@@ -10,7 +11,8 @@ export default () => {
     // Defer Notifd initialization — AstalNotifd blocks 25s if another
     // notification daemon (dunst, mako) is already registered.
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      const notifd = Notifd.get_default()
+      const notifd = getNotifdSafe()
+      if (!notifd) return GLib.SOURCE_REMOVE
       setVisible(notifd.dontDisturb)
       notifd.connect("notify::dontDisturb", () => {
         setVisible(notifd.dontDisturb)

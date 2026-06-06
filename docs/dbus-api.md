@@ -19,7 +19,7 @@ gdbus call --session \
   '<action-name>' '[]' '{}'
 ```
 
-This is the method used in Hyprland keybindings and `hypridle.conf`. It bypasses GJS startup entirely, making it ~100x faster than spawning `shade-shell`.
+This is the method used in Hyprland keybindings and `hypridle.conf`. It bypasses GJS startup entirely, making it ~100x faster than spawning `shade-shell`. The `shade-shell` binary itself also resolves to the same D-Bus call via `Gio.SimpleAction` internally.
 
 ### 2. shade-shell CLI (~1s)
 
@@ -27,7 +27,7 @@ This is the method used in Hyprland keybindings and `hypridle.conf`. It bypasses
 shade-shell <command> [subcommand]
 ```
 
-Useful for scripting and manual invocation. Internally resolves to the same D-Bus call but incurs GJS startup overhead.
+Useful for scripting and manual invocation. Internally uses `Gio.SimpleAction.activate()` which calls the same D-Bus method but incurs GJS startup overhead.
 
 ---
 

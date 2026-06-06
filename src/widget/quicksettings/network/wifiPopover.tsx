@@ -8,18 +8,15 @@ interface WifiPopoverProps {
   wifi: Network.Wifi
   connectingAp: Accessor<string | null>
   setConnectingAp: (v: string | null) => void
-  setPasswordDialog: (
-    v: { ap: Network.AccessPoint; entry: Gtk.Entry } | null,
-  ) => void
 }
 
 export default ({
   wifi,
   connectingAp,
   setConnectingAp,
-  setPasswordDialog,
 }: WifiPopoverProps) => {
   const wifiEnabled = createBinding(wifi, "enabled")
+  const scanning = createBinding(wifi, "scanning")
 
   return (
     <Gtk.Box
@@ -29,7 +26,12 @@ export default ({
     >
       <Gtk.Box spacing={4}>
         <Gtk.Button hexpand onClicked={() => wifi.scan()}>
-          <Adw.ButtonContent iconName="view-refresh-symbolic" label="Scan" />
+          <Adw.ButtonContent
+            iconName={scanning.as((s) =>
+              s ? "content-loading-symbolic" : "view-refresh-symbolic",
+            )}
+            label="Scan"
+          />
         </Gtk.Button>
         <Gtk.Button onClicked={() => (wifi.enabled = !wifi.enabled)}>
           <Adw.ButtonContent
@@ -52,7 +54,6 @@ export default ({
             wifi={wifi}
             connectingAp={connectingAp}
             setConnectingAp={setConnectingAp}
-            setPasswordDialog={setPasswordDialog}
           />
         </Gtk.Box>
       </Gtk.ScrolledWindow>

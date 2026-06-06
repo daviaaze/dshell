@@ -119,19 +119,6 @@ tooltip.background label {
   margin-right: 8px;
 }
 
-.gap-4 {
-  spacing: 4px;
-}
-.gap-8 {
-  spacing: 8px;
-}
-.gap-12 {
-  spacing: 12px;
-}
-.gap-16 {
-  spacing: 16px;
-}
-
 /* Popover content padding — standard Margins inside popovers */
 .popover-padded {
   margin: 8px;
@@ -160,6 +147,38 @@ tooltip.background label {
 /* ═══════════════════════════════════════════════════════════════════════════
    WIDGET SURFACES
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Tray popovers — cssClasses={[]} kills native shadow but removes
+   .background and .menu classes. Replicate their styling via
+   type selectors so they work without any CSS classes.            */
+
+/* popover.background replacement */
+popover {
+  background-color: transparent;
+}
+
+/* Menu items — GtkPopoverMenu may create modelbutton or button.model
+   nodes depending on GTK version. Target both.                   */
+popover modelbutton,
+popover button.model {
+  padding: 8px 12px;
+  min-height: 30px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+popover modelbutton:hover,
+popover button.model:hover {
+  background: alpha(var(--window-fg-color), 0.07);
+}
+
+popover modelbutton:active,
+popover button.model:active {
+  background: alpha(var(--window-fg-color), 0.12);
+}
 
 /* Bar — top/bottom panel */
 .bar {

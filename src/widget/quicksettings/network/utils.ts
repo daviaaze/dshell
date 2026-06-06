@@ -1,4 +1,7 @@
 import Network from "gi://AstalNetwork"
+import NM from "gi://NM?version=1.0"
+
+// ── Byte-string helpers ────────────────────────────────────────────
 
 export function bytesToString(value: any): string | null {
   if (value === null || value === undefined) return null
@@ -40,4 +43,143 @@ export function bssidEquals(a: any, b: any): boolean {
   const sb = bytesToString(b)
   if (sa === null || sb === null) return false
   return sa.toLowerCase() === sb.toLowerCase()
+}
+
+// ── WiFi icon mapping (Adwaita icon theme) ─────────────────────────
+
+/**
+ * Compute the correct WiFi icon name from device state.
+ * Does NOT use AstalNetwork's unreliable `iconName` property.
+ */
+export function wifiIconName(
+  strength: number,
+  enabled: boolean,
+  state: Network.DeviceState,
+): string {
+  if (!enabled) return "network-wireless-offline-symbolic"
+
+  switch (state) {
+    case Network.DeviceState.CONFIG:
+    case Network.DeviceState.NEED_AUTH:
+    case Network.DeviceState.IP_CONFIG:
+    case Network.DeviceState.IP_CHECK:
+    case Network.DeviceState.SECONDARIES:
+    case Network.DeviceState.PREPARE:
+      return "network-wireless-acquiring-symbolic"
+    case Network.DeviceState.ACTIVATED:
+      if (strength >= 75) return "network-wireless-signal-excellent-symbolic"
+      if (strength >= 50) return "network-wireless-signal-good-symbolic"
+      if (strength >= 25) return "network-wireless-signal-ok-symbolic"
+      return "network-wireless-signal-weak-symbolic"
+    default:
+      return "network-wireless-signal-none-symbolic"
+  }
+}
+
+// ── Signal strength ────────────────────────────────────────────────
+
+/** Map strength percentage (0-100) to a 0.0-1.0 value for Gtk.LevelBar. */
+export function strengthFraction(strength: number): number {
+  return Math.max(0, Math.min(1, strength / 100))
+}
+
+// ── Security type detection ────────────────────────────────────────
+
+/**
+ * Derive a human-readable security label from AP flags.
+ * Returns e.g. "WPA3", "WPA2", "WPA1", "WEP", "Enhanced Open", "Open".
+ */
+export function securityLabel(ap: Network.AccessPoint): string {
+  const rsn = ap.rsnFlags ?? 0
+  const wpa = ap.wpaFlags ?? 0
+  const flags = ap.flags ?? 0
+
+  // WPA3: RSN with SAE (Simultaneous Authentication of Equals)
+  if (rsn & NM.__80211ApSecurityFlags.KEY_MGMT_SAE) {
+    return "WPA3"
+  }
+
+  // Enhanced Open: OWE (Opportunistic Wireless Encryption)
+  if (rsn & NM.__80211ApSecurityFlags.KEY_MGMT_OWE) {
+    return "Enhanced Open"
+  }
+
+  // WPA2/WPA3 Transitional: both PSK and SAE
+  if (
+    rsn & NM.__80211ApSecurityFlags.KEY_MGMT_PSK &&
+    rsn & NM.__80211ApSecurityFlags.KEY_MGMT_SAE
+  ) {
+    return "WPA2/WPA3"
+  }
+
+  // WPA2: RSN with PSK or 802.1X
+  if (
+    rsn & NM.__80211ApSecurityFlags.KEY_MGMT_PSK ||
+    rsn & NM.__80211ApSecurityFlags.KEY_MGMT_802_1X
+  ) {
+    return "WPA2"
+  }
+
+  // WPA1: WPA flags present with PSK or 802.1X
+  if (wpa !== 0) {
+    if (
+      wpa & NM.__80211ApSecurityFlags.KEY_MGMT_PSK ||
+      wpa & NM.__80211ApSecurityFlags.KEY_MGMT_802_1X
+    ) {
+      return "WPA1"
+    }
+    // Some partial WPA support
+    return "WPA"
+  }
+
+  // WEP: privacy flag but no WPA/RSN
+  if (flags & NM.__80211ApFlags.PRIVACY) {
+    return "WEP"
+  }
+
+  // Open network
+  return "Open"
+}
+
+/**
+ * Whether the AP uses any encryption (for lock icon display).
+ * Uses the same logic as securityLabel but optimized for boolean check.
+ */
+export function isSecure(ap: Network.AccessPoint): boolean {
+  const rsn = ap.rsnFlags ?? 0
+  const wpa = ap.wpaFlags ?? 0
+  const flags = ap.flags ?? 0
+  return (
+    rsn !== 0 ||
+    wpa !== 0 ||
+    (flags & NM.__80211ApFlags.PRIVACY) !== 0
+  )
+}
+
+// ── Saved / known network detection ────────────────────────────────
+
+/**
+ * Check if an AP has any saved (known) NM connections.
+ */
+export function isSaved(ap: Network.AccessPoint): boolean {
+  try {
+    const conns = ap.get_connections()
+    if (!conns) return false
+    // GLib.List check
+    let count = 0
+    let l: any = conns
+    while (l) {
+      count++
+      l = l.next
+    }
+    return count > 0
+  } catch {
+    return false
+  }
+}
+
+// ── AP comparison ──────────────────────────────────────────────────
+
+export function sameAp(a: Network.AccessPoint, b: Network.AccessPoint): boolean {
+  return bssidEquals(a.bssid, b.bssid)
 }

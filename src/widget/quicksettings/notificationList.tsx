@@ -6,6 +6,7 @@ import GLib from "gi://GLib?version=2.0"
 import { createBinding, createState, For, onMount } from "gnim"
 import Notification from "#/widget/common/notification"
 import NotificationHistory from "#/lib/notificationHistory"
+import { getNotifdSafe } from "#/lib/notifdGuard"
 
 /**
  * Inner content component — only mounted once Notifd is initialized.
@@ -244,7 +245,8 @@ export const NotificationList = () => {
   // when another notification daemon is already registered.
   onMount(() => {
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      setNotifd(Notifd.get_default())
+      const n = getNotifdSafe()
+      if (n) setNotifd(n)
       return GLib.SOURCE_REMOVE
     })
   })

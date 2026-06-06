@@ -68,8 +68,14 @@ export const TrayBox = () => {
               self.insert_action_group("dbusmenu", item.actionGroup)
               usePopoverCleanup(self)
             }}
-            popover={undefined}
-            menuModel={item.menuModel}
+            popover={
+              // cssClasses={[]} is the ONLY way to kill the native shadow.
+              // We rebuild visual styling entirely via type-selector CSS.
+              <Gtk.PopoverMenu
+                cssClasses={[]}
+                menuModel={item.menuModel}
+              />
+            }
             tooltip_markup={createBinding(item, "tooltip_markup")}
           >
             <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />

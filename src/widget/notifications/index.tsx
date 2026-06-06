@@ -7,6 +7,7 @@ import { For, createBinding, createState, createComputed, onMount } from "gnim"
 import Notification from "#/widget/common/notification"
 import { app } from "#/App"
 import WindowManager from "#/lib/windowManager"
+import { getNotifdSafe } from "#/lib/notifdGuard"
 
 const NotificationContent = ({
   notifd,
@@ -111,8 +112,11 @@ export default () => {
     let initialized = false
 
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      const n = Notifd.get_default()
-      initialized = true
+      const n = getNotifdSafe()
+      if (!n) {
+        initialized = true
+        return GLib.SOURCE_REMOVE
+      }
       setNotifd(n)
       setDontDisturb(n.dontDisturb)
       n.connect("notify::dontDisturb", () => {

@@ -3,6 +3,7 @@ import Gio from "gi://Gio"
 import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register } from "gnim/gobject"
 import logger from "#/lib/logger"
+import { getNotifdSafe } from "#/lib/notifdGuard"
 
 const CACHE_DIR = `${GLib.get_user_cache_dir()}/shade`
 const HISTORY_FILE = `${CACHE_DIR}/notifications.json`
@@ -71,7 +72,8 @@ export default class NotificationHistory extends GObject.Object {
   }
 
   #initNotifd() {
-    const notifd = Notifd.get_default()
+    const notifd = getNotifdSafe()
+    if (!notifd) return
     notifd.connect("notified", (_, id) => {
       const n = notifd.get_notification(id)
       if (!n) return

@@ -537,7 +537,7 @@
 
 ### D.5 — System Updates Checker
 
-- **Status:** `[DONE]`
+- **Status:** `[TODO]`
 - **Effort:** Low
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.4

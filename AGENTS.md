@@ -209,6 +209,72 @@ And update `CHANGELOG.md`.
 
 ---
 
+## Documentation Maintenance
+
+Rules for keeping docs from rotting. Every violation found in the 2026-06-01 audit
+is traceable to breaking one of these.
+
+### 1. CHANGELOG entries must be verifiable
+
+Before writing a CHANGELOG entry under `### Added`, confirm the files exist.
+If an entry says *"Added `src/lib/foo.ts`"*, then `test -f src/lib/foo.ts` must
+pass in the current branch. Describe what was **actually merged**, not what is
+planned or desired.
+
+```bash
+# Before claiming a feature in CHANGELOG, verify its files exist:
+test -f src/lib/updates.ts || echo "LIE — do not add to CHANGELOG"
+```
+
+### 2. Status changes require evidence
+
+A `[DONE]` marker in ROADMAP.md or ARCHITECTURE_ACTION_PLAN.md means: code
+exists in the current branch **and** builds. Never batch-mark items done.
+Each status change must cite a file, a commit hash, or both.
+
+```markdown
+<!-- ❌ LIE — no evidence -->
+- **Status:** `[DONE]`
+
+<!-- ✅ CORRECT -->
+- **Status:** `[DONE]` (see `src/lib/foo.ts`, commit a1b2c3d)
+```
+
+### 3. PI_CONTEXT.md is ephemeral
+
+It is a session scratchpad, not a permanent document. After the task completes,
+clear it to a single line:
+
+```markdown
+> Task completed YYYY-MM-DD. See git log for details.
+```
+
+Never leave stale claims about deleted files, active changes, or build status
+in PI_CONTEXT.md. If the information is permanent, it belongs in CHANGELOG.md
+or AGENTS.md.
+
+### 4. File deletions must trigger a doc grep
+
+When deleting or renaming **any** source file, run:
+
+```bash
+grep -rn "filename" *.md docs/*.md PI_CONTEXT.md 2>/dev/null
+```
+
+Update every reference before committing. A deleted `shade-toggle.sh` left 3
+documents pointing to a ghost.
+
+### 5. The "Where to Find Things" table is canonical
+
+The table at the top of AGENTS.md is the single source of truth for file
+locations. When a file is created or moved:
+
+1. Update the table **first**
+2. Then update any other docs that reference the old path
+3. Trust the table over other documents when they conflict
+
+---
+
 ## Runtime Debugging
 
 Shade runs as a systemd user service. All output goes to journald.

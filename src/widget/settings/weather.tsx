@@ -42,21 +42,33 @@ export default () => {
         )}
         onNotifyValue={(self) => settings.setLongitude(self.value)}
       />
-      <Adw.ButtonRow
-        startIconName={"find-location-symbolic"}
+      <Adw.ActionRow
         title={"Detect Location Now"}
+        activatable
         onActivated={() => weather.detectLocation()}
-      />
-      <Adw.ButtonRow
-        startIconName={"view-refresh-symbolic"}
+      >
+        <Gtk.Image
+          $type="prefix"
+          iconName="find-location-symbolic"
+          pixelSize={16}
+        />
+      </Adw.ActionRow>
+      <Adw.ActionRow
         title={"Update Weather"}
+        activatable
         onActivated={() =>
           (weather.location = GWeather.Location.get_world()?.find_nearest_city(
             settings.latitude.get(),
             settings.longitude.get(),
           ))
         }
-      />
+      >
+        <Gtk.Image
+          $type="prefix"
+          iconName="view-refresh-symbolic"
+          pixelSize={16}
+        />
+      </Adw.ActionRow>
     </Adw.PreferencesGroup>
   )
 }

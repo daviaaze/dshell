@@ -1,5 +1,6 @@
 import GObject from "gi://GObject?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
+import GLib from "gi://GLib?version=2.0"
 
 const TIMEOUT_MS = 2000
 
@@ -30,9 +31,14 @@ export default ({
           visibilityTimeoutId = setTimeout(() => (self.visible = false), 200)
         }, TIMEOUT_MS)
       }
-      for (const signal of signals) {
-        connectable.connect(signal, showPopup)
-      }
+      // Defer signal connections so OSD widget creation doesn't block
+      // the main thread with Wireplumber/Brightness singleton init.
+      GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        for (const signal of signals) {
+          connectable.connect(signal, showPopup)
+        }
+        return GLib.SOURCE_REMOVE
+      })
     }}
   >
     {widget}

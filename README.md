@@ -20,7 +20,6 @@ Built with [Astal](https://aylur.github.io/astal/) (AyLur's toolkit) and [Gnim](
 - **Recording** — screen, region, and window recording with `wf-recorder`
 - **Auto Idle** — configurable idle timeout with screen dim and auto-lock via `hypridle`
 - **Night Light** — blue light filter with temperature slider and auto-schedule
-- **System Updates** — automatic update checking for NixOS/Arch/Fedora
 
 ## Quick Start
 

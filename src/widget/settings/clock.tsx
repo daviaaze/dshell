@@ -46,18 +46,19 @@ export default () => {
                 spacing={4}
                 cssClasses={["linked"]}
               >
-                {PRESET_TIMEZONES.map((tz) => (
-                  <Gtk.Button
-                    onClicked={() => {
-                      const current = general.timezones.get() as string[]
-                      if (!current.includes(tz)) {
-                        general.setTimezones([...current, tz])
-                      }
-                    }}
-                  >
-                    <Gtk.Label label={tz.replaceAll("_", " ")} />
-                  </Gtk.Button>
-                ))}
+                <For each={() => PRESET_TIMEZONES}>
+                  {(tz: string) => (
+                    <Gtk.Button
+                      label={tz.replaceAll("_", " ")}
+                      onClicked={() => {
+                        const current = general.timezones.get() as string[]
+                        if (!current.includes(tz)) {
+                          general.setTimezones([...current, tz])
+                        }
+                      }}
+                    />
+                  )}
+                </For>
               </Gtk.Box>
             </Gtk.ScrolledWindow>
           </Gtk.Popover>

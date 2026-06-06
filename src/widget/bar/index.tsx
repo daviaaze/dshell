@@ -14,7 +14,6 @@ import Clock from "./clock"
 import Launcher from "./launcher"
 import { WeatherButton } from "./weather"
 import WindowTitle from "./windowTitle"
-import KeyboardIndicator from "./indicators/keyboard"
 
 export default () => {
   const bar = useSettings().bar

@@ -94,9 +94,10 @@ export default ({
           )}
         >
           {(action: Notifd.Action) => (
-            <Gtk.Button onClicked={() => notif.invoke(action.id)}>
-              <Gtk.Label label={action.label} />
-            </Gtk.Button>
+            <Gtk.Button
+              onClicked={() => notif.invoke(action.id)}
+              label={action.label}
+            />
           )}
         </For>
       </Gtk.Box>

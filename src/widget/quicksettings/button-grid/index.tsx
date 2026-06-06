@@ -2,7 +2,6 @@ import Gtk from "gi://Gtk?version=4.0"
 import logger from "#/lib/logger"
 import Powerprofiles from "./powerprofiles"
 
-logger.log("ButtonGrid: loading")
 import ColorScheme from "./colorScheme"
 import Bluetooth from "./bluetooth"
 import Caffeinated from "./caffeinated"
@@ -16,6 +15,7 @@ import IdleControls from "./idleControls"
 import HypridleLib from "#/lib/hypridle"
 
 export const ButtonGrid = ({ cols = 2 }: { cols?: number }) => {
+  logger.log("ButtonGrid: loading")
   logger.log("ButtonGrid: rendering")
   const nightLight = NightLightLib.get_default()
   const items = [
