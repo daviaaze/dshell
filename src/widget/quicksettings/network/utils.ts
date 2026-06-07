@@ -1,5 +1,14 @@
 import Network from "gi://AstalNetwork"
-import NM from "gi://NM?version=1.0"
+
+// ── NM 802.11 flag constants ──────────────────────────────────────
+// NM.__80211ApSecurityFlags is not reliably exposed across GIR versions.
+// These are the stable NM values from libnm.
+
+const NM_AP_SEC_KEY_MGMT_PSK = 0x00000100
+const NM_AP_SEC_KEY_MGMT_802_1X = 0x00000200
+const NM_AP_SEC_KEY_MGMT_SAE = 0x00000400
+const NM_AP_SEC_KEY_MGMT_OWE = 0x00000800
+const NM_AP_FLAGS_PRIVACY = 0x00000001
 
 // ── Byte-string helpers ────────────────────────────────────────────
 
@@ -95,27 +104,27 @@ export function securityLabel(ap: Network.AccessPoint): string {
   const flags = ap.flags ?? 0
 
   // WPA3: RSN with SAE (Simultaneous Authentication of Equals)
-  if (rsn & NM.__80211ApSecurityFlags.KEY_MGMT_SAE) {
+  if (rsn & NM_AP_SEC_KEY_MGMT_SAE) {
     return "WPA3"
   }
 
   // Enhanced Open: OWE (Opportunistic Wireless Encryption)
-  if (rsn & NM.__80211ApSecurityFlags.KEY_MGMT_OWE) {
+  if (rsn & NM_AP_SEC_KEY_MGMT_OWE) {
     return "Enhanced Open"
   }
 
   // WPA2/WPA3 Transitional: both PSK and SAE
   if (
-    rsn & NM.__80211ApSecurityFlags.KEY_MGMT_PSK &&
-    rsn & NM.__80211ApSecurityFlags.KEY_MGMT_SAE
+    rsn & NM_AP_SEC_KEY_MGMT_PSK &&
+    rsn & NM_AP_SEC_KEY_MGMT_SAE
   ) {
     return "WPA2/WPA3"
   }
 
   // WPA2: RSN with PSK or 802.1X
   if (
-    rsn & NM.__80211ApSecurityFlags.KEY_MGMT_PSK ||
-    rsn & NM.__80211ApSecurityFlags.KEY_MGMT_802_1X
+    rsn & NM_AP_SEC_KEY_MGMT_PSK ||
+    rsn & NM_AP_SEC_KEY_MGMT_802_1X
   ) {
     return "WPA2"
   }
@@ -123,8 +132,8 @@ export function securityLabel(ap: Network.AccessPoint): string {
   // WPA1: WPA flags present with PSK or 802.1X
   if (wpa !== 0) {
     if (
-      wpa & NM.__80211ApSecurityFlags.KEY_MGMT_PSK ||
-      wpa & NM.__80211ApSecurityFlags.KEY_MGMT_802_1X
+      wpa & NM_AP_SEC_KEY_MGMT_PSK ||
+      wpa & NM_AP_SEC_KEY_MGMT_802_1X
     ) {
       return "WPA1"
     }
@@ -133,7 +142,7 @@ export function securityLabel(ap: Network.AccessPoint): string {
   }
 
   // WEP: privacy flag but no WPA/RSN
-  if (flags & NM.__80211ApFlags.PRIVACY) {
+  if (flags & NM_AP_FLAGS_PRIVACY) {
     return "WEP"
   }
 
@@ -152,7 +161,7 @@ export function isSecure(ap: Network.AccessPoint): boolean {
   return (
     rsn !== 0 ||
     wpa !== 0 ||
-    (flags & NM.__80211ApFlags.PRIVACY) !== 0
+    (flags & NM_AP_FLAGS_PRIVACY) !== 0
   )
 }
 

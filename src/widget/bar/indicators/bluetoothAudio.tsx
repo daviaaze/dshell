@@ -38,6 +38,10 @@ function batteryColor(level: number | null): string {
   return ""
 }
 
+export default () => {
+  const bluetooth = Bluetooth.get_default()
+  const { bar } = useSettings()
+
   const [deviceInfo, setDeviceInfo] = createState<
     { name: string; icon: string; battery: number | null }[]
   >([])
@@ -64,7 +68,6 @@ function batteryColor(level: number | null): string {
           if (dev) dev.disconnect(id)
           batterySignals.delete(addr)
         }
-      }
       }
 
       // Connect battery signals for newly connected devices
