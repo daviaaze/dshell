@@ -4,11 +4,17 @@ export function toArray<T>(list: any): T[] {
   const arr: T[] = []
   let l = list
   while (l) {
-    const item = l.data !== undefined ? l.data : l
-    if (item !== undefined && item !== null) {
-      arr.push(item)
+    try {
+      const item = l.data !== undefined ? l.data : l
+      if (item !== undefined && item !== null) {
+        arr.push(item)
+      }
+      l = l.next
+    } catch {
+      // Skip items with unreadable GIR data (e.g. NM pointers that
+      // GJS can't marshal — "Can't convert non-null pointer to JS value")
+      l = l.next
     }
-    l = l.next
   }
   return arr
 }

@@ -26,21 +26,29 @@ function getKnownNetworks(
   const seen = new Set<string>()
   const results: { ssid: string; secure: boolean; secLabel: string; connections: NM.RemoteConnection[] }[] = []
 
-  const aps = toArray<Network.AccessPoint>(wifi.accessPoints)
-  for (const ap of aps) {
-    const ssid = ssidOf(ap)
-    if (seen.has(ssid)) continue
-    const conns = ap.get_connections()
-    if (!conns) continue
-    const connArr = toArray<NM.RemoteConnection>(conns)
-    if (connArr.length === 0) continue
-    seen.add(ssid)
-    results.push({
-      ssid,
-      secure: isSecure(ap),
-      secLabel: securityLabel(ap),
-      connections: connArr,
-    })
+  try {
+    const aps = toArray<Network.AccessPoint>(wifi.accessPoints)
+    for (const ap of aps) {
+      try {
+        const ssid = ssidOf(ap)
+        if (seen.has(ssid)) continue
+        const conns = ap.get_connections()
+        if (!conns) continue
+        const connArr = toArray<NM.RemoteConnection>(conns)
+        if (connArr.length === 0) continue
+        seen.add(ssid)
+        results.push({
+          ssid,
+          secure: isSecure(ap),
+          secLabel: securityLabel(ap),
+          connections: connArr,
+        })
+      } catch {
+        // skip APs with unreadable NM data
+      }
+    }
+  } catch (e) {
+    logger.error("settings-network", "getKnownNetworks failed:", e)
   }
 
   return results.sort((a, b) => a.ssid.localeCompare(b.ssid))
