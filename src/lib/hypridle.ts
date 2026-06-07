@@ -392,7 +392,7 @@ export default class Hypridle extends GObject.Object {
     try {
       AstalIO.Process.exec("pkill -x hypridle")
     } catch (e) {
-      logger.warn("hypridle", "pkill failed (hypridle may not be running):", e)
+      logger.debug("hypridle", "pkill skipped (hypridle not running):", e)
     }
     try {
       this.#process = AstalIO.Process.subprocessv(["hypridle"])
