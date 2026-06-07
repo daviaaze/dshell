@@ -468,8 +468,9 @@ export default () => {
         </Adw.ActionRow>
       </Adw.PreferencesGroup>
 
-      {/* Known Networks Section */}
-      <With value={wifi}>
+      {/* Known Networks — disabled: enumerating accessPoints triggers
+          nm-access-point assertion storm and SEGV on affected systems */}
+      {/*<With value={wifi}>
         {(w) => {
           if (!w) return <></>
 
@@ -520,7 +521,7 @@ export default () => {
             </Adw.PreferencesGroup>
           )
         }}
-      </With>
+      </With>*/}
 
       {/* Wired Section */}
       <Adw.PreferencesGroup title="Wired" description="Ethernet connection">
@@ -548,10 +549,11 @@ export default () => {
         </With>
       </Adw.PreferencesGroup>
 
-      {/* Hotspot Section */}
+{/*
       <With value={wifi}>
         {(w) => (w ? <HotspotSection wifi={w} /> : <></>)}
       </With>
+      */}
 
       {/* Connectivity Section */}
       <Adw.PreferencesGroup title="Connectivity" description="Internet access status">

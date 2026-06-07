@@ -6,15 +6,14 @@ import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
 import { wifiIconName } from "./utils"
 import logger from "#/lib/logger"
-import WifiPopover from "./wifiPopover"
 
 export default () => {
   logger.log("Network: get_default()")
   const network = Network.get_default()
 
-  // Defer wifi binding creation to avoid NM synchronous D-Bus call
-  // during mount, which triggers ~100+ nm-access-point assertions and
-  // can cause a SEGV (memory corruption) on systems with bad AP data.
+  // Defer wifi binding to avoid NM synchronous D-Bus call during mount.
+  // Accessing accessPoints triggers nm-access-point assertions and SEGV
+  // on systems with corrupted NM AP data, so we never touch them.
   const [wifi, setWifi] = createState<Network.Wifi | null>(null)
   const [wifiReady, setWifiReady] = createState(false)
 
@@ -48,7 +47,6 @@ export default () => {
   const wifiSsid = wifi.as((w) => w?.ssid ?? null)
   const wifiEnabled = wifi.as((w) => w?.enabled ?? false)
 
-  // Blue "suggested-action" when connected (matching Bluetooth pattern)
   const wifiCssClasses = createComputed(
     [wifi],
     (w) => {
@@ -59,17 +57,36 @@ export default () => {
     },
   )
 
+  // Minimal popover — no AP list, no scan, no active_access_point.
+  // These all trigger nm-access-point assertions and SEGV on affected systems.
   const popover = (
     <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT}>
       <LinkedPopoverBox>
         <With value={wifi}>
           {(w: Network.Wifi | null) =>
             w ? (
-              <WifiPopover
-                wifi={w}
-                connectingAp={connectingAp}
-                setConnectingAp={setConnectingAp}
-              />
+              <Gtk.Box
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={4}
+                cssClasses={["popover-padded-lg"]}
+              >
+                <Gtk.Label
+                  cssClasses={["title-3"]}
+                  label={w.ssid ? `Connected to ${w.ssid}` : "Not connected"}
+                  halign={Gtk.Align.START}
+                />
+                <Gtk.Label
+                  cssClasses={["dim-label"]}
+                  label={w.enabled ? "WiFi is on" : "WiFi is off"}
+                  halign={Gtk.Align.START}
+                />
+                <Gtk.Button
+                  hexpand
+                  cssClasses={["raised"]}
+                  onClicked={() => (w.enabled = !w.enabled)}
+                  label={w.enabled ? "Turn WiFi Off" : "Turn WiFi On"}
+                />
+              </Gtk.Box>
             ) : (
               <Gtk.Label
                 cssClasses={["popover-padded-lg"]}
@@ -96,18 +113,7 @@ export default () => {
       onClick={() => {
         const w = wifi.get()
         if (!w) return
-        if (w.state === Network.DeviceState.ACTIVATED) {
-          const activeAp = w.active_access_point
-          if (activeAp) {
-            w
-              .deactivate_connection(activeAp)
-              .catch((e: Error) =>
-                logger.error("network", "deactivate failed:", e.message),
-              )
-          }
-        } else {
-          w.enabled = !w.enabled
-        }
+        w.enabled = !w.enabled
       }}
       popover={popover}
     />
