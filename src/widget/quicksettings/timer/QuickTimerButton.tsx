@@ -21,8 +21,8 @@ export const QuickTimerButton = () => {
     rem >= 0 ? fmtShort(rem) : "Timer",
   )
 
-  const icon = createComputed([running], (r) =>
-    r ? "alarm-symbolic" : "hourglass-symbolic",
+  const icon = createComputed([running], () =>
+    "emoji-recent-symbolic",
   )
 
   const cssClasses = createComputed([running], (r) =>
@@ -35,6 +35,8 @@ export const QuickTimerButton = () => {
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
         cssClasses={["popover-padded"]}
+        widthRequest={260}
+        halign={Gtk.Align.FILL}
       >
         <TimerSection />
       </Gtk.Box>

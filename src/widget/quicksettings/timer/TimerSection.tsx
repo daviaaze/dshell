@@ -37,12 +37,14 @@ export const TimerSection = () => {
       marginBottom={4}
       marginStart={4}
       marginEnd={4}
+      halign={Gtk.Align.FILL}
     >
       {/* ── Running state ── */}
       <Gtk.Box
         visible={isActive}
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
+        halign={Gtk.Align.FILL}
       >
         <Gtk.Label
           label={remaining.as((r) => fmtRemaining(r))}
@@ -80,6 +82,7 @@ export const TimerSection = () => {
         visible={isActive.as((a) => !a)}
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
+        halign={Gtk.Align.FILL}
       >
         {/* Mode toggle tabs */}
         <Gtk.Box cssClasses={["linked"]} halign={Gtk.Align.CENTER}>
@@ -172,7 +175,8 @@ export const TimerSection = () => {
         <Gtk.Button
           visible={selectedMode.as((m) => m === "pomodoro")}
           cssClasses={["raised", "suggested-action"]}
-          halign={Gtk.Align.CENTER}
+          halign={Gtk.Align.FILL}
+          hexpand
           onClicked={() => timer.startPomodoro()}
           label="Start Pomodoro"
         />
