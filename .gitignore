@@ -8,3 +8,4 @@ result
 *.qcow2
 __pycache__/
 test-output/
+.superpowers/
