@@ -5,6 +5,7 @@ import Powerprofiles from "./powerprofiles"
 import ColorScheme from "./colorScheme"
 import Bluetooth from "./bluetooth"
 import Caffeinated from "./caffeinated"
+import { QuickTimerButton } from "../timer/QuickTimerButton"
 import Network from "#/widget/quicksettings/network"
 import Screenshot from "./screenshot"
 import NightLight from "./nightLight"
@@ -25,6 +26,7 @@ export const ButtonGrid = ({ cols = 2 }: { cols?: number }) => {
     <Network />,
     <Screenshot />,
     <Caffeinated />,
+    <QuickTimerButton />,
     nightLight.available ? <NightLight /> : null,
     TouchpadLib.get_default().available ? <Touchpad /> : null,
     HypridleLib.get_default().available ? <IdleControls /> : null,
