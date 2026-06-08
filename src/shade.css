@@ -324,3 +324,21 @@ popover button.model:active {
 .scroll-compact:hover scrollbar {
   opacity: 1;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TIMER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.timer-active {
+  color: var(--accent-color);
+}
+
+.timer-display {
+  font-size: 2em;
+  font-weight: 700;
+}
+
+.timer-label {
+  opacity: 0.7;
+  font-size: 0.9em;
+}
