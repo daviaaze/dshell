@@ -1,12 +1,13 @@
 import Gio from "gi://Gio"
 import { createSettings } from "gnim-schemas"
 import { createContext } from "gnim"
-import { barSchema, generalSchema, weatherSchema } from "./gschema"
+import { barSchema, generalSchema, weatherSchema, timerSchema } from "./gschema"
 
 function createAppSettings() {
   const barSettings = new Gio.Settings({ schemaId: barSchema.id })
   const weatherSettings = new Gio.Settings({ schemaId: weatherSchema.id })
   const generalSettings = new Gio.Settings({ schemaId: generalSchema.id })
+  const timerSettings = new Gio.Settings({ schemaId: timerSchema.id })
   return {
     bar: {
       barSettings,
@@ -19,6 +20,10 @@ function createAppSettings() {
     weather: {
       weatherSettings,
       ...createSettings(weatherSettings, weatherSchema),
+    },
+    timer: {
+      timerSettings,
+      ...createSettings(timerSettings, timerSchema),
     },
   }
 }
