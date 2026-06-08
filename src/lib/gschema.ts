@@ -97,6 +97,35 @@ export const weatherSchema = new Schema({
     summary: "Automatically detect location for weather",
   })
 
+export const timerSchema = new Schema({
+  id: id + ".timer",
+  path: path + "timer/",
+})
+  .key("pomodoro-work-duration", "i", {
+    default: 25,
+    summary: "Pomodoro work duration in minutes",
+  })
+  .key("pomodoro-break-duration", "i", {
+    default: 5,
+    summary: "Pomodoro short break duration in minutes",
+  })
+  .key("pomodoro-long-break-duration", "i", {
+    default: 15,
+    summary: "Pomodoro long break duration in minutes",
+  })
+  .key("pomodoro-sessions-before-long-break", "i", {
+    default: 4,
+    summary: "Number of work sessions before a long break",
+  })
+  .key("countdown-presets", "ai", {
+    default: [1, 5, 10, 15, 30, 60],
+    summary: "Countdown preset durations in minutes",
+  })
+  .key("timer-alert-sound", "s", {
+    default: "complete",
+    summary: "Sound name for timer alerts (freedesktop sound theme)",
+  })
+
 export const generalSchema = new Schema({
   id: id + ".general",
   path: path + "general/",
@@ -188,18 +217,6 @@ export const generalSchema = new Schema({
     default: false,
     summary: "Extract accent colors from wallpaper using matugen",
   })
-  .key("cava-enabled", "b", {
-    default: false,
-    summary: "Show CAVA audio visualizer in media expander",
-  })
-  .key("cava-bars", "i", {
-    default: 16,
-    summary: "Number of CAVA visualizer bars (8-32)",
-  })
-  .key("cava-framerate", "i", {
-    default: 60,
-    summary: "CAVA visualizer framerate",
-  })
   .key("debug-enabled", "b", {
     default: false,
     summary: "Enable DEBUG-level logging (very verbose)",
@@ -210,4 +227,4 @@ export const generalSchema = new Schema({
       "Debug categories to enable (empty = all). Categories: mount, state, theme, dbus, exec, perf, memory",
   })
 
-export default defineSchemaList([barSchema, generalSchema, weatherSchema])
+export default defineSchemaList([barSchema, generalSchema, weatherSchema, timerSchema])
