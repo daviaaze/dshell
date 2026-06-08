@@ -16,6 +16,7 @@ import Hypridle from "#/lib/hypridle"
 import Touchpad from "#/lib/touchpad"
 import Theming from "#/lib/theming"
 import NotificationHistory from "#/lib/notificationHistory"
+import TimerService from "./quicksettings/timer/TimerService"
 import { initAutoSwitch } from "#/lib/audioAutoSwitch"
 import { app } from "#/App"
 import { useSettings } from "#/lib/settings"
@@ -50,6 +51,13 @@ export const widgets = () => {
   Theming.get_default().init(s.general)
   NotificationHistory.get_default().init(s.general)
   initAutoSwitch()
+  TimerService.get_default().init(
+    app,
+    s.timer.pomodoroWorkDuration.get(),
+    s.timer.pomodoroBreakDuration.get(),
+    s.timer.pomodoroLongBreakDuration.get(),
+    s.timer.pomodoroSessionsBeforeLongBreak.get(),
+  )
   perf.stop("services-init", "mount")
 
   const safe = (name: string, fn: () => void) => {
