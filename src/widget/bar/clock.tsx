@@ -135,7 +135,12 @@ export default ({
                 label="Timer"
                 halign={Gtk.Align.CENTER}
               />
-              <TimerSection />
+              <Gtk.Box
+                widthRequest={220}
+                halign={Gtk.Align.FILL}
+              >
+                <TimerSection />
+              </Gtk.Box>
             </Gtk.Box>
           </Gtk.Popover>
         ) as Gtk.Popover

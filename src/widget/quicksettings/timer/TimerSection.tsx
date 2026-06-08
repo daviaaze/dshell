@@ -12,7 +12,11 @@ function fmtRemaining(ms: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 }
 
-const PRESETS = [1, 5, 10, 15, 30, 60]
+const PRESETS = [
+  [1, 5],
+  [10, 15],
+  [30, 60],
+]
 
 export const TimerSection = () => {
   const timer = TimerService.get_default()
@@ -29,14 +33,28 @@ export const TimerSection = () => {
 
   const [selectedMode, setSelectedMode] = createState<"countdown" | "pomodoro">("countdown")
 
+  const startCustom = (self: Gtk.Button) => {
+    const box = self.get_parent()
+    if (!(box instanceof Gtk.Box)) return
+    const spins: Gtk.SpinButton[] = []
+    let child = box.get_first_child()
+    while (child) {
+      if (child instanceof Gtk.SpinButton) spins.push(child)
+      child = child.get_next_sibling()
+    }
+    if (spins.length >= 3) {
+      const h = spins[0]!.get_value_as_int()
+      const m = spins[1]!.get_value_as_int()
+      const s = spins[2]!.get_value_as_int()
+      const ms = (h * 3600 + m * 60 + s) * 1000
+      if (ms > 0) timer.startCountdown(ms)
+    }
+  }
+
   return (
     <Gtk.Box
       orientation={Gtk.Orientation.VERTICAL}
       spacing={8}
-      marginTop={4}
-      marginBottom={4}
-      marginStart={4}
-      marginEnd={4}
       halign={Gtk.Align.FILL}
     >
       {/* ── Running state ── */}
@@ -57,21 +75,25 @@ export const TimerSection = () => {
           halign={Gtk.Align.CENTER}
           visible={label.as((l) => l.length > 0)}
         />
-        <Gtk.ProgressBar fraction={fraction} cssClasses={["osd"]} />
-        <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
+        <Gtk.ProgressBar fraction={fraction} cssClasses={["osd"]} hexpand />
+        <Gtk.Box spacing={4} halign={Gtk.Align.FILL} hexpand>
           <Gtk.Button
-            cssClasses={["circular", "flat"]}
+            cssClasses={["flat"]}
             iconName={running.as((r) =>
               r ? "media-playback-pause-symbolic" : "media-playback-start-symbolic",
             )}
+            label={running.as((r) => (r ? "Pause" : "Resume"))}
+            hexpand
             onClicked={() => {
               if (timer.running) timer.pause()
               else timer.resume()
             }}
           />
           <Gtk.Button
-            cssClasses={["circular", "flat"]}
+            cssClasses={["flat"]}
             iconName={"media-playback-stop-symbolic"}
+            label="Stop"
+            hexpand
             onClicked={() => timer.cancel()}
           />
         </Gtk.Box>
@@ -102,84 +124,100 @@ export const TimerSection = () => {
           </Gtk.ToggleButton>
         </Gtk.Box>
 
-        {/* Countdown presets */}
+        {/* Countdown view */}
         <Gtk.Box
           visible={selectedMode.as((m) => m === "countdown")}
-          cssClasses={["linked"]}
-          halign={Gtk.Align.CENTER}
+          orientation={Gtk.Orientation.VERTICAL}
+          spacing={6}
+          halign={Gtk.Align.FILL}
         >
-          {PRESETS.map((min) => (
+          {/* Preset grid */}
+          <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={4}
+            halign={Gtk.Align.FILL}
+          >
+            {PRESETS.map((row, i) => (
+              <Gtk.Box spacing={4} halign={Gtk.Align.FILL}>
+                {row.map((min) => (
+                  <Gtk.Button
+                    cssClasses={["flat"]}
+                    hexpand
+                    onClicked={() => timer.startCountdown(min * 60 * 1000)}
+                  >
+                    <Gtk.Label
+                      label={min >= 60 ? `${min / 60}h` : `${min}m`}
+                    />
+                  </Gtk.Button>
+                ))}
+              </Gtk.Box>
+            ))}
+          </Gtk.Box>
+
+          {/* Custom entry */}
+          <Gtk.Box spacing={2} halign={Gtk.Align.CENTER}>
+            <Gtk.SpinButton
+              adjustment={Gtk.Adjustment.new(0, 0, 99, 1, 10, 0)}
+              digits={0}
+              valign={Gtk.Align.CENTER}
+              cssClasses={[]}
+              widthRequest={48}
+            />
+            <Gtk.Label label="h" valign={Gtk.Align.CENTER} />
+            <Gtk.SpinButton
+              adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
+              digits={0}
+              valign={Gtk.Align.CENTER}
+              cssClasses={[]}
+              widthRequest={48}
+            />
+            <Gtk.Label label="m" valign={Gtk.Align.CENTER} />
+            <Gtk.SpinButton
+              adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
+              digits={0}
+              valign={Gtk.Align.CENTER}
+              cssClasses={[]}
+              widthRequest={48}
+            />
+            <Gtk.Label label="s" valign={Gtk.Align.CENTER} />
             <Gtk.Button
               cssClasses={["flat"]}
-              onClicked={() => timer.startCountdown(min * 60 * 1000)}
+              onClicked={startCustom}
             >
-              <Gtk.Label
-                label={min >= 60 ? `${min / 60}h` : `${min}m`}
-              />
+              <Gtk.Label label="Go" />
             </Gtk.Button>
-          ))}
+          </Gtk.Box>
         </Gtk.Box>
 
-        {/* Custom countdown */}
+        {/* Pomodoro view */}
         <Gtk.Box
-          visible={selectedMode.as((m) => m === "countdown")}
-          spacing={4}
-          halign={Gtk.Align.CENTER}
-        >
-          <Gtk.SpinButton
-            adjustment={Gtk.Adjustment.new(0, 0, 99, 1, 10, 0)}
-            digits={0}
-            valign={Gtk.Align.CENTER}
-            cssClasses={[]}
-          />
-          <Gtk.Label label="h" valign={Gtk.Align.CENTER} />
-          <Gtk.SpinButton
-            adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
-            digits={0}
-            valign={Gtk.Align.CENTER}
-            cssClasses={[]}
-          />
-          <Gtk.Label label="m" valign={Gtk.Align.CENTER} />
-          <Gtk.SpinButton
-            adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
-            digits={0}
-            valign={Gtk.Align.CENTER}
-            cssClasses={[]}
-          />
-          <Gtk.Label label="s" valign={Gtk.Align.CENTER} />
-          <Gtk.Button
-            cssClasses={["flat"]}
-            onClicked={(self) => {
-              const box = self.get_parent()
-              if (!(box instanceof Gtk.Box)) return
-              const spins: Gtk.SpinButton[] = []
-              let child = box.get_first_child()
-              while (child) {
-                if (child instanceof Gtk.SpinButton) spins.push(child)
-                child = child.get_next_sibling()
-              }
-              if (spins.length >= 3) {
-                const h = spins[0]!.get_value_as_int()
-                const m = spins[1]!.get_value_as_int()
-                const s = spins[2]!.get_value_as_int()
-                const ms = (h * 3600 + m * 60 + s) * 1000
-                if (ms > 0) timer.startCountdown(ms)
-              }
-            }}
-          >
-            <Gtk.Label label="Go" />
-          </Gtk.Button>
-        </Gtk.Box>
-
-        {/* Pomodoro start */}
-        <Gtk.Button
           visible={selectedMode.as((m) => m === "pomodoro")}
-          cssClasses={["raised", "suggested-action"]}
+          orientation={Gtk.Orientation.VERTICAL}
+          spacing={8}
           halign={Gtk.Align.FILL}
-          hexpand
-          onClicked={() => timer.startPomodoro()}
-          label="Start Pomodoro"
-        />
+        >
+          <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={2}
+            halign={Gtk.Align.CENTER}
+          >
+            <Gtk.Label
+              label="Work: 25 min · Break: 5 min"
+              cssClasses={["caption"]}
+            />
+            <Gtk.Label
+              label="Long break: 15 min (every 4)"
+              cssClasses={["caption", "dim-label"]}
+            />
+          </Gtk.Box>
+          <Gtk.Button
+            cssClasses={["raised", "suggested-action"]}
+            halign={Gtk.Align.FILL}
+            hexpand
+            onClicked={() => timer.startPomodoro()}
+            label="Start Pomodoro"
+          />
+        </Gtk.Box>
       </Gtk.Box>
     </Gtk.Box>
   )

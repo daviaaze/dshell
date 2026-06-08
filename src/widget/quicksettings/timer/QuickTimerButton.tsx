@@ -35,7 +35,7 @@ export const QuickTimerButton = () => {
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
         cssClasses={["popover-padded"]}
-        widthRequest={260}
+        widthRequest={220}
         halign={Gtk.Align.FILL}
       >
         <TimerSection />
