@@ -7,7 +7,7 @@ import logger from "#/lib/logger"
 export type TimerMode = "none" | "countdown" | "pomodoro"
 
 @register({ GTypeName: "TimerService" })
-export default class TimerService extends GObject {
+export default class TimerService extends GObject.Object {
   static instance: TimerService
   static get_default() {
     if (!this.instance) this.instance = new TimerService()
