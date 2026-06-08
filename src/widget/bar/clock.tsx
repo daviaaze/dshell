@@ -75,6 +75,20 @@ export default ({
               orientation={Gtk.Orientation.VERTICAL}
               cssClasses={["popover-padded-lg"]}
             >
+              <Gtk.Box
+                visible={timerActive}
+                halign={Gtk.Align.CENTER}
+                spacing={4}
+              >
+                <Gtk.Label
+                  label={hour}
+                  cssClasses={["title-1", "numeric"]}
+                />
+                <Gtk.Label
+                  label={minute}
+                  cssClasses={["title-1", "numeric"]}
+                />
+              </Gtk.Box>
               <Gtk.Calendar
                 $={(self) => {
                   calendarRef = self
