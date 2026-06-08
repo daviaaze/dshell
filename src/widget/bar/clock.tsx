@@ -136,7 +136,7 @@ export default ({
                 halign={Gtk.Align.CENTER}
               />
               <Gtk.Box
-                widthRequest={220}
+                widthRequest={230}
                 halign={Gtk.Align.FILL}
               >
                 <TimerSection />
