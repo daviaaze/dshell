@@ -1,10 +1,12 @@
 import GLib from "gi://GLib"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
-import { Accessor, createState, For, onCleanup } from "gnim"
+import { Accessor, createBinding, createComputed, createState, For, onCleanup } from "gnim"
 import { useSettings } from "#/lib/settings"
 import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
 import { fmtOffset, cityName } from "#/lib/time"
+import TimerService from "#/widget/quicksettings/timer/TimerService"
+import { TimerSection } from "#/widget/quicksettings/timer/TimerSection"
 
 function updateCalendar(calendar: Gtk.Calendar) {
   const now = GLib.DateTime.new_now_local()
@@ -35,6 +37,17 @@ export default ({
 
   const localTz = GLib.TimeZone.new_local()
   let calendarRef: Gtk.Calendar | null = null
+
+  const timer = TimerService.get_default()
+  const timerRemaining = createBinding(timer, "remaining")
+  const timerActive = createComputed([timerRemaining], (rem) => rem >= 0)
+  const timerDisplay = createComputed([timerRemaining], (rem) => {
+    if (rem < 0) return ""
+    const totalSec = Math.max(0, Math.ceil(rem / 1000))
+    const m = Math.floor(totalSec / 60)
+    const s = totalSec % 60
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+  })
 
   return (
     <Gtk.MenuButton
@@ -102,6 +115,13 @@ export default ({
                   }}
                 </For>
               </Gtk.Box>
+              <Gtk.Separator />
+              <Gtk.Label
+                cssClasses={["title-3"]}
+                label="Timer"
+                halign={Gtk.Align.CENTER}
+              />
+              <TimerSection />
             </Gtk.Box>
           </Gtk.Popover>
         ) as Gtk.Popover
@@ -121,10 +141,24 @@ export default ({
           )}
           spacing={vertical.as((v) => (v ? 0 : 4))}
         >
-          <Gtk.Label label={hour} cssClasses={["title-1", "numeric"]} />
-          <Gtk.Label label={minute} cssClasses={["title-1", "numeric"]} />
+          <Gtk.Box
+            visible={timerActive.as((a) => !a)}
+            orientation={vertical.as((v) =>
+              v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
+            )}
+            spacing={vertical.as((v) => (v ? 0 : 4))}
+          >
+            <Gtk.Label label={hour} cssClasses={["title-1", "numeric"]} />
+            <Gtk.Label label={minute} cssClasses={["title-1", "numeric"]} />
+          </Gtk.Box>
+          <Gtk.Label
+            visible={timerActive}
+            label={timerDisplay}
+            cssClasses={["title-1", "numeric", "timer-active"]}
+          />
         </Gtk.Box>
         <Gtk.Box
+          visible={timerActive.as((a) => !a)}
           orientation={Gtk.Orientation.VERTICAL}
           halign={Gtk.Align.CENTER}
           valign={Gtk.Align.CENTER}
