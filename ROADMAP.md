@@ -31,7 +31,7 @@
 
 ### 0.1 — Re-enable Media Player Widget
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/quicksettings/expander/media.tsx`)
 - **Effort:** Trivial
 - **Why:** Fully implemented in `src/widget/quicksettings/expander/media.tsx` but commented out in `expander/index.tsx`.
 - **Files:**
@@ -51,7 +51,7 @@
 
 ### 0.2 — Replace Instant Shutdown with Power Menu
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/common/powerMenu.tsx`)
 - **Effort:** Low
 - **Why:** Currently the power button in Quick Settings tray immediately calls `systemctl poweroff`. Every other shell shows a confirmation menu with Lock / Log Out / Suspend / Reboot / Power Off.
 - **Files:**
@@ -77,7 +77,7 @@
 
 ### 0.3 — Add Keyboard Layout Indicator to Bar
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/keyboard.ts`)
 - **Effort:** Low
 - **Why:** Essential for multi-language users. Shows current XKB layout and allows switching. Standard in Waybar, HyprPanel, and GNOME.
 - **Files:**
@@ -133,7 +133,7 @@
 
 ### 0.5 — Window Title in Bar
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/bar/windowTitle.tsx`)
 - **Effort:** Low
 - **Why:** Standard in nearly every bar (Waybar, HyprPanel, faiyt-ags). Shows what window is focused and which app it belongs to. Currently Shade only shows workspace indicators with client icons, but no prominent active window title.
 - **Files:**
@@ -167,7 +167,7 @@
 
 ### 0.6 — System Resource Monitors in Bar
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/bar/systemUsage.tsx`)
 - **Effort:** Low
 - **Why:** A basic implementation exists in `systemUsage.tsx`, but it lacks polish, configurability, and several metrics compared to HyprPanel/faiyt-ags.
 - **Files:**
@@ -309,7 +309,7 @@
 
 ### 1.1 — Clipboard History Manager
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/clipboard.ts`)
 - **Effort:** Medium
 - **Why:** `cliphist` + `wl-clipboard` is in virtually every Hyprland dotfile. Integrating it into Shade eliminates an external dependency and feels native. The launcher is the ideal place for this — prefix-based search (`> `) keeps it fast.
 - **Files:**
@@ -350,7 +350,7 @@
 
 ### 1.2 — Night Light / Blue Light Filter Toggle
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/nightLight.ts`)
 - **Effort:** Low–Medium
 - **Why:** GNOME, KDE, macOS, and Windows all have this. Users expect it in Quick Settings. Reduces eye strain in evening hours.
 - **Files:**
@@ -391,7 +391,7 @@
 
 ### 1.3 — Per-Application Volume Mixer
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/appMixer.ts`)
 - **Effort:** Medium
 - **Why:** Current audio controls only show ENDPOINTS (output devices like headphones vs speakers). Users want to control STREAMS per-app: "Discord at 30%, Spotify at 80%, Firefox muted." This is standard in GNOME Settings, pavucontrol, and HyprPanel.
 - **Files:**
@@ -468,7 +468,7 @@
 
 ### 1.5 — Idle / Auto-Lock / Screen Dimming Controls
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/hypridle.ts`)
 - **Effort:** Medium
 - **Why:** Users expect Quick Settings toggles for screen auto-lock and idle timeout. Currently Shade only has a manual "Lock" button. `hypridle` is the standard Hyprland idle manager but Shade has no UI for it.
 - **Files:**
@@ -523,7 +523,7 @@
 
 ### 1.6 — Audio Output/Input Device Selector
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/common/audioControl.tsx`)
 - **Effort:** Low
 - **Why:** A basic expandable endpoint list exists in `audioControl.tsx`, but it is buried behind an expander button, lacks device-type icons, and does not prominently show the active device. matshell, HyprPanel, and faiyt-ags expose this as a clean dropdown directly on the volume slider.
 - **Files:**
@@ -554,7 +554,7 @@
 
 ### 1.7 — Notification History & Enhanced Popups
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/notificationHistory.ts`)
 - **Effort:** Medium
 - **Why:** Current notifications auto-dismiss after 5s and are lost forever. The popup already pauses on hover, but there is no persistent log, no dismiss countdown, and no per-app control. colorshell, faiyt-ags, and HyprPanel all keep history.
 - **Files:**
@@ -719,7 +719,7 @@
 
 ### 2.1 — Window Switcher (Alt-Tab Replacement)
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/windowswitcher/index.tsx`)
 - **Effort:** High
 - **Why:** The single biggest UX gap vs. GNOME/KDE. Tiling WMs without a visual Alt-Tab switcher feel incomplete. `hyprshell` exists solely because of this need. Currently users must rely on workspace indicators or Hyprland's built-in (invisible) switcher.
 - **Files:**
@@ -765,7 +765,7 @@
 
 ### 2.2 — Dock / Taskbar for Running Apps
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/dock/index.tsx`)
 - **Effort:** Medium
 - **Why:** The bar workspaces show clients per workspace, but there is no persistent taskbar showing running apps across all workspaces. GNOME's `dash-to-dock` is the most popular extension ever for a reason. A dock provides familiar window management.
 - **Files:**
@@ -848,7 +848,7 @@
 
 ### 2.4 — Bar Module Toggle UI
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/gschema.ts (bar module toggle keys)`)
 - **Effort:** Medium
 - **Why:** HyprPanel and faiyt-ags let users enable/disable individual bar modules from a settings UI. Shade's bar layout is currently hardcoded in `bar/index.tsx` — every module is always visible. Users on small screens or minimal setups want to hide e.g., weather, system resources, or world clock.
 - **Files:**
@@ -890,7 +890,7 @@
 
 ### 3.1 — Dynamic Wallpaper-Driven Theming (Material You)
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/theming.ts`)
 - **Effort:** Medium
 - **Why:** `matugen`, `pywal`, and Material You color extraction are extremely popular in the r/unixporn and Hyprland communities. matshell, colorshell, and Ateon all have this. The entire shell adapting to the wallpaper is a major visual differentiator.
 - **Files:**

@@ -185,9 +185,9 @@ The actual gaps are different from what the roadmap suggests. This document real
 
 | # | Feature | Status | Why Missing |
 |---|---------|--------|-------------|
-| 0.3 | **Keyboard Layout Indicator** | `[TODO]` | Not implemented anywhere. Hyprland IPC `hyprctl devices -j` can provide this. |
+| 0.3 | **Keyboard Layout Indicator** | `[DONE]` | Implemented in `src/lib/keyboard.ts` (GObject singleton with `hyprctl devices -j` parsing). |
 | 0.4 | **Polkit Agent** | `[TODO]` | Not in Nix module. `hyprpolkitagent` not referenced anywhere. |
-| 0.5 | **Window Title in Bar** | `[TODO]` | `bar/index.tsx` only has workspaces, system usage, clock, weather, indicators. No active window title display. |
+| 0.5 | **Window Title in Bar** | `[DONE]` | Implemented in `src/widget/bar/windowTitle.tsx`. Shows app icon + title with truncation. |
 
 **Note:** 0.6 (System Resource Monitors) is DONE — see §2.2.
 
@@ -197,13 +197,13 @@ The actual gaps are different from what the roadmap suggests. This document real
 
 | # | Feature | Status | Why Missing |
 |---|---------|--------|-------------|
-| 1.1 | **Clipboard History Manager** | `[TODO]` | No `cliphist` integration, no clipboard monitoring. `wl-clipboard` is wrapped but only used by screenshot. |
-| 1.2 | **Night Light / Blue Light Filter** | `[TODO]` | No `hyprsunset` / `wlsunset` / `wl-gammarelay-rs` integration. No toggle in QS. |
-| 1.3 | **Per-Application Volume Mixer** | `[TODO]` | `audioControl.tsx` shows ENDPOINTS (devices), not STREAMS (per-app volumes). AstalWp may expose streams via `nodes` or `clients` — needs research. |
+| 1.1 | **Clipboard History Manager** | `[DONE]` | Implemented in `src/lib/clipboard.ts` (74 lines). `cliphist` integration with launcher search mode. |
+| 1.2 | **Night Light / Blue Light Filter** | `[DONE]` | Implemented in `src/lib/nightLight.ts` (210 lines). `hyprsunset` subprocess + QS toggle + auto-schedule. |
+| 1.3 | **Per-Application Volume Mixer** | `[DONE]` | Implemented in `src/lib/appMixer.ts` (246 lines). Parses `pw-dump` JSON for per-app audio streams with mute/volume control. |
 | 1.4 | **System Updates Checker** | `[TODO]` | No update polling logic. No badge in bar. |
-| 1.5 | **Idle / Auto-Lock Controls** | `[TODO]` | No `hypridle` integration. No UI for timeout or auto-lock toggle. |
+| 1.5 | **Idle / Auto-Lock Controls** | `[DONE]` | Implemented in `src/lib/hypridle.ts` (433 lines). Generates `hypridle.conf` from GSettings, manages subprocess. |
 | 1.6 | **Audio Output/Input Device Selector** | `[DONE]` | ✅ Already implemented in `common/audioControl.tsx` — see §2.1. |
-| 1.7 | **Notification History** | `[TODO]` | Notifications are ephemeral. No persistent log or history UI. |
+| 1.7 | **Notification History** | `[DONE]` | Implemented in `src/lib/notificationHistory.ts` (167 lines). Persistent JSON history in QS with clear/remove actions. |
 
 ---
 
@@ -211,10 +211,10 @@ The actual gaps are different from what the roadmap suggests. This document real
 
 | # | Feature | Status | Why Missing |
 |---|---------|--------|-------------|
-| 2.1 | **Window Switcher (Alt-Tab)** | `[TODO]` | No overlay window for window switching. |
-| 2.2 | **Dock / Taskbar** | `[TODO]` | No dock widget. No pinned/running app indicators outside workspaces. |
+| 2.1 | **Window Switcher (Alt-Tab)** | `[DONE]` | Implemented in `src/widget/windowswitcher/index.tsx` (214 lines). MRU-ordered overlay with keyboard navigation. |
+| 2.2 | **Dock / Taskbar** | `[DONE]` | Implemented in `src/widget/dock/index.tsx` (98 lines). Bottom dock with pinned apps + running indicators. |
 | 2.3 | **Workspace Overview / Exposé** | `[TODO]` | No full-screen workspace grid. |
-| 2.4 | **Bar Module Toggle UI** | `[TODO]` | `gschema.ts` has no per-module visibility keys. Settings → Bar has no toggles for individual modules. |
+| 2.4 | **Bar Module Toggle UI** | `[DONE]` | Implemented via GSettings keys in `src/lib/gschema.ts` (show-window-title, show-workspaces, show-system-resources, show-clock, show-weather, show-system-indicators, etc.). |
 
 ---
 
@@ -222,7 +222,7 @@ The actual gaps are different from what the roadmap suggests. This document real
 
 | # | Feature | Status | Why Missing |
 |---|---------|--------|-------------|
-| 3.1 | **Dynamic Wallpaper-Driven Theming** | `[TODO]` | No `matugen` / `pywal` integration. Static CSS only. |
+| 3.1 | **Dynamic Wallpaper-Driven Theming** | `[DONE]` | Implemented in `src/lib/theming.ts`. `matugen` integration with accent color extraction and CSS injection. |
 | 3.3 | **Color Picker** | `[TODO]` | `hyprpicker` not wrapped/used. No QS button. |
 | 3.4 | **Calendar Events Integration** | `[TODO]` | Calendar is just `Gtk.Calendar` widget. No EDS/ICS backend. |
 | 3.5 | **Launcher Enhancements** | `[TODO]` | No calculator, emoji, web search, or window switching in launcher. |
