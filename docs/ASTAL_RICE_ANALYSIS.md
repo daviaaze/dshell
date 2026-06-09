@@ -8,7 +8,7 @@
 
 | Shell | Tech | Author | Stars | Key Differentiator |
 |-------|------|--------|-------|-------------------|
-| **matshell** | AGS v3, GTK4 | Neurarian | ~70 | Dynamic Material You theming, CAVA visualizers, multimodal launcher |
+| **matshell** | AGS v3, GTK4 | Neurarian | ~70 | Dynamic Material You theming, multimodal launcher |
 | **faiyt-ags** | AGS v2, GTK4 | unfaiyted | — | Multi-AI chat, advanced evaluators, Signal stickers, monitor config |
 | **colorshell** | AGS v3, GTK4 | retrozinndev | ~230 | Pywal16 dynamic theming, plugin-based launcher, i18n |
 | **Ateon** | AGS v3, GTK4 | Youwes09 | — | Fork of matshell + wallpaper manager + clipboard manager |
@@ -104,14 +104,12 @@
 ### What Others Do
 
 **matshell** has extensive audio visualization:
-- **CAVA visualizer library** with multiple style options
 - GTK4 Catmull-Rom spline widget for smooth visualizations
 - Visualizer can be embedded in the bar or in a dedicated music widget
 - Music cover theming (album art influences colors)
 
 **faiyt-ags** has:
 - Media player with interactive tooltip
-- Animated audio visualization bars (CAVA) when playing
 - Album art with fallback placeholder
 - Seekable progress bar with time display
 - Simulated animation for remote players (e.g., Spotify Connect)
@@ -126,7 +124,6 @@
 - No album art color extraction
 
 ### Opportunity for Shade
-- Add **CAVA visualizer** integration (`libastal-cava`)
 - Add seekable progress bar to media widget
 - Consider album art theming influence
 
@@ -476,7 +473,6 @@
 - Custom module configuration
 - Mouse actions configurable per module (left/right/middle/scroll)
 - Menu spawning from any module
-- CAVA module for audio visualization in bar
 - CPU temperature, RAM, storage, netstat modules
 - Updates checker module
 - Weather module
@@ -555,7 +551,6 @@
 ### Medium Impact, Moderate Effort
 8. **Clipboard History** — Integrate cliphist/wl-clipboard in launcher
 9. **Screenshot/Recording UI** — Grim/slurp/wf-recorder integration
-10. **CAVA Visualizer** — Audio visualization in media widget or bar
 11. **Workspace Overview** — Grid expose of workspaces and windows
 12. **Dashboard Shortcuts** — Quick directory/app shortcuts in quick settings
 13. **System Resource Monitors** — RAM, CPU temp, network speed in bar

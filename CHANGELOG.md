@@ -36,7 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dynamic Theming (Material You)** — `Theming` singleton runs `matugen` on wallpaper change to extract accent colors; injects CSS via `Gtk.CssProvider`; toggle and regenerate button in Settings → General
 - **Window Switcher (Alt-Tab)** — `src/widget/windowswitcher/` with MRU sorting, keyboard navigation (Tab/Shift+Tab/Enter/Escape/Q), app icons, and workspace badges; bound to `Super+Tab` in Hyprland config
 - **Dock / Taskbar** — `src/widget/dock/` with pinned + running apps, active/running indicators, left-click focus/launch, right-click context menu (Focus/Close/Pin); settings in Settings → Bar
-- **CAVA Audio Visualizer** — `AstalCava` integration rendering frequency bars in Quick Settings media expander when enabled; bar count and framerate configurable via GSettings
 
 ### Fixed
 

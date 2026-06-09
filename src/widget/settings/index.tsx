@@ -7,7 +7,6 @@ import General from "./general"
 import Clock from "./clock"
 import Network from "./network"
 import { app } from "#/App"
-import logger from "#/lib/logger"
 
 export const createSettingsWindow = () => {
   return (

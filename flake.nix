@@ -38,7 +38,6 @@
         tray
         wireplumber
         astal4
-        cava
       ];
 
       nativeBuildInputs = with pkgs; [

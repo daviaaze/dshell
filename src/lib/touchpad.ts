@@ -1,5 +1,5 @@
 import GObject, { getter, register, setter, signal } from "gnim/gobject"
-import AstalIO from "gi://AstalIO?version=0.1"
+import { Process } from "#/lib/process"
 import Gio from "gi://Gio?version=2.0"
 import logger from "#/lib/logger"
 
@@ -27,7 +27,7 @@ export default class Touchpad extends GObject.Object {
   #available = false
   #useEc = false
   #eventPath: string | null = null
-  #process: AstalIO.Process | null = null
+  #process: Process | null = null
   #initialized = false
 
   @getter(Boolean)
@@ -84,7 +84,7 @@ export default class Touchpad extends GObject.Object {
   #detectDevice() {
     // Prefer EC hardware toggle (ideapad_laptop touchpad_ctrl_via_ec=1)
     try {
-      AstalIO.Process.exec(`test -f ${EC_TOUCHPAD_PATH}`)
+      Process.exec(`test -f ${EC_TOUCHPAD_PATH}`)
       logger.info("touchpad", "EC touchpad file found")
       this.#useEc = true
       this.#available = true
@@ -95,7 +95,7 @@ export default class Touchpad extends GObject.Object {
 
     // Fall back to EVIOCGRAB via /proc/bus/input/devices
     try {
-      const out = AstalIO.Process.exec("cat /proc/bus/input/devices")
+      const out = Process.exec("cat /proc/bus/input/devices")
       if (!out) return
 
       const blocks = out.split("\n\n")
@@ -130,7 +130,7 @@ export default class Touchpad extends GObject.Object {
     logger.info("touchpad", `applyEc: writing ${value} to ${EC_TOUCHPAD_PATH}`)
     try {
       // Sysfs files need direct write via /bin/sh -c, not GLib atomic file IO
-      AstalIO.Process.exec(`/bin/sh -c 'echo ${value} > ${EC_TOUCHPAD_PATH}'`)
+      Process.exec(`/bin/sh -c 'echo ${value} > ${EC_TOUCHPAD_PATH}'`)
       logger.info("touchpad", `applyEc: wrote ${value}`)
     } catch (e) {
       logger.error("touchpad", "applyEc failed:", e)
@@ -143,7 +143,7 @@ export default class Touchpad extends GObject.Object {
       // Disable: spawn grabber subprocess
       this.#stopProcess()
       const script = GRAB_SCRIPT.replace("__DEVICE__", this.#eventPath)
-      this.#process = AstalIO.Process.subprocessv(["python3", "-c", script])
+      this.#process = Process.subprocessv(["python3", "-c", script])
     } else {
       // Enable: kill grabber subprocess
       this.#stopProcess()

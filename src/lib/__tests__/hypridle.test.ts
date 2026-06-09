@@ -4,7 +4,7 @@
  * Tests singleton pattern, default values, setter clamping,
  * cross-validation, and double-init guard.
  *
- * These tests do NOT require hypridle or AstalIO to be installed —
+ * These tests do NOT require hypridle or AGS Process to be installed —
  * they validate the logic and state management only.
  *
  * Run: gjs -m src/lib/__tests__/hypridle.test.ts

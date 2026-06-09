@@ -2,18 +2,14 @@ import Network from "gi://AstalNetwork"
 import NM from "gi://NM?version=1.0"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
-import Gdk from "gi://Gdk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, With, For } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
 import {
   ssidOf,
-  bssidOf,
-  isSaved,
   isSecure,
   securityLabel,
   strengthFraction,
-  wifiIconName,
 } from "#/widget/quicksettings/network/utils"
 import logger from "#/lib/logger"
 
@@ -32,9 +28,21 @@ function getKnownNetworks(
       try {
         const ssid = ssidOf(ap)
         if (seen.has(ssid)) continue
-        const conns = ap.get_connections()
-        if (!conns) continue
-        const connArr = toArray<NM.RemoteConnection>(conns)
+        
+        // get_connections() may throw or return problematic pointers for some APs
+        let connArr: NM.RemoteConnection[] = []
+        try {
+          const conns = ap.get_connections()
+          if (conns) {
+            // Use toArray with extra safety - it catches pointer conversion errors
+            connArr = toArray<NM.RemoteConnection>(conns)
+          }
+        } catch (connErr) {
+          // This AP's connections are unreadable, skip it
+          logger.debug("settings-network", `Skipping AP ${ssid}: connections unreadable`)
+          continue
+        }
+        
         if (connArr.length === 0) continue
         seen.add(ssid)
         results.push({
@@ -43,12 +51,13 @@ function getKnownNetworks(
           secLabel: securityLabel(ap),
           connections: connArr,
         })
-      } catch {
-        // skip APs with unreadable NM data
+      } catch (apErr) {
+        // Skip APs with any errors
+        logger.debug("settings-network", "Skipping AP:", apErr)
       }
     }
   } catch (e) {
-    logger.error("settings-network", "getKnownNetworks failed:", e)
+    logger.error("settings-network", "getKnownNetworks outer error:", e)
   }
 
   return results.sort((a, b) => a.ssid.localeCompare(b.ssid))
@@ -63,9 +72,8 @@ function showConnectionEditor(
 ) {
   if (connections.length === 0) return
 
-  const conn = connections[0]
+  const conn = connections[0]!
   const settingConn = conn.get_setting_connection()
-  const settingWireless = conn.get_setting_wireless()
   const settingSecurity = conn.get_setting_wireless_security()
   const isSecureConn = settingSecurity !== null
 
@@ -177,25 +185,21 @@ function showConnectionEditor(
             </Adw.PreferencesGroup>
           )}
 
-          <Adw.PreferencesGroup>
-            <Adw.ActionRow>
-              <Gtk.Button
-                hexpand
-                cssClasses={["suggested-action"]}
-                label={saving.as((s) => (s ? "Saving…" : "Save Changes"))}
-                sensitive={saving.as((s) => !s)}
-                onClicked={saveChanges}
-              />
-            </Adw.ActionRow>
-            <Adw.ActionRow>
-              <Gtk.Button
-                hexpand
-                cssClasses={["destructive-action"]}
-                label="Forget Network"
-                onClicked={forgetNetwork}
-              />
-            </Adw.ActionRow>
-          </Adw.PreferencesGroup>
+          <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+            <Gtk.Button
+              hexpand
+              cssClasses={["suggested-action"]}
+              label={saving.as((s) => (s ? "Saving…" : "Save Changes"))}
+              sensitive={saving.as((s) => !s)}
+              onClicked={saveChanges}
+            />
+            <Gtk.Button
+              hexpand
+              cssClasses={["destructive-action"]}
+              label="Forget Network"
+              onClicked={forgetNetwork}
+            />
+          </Gtk.Box>
 
           <Gtk.Label
             label={errorMsg.as((e) => e ?? "")}
@@ -208,7 +212,7 @@ function showConnectionEditor(
           />
         </Adw.PreferencesPage>
       </Gtk.ScrolledWindow>
-    </Gtk.Box>,
+    </Gtk.Box> as Gtk.Widget
   )
 
   dialog.present()
@@ -326,24 +330,20 @@ function showHiddenNetworkDialog(parent: Gtk.Widget) {
           </Adw.EntryRow>
         </Adw.PreferencesGroup>
 
-        <Adw.PreferencesGroup>
-          <Adw.ActionRow>
-            <Gtk.Button
-              hexpand
-              cssClasses={["suggested-action"]}
-              label={connecting.as((c) => (c ? "Connecting…" : "Connect"))}
-              sensitive={connecting.as((c) => !c)}
-              onClicked={connect}
-            />
-          </Adw.ActionRow>
-          <Adw.ActionRow>
-            <Gtk.Button
-              hexpand
-              label="Cancel"
-              onClicked={() => dialog.close()}
-            />
-          </Adw.ActionRow>
-        </Adw.PreferencesGroup>
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+          <Gtk.Button
+            hexpand
+            cssClasses={["suggested-action"]}
+            label={connecting.as((c) => (c ? "Connecting…" : "Connect"))}
+            sensitive={connecting.as((c) => !c)}
+            onClicked={connect}
+          />
+          <Gtk.Button
+            hexpand
+            label="Cancel"
+            onClicked={() => dialog.close()}
+          />
+        </Gtk.Box>
 
         <Gtk.Label
           label={errorMsg.as((e) => e ?? "")}
@@ -355,7 +355,7 @@ function showHiddenNetworkDialog(parent: Gtk.Widget) {
           marginBottom={12}
         />
       </Adw.PreferencesPage>
-    </Gtk.Box>,
+    </Gtk.Box> as Gtk.Widget
   )
 
   dialog.present()
@@ -365,7 +365,6 @@ function showHiddenNetworkDialog(parent: Gtk.Widget) {
 
 function HotspotSection({ wifi }: { wifi: Network.Wifi }) {
   const isHotspot = createBinding(wifi, "isHotspot")
-  const scanning = createBinding(wifi, "scanning")
 
   return (
     <Adw.PreferencesGroup title="Hotspot" description="Share your internet connection over Wi-Fi">
@@ -377,7 +376,7 @@ function HotspotSection({ wifi }: { wifi: Network.Wifi }) {
           $type="suffix"
           valign={Gtk.Align.CENTER}
           active={isHotspot}
-          onNotifyActive={(self) => {
+          onNotifyActive={() => {
             // Toggle hotspot — this requires NM API
             // For now, just note that it's not directly supported by AstalNetwork
             logger.info("settings-network", "Hotspot toggle not yet implemented")
@@ -468,9 +467,7 @@ export default () => {
         </Adw.ActionRow>
       </Adw.PreferencesGroup>
 
-      {/* Known Networks — disabled: enumerating accessPoints triggers
-          nm-access-point assertion storm and SEGV on affected systems */}
-      {/*<With value={wifi}>
+      <With value={wifi}>
         {(w) => {
           if (!w) return <></>
 
@@ -521,7 +518,7 @@ export default () => {
             </Adw.PreferencesGroup>
           )
         }}
-      </With>*/}
+      </With>
 
       {/* Wired Section */}
       <Adw.PreferencesGroup title="Wired" description="Ethernet connection">
@@ -549,11 +546,9 @@ export default () => {
         </With>
       </Adw.PreferencesGroup>
 
-{/*
       <With value={wifi}>
         {(w) => (w ? <HotspotSection wifi={w} /> : <></>)}
       </With>
-      */}
 
       {/* Connectivity Section */}
       <Adw.PreferencesGroup title="Connectivity" description="Internet access status">

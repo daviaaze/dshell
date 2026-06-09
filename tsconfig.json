@@ -14,5 +14,9 @@
     "paths": { "#/*": ["./src/*"] },
     "jsx": "react-jsx",
     "jsxImportSource": "gnim/gtk4"
-  }
+  },
+  "exclude": ["build"]
 }
+
+
+

@@ -1,5 +1,5 @@
 import GObject, { getter, register, setter } from "gnim/gobject"
-import AstalIO from "gi://AstalIO?version=0.1"
+import { Process } from "#/lib/process"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
@@ -140,20 +140,16 @@ export default class Theming extends GObject.Object {
       return
     }
 
-    AstalIO.Process.exec_asyncv(
-      ["matugen", "image", wallpaper, "--json", "hex"],
-      (_, res) => {
-        try {
-          const out = AstalIO.Process.exec_asyncv_finish(res)
-          const colors = parseMatugenJson(out)
-          if (colors) {
-            this.#applyColors(colors)
-          }
-        } catch (e) {
-          logger.error("theme", "matugen execution failed:", e)
+    Process.execAsyncv(["matugen", "image", wallpaper, "--json", "hex"])
+      .then((out) => {
+        const colors = parseMatugenJson(out)
+        if (colors) {
+          this.#applyColors(colors)
         }
-      },
-    )
+      })
+      .catch((e) => {
+        logger.error("theme", "matugen execution failed:", e)
+      })
   }
 
   #applyColors(colors: { primary: string; secondary: string; error: string }) {

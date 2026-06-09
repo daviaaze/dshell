@@ -4,13 +4,13 @@ import GLib from "gi://GLib"
 import { For, createBinding } from "gnim"
 
 export default ({
-  notif,
+  notification,
   closeAction,
   pauseDismiss,
   resumeDismiss,
   showProgress = true,
 }: {
-  notif: Notifd.Notification
+  notification: Notifd.Notification
   closeAction: (notif: Notifd.Notification, self: Gtk.Widget) => void
   pauseDismiss?: () => void
   resumeDismiss?: () => void
@@ -18,7 +18,7 @@ export default ({
 }) =>
   (
     <Gtk.Box
-      name={notif.id.toString()}
+      name={notification.id.toString()}
       cssClasses={["card", "frame"]}
       css={"box-shadow:none;"}
       spacing={8}
@@ -35,20 +35,20 @@ export default ({
       <Gtk.Box spacing={8}>
         <Gtk.Image
           pixelSize={24}
-          visible={!!notif.app_icon}
-          iconName={notif.app_icon}
+          visible={!!notification.app_icon}
+          iconName={notification.app_icon}
         />
         <Gtk.Label
           wrap
           hexpand
           cssClasses={["title-4"]}
-          label={notif.summary || ""}
+          label={notification.summary || ""}
         />
         <Gtk.Button
           halign={Gtk.Align.END}
           valign={Gtk.Align.CENTER}
           cssClasses={["circular"]}
-          onClicked={(self) => closeAction(notif, self.parent.parent)}
+          onClicked={(self) => closeAction(notification, self.parent!.parent!)}
           iconName={"window-close-symbolic"}
         />
       </Gtk.Box>
@@ -56,12 +56,12 @@ export default ({
         wrap
         maxWidthChars={25}
         cssClasses={["body"]}
-        useMarkup={notif.body.startsWith("<")}
-        label={notif.body || ""}
+        useMarkup={notification.body.startsWith("<")}
+        label={notification.body || ""}
       />
       <Gtk.Label
         label={
-          GLib.DateTime.new_from_unix_local(notif.time).format("%H:%M:%S") ||
+          GLib.DateTime.new_from_unix_local(notification.time).format("%H:%M:%S") ||
           "ERROR"
         }
       />
@@ -93,13 +93,13 @@ export default ({
       />
       <Gtk.Box cssClasses={["actions"]} spacing={4}>
         <For
-          each={createBinding(notif, "actions").as((actions) =>
+          each={createBinding(notification, "actions").as((actions) =>
             actions.filter((a) => a.label && a.label.trim() !== ""),
           )}
         >
           {(action: Notifd.Action) => (
             <Gtk.Button
-              onClicked={() => notif.invoke(action.id)}
+              onClicked={() => notification.invoke(action.id)}
               label={action.label}
             />
           )}

@@ -290,54 +290,6 @@ export default () => {
       </Adw.PreferencesGroup>
 
       <Adw.PreferencesGroup
-        title={"CAVA Visualizer"}
-        description={"Audio spectrum visualizer in media player"}
-      >
-        <Adw.SwitchRow
-          title={"Enable CAVA"}
-          subtitle={"Show audio visualizer in Quick Settings"}
-          active={settings.cavaEnabled}
-          onNotifyActive={(self) =>
-            settings.setCavaEnabled(self.active)
-          }
-        />
-        <Adw.SpinRow
-          title={"Bar Count"}
-          subtitle={"Number of frequency bars (8-32)"}
-          adjustment={
-            (
-              <Gtk.Adjustment
-                lower={8}
-                upper={32}
-                stepIncrement={2}
-                value={settings.cavaBars}
-              />
-            ) as Gtk.Adjustment
-          }
-          onNotifyValue={(self) =>
-            settings.setCavaBars(self.value)
-          }
-        />
-        <Adw.SpinRow
-          title={"Framerate"}
-          subtitle={"Visualizer refresh rate in FPS"}
-          adjustment={
-            (
-              <Gtk.Adjustment
-                lower={30}
-                upper={144}
-                stepIncrement={5}
-                value={settings.cavaFramerate}
-              />
-            ) as Gtk.Adjustment
-          }
-          onNotifyValue={(self) =>
-            settings.setCavaFramerate(self.value)
-          }
-        />
-      </Adw.PreferencesGroup>
-
-      <Adw.PreferencesGroup
         title={"Debug"}
         description={"Development and troubleshooting options"}
       >

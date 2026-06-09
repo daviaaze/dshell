@@ -1,5 +1,5 @@
 import GObject, { getter, register, setter } from "gnim/gobject"
-import AstalIO from "gi://AstalIO?version=0.1"
+import { Process } from "#/lib/process"
 import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
 import logger from "#/lib/logger"
@@ -22,7 +22,7 @@ export default class Hypridle extends GObject.Object {
   #dpmsTimeout = 600
   #suspendEnabled = false
   #suspendTimeout = 1800
-  #process: AstalIO.Process | null = null
+  #process: Process | null = null
   #settings: {
     autoLockEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
     idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
@@ -390,12 +390,12 @@ export default class Hypridle extends GObject.Object {
       this.#process = null
     }
     try {
-      AstalIO.Process.exec("pkill -x hypridle")
+      Process.exec("pkill -x hypridle")
     } catch (e) {
       logger.debug("hypridle", "pkill skipped (hypridle not running):", e)
     }
     try {
-      this.#process = AstalIO.Process.subprocessv(["hypridle"])
+      this.#process = Process.subprocessv(["hypridle"])
     } catch (e) {
       logger.error("hypridle", "failed to start:", e)
     }
@@ -411,7 +411,7 @@ export default class Hypridle extends GObject.Object {
       this.#process = null
     }
     try {
-      AstalIO.Process.exec("pkill -x hypridle")
+      Process.exec("pkill -x hypridle")
     } catch {
       // pkill may fail if hypridle is not running — that's normal
     }

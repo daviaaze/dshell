@@ -2,7 +2,7 @@ import GTop from "gi://GTop"
 import { useSettings } from "#/lib/settings"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
-import AstalIO from "gi://AstalIO?version=0.1"
+import { Process } from "#/lib/process"
 import Gio from "gi://Gio?version=2.0"
 import GLib from "gi://GLib?version=2.0"
 import { Accessor, createState, onCleanup } from "gnim"
@@ -149,10 +149,9 @@ export default ({
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
       onClicked={() =>
         settings.bar.systemMonitor
-          ? AstalIO.Process.exec_async(
+          ? Process.execAsync(
               (settings.bar.systemMonitor as Accessor<any>).get(),
-              () => {},
-            )
+            ).catch((e) => logger.error("systemUsage", "failed to launch monitor:", e))
           : null
       }
     >

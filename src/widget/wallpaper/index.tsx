@@ -10,20 +10,14 @@ import { monitors } from "#/lib/monitors"
 
 export const Wallpaper = () => {
   const settings = useSettings().general
-  const wp = createComputed(
-    [
-      createBinding(ColorScheme.get_default(), "colorScheme"),
-      createBinding(ColorScheme.get_default(), "daytime"),
-      settings.wallpaperDay,
-      settings.wallpaperNight,
-    ],
-    (color, daytime, wpDay, wpNight) => {
-      if (color === DarkModes.AUTO)
-        return Gio.File.new_for_path(daytime ? wpDay : wpNight)
-      if (color === DarkModes.LIGHT) return Gio.File.new_for_path(wpDay)
-      else return Gio.File.new_for_path(wpNight)
-    },
-  )
+  const color = createBinding(ColorScheme.get_default(), "colorScheme")
+  const daytime = createBinding(ColorScheme.get_default(), "daytime")
+  const wp = createComputed(() => {
+    if (color() === DarkModes.AUTO)
+      return Gio.File.new_for_path(daytime() ? settings.wallpaperDay() : settings.wallpaperNight())
+    if (color() === DarkModes.LIGHT) return Gio.File.new_for_path(settings.wallpaperDay())
+    else return Gio.File.new_for_path(settings.wallpaperNight())
+  })
 
   return (
     <For each={monitors}>

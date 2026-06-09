@@ -597,43 +597,6 @@
 
 ---
 
-### D.8 — Window Title in Bar
-
-- **Status:** `[DONE]`
-- **Effort:** Low
-- **Priority:** P2
-- **Cross-refs:** ROADMAP 0.5
-
-**Blocked by:** B.1 (indicator decomposition) — window title is a new bar module that must fit the decomposed architecture.
-
-**Approach:**
-1. Create `src/widget/bar/windowTitle.tsx`
-2. Use `AstalHyprland.get_default().focused_client`
-3. Place in `CenterBox` center child
-4. Middle-click to close, right-click context menu
-
-**Acceptance:** See ROADMAP 0.5.
-
----
-
-### D.9 — Keyboard Layout Indicator
-
-- **Status:** `[DONE]`
-- **Effort:** Low
-- **Priority:** P2
-- **Cross-refs:** ROADMAP 0.3
-
-**Blocked by:** B.1 (indicator decomposition).
-
-**Approach:**
-1. Create `src/lib/keyboard.ts` singleton parsing `hyprctl devices -j`
-2. Add to bar indicators
-3. Click cycles layout
-
-**Acceptance:** See ROADMAP 0.3.
-
----
-
 ## Phase E — Polish & Advanced Features
 
 > Long-term differentiation. Only after Phases A–D are stable.
@@ -656,60 +619,6 @@
 4. Inject generated CSS via `Gtk.CssProvider`
 
 **Acceptance:** See ROADMAP 3.1.
-
----
-
-### E.2 — Window Switcher (Alt-Tab Replacement)
-
-- **Status:** `[DONE]`
-- **Effort:** High
-- **Priority:** P3
-- **Cross-refs:** ROADMAP 2.1
-
-**Blocked by:** A.2 (ShellState), B.3 (mount isolation), C.1 (NixOS module binds layer) — keybinds must be configurable via the desktop layer.
-
-**Approach:**
-1. Create `src/widget/windowswitcher/` directory
-2. `Astal.Window` with `layer=OVERLAY`, `keymode=EXCLUSIVE`
-3. Bind to `Super+Tab` in Hyprland config (desktop layer)
-4. MRU sort, keyboard navigation, `Q` to close
-
-**Acceptance:** See ROADMAP 2.1.
-
----
-
-### E.3 — Dock / Taskbar
-
-- **Status:** `[DONE]`
-- **Effort:** Medium
-- **Priority:** P3
-- **Cross-refs:** ROADMAP 2.2
-
-**Blocked by:** A.3 (WindowManager) — dock windows must register via `WindowManager`.
-
-**Approach:**
-1. Create `src/widget/dock/` directory
-2. `Astal.Window` anchored to bottom
-3. Pinned apps + running apps merge
-4. Settings → Bar: "Dock" section
-
-**Acceptance:** See ROADMAP 2.2.
-
----
-
-### E.4 — CAVA Audio Visualizer
-
-- **Status:** `[DONE]`
-- **Effort:** Low
-- **Priority:** P3
-- **Cross-refs:** ROADMAP 3.2
-
-**Approach:**
-1. Add `libastal-cava` to flake inputs
-2. Create `CavaVisualizer` component using `Gtk.DrawingArea`
-3. Bar inline or QS media expander placement
-
-**Acceptance:** See ROADMAP 3.2.
 
 ---
 

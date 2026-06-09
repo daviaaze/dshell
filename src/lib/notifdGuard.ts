@@ -49,7 +49,7 @@ function checkNotifdDaemon(): boolean {
     )
 
     if (!ownerResult) return true // DBus call failed, try anyway
-    const [hasOwner] = ownerResult.deepUnpack()
+    const [ hasOwner ] = ownerResult.deepUnpack()
     if (!hasOwner) return true // No owner, safe to proceed
 
     // Someone owns the name. Check if it's us (stale shade-shell
@@ -69,7 +69,7 @@ function checkNotifdDaemon(): boolean {
       )
 
       if (infoResult) {
-        const [name, vendor] = infoResult.deepUnpack()
+        const [ name, vendor ] = infoResult.deepUnpack()
         // If the running daemon is from astal/notifd, our own
         // AstalNotifd is already initialized on this or another
         // instance — proceed, get_default() returns the singleton.
@@ -101,12 +101,14 @@ function checkNotifdDaemon(): boolean {
 
     return false
   } catch (e) {
+    logger.warn(`${e}`)
     // Bus itself might not be available — try anyway
     return true
   }
 }
 
 let _notifdResult: Notifd.Notifd | null | undefined = undefined
+let _notifdInitializing = false
 
 /**
  * Safe wrapper around Notifd.get_default() that avoids the 25s D-Bus block.
@@ -115,11 +117,25 @@ let _notifdResult: Notifd.Notifd | null | undefined = undefined
  * Result is cached so that concurrent callers (notifications widget, QS
  * notification list, DnD indicator, NotificationHistory) all share the
  * same Notifd instance and don't each trigger a D-Bus registration attempt.
+ *
+ * Pre-initialized in widget/index.tsx services-init phase before any widget
+ * mounts, so all subsequent callers hit the cache.
  */
 export function getNotifdSafe(): Notifd.Notifd | null {
+  // Cache hit — return immediately
   if (_notifdResult !== undefined) return _notifdResult
+
+  // Another call is already initializing (shouldn't happen after pre-init,
+  // but guard against it to prevent "already exported" D-Bus errors).
+  if (_notifdInitializing) {
+    return null
+  }
+
+  _notifdInitializing = true
+
   if (!canInitNotifd()) {
     _notifdResult = null
+    _notifdInitializing = false
     return null
   }
   try {
@@ -129,5 +145,7 @@ export function getNotifdSafe(): Notifd.Notifd | null {
     logger.error("notifd", "get_default() failed:", e)
     _notifdResult = null
     return null
+  } finally {
+    _notifdInitializing = false
   }
 }

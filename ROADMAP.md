@@ -937,39 +937,6 @@
 
 ---
 
-### 3.2 — CAVA Audio Visualizer
-
-- **Status:** `[DONE]`
-- **Effort:** Low
-- **Why:** Eye candy. Popular in AGS rices and HyprPanel. matshell ships an extensive library of CAVA styles. `libastal-cava` exists as an Astal service.
-- **Files:**
-  - New widget in bar or QS
-  - `nix/desktop-shell.nix`
-  - `src/lib/gschema.ts`
-- **Approach:**
-  1. Add `libastal-cava` / `astal-cava` to flake inputs and Nix packages
-  2. Create `CavaVisualizer` component:
-     - Use `AstalCava` service to get audio frequency data as an array of floats
-     - Render as 10–20 vertical bars using `Gtk.DrawingArea` (custom `draw` callback)
-     - Bar colors use current accent color; height proportional to frequency amplitude
-  3. Placement options:
-     - In bar: small inline visualizer next to media controls (height ~16px, width ~80px)
-     - In QS media expander: larger visualizer (height ~60px) when media is playing
-  4. Add GSettings:
-     - `cava-enabled` (bool, default false)
-     - `cava-bars` (int, default 16, range 8–32)
-     - `cava-framerate` (int, default 60)
-  5. Only activate `AstalCava` when visualizer is visible to save CPU
-- **Acceptance:**
-  - [ ] Visualizer bars react smoothly to system audio output
-  - [ ] Hidden when no audio is playing (or user can set "always on")
-  - [ ] CPU usage <2% when active
-  - [ ] Toggleable in Settings → Bar or Settings → General
-  - [ ] Bar count and framerate configurable in Settings
-  - [ ] Uses current accent color for bar fill
-
----
-
 ### 3.3 — Color Picker Integration
 
 - **Status:** `[TODO]`
@@ -1489,7 +1456,6 @@
 | Bar Module Toggle UI | ❌ | — | — | 2.4 | — |
 | **Phase 3 — Polish** |
 | Dynamic Theming | ❌ | — | — | — | 3.1 |
-| CAVA Visualizer | ❌ | — | — | — | 3.2 |
 | Color Picker | ❌ | — | — | — | 3.3 |
 | Calendar Events | ❌ | — | — | — | 3.4 |
 | Launcher Enhancements | ❌ | — | — | — | 3.5 |

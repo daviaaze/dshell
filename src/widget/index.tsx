@@ -15,6 +15,7 @@ import NightLight from "#/lib/nightLight"
 import Hypridle from "#/lib/hypridle"
 import Touchpad from "#/lib/touchpad"
 import Theming from "#/lib/theming"
+import { getNotifdSafe } from "#/lib/notifdGuard"
 import NotificationHistory from "#/lib/notificationHistory"
 import TimerService from "./quicksettings/timer/TimerService"
 import { initAutoSwitch } from "#/lib/audioAutoSwitch"
@@ -49,6 +50,9 @@ export const widgets = () => {
     logger.warn("mount", "Touchpad init skipped (no touchpad?):", e)
   }
   Theming.get_default().init(s.general)
+  // Pre-initialize Notifd before any widget mounts so concurrent callers
+  // all hit the cached singleton instead of racing on D-Bus export.
+  getNotifdSafe()
   NotificationHistory.get_default().init(s.general)
   initAutoSwitch()
   TimerService.get_default().init(

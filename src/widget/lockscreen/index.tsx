@@ -2,7 +2,6 @@ import { monitors } from "#/lib/monitors"
 import Adw from "gi://Adw?version=1"
 import Astal from "gi://Astal?version=4.0"
 import AstalAuth from "gi://AstalAuth?version=0.1"
-import AstalIO from "gi://AstalIO?version=0.1"
 import Gdk from "gi://Gdk?version=4.0"
 import SessionLock from "gi://Gtk4SessionLock"
 import GLib from "gi://GLib?version=2.0"
@@ -19,6 +18,7 @@ import WindowManager from "#/lib/windowManager"
 import ShellState from "#/lib/shellState"
 import logger from "#/lib/logger"
 import FingerprintAuth from "#/lib/fingerprint"
+import { Process } from "#/lib/process"
 
 const createLocks = (onUnlock: () => void) => {
   const { LEFT, RIGHT, TOP, BOTTOM } = Astal.WindowAnchor
@@ -44,7 +44,7 @@ const createLocks = (onUnlock: () => void) => {
       // Remove the file so hypridle's on-resume doesn't try to restore too
       resumeFile.delete(null)
     } else {
-      savedBrightness = AstalIO.Process.exec("brightnessctl get").trim()
+      savedBrightness = Process.exec("brightnessctl get")
     }
   } catch (e) {
     logger.warn("lockscreen", "could not save brightness:", e)
@@ -60,7 +60,7 @@ const createLocks = (onUnlock: () => void) => {
     // Restore exact brightness saved at lock time
     if (savedBrightness) {
       try {
-        AstalIO.Process.exec(`brightnessctl set ${savedBrightness}`)
+        Process.exec(`brightnessctl set ${savedBrightness}`)
       } catch (e) {
         logger.warn("lockscreen", "failed to restore brightness:", e)
       }

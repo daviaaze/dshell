@@ -30,6 +30,7 @@ export function registerActions(app: Gio.Application) {
     "record-area": () => screenshot.recordArea(),
     "record-window": () => screenshot.recordWindow(),
     "record-output": () => screenshot.recordOutput(),
+    "record-window": () => screenshot.recordWindow(),
     "toggle-touchpad": () => touchpad.toggle(),
   }
 
@@ -63,6 +64,8 @@ export const requestHandler = (
   else if (args[1] === "record") activate("record")
   else if (args[1] === "record-area") activate("record-area")
   else if (args[1] === "record-window") activate("record-window")
+  else if (args[1] === "record-window-address" && args[2]) screenshot.recordWindowByAddress(args[2])
+  else if (args[1] === "record-output" && args[2]) screenshot.recordOutput(args[2])
   else if (args[1] === "record-output") activate("record-output")
   else if (args[1] === "touchpad") activate("toggle-touchpad")
 

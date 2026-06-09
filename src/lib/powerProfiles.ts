@@ -41,7 +41,8 @@ export default class PowerProfiles {
         null,
       )
     } catch (e) {
-      print("PowerProfiles: set_active_profile failed:", e.message)
+      if (e instanceof(Error))
+        print("PowerProfiles: set_active_profile failed:", e.message)
     }
   }
 
@@ -66,14 +67,14 @@ export default class PowerProfiles {
       this.#proxy.connect(
         "g-properties-changed",
         (_proxy: Gio.DBusProxy, changed: GLib.Variant) => {
-          const changedProps = changed.deepUnpack()
-          if ("ActiveProfile" in changedProps) {
+          if ("ActiveProfile" in changed) {
             for (const cb of this.#listeners) cb()
           }
         },
       )
     } catch (e) {
-      print("PowerProfiles: failed to connect to system bus:", e.message)
+      if (e instanceof(Error))
+        print("PowerProfiles: failed to connect to system bus:", e.message)
     }
   }
 }

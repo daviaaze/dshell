@@ -223,7 +223,6 @@ The actual gaps are different from what the roadmap suggests. This document real
 | # | Feature | Status | Why Missing |
 |---|---------|--------|-------------|
 | 3.1 | **Dynamic Wallpaper-Driven Theming** | `[TODO]` | No `matugen` / `pywal` integration. Static CSS only. |
-| 3.2 | **CAVA Audio Visualizer** | `[TODO]` | No `astal-cava` dependency. No visualizer widget. |
 | 3.3 | **Color Picker** | `[TODO]` | `hyprpicker` not wrapped/used. No QS button. |
 | 3.4 | **Calendar Events Integration** | `[TODO]` | Calendar is just `Gtk.Calendar` widget. No EDS/ICS backend. |
 | 3.5 | **Launcher Enhancements** | `[TODO]` | No calculator, emoji, web search, or window switching in launcher. |

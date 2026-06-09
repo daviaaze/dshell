@@ -86,13 +86,13 @@ const NotificationListContent = ({
     const Heading = () => (
       <Gtk.Box cssClasses={["toolbar"]}>
         <Gtk.ToggleButton
-          onClicked={() => setVisible(!visible.get())}
+          onClicked={() => setVisible(!visible())}
           active={visible}
           cssClasses={["flat"]}
         >
           <Gtk.Box>
-            <Gtk.Image iconName={notifications[0].appIcon} />
-            <Gtk.Label label={notifications[0].appName} hexpand />
+            <Gtk.Image iconName={notifications[0]?.appIcon} />
+            <Gtk.Label label={notifications[0]?.appName} hexpand />
             <Gtk.Image
               iconName={visible.as((v) =>
                 v ? "go-up-symbolic" : "go-down-symbolic",
@@ -112,14 +112,14 @@ const NotificationListContent = ({
       <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
         <Heading />
         <Notification
-          notif={notifications[0]}
+          notification={notifications[0]!}
           showProgress={showProgress}
           closeAction={(n) => n.dismiss()}
         />
         <Gtk.Revealer revealChild={visible}>
           <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
             {notifications.slice(1).map((notif) => (
-              <Notification notif={notif} showProgress={showProgress} closeAction={(n) => n.dismiss()} />
+              <Notification notification={notif} showProgress={showProgress} closeAction={(n) => n.dismiss()} />
             ))}
           </Gtk.Box>
         </Gtk.Revealer>
@@ -210,16 +210,16 @@ const NotificationListContent = ({
             n
               .sort((a, b) => b.time - a.time)
               .reduce((res, notif) => {
-                const i = res.findIndex((n) => n[0].appName === notif.appName)
+                const i = res.findIndex((n) => n[0]!.appName === notif.appName)
                 if (i === -1) res.push([notif])
-                else res[i].push(notif)
+                else res[i]!.push(notif)
                 return res
               }, [] as Notifd.Notification[][]),
           )}
         >
           {(n: Notifd.Notification[]) =>
             n.length === 1 ? (
-              <Notification closeAction={(n) => n.dismiss()} showProgress={showProgress} notif={n[0]} />
+              <Notification closeAction={(n) => n.dismiss()} showProgress={showProgress} notification={n[0]!} />
             ) : (
               <NotificationGroup notifications={n} />
             )

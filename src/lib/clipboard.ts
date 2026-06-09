@@ -1,14 +1,11 @@
-import AstalIO from "gi://AstalIO?version=0.1"
-import GLib from "gi://GLib?version=2.0"
 import logger from "#/lib/logger"
+import { Process } from "#/lib/process"
 
 export interface ClipboardItem {
   id: string
   text: string
   timestamp: number
 }
-
-const MAX_HISTORY = 500
 
 function parseCliphist(output: string): ClipboardItem[] {
   const lines = output.trim().split("\n")
@@ -27,7 +24,7 @@ function parseCliphist(output: string): ClipboardItem[] {
 
 export function getClipboardHistory(callback: (items: ClipboardItem[]) => void) {
   try {
-    const out = AstalIO.Process.exec("cliphist list")
+    const out = Process.exec("cliphist list")
     callback(parseCliphist(out))
   } catch (e) {
     logger.error("clipboard", "failed to get history:", e)
@@ -48,7 +45,7 @@ export function searchClipboard(
 
 export function copyClipboardItem(id: string) {
   try {
-    AstalIO.Process.exec(`sh -c 'cliphist decode "${id}" | wl-copy'`)
+    Process.exec(`sh -c 'cliphist decode "${id}" | wl-copy'`)
   } catch (e) {
     logger.error("clipboard", "failed to copy item:", e)
   }
@@ -56,7 +53,7 @@ export function copyClipboardItem(id: string) {
 
 export function deleteClipboardItem(id: string) {
   try {
-    AstalIO.Process.exec(`cliphist delete "${id}"`)
+    Process.exec(`cliphist delete "${id}"`)
   } catch (e) {
     logger.error("clipboard", "failed to delete item:", e)
   }

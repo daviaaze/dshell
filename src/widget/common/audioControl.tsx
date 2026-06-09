@@ -37,7 +37,7 @@ export const AudioEndpointControl = ({
           }}
         />
         <Gtk.Label
-          label={device.description}
+          label={device.description ?? undefined}
           maxWidthChars={30}
           ellipsize={3}
           hexpand

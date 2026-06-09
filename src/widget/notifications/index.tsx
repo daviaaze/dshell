@@ -19,13 +19,13 @@ const NotificationContent = ({
   setNotificationCount: (n: number) => void
   showProgress: boolean
 }) => {
-  const [notifs, setNotifs] = createState<Notifd.Notification[]>([])
-  const timeouts = new Map<number, number>()
+  const [notifications, setNotifications] = createState<Notifd.Notification[]>([])
+  const timeouts = new Map<number, GLib.Source>()
 
-  const addNotif = (id: number) => {
+  const addNotification = (id: number) => {
     const n = notifd.get_notification(id)
     if (!n) return
-    setNotifs((prev) => {
+    setNotifications((prev) => {
       const next = prev.concat(n)
       setNotificationCount(next.length)
       return next
@@ -33,13 +33,13 @@ const NotificationContent = ({
     timeouts.set(
       id,
       setTimeout(() => {
-        setNotifs((prev) => {
+        setNotifications((prev) => {
           const next = prev.filter((x) => x.id !== id)
           setNotificationCount(next.length)
           return next
         })
         timeouts.delete(id)
-      }, 5000),
+      }, 5000, []),
     )
   }
 
@@ -49,7 +49,7 @@ const NotificationContent = ({
       clearTimeout(tid)
       timeouts.delete(id)
     }
-    setNotifs((prev) => {
+    setNotifications((prev) => {
       const next = prev.filter((x) => x.id !== id)
       setNotificationCount(next.length)
       return next
@@ -69,7 +69,7 @@ const NotificationContent = ({
     timeouts.set(
       id,
       setTimeout(() => {
-        setNotifs((prev) => {
+        setNotifications((prev) => {
           const next = prev.filter((x) => x.id !== id)
           setNotificationCount(next.length)
           return next
@@ -84,17 +84,17 @@ const NotificationContent = ({
       orientation={Gtk.Orientation.VERTICAL}
       spacing={4}
       $={(self) => {
-        notifd.connect("notified", (_, id) => addNotif(id))
+        notifd.connect("notified", (_, id) => addNotification(id))
       }}
     >
-      <For each={notifs((n) => n.reverse())}>
+      <For each={notifications((n) => n.reverse())}>
         {(n: Notifd.Notification) => (
           <Notification
             closeAction={() => removeNotif(n.id)}
             pauseDismiss={() => pauseDismiss(n.id)}
             resumeDismiss={() => resumeDismiss(n.id)}
             showProgress={showProgress}
-            notif={n}
+            notification={n}
           />
         )}
       </For>
@@ -117,10 +117,26 @@ export default () => {
   onMount(() => {
     let initialized = false
 
+    // Check if Notifd is already cached from pre-init (services-init phase).
+    // If cached (either as instance or null), we're done immediately.
+    const cached = getNotifdSafe()
+    if (cached !== undefined) {
+      initialized = true
+      if (cached) {
+        setNotifd(cached)
+        setDontDisturb(cached.dontDisturb)
+        cached.connect("notify::dontDisturb", () => {
+          setDontDisturb(cached.dontDisturb)
+        })
+      }
+      return
+    }
+
+    // Not cached yet — schedule async init
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       const n = getNotifdSafe()
+      initialized = true
       if (!n) {
-        initialized = true
         return GLib.SOURCE_REMOVE
       }
       setNotifd(n)

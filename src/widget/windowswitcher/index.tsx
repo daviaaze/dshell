@@ -40,7 +40,7 @@ export default () => {
   }
 
   const mruUnsubscribe = createBinding(hyprland, "focusedClient").subscribe(
-    (client) => updateMru(client as AstalHyprland.Client | null),
+    (client) => updateMru(client),
   )
 
   const clientsBinding = createBinding(hyprland, "clients")

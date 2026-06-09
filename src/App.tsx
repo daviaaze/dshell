@@ -10,7 +10,6 @@ import { gettext } from "gettext"
 import { SettingsProvider } from "./lib/settings"
 import { registerActions, requestHandler } from "./lib/requestHandler"
 import { widgets } from "./widget"
-import WindowManager from "./lib/windowManager"
 import logger, { perf } from "./lib/logger"
 import css from "./shade.css"
 
@@ -53,16 +52,6 @@ export class ShadeShell extends Adw.Application {
       display,
       provider,
       Gtk.STYLE_PROVIDER_PRIORITY_USER,
-    )
-
-    // Force popover shadows off at max priority — libadwaita
-    // sometimes evades the regular cascade on popover > contents.
-    const shadowFix = new Gtk.CssProvider()
-    shadowFix.load_from_string("popover > contents { box-shadow: none; } popover > arrow { box-shadow: none; }")
-    Gtk.StyleContext.add_provider_for_display(
-      display,
-      shadowFix,
-      Gtk.STYLE_PROVIDER_PRIORITY_USER + 100,
     )
 
     logger.debug("mount", "CSS provider registered")

@@ -2,31 +2,31 @@ import { useSettings } from "#/lib/settings"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib"
-import { For } from "gnim"
+import { createState, For } from "gnim"
 import { usePopoverCleanup } from "#/widget/common/popoverCleanup"
-
-const PRESET_TIMEZONES = [
-  "UTC",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "America/Sao_Paulo",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "Europe/Moscow",
-  "Asia/Dubai",
-  "Asia/Kolkata",
-  "Asia/Shanghai",
-  "Asia/Tokyo",
-  "Asia/Singapore",
-  "Australia/Sydney",
-  "Pacific/Auckland",
-]
 
 export default () => {
   const { general } = useSettings()
+
+  const [PRESET_TIMEZONES,] = createState([
+    "UTC",
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "America/Sao_Paulo",
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "Europe/Moscow",
+    "Asia/Dubai",
+    "Asia/Kolkata",
+    "Asia/Shanghai",
+    "Asia/Tokyo",
+    "Asia/Singapore",
+    "Australia/Sydney",
+    "Pacific/Auckland",
+  ])
 
   return (
     <Adw.PreferencesGroup title="Clock" description="World clock timezones">
@@ -46,7 +46,7 @@ export default () => {
                 spacing={4}
                 cssClasses={["linked"]}
               >
-                <For each={() => PRESET_TIMEZONES}>
+                <For each={PRESET_TIMEZONES}>
                   {(tz: string) => (
                     <Gtk.Button
                       label={tz.replaceAll("_", " ")}

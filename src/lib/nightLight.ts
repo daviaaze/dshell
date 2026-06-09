@@ -1,5 +1,5 @@
 import GObject, { getter, register, setter } from "gnim/gobject"
-import AstalIO from "gi://AstalIO?version=0.1"
+import { Process } from "#/lib/process"
 import GLib from "gi://GLib?version=2.0"
 import { ColorScheme } from "#/lib/colorScheme"
 import logger from "#/lib/logger"
@@ -15,7 +15,7 @@ export default class NightLight extends GObject.Object {
   #enabled = false
   #temperature = 3500
   #autoSchedule = false
-  #process: AstalIO.Process | null = null
+  #process: Process | null = null
   #pollTimer: number | null = null
   #colorScheme: ColorScheme | null = null
   #initialized = false
@@ -156,7 +156,7 @@ export default class NightLight extends GObject.Object {
   #startProcess() {
     this.#stopProcess()
     try {
-      this.#process = AstalIO.Process.subprocessv([
+      this.#process = Process.subprocessv([
         "hyprsunset",
         "--temperature",
         this.#temperature.toString(),
@@ -177,7 +177,7 @@ export default class NightLight extends GObject.Object {
     }
     // Also kill any stray hyprsunset processes we may have started
     try {
-      AstalIO.Process.exec("pkill -f 'hyprsunset --temperature'")
+      Process.exec("pkill -f 'hyprsunset --temperature'")
     } catch {
       /* ignore */
     }

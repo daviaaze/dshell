@@ -149,10 +149,7 @@ export const TimerSection = () => {
                     hexpand
                     onClicked={() => timer.startCountdown(min * 60 * 1000)}
                   >
-                    <Adw.ButtonContent
-                      useUnderline={false}
-                      label={min >= 60 ? `${min / 60}h` : `${min}m`}
-                    />
+                    <Gtk.Label label={min >= 60 ? `${min / 60}h` : `${min}m`} />
                   </Gtk.Button>
                 )
                 self.attach(btn as Gtk.Widget, i % 3, Math.floor(i / 3), 1, 1)

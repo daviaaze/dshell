@@ -26,9 +26,10 @@ export function exactQuery(query: string): Apps.Application[] {
 }
 
 function getExecutableName(exec: string): string {
-  if (!exec) return ""
+  if (!exec) 
+    return ""
   const base = exec.split("/").pop() || exec
-  return base.split(" ")[0].toLowerCase()
+  return base.split(" ")[0]!.toLowerCase()
 }
 
 export function getAppForClient(
@@ -51,11 +52,11 @@ export function getAppForClient(
 
   if (cls) {
     const exact = exactQuery(cls)
-    if (exact.length > 0) return exact[0]
+    if (exact.length > 0) return exact[0]!
   }
   if (title) {
     const exact = exactQuery(title)
-    if (exact.length > 0) return exact[0]
+    if (exact.length > 0) return exact[0]!
   }
 
   for (const app of allApps) {
@@ -74,11 +75,11 @@ export function getAppForClient(
 
   if (cls) {
     const fuzzy = fuzzyQuery(cls)
-    if (fuzzy.length > 0) return fuzzy[0]
+    if (fuzzy.length > 0) return fuzzy[0]!
   }
   if (title) {
     const fuzzy = fuzzyQuery(title)
-    if (fuzzy.length > 0) return fuzzy[0]
+    if (fuzzy.length > 0) return fuzzy[0]!
   }
 
   return null

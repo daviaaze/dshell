@@ -1,4 +1,4 @@
-import AstalIO from "gi://AstalIO?version=0.1"
+import { Process } from "#/lib/process"
 import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register } from "gnim/gobject"
 import logger from "#/lib/logger"
@@ -86,7 +86,7 @@ function parseTargets(pwMetadata: string): Map<number, number> {
     for (const line of pwMetadata.split("\n")) {
       const match = line.match(/id:(\d+)\s+key:'target\.node'\s+value:'(\d+)'/)
       if (match) {
-        targets.set(parseInt(match[1]), parseInt(match[2]))
+        targets.set(parseInt(match[1]!), parseInt(match[2]!))
       }
     }
   } catch (e) {
@@ -139,8 +139,8 @@ export default class AppMixer extends GObject.Object {
 
   #fetchAndUpdate() {
     try {
-      const pwDump = AstalIO.Process.exec("pw-dump")
-      const pwMetadata = AstalIO.Process.exec("pw-metadata -n default")
+      const pwDump = Process.exec("pw-dump")
+      const pwMetadata = Process.exec("pw-metadata -n default")
       this.#update(pwDump, pwMetadata)
     } catch (e) {
       logger.error("audio", "pw-dump or pw-metadata failed:", e)
@@ -203,7 +203,7 @@ export default class AppMixer extends GObject.Object {
   setVolume(id: number, volume: number) {
     const clamped = Math.max(0, Math.min(1, volume))
     try {
-      AstalIO.Process.exec(`wpctl set-volume ${id} ${clamped.toFixed(2)}`)
+      Process.exec(`wpctl set-volume ${id} ${clamped.toFixed(2)}`)
     } catch (e) {
       logger.error("audio", "setVolume wpctl failed:", e)
       return
@@ -213,7 +213,7 @@ export default class AppMixer extends GObject.Object {
 
   setMute(id: number, muted: boolean) {
     try {
-      AstalIO.Process.exec(`wpctl set-mute ${id} ${muted ? "1" : "0"}`)
+      Process.exec(`wpctl set-mute ${id} ${muted ? "1" : "0"}`)
     } catch (e) {
       logger.error("audio", "setMute wpctl failed:", e)
       return
@@ -224,9 +224,9 @@ export default class AppMixer extends GObject.Object {
   setTargetNode(id: number, nodeId: number) {
     try {
       if (nodeId === -1) {
-        AstalIO.Process.exec(`pw-metadata -n default -d ${id} target.node`)
+        Process.exec(`pw-metadata -n default -d ${id} target.node`)
       } else {
-        AstalIO.Process.exec(
+        Process.exec(
           `pw-metadata -n default ${id} target.node ${nodeId}`,
         )
       }

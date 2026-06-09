@@ -17,7 +17,7 @@ export const AudioConfig = () => {
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       const audio = Wireplumber.get_default()!.audio
       const update = () => {
-        setSpeakers([...audio.speakers])
+        setSpeakers([...(audio.speakers ?? [])])
         setDefaultSpeaker(audio.default_speaker)
       }
       update()
@@ -27,7 +27,7 @@ export const AudioConfig = () => {
     })
   })
 
-  logger.log("AudioConfig done")
+  logger.info("AudioConfig done")
   return (
     <AudioEndpointControl
       visible={speakers.as((s) => s.length > 0)}
@@ -40,7 +40,7 @@ export const AudioConfig = () => {
 }
 
 export const MicConfig = () => {
-  logger.log("MicConfig:")
+  logger.info("MicConfig:")
   const [microphones, setMicrophones] = createState<Wireplumber.Endpoint[]>([])
   const [defaultMicrophone, setDefaultMicrophone] =
     createState<Wireplumber.Endpoint | null>(null)
@@ -50,7 +50,7 @@ export const MicConfig = () => {
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       const audio = Wireplumber.get_default()!.audio
       const update = () => {
-        setMicrophones([...audio.microphones])
+        setMicrophones([...(audio.microphones ?? [])])
         setDefaultMicrophone(audio.default_microphone)
       }
       update()

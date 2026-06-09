@@ -65,7 +65,7 @@ The best way to learn AGS/Astal is reading other people's shells. These are high
 |-------|--------|------|-----|---------------|
 | **matshell** | Matteo | AGS v2/v3, Material You | https://github.com/Axenide/Dots | Dynamic theming (matugen), media controls, workspace overview. Study the `widget/` structure. |
 | **faiyt-ags** | faiyt | AGS v2, very polished | https://github.com/faityt/faiyt-ags | Launcher enhancements (calculator, emoji, clipboard search), window switcher, per-app volume. |
-| **blxshell** | blx | AGS v2 | https://github.com/blxster/blxshell | Clipboard history in launcher, CAVA visualizer, dock implementation. |
+| **blxshell** | blx | AGS v2 | https://github.com/blxster/blxshell | Clipboard history in launcher, dock implementation. |
 | **M3L6H Shell** | — | AGS v2 | Search r/unixporn | Good example of vertical bar layout. |
 | **Khing Shell** | khing | AGS v2 | Search GitHub / r/unixporn | Lock screen design, notification center grouping. |
 

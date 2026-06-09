@@ -10,6 +10,7 @@ import SystemIndicators from "./systemIndicators"
 import SystemUsage from "./systemUsage"
 import Workspaces from "./workspaces"
 import BluetoothAudio from "./indicators/bluetoothAudio"
+import RecordingIndicator from "./indicators/recording"
 import Clock from "./clock"
 import Launcher from "./launcher"
 import { WeatherButton } from "./weather"
@@ -98,6 +99,7 @@ export default () => {
               )}
             >
               <BluetoothAudio />
+              <RecordingIndicator />
               <Clock vertical={vertical} visible={bar.showClock} />
               <Gtk.Separator
                 visible={bar.showClock.as((v) => v && bar.showWeather.get())}

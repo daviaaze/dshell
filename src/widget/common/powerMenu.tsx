@@ -1,7 +1,7 @@
 import Gtk from "gi://Gtk?version=4.0"
-import AstalIO from "gi://AstalIO?version=0.1"
 import ShellState from "#/lib/shellState"
 import logger from "#/lib/logger"
+import { Process } from "#/lib/process"
 import { ActionButton } from "./actionButton.tsx"
 
 export const PowerMenu = () => {
@@ -25,7 +25,7 @@ export const PowerMenu = () => {
           label="Log Out"
           onClicked={() => {
             try {
-              AstalIO.Process.exec("loginctl terminate-session")
+              Process.exec("loginctl terminate-session")
             } catch (e) {
               logger.error("power", "loginctl failed:", e)
             }
@@ -37,7 +37,7 @@ export const PowerMenu = () => {
           label="Suspend"
           onClicked={() => {
             try {
-              AstalIO.Process.exec("systemctl suspend")
+              Process.exec("systemctl suspend")
             } catch (e) {
               logger.error("power", "systemctl suspend failed:", e)
             }
@@ -49,7 +49,7 @@ export const PowerMenu = () => {
           label="Reboot"
           onClicked={() => {
             try {
-              AstalIO.Process.exec("systemctl reboot")
+              Process.exec("systemctl reboot")
             } catch (e) {
               logger.error("power", "systemctl reboot failed:", e)
             }
@@ -62,7 +62,7 @@ export const PowerMenu = () => {
           destructive
           onClicked={() => {
             try {
-              AstalIO.Process.exec("systemctl poweroff")
+              Process.exec("systemctl poweroff")
             } catch (e) {
               logger.error("power", "systemctl poweroff failed:", e)
             }

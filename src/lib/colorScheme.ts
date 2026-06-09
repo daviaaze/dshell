@@ -84,7 +84,8 @@ export class ColorScheme extends Object {
   private timeout() {
     const msUntil = (unixTime: number) =>
       Math.abs(
-        GLib.DateTime.new_from_unix_local(unixTime).difference(
+        GLib.DateTime.new_from_unix_local(unixTime)
+        .difference(
           GLib.DateTime.new_now_local(),
         ),
       )

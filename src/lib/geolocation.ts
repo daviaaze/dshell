@@ -1,5 +1,5 @@
 import GObject, { getter, register, signal } from "gnim/gobject"
-import AstalIO from "gi://AstalIO?version=0.1"
+import { Process } from "#/lib/process"
 import GLib from "gi://GLib"
 import Gio from "gi://Gio"
 import logger from "#/lib/logger"
@@ -239,36 +239,32 @@ export default class Geolocation extends GObject.Object {
   }
 
   #tryIpGeolocation() {
-    AstalIO.Process.exec_asyncv(
-      ["curl", "-s", "--max-time", "5", "https://ipapi.co/json/"],
-      (_, res) => {
-        try {
-          const out = AstalIO.Process.exec_asyncv_finish(res)
-          if (!out) {
-            logger.warn("geo", "curl produced no output")
-            return
-          }
-          const data = JSON.parse(out)
-          if (!data) {
-            logger.warn("geo", "parsed response is null")
-            return
-          }
-          if (
-            typeof data.latitude === "number" &&
-            typeof data.longitude === "number"
-          ) {
-            this.#update(data.latitude, data.longitude)
-          } else {
-            logger.warn(
-              "geo",
-              `no coordinates in response: ${out.slice(0, 200)}`,
-            )
-          }
-        } catch (e) {
-          logger.error("geo", "IP geolocation failed:", e)
+    Process.execAsyncv(["curl", "-s", "--max-time", "5", "https://ipapi.co/json/"])
+      .then((out) => {
+        if (!out) {
+          logger.warn("geo", "curl produced no output")
+          return
         }
-      },
-    )
+        const data = JSON.parse(out)
+        if (!data) {
+          logger.warn("geo", "parsed response is null")
+          return
+        }
+        if (
+          typeof data.latitude === "number" &&
+          typeof data.longitude === "number"
+        ) {
+          this.#update(data.latitude, data.longitude)
+        } else {
+          logger.warn(
+            "geo",
+            `no coordinates in response: ${out.slice(0, 200)}`,
+          )
+        }
+      })
+      .catch((e) => {
+        logger.error("geo", "IP geolocation failed:", e)
+      })
   }
 
   #update(lat: number, lon: number) {

@@ -15,47 +15,77 @@ export default () => {
         spacing={8}
         cssClasses={["popover-padded"]}
       >
+        {/* Screenshot section */}
+        <Gtk.Label
+          label="Screenshot"
+          halign={Gtk.Align.START}
+          cssClasses={["title-4"]}
+        />
         <LinkedPopoverBox>
           <Gtk.Button onClicked={() => screenshot.screenshot(true)}>
             <Adw.ButtonContent
               iconName="camera-photo-symbolic"
-              label="Screenshot"
+              label="Fullscreen"
             />
           </Gtk.Button>
           <Gtk.Button onClicked={() => screenshot.screenshot(false)}>
             <Adw.ButtonContent
               iconName="selection-mode-symbolic"
-              label="Area Screenshot"
+              label="Area"
             />
           </Gtk.Button>
         </LinkedPopoverBox>
+
         <Gtk.Separator />
+
+        {/* Recording section */}
+        <Gtk.Label
+          label="Recording"
+          halign={Gtk.Align.START}
+          cssClasses={["title-4"]}
+        />
         <LinkedPopoverBox>
           <Gtk.Button onClicked={() => screenshot.toggleRecording()}>
             <Adw.ButtonContent
               iconName="camera-video-symbolic"
-              label="Record"
+              label="Fullscreen"
             />
           </Gtk.Button>
           <Gtk.Button onClicked={() => screenshot.recordArea()}>
             <Adw.ButtonContent
               iconName="selection-mode-symbolic"
-              label="Record Area"
+              label="Area"
             />
           </Gtk.Button>
-          <Gtk.Button onClicked={() => screenshot.recordWindow()}>
-            <Adw.ButtonContent
-              iconName="focus-windows-symbolic"
-              label="Record Window"
-            />
-          </Gtk.Button>
-          <Gtk.Button onClicked={() => screenshot.recordOutput()}>
+          <Gtk.Button
+            onClicked={(btn) => {
+              const pop = btn.get_root() as Gtk.Popover | null
+              if (pop instanceof Gtk.Popover) pop.popdown()
+              setTimeout(() => screenshot.recordOutputVisual(), 200)
+            }}
+          >
             <Adw.ButtonContent
               iconName="video-display-symbolic"
-              label="Record Output"
+              label="Output"
+            />
+          </Gtk.Button>
+          <Gtk.Button
+            onClicked={(btn) => {
+              const pop = btn.get_root() as Gtk.Popover | null
+              if (pop instanceof Gtk.Popover) pop.popdown()
+              setTimeout(() => screenshot.recordWindowVisual(), 200)
+            }}
+          >
+            <Adw.ButtonContent
+              iconName="focus-windows-symbolic"
+              label="Window"
             />
           </Gtk.Button>
         </LinkedPopoverBox>
+
+        <Gtk.Separator />
+
+        {/* Audio toggle */}
         <Gtk.Box
           spacing={8}
           orientation={Gtk.Orientation.HORIZONTAL}
@@ -79,7 +109,7 @@ export default () => {
         rec ? "media-playback-stop-symbolic" : "camera-video-symbolic",
       )}
       label={createBinding(screenshot, "recording").as((rec) =>
-        rec ? "Stop Recording" : "Record",
+        rec ? "Stop" : "Record",
       )}
       onClick={() => screenshot.toggleRecording()}
       popover={popover}

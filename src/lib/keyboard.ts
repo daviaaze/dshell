@@ -1,7 +1,7 @@
-import AstalIO from "gi://AstalIO?version=0.1"
 import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register, signal } from "gnim/gobject"
 import logger from "#/lib/logger"
+import { Process } from "#/lib/process"
 
 interface KeyboardDevice {
   name: string
@@ -14,8 +14,8 @@ interface HyprlandDevices {
 
 function parseLayoutName(fullName: string): string {
   const match = fullName.match(/\(([A-Za-z]+)\)/)
-  if (match) return match[1].toUpperCase()
-  const code = fullName.split(/[\s_]/)[0].toUpperCase()
+  if (match) return match[1]!.toUpperCase()
+  const code = fullName.split(/[\s_]/)[0]!.toUpperCase()
   if (code.length <= 3) return code
   return fullName.substring(0, 3).toUpperCase()
 }
@@ -48,7 +48,7 @@ export default class KeyboardLayout extends GObject.Object {
 
   #update() {
     try {
-      const out = AstalIO.Process.exec("hyprctl devices -j")
+      const out = Process.exec("hyprctl devices -j")
       const data: HyprlandDevices = JSON.parse(out)
       const keyboards = data.keyboards || []
       const mainKb = keyboards.find(
@@ -79,7 +79,7 @@ export default class KeyboardLayout extends GObject.Object {
 
   cycle() {
     try {
-      const out = AstalIO.Process.exec("hyprctl devices -j")
+      const out = Process.exec("hyprctl devices -j")
       const data: HyprlandDevices = JSON.parse(out)
       const keyboards = data.keyboards || []
       const mainKb = keyboards.find(
@@ -89,10 +89,9 @@ export default class KeyboardLayout extends GObject.Object {
           k.name !== "",
       )
       if (mainKb) {
-        AstalIO.Process.exec_async(
+        Process.execAsync(
           `hyprctl switchxkblayout "${mainKb.name}" next`,
-          () => this.#update(),
-        )
+        ).then(() => this.#update()).catch((e) => logger.error("keyboard", "cycle failed:", e))
       }
     } catch (e) {
       logger.error("keyboard", "Failed to cycle layout:", e)

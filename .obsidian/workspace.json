@@ -1,0 +1,196 @@
+{
+  "main": {
+    "id": "30db53f9ffef497c",
+    "type": "split",
+    "children": [
+      {
+        "id": "2c36511887af6120",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1e127f6fb99d2a7e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "UPSTREAM_PR_PLAN.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "UPSTREAM_PR_PLAN"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "1f3ccdc329926222",
+    "type": "split",
+    "children": [
+      {
+        "id": "3677aae4384d329e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "48d552b2a2fc95e9",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "bafab9336631431f",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "f8f09809f5efd911",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "0749f84ee19a410c",
+    "type": "split",
+    "children": [
+      {
+        "id": "289de55af5b193ac",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b34202d564e1cb42",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "UPSTREAM_PR_PLAN.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for UPSTREAM_PR_PLAN"
+            }
+          },
+          {
+            "id": "58f9d260ceeedf28",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "UPSTREAM_PR_PLAN.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from UPSTREAM_PR_PLAN"
+            }
+          },
+          {
+            "id": "f603df266fac977f",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "300cff7c97a8edb9",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "6c7fd64bc71fe058",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "UPSTREAM_PR_PLAN.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of UPSTREAM_PR_PLAN"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "1e127f6fb99d2a7e",
+  "lastOpenFiles": [
+    "AGENTS.md",
+    "UPSTREAM_PR_PLAN.md",
+    "build/com.caioasmuniz.shade_shell.gschema.xml",
+    "build/shade-shell",
+    "build/compile_commands.json",
+    "build/build.ninja",
+    "build/build.ninja~"
+  ]
+}

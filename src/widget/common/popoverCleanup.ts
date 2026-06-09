@@ -1,3 +1,4 @@
+import { logger } from "#/lib/logger";
 import Gtk from "gi://Gtk?version=4.0"
 
 /**
@@ -6,14 +7,16 @@ import Gtk from "gi://Gtk?version=4.0"
  * Usage: `<Adw.SplitButton $={usePopoverCleanup} ... />`
  */
 export function usePopoverCleanup(
-  self: Gtk.Widget & { popover?: Gtk.Popover },
+  self: Gtk.Widget & { popover?: Gtk.Popover } | Gtk.MenuButton,
 ) {
   self.connect("destroy", () => {
     const popover = self.popover ?? (self as any).get_popover?.()
     if (popover) {
       try {
         popover.popdown()
-      } catch {}
+      } catch (e) {
+        logger.warn(`${e}`)
+      }
       if (popover.parent) popover.unparent()
     }
   })

@@ -26,7 +26,7 @@ const LEVEL_METHODS = {
 // ── Configuration ────────────────────────────────────────────────────────────
 const PREFIX = "[Shade]"
 let globalLevel: LogLevel = LogLevel.INFO
-let debugCategories = new Set<string>()
+const debugCategories = new Set<string>()
 
 // GSettings schema path for debug settings
 const DEBUG_SCHEMA_ID = import.meta.domain
@@ -188,7 +188,6 @@ export const perf = {
   /** Log current memory usage if available (GJS only). */
   logMemory(label: string): void {
     try {
-      // @ts-expect-error — GJS-specific, not in standard type defs
       if (typeof imports.byteArray === "undefined") return
       const rss = Number(GLib.get_num_processors())
       logger.debug("memory", `${label} — CPU count: ${rss}`)
