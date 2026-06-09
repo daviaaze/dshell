@@ -110,13 +110,16 @@ export default () => {
         [
           createBinding(bluetooth, "isPowered"),
           createBinding(bluetooth, "is-connected"),
+          createBinding(bluetooth, "devices"),
         ],
         (powered, _connected) => {
           if (!powered) return "Bluetooth Off"
-          const connected = toArray<AstalBluetooth.Device>(
+          const connectedDevices = toArray<AstalBluetooth.Device>(
             bluetooth.devices,
-          ).find((d: AstalBluetooth.Device) => d.connected)
-          return connected ? connected.name : "Bluetooth"
+          ).filter((d: AstalBluetooth.Device) => d.connected)
+          if (connectedDevices.length === 0) return "Bluetooth"
+          if (connectedDevices.length === 1) return connectedDevices[0].name
+          return `${connectedDevices.length} connected`
         },
       )}
       onClick={() => {

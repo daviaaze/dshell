@@ -1,33 +1,70 @@
 import Network from "gi://AstalNetwork"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createComputed } from "gnim"
+import { createState, onMount } from "gnim"
 import { wifiIconName } from "#/widget/quicksettings/network/utils"
 
 export default () => {
   const network = Network.get_default()
-  const wifi = createBinding(network, "wifi")
-  const wired = createBinding(network, "wired")
+  const [iconName, setIconName] = createState("network-no-route-symbolic")
+  const [visible, setVisible] = createState(false)
 
-  const icon = createComputed(
-    [createBinding(network, "primary"), wifi, wired],
-    (primary, wifiDevice, wiredDevice) => {
+  onMount(() => {
+    let wifiSignalIds: number[] = []
+
+    const cleanupWifiSignals = () => {
+      const w = network.wifi
+      for (const id of wifiSignalIds) {
+        if (w) w.disconnect(id)
+      }
+      wifiSignalIds = []
+    }
+
+    const update = () => {
+      const primary = network.primary
+      setVisible(primary !== Network.Primary.UNKNOWN)
+
       if (primary === Network.Primary.WIFI) {
-        if (!wifiDevice) return "network-wireless-offline-symbolic"
-        return wifiIconName(wifiDevice.strength, wifiDevice.enabled, wifiDevice.state)
+        const w = network.wifi
+        if (!w) {
+          setIconName("network-wireless-offline-symbolic")
+          return
+        }
+        setIconName(wifiIconName(w.strength, w.enabled, w.state))
+      } else if (primary === Network.Primary.WIRED) {
+        const wired = network.wired
+        setIconName(wired?.iconName || "network-wired-offline-symbolic")
+      } else {
+        setIconName("network-no-route-symbolic")
       }
-      if (primary === Network.Primary.WIRED) {
-        return wiredDevice?.iconName || "network-wired-offline-symbolic"
+    }
+
+    network.connect("notify::primary", update)
+    network.connect("notify::wifi", () => {
+      cleanupWifiSignals()
+      const w = network.wifi
+      if (w) {
+        wifiSignalIds.push(w.connect("notify::state", update))
+        wifiSignalIds.push(w.connect("notify::strength", update))
+        wifiSignalIds.push(w.connect("notify::enabled", update))
       }
-      return "network-no-route-symbolic"
-    },
-  )
+      update()
+    })
+    network.connect("notify::wired", update)
+
+    const w = network.wifi
+    if (w) {
+      wifiSignalIds.push(w.connect("notify::state", update))
+      wifiSignalIds.push(w.connect("notify::strength", update))
+      wifiSignalIds.push(w.connect("notify::enabled", update))
+    }
+
+    update()
+  })
 
   return (
     <Gtk.Image
-      iconName={icon}
-      visible={createBinding(network, "primary").as(
-        (p) => p !== Network.Primary.UNKNOWN,
-      )}
+      iconName={iconName}
+      visible={visible}
       pixelSize={18}
     />
   )

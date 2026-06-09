@@ -6,8 +6,6 @@ import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, With, For } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
 import {
-  ssidOf,
-  isSecure,
   securityLabel,
   strengthFraction,
 } from "#/widget/quicksettings/network/utils"
@@ -15,52 +13,103 @@ import logger from "#/lib/logger"
 
 // ── Helpers ────────────────────────────────────────────────────────
 
-/** Get all known (saved) WiFi connections across all access points. */
+/** Wrap NM.RemoteConnection.commit_changes_async in a Promise. */
+function commitChangesAsync(conn: NM.RemoteConnection, saveToDisk: boolean): Promise<void> {
+  return new Promise((resolve, reject) => {
+    conn.commit_changes_async(saveToDisk, null, (_source: any, res: any) => {
+      try {
+        conn.commit_changes_finish(res)
+        resolve()
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
+}
+
+/** Wrap NM.RemoteConnection.delete_async in a Promise. */
+function deleteConnectionAsync(conn: NM.RemoteConnection): Promise<void> {
+  return new Promise((resolve, reject) => {
+    conn.delete_async(null, (_source: any, res: any) => {
+      try {
+        conn.delete_finish(res)
+        resolve()
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
+}
+
+/** Get all known (saved) WiFi connections from NM.Client. */
 function getKnownNetworks(
-  wifi: Network.Wifi,
+  client: NM.Client,
 ): { ssid: string; secure: boolean; secLabel: string; connections: NM.RemoteConnection[] }[] {
-  const seen = new Set<string>()
-  const results: { ssid: string; secure: boolean; secLabel: string; connections: NM.RemoteConnection[] }[] = []
+  const bySsid = new Map<
+    string,
+    { secure: boolean; secLabel: string; connections: NM.RemoteConnection[] }
+  >()
 
   try {
-    const aps = toArray<Network.AccessPoint>(wifi.accessPoints)
-    for (const ap of aps) {
+    const allConns = toArray<NM.RemoteConnection>(client.get_connections())
+    for (const conn of allConns) {
       try {
-        const ssid = ssidOf(ap)
-        if (seen.has(ssid)) continue
-        
-        // get_connections() may throw or return problematic pointers for some APs
-        let connArr: NM.RemoteConnection[] = []
-        try {
-          const conns = ap.get_connections()
-          if (conns) {
-            // Use toArray with extra safety - it catches pointer conversion errors
-            connArr = toArray<NM.RemoteConnection>(conns)
+        const sWifi = conn.get_setting_wireless()
+        if (!sWifi) continue
+
+        const ssid = conn.get_id() ?? "Unknown Network"
+
+        const sSec = conn.get_setting_wireless_security()
+        let secure = false
+        let secLabel = "Open"
+
+        if (sSec) {
+          const keyMgmt = sSec.get_key_mgmt()
+          switch (keyMgmt) {
+            case "sae":
+              secure = true
+              secLabel = "WPA3"
+              break
+            case "wpa-psk":
+              secure = true
+              secLabel = "WPA2"
+              break
+            case "wpa-eap":
+            case "ieee8021x":
+              secure = true
+              secLabel = "WPA2 Enterprise"
+              break
+            case "none":
+              secure = true
+              secLabel = "WEP"
+              break
+            default:
+              secure = true
+              secLabel = keyMgmt || "Secure"
           }
-        } catch (connErr) {
-          // This AP's connections are unreadable, skip it
-          logger.debug("settings-network", `Skipping AP ${ssid}: connections unreadable`)
-          continue
         }
-        
-        if (connArr.length === 0) continue
-        seen.add(ssid)
-        results.push({
-          ssid,
-          secure: isSecure(ap),
-          secLabel: securityLabel(ap),
-          connections: connArr,
-        })
-      } catch (apErr) {
-        // Skip APs with any errors
-        logger.debug("settings-network", "Skipping AP:", apErr)
+
+        const existing = bySsid.get(ssid)
+        if (existing) {
+          existing.connections.push(conn)
+          if (secure && !existing.secure) {
+            existing.secure = secure
+            existing.secLabel = secLabel
+          }
+        } else {
+          bySsid.set(ssid, { secure, secLabel, connections: [conn] })
+        }
+      } catch (connErr) {
+        logger.debug("settings-network", "Skipping connection:", connErr)
       }
     }
   } catch (e) {
-    logger.error("settings-network", "getKnownNetworks outer error:", e)
+    logger.error("settings-network", "getKnownNetworks error:", e)
   }
 
-  return results.sort((a, b) => a.ssid.localeCompare(b.ssid))
+  return Array.from(bySsid.entries())
+    .map(([ssid, info]) => ({ ssid, ...info }))
+    .sort((a, b) => a.ssid.localeCompare(b.ssid))
 }
 
 // ── Connection Editor Dialog ───────────────────────────────────────
@@ -69,6 +118,7 @@ function showConnectionEditor(
   ssid: string,
   connections: NM.RemoteConnection[],
   parent: Gtk.Widget,
+  onForgotten?: () => void,
 ) {
   if (connections.length === 0) return
 
@@ -110,14 +160,16 @@ function showConnectionEditor(
           settingSecurity.psk = pwd
         }
       }
-      conn.commit_changes_async(true, null).catch((e: Error) => {
-        logger.error("settings-network", "commit failed:", e.message)
-        setErrorMsg(e.message || "Failed to save")
-        setSaving(false)
-      }).then(() => {
-        setSaving(false)
-        dialog.close()
-      })
+      commitChangesAsync(conn, true)
+        .then(() => {
+          setSaving(false)
+          dialog.close()
+        })
+        .catch((e: Error) => {
+          logger.error("settings-network", "commit failed:", e.message)
+          setErrorMsg(e.message || "Failed to save")
+          setSaving(false)
+        })
     } catch (e) {
       logger.error("settings-network", "save error:", e)
       setErrorMsg(String(e))
@@ -126,8 +178,8 @@ function showConnectionEditor(
   }
 
   const forgetNetwork = () => {
-    conn.delete_async(null)
-      .then(() => dialog.close())
+    deleteConnectionAsync(conn)
+      .then(() => { dialog.close(); onForgotten?.() })
       .catch((e: Error) =>
         logger.error("settings-network", "forget failed:", e.message),
       )
@@ -363,28 +415,8 @@ function showHiddenNetworkDialog(parent: Gtk.Widget) {
 
 // ── Hotspot Controls ───────────────────────────────────────────────
 
-function HotspotSection({ wifi }: { wifi: Network.Wifi }) {
-  const isHotspot = createBinding(wifi, "isHotspot")
-
-  return (
-    <Adw.PreferencesGroup title="Hotspot" description="Share your internet connection over Wi-Fi">
-      <Adw.ActionRow
-        title="Hotspot"
-        subtitle={isHotspot.as((h) => (h ? "Active" : "Inactive"))}
-      >
-        <Gtk.Switch
-          $type="suffix"
-          valign={Gtk.Align.CENTER}
-          active={isHotspot}
-          onNotifyActive={() => {
-            // Toggle hotspot — this requires NM API
-            // For now, just note that it's not directly supported by AstalNetwork
-            logger.info("settings-network", "Hotspot toggle not yet implemented")
-          }}
-        />
-      </Adw.ActionRow>
-    </Adw.PreferencesGroup>
-  )
+function escapeLabel(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 }
 
 // ── Main Settings Page ─────────────────────────────────────────────
@@ -393,9 +425,14 @@ export default () => {
   const network = Network.get_default()
   const wifi = createBinding(network, "wifi")
   const wired = createBinding(network, "wired")
+  const [knownVersion, bumpKnown] = createState(0)
+  const knownNetworks = createComputed(
+    [knownVersion],
+    () => getKnownNetworks(network.client),
+  )
 
   return (
-    <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
+    <>
       {/* WiFi Section */}
       <Adw.PreferencesGroup title="Wi-Fi" description="Wireless network connections">
         <With value={wifi}>
@@ -404,7 +441,7 @@ export default () => {
               <Adw.SwitchRow
                 title="Wi-Fi"
                 subtitle={createBinding(w, "ssid").as((ssid) =>
-                  ssid ? `Connected to ${ssid}` : "Not connected",
+                  ssid ? `Connected to ${escapeLabel(ssid)}` : "Not connected",
                 )}
                 active={createBinding(w, "enabled")}
                 onNotifyActive={(self) => {
@@ -435,25 +472,6 @@ export default () => {
             )
           }
         </With>
-        <With value={wifi}>
-          {(w) =>
-            w ? (
-              <Adw.ActionRow
-                title="Scan for Networks"
-                activatable
-                onActivated={() => w.scan()}
-              >
-                <Gtk.Image
-                  $type="prefix"
-                  iconName="view-refresh-symbolic"
-                  pixelSize={16}
-                />
-              </Adw.ActionRow>
-            ) : (
-              <></>
-            )
-          }
-        </With>
         <Adw.ActionRow
           title="Connect to Hidden Network…"
           activatable
@@ -467,58 +485,48 @@ export default () => {
         </Adw.ActionRow>
       </Adw.PreferencesGroup>
 
-      <With value={wifi}>
-        {(w) => {
-          if (!w) return <></>
-
-          const knownNetworks = createComputed(
-            [createBinding(w, "accessPoints")],
-            () => getKnownNetworks(w),
-          )
-
-          return (
-            <Adw.PreferencesGroup
-              title="Known Networks"
-              description="Saved Wi-Fi networks"
+      <Adw.PreferencesGroup
+        title="Known Networks"
+        description="Saved Wi-Fi networks"
+        visible={wifi.as((w) => w !== null)}
+      >
+        <For each={knownNetworks}>
+          {(net: { ssid: string; secure: boolean; secLabel: string; connections: NM.RemoteConnection[] }) => (
+            <Adw.ActionRow
+              title={escapeLabel(net.ssid)}
+              subtitle={net.secLabel}
+              activatable
+              onActivated={(self) => showConnectionEditor(net.ssid, net.connections, self, () => bumpKnown(knownVersion.get() + 1))}
             >
-              <For each={knownNetworks}>
-                {(net: { ssid: string; secure: boolean; secLabel: string; connections: NM.RemoteConnection[] }) => (
-                  <Adw.ActionRow
-                    title={net.ssid}
-                    subtitle={net.secLabel}
-                    activatable
-                    onActivated={(self) => showConnectionEditor(net.ssid, net.connections, self)}
-                  >
-                    <Gtk.Image
-                      $type="prefix"
-                      iconName={
-                        net.secure
-                          ? "network-wireless-encrypted-symbolic"
-                          : "network-wireless-signal-none-symbolic"
-                      }
-                      pixelSize={16}
-                    />
-                    <Gtk.Button
-                      $type="suffix"
-                      cssClasses={["flat", "circular"]}
-                      onClicked={() => {
-                        for (const conn of net.connections) {
-                          conn.delete_async(null).catch((e: Error) =>
-                            logger.error("settings-network", "forget failed:", e.message),
-                          )
-                        }
-                      }}
-                      tooltipText="Forget Network"
-                    >
-                      <Gtk.Image iconName="user-trash-symbolic" pixelSize={14} />
-                    </Gtk.Button>
-                  </Adw.ActionRow>
-                )}
-              </For>
-            </Adw.PreferencesGroup>
-          )
-        }}
-      </With>
+              <Gtk.Image
+                $type="prefix"
+                iconName={
+                  net.secure
+                    ? "network-wireless-encrypted-symbolic"
+                    : "network-wireless-signal-none-symbolic"
+                }
+                pixelSize={16}
+              />
+              <Gtk.Button
+                $type="suffix"
+                cssClasses={["flat", "circular"]}
+                onClicked={() => {
+                    const first = net.connections[0]
+                    if (!first) return
+                    deleteConnectionAsync(first)
+                      .then(() => bumpKnown(knownVersion.get() + 1))
+                      .catch((e: Error) =>
+                        logger.error("settings-network", "forget failed:", e.message),
+                      )
+                  }}
+                tooltipText="Forget Network"
+              >
+                <Gtk.Image iconName="user-trash-symbolic" pixelSize={14} />
+              </Gtk.Button>
+            </Adw.ActionRow>
+          )}
+        </For>
+      </Adw.PreferencesGroup>
 
       {/* Wired Section */}
       <Adw.PreferencesGroup title="Wired" description="Ethernet connection">
@@ -546,9 +554,29 @@ export default () => {
         </With>
       </Adw.PreferencesGroup>
 
-      <With value={wifi}>
-        {(w) => (w ? <HotspotSection wifi={w} /> : <></>)}
-      </With>
+      <Adw.PreferencesGroup
+        title="Hotspot"
+        description="Share your internet connection over Wi-Fi"
+        visible={wifi.as((w) => w !== null)}
+      >
+        <With value={wifi}>
+          {(w) => w ? (
+            <Adw.ActionRow
+              title="Hotspot"
+              subtitle={createBinding(w, "isHotspot").as((h) => (h ? "Active" : "Inactive"))}
+            >
+              <Gtk.Switch
+                $type="suffix"
+                valign={Gtk.Align.CENTER}
+                active={createBinding(w, "isHotspot")}
+                onNotifyActive={() => {
+                  logger.info("settings-network", "Hotspot toggle not yet implemented")
+                }}
+              />
+            </Adw.ActionRow>
+          ) : <></>}
+        </With>
+      </Adw.PreferencesGroup>
 
       {/* Connectivity Section */}
       <Adw.PreferencesGroup title="Connectivity" description="Internet access status">
@@ -563,6 +591,6 @@ export default () => {
           )}
         />
       </Adw.PreferencesGroup>
-    </Gtk.Box>
+    </>
   )
 }

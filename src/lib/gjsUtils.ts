@@ -13,7 +13,11 @@ export function toArray<T>(list: any): T[] {
     } catch {
       // Skip items with unreadable GIR data (e.g. NM pointers that
       // GJS can't marshal — "Can't convert non-null pointer to JS value")
-      l = l.next
+      try {
+        l = l.next
+      } catch {
+        break
+      }
     }
   }
   return arr

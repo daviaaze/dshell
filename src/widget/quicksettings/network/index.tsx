@@ -4,26 +4,60 @@ import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, onMount, With } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
+import WifiPopover from "./wifiPopover"
 import { wifiIconName } from "./utils"
 import logger from "#/lib/logger"
+
+interface WifiWrap {
+  wifi: Network.Wifi | null
+  tick: number
+}
 
 export default () => {
   logger.log("Network: get_default()")
   const network = Network.get_default()
 
-  // Defer wifi binding to avoid NM synchronous D-Bus call during mount.
-  // Accessing accessPoints triggers nm-access-point assertions and SEGV
-  // on systems with corrupted NM AP data, so we never touch them.
-  const [wifi, setWifi] = createState<Network.Wifi | null>(null)
+  const [wifiWrap, setWifiWrap] = createState<WifiWrap>({ wifi: null, tick: 0 })
+  const [wifiDevice, setWifiDevice] = createState<Network.Wifi | null>(null)
   const [wifiReady, setWifiReady] = createState(false)
+  const wifi = wifiWrap.as((w) => w.wifi)
 
   onMount(() => {
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      let wifiSignalIds: number[] = []
+
+      const cleanupWifiSignals = () => {
+        const w = network.wifi
+        for (const id of wifiSignalIds) {
+          if (w) w.disconnect(id)
+        }
+        wifiSignalIds = []
+      }
+
+      const onWifiPropertyChanged = () => {
+        setWifiWrap((prev) => ({ wifi: network.wifi, tick: prev.tick + 1 }))
+      }
+
+      const onWifiDeviceChanged = () => {
+        cleanupWifiSignals()
+        const w = network.wifi
+        setWifiWrap((prev) => ({ wifi: w, tick: prev.tick + 1 }))
+        if (w !== wifiDevice.get()) {
+          setWifiDevice(w)
+        }
+        if (w) {
+          wifiSignalIds.push(w.connect("notify::state", onWifiPropertyChanged))
+          wifiSignalIds.push(w.connect("notify::strength", onWifiPropertyChanged))
+          wifiSignalIds.push(w.connect("notify::ssid", onWifiPropertyChanged))
+          wifiSignalIds.push(w.connect("notify::enabled", onWifiPropertyChanged))
+        }
+      }
+
       try {
         logger.log("Network: wifi binding")
         const wifiBinding = createBinding(network, "wifi")
-        wifiBinding.subscribe(() => setWifi(wifiBinding.get()))
-        setWifi(wifiBinding.get())
+        wifiBinding.subscribe(onWifiDeviceChanged)
+        onWifiDeviceChanged()
       } catch (e) {
         logger.error("network", "wifi binding failed:", e)
       }
@@ -33,60 +67,50 @@ export default () => {
   })
 
   const [connectingAp, setConnectingAp] = createState<string | null>(null)
-
-  const isConnecting = connectingAp.as((connecting) => connecting !== null)
+  const isConnecting = connectingAp.as((c) => c !== null)
 
   const wifiIconName_ = createComputed(
-    [wifi],
-    (w) => {
+    [wifiWrap],
+    (wrap) => {
+      const w = wrap.wifi
       if (!w) return "network-wireless-offline-symbolic"
       return wifiIconName(w.strength, w.enabled, w.state)
     },
   )
 
-  const wifiSsid = wifi.as((w) => w?.ssid ?? null)
-  const wifiEnabled = wifi.as((w) => w?.enabled ?? false)
+  const wifiSsid = wifiWrap.as((wrap) => wrap.wifi?.ssid ?? null)
+  const wifiEnabled = wifiWrap.as((wrap) => wrap.wifi?.enabled ?? false)
 
   const wifiCssClasses = createComputed(
-    [wifi],
-    (w) => {
-      if (w?.state === Network.DeviceState.ACTIVATED) {
+    [wifiWrap],
+    (wrap) => {
+      if (wrap.wifi?.state === Network.DeviceState.ACTIVATED) {
         return ["raised", "suggested-action"]
       }
       return ["raised"]
     },
   )
 
-  // Minimal popover — no AP list, no scan, no active_access_point.
-  // These all trigger nm-access-point assertions and SEGV on affected systems.
+  const label = createComputed(
+    [wifiSsid, wifiEnabled],
+    (ssid, enabled) => {
+      if (!ssid || ssid === "..." || ssid.trim() === "")
+        return enabled ? "WiFi" : "WiFi Off"
+      return ssid.length > 24 ? ssid.slice(0, 24) + "…" : ssid
+    },
+  )
+
   const popover = (
     <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT}>
       <LinkedPopoverBox>
-        <With value={wifi}>
+        <With value={wifiDevice}>
           {(w: Network.Wifi | null) =>
             w ? (
-              <Gtk.Box
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={4}
-                cssClasses={["popover-padded-lg"]}
-              >
-                <Gtk.Label
-                  cssClasses={["title-3"]}
-                  label={w.ssid ? `Connected to ${w.ssid}` : "Not connected"}
-                  halign={Gtk.Align.START}
-                />
-                <Gtk.Label
-                  cssClasses={["dim-label"]}
-                  label={w.enabled ? "WiFi is on" : "WiFi is off"}
-                  halign={Gtk.Align.START}
-                />
-                <Gtk.Button
-                  hexpand
-                  cssClasses={["raised"]}
-                  onClicked={() => (w.enabled = !w.enabled)}
-                  label={w.enabled ? "Turn WiFi Off" : "Turn WiFi On"}
-                />
-              </Gtk.Box>
+              <WifiPopover
+                wifi={w}
+                connectingAp={connectingAp}
+                setConnectingAp={setConnectingAp}
+              />
             ) : (
               <Gtk.Label
                 cssClasses={["popover-padded-lg"]}
@@ -105,11 +129,7 @@ export default () => {
         connecting ? "content-loading-symbolic" : icon,
       )}
       cssClasses={wifiCssClasses}
-      label={wifiSsid.as((ssid) => {
-        if (!ssid || ssid === "..." || ssid.trim() === "")
-          return wifiEnabled.get() ? "WiFi" : "WiFi Off"
-        return ssid.length > 24 ? ssid.slice(0, 24) + "…" : ssid
-      })}
+      label={label}
       onClick={() => {
         const w = wifi.get()
         if (!w) return

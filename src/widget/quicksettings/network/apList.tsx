@@ -89,9 +89,13 @@ function ApRow({
       if (!conns) return
       const arr = toArray<NM.RemoteConnection>(conns)
       for (const conn of arr) {
-        conn.delete_async(null).catch((e: Error) =>
-          logger.error("network", "forget failed:", e.message),
-        )
+        conn.delete_async(null, (_source: any, res: any) => {
+          try {
+            conn.delete_finish(res)
+          } catch (e: any) {
+            logger.error("network", "forget failed:", e.message)
+          }
+        })
       }
     } catch (e) {
       logger.error("network", "forget error:", e)
@@ -142,7 +146,7 @@ function ApRow({
               <Gtk.Label
                 hexpand
                 halign={Gtk.Align.START}
-                label={apSsid}
+                label={apSsid.replace(/&/g, "&amp;").replace(/</g, "&lt;")}
                 ellipsize={3}
               />
               <Gtk.Label
