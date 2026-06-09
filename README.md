@@ -71,7 +71,7 @@ src/
 ├── main.ts            # GJS entry point
 ├── App.tsx            # Adw.Application subclass
 ├── lib/               # Core services and utilities
-│   ├── keybinds.ts    # Dynamic Hyprland keybinding registration
+│   ├── keyboard.ts    # Keyboard layout manager
 │   ├── logger.ts      # Shared logging with timestamps
 │   ├── shellState.ts  # Reactive state singleton (launcher, QS, lock)
 │   ├── monitors.ts    # Gdk monitor tracking + Hyprland mapping

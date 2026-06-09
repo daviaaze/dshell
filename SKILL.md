@@ -25,7 +25,7 @@ Shade is a personal desktop shell for Hyprland on Linux, written in TypeScript a
 | File | Purpose |
 |------|---------|
 | `src/lib/logger.ts` | Shared logging utility with timestamps via `GLib.DateTime` |
-| `src/lib/keybinds.ts` | Keybinding manager using `hyprctl keyword` for dynamic registration |
+| `src/lib/keyboard.ts` | Keyboard layout manager |
 | `src/lib/shellState.ts` | Reactive GObject state singleton for launcher/qs/lockscreen |
 | `src/lib/requestHandler.ts` | D-Bus CLI command dispatcher for remote Gio.Application calls |
 | `src/lib/monitors.ts` | Reactive Gdk monitor tracking with Hyprland mapping |

@@ -164,7 +164,7 @@ failed(_reason: string) {}
 It returns stdout as a string on exit — no handle, no `.kill()`. For controllable subprocesses (e.g., `wf-recorder`), use `AstalIO.Process.subprocessv()`.
 
 ### 10. Remote commands must use `gdbus`, not `shade-shell toggle`
-Spawning the full GJS app takes ~1s. The lightweight `gdbus` helper (`shade-toggle.sh`) takes ~7ms.
+Spawning the full GJS app takes ~1s. The lightweight `gdbus` call (as configured in `nix/hyprland/binds.nix`) takes ~7ms.
 
 ---
 
@@ -176,7 +176,7 @@ Why non-obvious choices were made. **Do not reverse these without discussion.**
 |----------|-----------|
 | **Defer `Notifd.get_default()` via `GLib.idle_add`** | D-Bus proxy handshake blocks the main loop for 25s if another notification daemon is registered. |
 | **Track both `is-connected` and `devices` for bluetooth battery** | `battery_percentage` arrives after connection state — a `createComputed` depending only on `is-connected` caches `null` permanently. Adding `createBinding(bluetooth, "devices")` catches late property updates. |
-| **Use `gdbus` / `shade-toggle.sh` for keybindings** | Spawning `shade-shell toggle` loads the entire 1MB bundle + GI modules (~1s) just to send a D-Bus message. |
+| **Use `gdbus` via `nix/hyprland/binds.nix` for keybindings** | Spawning `shade-shell toggle` loads the entire 1MB bundle + GI modules (~1s) just to send a D-Bus message. |
 | **No network list in Settings** | Quick Settings owns all network UX (list, scan, password dialog). Settings only toggles WiFi on/off. |
 | **No automated tests** | Manual testing only via NixOS VM (`nix run .#nixosConfigurations.vm...`). |
 | **No semicolons** | Enforced by Prettier config in `package.json`. |
@@ -197,7 +197,7 @@ Things the agent must **not** generate or introduce.
 | `[...glList]` or `<For each={glList}>` | `GLib.List` is not iterable | `toArray(glList)` |
 | `.catch(() => {})` | Swallows errors, makes debugging impossible | `print("error:", e.message)` |
 | `AstalIO.Process.exec_async` for long-running tasks | No process handle to kill | `AstalIO.Process.subprocessv()` |
-| `shade-shell toggle ...` in scripts / keybindings | ~1s spawn overhead | `shade-toggle.sh` (gdbus) |
+| `shade-shell toggle ...` in scripts / keybindings | ~1s spawn overhead | `gdbus` call via `nix/hyprland/binds.nix` |
 | `<For>` inside `<With>` callback | Gnim fragment nesting crash | Use `visible={...}` bindings |
 | `media-record-stop-symbolic` | Missing icon in Adwaita | `media-playback-stop-symbolic` |
 | Adding network list to Settings | Duplicates Quick Settings UX | Keep network UX in QS only |
