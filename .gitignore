@@ -9,3 +9,5 @@ result
 __pycache__/
 test-output/
 .superpowers/
+# Local Pi runtime state
+.atl/
