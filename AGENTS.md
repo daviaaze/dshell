@@ -24,43 +24,9 @@ metadata:
 
 ---
 
-## Agent Tool Availability
+## Quick Reference
 
-When working on this codebase, the following tools are available:
-
-| Tool | Purpose | Fallback |
-|------|---------|----------|
-| `bash` | Shell commands: git, nix, pnpm, journalctl, test | — |
-| `batch` | Multi-op: file reads, writes, edits, deletes + bash + web | — |
-| `grep` / `find` / `ls` | File search and directory listing | Use only when graph tools are unavailable or for literal string/glob searches |
-| Code-review graph tools | Semantic search, dependency tracing, impact radius, architecture overview | **Not yet wired for this project.** Use `grep` with `glob` filters for symbol search; use `find` for file discovery; read files directly for dependency analysis |
-
-**Graph-first rule:** When graph tools are available (future), always prefer `semantic_search_nodes` or `query_graph` over `grep` for finding symbols. Until then, use `grep` with `glob` and `find` as the primary discovery tools.
-
-**Web tools** (`search`, `fetch`) are available for external research (GTK/GJS docs, Astal docs, NixOS references).
-
----
-
-## Agent Delegation Model
-
-Route work through the smallest safe path:
-
-| Trigger | Action |
-|---------|--------|
-| Read/edit 1–2 files, mechanical change | **Inline** — do it directly |
-| Read 4+ files to understand | **Delegate** — launch a scout/explorer subagent |
-| Edit 2+ non-trivial files | **Delegate** — worker subagent; fresh reviewer audits before completion |
-| Commit, push, or open PR | **Delegate** — fresh-context reviewer audits the diff first |
-| Destructive action (delete, force push, rm -rf) | **STOP** — ask for explicit confirmation |
-| Prod DB, infra apply, CI/CD changes | **STOP** — ask first |
-
-**Subagent types:** Use `scout`/`explorer` for codebase exploration, `worker` for implementation, `reviewer` for adversarial review. Keep writes single-threaded unless isolated worktrees are explicitly approved.
-
-**Skill loading:** Before delegating, read `.atl/skill-registry.md` if present and pass matching skill paths to the subagent. If the registry is absent, proceed without project-specific skills.
-
----
-
-## Where to Find Things
+### Where to Find Things
 
 | Topic | File |
 |-------|------|
@@ -76,7 +42,81 @@ Route work through the smallest safe path:
 | Monitor tracking + Hyprland mapping | `src/lib/monitors.ts` |
 | NixOS module & systemd service | `nix/module.nix` |
 | Package derivation | `nix/desktop-shell.nix` |
+| Development shell | `nix/devshell.nix` |
+| VM configuration for testing | `nix/vm.nix` |
+| Default Hyprland config | `nix/hyprland/default.nix` |
+| Default keybindings | `nix/hyprland/binds.nix` |
 | Build rules (esbuild + schemas + desktop entry) | `meson.build` |
+| Flake inputs, package, NixOS module, dev shell, VM config | `flake.nix` |
+| pnpm scripts and dependencies | `package.json` |
+| TypeScript compiler options | `tsconfig.json` |
+| Linting rules | `eslint.config.js` |
+
+### Critical Rules
+
+See **Architecture Invariants** below for full details and code examples.
+
+1. **kebab-case `notify()`** — `@setter` registers kebab-case; `this.notify("camelCase")` silently breaks reactive bindings. Always `this.notify("kebab-case")`. [§1]
+2. **Defer `Notifd.get_default()`** — D-Bus handshake blocks the main loop for 25s if another daemon owns the bus. Always use `GLib.idle_add`. [§2]
+3. **Convert `GLib.List` before iterating** — `GLib.List` is not iterable in GJS; passing it to `<For>` crashes the component. Use `toArray()`. [§3]
+4. **Bind `network.wifi` — never capture as const** — `.wifi` is set once at construction and is `null` forever if device wasn't ready. Always `createBinding(network, "wifi")`. [§4]
+5. **Multi-dep `createComputed`** — late-arriving sub-properties (e.g., `battery_percentage`) are missed by single-dep computeds. Add `createBinding(obj, "devices")` as a secondary dependency. [§5]
+
+### Common Mistakes
+
+See **Anti-Patterns** below for the full list.
+
+| Mistake | Fix |
+|---------|-----|
+| `this.notify("camelCase")` | `this.notify("kebab-case")` |
+| `Notifd.get_default()` in constructor/mount | `GLib.idle_add` |
+| `const wifi = network.wifi` | `createBinding(network, "wifi")` |
+| `[...glList]` or `<For each={glList}>` | `toArray(glList)` |
+| `shade-shell toggle` in scripts/keybindings | `gdbus` call |
+
+### Delegation Triggers
+
+| Trigger | Action |
+|---------|--------|
+| Read/edit 1–2 files, mechanical change | **Inline** — do it directly |
+| Read 4+ files to understand | **Delegate** — scout/explorer subagent |
+| Edit 2+ non-trivial files | **Delegate** — worker subagent; fresh reviewer audits before completion |
+| Commit, push, or open PR | **Delegate** — fresh-context reviewer audits the diff first |
+| Destructive / prod DB / infra / CI | **STOP** — ask for explicit confirmation |
+
+**Subagent types:** `scout`/`explorer` for exploration, `worker` for implementation, `reviewer` for adversarial review. Keep writes single-threaded unless isolated worktrees are explicitly approved.
+
+### Build Commands
+
+```bash
+pnpm run build       # Validate bundle + schema XML; NOT a runnable binary
+pnpm run dev         # Nix build + run with proper wrappers
+nix build            # Produces runnable binary with wrappers
+nix run .#...        # Run via flake
+```
+
+> **Critical:** `meson compile` only validates the bundle — it does **not** produce a runnable binary. Always use `nix build` or `nix run` for a working binary.
+
+---
+
+## Agent Workflow
+
+### Available Tools
+
+| Tool | Purpose | Fallback |
+|------|---------|----------|
+| `bash` | Shell commands: git, nix, pnpm, journalctl, test | — |
+| `batch` | Multi-op: file reads, writes, edits, deletes + bash + web | — |
+| `grep` / `find` / `ls` | File search and directory listing | Use only when graph tools are unavailable or for literal string/glob searches |
+| Code-review graph tools | Semantic search, dependency tracing, impact radius, architecture overview | **Not yet wired for this project.** Use `grep` with `glob` filters for symbol search; use `find` for file discovery; read files directly for dependency analysis |
+
+**Graph-first rule:** When graph tools are available (future), always prefer `semantic_search_nodes` or `query_graph` over `grep` for finding symbols. Until then, use `grep` with `glob` and `find` as the primary discovery tools.
+
+**Web tools** (`search`, `fetch`) are available for external research (GTK/GJS docs, Astal docs, NixOS references).
+
+### Skill Loading
+
+Before delegating, read `.atl/skill-registry.md` if present and pass matching skill paths to the subagent. If the registry is absent, proceed without project-specific skills.
 
 ---
 
@@ -205,7 +245,7 @@ Things the agent must **not** generate or introduce.
 
 ---
 
-## Build & Tooling Notes
+## Build & Conventions
 
 ### Commands
 ```bash
@@ -229,9 +269,7 @@ If bumping version, sync **three** files:
 
 And update `CHANGELOG.md`.
 
----
-
-## Development Conventions
+### Development Conventions
 
 - **Path alias:** `#/*` maps to `./src/*`.
 - **GIR imports:** `gi://Module?version=X.Y`, marked external in esbuild.
@@ -241,6 +279,25 @@ And update `CHANGELOG.md`.
 - **Logging:** Use `import logger from "#/lib/logger"` for normal logs. Use `print()` only inside `.catch()` handlers to surface errors.
 - **CSS:** Global CSS in `src/shade.css`. Widget-level CSS via inline `css="..."`. Heavy use of Libadwaita built-in classes (`card`, `frame`, `background`, `linked`, `title-1`–`title-4`, `circular`, `flat`, `raised`, etc.).
 - **Code style:** No semicolons. Follow surrounding quote style. 2-space indentation.
+
+---
+
+## Runtime Debugging
+
+Shade runs as a systemd user service. All output goes to journald.
+
+```bash
+# Logs by executable
+journalctl --user _COMM=shade-shell --boot 0 -n 200 --no-pager
+
+# Service status
+systemctl --user status shade-shell
+
+# Broader GJS/GTK error search
+journalctl --user --boot 0 -n 500 --no-pager | grep -iE "shade-shell|JS ERROR|gjs\["
+```
+
+If a widget silently fails to appear, check logs — the crash is likely in an **earlier** widget in the mount order.
 
 ---
 
@@ -307,46 +364,3 @@ locations. When a file is created or moved:
 1. Update the table **first**
 2. Then update any other docs that reference the old path
 3. Trust the table over other documents when they conflict
-
----
-
-## Runtime Debugging
-
-Shade runs as a systemd user service. All output goes to journald.
-
-```bash
-# Logs by executable
-journalctl --user _COMM=shade-shell --boot 0 -n 200 --no-pager
-
-# Service status
-systemctl --user status shade-shell
-
-# Broader GJS/GTK error search
-journalctl --user --boot 0 -n 500 --no-pager | grep -iE "shade-shell|JS ERROR|gjs\["
-```
-
-If a widget silently fails to appear, check logs — the crash is likely in an **earlier** widget in the mount order.
-
----
-
-## Useful Files for Reference
-
-| File | Purpose |
-|------|---------|
-| `flake.nix` | Flake inputs, package, NixOS module, dev shell, VM config |
-| `nix/desktop-shell.nix` | Nix derivation for the package |
-| `nix/module.nix` | NixOS module definition |
-| `nix/devshell.nix` | Development shell |
-| `nix/vm.nix` | VM configuration for testing |
-| `nix/hyprland/default.nix` | Default Hyprland config for the module |
-| `nix/hyprland/binds.nix` | Default keybindings |
-| `meson.build` | Build rules: esbuild bundling, schema generation, desktop entry, data install |
-| `package.json` | pnpm scripts and dependencies |
-| `tsconfig.json` | TypeScript compiler options |
-| `eslint.config.js` | Linting rules |
-| `src/lib/gschema.ts` | GSettings schema definitions |
-| `src/lib/settings.ts` | Reactive settings context |
-| `src/lib/requestHandler.ts` | CLI command dispatcher |
-| `src/widget/index.tsx` | Shared state and widget mount function |
-| `src/App.tsx` | Root application class |
-| `src/main.ts` | Entry point |
