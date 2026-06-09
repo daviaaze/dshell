@@ -52,6 +52,7 @@ metadata:
 | pnpm scripts and dependencies | `package.json` |
 | TypeScript compiler options | `tsconfig.json` |
 | Linting rules | `eslint.config.js` |
+| Doc health check script | `scripts/doc-check.sh` |
 
 ### Critical Rules
 
@@ -261,6 +262,22 @@ nix build              # Produces runnable binary with wrappers
 > **Critical:** `meson compile` only validates the bundle. It does **not** produce a runnable binary because `GI_TYPELIB_PATH`, `LD_PRELOAD`, and `PATH` wrappers are missing. Always use `nix build` or `nix run` for a working binary.
 
 > `tsc --noEmit` will report many errors for missing GIR types unless `pnpm run types` has been run. The **actual** build is performed by **esbuild via Meson**, which does not type-check. TypeScript errors generally do not block the build.
+
+### Doc Health Check
+
+```bash
+./scripts/doc-check.sh          # Verify CHANGELOG + .md file references
+./scripts/doc-check.sh --strict # Treat all stale references as errors
+```
+
+Implements Doc Maintenance Rules #1 and #4:
+- **Rule #1**: Every backtick-quoted file path in `CHANGELOG.md` (with directory prefix or `/`) must exist on disk. Fails the check if not.
+- **Rule #4**: All backtick-quoted file paths in every `.md` document must exist on disk. Reports warnings; use `--strict` to fail.
+
+Add as a pre-commit hook:
+```bash
+ln -sf ../../scripts/doc-check.sh .git/hooks/pre-commit
+```
 
 ### Version Bump Rule
 If bumping version, sync **three** files:

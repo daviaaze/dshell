@@ -38,7 +38,7 @@
 
 ### A.1 — Fix Remaining P0/P1 Crash Bugs
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/App.tsx`, `src/widget/common/slider.tsx`, `src/widget/lockscreen/index.tsx`, `src/widget/wallpaper/index.tsx`, `src/lib/screenshot.ts`, `src/lib/inhibit.ts`, `src/lib/weather.ts`, `src/lib/geolocation.ts`, `src/lib/monitors.ts`, `src/widget/osd/index.tsx`, `src/lib/touchpad.ts`; note: `src/lib/autoCpufreq.ts` not in codebase, original `button-grid/network.tsx` moved to `src/widget/quicksettings/network/` per B.2)
 - **Effort:** Low
 - **Priority:** P0
 - **Cross-refs:** AUDIT.md P0.14, P1.2–P1.13, P1.17
@@ -70,7 +70,7 @@
 
 ### A.2 — Extract `ShellState` Singleton
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/shellState.ts`)
 - **Effort:** Medium
 - **Priority:** P1
 - **Cross-refs:** AUDIT.md P2.5, P2.8
@@ -117,7 +117,7 @@
 
 ### A.3 — Extract `WindowManager` Singleton
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/windowManager.ts`)
 - **Effort:** Medium
 - **Priority:** P1
 
@@ -156,7 +156,7 @@
 
 ### A.4 — Fix Service Initialization Order
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/inhibit.ts` — no longer imports `#/App`; no singleton calls `useSettings()` in constructor)
 - **Effort:** Low
 - **Priority:** P1
 - **Cross-refs:** AUDIT.md P2.5
@@ -190,7 +190,7 @@
 
 ### A.5 — Extract Utility Modules
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/gjsUtils.ts`, `src/lib/audio.ts`, `src/lib/time.ts`)
 - **Effort:** Low
 - **Priority:** P1
 - **Cross-refs:** AUDIT.md P2.1–P2.3, P2.6
@@ -226,7 +226,7 @@
 
 ### B.1 — Decompose `systemIndicators.tsx`
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/bar/indicators/{audio,network,bluetooth,battery,power,dnd,recording}.tsx`)
 - **Effort:** Medium
 - **Priority:** P1
 
@@ -266,7 +266,7 @@
 
 ### B.2 — Decompose `network.tsx`
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/quicksettings/network/{utils,apList,wifiPopover,index}.tsx`; note: `passwordDialog.tsx` not present on filesystem)
 - **Effort:** Medium
 - **Priority:** P1
 
@@ -290,7 +290,7 @@
 
 ### B.3 — Introduce Widget Mount Isolation
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `safe()` wrapper in `src/widget/index.tsx` lines 78-89)
 - **Effort:** Medium
 - **Priority:** P1
 
@@ -322,7 +322,7 @@
 
 ### B.4 — Extract `MonitorService` Singleton
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `@register`/`get_default()` singleton in `src/lib/monitors.ts`)
 - **Effort:** Low
 - **Priority:** P1
 
@@ -355,7 +355,7 @@
 
 ### C.1 — Restructure NixOS Module (Shell / Desktop Layers)
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `shell.enable`/`desktop.enable` options in `nix/module.nix`)
 - **Effort:** High
 - **Priority:** P2
 - **Cross-refs:** AUDIT.md P2.20, P2.21
@@ -405,7 +405,7 @@
 
 ### C.2 — Lazy-Load Settings Window
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `openSettings()` / `createSettingsWindow()` in `src/widget/index.tsx`)
 - **Effort:** Low
 - **Priority:** P2
 - **Cross-refs:** AUDIT.md P3.1
@@ -433,7 +433,7 @@
 
 ### C.3 — Extract Touchpad Python Script
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (⚠️ evidence incomplete: Python grab script still embedded in `src/lib/touchpad.ts` line 10-15; `data/scripts/toggle-touchpad.py` not present; `data/scripts/` directory empty — acceptance criteria "No Python code in `src/lib/touchpad.ts`" not met)
 - **Effort:** Low
 - **Priority:** P1
 - **Cross-refs:** AUDIT.md P1.13, P2.20; ROADMAP 1.9
@@ -463,7 +463,7 @@
 
 ### D.1 — Clipboard History Manager
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/clipboard.ts`)
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.1
@@ -482,7 +482,7 @@
 
 ### D.2 — Night Light / Blue Light Filter
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/nightLight.ts`)
 - **Effort:** Low–Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.2
@@ -500,7 +500,7 @@
 
 ### D.3 — Per-Application Volume Mixer
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/widget/quicksettings/appMixer.tsx`)
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.3
@@ -518,7 +518,7 @@
 
 ### D.4 — Idle / Auto-Lock / Screen Dimming
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/hypridle.ts`)
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.5
@@ -561,7 +561,7 @@
 
 ### D.6 — Bar Module Toggle UI
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `show-launcher`, `show-workspaces`, `show-window-title`, `show-system-resources`, `show-clock`, `show-weather`, `show-system-indicators` keys in `src/lib/gschema.ts`)
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 2.4
@@ -579,7 +579,7 @@
 
 ### D.7 — Notification History & Enhanced Popups
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/notificationHistory.ts`)
 - **Effort:** Medium
 - **Priority:** P2
 - **Cross-refs:** ROADMAP 1.7
@@ -605,7 +605,7 @@
 
 ### E.1 — Dynamic Wallpaper-Driven Theming (Material You)
 
-- **Status:** `[DONE]`
+- **Status:** `[DONE]` (see `src/lib/theming.ts`)
 - **Effort:** Medium
 - **Priority:** P3
 - **Cross-refs:** ROADMAP 3.1
