@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`WindowManager` singleton** (`src/lib/windowManager.ts`) — replaces direct `app.*` window mutations with a typed registry
 - **`MonitorService` singleton** (`src/lib/monitors.ts`) — deduplicates monitor tracking and fixes hot-plug via proper `items-changed` signal
 - **Utility modules** — `src/lib/gjsUtils.ts` (`toArray`, `listLength`), `src/lib/audio.ts` (`getVolumeIcon`), `src/lib/time.ts` (`fmtOffset`, `cityName`)
-- **Widget mount isolation** — each widget in `widget/index.tsx` is wrapped in `try/catch` so one failure does not prevent others from mounting
+- **Widget mount isolation** — each widget in `src/widget/index.tsx` is wrapped in `try/catch` so one failure does not prevent others from mounting
 - **Bar indicator decomposition** — `systemIndicators.tsx` split into individual components under `src/widget/bar/indicators/`
 - **Network widget decomposition** — `network.tsx` split into `utils.ts`, `apList.tsx`, `passwordDialog.tsx`, `wifiPopover.tsx`, and `index.tsx`
 - **NixOS module layering** — new `programs.shade.desktop` option group; Hyprland imports are now conditional on `desktop.enable` instead of unconditional
