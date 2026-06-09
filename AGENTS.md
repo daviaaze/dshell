@@ -24,6 +24,42 @@ metadata:
 
 ---
 
+## Agent Tool Availability
+
+When working on this codebase, the following tools are available:
+
+| Tool | Purpose | Fallback |
+|------|---------|----------|
+| `bash` | Shell commands: git, nix, pnpm, journalctl, test | — |
+| `batch` | Multi-op: file reads, writes, edits, deletes + bash + web | — |
+| `grep` / `find` / `ls` | File search and directory listing | Use only when graph tools are unavailable or for literal string/glob searches |
+| Code-review graph tools | Semantic search, dependency tracing, impact radius, architecture overview | **Not yet wired for this project.** Use `grep` with `glob` filters for symbol search; use `find` for file discovery; read files directly for dependency analysis |
+
+**Graph-first rule:** When graph tools are available (future), always prefer `semantic_search_nodes` or `query_graph` over `grep` for finding symbols. Until then, use `grep` with `glob` and `find` as the primary discovery tools.
+
+**Web tools** (`search`, `fetch`) are available for external research (GTK/GJS docs, Astal docs, NixOS references).
+
+---
+
+## Agent Delegation Model
+
+Route work through the smallest safe path:
+
+| Trigger | Action |
+|---------|--------|
+| Read/edit 1–2 files, mechanical change | **Inline** — do it directly |
+| Read 4+ files to understand | **Delegate** — launch a scout/explorer subagent |
+| Edit 2+ non-trivial files | **Delegate** — worker subagent; fresh reviewer audits before completion |
+| Commit, push, or open PR | **Delegate** — fresh-context reviewer audits the diff first |
+| Destructive action (delete, force push, rm -rf) | **STOP** — ask for explicit confirmation |
+| Prod DB, infra apply, CI/CD changes | **STOP** — ask first |
+
+**Subagent types:** Use `scout`/`explorer` for codebase exploration, `worker` for implementation, `reviewer` for adversarial review. Keep writes single-threaded unless isolated worktrees are explicitly approved.
+
+**Skill loading:** Before delegating, read `.atl/skill-registry.md` if present and pass matching skill paths to the subagent. If the registry is absent, proceed without project-specific skills.
+
+---
+
 ## Where to Find Things
 
 | Topic | File |
@@ -36,7 +72,6 @@ metadata:
 | GSettings schema definitions | `src/lib/gschema.ts` |
 | Reactive settings context | `src/lib/settings.ts` |
 | Bluetooth device battery indicator | `src/widget/bar/indicators/bluetoothAudio.tsx` |
-| Keybinding manager (hyprctl) | `src/lib/keybinds.ts` |
 | Logger utility | `src/lib/logger.ts` |
 | Monitor tracking + Hyprland mapping | `src/lib/monitors.ts` |
 | NixOS module & systemd service | `nix/module.nix` |

@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Shared logger utility** (`src/lib/logger.ts`) — replaces all inline `const timestamp = ...` patterns with `logger.log()` that auto-prefixes every message with `[Shade] HH:MM:SS.ffffff -`
-- **Keybinding manager** (`src/lib/keybinds.ts`) — Shade now registers its own keybindings dynamically via `hyprctl keyword` at startup instead of relying on static Hyprland config; keybindings live in code, not Nix config
 - **SKILL.md** — pi-agent skill definition with YAML frontmatter for the agent skills ecosystem
 - **YAML frontmatter in AGENTS.md** — metadata fields for pi-agent integration
 - **Media player widget** re-enabled in Quick Settings expander — shows active MPRIS players with cover art, controls, and playback status
