@@ -4,7 +4,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, Accessor, For } from "gnim"
-import { toArray, listLength } from "#/lib/gjsUtils"
+import { toArray } from "#/lib/gjsUtils"
 import { ssidOf, bssidOf, bssidEquals, isSaved, isSecure, securityLabel, strengthFraction } from "./utils"
 import logger from "#/lib/logger"
 

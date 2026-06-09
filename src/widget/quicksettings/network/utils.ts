@@ -186,9 +186,3 @@ export function isSaved(ap: Network.AccessPoint): boolean {
     return false
   }
 }
-
-// ── AP comparison ──────────────────────────────────────────────────
-
-export function sameAp(a: Network.AccessPoint, b: Network.AccessPoint): boolean {
-  return bssidEquals(a.bssid, b.bssid)
-}

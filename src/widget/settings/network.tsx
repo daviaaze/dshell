@@ -6,7 +6,6 @@ import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, With, For } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
 import {
-  securityLabel,
   strengthFraction,
 } from "#/widget/quicksettings/network/utils"
 import logger from "#/lib/logger"
@@ -198,7 +197,9 @@ function showConnectionEditor(
         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
       >
         <Adw.PreferencesPage>
-          <Adw.PreferencesGroup title="Connection" description={securityLabel({ rsnFlags: 0, wpaFlags: 0, flags: 0 } as any) || "Unknown"}>
+          <Adw.PreferencesGroup title="Connection" description={settingSecurity?.get_key_mgmt() ?
+            (({ sae: "WPA3", "wpa-psk": "WPA2", "wpa-eap": "Enterprise", ieee8021x: "Enterprise", none: "WEP" } as Record<string,string>)[settingSecurity.get_key_mgmt()] || "Secure")
+            : "Open"}>
             <Adw.SwitchRow
               title="Connect automatically"
               active={autoConnect}
@@ -211,9 +212,9 @@ function showConnectionEditor(
               <Adw.EntryRow title="Password">
                 <Gtk.Entry
                   placeholderText="WiFi password"
-                  visibility={showPassword.get()}
-                  text={password.get()}
                   $={(entry) => {
+                    entry.visibility = !showPassword.get()
+                    showPassword.subscribe((v) => { entry.visibility = !v })
                     entry.connect("notify::text", () => {
                       setPassword(entry.get_text())
                     })
@@ -225,11 +226,11 @@ function showConnectionEditor(
                   onClicked={() => setShowPassword(!showPassword.get())}
                 >
                   <Gtk.Image
-                    iconName={
-                      showPassword.get()
+                    iconName={showPassword.as((v) =>
+                      v
                         ? "eye-not-looking-symbolic"
                         : "eye-open-negative-filled-symbolic"
-                    }
+                    )}
                     pixelSize={16}
                   />
                 </Gtk.Button>
