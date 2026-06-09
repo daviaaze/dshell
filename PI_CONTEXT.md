@@ -6,5 +6,5 @@
 
 ---
 
-> Documentation audit completed 2026-06-01. See `AGENTS.md` → Documentation Maintenance for the rules
+> Self-assessment and doc restructure completed 2026-06-09. Fixed ghost references, restructured AGENTS.md with Quick Reference. See git log.
 > put in place to prevent rot. See CHANGELOG.md and git log for implementation details.

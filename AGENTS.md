@@ -38,6 +38,7 @@ metadata:
 | GSettings schema definitions | `src/lib/gschema.ts` |
 | Reactive settings context | `src/lib/settings.ts` |
 | Bluetooth device battery indicator | `src/widget/bar/indicators/bluetoothAudio.tsx` |
+| Keyboard layout indicator | `src/lib/keyboard.ts` |
 | Logger utility | `src/lib/logger.ts` |
 | Monitor tracking + Hyprland mapping | `src/lib/monitors.ts` |
 | NixOS module & systemd service | `nix/module.nix` |

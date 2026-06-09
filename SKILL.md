@@ -30,4 +30,5 @@ Shade is a personal desktop shell for Hyprland on Linux, written in TypeScript a
 | `src/lib/requestHandler.ts` | D-Bus CLI command dispatcher for remote Gio.Application calls |
 | `src/lib/monitors.ts` | Reactive Gdk monitor tracking with Hyprland mapping |
 | `src/widget/index.tsx` | Widget mount orchestrator with error isolation |
+> For canonical file list, see AGENTS.md "Where to Find Things."
 
