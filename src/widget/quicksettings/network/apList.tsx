@@ -187,13 +187,13 @@ function ApRow({
             {/* SSID + security label */}
             <Gtk.Box
               hexpand
-              halign={Gtk.Align.START}
+              halign={Gtk.Align.FILL}
               orientation={Gtk.Orientation.VERTICAL}
               spacing={2}
             >
               <Gtk.Label
                 hexpand
-                halign={Gtk.Align.START}
+                halign={Gtk.Align.FILL}
                 label={apSsid.replace(/&/g, "&amp;").replace(/</g, "&lt;")}
                 ellipsize={3}
               />
