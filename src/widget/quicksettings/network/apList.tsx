@@ -5,7 +5,14 @@ import Gdk from "gi://Gdk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, Accessor, For } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
-import { ssidOf, bssidOf, bssidEquals, isSaved, isSecure, securityLabel, strengthFraction } from "./utils"
+import {
+  bssidOf,
+  bssidEquals,
+  strengthFraction,
+  ApSnapshot,
+  snapshotAp,
+  findLiveAp,
+} from "./utils"
 import logger from "#/lib/logger"
 
 interface ApListProps {
@@ -16,32 +23,27 @@ interface ApListProps {
 
 // ── Helpers ────────────────────────────────────────────────────────
 
-function sortAps(aps: Network.AccessPoint[], activeBssid: string | null): Network.AccessPoint[] {
+function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
   return [...aps].sort((a, b) => {
-    const aBssid = bssidOf(a)
-    const bBssid = bssidOf(b)
-
     // Active AP first
-    const aActive = aBssid !== null && activeBssid !== null && bssidEquals(aBssid, activeBssid)
-    const bActive = bBssid !== null && activeBssid !== null && bssidEquals(bBssid, activeBssid)
+    const aActive = a.bssid !== null && activeBssid !== null && bssidEquals(a.bssid, activeBssid)
+    const bActive = b.bssid !== null && activeBssid !== null && bssidEquals(b.bssid, activeBssid)
     if (aActive && !bActive) return -1
     if (!aActive && bActive) return 1
 
     // Saved networks before new ones
-    const aSaved = isSaved(a)
-    const bSaved = isSaved(b)
-    if (aSaved && !bSaved) return -1
-    if (!aSaved && bSaved) return 1
+    if (a.saved && !b.saved) return -1
+    if (!a.saved && b.saved) return 1
 
     // Stronger signal first
-    return (b.strength ?? 0) - (a.strength ?? 0)
+    return b.strength - a.strength
   })
 }
 
 // ── AP Row ─────────────────────────────────────────────────────────
 
 interface ApRowProps {
-  ap: Network.AccessPoint
+  snap: ApSnapshot
   wifi: Network.Wifi
   isActive: Accessor<boolean>
   isConnecting: Accessor<boolean>
@@ -50,18 +52,18 @@ interface ApRowProps {
 }
 
 function ApRow({
-  ap,
+  snap,
   wifi,
   isActive,
   isConnecting,
   connectingAp,
   setConnectingAp,
 }: ApRowProps) {
-  const apSsid = ssidOf(ap)
-  const apBssid = bssidOf(ap)
-  const saved = isSaved(ap)
-  const secure = isSecure(ap)
-  const secLabel = securityLabel(ap)
+  const apSsid = snap.ssid
+  const apBssid = snap.bssid
+  const saved = snap.saved
+  const secure = snap.secure
+  const secLabel = snap.secLabel
 
   // Per-row password entry state
   const [showPassword, setShowPassword] = createState(false)
@@ -71,7 +73,14 @@ function ApRow({
   const doConnect = (password?: string) => {
     setPasswordError(null)
     if (apBssid) setConnectingAp(apBssid)
-    ap.activate(password ?? null)
+    const liveAp = findLiveAp(wifi, apBssid)
+    if (!liveAp) {
+      logger.error("network", "AP no longer available for connect")
+      setConnectingAp(null)
+      setPasswordError("Network no longer available")
+      return
+    }
+    liveAp.activate(password ?? null)
       .then(() => {
         setConnectingAp(null)
         setShowPassword(false)
@@ -84,8 +93,13 @@ function ApRow({
   }
 
   const doForget = () => {
+    const liveAp = findLiveAp(wifi, apBssid)
+    if (!liveAp) {
+      logger.error("network", "AP no longer available for forget")
+      return
+    }
     try {
-      const conns = ap.get_connections()
+      const conns = liveAp.get_connections()
       if (!conns) return
       const arr = toArray<NM.RemoteConnection>(conns)
       for (const conn of arr) {
@@ -159,7 +173,7 @@ function ApRow({
             {/* Signal strength bars */}
             <Gtk.LevelBar
               valign={Gtk.Align.CENTER}
-              value={strengthFraction(ap.strength ?? 0)}
+              value={strengthFraction(snap.strength)}
               widthRequest={40}
             />
 
@@ -277,14 +291,15 @@ export default ({
     [createBinding(wifi, "accessPoints"), activeBssid],
     (points, active) => {
       const list = toArray<Network.AccessPoint>(points)
-      return sortAps(list, active)
+      const snaps = list.map(snapshotAp)
+      return sortAps(snaps, active)
     },
   )
 
   return (
     <For each={sortedAps}>
-      {(ap: Network.AccessPoint) => {
-        const apBssid = bssidOf(ap)
+      {(snap: ApSnapshot) => {
+        const apBssid = snap.bssid
 
         const isActive = createComputed([activeBssid], (active) => {
           if (!apBssid || !active) return false
@@ -297,7 +312,7 @@ export default ({
 
         return (
           <ApRow
-            ap={ap}
+            snap={snap}
             wifi={wifi}
             isActive={isActive}
             isConnecting={isConnecting}

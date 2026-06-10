@@ -1,4 +1,5 @@
 import Network from "gi://AstalNetwork"
+import { toArray } from "#/lib/gjsUtils"
 
 // ── NM 802.11 flag constants ──────────────────────────────────────
 // NM.__80211ApSecurityFlags is not reliably exposed across GIR versions.
@@ -40,11 +41,19 @@ export function bytesToString(value: any): string | null {
 }
 
 export function ssidOf(ap: Network.AccessPoint): string {
-  return bytesToString(ap.ssid) ?? "Hidden Network"
+  try {
+    return bytesToString(ap.ssid) ?? "Hidden Network"
+  } catch {
+    return "Hidden Network"
+  }
 }
 
 export function bssidOf(ap: Network.AccessPoint): string | null {
-  return bytesToString(ap.bssid)
+  try {
+    return bytesToString(ap.bssid)
+  } catch {
+    return null
+  }
 }
 
 export function bssidEquals(a: any, b: any): boolean {
@@ -99,55 +108,59 @@ export function strengthFraction(strength: number): number {
  * Returns e.g. "WPA3", "WPA2", "WPA1", "WEP", "Enhanced Open", "Open".
  */
 export function securityLabel(ap: Network.AccessPoint): string {
-  const rsn = ap.rsnFlags ?? 0
-  const wpa = ap.wpaFlags ?? 0
-  const flags = ap.flags ?? 0
+  try {
+    const rsn = ap.rsnFlags ?? 0
+    const wpa = ap.wpaFlags ?? 0
+    const flags = ap.flags ?? 0
 
-  // WPA3: RSN with SAE (Simultaneous Authentication of Equals)
-  if (rsn & NM_AP_SEC_KEY_MGMT_SAE) {
-    return "WPA3"
-  }
-
-  // Enhanced Open: OWE (Opportunistic Wireless Encryption)
-  if (rsn & NM_AP_SEC_KEY_MGMT_OWE) {
-    return "Enhanced Open"
-  }
-
-  // WPA2/WPA3 Transitional: both PSK and SAE
-  if (
-    rsn & NM_AP_SEC_KEY_MGMT_PSK &&
-    rsn & NM_AP_SEC_KEY_MGMT_SAE
-  ) {
-    return "WPA2/WPA3"
-  }
-
-  // WPA2: RSN with PSK or 802.1X
-  if (
-    rsn & NM_AP_SEC_KEY_MGMT_PSK ||
-    rsn & NM_AP_SEC_KEY_MGMT_802_1X
-  ) {
-    return "WPA2"
-  }
-
-  // WPA1: WPA flags present with PSK or 802.1X
-  if (wpa !== 0) {
-    if (
-      wpa & NM_AP_SEC_KEY_MGMT_PSK ||
-      wpa & NM_AP_SEC_KEY_MGMT_802_1X
-    ) {
-      return "WPA1"
+    // WPA3: RSN with SAE (Simultaneous Authentication of Equals)
+    if (rsn & NM_AP_SEC_KEY_MGMT_SAE) {
+      return "WPA3"
     }
-    // Some partial WPA support
-    return "WPA"
-  }
 
-  // WEP: privacy flag but no WPA/RSN
-  if (flags & NM_AP_FLAGS_PRIVACY) {
-    return "WEP"
-  }
+    // Enhanced Open: OWE (Opportunistic Wireless Encryption)
+    if (rsn & NM_AP_SEC_KEY_MGMT_OWE) {
+      return "Enhanced Open"
+    }
 
-  // Open network
-  return "Open"
+    // WPA2/WPA3 Transitional: both PSK and SAE
+    if (
+      rsn & NM_AP_SEC_KEY_MGMT_PSK &&
+      rsn & NM_AP_SEC_KEY_MGMT_SAE
+    ) {
+      return "WPA2/WPA3"
+    }
+
+    // WPA2: RSN with PSK or 802.1X
+    if (
+      rsn & NM_AP_SEC_KEY_MGMT_PSK ||
+      rsn & NM_AP_SEC_KEY_MGMT_802_1X
+    ) {
+      return "WPA2"
+    }
+
+    // WPA1: WPA flags present with PSK or 802.1X
+    if (wpa !== 0) {
+      if (
+        wpa & NM_AP_SEC_KEY_MGMT_PSK ||
+        wpa & NM_AP_SEC_KEY_MGMT_802_1X
+      ) {
+        return "WPA1"
+      }
+      // Some partial WPA support
+      return "WPA"
+    }
+
+    // WEP: privacy flag but no WPA/RSN
+    if (flags & NM_AP_FLAGS_PRIVACY) {
+      return "WEP"
+    }
+
+    // Open network
+    return "Open"
+  } catch {
+    return "Unknown"
+  }
 }
 
 /**
@@ -155,14 +168,18 @@ export function securityLabel(ap: Network.AccessPoint): string {
  * Uses the same logic as securityLabel but optimized for boolean check.
  */
 export function isSecure(ap: Network.AccessPoint): boolean {
-  const rsn = ap.rsnFlags ?? 0
-  const wpa = ap.wpaFlags ?? 0
-  const flags = ap.flags ?? 0
-  return (
-    rsn !== 0 ||
-    wpa !== 0 ||
-    (flags & NM_AP_FLAGS_PRIVACY) !== 0
-  )
+  try {
+    const rsn = ap.rsnFlags ?? 0
+    const wpa = ap.wpaFlags ?? 0
+    const flags = ap.flags ?? 0
+    return (
+      rsn !== 0 ||
+      wpa !== 0 ||
+      (flags & NM_AP_FLAGS_PRIVACY) !== 0
+    )
+  } catch {
+    return false
+  }
 }
 
 // ── Saved / known network detection ────────────────────────────────
@@ -185,4 +202,53 @@ export function isSaved(ap: Network.AccessPoint): boolean {
   } catch {
     return false
   }
+}
+
+// ── AP Snapshot (defensive copy for render) ───────────────────────
+
+export interface ApSnapshot {
+  ssid: string
+  bssid: string | null
+  strength: number
+  saved: boolean
+  secure: boolean
+  secLabel: string
+}
+
+/**
+ * Eagerly read all GObject properties into a plain-JS snapshot.
+ * Call this immediately when accessPoints changes, while the proxy is still valid.
+ */
+export function snapshotAp(ap: Network.AccessPoint): ApSnapshot {
+  return {
+    ssid: ssidOf(ap),
+    bssid: bssidOf(ap),
+    strength: (() => { try { return ap.strength ?? 0 } catch { return 0 } })(),
+    saved: isSaved(ap),
+    secure: isSecure(ap),
+    secLabel: securityLabel(ap),
+  }
+}
+
+/**
+ * Look up a current (live) AP object from wifi.accessPoints by BSSID.
+ * Only use this for actions (connect/forget), never for rendering.
+ */
+export function findLiveAp(
+  wifi: Network.Wifi,
+  bssid: string | null,
+): Network.AccessPoint | null {
+  if (!bssid) return null
+  const points = toArray<Network.AccessPoint>(wifi.accessPoints)
+  for (const ap of points) {
+    try {
+      const apBssid = bssidOf(ap)
+      if (apBssid && bssidEquals(apBssid, bssid)) {
+        return ap
+      }
+    } catch {
+      continue
+    }
+  }
+  return null
 }
