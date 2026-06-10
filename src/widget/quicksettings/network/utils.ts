@@ -210,7 +210,6 @@ export interface ApSnapshot {
   ssid: string
   bssid: string | null
   strength: number
-  saved: boolean
   secure: boolean
   secLabel: string
 }
@@ -224,7 +223,6 @@ export function snapshotAp(ap: Network.AccessPoint): ApSnapshot {
     ssid: ssidOf(ap),
     bssid: bssidOf(ap),
     strength: (() => { try { return ap.strength ?? 0 } catch { return 0 } })(),
-    saved: isSaved(ap),
     secure: isSecure(ap),
     secLabel: securityLabel(ap),
   }

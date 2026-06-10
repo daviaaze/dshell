@@ -12,6 +12,7 @@ import {
   ApSnapshot,
   snapshotAp,
   findLiveAp,
+  isSaved,
 } from "./utils"
 import logger from "#/lib/logger"
 
@@ -30,10 +31,6 @@ function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
     const bActive = b.bssid !== null && activeBssid !== null && bssidEquals(b.bssid, activeBssid)
     if (aActive && !bActive) return -1
     if (!aActive && bActive) return 1
-
-    // Saved networks before new ones
-    if (a.saved && !b.saved) return -1
-    if (!a.saved && b.saved) return 1
 
     // Stronger signal first
     return b.strength - a.strength
@@ -61,7 +58,6 @@ function ApRow({
 }: ApRowProps) {
   const apSsid = snap.ssid
   const apBssid = snap.bssid
-  const saved = snap.saved
   const secure = snap.secure
   const secLabel = snap.secLabel
 
@@ -72,7 +68,6 @@ function ApRow({
 
   const doConnect = (password?: string) => {
     setPasswordError(null)
-    if (apBssid) setConnectingAp(apBssid)
     const liveAp = findLiveAp(wifi, apBssid)
     if (!liveAp) {
       logger.error("network", "AP no longer available for connect")
@@ -80,16 +75,62 @@ function ApRow({
       setPasswordError("Network no longer available")
       return
     }
-    liveAp.activate(password ?? null)
-      .then(() => {
+
+    // Open network → connect directly
+    if (!secure) {
+      if (apBssid) setConnectingAp(apBssid)
+      liveAp.activate(null)
+        .then(() => {
+          setConnectingAp(null)
+          setShowPassword(false)
+        })
+        .catch((e: Error) => {
+          logger.error("network", "activate failed:", e.message)
+          setConnectingAp(null)
+          setPasswordError(e.message || "Connection failed")
+        })
+      return
+    }
+
+    // Secured network with explicit password → connect with it
+    if (password !== undefined) {
+      if (apBssid) setConnectingAp(apBssid)
+      liveAp.activate(password || null)
+        .then(() => {
+          setConnectingAp(null)
+          setShowPassword(false)
+        })
+        .catch((e: Error) => {
+          logger.error("network", "activate failed:", e.message)
+          setConnectingAp(null)
+          setPasswordError(e.message || "Connection failed")
+        })
+      return
+    }
+
+    // Secured, no password → check saved status at click time
+    try {
+      if (isSaved(liveAp)) {
+        if (apBssid) setConnectingAp(apBssid)
+        liveAp.activate(null)
+          .then(() => {
+            setConnectingAp(null)
+            setShowPassword(false)
+          })
+          .catch((e: Error) => {
+            logger.error("network", "activate failed:", e.message)
+            setConnectingAp(null)
+            setPasswordError(e.message || "Connection failed")
+          })
+      } else {
         setConnectingAp(null)
-        setShowPassword(false)
-      })
-      .catch((e: Error) => {
-        logger.error("network", "activate failed:", e.message)
-        setConnectingAp(null)
-        setPasswordError(e.message || "Connection failed")
-      })
+        setShowPassword(!showPassword.get())
+      }
+    } catch (e) {
+      logger.error("network", "saved check failed:", e)
+      setConnectingAp(null)
+      setShowPassword(!showPassword.get())
+    }
   }
 
   const doForget = () => {
@@ -116,7 +157,7 @@ function ApRow({
     }
   }
 
-  const savedNotActive = createComputed([isActive], (active) => saved && !active)
+  const notActive = createComputed([isActive], (active) => !active)
 
   return (
     <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
@@ -133,13 +174,6 @@ function ApRow({
               return
             }
 
-            // If secured and no saved connection → show password entry
-            if (secure && !saved) {
-              setShowPassword(!showPassword.get())
-              return
-            }
-
-            // If saved or open → connect directly
             doConnect()
           }}
         >
@@ -184,14 +218,6 @@ function ApRow({
               visible={isActive}
             />
 
-            {/* Status: Saved badge */}
-            <Gtk.Label
-              label="Saved"
-              cssClasses={["caption", "dim-label"]}
-              valign={Gtk.Align.CENTER}
-              visible={savedNotActive}
-            />
-
             {/* Status: Connecting spinner */}
             <Gtk.Spinner
               spinning
@@ -200,9 +226,9 @@ function ApRow({
             />
           </Gtk.Box>
         </Gtk.Button>
-        {/* Forget button (only for saved networks, not active) — outside main button */}
+        {/* Forget button (all non-active networks) — outside main button */}
         <Gtk.Button
-          visible={savedNotActive}
+          visible={notActive}
           cssClasses={["flat", "circular"]}
           onClicked={doForget}
           tooltipText="Forget Network"
