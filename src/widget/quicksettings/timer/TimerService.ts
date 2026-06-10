@@ -183,8 +183,11 @@ export default class TimerService extends GObject.Object {
       this.#notifyAll()
       this.#startTick()
     } else {
+      this.#remaining = -1
+      this.#total = 0
+      this.#label = ""
       this.#mode = "none"
-      this.notify("mode")
+      this.#notifyAll()
     }
   }
 
