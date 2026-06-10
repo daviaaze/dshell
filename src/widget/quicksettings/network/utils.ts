@@ -113,6 +113,14 @@ export function securityLabel(ap: Network.AccessPoint): string {
     const wpa = ap.wpaFlags ?? 0
     const flags = ap.flags ?? 0
 
+    // WPA2/WPA3 Transitional: both PSK and SAE
+    if (
+      rsn & NM_AP_SEC_KEY_MGMT_PSK &&
+      rsn & NM_AP_SEC_KEY_MGMT_SAE
+    ) {
+      return "WPA2/WPA3"
+    }
+
     // WPA3: RSN with SAE (Simultaneous Authentication of Equals)
     if (rsn & NM_AP_SEC_KEY_MGMT_SAE) {
       return "WPA3"
@@ -121,14 +129,6 @@ export function securityLabel(ap: Network.AccessPoint): string {
     // Enhanced Open: OWE (Opportunistic Wireless Encryption)
     if (rsn & NM_AP_SEC_KEY_MGMT_OWE) {
       return "Enhanced Open"
-    }
-
-    // WPA2/WPA3 Transitional: both PSK and SAE
-    if (
-      rsn & NM_AP_SEC_KEY_MGMT_PSK &&
-      rsn & NM_AP_SEC_KEY_MGMT_SAE
-    ) {
-      return "WPA2/WPA3"
     }
 
     // WPA2: RSN with PSK or 802.1X
