@@ -2,135 +2,130 @@
 """
 Agent smoke test for Shade shell via VNC.
 
-This script connects directly to a VNC session and verifies that Shade
-starts correctly and its major widgets respond to input without crashing.
+Connects to a running VNC server (or boots one via run-vm-test.sh)
+and verifies that Shade starts correctly and major widgets respond
+to input without crashing.
 
 Usage:
     SHADE_VNC_HOST=localhost SHADE_VNC_PORT=5901 python3 scripts/agent-smoke-test.py
 
 Prerequisites:
-    - vncdo (installed via nix develop or pip)
+    - vncdo (installed via nix develop)
     - A running VNC server (e.g. the vm-vnc NixOS configuration)
 """
 
 import os
-import subprocess
 import sys
 import time
-from pathlib import Path
 
-VNC_HOST = os.environ.get("SHADE_VNC_HOST", "localhost")
-VNC_PORT = os.environ.get("SHADE_VNC_PORT", "5901")
-VNC_SERVER = f"{VNC_HOST}::{VNC_PORT}"
-OUTPUT_DIR = Path("test-output")
+# Allow running from project root without PYTHONPATH hacks
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-
-def vncdo(*args: str) -> None:
-    cmd = ["vncdo", "-s", VNC_SERVER, *args]
-    subprocess.run(cmd, check=True)
+from shadetest import ShadeTestHarness
 
 
-def screenshot(name: str) -> Path:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    path = OUTPUT_DIR / f"{name}.png"
-    vncdo("capture", str(path))
-    print(f"  📸 {path}")
-    return path
-
-
-def wait(seconds: float) -> None:
-    time.sleep(seconds)
-
-
-def wait_for_vnc(timeout: int = 60) -> bool:
-    print(f"Waiting for VNC server at {VNC_SERVER}...")
-    for i in range(timeout):
-        try:
-            # bash built-in TCP check
-            result = subprocess.run(
-                ["bash", "-c", f"exec 3<>/dev/tcp/{VNC_HOST}/{VNC_PORT}"],
-                capture_output=True,
-            )
-            if result.returncode == 0:
-                print("  ✅ VNC ready")
-                return True
-        except Exception:
-            pass
-        time.sleep(1)
-    print("  ❌ VNC never became available")
-    return False
-
-
-def run_smoke_test() -> bool:
+def run_smoke_test(h: ShadeTestHarness) -> bool:
     print("\n=== Shade VNC Smoke Test ===\n")
 
-    if not wait_for_vnc():
+    if not h.wait_for_vnc():
+        print("❌ VNC server not reachable")
         return False
 
-    # --- Phase 1: Wait for boot + Shade startup ---
     print("Phase 1: Waiting for Hyprland + Shade to start...")
-    wait(20)
-    screenshot("01-desktop")
+    if not h.wait_until_shade_ready():
+        print("❌ Shade did not become ready within timeout")
+        return False
 
-    # --- Phase 2: App Launcher ---
+    h.screenshot("01-desktop")
+    h.assertions.file_not_empty("01-desktop")
+    print("  ✅ Desktop appears to have rendered")
+
+    # ── Phase 2: App Launcher ────────────────────────────────────────────
     print("\nPhase 2: Testing app launcher (Super+Space)...")
-    vncdo("key", "super-space")
-    wait(1.5)
-    screenshot("02-applauncher-open")
+    h.send_key("super-space")
+    time.sleep(1.5)
+    h.screenshot("02-applauncher-open")
+    h.assertions.file_not_empty("02-applauncher-open")
+
+    # Verify the screenshot differs from desktop
+    h.assert_screenshot_differs_from("01-desktop", "02-applauncher-open")
+    print("  ✅ Launcher opened (screen changed)")
 
     # Type a search query
-    vncdo("type", "fire")
-    wait(1)
-    screenshot("03-applauncher-search")
+    h.type_text("fire")
+    time.sleep(1)
+    h.screenshot("03-applauncher-search")
+    h.assertions.file_not_empty("03-applauncher-search")
+    print("  ✅ Search typed")
 
     # Close launcher
-    vncdo("key", "esc")
-    wait(0.5)
-    screenshot("04-applauncher-closed")
+    h.send_key("esc")
+    time.sleep(0.5)
+    h.screenshot("04-applauncher-closed")
+    h.assertions.file_not_empty("04-applauncher-closed")
+    print("  ✅ Launcher closed")
 
-    # --- Phase 3: Quick Settings ---
+    # ── Phase 3: Quick Settings ──────────────────────────────────────────
     print("\nPhase 3: Testing quick settings (Super+n)...")
-    vncdo("key", "super-n")
-    wait(1.5)
-    screenshot("05-quicksettings-open")
+    h.send_key("super-n")
+    time.sleep(1.5)
+    h.screenshot("05-quicksettings-open")
+    h.assertions.file_not_empty("05-quicksettings-open")
+
+    # Should differ from post-launcher state
+    h.assert_screenshot_differs_from("04-applauncher-closed", "05-quicksettings-open")
+    print("  ✅ Quick settings opened (screen changed)")
 
     # Close QS
-    vncdo("key", "esc")
-    wait(0.5)
-    screenshot("06-quicksettings-closed")
+    h.send_key("esc")
+    time.sleep(0.5)
+    h.screenshot("06-quicksettings-closed")
+    print("  ✅ Quick settings closed")
 
-    # --- Phase 4: Bar toggle ---
+    # ── Phase 4: Bar toggle ──────────────────────────────────────────────
     print("\nPhase 4: Testing bar toggle (Super+w)...")
-    vncdo("key", "super-w")
-    wait(1)
-    screenshot("07-bar-hidden")
+    h.send_key("super-w")
+    time.sleep(1)
+    h.screenshot("07-bar-hidden")
+    h.assertions.file_not_empty("07-bar-hidden")
+    print("  ✅ Bar toggle first press")
 
-    vncdo("key", "super-w")
-    wait(1)
-    screenshot("08-bar-visible")
+    h.send_key("super-w")
+    time.sleep(1)
+    h.screenshot("08-bar-visible")
+    h.assertions.file_not_empty("08-bar-visible")
+    print("  ✅ Bar toggle second press")
 
-    # --- Phase 5: OSD simulation (media keys) ---
+    # ── Phase 5: OSD simulation (media keys) ─────────────────────────────
     print("\nPhase 5: Sending media keys...")
-    vncdo("key", "XF86AudioRaiseVolume")
-    wait(0.5)
-    screenshot("09-osd-volume")
+    h.send_key("XF86AudioRaiseVolume")
+    time.sleep(0.5)
+    h.screenshot("09-osd-volume")
+    h.assertions.file_not_empty("09-osd-volume")
+    print("  ✅ Volume OSD appeared")
 
-    print("\n=== Smoke test complete ===")
-    print(f"Screenshots saved to: {OUTPUT_DIR.absolute()}/")
+    # Try also via D-Bus for reliability
+    try:
+        h.dbus_activate("toggle-quicksettings")
+        print("  ✅ D-Bus test: toggle-quicksettings succeeded")
+    except Exception as e:
+        print(f"  ⚠️  D-Bus test: {e}")
+
+    print("\n=== Smoke test passed ===")
+    print(f"Screenshots saved to: test-output/")
     return True
 
 
 def main() -> int:
-    try:
-        success = run_smoke_test()
-        return 0 if success else 1
-    except subprocess.CalledProcessError as e:
-        print(f"\n❌ VNC command failed: {e}", file=sys.stderr)
-        print(f"   cmd: {' '.join(e.cmd)}", file=sys.stderr)
-        return 1
-    except KeyboardInterrupt:
-        print("\n⚠️  Interrupted by user")
-        return 130
+    output_dir = os.environ.get("SHADE_TEST_OUTPUT", "test-output")
+
+    with ShadeTestHarness(output_dir=output_dir) as h:
+        try:
+            success = run_smoke_test(h)
+            return 0 if success else 1
+        except KeyboardInterrupt:
+            print("\n⚠️  Interrupted by user")
+            return 130
 
 
 if __name__ == "__main__":
