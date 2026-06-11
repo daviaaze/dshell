@@ -1,5 +1,14 @@
 { pkgs, lib, config, ... }:
 {
+  # Mount virtiofs shared directory from host /tmp/shade-test-output
+  # to /mnt/test-output inside the VM for easy artifact exchange
+  fileSystems."/mnt/test-output" = {
+    device = "test-output";
+    fsType = "9p";
+    options = [ "trans=virtio" "version=9p2000.L" "cache=loose" ];
+    mountPoint = "/mnt/test-output";
+  };
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   users.users.test = {
@@ -40,6 +49,10 @@
     moonlight-qt
     ghostty
     btop
+    # Test artifact tools
+    grim          # Wayland screenshots
+    slurp         # Region selection for screenshots
+    wf-recorder   # Wayland screen recording
   ];
 
   programs.shade.desktop.hyprland.settings = {
