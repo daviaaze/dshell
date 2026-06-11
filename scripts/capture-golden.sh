@@ -67,18 +67,20 @@ echo "  ✅ quicksettings"
 $VNC key esc
 sleep 0.5
 
-echo "Phase 4: OSD"
-$VNC key XF86AudioRaiseVolume
-sleep 0.5
-$VNC capture "$OUTPUT_DIR/osd.png"
-cp "$OUTPUT_DIR/osd.png" "$GOLDEN_DIR/05-osd-volume.png"
-echo "  ✅ OSD"
-
-$VNC key XF86MonBrightnessUp
-sleep 0.5
-$VNC capture "$OUTPUT_DIR/osd-brightness.png"
-cp "$OUTPUT_DIR/osd-brightness.png" "$GOLDEN_DIR/06-osd-brightness.png"
-echo "  ✅ OSD brightness"
+# Phase 4 (OSD): requires QEMU monitor sendkey — not available from shell.
+# Use Python harness: python3 -c "from shadetest import ShadeTestHarness; ..."
+echo "Phase 4: OSD (SKIPPED)"
+# $VNC key XF86AudioRaiseVolume
+# sleep 0.5
+# $VNC capture "$OUTPUT_DIR/osd.png"
+# cp "$OUTPUT_DIR/osd.png" "$GOLDEN_DIR/05-osd-volume.png"
+# echo "  ✅ OSD"
+# 
+# $VNC key XF86MonBrightnessUp
+# sleep 0.5
+# $VNC capture "$OUTPUT_DIR/osd-brightness.png"
+# cp "$OUTPUT_DIR/osd-brightness.png" "$GOLDEN_DIR/06-osd-brightness.png"
+# echo "  ✅ OSD brightness"
 
 echo ""
 echo "✅ Golden images captured to $GOLDEN_DIR/"
