@@ -20,6 +20,8 @@ import logger from "#/lib/logger"
 import FingerprintAuth from "#/lib/fingerprint"
 import { Process } from "#/lib/process"
 
+const PAM_TIMEOUT_MS = 10000
+
 const createLocks = (onUnlock: () => void) => {
   const { LEFT, RIGHT, TOP, BOTTOM } = Astal.WindowAnchor
   const lock = SessionLock.Instance.new()
@@ -32,16 +34,12 @@ const createLocks = (onUnlock: () => void) => {
     return GLib.SOURCE_CONTINUE
   })
 
-  // Save screen brightness at lock time so we can restore it exactly on unlock.
-  // If hypridle already dimmed the screen, the original brightness was saved to
-  // /tmp/shade-brightness-resume — use that file instead of capturing the dimmed value.
   let savedBrightness = ""
   try {
     const resumeFile = GLib.file_new_for_path("/tmp/shade-brightness-resume")
     if (resumeFile.query_exists(null)) {
       const [, contents] = resumeFile.load_contents(null)
       savedBrightness = new TextDecoder().decode(contents).trim()
-      // Remove the file so hypridle's on-resume doesn't try to restore too
       resumeFile.delete(null)
     } else {
       savedBrightness = Process.exec("brightnessctl get")
@@ -57,7 +55,6 @@ const createLocks = (onUnlock: () => void) => {
     ShellState.get_default().screenlocked = false
     onUnlock()
 
-    // Restore exact brightness saved at lock time
     if (savedBrightness) {
       try {
         Process.exec(`brightnessctl set ${savedBrightness}`)
@@ -67,22 +64,64 @@ const createLocks = (onUnlock: () => void) => {
     }
   }
 
+  const pam = new AstalAuth.Pam()
+  let pendingPassword = ""
+  let pamTimeoutId = 0
+  let pamActive = false
+
+  const cancelPamTimeout = () => {
+    if (pamTimeoutId) {
+      GLib.source_remove(pamTimeoutId)
+      pamTimeoutId = 0
+    }
+  }
+
+  const pamPromptId = pam.connect("auth-prompt-hidden", () => {
+    pam.supply_secret(pendingPassword)
+  })
+
+  const pamSuccessId = pam.connect("success", () => {
+    if (!pamActive) return
+    pamActive = false
+    cancelPamTimeout()
+    doUnlock()
+  })
+
+  const pamFailId = pam.connect("fail", (_pam: AstalAuth.Pam, msg: string) => {
+    if (!pamActive) return
+    pamActive = false
+    cancelPamTimeout()
+    logger.warn("lockscreen", "PAM auth failed:", msg)
+    setAuthStatus("Authentication failed")
+  })
+
+  const pamErrorId = pam.connect("auth-error", (_pam: AstalAuth.Pam, msg: string) => {
+    if (!pamActive) return
+    pamActive = false
+    cancelPamTimeout()
+    logger.warn("lockscreen", "PAM auth error:", msg)
+    setAuthStatus(msg || "Authentication error")
+    pam.supply_secret(null)
+  })
+
   const unlock = (self: Gtk.PasswordEntry) => {
-    AstalAuth.Pam.authenticate(self.get_text(), (_, res) => {
-      try {
-        AstalAuth.Pam.authenticate_finish(res)
-        doUnlock()
-      } catch (e) {
-        logger.warn("lockscreen", "Authentication failed:", e)
-        setAuthStatus("Authentication failed")
-      }
+    pendingPassword = self.get_text()
+    self.set_text("")
+    setAuthStatus("Authenticating...")
+    pamActive = true
+    pam.start_authenticate()
+
+    cancelPamTimeout()
+    pamTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PAM_TIMEOUT_MS, () => {
+      pamTimeoutId = 0
+      pamActive = false
+      setAuthStatus("Authentication timed out")
+      return GLib.SOURCE_REMOVE
     })
   }
 
-  // Initialize fingerprint on mount
   fingerprint.init().then(() => {
     if (fingerprint.available) {
-      setAuthStatus("Touch fingerprint reader")
       fingerprint.start()
     }
   })
@@ -91,25 +130,16 @@ const createLocks = (onUnlock: () => void) => {
     doUnlock()
   })
 
-  const failedId = fingerprint.connect("failed", (_, reason) => {
-    if (reason === "verify-no-match") {
-      setAuthStatus("Fingerprint did not match")
-      setTimeout(() => {
-        if (fingerprint.available) {
-          setAuthStatus("Touch fingerprint reader")
-          fingerprint.start()
-        }
-      }, 500)
-    } else {
-      setAuthStatus("Fingerprint error")
-    }
-  })
-
   const statusId = fingerprint.connect("status-changed", (_, status) => {
-    if (status === "verify-retry" || status === "verify-swipe-too-short") {
+    if (status === "verify-no-match") {
+      setAuthStatus("Fingerprint did not match, retrying...")
+    } else if (status === "verify-retry" || status === "verify-swipe-too-short") {
       setAuthStatus("Try again...")
     }
   })
+
+  const fpStateBinding = createBinding(fingerprint, "state")
+  const fpErrorBinding = createBinding(fingerprint, "error-message")
 
   return (
     <For each={monitors}>
@@ -120,8 +150,12 @@ const createLocks = (onUnlock: () => void) => {
             onCleanup(() => {
               fingerprint.stop()
               fingerprint.disconnect(verifiedId)
-              fingerprint.disconnect(failedId)
               fingerprint.disconnect(statusId)
+              pam.disconnect(pamPromptId)
+              pam.disconnect(pamSuccessId)
+              pam.disconnect(pamFailId)
+              pam.disconnect(pamErrorId)
+              cancelPamTimeout()
               GLib.source_remove(lockTimeout)
               WindowManager.get_default().unregisterLockscreen(self)
             })
@@ -191,8 +225,18 @@ const createLocks = (onUnlock: () => void) => {
                 label={authStatus}
               />
               <Gtk.Spinner
-                visible={createBinding(fingerprint, "verifying")}
+                visible={fpStateBinding.as(
+                  (s) => s === "verifying" || s === "initializing",
+                )}
                 spinning
+              />
+              <Gtk.Button
+                visible={fpStateBinding.as((s) => s === "error")}
+                label={fpErrorBinding.as(
+                  (msg) => msg || "Retry fingerprint",
+                )}
+                cssClasses={["flat"]}
+                onClicked={() => fingerprint.retry()}
               />
             </Gtk.Box>
           </Gtk.CenterBox>
