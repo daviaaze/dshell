@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dynamic Theming (Material You)** — `Theming` singleton runs `matugen` on wallpaper change to extract accent colors; injects CSS via `Gtk.CssProvider`; toggle and regenerate button in Settings → General
 - **Window Switcher (Alt-Tab)** — `src/widget/windowswitcher/` with MRU sorting, keyboard navigation (Tab/Shift+Tab/Enter/Escape/Q), app icons, and workspace badges; bound to `Super+Tab` in Hyprland config
 - **Dock / Taskbar** — `src/widget/dock/` with pinned + running apps, active/running indicators, left-click focus/launch, right-click context menu (Focus/Close/Pin); settings in Settings → Bar
+- **SSH-based D-Bus test module** (`scripts/shadetest/_ssh.py`) — routes `gdbus` calls through SSH to the Shade VM for reliable widget toggling regardless of screen state; auto-detects VM mode via port probe or `SHADE_VM_MODE` env var; includes credential helpers and session bus discovery
+- **SSH enabled in test VM** (`nix/vm.nix`) — `services.openssh` enabled with password auth for agent-driven testing from host via the `hostfwd=tcp::2222-:22` QEMU port forward (see `nix/vm-vnc.nix`)
+- **sshpass + openssh in dev shell** (`nix/devshell.nix`) — VM SSH testing tools available via `nix develop`
 
 ### Fixed
 
