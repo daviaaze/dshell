@@ -53,6 +53,13 @@ metadata:
 | TypeScript compiler options | `tsconfig.json` |
 | Linting rules | `eslint.config.js` |
 | Doc health check script | `scripts/doc-check.sh` |
+| Full e2e test (7 phases) | `scripts/agent-full-test.py` |
+| Quick smoke test | `scripts/agent-smoke-test.py` |
+| Recording mode test | `scripts/agent-record-test.py` |
+| VNC MCP server | `scripts/vnc-mcp-server.py` |
+| Test harness library | `scripts/shadetest/` |
+| VM test runner | `scripts/run-vm-test.sh` |
+| Golden image capture | `scripts/capture-golden.sh` |
 
 ### Critical Rules
 

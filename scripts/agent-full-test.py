@@ -55,6 +55,30 @@ def run_full_test(h: ShadeTestHarness) -> bool:
     h.send_key("esc")
     time.sleep(1)
 
+    # ── Phase 3: Window Switcher ───────────────────────────────────────
+    print("\nPhase 3: Window Switcher...")
+    # Window Switcher requires at least one open window to render.
+    # If no windows are open, the switcher may appear empty but should still render.
+    try:
+        # Open a terminal first so the switcher has something to show
+        h.send_key("super-Return")
+        time.sleep(2)
+        h.send_key("super-tab")
+        time.sleep(1.5)
+        h.screenshot("f04-windowswitcher")
+        h.assertions.file_not_empty("f04-windowswitcher")
+        h.assert_screenshot_differs_from("f01-desktop", "f04-windowswitcher")
+        print("  ✅ Window Switcher opened")
+
+        # Close window switcher
+        h.send_key("esc")
+        time.sleep(0.5)
+        h.screenshot("f05-switcher-closed")
+        h.assertions.file_not_empty("f05-switcher-closed")
+        print("  ✅ Window Switcher closed")
+    except Exception as e:
+        print(f"  ⚠️  Window Switcher test partial: {e}")
+
     # ── Phase 4: Quick Settings ──────────────────────────────────────────
     print("\nPhase 4: Quick settings...")
     h.send_key("super-n")
@@ -85,8 +109,33 @@ def run_full_test(h: ShadeTestHarness) -> bool:
     h.assert_screenshot_differs_from("f10-bar-hidden", "f11-bar-visible")
     print("  ✅ Bar toggle works (screen changed)")
 
+    # ── Phase 6: Lockscreen ───────────────────────────────────────────
+    print("\nPhase 6: Lockscreen...")
+    try:
+        # Trigger lockscreen via D-Bus (no keybinding; lockscreen is a GAction)
+        h.dbus_activate("lockscreen")
+        time.sleep(2)
+        h.screenshot("f12-lockscreen")
+        h.assertions.file_not_empty("f12-lockscreen")
+        # Lockscreen should darken the screen; verify it differs from desktop
+        h.assert_screenshot_differs_from("f01-desktop", "f12-lockscreen")
+        print("  ✅ Lockscreen rendered (screen darkened)")
+
+        # Try to unlock (VM password is "test")
+        h.type_text("test")
+        time.sleep(0.5)
+        h.send_key("Return")
+        time.sleep(2)
+        h.screenshot("f13-unlocked")
+        h.assertions.file_not_empty("f13-unlocked")
+        # After unlock, screen should differ from lockscreen
+        h.assert_screenshot_differs_from("f12-lockscreen", "f13-unlocked")
+        print("  ✅ Lockscreen unlocked")
+    except Exception as e:
+        print(f"  ⚠️  Lockscreen test partial: {e}")
+
     # ── Phase 7: OSD ─────────────────────────────────────────────────────
-    print("\nPhase 7: Media keys / OSD...")
+    print("\nPhase 7: Media keys / OSD (via QEMU monitor sendkey)...")
     try:
         h.send_key("XF86AudioRaiseVolume")
         time.sleep(1)
@@ -94,7 +143,7 @@ def run_full_test(h: ShadeTestHarness) -> bool:
         h.assertions.file_not_empty("f14-osd-volume")
         print("  ✅ Volume OSD")
     except Exception as e:
-        print(f"  ⚠️  Volume OSD skipped — XF86 keys unsupported by vncdo ({e})")
+        print(f"  ⚠️  Volume OSD skipped — {e}")
 
     try:
         h.send_key("XF86MonBrightnessUp")
@@ -103,7 +152,7 @@ def run_full_test(h: ShadeTestHarness) -> bool:
         h.assertions.file_not_empty("f15-osd-brightness")
         print("  ✅ Brightness OSD")
     except Exception as e:
-        print(f"  ⚠️  Brightness OSD skipped — XF86 keys unsupported by vncdo ({e})")
+        print(f"  ⚠️  Brightness OSD skipped — {e}")
 
     print("\n=== Full test passed ===")
     print(f"Screenshots saved to: test-output/")

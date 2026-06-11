@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Network widget decomposition** — `network.tsx` split into `utils.ts`, `apList.tsx`, `passwordDialog.tsx`, `wifiPopover.tsx`, and `index.tsx`
 - **NixOS module layering** — new `programs.shade.desktop` option group; Hyprland imports are now conditional on `desktop.enable` instead of unconditional
 - **Lazy-loaded Settings window** — `Adw.PreferencesWindow` is no longer created eagerly on startup; created on first open via `shade-shell toggle settings`
-- **Touchpad Python script extraction** — removed standalone `data/scripts/toggle-touchpad.py`; lightweight embedded grab script remains in `touchpad.ts`; EC hardware toggle is the preferred path
+- **Touchpad Python script extraction** — removed standalone data/scripts/toggle-touchpad.py; lightweight embedded grab script remains in `touchpad.ts`; EC hardware toggle is the preferred path
 - **Window title in bar** — shows active window title + app icon in the bar center; hidden on empty workspace
 - **Keyboard layout indicator** — shows current XKB layout short code (e.g., "US", "BR") in system indicators; click cycles layout
 - **Bar module toggles** — all bar components (launcher, workspaces, window title, system resources, clock, weather, system indicators, keyboard layout) can be shown/hidden individually from Settings → Bar
