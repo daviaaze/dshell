@@ -13,6 +13,7 @@ Usage:
 
 from ._vnc import VNCClient
 from ._assert import Assert
+from . import _ssh
 
 __all__ = ["ShadeTestHarness"]
 
@@ -31,10 +32,18 @@ class ShadeTestHarness:
         vnc_host: str = "localhost",
         vnc_port: int = 5901,
         output_dir: str = "test-output",
+        qemu_monitor_socket: str = "/tmp/shade-qemu-monitor",
+        vm_mode: bool | None = None,
     ):
-        self.vnc = VNCClient(vnc_host, vnc_port)
+        self.vnc = VNCClient(
+            vnc_host, vnc_port,
+            qemu_monitor_socket=qemu_monitor_socket,
+        )
         self.assertions = Assert(self.vnc, output_dir)
         self._output_dir = output_dir
+        self._monitor_socket_path = qemu_monitor_socket
+        # None = auto-detect; True/False = force on/off
+        self._vm_mode = vm_mode
 
     # ── Context manager ──────────────────────────────────────────────────
 
@@ -153,11 +162,43 @@ class ShadeTestHarness:
 
     # ── D-Bus action helpers ─────────────────────────────────────────────
 
+    # ── QEMU monitor helpers ────────────────────────────────────────────
+
+    def send_media_key(self, key: str) -> None:
+        """Send an XF86 media key via QEMU monitor (e.g., volume/brightness).
+
+        Uses the QEMU monitor sendkey command directly.
+        Note: send_key() also auto-routes XF86 keys to the QEMU monitor,
+        so both methods are equivalent for XF86 keys.
+
+        Args:
+            key: XF86 key name (e.g., "XF86AudioRaiseVolume")
+
+        Raises:
+            VNCError: If the monitor socket is unavailable
+        """
+        self.vnc.send_qemu_key(key)
+
+    def save_vm_snapshot(self, name: str) -> str:
+        """Save a VM snapshot for fast restore.
+
+        Useful for golden-image testing: snapshot before each test
+        phase, restore if a test corrupts state.
+        """
+        return self.vnc.save_vm_snapshot(name)
+
+    def load_vm_snapshot(self, name: str) -> str:
+        """Restore a VM snapshot."""
+        return self.vnc.load_vm_snapshot(name)
+
+    # ── D-Bus action helpers ─────────────────────────────────────────────
+
     def dbus_activate(self, action_name: str) -> bool:
         """Activate a Shade GIO action via gdbus.
 
-        This is more reliable than keyboard shortcuts because it
-        works regardless of screen resolution or focus state.
+        When running against the VM (vm_mode=True or auto-detected),
+        routes the gdbus call through SSH to reach the D-Bus session
+        bus inside the VM. Otherwise executes gdbus locally.
 
         Args:
             action_name: e.g. "toggle-applauncher", "toggle-quicksettings"
@@ -165,6 +206,9 @@ class ShadeTestHarness:
         Returns True on success.
         """
         import subprocess
+
+        if self._resolve_vm_mode():
+            return _ssh.dbus_activate_remote(action_name)
 
         result = subprocess.run(
             [
@@ -188,6 +232,34 @@ class ShadeTestHarness:
                 f"gdbus call failed for action '{action_name}': {result.stderr.strip()}"
             )
         return True
+
+    # ── VM mode helpers ─────────────────────────────────────────────────
+
+    def _resolve_vm_mode(self) -> bool:
+        """Resolve VM mode: explicit setting > auto-detection."""
+        if self._vm_mode is not None:
+            return self._vm_mode
+        return _ssh.detect_vm_mode()
+
+    def enable_vm_mode(self) -> None:
+        """Force VM mode on (SSH to VM for D-Bus calls)."""
+        self._vm_mode = True
+
+    def disable_vm_mode(self) -> None:
+        """Force VM mode off (local gdbus calls)."""
+        self._vm_mode = False
+
+    @property
+    def vm_mode(self) -> bool:
+        """Is VM mode currently active?"""
+        return self._resolve_vm_mode()
+
+    def wait_for_ssh(self, timeout: int = 60) -> bool:
+        """Wait for SSH to become available on the VM.
+
+        Only meaningful in VM mode. Returns True when reachable.
+        """
+        return _ssh.wait_for_ssh(timeout)
 
     # ── Assertion shortcuts ──────────────────────────────────────────────
 

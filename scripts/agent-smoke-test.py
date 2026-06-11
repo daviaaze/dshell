@@ -97,10 +97,10 @@ def run_smoke_test(h: ShadeTestHarness) -> bool:
     print("  ✅ Bar toggle second press")
 
     # ── Phase 5: OSD simulation (media keys) ─────────────────────────────
-    print("\nPhase 5: Sending media keys...")
-    # XF86 keys are not supported by vncdo KEYMAP yet.
-    # See: https://github.com/sibson/vncdotool — KEYMAP at client.py:31-85
-    # Workaround pending: QEMU monitor sendkey via -monitor socket
+    print("\nPhase 5: Sending media keys (via QEMU monitor sendkey)...")
+    # XF86 keys are routed through QEMU monitor socket (see _vnc.py).
+    # Falls back to vncdo if monitor socket is unavailable (VM not started
+    # with -monitor flag or running outside the test VM).
     try:
         h.send_key("XF86AudioRaiseVolume")
         time.sleep(0.5)
@@ -108,7 +108,7 @@ def run_smoke_test(h: ShadeTestHarness) -> bool:
         h.assertions.file_not_empty("09-osd-volume")
         print("  ✅ Volume OSD appeared")
     except Exception as e:
-        print(f"  ⚠️  Volume OSD skipped — XF86 keys unsupported by vncdo ({e})")
+        print(f"  ⚠️  Volume OSD skipped — {e}")
 
     # D-Bus testing requires SSH tunnel into the VM (not yet implemented).
     # See: nix/vm-vnc.nix for planned port forwarding.

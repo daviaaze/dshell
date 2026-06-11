@@ -95,13 +95,13 @@ def run_record_test(h: ShadeTestHarness) -> bool:
     time.sleep(1)
     h.screenshot("r05-bar-visible")
 
-    print("  6. Sending media keys...")
+    print("  6. Sending media keys (via QEMU monitor sendkey)...")
     try:
         h.send_key("XF86AudioRaiseVolume")
         time.sleep(0.5)
         h.screenshot("r06-osd")
     except Exception as e:
-        print(f"    ⚠️  Volume OSD skipped — XF86 keys unsupported ({e})")
+        print(f"    ⚠️  Volume OSD skipped — {e}")
 
     print("  7. Closing quick settings...")
     h.send_key("esc")

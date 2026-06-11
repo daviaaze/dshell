@@ -2,9 +2,14 @@
 
 All operations are stateless — each call spawns a fresh vncdo subprocess.
 This avoids connection pool issues and keeps the API simple.
+
+QEMU monitor integration: XF86 media keys are sent via the QEMU monitor
+Unix socket (sendkey command) since vncdo's KEYMAP does not include them.
+VM snapshots (savevm/loadvm) also use the same monitor socket.
 """
 
 import os
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -29,9 +34,11 @@ class VNCClient:
         host: str = "localhost",
         port: int = 5901,
         password: str | None = None,
+        qemu_monitor_socket: str = "/tmp/shade-qemu-monitor",
     ):
         self._server = f"{host}::{port}"
         self._password = password
+        self._monitor_socket_path = qemu_monitor_socket
 
     # ── Core vncdo invocation ────────────────────────────────────────────
 
@@ -83,9 +90,16 @@ class VNCClient:
             - "esc" — Escape
             - "Return" — Enter
             - "ctrl-c" — Ctrl+C
-            - "XF86AudioRaiseVolume" — Volume up media key
-            - "XF86MonBrightnessUp" — Brightness up key
+            - "XF86AudioRaiseVolume" — Volume up media key (via QEMU monitor)
+            - "XF86MonBrightnessUp" — Brightness up key (via QEMU monitor)
+
+        XF86 keys are routed to the QEMU monitor sendkey command because
+        vncdo's KEYMAP does not include media key codes.
         """
+        # Route XF86 media keys through QEMU monitor (vncdo KEYMAP lacks them)
+        if key_combo.startswith("XF86"):
+            self.send_qemu_key(key_combo)
+            return
         self._vncdo("key", key_combo)
 
     def type(self, text: str) -> None:
@@ -158,6 +172,141 @@ class VNCClient:
                 pass
             time.sleep(1)
         return False
+
+    # ── QEMU monitor commands (Unix socket) ─────────────────────────────
+
+    def _qemu_monitor_connect(self) -> socket.socket:
+        """Connect to the QEMU monitor Unix socket.
+
+        Returns:
+            Connected socket (blocking, with 5s timeout)
+
+        Raises:
+            VNCError: If the socket does not exist or connection fails
+        """
+        if not os.path.exists(self._monitor_socket_path):
+            raise VNCError(
+                f"QEMU monitor socket not found: {self._monitor_socket_path}",
+            )
+
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        try:
+            sock.connect(self._monitor_socket_path)
+        except (socket.error, OSError) as e:
+            sock.close()
+            raise VNCError(
+                f"Failed to connect to QEMU monitor: {e}",
+            ) from e
+        return sock
+
+    def _qemu_monitor_cmd(self, cmd: str) -> str:
+        """Send a command to the QEMU monitor and return the response.
+
+        Opens a new connection for each command (stateless).
+        The QEMU Human Monitor Protocol (HMP) accepts plain-text commands
+        terminated by newline. Responses end with the "(qemu)" prompt.
+
+        Args:
+            cmd: QEMU monitor command (e.g., "sendkey XF86AudioRaiseVolume")
+
+        Returns:
+            Response text from QEMU monitor
+
+        Raises:
+            VNCError: On connection failure or monitor error response
+        """
+        sock = self._qemu_monitor_connect()
+        try:
+            sock.sendall((cmd + "\n").encode("utf-8"))
+
+            response_parts: list[bytes] = []
+            while True:
+                try:
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        break
+                    response_parts.append(chunk)
+                    # QEMU HMP prompt indicates end of response
+                    if b"(qemu)" in chunk:
+                        break
+                except socket.timeout:
+                    break
+
+            response = b"".join(response_parts).decode("utf-8", errors="replace")
+
+            # Check for QEMU error responses
+            if "Unknown command" in response or "error" in response.lower():
+                raise VNCError(
+                    f"QEMU monitor error for '{cmd}': {response.strip()}",
+                )
+
+            return response
+        finally:
+            sock.close()
+
+    def send_qemu_key(self, key: str) -> None:
+        """Send an XF86 media key via the QEMU monitor sendkey command.
+
+        This is the mechanism for sending keys that vncdo's KEYMAP
+        does not support (XF86AudioRaiseVolume, XF86MonBrightnessUp, etc.).
+
+        Args:
+            key: XF86 key name (e.g., "XF86AudioRaiseVolume", "XF86MonBrightnessUp")
+
+        Raises:
+            VNCError: If the monitor socket is unavailable or the command fails
+        """
+        self._qemu_monitor_cmd(f"sendkey {key}")
+        # QEMU processes sendkey immediately; brief pause ensures the
+        # key event propagates before the next screenshot or interaction
+        time.sleep(0.05)
+
+    def save_vm_snapshot(self, name: str) -> str:
+        """Save a VM snapshot via the QEMU monitor savevm command.
+
+        The VM must be started with a machine type that supports snapshots
+        (default NixOS VM builds do). Snapshots are saved in the QCOW2 overlay.
+
+        Args:
+            name: Snapshot tag (e.g., "pre-test", "golden-base")
+
+        Returns:
+            QEMU monitor response text
+
+        Raises:
+            VNCError: If the monitor socket is unavailable or savevm fails
+        """
+        return self._qemu_monitor_cmd(f"savevm {name}")
+
+    def load_vm_snapshot(self, name: str) -> str:
+        """Load a VM snapshot via the QEMU monitor loadvm command.
+
+        Restores the VM to a previously saved snapshot state.
+        This resets CPU, memory, and device state — the VM resumes
+        from the exact point the snapshot was taken.
+
+        Args:
+            name: Snapshot tag to restore (e.g., "pre-test", "golden-base")
+
+        Returns:
+            QEMU monitor response text
+
+        Raises:
+            VNCError: If the monitor socket is unavailable or loadvm fails
+        """
+        return self._qemu_monitor_cmd(f"loadvm {name}")
+
+    def monitor_socket_available(self) -> bool:
+        """Check if the QEMU monitor socket exists and is connectable."""
+        if not os.path.exists(self._monitor_socket_path):
+            return False
+        try:
+            sock = self._qemu_monitor_connect()
+            sock.close()
+            return True
+        except VNCError:
+            return False
 
     def is_reachable(self) -> bool:
         """Quick check: is the VNC server reachable right now?"""
