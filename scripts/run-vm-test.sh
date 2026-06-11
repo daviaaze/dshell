@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Orchestrator that starts the VNC-enabled NixOS VM and runs the agent smoke test.
+# Orchestrator that starts the VNC-enabled NixOS VM and runs agent tests.
 #
 # Usage:
-#   ./scripts/run-vm-test.sh [--smoke|--full] [--keep-alive]
+#   ./scripts/run-vm-test.sh [--smoke|--full|--record] [--keep-alive]
 #
 #   --smoke       Run the quick smoke test (default)
 #   --full        Run the extended full test
+#   --record      Run recording test (wf-recorder + interactions)
 #   --keep-alive  Don't kill the VM after the test (useful for debugging)
 #
 # The VM runs in the background. The script waits for VNC, runs the test,
@@ -24,10 +25,14 @@ for arg in "$@"; do
   case "$arg" in
     --smoke) TEST_MODE="smoke" ;;
     --full) TEST_MODE="full" ;;
+    --record) TEST_MODE="record" ;;
     --keep-alive) KEEP_ALIVE=true ;;
-    *) echo "Unknown argument: $arg"; exit 1 ;;
+    *) echo "Unknown argument: $arg"; echo "Usage: $0 [--smoke|--full|--record] [--keep-alive]"; exit 1 ;;
   esac
 done
+
+# Ensure /tmp/shade-test-output exists for virtiofs
+mkdir -p /tmp/shade-test-output
 
 # Cleanup function
 cleanup() {
@@ -45,17 +50,21 @@ cleanup() {
     wait "$VM_PID" 2>/dev/null || true
   elif $KEEP_ALIVE; then
     echo "  VM left running (PID: $VM_PID) — connect with vncviewer localhost:5901"
+    echo "  Shared dir: /tmp/shade-test-output"
   fi
   exit $exit_code
 }
 trap cleanup EXIT INT TERM
+
+# ── Header ──────────────────────────────────────────────────────────────
 
 echo "═══════════════════════════════════════════════════"
 echo "  Shade Agentic VM Test ($TEST_MODE mode)"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
-# Ensure we're in a nix develop shell for Python deps
+# ── Prerequisites ───────────────────────────────────────────────────────
+
 if ! command -v vncdo &>/dev/null; then
   echo "⚠️  vncdo not found in PATH."
   echo "   Please run: nix develop"
@@ -63,7 +72,8 @@ if ! command -v vncdo &>/dev/null; then
   exit 1
 fi
 
-# Start VM in background
+# ── Start VM ────────────────────────────────────────────────────────────
+
 echo "🖥️  Starting NixOS VM with VNC on localhost:5901..."
 echo "   (This will take a while on first run due to VM build)"
 echo ""
@@ -75,7 +85,8 @@ echo ""
 # Wait a moment for QEMU to initialise
 sleep 3
 
-# Start MCP server alongside VM (optional, for agent integration)
+# ── Start MCP server ────────────────────────────────────────────────────
+
 echo "🔌 Starting MCP server on stdio..."
 python3 "${SCRIPT_DIR}/vnc-mcp-server.py" &
 MCP_PID=$!
@@ -83,13 +94,38 @@ echo "   MCP PID: $MCP_PID"
 echo ""
 sleep 1
 
-# Run test
+# ── Run test ────────────────────────────────────────────────────────────
+
 echo "🧪 Running agent test ($TEST_MODE mode)..."
-if [[ "$TEST_MODE" == "full" ]]; then
-  python3 "${SCRIPT_DIR}/agent-full-test.py"
-else
-  python3 "${SCRIPT_DIR}/agent-smoke-test.py"
-fi
+echo ""
+
+case "$TEST_MODE" in
+  smoke)
+    python3 "${SCRIPT_DIR}/agent-smoke-test.py"
+    ;;
+  full)
+    python3 "${SCRIPT_DIR}/agent-full-test.py"
+    ;;
+  record)
+    python3 "${SCRIPT_DIR}/agent-record-test.py"
+    ;;
+esac
 
 echo ""
 echo "✅ Test run complete."
+
+# ── Show artifacts ──────────────────────────────────────────────────────
+
+if [[ -d test-output ]]; then
+  PNG_COUNT=$(find test-output -name '*.png' 2>/dev/null | wc -l)
+  PNG_SIZE=$(du -sh test-output 2>/dev/null | cut -f1)
+  echo ""
+  echo "📸 Screenshots: $PNG_COUNT files ($PNG_SIZE) in test-output/"
+fi
+
+if [[ -d /tmp/shade-test-output ]]; then
+  REC_COUNT=$(find /tmp/shade-test-output -name '*.mp4' -o -name '*.mkv' -o -name '*.webm' 2>/dev/null | wc -l)
+  if [[ $REC_COUNT -gt 0 ]]; then
+    echo "📹 Recordings:  $REC_COUNT files in /tmp/shade-test-output/"
+  fi
+fi
