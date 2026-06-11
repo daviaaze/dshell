@@ -12,6 +12,7 @@ Credentials match nix/vm.nix and nix/vm-vnc.nix:
 """
 
 import os
+import shlex
 import subprocess
 import time
 
@@ -132,7 +133,7 @@ def run_remote(
         env_prefix = " ".join(f"{k}={v}" for k, v in env.items())
         remote_cmd = f"{env_prefix} {' '.join(command)}"
     else:
-        remote_cmd = " ".join(command)
+        remote_cmd = shlex.join(command)
 
     ssh_cmd = [
         "sshpass", "-p", VM_PASSWORD,
@@ -180,7 +181,7 @@ def _discover_session_bus_address() -> str:
         )
         uid = result.stdout.strip()
         return f"unix:path=/run/user/{uid}/bus"
-    except Exception:
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, SSHError):
         # Fallback: assume first normal user = UID 1000
         return "unix:path=/run/user/1000/bus"
 

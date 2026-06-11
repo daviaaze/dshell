@@ -218,6 +218,18 @@ class VNCClient:
         """
         sock = self._qemu_monitor_connect()
         try:
+            # Drain any pending banner/text before sending command.
+            # On first connection, QEMU sends a welcome banner before the prompt.
+            sock.settimeout(0.1)
+            try:
+                while True:
+                    chunk = sock.recv(4096)
+                    if not chunk or b"(qemu)" in chunk:
+                        break
+            except socket.timeout:
+                pass
+            sock.settimeout(5.0)
+
             sock.sendall((cmd + "\n").encode("utf-8"))
 
             response_parts: list[bytes] = []
@@ -236,7 +248,7 @@ class VNCClient:
             response = b"".join(response_parts).decode("utf-8", errors="replace")
 
             # Check for QEMU error responses
-            if "Unknown command" in response or "error" in response.lower():
+            if "unknown command" in response.lower():
                 raise VNCError(
                     f"QEMU monitor error for '{cmd}': {response.strip()}",
                 )
