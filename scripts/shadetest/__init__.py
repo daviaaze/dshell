@@ -85,25 +85,17 @@ class ShadeTestHarness:
     def wait_until_shade_ready(self, timeout: int = 60) -> bool:
         """Poll until Shade appears to be running.
 
-        Uses multiple signals:
-        1. Try vncdo's built-in expect (pixel content check)
-        2. Try to send a benign key and check for change
-        3. Accept if VNC has been alive long enough without error
+        Polls VNC continuously until a valid screenshot is captured.
+        Returns early as soon as the VNC server serves frames > 2KB.
 
         Returns True if Shade appears ready, False on timeout.
         """
         import time
 
         start = time.monotonic()
-        # First, just wait a reasonable minimum for boot to complete
-        min_wait = 15
-        elapsed = 0
-        while elapsed < min_wait:
-            time.sleep(1)
-            elapsed = time.monotonic() - start
 
-        # Now poll with VNC operations
-        # A successful screenshot means the VNC server is serving frames
+        # Poll VNC continuously — return as soon as screenshots become valid
+        # (don't wait for a fixed minimum time)
         while (time.monotonic() - start) < timeout:
             try:
                 self.vnc.capture("__shade_ready_probe", self._output_dir)
