@@ -114,7 +114,6 @@ export class ColorScheme extends Object {
     }
     this.#initialized = true
     this.#weather = weather
-    this.#daytime = this.#weather.info.is_daytime()
     this.#shadeSettings = settings
     const colorSchemeSetting = settings.colorScheme
     this.colorScheme = colorSchemeSetting.get()
@@ -126,7 +125,26 @@ export class ColorScheme extends Object {
       }
     })
 
-    this.timeout()
+    const updateFromWeather = () => {
+      if (weather.info.is_valid()) {
+        this.#daytime = weather.info.is_daytime()
+        this.notify("daytime")
+        if (this.#colorScheme === DarkModes.AUTO) {
+          this.colorScheme = DarkModes.AUTO
+        }
+        this.timeout()
+        return true
+      }
+      return false
+    }
+
+    if (!updateFromWeather()) {
+      const handlerId = weather.connect("notify::info", () => {
+        if (updateFromWeather()) {
+          weather.disconnect(handlerId)
+        }
+      })
+    }
   }
 
   constructor() {
