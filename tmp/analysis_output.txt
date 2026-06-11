@@ -1,0 +1,232 @@
+================================================================================
+SCREENSHOT ANALYSIS: Brightness & Blank Detection
+================================================================================
+
+01-desktop.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 0.0
+  Perceived Brightness: 0.0
+  Variance: 0.0
+  Is Blank: True
+
+02-applauncher-open.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 210.94
+  Perceived Brightness: 210.91
+  Variance: 711.1
+  Is Blank: False
+
+03-applauncher-search.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 210.32
+  Perceived Brightness: 210.32
+  Variance: 406.78
+  Is Blank: False
+
+04-applauncher-closed.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 210.56
+  Perceived Brightness: 210.55
+  Variance: 385.04
+  Is Blank: False
+
+05-quicksettings-open.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 217.35
+  Perceived Brightness: 217.3
+  Variance: 664.81
+  Is Blank: False
+
+06-quicksettings-closed.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 217.36
+  Perceived Brightness: 217.31
+  Variance: 664.49
+  Is Blank: False
+
+07-bar-hidden.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 215.84
+  Perceived Brightness: 215.8
+  Variance: 660.86
+  Is Blank: False
+
+08-bar-visible.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 216.85
+  Perceived Brightness: 216.8
+  Variance: 709.66
+  Is Blank: False
+
+09-osd-volume.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 216.85
+  Perceived Brightness: 216.79
+  Variance: 710.46
+  Is Blank: False
+
+__shade_ready_probe.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 216.89
+  Perceived Brightness: 216.84
+  Variance: 703.76
+  Is Blank: False
+
+full/f01-desktop.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 40.79
+  Perceived Brightness: 40.76
+  Variance: 758.48
+  Is Blank: False
+
+full/f02-launcher.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 43.01
+  Perceived Brightness: 43.02
+  Variance: 934.88
+  Is Blank: False
+
+full/f03-launcher-search.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 39.62
+  Perceived Brightness: 39.67
+  Variance: 614.41
+  Is Blank: False
+
+full/f07-qs-open.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 40.79
+  Perceived Brightness: 40.76
+  Variance: 759.52
+  Is Blank: False
+
+full/f09-qs-closed.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 40.79
+  Perceived Brightness: 40.75
+  Variance: 758.11
+  Is Blank: False
+
+full/f10-bar-hidden.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 39.83
+  Perceived Brightness: 39.82
+  Variance: 685.69
+  Is Blank: False
+
+full/f11-bar-visible.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 40.8
+  Perceived Brightness: 40.76
+  Variance: 759.21
+  Is Blank: False
+
+recording/r01-launcher.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 42.92
+  Perceived Brightness: 42.94
+  Variance: 919.35
+  Is Blank: False
+
+recording/r02-search.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 38.19
+  Perceived Brightness: 38.24
+  Variance: 452.45
+  Is Blank: False
+
+recording/r03-qs.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 40.71
+  Perceived Brightness: 40.68
+  Variance: 743.73
+  Is Blank: False
+
+recording/r04-bar-hidden.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 39.75
+  Perceived Brightness: 39.74
+  Variance: 671.59
+  Is Blank: False
+
+recording/r05-bar-visible.png
+  Size: (1280, 800), Mode: RGB
+  Avg Brightness: 40.71
+  Perceived Brightness: 40.67
+  Variance: 742.96
+  Is Blank: False
+
+================================================================================
+IMAGE COMPARISON: quick vs full screenshots
+================================================================================
+
+01-desktop.png  vs  full/f01-desktop.png
+  Mean Absolute Error: 41.71
+  Different Pixels: 99.99%
+
+02-applauncher-open.png  vs  full/f02-launcher.png
+  Mean Absolute Error: 172.08
+  Different Pixels: 99.32%
+
+03-applauncher-search.png  vs  full/f03-launcher-search.png
+  Mean Absolute Error: 172.06
+  Different Pixels: 99.82%
+
+05-quicksettings-open.png  vs  full/f07-qs-open.png
+  Mean Absolute Error: 180.24
+  Different Pixels: 99.84%
+
+06-quicksettings-closed.png  vs  full/f09-qs-closed.png
+  Mean Absolute Error: 180.25
+  Different Pixels: 99.85%
+
+07-bar-hidden.png  vs  full/f10-bar-hidden.png
+  Mean Absolute Error: 179.62
+  Different Pixels: 99.86%
+
+08-bar-visible.png  vs  full/f11-bar-visible.png
+  Mean Absolute Error: 180.04
+  Different Pixels: 99.82%
+
+================================================================================
+IMAGE COMPARISON: full vs recording mode
+================================================================================
+
+full/f02-launcher.png  vs  recording/r01-launcher.png
+  Mean Absolute Error: 0.38
+  Different Pixels: 0.25%
+
+full/f03-launcher-search.png  vs  recording/r02-search.png
+  Mean Absolute Error: 2.12
+  Different Pixels: 3.96%
+
+full/f07-qs-open.png  vs  recording/r03-qs.png
+  Mean Absolute Error: 0.41
+  Different Pixels: 0.29%
+
+full/f10-bar-hidden.png  vs  recording/r04-bar-hidden.png
+  Mean Absolute Error: 0.32
+  Different Pixels: 0.19%
+
+full/f11-bar-visible.png  vs  recording/r05-bar-visible.png
+  Mean Absolute Error: 0.39
+  Different Pixels: 0.25%
+
+================================================================================
+BLANK / BLACK SCREEN DETECTION
+================================================================================
+  ⚠ BLANK: 01-desktop.png (variance=0.0)
+  ▪ Dark: full/f01-desktop.png (brightness=40.79)
+  ▪ Dark: full/f02-launcher.png (brightness=43.01)
+  ▪ Dark: full/f03-launcher-search.png (brightness=39.62)
+  ▪ Dark: full/f07-qs-open.png (brightness=40.79)
+  ▪ Dark: full/f09-qs-closed.png (brightness=40.79)
+  ▪ Dark: full/f10-bar-hidden.png (brightness=39.83)
+  ▪ Dark: full/f11-bar-visible.png (brightness=40.8)
+  ▪ Dark: recording/r01-launcher.png (brightness=42.92)
+  ▪ Dark: recording/r02-search.png (brightness=38.19)
+  ▪ Dark: recording/r03-qs.png (brightness=40.71)
+  ▪ Dark: recording/r04-bar-hidden.png (brightness=39.75)
+  ▪ Dark: recording/r05-bar-visible.png (brightness=40.71)
+
+Done.
