@@ -10,5 +10,10 @@
     # Mount inside VM: /mnt/test-output
     # Access from host: /tmp/shade-test-output
     "-virtfs" "local,path=/tmp/shade-test-output,security_model=passthrough,mount_tag=test-output"
+    # QEMU monitor socket for sendkey (XF86 keys) and savevm/loadvm snapshots
+    "-monitor" "unix:/tmp/shade-qemu-monitor,server,nowait"
+    # SSH port forward for D-Bus testing from host
+    # Use: ssh test@localhost -p 2222 (password: test)
+    "-netdev" "user,id=net0,hostfwd=tcp::2222-:22"
   ];
 }
