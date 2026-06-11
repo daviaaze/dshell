@@ -23,6 +23,7 @@ export class ColorScheme extends Object {
   #colorScheme: DarkModes = 0
   #initialized = false
   #weather: Weather | null = null
+  #timerId: number | null = null
   #shadeSettings: {
     colorScheme: { get(): DarkModes; subscribe(cb: () => void): () => void }
     setColorScheme: (v: DarkModes) => void
@@ -82,6 +83,11 @@ export class ColorScheme extends Object {
   }
 
   private timeout() {
+    if (this.#timerId !== null) {
+      clearTimeout(this.#timerId)
+      this.#timerId = null
+    }
+
     const msUntil = (unixTime: number) =>
       Math.abs(
         GLib.DateTime.new_from_unix_local(unixTime)
@@ -95,8 +101,13 @@ export class ColorScheme extends Object {
       ? msUntil(this.#weather.info.get_value_sunset()[1])
       : msUntil(this.#weather.info.get_value_sunrise()[1])
 
-    setTimeout(() => {
+    this.#timerId = setTimeout(() => {
+      this.#timerId = null
       this.#daytime = !this.#daytime
+      this.notify("daytime")
+      if (this.#colorScheme === DarkModes.AUTO) {
+        this.colorScheme = DarkModes.AUTO
+      }
       this.timeout()
     }, interval / GLib.TIME_SPAN_MILLISECOND)
   }
@@ -127,24 +138,20 @@ export class ColorScheme extends Object {
 
     const updateFromWeather = () => {
       if (weather.info.is_valid()) {
-        this.#daytime = weather.info.is_daytime()
-        this.notify("daytime")
-        if (this.#colorScheme === DarkModes.AUTO) {
-          this.colorScheme = DarkModes.AUTO
+        const newDaytime = weather.info.is_daytime()
+        if (newDaytime !== this.#daytime) {
+          this.#daytime = newDaytime
+          this.notify("daytime")
+          if (this.#colorScheme === DarkModes.AUTO) {
+            this.colorScheme = DarkModes.AUTO
+          }
         }
         this.timeout()
-        return true
       }
-      return false
     }
 
-    if (!updateFromWeather()) {
-      const handlerId = weather.connect("notify::info", () => {
-        if (updateFromWeather()) {
-          weather.disconnect(handlerId)
-        }
-      })
-    }
+    updateFromWeather()
+    weather.connect("notify::info", updateFromWeather)
   }
 
   constructor() {
