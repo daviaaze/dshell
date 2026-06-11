@@ -5,6 +5,9 @@ import logger from "#/lib/logger"
 
 const FPRINTD_SERVICE = "net.reactivated.Fprint"
 const FPRINTD_MANAGER = "/net/reactivated/Fprint/Manager"
+const MAX_RETRIES = 3
+
+type FingerprintState = "idle" | "initializing" | "verifying" | "error"
 
 @register({ GTypeName: "FingerprintAuth" })
 export default class FingerprintAuth extends GObject.Object {
@@ -16,18 +19,33 @@ export default class FingerprintAuth extends GObject.Object {
   }
 
   #available = false
-  #verifying = false
+  #state: FingerprintState = "idle"
+  #errorMessage = ""
   #devicePath: string | null = null
   #deviceProxy: Gio.DBusProxy | null = null
+  #initialized = false
+  #claimed = false
+  #consecutiveFailures = 0
+  #signalId = 0
 
   @getter(Boolean)
   get available() {
     return this.#available
   }
 
+  @getter(String)
+  get state() {
+    return this.#state
+  }
+
+  @getter(String)
+  get errorMessage() {
+    return this.#errorMessage
+  }
+
   @getter(Boolean)
   get verifying() {
-    return this.#verifying
+    return this.#state === "verifying"
   }
 
   @signal()
@@ -39,8 +57,18 @@ export default class FingerprintAuth extends GObject.Object {
   @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
   statusChanged(_status: string) {}
 
-  #initialized = false
-  #claimed = false
+  #setState(state: FingerprintState) {
+    if (this.#state === state) return
+    this.#state = state
+    this.notify("state")
+    this.notify("verifying")
+  }
+
+  #setError(message: string) {
+    this.#errorMessage = message
+    this.notify("error-message")
+    this.#setState("error")
+  }
 
   async init() {
     if (this.#initialized) return
@@ -68,7 +96,7 @@ export default class FingerprintAuth extends GObject.Object {
       this.#available = true
       this.notify("available")
 
-      this.#deviceProxy.connect(
+      this.#signalId = this.#deviceProxy.connect(
         "g-signal",
         (_proxy, _sender, signalName, params) => {
           if (signalName === "VerifyStatus") {
@@ -77,13 +105,7 @@ export default class FingerprintAuth extends GObject.Object {
             this.statusChanged(status)
 
             if (done) {
-              this.#verifying = false
-              this.notify("verifying")
-              if (status === "verify-match") {
-                this.verified()
-              } else {
-                this.failed(status)
-              }
+              this.#handleVerifyDone(status)
             }
           }
         },
@@ -95,8 +117,42 @@ export default class FingerprintAuth extends GObject.Object {
     }
   }
 
+  #handleVerifyDone(status: string) {
+    if (status === "verify-match") {
+      this.#consecutiveFailures = 0
+      this.#setState("idle")
+      this.verified()
+      return
+    }
+
+    if (status === "verify-no-match") {
+      this.#consecutiveFailures++
+      if (this.#consecutiveFailures >= MAX_RETRIES) {
+        this.stop()
+        this.#setError("Too many fingerprint attempts")
+        this.failed("too-many-retries")
+        return
+      }
+      this.#reinitAndRetry().catch((e) =>
+        logger.error("fingerprint", "retry failed:", e),
+      )
+      return
+    }
+
+    this.stop()
+    this.#setError(`Fingerprint error: ${status}`)
+    this.failed(status)
+  }
+
+  async #reinitAndRetry() {
+    this.stop()
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    this.start()
+  }
+
   start() {
     if (!this.#available || !this.#deviceProxy) return
+    this.#setState("initializing")
     try {
       if (!this.#claimed) {
         this.#deviceProxy.call_sync(
@@ -108,8 +164,7 @@ export default class FingerprintAuth extends GObject.Object {
         )
         this.#claimed = true
       }
-      this.#verifying = true
-      this.notify("verifying")
+      this.#setState("verifying")
       this.#deviceProxy.call_sync(
         "VerifyStart",
         GLib.Variant.new("(s)", [""]),
@@ -119,11 +174,19 @@ export default class FingerprintAuth extends GObject.Object {
       )
     } catch (e) {
       logger.error("fingerprint", "start failed:", e)
-      this.#verifying = false
-      this.notify("verifying")
+      this.#setError(`Fingerprint device error: ${String(e)}`)
       this.failed(String(e))
       this.#release()
     }
+  }
+
+  retry() {
+    if (this.#state !== "error") return
+    this.#consecutiveFailures = 0
+    this.#errorMessage = ""
+    this.notify("error-message")
+    this.#setState("initializing")
+    this.start()
   }
 
   stop() {
@@ -139,8 +202,7 @@ export default class FingerprintAuth extends GObject.Object {
     } catch (e) {
       logger.error("fingerprint", "VerifyStop failed:", e)
     }
-    this.#verifying = false
-    this.notify("verifying")
+    this.#setState("idle")
     this.#release()
   }
 
