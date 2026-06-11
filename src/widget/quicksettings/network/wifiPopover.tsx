@@ -45,18 +45,17 @@ export default ({
         </Gtk.Button>
       </Gtk.Box>
       <Gtk.ScrolledWindow
-        maxContentWidth={320}
+        widthRequest={360}
+        maxContentHeight={350}
         propagateNaturalHeight={true}
         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         hscrollbarPolicy={Gtk.PolicyType.NEVER}
       >
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-          <ApList
-            wifi={wifi}
-            connectingAp={connectingAp}
-            setConnectingAp={setConnectingAp}
-          />
-        </Gtk.Box>
+        <ApList
+          wifi={wifi}
+          connectingAp={connectingAp}
+          setConnectingAp={setConnectingAp}
+        />
       </Gtk.ScrolledWindow>
     </Gtk.Box>
   )

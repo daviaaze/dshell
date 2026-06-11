@@ -101,6 +101,18 @@ export function strengthFraction(strength: number): number {
   return Math.max(0, Math.min(1, strength / 100))
 }
 
+export function signalIconName(strength: number): string {
+  if (strength >= 75) return "network-wireless-signal-excellent-symbolic"
+  if (strength >= 50) return "network-wireless-signal-good-symbolic"
+  if (strength >= 25) return "network-wireless-signal-ok-symbolic"
+  if (strength > 0) return "network-wireless-signal-weak-symbolic"
+  return "network-wireless-signal-none-symbolic"
+}
+
+export function escapeLabel(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
 // ── Security type detection ────────────────────────────────────────
 
 /**
@@ -237,16 +249,20 @@ export function findLiveAp(
   bssid: string | null,
 ): Network.AccessPoint | null {
   if (!bssid) return null
-  const points = toArray<Network.AccessPoint>(wifi.accessPoints)
-  for (const ap of points) {
-    try {
-      const apBssid = bssidOf(ap)
-      if (apBssid && bssidEquals(apBssid, bssid)) {
-        return ap
+  try {
+    const points = toArray<Network.AccessPoint>(wifi.accessPoints)
+    for (const ap of points) {
+      try {
+        const apBssid = bssidOf(ap)
+        if (apBssid && bssidEquals(apBssid, bssid)) {
+          return ap
+        }
+      } catch {
+        continue
       }
-    } catch {
-      continue
     }
+  } catch {
+    return null
   }
   return null
 }

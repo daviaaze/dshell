@@ -8,11 +8,12 @@ import { toArray } from "#/lib/gjsUtils"
 import {
   bssidOf,
   bssidEquals,
-  strengthFraction,
   ApSnapshot,
   snapshotAp,
   findLiveAp,
   isSaved,
+  signalIconName,
+  escapeLabel,
 } from "./utils"
 import logger from "#/lib/logger"
 
@@ -22,29 +23,21 @@ interface ApListProps {
   setConnectingAp: (v: string | null) => void
 }
 
-// ── Helpers ────────────────────────────────────────────────────────
-
 function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
   return [...aps].sort((a, b) => {
-    // Active AP first
     const aActive = a.bssid !== null && activeBssid !== null && bssidEquals(a.bssid, activeBssid)
     const bActive = b.bssid !== null && activeBssid !== null && bssidEquals(b.bssid, activeBssid)
     if (aActive && !bActive) return -1
     if (!aActive && bActive) return 1
-
-    // Stronger signal first
     return b.strength - a.strength
   })
 }
-
-// ── AP Row ─────────────────────────────────────────────────────────
 
 interface ApRowProps {
   snap: ApSnapshot
   wifi: Network.Wifi
   isActive: Accessor<boolean>
   isConnecting: Accessor<boolean>
-  connectingAp: Accessor<string | null>
   setConnectingAp: (v: string | null) => void
 }
 
@@ -53,7 +46,6 @@ function ApRow({
   wifi,
   isActive,
   isConnecting,
-  connectingAp,
   setConnectingAp,
 }: ApRowProps) {
   const apSsid = snap.ssid
@@ -61,7 +53,6 @@ function ApRow({
   const secure = snap.secure
   const secLabel = snap.secLabel
 
-  // Per-row password entry state
   const [showPassword, setShowPassword] = createState(false)
   const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(null)
   const [passwordError, setPasswordError] = createState<string | null>(null)
@@ -76,7 +67,6 @@ function ApRow({
       return
     }
 
-    // Open network → connect directly
     if (!secure) {
       if (apBssid) setConnectingAp(apBssid)
       liveAp.activate(null)
@@ -92,7 +82,6 @@ function ApRow({
       return
     }
 
-    // Secured network with explicit password → connect with it
     if (password !== undefined) {
       if (apBssid) setConnectingAp(apBssid)
       liveAp.activate(password || null)
@@ -108,7 +97,6 @@ function ApRow({
       return
     }
 
-    // Secured, no password → check saved status at click time
     try {
       if (isSaved(liveAp)) {
         if (apBssid) setConnectingAp(apBssid)
@@ -159,32 +147,41 @@ function ApRow({
 
   const notActive = createComputed([isActive], (active) => !active)
 
+  const canForget = createComputed([isActive], (active) => {
+    if (active) return false
+    const liveAp = findLiveAp(wifi, apBssid)
+    if (!liveAp) return false
+    return isSaved(liveAp)
+  })
+
+  const prefixIcon = secure
+    ? "network-wireless-encrypted-symbolic"
+    : signalIconName(snap.strength)
+
   return (
     <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
       <Gtk.Box spacing={0}>
         <Gtk.Button
           hexpand
+          cssClasses={["flat"]}
           onClicked={() => {
             if (isActive.get()) {
               wifi
-                .deactivate_connection()
+                .deactivate_connection(null)
                 .catch((e: Error) =>
                   logger.error("network", "deactivate failed:", e.message),
                 )
               return
             }
-
             doConnect()
           }}
         >
-          <Gtk.Box spacing={8}>
-            {/* Lock icon for secured networks */}
+          <Gtk.Box spacing={12}>
             <Gtk.Image
-              iconName={secure ? "network-wireless-encrypted-symbolic" : "network-wireless-signal-none-symbolic"}
+              iconName={prefixIcon}
               pixelSize={16}
             />
 
-            {/* SSID + security label */}
             <Gtk.Box
               hexpand
               halign={Gtk.Align.FILL}
@@ -194,7 +191,7 @@ function ApRow({
               <Gtk.Label
                 hexpand
                 halign={Gtk.Align.FILL}
-                label={apSsid.replace(/&/g, "&amp;").replace(/</g, "&lt;")}
+                label={escapeLabel(apSsid)}
                 ellipsize={3}
               />
               <Gtk.Label
@@ -204,47 +201,52 @@ function ApRow({
               />
             </Gtk.Box>
 
-            {/* Signal strength bars */}
-            <Gtk.LevelBar
+            <Gtk.Image
+              iconName={signalIconName(snap.strength)}
+              pixelSize={16}
               valign={Gtk.Align.CENTER}
-              value={strengthFraction(snap.strength)}
-              widthRequest={40}
+              visible={secure}
+              tooltipText={`${snap.strength}%`}
+            />
+            <Gtk.Image
+              iconName={signalIconName(snap.strength)}
+              pixelSize={16}
+              valign={Gtk.Align.CENTER}
+              visible={notActive.as((na) => na && !secure)}
+              tooltipText={`${snap.strength}%`}
             />
 
-            {/* Status: Active checkmark */}
             <Gtk.Image
               iconName="emblem-ok-symbolic"
               pixelSize={16}
               visible={isActive}
             />
 
-            {/* Status: Connecting spinner */}
             <Gtk.Spinner
               spinning
-              marginEnd={4}
               visible={isConnecting}
             />
           </Gtk.Box>
         </Gtk.Button>
-        {/* Forget button (all non-active networks) — outside main button */}
+
         <Gtk.Button
-          visible={notActive}
+          visible={canForget}
           cssClasses={["flat", "circular"]}
           onClicked={doForget}
           tooltipText="Forget Network"
+          valign={Gtk.Align.CENTER}
         >
           <Gtk.Image iconName="user-trash-symbolic" pixelSize={14} />
         </Gtk.Button>
       </Gtk.Box>
 
-      {/* Inline password entry — shown when clicking an unknown secured AP */}
       <Gtk.Revealer
         revealChild={showPassword}
         transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
       >
         <Gtk.Box
           spacing={4}
-          marginStart={24}
+          marginStart={28}
           marginEnd={4}
           marginTop={4}
           marginBottom={4}
@@ -255,13 +257,11 @@ function ApRow({
             hexpand
             $={(self) => {
               setPasswordEntry(self)
-              // Grab focus after widget is realized
               GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
                 self.grab_focus()
                 return GLib.SOURCE_REMOVE
               })
 
-              // Allow Enter to submit
               const controller = new Gtk.EventControllerKey()
               controller.connect("key-pressed", (_ctrl, keyval) => {
                 if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
@@ -288,11 +288,10 @@ function ApRow({
         </Gtk.Box>
       </Gtk.Revealer>
 
-      {/* Password error message */}
       <Gtk.Label
         label={passwordError.as((e) => e ?? "")}
         cssClasses={["error", "caption"]}
-        marginStart={24}
+        marginStart={28}
         marginBottom={4}
         visible={passwordError.as((e) => e !== null)}
         wrap
@@ -300,8 +299,6 @@ function ApRow({
     </Gtk.Box>
   )
 }
-
-// ── AP List ────────────────────────────────────────────────────────
 
 export default ({
   wifi,
@@ -323,30 +320,36 @@ export default ({
   )
 
   return (
-    <For each={sortedAps}>
-      {(snap: ApSnapshot) => {
-        const apBssid = snap.bssid
+    <Gtk.Box
+      orientation={Gtk.Orientation.VERTICAL}
+      spacing={0}
+      hexpand
+      cssClasses={["network-list"]}
+    >
+      <For each={sortedAps} id={(snap) => snap.bssid ?? snap.ssid}>
+        {(snap: ApSnapshot) => {
+          const apBssid = snap.bssid
 
-        const isActive = createComputed([activeBssid], (active) => {
-          if (!apBssid || !active) return false
-          return bssidEquals(apBssid, active)
-        })
+          const isActive = createComputed([activeBssid], (active) => {
+            if (!apBssid || !active) return false
+            return bssidEquals(apBssid, active)
+          })
 
-        const isConnecting = connectingAp.as(
-          (c) => apBssid !== null && c !== null && bssidEquals(c, apBssid),
-        )
+          const isConnecting = connectingAp.as(
+            (c) => apBssid !== null && c !== null && bssidEquals(c, apBssid),
+          )
 
-        return (
-          <ApRow
-            snap={snap}
-            wifi={wifi}
-            isActive={isActive}
-            isConnecting={isConnecting}
-            connectingAp={connectingAp}
-            setConnectingAp={setConnectingAp}
-          />
-        )
-      }}
-    </For>
+          return (
+            <ApRow
+              snap={snap}
+              wifi={wifi}
+              isActive={isActive}
+              isConnecting={isConnecting}
+              setConnectingAp={setConnectingAp}
+            />
+          )
+        }}
+      </For>
+    </Gtk.Box>
   )
 }
