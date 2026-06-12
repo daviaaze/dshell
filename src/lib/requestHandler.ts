@@ -30,7 +30,6 @@ export function registerActions(app: Gio.Application) {
     "record-area": () => screenshot.recordArea(),
     "record-window": () => screenshot.recordWindow(),
     "record-output": () => screenshot.recordOutput(),
-    "record-window": () => screenshot.recordWindow(),
     "toggle-touchpad": () => touchpad.toggle(),
   }
 

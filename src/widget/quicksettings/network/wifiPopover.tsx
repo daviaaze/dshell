@@ -25,7 +25,10 @@ export default ({
       orientation={Gtk.Orientation.VERTICAL}
     >
       <Gtk.Box spacing={4}>
-        <Gtk.Button hexpand onClicked={() => wifi.scan()}>
+        <Gtk.Button
+            hexpand
+            sensitive={wifiEnabled}
+            onClicked={() => wifi.scan()}>
           <Adw.ButtonContent
             iconName={scanning.as((s) =>
               s ? "content-loading-symbolic" : "view-refresh-symbolic",

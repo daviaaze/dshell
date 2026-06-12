@@ -118,9 +118,14 @@ export default class FingerprintAuth extends GObject.Object {
   }
 
   #handleVerifyDone(status: string) {
+    // The VerifyStatus D-Bus signal with done=true means the hardware
+    // verification already ended — calling VerifyStop would just
+    // produce a spurious D-Bus error. Release and reset instead.
+
+    this.#setState("idle")
+
     if (status === "verify-match") {
       this.#consecutiveFailures = 0
-      this.#setState("idle")
       this.verified()
       return
     }
@@ -128,7 +133,6 @@ export default class FingerprintAuth extends GObject.Object {
     if (status === "verify-no-match") {
       this.#consecutiveFailures++
       if (this.#consecutiveFailures >= MAX_RETRIES) {
-        this.stop()
         this.#setError("Too many fingerprint attempts")
         this.failed("too-many-retries")
         return
@@ -139,13 +143,16 @@ export default class FingerprintAuth extends GObject.Object {
       return
     }
 
-    this.stop()
+    this.#release()
     this.#setError(`Fingerprint error: ${status}`)
     this.failed(status)
   }
 
   async #reinitAndRetry() {
-    this.stop()
+    // Don't call stop() — the VerifyStatus D-Bus signal with done=true
+    // already ended verification. Just release and restart.
+    this.#setState("idle")
+    this.#release()
     await new Promise((resolve) => setTimeout(resolve, 500))
     this.start()
   }
@@ -191,6 +198,13 @@ export default class FingerprintAuth extends GObject.Object {
 
   stop() {
     if (!this.#deviceProxy) return
+    // Only call VerifyStop if there's an active verification to cancel.
+    // The VerifyStatus D-Bus signal with done=true already ended verification,
+    // so calling VerifyStop afterward would fail with a D-Bus error.
+    if (this.#state !== "verifying" && this.#state !== "initializing") {
+      this.#release()
+      return
+    }
     try {
       this.#deviceProxy.call_sync(
         "VerifyStop",

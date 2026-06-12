@@ -4,6 +4,7 @@ import Astal from "gi://Astal?version=4.0"
 import AstalAuth from "gi://AstalAuth?version=0.1"
 import Gdk from "gi://Gdk?version=4.0"
 import SessionLock from "gi://Gtk4SessionLock"
+import Gio from "gi://Gio?version=2.0"
 import GLib from "gi://GLib?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
 import {
@@ -36,7 +37,7 @@ const createLocks = (onUnlock: () => void) => {
 
   let savedBrightness = ""
   try {
-    const resumeFile = GLib.file_new_for_path("/tmp/shade-brightness-resume")
+    const resumeFile = Gio.File.new_for_path("/tmp/shade-brightness-resume")
     if (resumeFile.query_exists(null)) {
       const [, contents] = resumeFile.load_contents(null)
       savedBrightness = new TextDecoder().decode(contents).trim()
@@ -48,8 +49,27 @@ const createLocks = (onUnlock: () => void) => {
     logger.warn("lockscreen", "could not save brightness:", e)
   }
 
-  const doUnlock = () => {
+  // Shared resources (signal connections, timeouts) must be cleaned up
+  // exactly once. The <For> creates one cleanup per monitor window,
+  // so per-window onCleanup would disconnect the same signal IDs
+  // multiple times — causing "no handler with id" errors.
+  let sharedCleanedUp = false
+  const cleanupShared = () => {
+    if (sharedCleanedUp) return
+    sharedCleanedUp = true
     fingerprint.stop()
+    fingerprint.disconnect(verifiedId)
+    fingerprint.disconnect(statusId)
+    pam.disconnect(pamPromptId)
+    pam.disconnect(pamSuccessId)
+    pam.disconnect(pamFailId)
+    pam.disconnect(pamErrorId)
+    cancelPamTimeout()
+    if (lockTimeout) GLib.source_remove(lockTimeout)
+  }
+
+  const doUnlock = () => {
+    cleanupShared()
     lock.unlock()
     WindowManager.get_default().lockscreens.forEach((w) => w.destroy())
     ShellState.get_default().screenlocked = false
@@ -148,15 +168,7 @@ const createLocks = (onUnlock: () => void) => {
           $={(self) => {
             WindowManager.get_default().registerLockscreen(self)
             onCleanup(() => {
-              fingerprint.stop()
-              fingerprint.disconnect(verifiedId)
-              fingerprint.disconnect(statusId)
-              pam.disconnect(pamPromptId)
-              pam.disconnect(pamSuccessId)
-              pam.disconnect(pamFailId)
-              pam.disconnect(pamErrorId)
-              cancelPamTimeout()
-              GLib.source_remove(lockTimeout)
+              cleanupShared()
               WindowManager.get_default().unregisterLockscreen(self)
             })
           }}

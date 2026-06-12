@@ -241,28 +241,41 @@ export function snapshotAp(ap: Network.AccessPoint): ApSnapshot {
 }
 
 /**
- * Look up a current (live) AP object from wifi.accessPoints by BSSID.
+ * Look up a current (live) AP object from wifi.accessPoints.
+ * Priority: exact BSSID match → SSID match.
+ * SSID fallback handles cases where BSSID is null (bytesToString failure)
+ * or the AP was rescanned with a different BSSID between render and action.
  * Only use this for actions (connect/forget), never for rendering.
  */
 export function findLiveAp(
   wifi: Network.Wifi,
   bssid: string | null,
+  ssid?: string,
 ): Network.AccessPoint | null {
-  if (!bssid) return null
-  try {
-    const points = toArray<Network.AccessPoint>(wifi.accessPoints)
+  const points = (() => {
+    try { return toArray<Network.AccessPoint>(wifi.accessPoints) }
+    catch { return [] }
+  })()
+
+  // 1. Try BSSID match (most precise)
+  if (bssid) {
     for (const ap of points) {
       try {
         const apBssid = bssidOf(ap)
-        if (apBssid && bssidEquals(apBssid, bssid)) {
-          return ap
-        }
-      } catch {
-        continue
-      }
+        if (apBssid && bssidEquals(apBssid, bssid)) return ap
+      } catch { continue }
     }
-  } catch {
-    return null
   }
+
+  // 2. Fallback: SSID match (handles null BSSID or rescanned APs)
+  if (ssid) {
+    for (const ap of points) {
+      try {
+        const apSsid = ssidOf(ap)
+        if (apSsid === ssid) return ap
+      } catch { continue }
+    }
+  }
+
   return null
 }

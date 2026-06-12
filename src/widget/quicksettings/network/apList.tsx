@@ -56,75 +56,116 @@ function ApRow({
   const [showPassword, setShowPassword] = createState(false)
   const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(null)
   const [passwordError, setPasswordError] = createState<string | null>(null)
+  let lastConnectMs = 0
+  const CONNECT_DEBOUNCE_MS = 1500
+
+  /**
+   * Fallback: connect via NM client directly when the live AP object
+   * went stale between list render and user click. This happens during
+   * scan cycles where AstalNetwork invalidates old AP objects.
+   */
+  async function connectViaNM(password?: string): Promise<void> {
+    if (!apSsid || apSsid === "Hidden Network")
+      throw new Error("Network not found")
+
+    const network = Network.get_default()
+    const client = network.client as NM.Client
+    if (!wifi.device) throw new Error("No WiFi device")
+
+    const connection = new NM.SimpleConnection()
+
+    const sCon = new NM.SettingConnection()
+    sCon.type = "802-11-wireless"
+    sCon.uuid = GLib.uuid_string_random() ?? undefined
+    sCon.id = apSsid
+    connection.add_setting(sCon)
+
+    const sWifi = new NM.SettingWireless()
+    sWifi.ssid = new GLib.Bytes(new TextEncoder().encode(apSsid)) as any
+    sWifi.mode = "infrastructure"
+    connection.add_setting(sWifi)
+
+    if (secure && password !== undefined) {
+      const sSec = new NM.SettingWirelessSecurity()
+      sSec.key_mgmt = "wpa-psk"
+      sSec.psk = password
+      connection.add_setting(sSec)
+    }
+
+    return new Promise((resolve, reject) => {
+      client.add_and_activate_connection_async(
+        connection,
+        wifi.device,
+        null,
+        null,
+        (_source: any, res: any) => {
+          try {
+            client.add_and_activate_connection_finish(res)
+            resolve()
+          } catch (e) {
+            reject(e)
+          }
+        },
+      )
+    })
+  }
 
   const doConnect = (password?: string) => {
+    // Time-based debounce: rapid re-triggers from Gnim reconciliation
+    // during scan cycles re-fire the onClicked handler on fresh closures.
+    const now = Date.now()
+    if (now - lastConnectMs < CONNECT_DEBOUNCE_MS) return
+    lastConnectMs = now
+
     setPasswordError(null)
-    const liveAp = findLiveAp(wifi, apBssid)
-    if (!liveAp) {
-      logger.error("network", "AP no longer available for connect")
-      setConnectingAp(null)
-      setPasswordError("Network no longer available")
-      return
-    }
 
-    if (!secure) {
-      if (apBssid) setConnectingAp(apBssid)
-      liveAp.activate(null)
-        .then(() => {
-          setConnectingAp(null)
-          setShowPassword(false)
-        })
-        .catch((e: Error) => {
-          logger.error("network", "activate failed:", e.message)
-          setConnectingAp(null)
-          setPasswordError(e.message || "Connection failed")
-        })
-      return
-    }
+    const run = async () => {
+      const liveAp = findLiveAp(wifi, apBssid, apSsid)
 
-    if (password !== undefined) {
-      if (apBssid) setConnectingAp(apBssid)
-      liveAp.activate(password || null)
-        .then(() => {
-          setConnectingAp(null)
-          setShowPassword(false)
-        })
-        .catch((e: Error) => {
-          logger.error("network", "activate failed:", e.message)
-          setConnectingAp(null)
-          setPasswordError(e.message || "Connection failed")
-        })
-      return
-    }
-
-    try {
-      if (isSaved(liveAp)) {
+      if (liveAp) {
         if (apBssid) setConnectingAp(apBssid)
-        liveAp.activate(null)
-          .then(() => {
-            setConnectingAp(null)
-            setShowPassword(false)
-          })
-          .catch((e: Error) => {
-            logger.error("network", "activate failed:", e.message)
-            setConnectingAp(null)
-            setPasswordError(e.message || "Connection failed")
-          })
-      } else {
-        setConnectingAp(null)
-        setShowPassword(!showPassword.get())
+
+        if (!secure) {
+          await liveAp.activate(null)
+        } else if (password !== undefined) {
+          await liveAp.activate(password || null)
+        } else if (isSaved(liveAp)) {
+          await liveAp.activate(null)
+        } else {
+          // Not saved and no password — show the password entry
+          setShowPassword(!showPassword.get())
+          return
+        }
+
+        setShowPassword(false)
+        return
       }
-    } catch (e) {
-      logger.error("network", "saved check failed:", e)
-      setConnectingAp(null)
-      setShowPassword(!showPassword.get())
+
+      // Live AP went stale — fall back to NM direct connection
+      if (!apSsid || apSsid === "Hidden Network") {
+        throw new Error("Network no longer available")
+      }
+
+      if (apBssid) setConnectingAp(apBssid)
+      await connectViaNM(password)
+      setShowPassword(false)
     }
+
+    run()
+      .then(() => {
+        setConnectingAp(null)
+      })
+      .catch((e: Error) => {
+        setConnectingAp(null)
+        logger.warn("network", "connect failed:", e.message)
+        setPasswordError(e.message || "Connection failed")
+      })
   }
 
   const doForget = () => {
-    const liveAp = findLiveAp(wifi, apBssid)
+    const liveAp = findLiveAp(wifi, apBssid, apSsid)
     if (!liveAp) {
-      logger.error("network", "AP no longer available for forget")
+      logger.warn("network", "AP no longer available for forget")
       return
     }
     try {
@@ -149,7 +190,7 @@ function ApRow({
 
   const canForget = createComputed([isActive], (active) => {
     if (active) return false
-    const liveAp = findLiveAp(wifi, apBssid)
+    const liveAp = findLiveAp(wifi, apBssid, apSsid)
     if (!liveAp) return false
     return isSaved(liveAp)
   })
