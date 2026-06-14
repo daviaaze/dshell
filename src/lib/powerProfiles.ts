@@ -66,8 +66,8 @@ export default class PowerProfiles {
       )
       this.#proxy.connect(
         "g-properties-changed",
-        (_proxy: Gio.DBusProxy, changed: GLib.Variant) => {
-          if ("ActiveProfile" in changed) {
+        (_proxy: Gio.DBusProxy, changed: GLib.Variant, _invalidated: string[]) => {
+          if (changed.lookup_value("ActiveProfile", null) !== null) {
             for (const cb of this.#listeners) cb()
           }
         },

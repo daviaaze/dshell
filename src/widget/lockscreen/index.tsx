@@ -125,6 +125,11 @@ const createLocks = (onUnlock: () => void) => {
   })
 
   const unlock = (self: Gtk.PasswordEntry) => {
+    // Prevent re-entrancy: if a PAM auth is already in progress,
+    // calling start_authenticate() again asserts:
+    //   'priv->task == NULL' failed
+    if (pamActive) return
+
     pendingPassword = self.get_text()
     self.set_text("")
     setAuthStatus("Authenticating...")

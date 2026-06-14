@@ -17,8 +17,8 @@ export default () => {
       setTooltip(p)
     }
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      update()
       pp.connect("notify::activeProfile", update)
+      update()
       return GLib.SOURCE_REMOVE
     })
   })

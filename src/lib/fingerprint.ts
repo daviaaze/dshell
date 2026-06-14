@@ -118,6 +118,14 @@ export default class FingerprintAuth extends GObject.Object {
   }
 
   #handleVerifyDone(status: string) {
+    // Ignore stale VerifyStatus signals from a previous fprintd session.
+    // The signal handler connects during init(), but we only started
+    // verifying via start() — stale done=true signals arrive when no
+    // verification is active and must be dropped.
+    if (this.#state !== "verifying" && this.#state !== "initializing") {
+      return
+    }
+
     // The VerifyStatus D-Bus signal with done=true means the hardware
     // verification already ended — calling VerifyStop would just
     // produce a spurious D-Bus error. Release and reset instead.
@@ -231,7 +239,10 @@ export default class FingerprintAuth extends GObject.Object {
         null,
       )
     } catch (e) {
-      logger.error("fingerprint", "Release failed:", e)
+      // Release can fail if there's no active session to release.
+      // This happens with stale VerifyStatus signals when the device
+      // was never properly claimed by us. Just log and continue.
+      logger.debug("fingerprint", "Release failed:", e)
     }
     this.#claimed = false
   }
