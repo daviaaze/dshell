@@ -70,7 +70,7 @@ export const TrayBox = () => {
             }}
             popover={
               <Gtk.PopoverMenu
-                cssClasses={[]}
+                cssClasses={["menu"]}
                 menuModel={item.menuModel}
               /> as Gtk.Popover
             }

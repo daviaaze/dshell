@@ -58,8 +58,8 @@ export const AudioEndpointControl = ({
 
   const DevicesList = () => (
     <Gtk.Box
-      cssClasses={["card", "popover-padded", "padding"]}
-      spacing={0}
+      cssClasses={["padding"]}
+      spacing={12}
       orientation={Gtk.Orientation.VERTICAL}
     >
       <For each={devices}>{(d) => <DeviceWidget device={d} />}</For>
@@ -67,7 +67,7 @@ export const AudioEndpointControl = ({
   )
 
   const TabbedContent = () => (
-    <Gtk.Box spacing={0} orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]}>
+    <Gtk.Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
       <Gtk.Box spacing={0} halign={Gtk.Align.CENTER} cssClasses={["linked"]}>
         <Gtk.ToggleButton
           active={tab.as((t) => t === "devices")}
@@ -103,7 +103,7 @@ export const AudioEndpointControl = ({
     <Gtk.Box
       visible={visible}
       spacing={4}
-      cssClasses={["audio-config"]}
+      cssClasses={revealed.as((r) => r ? ["card", "audio-config"] : ["audio-config"])}
       orientation={Gtk.Orientation.VERTICAL}
     >
       <Gtk.Box spacing={4}>

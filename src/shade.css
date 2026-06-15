@@ -151,42 +151,6 @@ popover.tray-menu > contents.background.menu {
   opacity: 0.6;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   WIDGET SURFACES
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Tray popovers — cssClasses={[]} kills native shadow but removes
-   .background and .menu classes. Replicate their styling via
-   type selectors so they work without any CSS classes.            */
-
-/* popover.background replacement */
-popover {
-  background-color: transparent;
-}
-
-/* Menu items — GtkPopoverMenu may create modelbutton or button.model
-   nodes depending on GTK version. Target both.                   */
-popover modelbutton,
-popover button.model {
-  padding: 8px 12px;
-  min-height: 30px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  outline: none;
-}
-
-popover modelbutton:hover,
-popover button.model:hover {
-  background: alpha(var(--window-fg-color), 0.07);
-}
-
-popover modelbutton:active,
-popover button.model:active {
-  background: alpha(var(--window-fg-color), 0.12);
-}
-
 /* Bar — top/bottom panel */
 .bar {
   min-height: 32px;
