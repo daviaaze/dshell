@@ -3,7 +3,7 @@ import Weather from "./weather"
 import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
 import { createSettings, Schema } from "gnim-schemas"
-import { Setter } from "gnim"
+import { Accessor, Setter } from "gnim"
 
 export enum DarkModes {
   AUTO,
@@ -23,9 +23,9 @@ export class ColorScheme extends Object {
   #colorScheme: DarkModes = 0
   #initialized = false
   #weather: Weather | null = null
-  #timerId: number | null = null
+  #timerId: GLib.Source | null = null
   #shadeSettings: {
-    colorScheme: { get(): DarkModes; subscribe(cb: () => void): () => void }
+    colorScheme: Accessor<DarkModes>
     setColorScheme: (v: DarkModes) => void
   } | null = null
   #gsettings: {
@@ -88,13 +88,7 @@ export class ColorScheme extends Object {
       this.#timerId = null
     }
 
-    const msUntil = (unixTime: number) =>
-      Math.abs(
-        GLib.DateTime.new_from_unix_local(unixTime)
-        .difference(
-          GLib.DateTime.new_now_local(),
-        ),
-      )
+    const msUntil = (unixTime: number) => Math.abs(GLib.DateTime.new_from_unix_local(unixTime).difference(GLib.DateTime.new_now_local()).valueOf() as number)
 
     if (!this.#weather) return
     const interval = this.#daytime
@@ -115,7 +109,7 @@ export class ColorScheme extends Object {
   init(
     weather: Weather,
     settings: {
-      colorScheme: { get(): DarkModes; subscribe(cb: () => void): () => void }
+      colorScheme: Accessor<DarkModes>
       setColorScheme: (v: DarkModes) => void
     },
   ) {
@@ -127,10 +121,10 @@ export class ColorScheme extends Object {
     this.#weather = weather
     this.#shadeSettings = settings
     const colorSchemeSetting = settings.colorScheme
-    this.colorScheme = colorSchemeSetting.get()
+    this.colorScheme = colorSchemeSetting()
 
     colorSchemeSetting.subscribe(() => {
-      const newValue = colorSchemeSetting.get()
+      const newValue = colorSchemeSetting()
       if (newValue !== this.#colorScheme) {
         this.colorScheme = newValue
       }

@@ -65,7 +65,7 @@ const NotificationListContent = ({
           iconName={showHistory.as((h) =>
             h ? "go-previous-symbolic" : "document-open-recent-symbolic",
           )}
-          onClicked={() => setShowHistory(!showHistory.get())}
+          onClicked={() => setShowHistory(!showHistory())}
           tooltipText={showHistory.as((h) =>
             h ? "Back to notifications" : "View history",
           )}
@@ -245,7 +245,7 @@ export const NotificationList = () => {
   const history = NotificationHistory.get_default()
   const [showHistory, setShowHistory] = createState(false)
   const settings = useSettings().general
-  const showProgress = settings.notificationShowProgress.get()
+  const showProgress = settings.notificationShowProgress()
 
   // Defer Notifd initialization to avoid blocking the main loop
   // when another notification daemon is already registered.

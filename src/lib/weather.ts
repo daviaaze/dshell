@@ -3,6 +3,7 @@ import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register, setter } from "gnim/gobject"
 import Geolocation from "./geolocation"
 import logger from "#/lib/logger"
+import { Accessor } from "gnim"
 
 @register({ GTypeName: "Weather" })
 export default class Weather extends GObject.Object {
@@ -44,12 +45,9 @@ export default class Weather extends GObject.Object {
   }
 
   init(settings: {
-    latitude: { get(): number }
-    longitude: { get(): number }
-    autoLocation: {
-      get(): boolean
-      subscribe(cb: (v: boolean) => void): () => void
-    }
+    latitude: Accessor<number>
+    longitude: Accessor<number>
+    autoLocation: Accessor<boolean>
     setLatitude(lat: number): void
     setLongitude(lon: number): void
   }) {
@@ -59,8 +57,8 @@ export default class Weather extends GObject.Object {
     }
     this.#initialized = true
     this.#location = GWeather.Location.get_world()?.find_nearest_city(
-      settings.latitude.get(),
-      settings.longitude.get(),
+      settings.latitude(),
+      settings.longitude(),
     )
 
     if (this.#location) {
@@ -92,12 +90,13 @@ export default class Weather extends GObject.Object {
     }
 
     // Auto-location on startup if enabled
-    if (settings.autoLocation.get()) {
+    if (settings.autoLocation()) {
       connectGeo()
       this.detectLocation()
     }
 
-    settings.autoLocation.subscribe((enabled) => {
+    settings.autoLocation.subscribe(() => {
+      const enabled = settings.autoLocation()
       if (enabled) {
         connectGeo()
         this.detectLocation()

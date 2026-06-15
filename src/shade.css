@@ -372,3 +372,7 @@ popover button.model:active {
 .network-list > box:last-child {
   border-bottom: none;
 }
+
+.padding {
+  padding: 12px;
+}

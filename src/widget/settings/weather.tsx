@@ -20,7 +20,7 @@ export default () => {
         title={"Latitude"}
         value={settings.latitude}
         adjustment={Gtk.Adjustment.new(
-          settings.latitude.get(),
+          settings.latitude(),
           -90.0,
           90.0,
           10.0,
@@ -33,7 +33,7 @@ export default () => {
         title={"Longitude"}
         value={settings.longitude}
         adjustment={Gtk.Adjustment.new(
-          settings.longitude.get(),
+          settings.longitude(),
           -180.0,
           180.0,
           10.0,
@@ -58,8 +58,8 @@ export default () => {
         activatable
         onActivated={() =>
           (weather.location = GWeather.Location.get_world()?.find_nearest_city(
-            settings.latitude.get(),
-            settings.longitude.get(),
+            settings.latitude(),
+            settings.longitude(),
           ))
         }
       >

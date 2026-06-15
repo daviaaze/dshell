@@ -59,7 +59,7 @@ export default () => {
       onNotifyVisible={(self) => {
         logger.log(`applauncher visible -> ${self.visible}`)
         if (
-          (barCfg.position.get() === LEFT || barCfg.position.get() === RIGHT) &&
+          (barCfg.position() === LEFT || barCfg.position() === RIGHT) &&
           self.visible &&
           ShellState.get_default().qsOpen
         )
@@ -105,7 +105,7 @@ export default () => {
           onNotifyText={(self) => updateSearch(self.text)}
           onActivate={(self) => {
             WindowManager.get_default().applauncher!.visible = false
-            if (mode.get() === "apps") {
+            if (mode() === "apps") {
               const results = fuzzyQuery(self.text)
               if (results.length > 0) results[0].launch()
             }
@@ -151,7 +151,7 @@ export default () => {
             />
             <For each={list}>
               {(item: ListItem) =>
-                mode.get() === "clipboard" ? (
+                mode() === "clipboard" ? (
                   <ClipboardButton item={item as ClipboardItem} />
                 ) : (
                   <AppButton application={item as Apps.Application} />

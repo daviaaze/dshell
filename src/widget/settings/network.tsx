@@ -151,10 +151,10 @@ function showConnectionEditor(
 
     try {
       if (settingConn) {
-        settingConn.autoconnect = autoConnect.get()
+        settingConn.autoconnect = autoConnect()
       }
       if (settingSecurity && isSecureConn) {
-        const pwd = password.get()
+        const pwd = password()
         if (pwd) {
           settingSecurity.psk = pwd
         }
@@ -213,8 +213,8 @@ function showConnectionEditor(
                 <Gtk.Entry
                   placeholderText="WiFi password"
                   $={(entry) => {
-                    entry.visibility = !showPassword.get()
-                    showPassword.subscribe((v) => { entry.visibility = !v })
+                    entry.visibility = !showPassword()
+                    showPassword.subscribe(() => { entry.visibility = !showPassword() })
                     entry.connect("notify::text", () => {
                       setPassword(entry.get_text())
                     })
@@ -223,7 +223,7 @@ function showConnectionEditor(
                 <Gtk.Button
                   $type="suffix"
                   cssClasses={["flat"]}
-                  onClicked={() => setShowPassword(!showPassword.get())}
+                  onClicked={() => setShowPassword(!showPassword())}
                 >
                   <Gtk.Image
                     iconName={showPassword.as((v) =>
@@ -289,7 +289,7 @@ function showHiddenNetworkDialog(parent: Gtk.Widget) {
   const [errorMsg, setErrorMsg] = createState<string | null>(null)
 
   const connect = () => {
-    const name = ssid.get().trim()
+    const name = ssid().trim()
     if (!name) {
       setErrorMsg("Network name is required")
       return
@@ -326,7 +326,7 @@ function showHiddenNetworkDialog(parent: Gtk.Widget) {
       connection.add_setting(sWifi)
 
       // Security settings if password provided
-      const pwd = password.get().trim()
+      const pwd = password().trim()
       if (pwd) {
         const sSec = new NM.SettingWirelessSecurity()
         sSec.key_mgmt = "wpa-psk"
@@ -428,12 +428,13 @@ export default () => {
   const wired = createBinding(network, "wired")
   const [knownVersion, bumpKnown] = createState(0)
   const knownNetworks = createComputed(
-    [knownVersion],
     () => getKnownNetworks(network.client),
   )
 
   return (
     <>
+      {wifi() &&
+      <>
       {/* WiFi Section */}
       <Adw.PreferencesGroup title="Wi-Fi" description="Wireless network connections">
         <With value={wifi}>
@@ -449,9 +450,7 @@ export default () => {
                   w.enabled = self.active
                 }}
               />
-            ) : (
-              <></>
-            )
+            ) : null
           }
         </With>
         <With value={wifi}>
@@ -468,9 +467,7 @@ export default () => {
                   widthRequest={50}
                 />
               </Adw.ActionRow>
-            ) : (
-              <></>
-            )
+            ) : null
           }
         </With>
         <Adw.ActionRow
@@ -485,6 +482,9 @@ export default () => {
           />
         </Adw.ActionRow>
       </Adw.PreferencesGroup>
+      </>
+      }
+
 
       <Adw.PreferencesGroup
         title="Known Networks"
@@ -497,7 +497,7 @@ export default () => {
               title={escapeLabel(net.ssid)}
               subtitle={net.secLabel}
               activatable
-              onActivated={(self) => showConnectionEditor(net.ssid, net.connections, self, () => bumpKnown(knownVersion.get() + 1))}
+              onActivated={(self) => showConnectionEditor(net.ssid, net.connections, self, () => bumpKnown(knownVersion() + 1))}
             >
               <Gtk.Image
                 $type="prefix"
@@ -515,7 +515,7 @@ export default () => {
                     const first = net.connections[0]
                     if (!first) return
                     deleteConnectionAsync(first)
-                      .then(() => bumpKnown(knownVersion.get() + 1))
+                      .then(() => bumpKnown(knownVersion() + 1))
                       .catch((e: Error) =>
                         logger.error("settings-network", "forget failed:", e.message),
                       )
@@ -548,9 +548,7 @@ export default () => {
                   pixelSize={20}
                 />
               </Adw.ActionRow>
-            ) : (
-              <></>
-            )
+            ) : null
           }
         </With>
       </Adw.PreferencesGroup>
@@ -575,7 +573,7 @@ export default () => {
                 }}
               />
             </Adw.ActionRow>
-          ) : <></>}
+          ) : null}
         </With>
       </Adw.PreferencesGroup>
 

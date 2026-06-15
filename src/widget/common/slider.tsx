@@ -9,13 +9,14 @@ type SliderProps = {
   max: number
   value: Accessor<number>
   setValue: (value: number) => void
+  setMutted?: () => void
 }
 
 const DEBOUNCE_MS = 80
 
 export const Slider = (props: SliderProps) => {
   const safe = (v: number) => (Number.isFinite(v) ? v : 0)
-  const [displayValue, setDisplayValue] = createState(safe(props.value.get()))
+  const [displayValue, setDisplayValue] = createState(safe(props.value()))
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
   const debouncedSetValue = (value: number) => {
@@ -28,17 +29,19 @@ export const Slider = (props: SliderProps) => {
   }
 
   props.value.subscribe(() => {
-    if (debounceTimer === null) setDisplayValue(safe(props.value.get()))
+    if (debounceTimer === null) setDisplayValue(safe(props.value()))
   })
 
   return (
     <Gtk.Box cssClasses={["slider"]} spacing={4} visible={props.visible}>
+      <Gtk.Button onClicked={props.setMutted}>
       <Gtk.Image iconName={props.icon} />
+      </Gtk.Button>
       <Astal.Slider
         hexpand
         min={props.min}
         max={props.max}
-        $={(self) => self.set_value(safe(displayValue.get()))}
+        $={(self) => self.set_value(safe(displayValue()))}
         onChangeValue={({ value }) => debouncedSetValue(safe(value))}
         value={displayValue}
       />

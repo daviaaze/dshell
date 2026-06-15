@@ -108,7 +108,7 @@ export default () => {
   const [dontDisturb, setDontDisturb] = createState(false)
   const hyprland = Hyprland.get_default()
   const settings = useSettings().general
-  const showProgress = settings.notificationShowProgress.get()
+  const showProgress = settings.notificationShowProgress()
 
   // Defer Notifd initialization — AstalNotifd blocks 25s if another
   // notification daemon (dunst, mako) is already registered.

@@ -17,16 +17,17 @@ export const QuickTimerButton = () => {
   const remaining = createBinding(timer, "remaining")
   const running = createBinding(timer, "running")
 
-  const label = createComputed([remaining], (rem) =>
-    rem >= 0 ? fmtShort(rem) : "Timer",
-  )
+  const label = createComputed(() => {
+    const rem = remaining()
+    return rem >= 0 ? fmtShort(rem) : "Timer"
+  })
 
-  const icon = createComputed([running], () =>
+  const icon = createComputed(() =>
     "emoji-recent-symbolic",
   )
 
-  const cssClasses = createComputed([running], (r) =>
-    r ? ["raised", "suggested-action"] : ["raised"],
+  const cssClasses = createComputed(() =>
+    running() ? ["raised", "suggested-action"] : ["raised"],
   )
 
   const popover = (

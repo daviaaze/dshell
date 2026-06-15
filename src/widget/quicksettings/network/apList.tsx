@@ -133,7 +133,7 @@ function ApRow({
           await liveAp.activate(null)
         } else {
           // Not saved and no password — show the password entry
-          setShowPassword(!showPassword.get())
+          setShowPassword(!showPassword())
           return
         }
 
@@ -186,10 +186,10 @@ function ApRow({
     }
   }
 
-  const notActive = createComputed([isActive], (active) => !active)
+  const notActive = createComputed(() => !isActive())
 
-  const canForget = createComputed([isActive], (active) => {
-    if (active) return false
+  const canForget = createComputed(() => {
+    if (isActive()) return false
     const liveAp = findLiveAp(wifi, apBssid, apSsid)
     if (!liveAp) return false
     return isSaved(liveAp)
@@ -206,7 +206,7 @@ function ApRow({
           hexpand
           cssClasses={["flat"]}
           onClicked={() => {
-            if (isActive.get()) {
+            if (isActive()) {
               wifi
                 .deactivate_connection(null)
                 .catch((e: Error) =>
@@ -317,7 +317,7 @@ function ApRow({
           <Gtk.Button
             cssClasses={["suggested-action"]}
             onClicked={() => {
-              const entry = passwordEntry.get()
+              const entry = passwordEntry()
               doConnect(entry?.get_text() || undefined)
             }}
           >
@@ -371,7 +371,8 @@ export default ({
         {(snap: ApSnapshot) => {
           const apBssid = snap.bssid
 
-          const isActive = createComputed([activeBssid], (active) => {
+          const isActive = createComputed(() => {
+            const active = activeBssid()
             if (!apBssid || !active) return false
             return bssidEquals(apBssid, active)
           })

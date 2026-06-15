@@ -39,7 +39,7 @@ export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
   }
 
   const handlePinToggle = () => {
-    const current = bar.dockPinnedApps.get() as string[]
+    const current = bar.dockPinnedApps() as string[]
     if (pinned) {
       bar.dockPinnedApps.set(current.filter((d) => d !== desktopFile))
     } else {
@@ -124,7 +124,7 @@ export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
         halign={Gtk.Align.CENTER}
         valign={Gtk.Align.CENTER}
       >
-        <Gtk.Image iconName={iconName} pixelSize={bar.dockIconSize.get()} />
+        <Gtk.Image iconName={iconName} pixelSize={bar.dockIconSize()} />
         {active ? (
           <Gtk.Box
             css={`

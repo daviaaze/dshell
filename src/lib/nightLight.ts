@@ -109,12 +109,12 @@ export default class NightLight extends GObject.Object {
     this.#initialized = true
     this.#settings = settings
     this.#colorScheme = colorScheme
-    this.#enabled = settings.nightLightEnabled.get()
-    this.#temperature = settings.nightLightTemperature.get()
-    this.#autoSchedule = settings.nightLightAutoSchedule.get()
+    this.#enabled = settings.nightLightEnabled()
+    this.#temperature = settings.nightLightTemperature()
+    this.#autoSchedule = settings.nightLightAutoSchedule()
 
     settings.nightLightEnabled.subscribe(() => {
-      const newEnabled = settings.nightLightEnabled.get()
+      const newEnabled = settings.nightLightEnabled()
       if (newEnabled !== this.#enabled) {
         this.#enabled = newEnabled
         this.notify("enabled")
@@ -123,7 +123,7 @@ export default class NightLight extends GObject.Object {
     })
 
     settings.nightLightTemperature.subscribe(() => {
-      const newTemp = settings.nightLightTemperature.get()
+      const newTemp = settings.nightLightTemperature()
       if (newTemp !== this.#temperature) {
         this.#temperature = newTemp
         this.notify("temperature")
@@ -132,7 +132,7 @@ export default class NightLight extends GObject.Object {
     })
 
     settings.nightLightAutoSchedule.subscribe(() => {
-      const newAuto = settings.nightLightAutoSchedule.get()
+      const newAuto = settings.nightLightAutoSchedule()
       if (newAuto !== this.#autoSchedule) {
         this.#autoSchedule = newAuto
         this.notify("auto-schedule")

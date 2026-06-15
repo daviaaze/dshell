@@ -38,7 +38,7 @@ export default () => {
               const s = all.find((s) => s.id === id)
               const targetId = s?.targetNode
               if (!targetId) return "Default"
-              const spk = speakers.get().find((d) => d.id === targetId)
+              const spk = speakers().find((d) => d.id === targetId)
               return spk?.description ?? "Default"
             })
 

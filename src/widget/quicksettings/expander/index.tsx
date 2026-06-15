@@ -13,7 +13,7 @@ export const Expander = () => {
 
   const Heading = () => (
     <Gtk.ToggleButton
-      onClicked={() => setVisible(!visible.get())}
+      onClicked={() => setVisible(!visible())}
       active={visible}
       cssClasses={["flat"]}
     >

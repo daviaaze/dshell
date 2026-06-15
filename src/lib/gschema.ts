@@ -28,10 +28,6 @@ export const barSchema = new Schema({
     default: true,
     summary: "Show the active window title in the bar",
   })
-  .key("show-keyboard-layout", "b", {
-    default: true,
-    summary: "Show the keyboard layout indicator in the bar",
-  })
   .key("show-launcher", "b", {
     default: true,
     summary: "Show the launcher button in the bar",

@@ -270,7 +270,7 @@ export const LockScreen = () => {
 
   onCleanup(
     screenlocked.subscribe(() => {
-      if (screenlocked.get() && !locked) {
+      if (screenlocked() && !locked) {
         locked = true
         createRoot((dispose) => {
           createLocks(() => {

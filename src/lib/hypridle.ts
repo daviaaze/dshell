@@ -3,6 +3,7 @@ import { Process } from "#/lib/process"
 import GLib from "gi://GLib?version=2.0"
 import Gio from "gi://Gio?version=2.0"
 import logger from "#/lib/logger"
+import { Accessor } from "gnim"
 
 const CONFIG_PATH = `${GLib.get_user_config_dir()}/hypr/hypridle.conf`
 
@@ -182,14 +183,14 @@ export default class Hypridle extends GObject.Object {
   }
 
   init(settings: {
-    autoLockEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
-    screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
-    dpmsEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    dpmsTimeout: { get(): number; subscribe(cb: () => void): () => void }
-    suspendEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    suspendTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    autoLockEnabled: Accessor<boolean>
+    idleTimeout: Accessor<number>
+    screenDimEnabled: Accessor<boolean>
+    screenDimTimeout: Accessor<number>
+    dpmsEnabled: Accessor<boolean>
+    dpmsTimeout: Accessor<number>
+    suspendEnabled: Accessor<boolean>
+    suspendTimeout: Accessor<number>
     setAutoLockEnabled: (v: boolean) => void
     setIdleTimeout: (v: number) => void
     setScreenDimEnabled: (v: boolean) => void
@@ -204,17 +205,17 @@ export default class Hypridle extends GObject.Object {
       return
     }
     this.#settings = settings
-    this.#enabled = settings.autoLockEnabled.get()
-    this.#idleTimeout = settings.idleTimeout.get()
-    this.#dimEnabled = settings.screenDimEnabled.get()
-    this.#dimTimeout = settings.screenDimTimeout.get()
-    this.#dpmsEnabled = settings.dpmsEnabled.get()
-    this.#dpmsTimeout = settings.dpmsTimeout.get()
-    this.#suspendEnabled = settings.suspendEnabled.get()
-    this.#suspendTimeout = settings.suspendTimeout.get()
+    this.#enabled = settings.autoLockEnabled()
+    this.#idleTimeout = settings.idleTimeout()
+    this.#dimEnabled = settings.screenDimEnabled()
+    this.#dimTimeout = settings.screenDimTimeout()
+    this.#dpmsEnabled = settings.dpmsEnabled()
+    this.#dpmsTimeout = settings.dpmsTimeout()
+    this.#suspendEnabled = settings.suspendEnabled()
+    this.#suspendTimeout = settings.suspendTimeout()
 
     settings.autoLockEnabled.subscribe(() => {
-      const v = settings.autoLockEnabled.get()
+      const v = settings.autoLockEnabled()
       if (this.#enabled === v) return
       this.#enabled = v
       this.notify("enabled")
@@ -222,7 +223,7 @@ export default class Hypridle extends GObject.Object {
     })
 
     settings.idleTimeout.subscribe(() => {
-      const v = settings.idleTimeout.get()
+      const v = settings.idleTimeout()
       if (this.#idleTimeout === v) return
       this.#idleTimeout = v
       this.notify("idle-timeout")
@@ -239,7 +240,7 @@ export default class Hypridle extends GObject.Object {
     })
 
     settings.screenDimEnabled.subscribe(() => {
-      const v = settings.screenDimEnabled.get()
+      const v = settings.screenDimEnabled()
       if (this.#dimEnabled === v) return
       this.#dimEnabled = v
       this.notify("dim-enabled")
@@ -247,7 +248,7 @@ export default class Hypridle extends GObject.Object {
     })
 
     settings.screenDimTimeout.subscribe(() => {
-      const v = settings.screenDimTimeout.get()
+      const v = settings.screenDimTimeout()
       if (this.#dimTimeout === v) return
       this.#dimTimeout = v
       this.notify("dim-timeout")
@@ -255,7 +256,7 @@ export default class Hypridle extends GObject.Object {
     })
 
     settings.dpmsEnabled.subscribe(() => {
-      const v = settings.dpmsEnabled.get()
+      const v = settings.dpmsEnabled()
       if (this.#dpmsEnabled === v) return
       this.#dpmsEnabled = v
       this.notify("dpms-enabled")
@@ -263,7 +264,7 @@ export default class Hypridle extends GObject.Object {
     })
 
     settings.dpmsTimeout.subscribe(() => {
-      const v = settings.dpmsTimeout.get()
+      const v = settings.dpmsTimeout()
       if (this.#dpmsTimeout === v) return
       this.#dpmsTimeout = v
       this.notify("dpms-timeout")
@@ -276,7 +277,7 @@ export default class Hypridle extends GObject.Object {
     })
 
     settings.suspendEnabled.subscribe(() => {
-      const v = settings.suspendEnabled.get()
+      const v = settings.suspendEnabled()
       if (this.#suspendEnabled === v) return
       this.#suspendEnabled = v
       this.notify("suspend-enabled")
@@ -284,7 +285,7 @@ export default class Hypridle extends GObject.Object {
     })
 
     settings.suspendTimeout.subscribe(() => {
-      const v = settings.suspendTimeout.get()
+      const v = settings.suspendTimeout()
       if (this.#suspendTimeout === v) return
       this.#suspendTimeout = v
       this.notify("suspend-timeout")

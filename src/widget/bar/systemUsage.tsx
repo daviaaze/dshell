@@ -53,22 +53,37 @@ export default ({
   const [memory, setMemory] = createState(0)
   const [disk, setDisk] = createState(0)
   const [temp, setTemp] = createState(0)
+  const [tempAvailable, setTempAvailable] = createState(false)
   const INTERVAL = 1000
 
-  // Resolve temp path once: explicit config takes priority, then auto-discovery.
-  const tempPath = settings.bar.tempPath.get() || findCoretempPath()
+  // Resolve temp path: explicit config takes priority, but validate it exists.
+  const userPath = settings.bar.tempPath()
+  const tempPath =
+    (userPath && Gio.File.new_for_path(userPath).query_exists(null) ? userPath : null) ??
+    findCoretempPath()
   if (!tempPath) {
-    logger.error("systemUsage", "no temperature sensor found — set bar.temp-path or ensure coretemp is loaded")
-    setTemp(-1)
+    if (userPath) {
+      logger.error(
+        "systemUsage",
+        `configured temp-path "${userPath}" does not exist or is not a file, and no sensor was auto-detected`,
+      )
+    } else {
+      logger.error(
+        "systemUsage",
+        "no temperature sensor found — set bar.temp-path or ensure coretemp is loaded",
+      )
+    }
   }
+
+  let tempFailed = false
 
   const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, INTERVAL, () => {
     const cpuTop = new GTop.glibtop_cpu()
     GTop.glibtop_get_cpu(cpuTop)
-    const total = cpuTop.total - lastCpuTop.get().total
-    const user = cpuTop.user - lastCpuTop.get().user
-    const sys = cpuTop.sys - lastCpuTop.get().sys
-    const nice = cpuTop.nice - lastCpuTop.get().nice
+    const total = cpuTop.total - lastCpuTop().total
+    const user = cpuTop.user - lastCpuTop().user
+    const sys = cpuTop.sys - lastCpuTop().sys
+    const nice = cpuTop.nice - lastCpuTop().nice
     setLastCpuTop(cpuTop)
     setCpu((user + sys + nice) / total)
 
@@ -80,20 +95,20 @@ export default ({
     GTop.glibtop_get_fsusage(diskTop, "/")
     setDisk((diskTop.blocks - diskTop.bavail) / diskTop.blocks)
 
-    if (tempPath) {
-      const file = Gio.File.new_for_path(tempPath)
-      file.load_contents_async(null, (_source, res) => {
-        try {
-          const [success, contents] = file.load_contents_finish(res)
-          if (success) {
-            const value = parseInt(new TextDecoder().decode(contents))
-            setTemp(value / 100000)
-          }
-        } catch (e: any) {
-          logger.error("systemUsage", "failed to read temperature:", e)
-          setTemp(-1)
+    if (tempPath && !tempFailed) {
+      try {
+        const file = Gio.File.new_for_path(tempPath)
+        const [success, contents] = file.load_contents(null)
+        if (success) {
+          const value = parseInt(new TextDecoder().decode(contents))
+          setTemp(value / 100000)
+          setTempAvailable(true)
         }
-      })
+      } catch (e: any) {
+        logger.error("systemUsage", "failed to read temperature:", e)
+        setTempAvailable(false)
+        tempFailed = true
+      }
     }
     return GLib.SOURCE_CONTINUE
   })
@@ -148,9 +163,8 @@ export default ({
       visible={visible}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
       onClicked={() =>
-        settings.bar.systemMonitor
-          ? Process.execAsync(
-              (settings.bar.systemMonitor as Accessor<any>).get(),
+        settings.bar.systemMonitor()
+          ? Process.execAsync(settings.bar.systemMonitor()
             ).catch((e) => logger.error("systemUsage", "failed to launch monitor:", e))
           : null
       }
@@ -164,7 +178,7 @@ export default ({
         <Indicator vertical={vertical} value={cpu} label="CPU" unit="%" />
         <Indicator vertical={vertical} value={memory} label="RAM" unit="%" />
         <Indicator
-          visible={temp.as((t) => t >= 0)}
+          visible={tempAvailable}
           vertical={vertical}
           value={temp}
           label="TEMP"

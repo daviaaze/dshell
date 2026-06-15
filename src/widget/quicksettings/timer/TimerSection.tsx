@@ -26,10 +26,12 @@ export const TimerSection = () => {
   const mode = createBinding(timer, "mode")
   const label = createBinding(timer, "label")
 
-  const isActive = createComputed([mode], (m) => m !== "none")
-  const fraction = createComputed([remaining, total], (rem, tot) =>
-    rem >= 0 && tot > 0 ? 1 - rem / tot : 0,
-  )
+  const isActive = createComputed(() => mode() !== "none")
+  const fraction = createComputed(() => {
+    const rem = remaining()
+    const tot = total()
+    return rem >= 0 && tot > 0 ? 1 - rem / tot : 0
+  })
 
   const [selectedMode, setSelectedMode] = createState<"countdown" | "pomodoro">("countdown")
 
@@ -203,7 +205,7 @@ export const TimerSection = () => {
             orientation={Gtk.Orientation.VERTICAL}
             spacing={4}
             halign={Gtk.Align.FILL}
-            cssClasses={["card", "p-8"]}
+            cssClasses={["card", "p-8", "padding"]}
           >
             <Gtk.Label
               label="Focus for 25 minutes, then take a 5 minute break."

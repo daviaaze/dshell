@@ -96,10 +96,10 @@ export default class Theming extends GObject.Object {
     }
     this.#initialized = true
     this.#settings = settings
-    this.#enabled = settings.dynamicThemingEnabled.get()
+    this.#enabled = settings.dynamicThemingEnabled()
 
     settings.dynamicThemingEnabled.subscribe(() => {
-      const newEnabled = settings.dynamicThemingEnabled.get()
+      const newEnabled = settings.dynamicThemingEnabled()
       if (newEnabled !== this.#enabled) {
         this.enabled = newEnabled
       }
@@ -134,7 +134,7 @@ export default class Theming extends GObject.Object {
 
   #regenerate() {
     if (!this.#settings) return
-    const wallpaper = this.#settings.wallpaperDay.get()
+    const wallpaper = this.#settings.wallpaperDay()
     if (!wallpaper || !GLib.file_test(wallpaper, GLib.FileTest.EXISTS)) {
       logger.warn("theme", `wallpaper not found: ${wallpaper}`)
       return

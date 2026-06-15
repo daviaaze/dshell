@@ -1,7 +1,7 @@
 import { useSettings } from "#/lib/settings"
 import Tray from "gi://AstalTray"
 import Gtk from "gi://Gtk?version=4.0"
-import { Accessor, createBinding, For } from "gnim"
+import { createBinding, For } from "gnim"
 import ShellState from "#/lib/shellState"
 import { PowerMenu } from "#/widget/common/powerMenu"
 import { IconButton, IconMenuButton } from "#/widget/common/iconButton"
@@ -40,9 +40,9 @@ export const TrayBox = () => {
       <IconButton
         icon="object-rotate-right-symbolic"
         onClicked={() => {
-          if ((barCfg.position as Accessor<any>).get() > 8)
+          if (barCfg.position() > 8)
             barCfg.setPosition(2)
-          else barCfg.setPosition((barCfg.position as Accessor<any>).get() * 2)
+          else barCfg.setPosition(barCfg.position() * 2)
         }}
       />
     )

@@ -52,7 +52,7 @@ export default () => {
             )
           }}
         >
-          {/* <Gtk.Image file={settings.wallpaperDay} /> */}
+        <Gtk.Image file={settings.wallpaperDay} />
         </Adw.ActionRow>
         <Adw.ActionRow
           activatable
@@ -74,7 +74,7 @@ export default () => {
             )
           }}
         >
-          {/* <Gtk.Image file={settings.wallpaperNight} /> */}
+        <Gtk.Image file={settings.wallpaperNight} />
         </Adw.ActionRow>
       </Adw.PreferencesGroup>
 
@@ -262,7 +262,7 @@ export default () => {
           onApply={(self) => {
             const name = self.text.trim()
             if (!name) return
-            const current = settings.notificationIgnoredApps.get() as string[]
+            const current = settings.notificationIgnoredApps() as string[]
             if (!current.includes(name)) {
               settings.setNotificationIgnoredApps([...current, name])
             }
@@ -278,7 +278,7 @@ export default () => {
                 iconName="list-remove-symbolic"
                 onClicked={() => {
                   const current =
-                    settings.notificationIgnoredApps.get() as string[]
+                    settings.notificationIgnoredApps() as string[]
                   settings.setNotificationIgnoredApps(
                     current.filter((a) => a !== app),
                   )

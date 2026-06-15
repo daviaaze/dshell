@@ -9,6 +9,7 @@ export default () => {
   const { TOP, LEFT, RIGHT, BOTTOM } = Astal.WindowAnchor
 
   return (
+    <>
     <Adw.PreferencesGroup title={"Bar"} description={"Bar widget settings"}>
       <Adw.ActionRow
         title={"Position"}
@@ -67,17 +68,18 @@ export default () => {
       <Adw.EntryRow
         title={"Temperature Path"}
         showApplyButton
-        text={(bar.tempPath.get() as string) ?? ""}
+        text={(bar.tempPath() as string) ?? ""}
         onEntryActivated={(self) => bar.setTempPath(self.text)}
         onApply={(self) => bar.setTempPath(self.text)}
       />
       <Adw.EntryRow
         title={"System Monitor"}
         showApplyButton
-        text={(bar.systemMonitor.get() as string) ?? ""}
+        text={(bar.systemMonitor() as string) ?? ""}
         onEntryActivated={(self) => bar.setSystemMonitor(self.text)}
         onApply={(self) => bar.setSystemMonitor(self.text)}
       />
+    </Adw.PreferencesGroup>
 
       <Adw.PreferencesGroup
         title="Dock"
@@ -119,7 +121,7 @@ export default () => {
           onApply={(self) => {
             const id = self.text.trim()
             if (!id) return
-            const current = bar.dockPinnedApps.get() as string[]
+            const current = bar.dockPinnedApps() as string[]
             if (!current.includes(id)) {
               bar.setDockPinnedApps([...current, id])
             }
@@ -134,7 +136,7 @@ export default () => {
                 cssClasses={["circular", "destructive-action"]}
                 iconName="list-remove-symbolic"
                 onClicked={() => {
-                  const current = bar.dockPinnedApps.get() as string[]
+                  const current = bar.dockPinnedApps() as string[]
                   bar.setDockPinnedApps(
                     current.filter((a) => a !== appId),
                   )
@@ -190,12 +192,7 @@ export default () => {
           active={bar.showBluetoothBattery}
           onNotifyActive={(self) => bar.setShowBluetoothBattery(self.active)}
         />
-        <Adw.SwitchRow
-          title="Keyboard Layout"
-          active={bar.showKeyboardLayout}
-          onNotifyActive={(self) => bar.setShowKeyboardLayout(self.active)}
-        />
       </Adw.PreferencesGroup>
-    </Adw.PreferencesGroup>
+    </>
   )
 }

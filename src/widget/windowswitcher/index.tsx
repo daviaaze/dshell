@@ -48,7 +48,7 @@ export default () => {
 
   const clampUnsubscribe = clientsList.subscribe((list) => {
     const len = list?.length ?? 0
-    if (selectedIndex.get() >= len) {
+    if (selectedIndex() >= len) {
       setSelectedIndex(Math.max(0, len - 1))
     }
   })
@@ -73,7 +73,7 @@ export default () => {
     _: Gtk.EventControllerKey,
     keyval: number,
   ): boolean => {
-    const clients = clientsList.get() ?? []
+    const clients = clientsList() ?? []
 
     switch (keyval) {
       case Gdk.KEY_Tab:
@@ -90,8 +90,8 @@ export default () => {
         return true
       case Gdk.KEY_Return:
       case Gdk.KEY_KP_Enter:
-        if (clients[selectedIndex.get()]) {
-          doFocus(clients[selectedIndex.get()])
+        if (clients[selectedIndex()]) {
+          doFocus(clients[selectedIndex()])
         }
         return true
       case Gdk.KEY_Escape:
@@ -99,8 +99,8 @@ export default () => {
         return true
       case Gdk.KEY_q:
       case Gdk.KEY_Q:
-        if (clients[selectedIndex.get()]) {
-          clients[selectedIndex.get()].kill()
+        if (clients[selectedIndex()]) {
+          clients[selectedIndex()].kill()
         }
         return true
       case Gdk.KEY_Super_L:
@@ -125,9 +125,9 @@ export default () => {
       !superReleased
     ) {
       superReleased = true
-      const clients = clientsList.get() ?? []
-      if (clients[selectedIndex.get()]) {
-        doFocus(clients[selectedIndex.get()])
+      const clients = clientsList() ?? []
+      if (clients[selectedIndex()]) {
+        doFocus(clients[selectedIndex()])
       } else {
         closeSwitcher()
       }
@@ -139,7 +139,7 @@ export default () => {
   let boxRef: Gtk.Box | null = null
 
   const onOpen = () => {
-    const clients = clientsList.get() ?? []
+    const clients = clientsList() ?? []
     setSelectedIndex(clients.length > 1 ? 1 : 0)
     superPressed = false
     superReleased = false
@@ -195,7 +195,7 @@ export default () => {
             <SwitcherItem
               client={client}
               selected={selectedIndex.as((idx) => {
-                const clients = clientsList.get() ?? []
+                const clients = clientsList() ?? []
                 return clients[idx]?.address === client.address
               })}
             />

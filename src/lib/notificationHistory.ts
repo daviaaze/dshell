@@ -80,12 +80,12 @@ export default class NotificationHistory extends GObject.Object {
     }
   }) {
     this.#settings = settings
-    this.#limit = settings.notificationHistoryLimit.get() || 100
+    this.#limit = settings.notificationHistoryLimit() || 100
     this.#ignoredApps =
-      settings.notificationIgnoredApps.get()?.map((a) => a.toLowerCase()) || []
+      settings.notificationIgnoredApps()?.map((a) => a.toLowerCase()) || []
 
     settings.notificationHistoryLimit.subscribe(() => {
-      const newLimit = settings.notificationHistoryLimit.get()
+      const newLimit = settings.notificationHistoryLimit()
       if (newLimit !== this.#limit) {
         this.setLimit(newLimit)
       }
@@ -93,7 +93,7 @@ export default class NotificationHistory extends GObject.Object {
 
     settings.notificationIgnoredApps.subscribe(() => {
       const newApps =
-        settings.notificationIgnoredApps.get()?.map((a) => a.toLowerCase()) ||
+        settings.notificationIgnoredApps()?.map((a) => a.toLowerCase()) ||
         []
       this.#ignoredApps = newApps
     })

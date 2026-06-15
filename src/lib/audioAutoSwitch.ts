@@ -11,7 +11,7 @@ export function initAutoSwitch() {
 
     const binding = createBinding(audio, "speakers")
     binding.subscribe(() => {
-      const speakers = binding.get()
+      const speakers = binding()
       if (!speakers) return
       const currentIds = new Set(speakers.map((s) => s.id))
 

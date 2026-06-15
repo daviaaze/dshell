@@ -13,14 +13,13 @@ interface WifiWrap {
   tick: number
 }
 
-export default () => {
+const WifiQuicksettingsButton = () => {
   logger.log("Network: get_default()")
   const network = Network.get_default()
 
   const [wifiWrap, setWifiWrap] = createState<WifiWrap>({ wifi: null, tick: 0 })
   const [wifiDevice, setWifiDevice] = createState<Network.Wifi | null>(null)
   const [wifiReady, setWifiReady] = createState(false)
-  const wifi = wifiWrap.as((w) => w.wifi)
 
   onMount(() => {
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
@@ -42,7 +41,7 @@ export default () => {
         cleanupWifiSignals()
         const w = network.wifi
         setWifiWrap((prev) => ({ wifi: w, tick: prev.tick + 1 }))
-        if (w !== wifiDevice.get()) {
+        if (w !== wifiDevice()) {
           setWifiDevice(w)
         }
         if (w) {
@@ -67,33 +66,44 @@ export default () => {
   })
 
   const [connectingAp, setConnectingAp] = createState<string | null>(null)
-  const isConnecting = connectingAp.as((c) => c !== null)
 
   const wifiIconName_ = createComputed(
-    [wifiWrap],
-    (wrap) => {
-      const w = wrap.wifi
-      if (!w) return "network-wireless-offline-symbolic"
-      return wifiIconName(w.strength, w.enabled, w.state)
+    () => {
+      const wifi = wifiWrap().wifi
+
+      if (!wifi) return "network-wireless-offline-symbolic"
+      return wifiIconName(wifi.strength, wifi.enabled, wifi.state)
     },
   )
 
-  const wifiSsid = wifiWrap.as((wrap) => wrap.wifi?.ssid ?? null)
-  const wifiEnabled = wifiWrap.as((wrap) => wrap.wifi?.enabled ?? false)
+  const icon = createComputed(() => {
+    const isConnecting = connectingAp()
+
+    return isConnecting ? "content-loading-symbolic" : wifiIconName_()
+  }
+  )
 
   const wifiCssClasses = createComputed(
-    [wifiWrap],
-    (wrap) => {
-      if (wrap.wifi?.state === Network.DeviceState.ACTIVATED) {
+    () => {
+      const wifi = wifiWrap().wifi
+
+      if (wifi?.state === Network.DeviceState.ACTIVATED) {
         return ["raised", "suggested-action"]
       }
       return ["raised"]
     },
   )
 
+  const wifiSsid = wifiWrap.as((wrap) => wrap.wifi?.ssid ?? null)
+  const wifiEnabled = wifiWrap.as((wrap) => wrap.wifi?.enabled ?? false)
+
+
+
   const label = createComputed(
-    [wifiSsid, wifiEnabled],
-    (ssid, enabled) => {
+    () => {
+      const ssid = wifiSsid();
+      const enabled = wifiEnabled();
+
       if (!ssid || ssid === "..." || ssid.trim() === "")
         return enabled ? "WiFi" : "WiFi Off"
       return ssid.length > 24 ? ssid.slice(0, 24) + "…" : ssid
@@ -114,7 +124,7 @@ export default () => {
             ) : (
               <Gtk.Label
                 cssClasses={["popover-padded-lg"]}
-                label={wifiReady.get() ? "No WiFi device" : "Loading…"}
+                label={wifiReady() ? "No WiFi device" : "Loading…"}
               />
             )
           }
@@ -125,17 +135,19 @@ export default () => {
 
   return (
     <QuickToggleButton
-      icon={createComputed([isConnecting, wifiIconName_], (connecting, icon) =>
-        connecting ? "content-loading-symbolic" : icon,
-      )}
+      icon={icon}
+      visible={wifiWrap.as(wifi => !!wifi.wifi)}
       cssClasses={wifiCssClasses}
       label={label}
       onClick={() => {
-        const w = wifi.get()
-        if (!w) return
-        w.enabled = !w.enabled
+        const wifi = wifiWrap().wifi
+        if (wifi === null) return false
+        wifi.enabled = !wifi.enabled
+        return true
       }}
       popover={popover}
     />
   )
 }
+
+export default WifiQuicksettingsButton;

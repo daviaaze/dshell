@@ -8,7 +8,7 @@ import Clock from "./clock"
 import Network from "./network"
 import { app } from "#/App"
 
-export const createSettingsWindow = () => {
+export const createSettingsWindow = (): Adw.Window => {
   return (
     <Adw.Window
       $={(self) => WindowManager.get_default().setSettings(self)}
@@ -37,6 +37,6 @@ export const createSettingsWindow = () => {
           <Weather />
         </Adw.PreferencesPage>
       </Gtk.Box>
-    </Adw.Window>
+    </Adw.Window> as Adw.Window
   )
 }

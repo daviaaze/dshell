@@ -12,7 +12,7 @@ export default ({
     <Gtk.Image iconName={iconName} pixelSize={20} />
     <Gtk.LevelBar
       hexpand
-      $={(self) => self.set_value(value.get() ?? 0)}
+      $={(self) => self.set_value(value() ?? 0)}
       value={value}
     />
     <Gtk.Label

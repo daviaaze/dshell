@@ -57,10 +57,10 @@ export const widgets = () => {
   initAutoSwitch()
   TimerService.get_default().init(
     app,
-    s.timer.pomodoroWorkDuration.get(),
-    s.timer.pomodoroBreakDuration.get(),
-    s.timer.pomodoroLongBreakDuration.get(),
-    s.timer.pomodoroSessionsBeforeLongBreak.get(),
+    s.timer.pomodoroWorkDuration(),
+    s.timer.pomodoroBreakDuration(),
+    s.timer.pomodoroLongBreakDuration(),
+    s.timer.pomodoroSessionsBeforeLongBreak(),
   )
   perf.stop("services-init", "mount")
 

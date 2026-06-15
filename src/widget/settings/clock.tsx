@@ -51,7 +51,7 @@ export default () => {
                     <Gtk.Button
                       label={tz.replaceAll("_", " ")}
                       onClicked={() => {
-                        const current = general.timezones.get() as string[]
+                        const current = general.timezones() as string[]
                         if (!current.includes(tz)) {
                           general.setTimezones([...current, tz])
                         }
@@ -79,7 +79,7 @@ export default () => {
               cssClasses={["circular", "destructive-action"]}
               iconName="list-remove-symbolic"
               onClicked={() => {
-                const current = general.timezones.get() as string[]
+                const current = general.timezones() as string[]
                 general.setTimezones(current.filter((t) => t !== tz))
               }}
             />

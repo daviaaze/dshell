@@ -1,4 +1,4 @@
-/// <reference types="@girs/adw-1" />
+/// <reference path="../@girs/gi.d.ts" />
 
 export declare global {
   interface ImportMeta {

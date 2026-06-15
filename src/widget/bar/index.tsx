@@ -102,12 +102,12 @@ export default () => {
               <RecordingIndicator />
               <Clock vertical={vertical} visible={bar.showClock} />
               <Gtk.Separator
-                visible={bar.showClock.as((v) => v && bar.showWeather.get())}
+                visible={bar.showClock.as((v) => v && bar.showWeather())}
               />
               <WeatherButton vertical={vertical} visible={bar.showWeather} />
               <Gtk.Separator
                 visible={bar.showWeather.as(
-                  (v) => v && bar.showSystemIndicators.get(),
+                  (v) => v && bar.showSystemIndicators(),
                 )}
               />
               <SystemIndicators

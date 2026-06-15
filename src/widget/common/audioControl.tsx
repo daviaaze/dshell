@@ -48,6 +48,7 @@ export const AudioEndpointControl = ({
       <Slider
         min={0}
         max={100}
+        setMutted={() => device.set_mute(!device.get_mute())}
         icon={getVolumeIcon(device, mutedIcon)}
         value={createBinding(device, "volume").as((v) => v * 100)}
         setValue={(value) => device.set_volume(value / 100)}
@@ -57,8 +58,8 @@ export const AudioEndpointControl = ({
 
   const DevicesList = () => (
     <Gtk.Box
-      cssClasses={["card", "popover-padded"]}
-      spacing={12}
+      cssClasses={["card", "popover-padded", "padding"]}
+      spacing={0}
       orientation={Gtk.Orientation.VERTICAL}
     >
       <For each={devices}>{(d) => <DeviceWidget device={d} />}</For>
@@ -66,7 +67,7 @@ export const AudioEndpointControl = ({
   )
 
   const TabbedContent = () => (
-    <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
+    <Gtk.Box spacing={0} orientation={Gtk.Orientation.VERTICAL} cssClasses={["card"]}>
       <Gtk.Box spacing={0} halign={Gtk.Align.CENTER} cssClasses={["linked"]}>
         <Gtk.ToggleButton
           active={tab.as((t) => t === "devices")}
@@ -81,7 +82,7 @@ export const AudioEndpointControl = ({
       </Gtk.Box>
       <Gtk.Box
         visible={tab.as((t) => t === "devices")}
-        cssClasses={["card", "popover-padded"]}
+        cssClasses={["popover-padded"]}
         spacing={12}
         orientation={Gtk.Orientation.VERTICAL}
       >
@@ -89,7 +90,7 @@ export const AudioEndpointControl = ({
       </Gtk.Box>
       <Gtk.Box
         visible={tab.as((t) => t === "apps")}
-        cssClasses={["card", "popover-padded"]}
+        cssClasses={["popover-padded", "padding"]}
         spacing={12}
         orientation={Gtk.Orientation.VERTICAL}
       >
@@ -115,12 +116,13 @@ export const AudioEndpointControl = ({
                 max={100}
                 value={createBinding(device, "volume").as((v) => v * 100)}
                 setValue={(value) => device.set_volume(value / 100)}
+                setMutted={() => device.set_mute(!device.get_mute())}
               />
             ) : null
           }
         </With>
         <Gtk.Button
-          onClicked={() => setRevealed(!revealed.get())}
+          onClicked={() => setRevealed(!revealed())}
           iconName={revealed.as((v) =>
             v ? "go-up-symbolic" : "go-down-symbolic",
           )}

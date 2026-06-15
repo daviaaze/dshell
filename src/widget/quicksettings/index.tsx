@@ -32,7 +32,7 @@ export default () => {
       onNotifyVisible={(self) => {
         logger.log(`quicksettings visible -> ${self.visible}`)
         if (
-          (barCfg.position.get() === LEFT || barCfg.position.get() === RIGHT) &&
+          (barCfg.position() === LEFT || barCfg.position() === RIGHT) &&
           self.visible &&
           ShellState.get_default().launcherOpen
         )

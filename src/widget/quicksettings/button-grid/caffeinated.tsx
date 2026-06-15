@@ -10,17 +10,19 @@ export default () => {
   const idle = createBinding(inhibit, "idle")
   const remaining = createBinding(inhibit, "remaining")
 
-  const label = createComputed([idle, remaining], (idle, rem) => {
-    if (!idle) return "Auto Sleep"
+  const label = createComputed(() => {
+    const _idle = idle()
+    const rem = remaining()
+    if (!_idle) return "Auto Sleep"
     return rem ? `Keep Awake (${rem})` : "Keep Awake"
   })
 
-  const icon = createComputed([idle], (idle) =>
-    idle ? "weather-clear-symbolic" : "weather-clear-night-symbolic",
+  const icon = createComputed(() =>
+    idle() ? "weather-clear-symbolic" : "weather-clear-night-symbolic",
   )
 
-  const cssClasses = createComputed([idle], (idle) =>
-    idle ? ["raised", "suggested-action"] : ["raised"],
+  const cssClasses = createComputed(() =>
+    idle() ? ["raised", "suggested-action"] : ["raised"],
   )
 
   const popover = (

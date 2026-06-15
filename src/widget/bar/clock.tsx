@@ -40,8 +40,9 @@ export default ({
 
   const timer = TimerService.get_default()
   const timerRemaining = createBinding(timer, "remaining")
-  const timerActive = createComputed([timerRemaining], (rem) => rem >= 0)
-  const timerDisplay = createComputed([timerRemaining], (rem) => {
+  const timerActive = createComputed(() => timerRemaining() >= 0)
+  const timerDisplay = createComputed(() => {
+    const rem = timerRemaining()
     if (rem < 0) return ""
     const totalSec = Math.max(0, Math.ceil(rem / 1000))
     const m = Math.floor(totalSec / 60)
