@@ -4,6 +4,7 @@ import GLib from "gi://GLib?version=2.0"
 import GObject, { getter, register } from "gnim/gobject"
 import logger from "#/lib/logger"
 import { getNotifdSafe } from "#/lib/notifdGuard"
+import { Accessor } from "gnim"
 
 const CACHE_DIR = `${GLib.get_user_cache_dir()}/shade`
 const HISTORY_FILE = `${CACHE_DIR}/notifications.json`
@@ -70,11 +71,9 @@ export default class NotificationHistory extends GObject.Object {
   }
 
   init(settings: {
-    notificationHistoryLimit: {
-      get(): number
-      subscribe(cb: () => void): () => void
-    }
+    notificationHistoryLimit: Accessor<number>
     notificationIgnoredApps: {
+      (): string[]
       get(): string[]
       subscribe(cb: () => void): () => void
     }

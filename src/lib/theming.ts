@@ -52,11 +52,12 @@ export default class Theming extends GObject.Object {
   #cssProvider: Gtk.CssProvider | null = null
   #settings: {
     dynamicThemingEnabled: {
+      (): boolean
       get(): boolean
       subscribe(cb: () => void): () => void
     }
-    wallpaperDay: { get(): string; subscribe(cb: () => void): () => void }
-    wallpaperNight: { get(): string; subscribe(cb: () => void): () => void }
+    wallpaperDay: { (): string; get(): string; subscribe(cb: () => void): () => void }
+    wallpaperNight: { (): string; get(): string; subscribe(cb: () => void): () => void }
   } | null = null
   #initialized = false
 
@@ -84,11 +85,12 @@ export default class Theming extends GObject.Object {
 
   init(settings: {
     dynamicThemingEnabled: {
+      (): boolean
       get(): boolean
       subscribe(cb: () => void): () => void
     }
-    wallpaperDay: { get(): string; subscribe(cb: () => void): () => void }
-    wallpaperNight: { get(): string; subscribe(cb: () => void): () => void }
+    wallpaperDay: { (): string; get(): string; subscribe(cb: () => void): () => void }
+    wallpaperNight: { (): string; get(): string; subscribe(cb: () => void): () => void }
   }) {
     if (this.#initialized) {
       logger.warn("theming", "init() called but already initialized — skipping")
