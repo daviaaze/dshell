@@ -1,3 +1,5 @@
+/// <reference types="@girs/adw-1" />
+
 export declare global {
   interface ImportMeta {
     name: string
