@@ -25,14 +25,14 @@ export default class Hypridle extends GObject.Object {
   #suspendTimeout = 1800
   #process: Process | null = null
   #settings: {
-    autoLockEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    idleTimeout: { get(): number; subscribe(cb: () => void): () => void }
-    screenDimEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    screenDimTimeout: { get(): number; subscribe(cb: () => void): () => void }
-    dpmsEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    dpmsTimeout: { get(): number; subscribe(cb: () => void): () => void }
-    suspendEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    suspendTimeout: { get(): number; subscribe(cb: () => void): () => void }
+    autoLockEnabled: Accessor<boolean>
+    idleTimeout: Accessor<number>
+    screenDimEnabled: Accessor<boolean>
+    screenDimTimeout: Accessor<number>
+    dpmsEnabled: Accessor<boolean>
+    dpmsTimeout: Accessor<number>
+    suspendEnabled: Accessor<boolean>
+    suspendTimeout: Accessor<number>
     setAutoLockEnabled: (v: boolean) => void
     setIdleTimeout: (v: number) => void
     setScreenDimEnabled: (v: boolean) => void

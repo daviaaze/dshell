@@ -1,4 +1,5 @@
 import GObject, { getter, register, setter } from "gnim/gobject"
+import { Accessor } from "gnim"
 import { Process } from "#/lib/process"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
@@ -51,13 +52,9 @@ export default class Theming extends GObject.Object {
   #enabled = false
   #cssProvider: Gtk.CssProvider | null = null
   #settings: {
-    dynamicThemingEnabled: {
-      (): boolean
-      get(): boolean
-      subscribe(cb: () => void): () => void
-    }
-    wallpaperDay: { (): string; get(): string; subscribe(cb: () => void): () => void }
-    wallpaperNight: { (): string; get(): string; subscribe(cb: () => void): () => void }
+    dynamicThemingEnabled: Accessor<boolean>
+    wallpaperDay: Accessor<string>
+    wallpaperNight: Accessor<string>
   } | null = null
   #initialized = false
 
@@ -84,13 +81,9 @@ export default class Theming extends GObject.Object {
   }
 
   init(settings: {
-    dynamicThemingEnabled: {
-      (): boolean
-      get(): boolean
-      subscribe(cb: () => void): () => void
-    }
-    wallpaperDay: { (): string; get(): string; subscribe(cb: () => void): () => void }
-    wallpaperNight: { (): string; get(): string; subscribe(cb: () => void): () => void }
+    dynamicThemingEnabled: Accessor<boolean>
+    wallpaperDay: Accessor<string>
+    wallpaperNight: Accessor<string>
   }) {
     if (this.#initialized) {
       logger.warn("theming", "init() called but already initialized — skipping")

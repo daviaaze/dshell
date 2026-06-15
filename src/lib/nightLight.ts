@@ -21,15 +21,9 @@ export default class NightLight extends GObject.Object {
   #colorScheme: ColorScheme | null = null
   #initialized = false
   #settings: {
-    nightLightEnabled: { get(): boolean; subscribe(cb: () => void): () => void }
-    nightLightTemperature: {
-      get(): number
-      subscribe(cb: () => void): () => void
-    }
-    nightLightAutoSchedule: {
-      get(): boolean
-      subscribe(cb: () => void): () => void
-    }
+    nightLightEnabled: Accessor<boolean>
+    nightLightTemperature: Accessor<number>
+    nightLightAutoSchedule: Accessor<boolean>
     setNightLightEnabled: (v: boolean) => void
     setNightLightTemperature: (v: number) => void
     setNightLightAutoSchedule: (v: boolean) => void
