@@ -7,6 +7,15 @@ import { exit, programArgs, programInvocationName } from "system"
 import { app } from "#/App"
 import logger, { initLoggerFromSettings, perf } from "#/lib/logger"
 
+// Suppress "duplicate child name in GtkStack" warnings from library internals
+// (Astal/Adw periodically re-adds stack pages on NM scan or Bluetooth refresh).
+GLib.log_set_writer_func((_logDomain: string | null, _logLevels: number, message: string | null) => {
+  if (message && message.includes("duplicate child name in GtkStack")) {
+    return 1 /* GLib.LogWriterOutput.HANDLED */
+  }
+  return 0 /* GLib.LogWriterOutput.UNHANDLED */
+})
+
 perf.start("main.ts startup")
 logger.log("main.ts starting")
 
@@ -23,7 +32,7 @@ Gettext.textdomain(import.meta.domain)
 // hits "already exported" errors with 25s timeouts.
 let quitting = false
 for (const sig of [2 /* SIGINT */, 15 /* SIGTERM */]) {
-  GLibUnix.signal_add_full(GLib.PRIORITY_DEFAULT, sig, () => {
+  GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, sig, () => {
     if (quitting) {
       logger.log(`received signal ${sig} again, forcing exit`)
       exit(1)

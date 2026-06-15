@@ -12,7 +12,7 @@ export const createSettingsWindow = (): Adw.Window => {
   return (
     <Adw.Window
       $={(self) => WindowManager.get_default().setSettings(self)}
-      hideOnClose
+      hideOnClose={false}
       application={app}
       name={"settings"}
       cssClasses={["background"]}

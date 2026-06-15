@@ -1,3 +1,4 @@
+import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding } from "gnim"
 import Screenshot from "#/lib/screenshot"
@@ -18,19 +19,12 @@ export default () => {
       cssClasses={["flat"]}
       tooltipText="Click to stop recording"
     >
-      <Gtk.Box spacing={6}>
-        <Gtk.Image
-          iconName="media-record-symbolic"
-          cssClasses={["error"]}
-          pixelSize={14}
-        />
-        <Gtk.Label
-          label={createBinding(screenshot, "recording-elapsed").as(
-            (sec) => formatDuration(sec ?? 0),
-          )}
-          cssClasses={["error", "recording-duration"]}
-        />
-      </Gtk.Box>
+      <Adw.ButtonContent
+        iconName="media-record-symbolic"
+        label={createBinding(screenshot, "recording-elapsed").as(
+          (sec) => formatDuration(sec ?? 0),
+        )}
+      />
     </Gtk.Button>
   )
 }

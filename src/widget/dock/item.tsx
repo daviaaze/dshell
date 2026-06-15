@@ -6,6 +6,7 @@ import { onCleanup } from "gnim"
 import { useSettings } from "#/lib/settings"
 import { toArray } from "#/lib/gjsUtils"
 import { getAppList, exactQuery } from "#/lib/apps"
+import { ActionButton } from "#/widget/common/actionButton"
 
 interface DockItemProps {
   desktopFile: string
@@ -54,46 +55,32 @@ export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
         spacing={4}
         css={"padding: 8px;"}
       >
-        <Gtk.Button
-          cssClasses={["flat"]}
+        <ActionButton
+          iconName="focus-windows-symbolic"
+          label="Focus"
           visible={running}
           onClicked={() => {
             handleLeftClick()
             popover.popdown()
           }}
-        >
-          <Gtk.Box spacing={8}>
-            <Gtk.Image iconName="focus-windows-symbolic" />
-            <Gtk.Label label="Focus" />
-          </Gtk.Box>
-        </Gtk.Button>
-        <Gtk.Button
-          cssClasses={["flat"]}
+        />
+        <ActionButton
+          iconName="window-close-symbolic"
+          label="Close"
           visible={running}
           onClicked={() => {
             handleClose()
             popover.popdown()
           }}
-        >
-          <Gtk.Box spacing={8}>
-            <Gtk.Image iconName="window-close-symbolic" />
-            <Gtk.Label label="Close" />
-          </Gtk.Box>
-        </Gtk.Button>
-        <Gtk.Button
-          cssClasses={["flat"]}
+        />
+        <ActionButton
+          iconName={pinned ? "edit-delete-symbolic" : "list-add-symbolic"}
+          label={pinned ? "Unpin" : "Pin"}
           onClicked={() => {
             handlePinToggle()
             popover.popdown()
           }}
-        >
-          <Gtk.Box spacing={8}>
-            <Gtk.Image
-              iconName={pinned ? "edit-delete-symbolic" : "list-add-symbolic"}
-            />
-            <Gtk.Label label={pinned ? "Unpin" : "Pin"} />
-          </Gtk.Box>
-        </Gtk.Button>
+        />
       </Gtk.Box>
     </Gtk.Popover>
   ) as Gtk.Popover
@@ -106,6 +93,51 @@ export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
           popover.popdown()
           popover.unparent()
         })
+        // Create child content once to avoid gtk_button_set_child assertion
+        // when Gnim re-renders this component (e.g. on focus change).
+        if (!self.get_first_child()) {
+          const icon = <Gtk.Image iconName={iconName} />
+          // Bind icon size reactively
+          bar.dockIconSize.subscribe((size) => icon.set_pixel_size(size))
+          icon.set_pixel_size(bar.dockIconSize.get())
+
+          const status = <Gtk.Box />
+          // Update status indicator reactively
+          const updateStatus = () => {
+            status.css = active
+              ? `
+                min-width: 16px;
+                min-height: 3px;
+                border-radius: 2px;
+                background-color: @accent_color;
+              `
+              : running
+                ? `
+                  min-width: 4px;
+                  min-height: 4px;
+                  border-radius: 2px;
+                  background-color: @accent_color;
+                `
+                : ""
+            status.visible = active || running
+          }
+          updateStatus()
+          // Re-evaluate status on active/running changes isn't reactive via props —
+          // the component re-creates on those changes, so this runs once per mount.
+
+          const box = (
+            <Gtk.Box
+              orientation={Gtk.Orientation.VERTICAL}
+              spacing={4}
+              halign={Gtk.Align.CENTER}
+              valign={Gtk.Align.CENTER}
+            >
+              {icon}
+              {status}
+            </Gtk.Box>
+          )
+          self.child = box
+        }
       }}
       cssClasses={["flat", "circular"]}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
@@ -118,33 +150,7 @@ export default ({ desktopFile, clients, active, pinned }: DockItemProps) => {
           self.connect("pressed", () => popover.popup())
         }}
       />
-      <Gtk.Box
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={4}
-        halign={Gtk.Align.CENTER}
-        valign={Gtk.Align.CENTER}
-      >
-        <Gtk.Image iconName={iconName} pixelSize={bar.dockIconSize()} />
-        {active ? (
-          <Gtk.Box
-            css={`
-              min-width: 16px;
-              min-height: 3px;
-              border-radius: 2px;
-              background-color: @accent_color;
-            `}
-          />
-        ) : running ? (
-          <Gtk.Box
-            css={`
-              min-width: 4px;
-              min-height: 4px;
-              border-radius: 2px;
-              background-color: @accent_color;
-            `}
-          />
-        ) : null}
-      </Gtk.Box>
+
     </Gtk.Button>
   )
 }

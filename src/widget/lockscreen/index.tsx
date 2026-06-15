@@ -111,7 +111,7 @@ const createLocks = (onUnlock: () => void) => {
     if (!pamActive) return
     pamActive = false
     cancelPamTimeout()
-    logger.warn("lockscreen", "PAM auth failed:", msg)
+    logger.debug("lockscreen", "PAM auth failed:", msg)
     setAuthStatus("Authentication failed")
   })
 
@@ -119,7 +119,7 @@ const createLocks = (onUnlock: () => void) => {
     if (!pamActive) return
     pamActive = false
     cancelPamTimeout()
-    logger.warn("lockscreen", "PAM auth error:", msg)
+    logger.debug("lockscreen", "PAM auth error:", msg)
     setAuthStatus(msg || "Authentication error")
     pam.supply_secret(null)
   })

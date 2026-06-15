@@ -23,15 +23,11 @@ export default () => {
     <Gtk.Button
       visible={available}
       cssClasses={["flat"]}
+      label={layout}
       onClicked={() => KeyboardLayout.get_default().cycle()}
       tooltipMarkup={layout.as((l) =>
         `Keyboard layout: ${l}\nClick to cycle`,
       )}
-    >
-      <Gtk.Label
-        cssClasses={["heading", "numeric"]}
-        label={layout}
-      />
-    </Gtk.Button>
+    />
   )
 }

@@ -21,12 +21,26 @@ export default () => {
             $type="suffix"
             cssClasses={["round"]}
             valign={Gtk.Align.CENTER}
-            onNotifyActive={(self) => settings.setColorScheme(self.active)}
-            active={settings.colorScheme}
+            onNotifyActiveName={(self) => {
+              const map: Record<string, number> = { auto: 0, light: 1, dark: 2 }
+              settings.setColorScheme(map[self.activeName] ?? 0)
+            }}
+            activeName={(settings.colorScheme as any).as((v: number) =>
+              ["auto", "light", "dark"][v] ?? "auto",
+            )}
           >
-            <Adw.Toggle label={"Auto"} iconName={"night-light-symbolic"} />
-            <Adw.Toggle label={"Light"} iconName={"weather-clear-symbolic"} />
             <Adw.Toggle
+              name={"auto"}
+              label={"Auto"}
+              iconName={"night-light-symbolic"}
+            />
+            <Adw.Toggle
+              name={"light"}
+              label={"Light"}
+              iconName={"weather-clear-symbolic"}
+            />
+            <Adw.Toggle
+              name={"dark"}
               label={"Dark"}
               iconName={"weather-clear-night-symbolic"}
             />

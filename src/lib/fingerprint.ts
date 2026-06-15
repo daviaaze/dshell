@@ -111,7 +111,7 @@ export default class FingerprintAuth extends GObject.Object {
         },
       )
     } catch (e) {
-      logger.error("fingerprint", "init failed:", e)
+      logger.warn("fingerprint", "init failed:", e)
       this.#available = false
       this.notify("available")
     }
@@ -188,7 +188,7 @@ export default class FingerprintAuth extends GObject.Object {
         null,
       )
     } catch (e) {
-      logger.error("fingerprint", "start failed:", e)
+      logger.warn("fingerprint", "start failed:", e)
       this.#setError(`Fingerprint device error: ${String(e)}`)
       this.failed(String(e))
       this.#release()
@@ -222,7 +222,7 @@ export default class FingerprintAuth extends GObject.Object {
         null,
       )
     } catch (e) {
-      logger.error("fingerprint", "VerifyStop failed:", e)
+      logger.warn("fingerprint", "VerifyStop failed:", e)
     }
     this.#setState("idle")
     this.#release()

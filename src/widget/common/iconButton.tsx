@@ -12,13 +12,12 @@ interface IconButtonProps {
 
 export const IconButton = (props: IconButtonProps) => (
   <Gtk.Button
+    iconName={props.icon}
     cssClasses={["circular", ...(props.cssClasses ?? [])]}
     onClicked={props.onClicked}
     tooltipText={props.tooltipText}
     cursor={props.cursor}
-  >
-    <Gtk.Image iconName={props.icon} />
-  </Gtk.Button>
+  />
 )
 
 interface IconMenuButtonProps extends Omit<IconButtonProps, "onClicked"> {

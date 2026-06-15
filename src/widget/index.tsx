@@ -25,14 +25,21 @@ import WindowManager from "#/lib/windowManager"
 import logger, { perf } from "#/lib/logger"
 
 export const openSettings = () => {
-  const win = WindowManager.get_default().settings
-  logger.debug("app", `openSettings: win=${win ? "found" : "NULL"}`)
-  if (win) {
-    logger.debug("app", `openSettings: calling present() on ${win.name}`)
-    win.present()
-  } else {
-    logger.error("app", "openSettings: no settings window registered")
+  const wm = WindowManager.get_default()
+  const existing = wm.settings
+  if (existing && existing.visible) {
+    // Window is already visible — just bring to front
+    existing.present()
+    return
   }
+  // Destroy stale window to prevent GtkStack duplicate page warnings
+  if (existing) {
+    existing.destroy()
+    wm.setSettings(null)
+  }
+  const win = createSettingsWindow()
+  wm.setSettings(win)
+  win.present()
 }
 
 export const widgets = () => {

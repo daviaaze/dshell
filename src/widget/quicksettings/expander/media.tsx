@@ -59,33 +59,28 @@ const TitleArtist = ({ player }: { player: Mpris.Player }) => (
 const PlaybackButtons = ({ player }: { player: Mpris.Player }) => (
   <Gtk.Box>
     <Gtk.Button
+      iconName={"media-skip-backward-symbolic"}
       onClicked={() => player.previous()}
       visible={createBinding(player, "canGoPrevious")}
-    >
-      <Gtk.Image iconName={"media-skip-backward-symbolic"} />
-    </Gtk.Button>
+    />
 
     <Gtk.Button
+      iconName={createBinding(player, "playbackStatus").as((s) =>
+        s === Mpris.PlaybackStatus.PLAYING
+          ? "media-playback-pause-symbolic"
+          : "media-playback-start-symbolic",
+      )}
       onClicked={() =>
         player.playbackStatus === Mpris.PlaybackStatus.PAUSED
           ? player.play()
           : player.pause()
       }
-    >
-      <Gtk.Image
-        iconName={createBinding(player, "playbackStatus").as((s) =>
-          s === Mpris.PlaybackStatus.PLAYING
-            ? "media-playback-pause-symbolic"
-            : "media-playback-start-symbolic",
-        )}
-      />
-    </Gtk.Button>
+    />
     <Gtk.Button
+      iconName={"media-skip-forward-symbolic"}
       onClicked={() => player.next()}
       visible={createBinding(player, "canGoNext")}
-    >
-      <Gtk.Image iconName={"media-skip-forward-symbolic"} />
-    </Gtk.Button>
+    />
   </Gtk.Box>
 )
 

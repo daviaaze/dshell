@@ -101,7 +101,7 @@ export default () => {
   const devicesArray = deviceInfo.as((d) => d)
 
   return (
-    <Gtk.Button
+    <Gtk.Box
       visible={visible}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
       tooltipMarkup={devicesArray.as((arr) =>
@@ -115,18 +115,17 @@ export default () => {
               .join("\n")
           : "",
       )}
+      spacing={4}
     >
-      <Gtk.Box spacing={4}>
-        <For each={devicesArray}>
-          {(device) => (
-            <Gtk.Image
-              iconName={device.icon}
-              pixelSize={18}
-              css={batteryColor(device.battery)}
-            />
-          )}
-        </For>
-      </Gtk.Box>
-    </Gtk.Button>
+      <For each={devicesArray}>
+        {(device) => (
+          <Gtk.Image
+            iconName={device.icon}
+            pixelSize={18}
+            css={batteryColor(device.battery)}
+          />
+        )}
+      </For>
+    </Gtk.Box>
   )
 }
