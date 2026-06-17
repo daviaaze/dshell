@@ -32,7 +32,7 @@ const CoverArt = ({ player }: { player: Mpris.Player }) => (
   <Gtk.Picture
     visible={createBinding(player, "coverArt").as((c) => !!c)}
     file={createBinding(player, "coverArt").as((path) => Gio.File.new_for_path(path))}
-    cssClasses={["thumbnail"]}
+    cssClasses={["media-thumbnail"]}
     contentFit={Gtk.ContentFit.COVER}
     widthRequest={120}
     heightRequest={120}
@@ -48,7 +48,7 @@ const TitleArtist = ({ player }: { player: Mpris.Player }) => (
       label={createBinding(player, "title")}
     />
     <Gtk.Label
-      cssClasses={["artist"]}
+      cssClasses={["caption", "dimmed"]}
       label={createBinding(player, "artist")}
       maxWidthChars={10}
       ellipsize={3}
@@ -87,7 +87,7 @@ const PlaybackButtons = ({ player }: { player: Mpris.Player }) => (
 const PlaybackStatus = ({ player }: { player: Mpris.Player }) => (
   <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
     <Astal.Slider
-      cssClasses={["position"]}
+      cssClasses={["media-position"]}
       drawValue={false}
       onNotifyValue={({ value }) => (player.position = value)}
       min={0}

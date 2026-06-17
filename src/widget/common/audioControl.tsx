@@ -58,7 +58,7 @@ export const AudioEndpointControl = ({
 
   const DevicesList = () => (
     <Gtk.Box
-      cssClasses={["padding"]}
+      cssClasses={["p-12"]}
       spacing={12}
       orientation={Gtk.Orientation.VERTICAL}
     >
@@ -90,7 +90,7 @@ export const AudioEndpointControl = ({
       </Gtk.Box>
       <Gtk.Box
         visible={tab.as((t) => t === "apps")}
-        cssClasses={["popover-padded", "padding"]}
+        cssClasses={["popover-padded", "p-12"]}
         spacing={12}
         orientation={Gtk.Orientation.VERTICAL}
       >

@@ -14,18 +14,17 @@
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SURFACE TOKENS
+   WINDOW SURFACES
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Base window surface — transparent by default, widgets layer on top */
+/* Semi-transparent window background */
 .background {
   box-shadow: none;
   background: oklab(from var(--window-bg-color) l a b / 0.75);
 }
 
-/* Tooltip — our .background rule applies to tooltip windows too,
-   making the bg transparent-light in light theme while Libadwaita
-   keeps tooltip text light/white.  Reset to proper theme colors. */
+/* Tooltip — our .background override bleeds into tooltips.
+   Reset to proper theme colors. */
 tooltip.background {
   background: var(--window-bg-color);
 }
@@ -34,124 +33,41 @@ tooltip.background label {
   color: var(--window-fg-color);
 }
 
-/* Tray popover — remove the heavy drop-shadow without affecting
-   other popovers (clock, weather, network, etc.). */
+/* Tray popover — remove heavy drop-shadow */
 popover.tray-menu.background,
 popover.tray-menu > contents.background.menu {
   box-shadow: none;
 }
 
-/* Card surface — subtle elevation */
+/* Card — tighter padding than Libadwaita's default */
 .card {
   padding: 4px;
-  /* Libadwaita handles the background via its card style class */
-}
-
-/* Raised surface variant — for popovers, tooltips, overlays */
-.surface-raised {
-  background: alpha(var(--window-bg-color), 0.92);
-  border: 1px solid alpha(var(--window-fg-color), 0.08);
-}
-
-/* Subtle surface — for secondary content areas */
-.surface-subtle {
-  background: alpha(var(--window-fg-color), 0.04);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SPACING SCALE
+   SPACING UTILITIES
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.p-4 {
-  padding: 4px;
-}
-.p-6 {
-  padding: 6px;
-}
-.p-8 {
-  padding: 8px;
-}
-.p-12 {
-  padding: 12px;
-}
-.p-16 {
-  padding: 16px;
-}
-.p-24 {
-  padding: 24px;
-}
+.p-8  { padding: 8px;  }
+.p-12 { padding: 12px; }
 
-.m-4 {
-  margin: 4px;
-}
-.m-8 {
-  margin: 8px;
-}
-.m-12 {
-  margin: 12px;
-}
-.m-16 {
-  margin: 16px;
-}
-
-/* Directional margin/padding */
-.mt-4 {
-  margin-top: 4px;
-}
-.mt-8 {
-  margin-top: 8px;
-}
-.mt-12 {
-  margin-top: 12px;
-}
-.mb-4 {
-  margin-bottom: 4px;
-}
-.mb-8 {
-  margin-bottom: 8px;
-}
-.mb-12 {
-  margin-bottom: 12px;
-}
-.ml-4 {
-  margin-left: 4px;
-}
-.ml-8 {
-  margin-left: 8px;
-}
-.mr-4 {
-  margin-right: 4px;
-}
-.mr-8 {
-  margin-right: 8px;
-}
-
-/* Popover content padding — standard Margins inside popovers */
-.popover-padded {
-  margin: 8px;
-}
-.popover-padded-sm {
-  margin: 4px;
-}
-.popover-padded-lg {
-  margin: 12px;
-}
+/* Popover content margins */
+.popover-padded    { margin: 8px;  }
+.popover-padded-lg { margin: 12px; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TYPOGRAPHY EXTENSIONS
+   TYPOGRAPHY
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Numeric font variant — monospaced digits for clocks, stats */
+/* Monospaced digits for clocks, stats, counters */
 .numeric {
   font-feature-settings: "tnum";
 }
 
-/* Lighter heading for secondary labels */
-.heading-secondary {
-  opacity: 0.6;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   BAR (top/bottom panel)
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Bar — top/bottom panel */
 .bar {
   min-height: 32px;
 }
@@ -161,24 +77,61 @@ popover.tray-menu > contents.background.menu {
   padding: 0 8px;
 }
 
-/* Quick Settings — side panel */
+/* ═══════════════════════════════════════════════════════════════════════════
+   QUICK SETTINGS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .quicksettings {
   border-radius: 12px;
 }
 
-/* Notifications — toast overlay */
+/* ═══════════════════════════════════════════════════════════════════════════
+   NOTIFICATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .notifications {
   background: transparent;
   box-shadow: none;
 }
 
-/* OSD — on-screen display (volume/brightness popup) */
-.osd {
-  border-radius: 16px;
-  padding: 12px 20px;
+.notification-card {
+  border-left: 3px solid transparent;
+  transition: border-color 200ms ease;
 }
 
-/* App Launcher */
+.notification-critical {
+  border-left-color: var(--error_color);
+  background: alpha(var(--error_color), 0.06);
+}
+
+.notification-image {
+  border-radius: 6px;
+}
+
+.notification-progress {
+  min-height: 3px;
+}
+
+.notification-progress progress {
+  background: alpha(var(--accent_color), 0.3);
+  border-radius: 2px;
+  min-height: 3px;
+}
+
+.notification-progress trough {
+  background: alpha(var(--window-fg-color), 0.08);
+  min-height: 3px;
+  border-radius: 2px;
+}
+
+.notification-actions {
+  margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APP LAUNCHER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .applauncher-body {
   padding: 12px;
 }
@@ -188,7 +141,10 @@ popover.tray-menu > contents.background.menu {
   border-radius: 8px;
 }
 
-/* Lockscreen */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOCKSCREEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .lockscreen-time {
   font-size: 4em;
 }
@@ -197,49 +153,32 @@ popover.tray-menu > contents.background.menu {
   margin-bottom: 12px;
 }
 
-/* Dock */
+/* ═══════════════════════════════════════════════════════════════════════════
+   DOCK
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .dock {
   border-radius: 12px;
   padding: 4px;
   background: alpha(var(--window-bg-color), 0.7);
 }
 
-/* Window Switcher */
+/* ═══════════════════════════════════════════════════════════════════════════
+   WINDOW SWITCHER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .windowswitcher {
   border-radius: 16px;
   padding: 12px 20px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   INTERACTIVE STATES
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Hover glow — subtle background on hover for buttons that need it */
-.hover-glow:hover {
-  background: alpha(var(--window-fg-color), 0.06);
-}
-
-/* Active press */
-.active-press:active {
-  background: alpha(var(--window-fg-color), 0.12);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
    SLIDER OVERRIDES
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Astal Slider embedded in GTK */
+/* Astal Slider minimum height */
 .slider {
   min-height: 32px;
-}
-
-/* Compact slider for audio mixer */
-.slider-compact {
-  min-height: 24px;
-}
-
-.slider-compact label {
-  font-size: 0.8em;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -252,41 +191,8 @@ popover.tray-menu > contents.background.menu {
   min-height: 48px;
 }
 
-.media-artist {
-  font-size: 0.85em;
-  opacity: 0.6;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   UTILITY
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.transparent {
-  background: transparent;
-  box-shadow: none;
-}
-
-.no-padding {
-  padding: 0;
-}
-
-.rounded-8 {
-  border-radius: 8px;
-}
-.rounded-12 {
-  border-radius: 12px;
-}
-.rounded-16 {
-  border-radius: 16px;
-}
-
-/* Scrollable areas — hide scrollbar chrome */
-.scroll-compact scrollbar {
-  opacity: 0;
-}
-
-.scroll-compact:hover scrollbar {
-  opacity: 1;
+.media-position {
+  min-height: 6px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -320,14 +226,12 @@ popover.tray-menu > contents.background.menu {
    WIFI NETWORK LIST
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Network list container — card-like appearance without card padding */
 .network-list {
   background: alpha(var(--window-fg-color), 0.04);
   border-radius: 8px;
   padding: 0;
 }
 
-/* Individual network row */
 .network-list > box {
   padding: 8px 12px;
   border-bottom: 1px solid alpha(var(--window-fg-color), 0.08);
@@ -335,8 +239,4 @@ popover.tray-menu > contents.background.menu {
 
 .network-list > box:last-child {
   border-bottom: none;
-}
-
-.padding {
-  padding: 12px;
 }

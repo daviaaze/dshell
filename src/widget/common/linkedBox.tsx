@@ -1,13 +1,13 @@
 import Gtk from "gi://Gtk?version=4.0"
 import { JSX } from "gnim"
 
-interface LinkedPopoverBoxProps {
+interface LinkedBoxProps {
   children: JSX.Element | JSX.Element[]
   margin?: number
   spacing?: number
 }
 
-export const LinkedPopoverBox = (props: LinkedPopoverBoxProps) => (
+export const LinkedBox = (props: LinkedBoxProps) => (
   <Gtk.Box
     cssClasses={["linked"]}
     orientation={Gtk.Orientation.VERTICAL}

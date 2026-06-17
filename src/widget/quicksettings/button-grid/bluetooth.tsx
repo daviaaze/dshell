@@ -5,7 +5,7 @@ import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, For, onMount } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import logger from "#/lib/logger"
-import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
+import { LinkedBox } from "#/widget/common/linkedBox"
 import { toArray } from "#/lib/gjsUtils"
 
 export default () => {
@@ -22,7 +22,7 @@ export default () => {
 
   const popover = (
     <Gtk.Popover cssClasses={[]}>
-      <LinkedPopoverBox>
+      <LinkedBox>
         <For
           each={createBinding(bluetooth, "devices").as((d) =>
             toArray<AstalBluetooth.Device>(d),
@@ -82,7 +82,7 @@ export default () => {
             )
           }}
         </For>
-      </LinkedPopoverBox>
+      </LinkedBox>
     </Gtk.Popover>
   ) as Gtk.Popover
 

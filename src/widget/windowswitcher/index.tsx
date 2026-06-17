@@ -1,6 +1,7 @@
 import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
+import Adw from "gi://Adw?version=1"
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
 import { createBinding, createState, For, onCleanup } from "gnim"
 import { app } from "#/App"
@@ -201,12 +202,12 @@ export default () => {
             />
           )}
         </For>
-        <Gtk.Label
+        <Adw.StatusPage
           visible={clientsList.as((l) => l.length === 0)}
-          cssClasses={["title-3"]}
-          marginTop={24}
-          marginBottom={24}
-          label="No open windows"
+          vexpand
+          cssClasses={["compact"]}
+          title="No Open Windows"
+          iconName="window-new-symbolic"
         />
       </Gtk.Box>
     </Astal.Window>

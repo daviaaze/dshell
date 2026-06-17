@@ -2,7 +2,7 @@ import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
-import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
+import { LinkedBox } from "#/widget/common/linkedBox"
 import { ColorScheme, DarkModes } from "#/lib/colorScheme"
 
 export default () => {
@@ -10,7 +10,7 @@ export default () => {
 
   const popover = (
     <Gtk.Popover cssClasses={[]}>
-      <LinkedPopoverBox>
+      <LinkedBox>
         <Gtk.Button
           onClicked={() => (colorScheme.colorScheme = DarkModes.AUTO)}
         >
@@ -35,7 +35,7 @@ export default () => {
             label="Dark Mode"
           />
         </Gtk.Button>
-      </LinkedPopoverBox>
+      </LinkedBox>
     </Gtk.Popover>
   ) as Gtk.Popover
 

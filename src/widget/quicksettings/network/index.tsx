@@ -3,7 +3,7 @@ import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, onMount, With } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
-import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
+import { LinkedBox } from "#/widget/common/linkedBox"
 import WifiPopover from "./wifiPopover"
 import { wifiIconName } from "./utils"
 import logger from "#/lib/logger"
@@ -112,7 +112,7 @@ const WifiQuicksettingsButton = () => {
 
   const popover = (
     <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT}>
-      <LinkedPopoverBox>
+      <LinkedBox>
         <With value={wifiDevice}>
           {(w: Network.Wifi | null) =>
             w ? (
@@ -129,7 +129,7 @@ const WifiQuicksettingsButton = () => {
             )
           }
         </With>
-      </LinkedPopoverBox>
+      </LinkedBox>
     </Gtk.Popover>
   ) as Gtk.Popover
 

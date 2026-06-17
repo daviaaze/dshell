@@ -3,7 +3,7 @@ import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
-import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
+import { LinkedBox } from "#/widget/common/linkedBox"
 
 export default () => {
   const screenshot = Screenshot.get_default()
@@ -21,7 +21,7 @@ export default () => {
           halign={Gtk.Align.START}
           cssClasses={["title-4"]}
         />
-        <LinkedPopoverBox>
+        <LinkedBox>
           <Gtk.Button onClicked={() => screenshot.screenshot(true)}>
             <Adw.ButtonContent
               iconName="camera-photo-symbolic"
@@ -34,7 +34,7 @@ export default () => {
               label="Area"
             />
           </Gtk.Button>
-        </LinkedPopoverBox>
+        </LinkedBox>
 
         <Gtk.Separator />
 
@@ -44,7 +44,7 @@ export default () => {
           halign={Gtk.Align.START}
           cssClasses={["title-4"]}
         />
-        <LinkedPopoverBox>
+        <LinkedBox>
           <Gtk.Button onClicked={() => screenshot.toggleRecording()}>
             <Adw.ButtonContent
               iconName="camera-video-symbolic"
@@ -81,7 +81,7 @@ export default () => {
               label="Window"
             />
           </Gtk.Button>
-        </LinkedPopoverBox>
+        </LinkedBox>
 
         <Gtk.Separator />
 

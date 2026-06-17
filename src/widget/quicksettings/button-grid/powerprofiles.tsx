@@ -4,7 +4,7 @@ import GLib from "gi://GLib?version=2.0"
 import { createState, onMount } from "gnim"
 import PowerProfiles, { profileLabel, nextProfile } from "#/lib/powerProfiles"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
-import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
+import { LinkedBox } from "#/widget/common/linkedBox"
 
 export default () => {
   const [iconName, setIconName] = createState("power-profile-balanced-symbolic")
@@ -32,7 +32,7 @@ export default () => {
 
   const popover = (
     <Gtk.Popover cssClasses={[]}>
-      <LinkedPopoverBox>
+      <LinkedBox>
         <Gtk.Button onClicked={() => setProfile("power-saver")}>
           <Adw.ButtonContent
             iconName="power-profile-power-saver-symbolic"
@@ -51,7 +51,7 @@ export default () => {
             label="Performance"
           />
         </Gtk.Button>
-      </LinkedPopoverBox>
+      </LinkedBox>
     </Gtk.Popover>
   ) as Gtk.Popover
 

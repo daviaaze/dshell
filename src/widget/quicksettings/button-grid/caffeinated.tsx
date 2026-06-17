@@ -3,7 +3,7 @@ import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding, createComputed } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
-import { LinkedPopoverBox } from "#/widget/common/linkedPopoverBox"
+import { LinkedBox } from "#/widget/common/linkedBox"
 
 export default () => {
   const inhibit = Inhibit.get_default()
@@ -27,7 +27,7 @@ export default () => {
 
   const popover = (
     <Gtk.Popover cssClasses={[]}>
-      <LinkedPopoverBox>
+      <LinkedBox>
         <Gtk.Button onClicked={() => inhibit.setDuration(0)}>
           <Adw.ButtonContent
             iconName="emblem-ok-symbolic"
@@ -62,7 +62,7 @@ export default () => {
             label="Turn Off"
           />
         </Gtk.Button>
-      </LinkedPopoverBox>
+      </LinkedBox>
     </Gtk.Popover>
   ) as Gtk.Popover
 

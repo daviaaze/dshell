@@ -2,6 +2,7 @@ import Hyprland from "gi://AstalHyprland"
 import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
+import Adw from "gi://Adw?version=1"
 import { createBinding, createState, For } from "gnim"
 import AppButton from "./appButton"
 import ClipboardButton from "./clipboardButton"
@@ -140,13 +141,22 @@ export default () => {
             css={"padding-right: 12px;"}
             spacing={8}
           >
-            <Gtk.Label
+            <Adw.StatusPage
               visible={list.as((l) => l.length === 0)}
-              cssClasses={["title-3"]}
-              marginTop={24}
-              marginBottom={24}
-              label={mode.as((m) =>
-                m === "clipboard" ? "No clipboard items" : "No apps found",
+              vexpand
+              cssClasses={["compact"]}
+              title={mode.as((m) =>
+                m === "clipboard" ? "No Clipboard Items" : "No Apps Found",
+              )}
+              description={mode.as((m) =>
+                m === "clipboard"
+                  ? "Your clipboard history is empty"
+                  : "Try a different search term",
+              )}
+              iconName={mode.as((m) =>
+                m === "clipboard"
+                  ? "edit-paste-symbolic"
+                  : "system-search-symbolic",
               )}
             />
             <For each={list}>

@@ -17,7 +17,7 @@
  * ### Layout
  * | Component | File | Description |
  * |-----------|------|-------------|
- * | `LinkedPopoverBox` | `linkedPopoverBox.tsx` | Container that links child widgets visually (no spacing between). |
+ * | `LinkedBox` | `linkedBox.tsx` | Container that links child widgets visually (no spacing between). |
  * | `IconInfoRow` | `iconInfoRow.tsx` | Row with icon, label, and optional secondary text. |
  *
  * ### Controls
@@ -68,7 +68,7 @@
 export { QuickToggleButton } from "./quickToggleButton"
 export { IconButton, IconMenuButton } from "./iconButton"
 export { IconInfoRow } from "./iconInfoRow"
-export { LinkedPopoverBox } from "./linkedPopoverBox"
+export { LinkedBox } from "./linkedBox"
 export { Slider } from "./slider"
 export { ActionButton } from "./actionButton"
 export { PowerMenu } from "./powerMenu"

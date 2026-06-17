@@ -19,7 +19,9 @@ const NotificationContent = ({
   setNotificationCount: (n: number) => void
   showProgress: boolean
 }) => {
-  const [notifications, setNotifications] = createState<Notifd.Notification[]>([])
+  const [notifications, setNotifications] = createState<Notifd.Notification[]>(
+    [],
+  )
   const timeouts = new Map<number, GLib.Source>()
 
   const addNotification = (id: number) => {
@@ -30,16 +32,24 @@ const NotificationContent = ({
       setNotificationCount(next.length)
       return next
     })
+    const expireMs =
+      n.expire_timeout > 0 ? n.expire_timeout : notifd.default_timeout > 0
+        ? notifd.default_timeout
+        : 5000
     timeouts.set(
       id,
-      setTimeout(() => {
-        setNotifications((prev) => {
-          const next = prev.filter((x) => x.id !== id)
-          setNotificationCount(next.length)
-          return next
-        })
-        timeouts.delete(id)
-      }, 5000, []),
+      setTimeout(
+        () => {
+          setNotifications((prev) => {
+            const next = prev.filter((x) => x.id !== id)
+            setNotificationCount(next.length)
+            return next
+          })
+          timeouts.delete(id)
+        },
+        expireMs,
+        [],
+      ),
     )
   }
 
@@ -83,7 +93,7 @@ const NotificationContent = ({
     <Gtk.Box
       orientation={Gtk.Orientation.VERTICAL}
       spacing={4}
-      $={(self) => {
+      $={() => {
         notifd.connect("notified", (_, id) => addNotification(id))
       }}
     >
@@ -149,8 +159,10 @@ export default () => {
 
     GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 15, () => {
       if (!initialized) {
-        print("[Shade] [WARN] [notifications] Notifd.get_default() has not completed after 15s — " +
-          "D-Bus handshake may be hung. Notifications widget will not show.")
+        print(
+          "[Shade] [WARN] [notifications] Notifd.get_default() has not completed after 15s — " +
+            "D-Bus handshake may be hung. Notifications widget will not show.",
+        )
       }
       return GLib.SOURCE_REMOVE
     })

@@ -205,7 +205,7 @@ export const TimerSection = () => {
             orientation={Gtk.Orientation.VERTICAL}
             spacing={4}
             halign={Gtk.Align.FILL}
-            cssClasses={["card", "p-8", "padding"]}
+            cssClasses={["card", "p-8", "p-12"]}
           >
             <Gtk.Label
               label="Focus for 25 minutes, then take a 5 minute break."

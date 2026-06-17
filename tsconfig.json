@@ -4,6 +4,7 @@
     "module": "ES2022",
     "lib": ["ES2024"],
     "outDir": "dist",
+    "rootDir": "src",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
@@ -13,10 +14,7 @@
     "skipLibCheck": true,
     "paths": { "#/*": ["./src/*"] },
     "jsx": "react-jsx",
-    "jsxImportSource": "gnim/gtk4"
+    "jsxImportSource": "gnim/gtk4",
   },
-  "exclude": ["build"]
+  "exclude": ["build"],
 }
-
-
-
