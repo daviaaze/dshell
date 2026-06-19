@@ -5,16 +5,8 @@ import { ColorScheme } from "#/lib/colorScheme"
 import logger from "#/lib/logger"
 import { Accessor } from "gnim"
 
-const TEMP_MIN = 2000
-const TEMP_MAX = 6500
-
-export function toPercent(kelvin: number): number {
-  return Math.round(((TEMP_MAX - kelvin) / (TEMP_MAX - TEMP_MIN)) * 100)
-}
-
-export function toKelvin(percent: number): number {
-  return Math.round(TEMP_MAX - (percent / 100) * (TEMP_MAX - TEMP_MIN))
-}
+export const TEMP_MIN = 2000
+export const TEMP_MAX = 6500
 
 @register({ GTypeName: "NightLight" })
 export default class NightLight extends GObject.Object {
