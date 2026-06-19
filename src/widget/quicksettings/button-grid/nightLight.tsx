@@ -8,7 +8,7 @@ export default () => {
   const nightLight = NightLight.get_default()
 
   const popover = (
-    <Gtk.Popover cssClasses={[]}>
+    <Gtk.Popover cssClasses={[]} hasArrow={false}>
       <Gtk.Box
         cssClasses={["toolbar", "linked", "popover-padded"]}
         orientation={Gtk.Orientation.VERTICAL}
