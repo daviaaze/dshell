@@ -30,7 +30,7 @@ export default () => {
       <LinkedBox>
         <Gtk.Button onClicked={() => inhibit.setDuration(0)}>
           <Adw.ButtonContent
-            iconName="emblem-default-symbolic"
+            iconName="list-add-symbolic"
             label="Indefinitely"
           />
         </Gtk.Button>

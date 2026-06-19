@@ -20,7 +20,6 @@ export default () => {
             widthRequest={150}
             digits={0}
             roundDigits={0}
-            drawValue
             adjustment={
               (
                 <Gtk.Adjustment
@@ -36,6 +35,7 @@ export default () => {
             }
           />
           <Gtk.Label
+            widthChars={5}
             label={createBinding(nightLight, "temperature").as((t) => `${t}K`)}
             cssClasses={["caption"]}
           />
