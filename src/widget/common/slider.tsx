@@ -18,8 +18,11 @@ export const Slider = (props: SliderProps) => {
   const safe = (v: number) => (Number.isFinite(v) ? v : 0)
   const [displayValue, setDisplayValue] = createState(safe(props.value()))
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let isExternalUpdate = false
 
   const debouncedSetValue = (value: number) => {
+    // Don't propagate external volume changes back to PipeWire
+    if (isExternalUpdate) return
     setDisplayValue(value)
     if (debounceTimer !== null) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
@@ -29,7 +32,12 @@ export const Slider = (props: SliderProps) => {
   }
 
   props.value.subscribe(() => {
-    if (debounceTimer === null) setDisplayValue(safe(props.value()))
+    if (debounceTimer === null) {
+      isExternalUpdate = true
+      setDisplayValue(safe(props.value()))
+      // Reset flag after Gnim renders and onChangeValue has been suppressed
+      setTimeout(() => { isExternalUpdate = false }, 0)
+    }
   })
 
   return (
