@@ -30,25 +30,25 @@ export default () => {
       <LinkedBox>
         <Gtk.Button onClicked={() => inhibit.setDuration(0)}>
           <Adw.ButtonContent
-            iconName="list-add-symbolic"
+            iconName="weather-clear-symbolic"
             label="Indefinitely"
           />
         </Gtk.Button>
         <Gtk.Button onClicked={() => inhibit.setDuration(5)}>
           <Adw.ButtonContent
-            iconName="appointment-soon-symbolic"
+            iconName="preferences-system-time-symbolic"
             label="5 minutes"
           />
         </Gtk.Button>
         <Gtk.Button onClicked={() => inhibit.setDuration(15)}>
           <Adw.ButtonContent
-            iconName="appointment-soon-symbolic"
+            iconName="preferences-system-time-symbolic"
             label="15 minutes"
           />
         </Gtk.Button>
         <Gtk.Button onClicked={() => inhibit.setDuration(60)}>
           <Adw.ButtonContent
-            iconName="appointment-soon-symbolic"
+            iconName="preferences-system-time-symbolic"
             label="1 hour"
           />
         </Gtk.Button>
