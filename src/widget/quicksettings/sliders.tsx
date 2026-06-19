@@ -6,6 +6,8 @@ import { AudioEndpointControl } from "#/widget/common/audioControl"
 import { Slider } from "#/widget/common/slider"
 import logger from "#/lib/logger"
 
+const BRIGHTNESS_PRESETS = [0.25, 0.50, 0.75, 1.0]
+
 export const AudioConfig = () => {
   logger.log("AudioConfig:")
   const [speakers, setSpeakers] = createState<Wireplumber.Endpoint[]>([])
@@ -74,6 +76,15 @@ export const MicConfig = () => {
 export const BrightnessSlider = () => {
   logger.log("BrightnessSlider: get_default()")
   const brightness = Brightness.get_default()
+  const [presetIndex, setPresetIndex] = createState(0)
+
+  const cycleBrightness = () => {
+    const next = (presetIndex() + 1) % BRIGHTNESS_PRESETS.length
+    setPresetIndex(next)
+    const value = BRIGHTNESS_PRESETS[next]
+    brightness.set({ screen: value })
+  }
+
   logger.log("BrightnessSlider: done")
   return (
     <Slider
@@ -83,6 +94,7 @@ export const BrightnessSlider = () => {
       max={100}
       value={createBinding(brightness, "screen").as((v) => v * 100)}
       setValue={(value) => brightness.set({ screen: value / 100 })}
+      onIconClick={cycleBrightness}
     />
   )
 }

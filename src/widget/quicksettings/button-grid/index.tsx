@@ -12,8 +12,6 @@ import NightLight from "./nightLight"
 import NightLightLib from "#/lib/nightLight"
 import Touchpad from "./touchpad"
 import TouchpadLib from "#/lib/touchpad"
-import IdleControls from "./idleControls"
-import HypridleLib from "#/lib/hypridle"
 
 export const ButtonGrid = ({ cols = 2 }: { cols?: number }) => {
   logger.log("ButtonGrid: loading")
@@ -29,7 +27,6 @@ export const ButtonGrid = ({ cols = 2 }: { cols?: number }) => {
     <QuickTimerButton />,
     nightLight.available ? <NightLight /> : null,
     TouchpadLib.get_default().available ? <Touchpad /> : null,
-    HypridleLib.get_default().available ? <IdleControls /> : null,
   ]
 
   const visibleItems = items.filter(Boolean)

@@ -48,7 +48,7 @@ export const AudioEndpointControl = ({
       <Slider
         min={0}
         max={100}
-        setMutted={() => device.set_mute(!device.get_mute())}
+        onIconClick={() => device.set_mute(!device.get_mute())}
         icon={getVolumeIcon(device, mutedIcon)}
         value={createBinding(device, "volume").as((v) => v * 100)}
         setValue={(value) => device.set_volume(value / 100)}
@@ -116,7 +116,7 @@ export const AudioEndpointControl = ({
                 max={100}
                 value={createBinding(device, "volume").as((v) => v * 100)}
                 setValue={(value) => device.set_volume(value / 100)}
-                setMutted={() => device.set_mute(!device.get_mute())}
+                onIconClick={() => device.set_mute(!device.get_mute())}
               />
             ) : null
           }

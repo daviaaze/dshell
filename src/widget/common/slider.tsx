@@ -9,7 +9,7 @@ type SliderProps = {
   max: number
   value: Accessor<number>
   setValue: (value: number) => void
-  setMutted?: () => void
+  onIconClick?: () => void
 }
 
 const DEBOUNCE_MS = 80
@@ -34,9 +34,13 @@ export const Slider = (props: SliderProps) => {
 
   return (
     <Gtk.Box cssClasses={["slider"]} spacing={4} visible={props.visible}>
-      <Gtk.Button onClicked={props.setMutted}>
-      <Gtk.Image iconName={props.icon} />
-      </Gtk.Button>
+      {props.onIconClick ? (
+        <Gtk.Button onClicked={props.onIconClick}>
+          <Gtk.Image iconName={props.icon} />
+        </Gtk.Button>
+      ) : (
+        <Gtk.Image iconName={props.icon} />
+      )}
       <Astal.Slider
         hexpand
         min={props.min}
