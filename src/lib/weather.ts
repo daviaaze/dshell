@@ -32,7 +32,6 @@ export default class Weather extends GObject.Object {
     this.#weather.set_location(location)
     this.#weather.update()
     this.notify("location")
-    this.notify("info")
   }
 
   updateFromCoords(lat: number, lon: number) {
