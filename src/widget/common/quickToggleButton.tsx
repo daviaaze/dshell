@@ -13,15 +13,29 @@ interface QuickToggleButtonProps {
   visible?: Accessor<boolean> | boolean
 }
 
-export const QuickToggleButton = (props: QuickToggleButtonProps) => (
-  <Adw.SplitButton
-    visible={props.visible ?? true}
-    cssClasses={props.cssClasses ?? ["raised"]}
-    hexpand={props.hexpand ?? true}
-    $={usePopoverCleanup}
-    onClicked={props.onClick}
-    popover={props.popover}
-  >
-    <Adw.ButtonContent iconName={props.icon} label={props.label} />
-  </Adw.SplitButton>
-)
+export const QuickToggleButton = (props: QuickToggleButtonProps) => {
+  if (props.popover) {
+    return (
+      <Adw.SplitButton
+        visible={props.visible ?? true}
+        cssClasses={props.cssClasses ?? ["raised"]}
+        hexpand={props.hexpand ?? true}
+        $={usePopoverCleanup}
+        onClicked={props.onClick}
+        popover={props.popover}
+      >
+        <Adw.ButtonContent iconName={props.icon} label={props.label} />
+      </Adw.SplitButton>
+    )
+  }
+  return (
+    <Gtk.Button
+      visible={props.visible ?? true}
+      cssClasses={props.cssClasses ?? ["raised"]}
+      hexpand={props.hexpand ?? true}
+      onClicked={props.onClick}
+    >
+      <Adw.ButtonContent iconName={props.icon} label={props.label} />
+    </Gtk.Button>
+  )
+}
