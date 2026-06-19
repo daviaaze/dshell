@@ -2,7 +2,8 @@ import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { createBinding } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
-import NightLight from "#/lib/nightLight"
+import { Slider } from "#/widget/common/slider"
+import NightLight, { toPercent, toKelvin } from "#/lib/nightLight"
 
 export default () => {
   const nightLight = NightLight.get_default()
@@ -14,30 +15,15 @@ export default () => {
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
       >
-        <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
-          <Gtk.Label label="Temperature" />
-          <Gtk.Scale
-            widthRequest={150}
-            digits={0}
-            adjustment={
-              (
-                <Gtk.Adjustment
-                  lower={2000}
-                  upper={6500}
-                  stepIncrement={100}
-                  value={createBinding(nightLight, "temperature")}
-                />
-              ) as Gtk.Adjustment
-            }
-            onValueChanged={(self) =>
-              (nightLight.temperature = self.get_value())
-            }
-          />
-          <Gtk.Label
-            label={createBinding(nightLight, "temperature").as((t) => `${t}K`)}
-            cssClasses={["caption"]}
-          />
-        </Gtk.Box>
+        <Slider
+          icon="night-light-symbolic"
+          min={0}
+          max={100}
+          value={createBinding(nightLight, "temperature").as((t) =>
+            toPercent(t),
+          )}
+          setValue={(v) => (nightLight.temperature = toKelvin(v))}
+        />
         <Gtk.Separator />
         <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
           <Gtk.Label label="Auto Schedule" hexpand />

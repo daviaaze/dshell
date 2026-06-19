@@ -4,6 +4,7 @@ import Theming from "#/lib/theming"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
 import { For } from "gnim"
+import { toPercent, toKelvin } from "#/lib/nightLight"
 
 export default () => {
   const settings = useSettings().general
@@ -125,19 +126,19 @@ export default () => {
         />
         <Adw.SpinRow
           title={"Color Temperature"}
-          subtitle={"Lower values are warmer (redder)"}
+          subtitle={"0% = cool, 100% = warm"}
           adjustment={
             (
               <Gtk.Adjustment
-                lower={2000}
-                upper={6500}
-                stepIncrement={100}
-                value={settings.nightLightTemperature}
+                lower={0}
+                upper={100}
+                stepIncrement={5}
+                value={settings.nightLightTemperature.as((t) => toPercent(t))}
               />
             ) as Gtk.Adjustment
           }
           onNotifyValue={(self) =>
-            settings.setNightLightTemperature(self.value)
+            settings.setNightLightTemperature(toKelvin(self.value))
           }
         />
         <Adw.SwitchRow
