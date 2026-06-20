@@ -18,11 +18,12 @@ export const Slider = (props: SliderProps) => {
   const safe = (v: number) => (Number.isFinite(v) ? v : 0)
   const [displayValue, setDisplayValue] = createState(safe(props.value()))
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  let suppressOnChange = false
+  let sliderRef: Astal.Slider | null = null
+  let programmaticSet = false
 
   const debouncedSetValue = (value: number) => {
-    // Don't propagate external volume changes back to PipeWire
-    if (suppressOnChange) return
+    // Ignore onChangeValue triggered by programmatic set_value()
+    if (programmaticSet) return
     setDisplayValue(value)
     if (debounceTimer !== null) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
@@ -31,11 +32,14 @@ export const Slider = (props: SliderProps) => {
     }, DEBOUNCE_MS)
   }
 
+  // Sync external value changes to the slider imperatively (not via reactive binding)
   props.value.subscribe(() => {
-    if (debounceTimer === null) {
-      suppressOnChange = true
-      setDisplayValue(safe(props.value()))
-      suppressOnChange = false
+    const v = safe(props.value())
+    setDisplayValue(v)
+    if (sliderRef && debounceTimer === null) {
+      programmaticSet = true
+      sliderRef.set_value(v)
+      programmaticSet = false
     }
   })
 
@@ -52,9 +56,11 @@ export const Slider = (props: SliderProps) => {
         hexpand
         min={props.min}
         max={props.max}
-        $={(self) => self.set_value(safe(displayValue()))}
+        $={(self) => {
+          sliderRef = self
+          self.set_value(safe(displayValue()))
+        }}
         onChangeValue={({ value }) => debouncedSetValue(safe(value))}
-        value={displayValue}
       />
       <Gtk.Label
         cssClasses={["heading"]}
