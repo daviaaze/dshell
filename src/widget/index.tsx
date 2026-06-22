@@ -6,6 +6,10 @@ import notifications from "./notifications"
 import osd from "./osd"
 import quicksettings from "./quicksettings"
 import windowswitcher from "./windowswitcher"
+import screenshotOverlay from "./screenshot-overlay"
+import regionSelector from "./region-selector"
+import recordingBar from "./recording-bar"
+import recordingBoundary from "./recording-boundary"
 import { createSettingsWindow } from "./settings"
 import { Wallpaper } from "./wallpaper"
 import Weather from "#/lib/weather"
@@ -92,6 +96,10 @@ export const widgets = () => {
   safe("quicksettings", quicksettings)
   safe("lockscreen", LockScreen)
   safe("windowswitcher", windowswitcher)
+  safe("screenshot-overlay", screenshotOverlay)
+  safe("region-selector", regionSelector)
+  safe("recording-bar", recordingBar)
+  safe("recording-boundary", recordingBoundary)
   safe("notifications", notifications)
   safe("settings", () => {
     const win = createSettingsWindow()

@@ -18,9 +18,7 @@ in
       "SUPERSHIFT,S,exec,${shade-action "screenshot-area"}"
       ",XF86TouchpadToggle,exec,${shade-action "toggle-touchpad"}"
 
-      "SUPER, PRINT, exec, ${lib.getExe pkgs.hyprshot} -m window"
-      ", PRINT, exec, ${lib.getExe pkgs.hyprshot} -m output"
-      "SUPERSHIFT, PRINT, exec, ${lib.getExe pkgs.hyprshot} -m region"
+      ", PRINT, exec, ${shade-action "screenshot-overlay"}"
 
       "SUPERSHIFT,R,exec, hyprctl reload;${pkgs.libnotify}/bin/notify-send 'Hyprland had just reloaded!'"
       "SUPERSHIFT,Q,exec,pkill Hyprland"

@@ -26,6 +26,7 @@ export function registerActions(app: Gio.Application) {
     },
     screenshot: () => screenshot.screenshot(true),
     "screenshot-area": () => screenshot.screenshot(false),
+    "screenshot-overlay": () => screenshot.toggleOverlay(),
     record: () => screenshot.toggleRecording(),
     "record-area": () => screenshot.recordArea(),
     "record-window": () => screenshot.recordWindow(),
@@ -60,6 +61,7 @@ export const requestHandler = (
   else if (args[1] === "clipboard") activate("toggle-clipboard")
   else if (args[1] === "screenshot") activate("screenshot")
   else if (args[1] === "screenshot-area") activate("screenshot-area")
+  else if (args[1] === "screenshot-overlay") activate("screenshot-overlay")
   else if (args[1] === "record") activate("record")
   else if (args[1] === "record-area") activate("record-area")
   else if (args[1] === "record-window") activate("record-window")

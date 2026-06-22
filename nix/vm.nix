@@ -70,7 +70,6 @@
     btop
     # Test artifact tools
     grim # Wayland screenshots
-    slurp # Region selection for screenshots
     wf-recorder # Wayland screen recording
   ];
 

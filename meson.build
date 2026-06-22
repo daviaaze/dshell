@@ -8,6 +8,36 @@ prefix = get_option('prefix')
 datadir = prefix / get_option('datadir')
 bindir = prefix / get_option('bindir')
 
+sharePickerTarget = custom_target(
+  input: configure_file(
+    input: 'src/share-picker-main.ts',
+    output: 'share-picker-main.ts',
+    configuration: {
+      'gjs': find_program('gjs').full_path(),
+    },
+  ),
+  command: [
+    find_program('esbuild'),
+    '--bundle', '@INPUT@',
+    '--outfile=@OUTPUT@',
+    '--external:gi://*',
+    '--external:resource://*',
+    '--external:system',
+    '--external:gettext',
+    '--format=esm',
+    '--sourcemap=inline',
+    '--tsconfig=@SOURCE_ROOT@/tsconfig.json',
+    '--define:import.meta.name="' + name + '-share-picker"',
+    '--define:import.meta.version="' + version + '"',
+    '--define:import.meta.domain="' + domain + '"',
+    '--define:import.meta.datadir="' + datadir + '"',
+    '--define:import.meta.bindir="' + bindir + '"',
+  ],
+  output: name + '-share-picker',
+  install: true,
+  install_dir: bindir,
+)
+
 custom_target(
   input: configure_file(
     input: 'src/main.ts',

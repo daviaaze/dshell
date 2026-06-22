@@ -20,6 +20,7 @@ export default class WindowManager extends GObject.Object {
   #notifications: Astal.Window | null = null
   #settings: Adw.Window | null = null
   #dock: Astal.Window | null = null
+  #screenshotOverlay: Astal.Window | null = null
 
   @getter(Array)
   get bars() {
@@ -64,6 +65,11 @@ export default class WindowManager extends GObject.Object {
   @getter(Object)
   get dock() {
     return this.#dock
+  }
+
+  @getter(Object)
+  get screenshotOverlay() {
+    return this.#screenshotOverlay
   }
 
   registerBar(win: Astal.Window) {
@@ -131,5 +137,10 @@ export default class WindowManager extends GObject.Object {
       this.#dock = null
       this.notify("dock")
     }
+  }
+
+  setOverlay(win: Astal.Window | null) {
+    this.#screenshotOverlay = win
+    this.notify("screenshot-overlay")
   }
 }

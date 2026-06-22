@@ -75,7 +75,6 @@
         bash
         curl
         grim
-        slurp
         wf-recorder
         wl-clipboard
         cliphist

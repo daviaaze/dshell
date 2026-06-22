@@ -223,4 +223,43 @@ export const generalSchema = new Schema({
       "Debug categories to enable (empty = all). Categories: mount, state, theme, dbus, exec, perf, memory",
   })
 
-export default defineSchemaList([barSchema, generalSchema, weatherSchema, timerSchema])
+// ── Screen Capture ───────────────────────────────────────────────
+
+export const screenCaptureSchema = new Schema({
+  id: id + ".screen-capture",
+  path: path + "screen-capture/",
+})
+  .key("recorder-backend", "i", {
+    default: 0,
+    summary: "Recording backend (0 = wl-screenrec, 1 = wf-recorder)",
+  })
+  .key("screenshot-format", "i", {
+    default: 0,
+    summary: "Screenshot image format (0 = png, 1 = jpg)",
+  })
+  .key("record-audio", "b", {
+    default: true,
+    summary: "Enable audio recording by default",
+  })
+  .key("show-recording-boundary", "b", {
+    default: true,
+    summary: "Show red border around recorded/shared area",
+  })
+  .key("recording-boundary-color", "s", {
+    default: "#FF0000",
+    summary: "Color of the recording boundary border",
+  })
+  .key("virtual-monitor-resolution", "s", {
+    default: "1920x1080",
+    summary: "Default resolution for virtual monitors",
+  })
+  .key("virtual-monitor-fps", "i", {
+    default: 60,
+    summary: "Default refresh rate for virtual monitors",
+  })
+  .key("overlay-freeze-enabled", "b", {
+    default: true,
+    summary: "Freeze screen when opening the capture overlay",
+  })
+
+export default defineSchemaList([barSchema, generalSchema, weatherSchema, timerSchema, screenCaptureSchema])

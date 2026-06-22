@@ -11,7 +11,7 @@ in
 
   config = lib.mkIf cfg.enable {
     home.packages = with pkgs; [
-      hyprshot
+      grim
       wl-clipboard
       qalculate-gtk
       wf-recorder
@@ -51,6 +51,16 @@ in
     # Without this, kdeconnect-indicator may fail to initialize on Wayland.
     home.sessionVariables = {
       QT_QPA_PLATFORM = "wayland;xcb";
+    };
+
+    # Configure XDPH to use our custom share picker
+    # The shade-shell-share-picker binary is installed by the shade desktop module
+    xdg.configFile."hypr/xdph.conf" = {
+      text = ''
+        screencopy {
+            custom_picker_binary = shade-shell-share-picker
+        }
+      '';
     };
 
     programs.ssh = {
