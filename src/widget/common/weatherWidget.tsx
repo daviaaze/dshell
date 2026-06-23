@@ -124,6 +124,12 @@ export const WeatherWidget = () => {
     return list
   })
 
+  // Moon phase (used by SunArc at night)
+  const moonPhase = info.as((w) => {
+    if (!w?.is_valid()) return null
+    return weather.getMoonPhase()
+  })
+
   return (
     <Gtk.Box
       orientation={Gtk.Orientation.VERTICAL}
@@ -165,7 +171,7 @@ export const WeatherWidget = () => {
 
       {/* ── Sunrise/Sunset Arc (updates every 30s via timeout) ── */}
       <Gtk.Box cssClasses={["p-8"]}>
-        <SunArc sunrise={sunrise} sunset={sunset} now={now} />
+        <SunArc sunrise={sunrise} sunset={sunset} now={now} moonPhase={moonPhase} />
       </Gtk.Box>
 
       {/* ── Hourly Forecast ── */}

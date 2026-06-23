@@ -7,13 +7,16 @@ interface SunArcProps {
   sunrise: Accessor<number>
   sunset: Accessor<number>
   now: Accessor<number>
+  /** Moon phase at night (null during day) */
+  moonPhase?: Accessor<{ phase: number; phaseName: string; phaseEmoji: string } | null>
 }
 
-export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
+export const SunArc = ({ sunrise, sunset, now, moonPhase }: SunArcProps) => {
   const draw = (_area: Gtk.DrawingArea, cr: Cairo.Context, w: number, h: number) => {
     const sr = sunrise()
     const ss = sunset()
     const n = now()
+    const moon = moonPhase?.()
 
     // Handle invalid/unset timestamps (initial loading)
     if (!sr || !ss || sr <= 0 || ss <= 0) {
@@ -55,7 +58,7 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     cr.setLineWidth(1)
     cr.stroke()
 
-    // ── Sun position dot ──
+    // ── Sun position dot (day only) ──
     if (isDay && fraction >= 0 && fraction <= 1) {
       const angle = Math.PI - fraction * Math.PI // PI=sunrise (left), 0=sunset (right)
       const sx = cx + r * Math.cos(angle)
@@ -98,18 +101,44 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     cr.setSourceRGBA(0.8, 0.3, 0.1, 0.7)
     cr.fill()
 
-    // ── "Daylight: Xh Ym" label ──
-    if (dayLength > 0) {
-      const hours = Math.floor(dayLength / 3600)
-      const minutes = Math.floor((dayLength % 3600) / 60)
-      const daylightLabel = `Daylight: ${hours}h ${minutes}m`
-      cr.setFontSize(8)
-      cr.setSourceRGBA(1, 1, 1, 0.5)
-      const extents3 = cr.textExtents(daylightLabel)
-      cr.moveTo(cx - extents3.x_advance / 2, h - 4)
-      cr.showText(daylightLabel)
+    // ── Bottom info: day or night ──
+    if (isDay) {
+      // Daylight count
+      if (dayLength > 0) {
+        const hours = Math.floor(dayLength / 3600)
+        const minutes = Math.floor((dayLength % 3600) / 60)
+        const label = `Daylight: ${hours}h ${minutes}m`
+        cr.setFontSize(8)
+        cr.setSourceRGBA(1, 1, 1, 0.5)
+        const ext3 = cr.textExtents(label)
+        cr.moveTo(cx - ext3.x_advance / 2, h - 4)
+        cr.showText(label)
+      }
+    } else if (moon) {
+      // Night: show moon phase + sunrise countdown
+      const nextSunrise = sr + 86400 // approx same time tomorrow
+      const secsUntilSunrise = Math.max(0, nextSunrise - n)
+      const hrs = Math.floor(secsUntilSunrise / 3600)
+      const mins = Math.floor((secsUntilSunrise % 3600) / 60)
+
+      // Moon phase emoji + name
+      cr.setFontSize(10)
+      cr.setSourceRGBA(1, 1, 1, 0.6)
+      const moonStr = `${moon.phaseEmoji} ${moon.phaseName}`
+      const ext3 = cr.textExtents(moonStr)
+      cr.moveTo(cx - ext3.x_advance / 2, h - 14)
+      cr.showText(moonStr)
+
+      // Sunrise countdown
+      if (hrs > 0) {
+        cr.setFontSize(8)
+        cr.setSourceRGBA(1, 1, 1, 0.4)
+        const countdown = `Sunrise in ${hrs}h ${mins}m`
+        const ext4 = cr.textExtents(countdown)
+        cr.moveTo(cx - ext4.x_advance / 2, h - 2)
+        cr.showText(countdown)
+      }
     }
-  }
 
   const area = (
     <Gtk.DrawingArea

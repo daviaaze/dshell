@@ -236,6 +236,25 @@ export default class Weather extends GObject.Object {
     return ts
   }
 
+  /** Moon phase: degrees (0=new, 90=first, 180=full, 270=last) */
+  getMoonPhase(): { phase: number; phaseName: string; phaseEmoji: string } | null {
+    const [valid, phase] = this.#weather.get_value_moonphase()
+    if (!valid) return null
+    const d = ((phase % 360) + 360) % 360
+    const idx = Math.round(d / 45) % 8
+    const PHASES = [
+      { name: "New Moon", emoji: "🌑" },
+      { name: "Waxing Crescent", emoji: "🌒" },
+      { name: "First Quarter", emoji: "🌓" },
+      { name: "Waxing Gibbous", emoji: "🌔" },
+      { name: "Full Moon", emoji: "🌕" },
+      { name: "Waning Gibbous", emoji: "🌖" },
+      { name: "Last Quarter", emoji: "🌗" },
+      { name: "Waning Crescent", emoji: "🌘" },
+    ]
+    return { phase, ...PHASES[idx] }
+  }
+
   /** Current conditions detail data */
   getDetails(): {
     windSpeed: number
