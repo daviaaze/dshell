@@ -249,10 +249,6 @@ export const WeatherWidget = () => {
             cssClasses={["weather-detail-card"]}
             hexpand
           >
-            <Gtk.Image
-              iconName="weather-windy-symbolic"
-              pixelSize={16}
-            />
             <Gtk.Label
               label={windSpeed.as((s) => `${s.toFixed(0)} km/h`)}
               cssClasses={["weather-detail-value"]}
@@ -268,10 +264,6 @@ export const WeatherWidget = () => {
             cssClasses={["weather-detail-card"]}
             hexpand
           >
-            <Gtk.Image
-              iconName="weather-temp-symbolic"
-              pixelSize={16}
-            />
             <Gtk.Label
               label={humidity.as((h) => `${h.toFixed(0)}%`)}
               cssClasses={["weather-detail-value"]}
@@ -284,10 +276,6 @@ export const WeatherWidget = () => {
             cssClasses={["weather-detail-card"]}
             hexpand
           >
-            <Gtk.Image
-              iconName="weather-temp-symbolic"
-              pixelSize={16}
-            />
             <Gtk.Label
               label={pressure.as((p) => `${p.toFixed(0)} hPa`)}
               cssClasses={["weather-detail-value"]}
