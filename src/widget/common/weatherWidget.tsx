@@ -113,13 +113,15 @@ export const WeatherWidget = () => {
   })
 
   // Forecast
-  const hourlyForecast = info.as(() => {
-    if (!info()?.is_valid()) return []
-    return weather.getHourlyForecast(8)
+  const hourlyForecast = info.as((w) => {
+    if (!w?.is_valid()) return []
+    const list = weather.getHourlyForecast(8)
+    return list
   })
-  const dailyForecast = info.as(() => {
-    if (!info()?.is_valid()) return []
-    return weather.getDailyForecast(5)
+  const dailyForecast = info.as((w) => {
+    if (!w?.is_valid()) return []
+    const list = weather.getDailyForecast(5)
+    return list
   })
 
   return (
@@ -180,9 +182,8 @@ export const WeatherWidget = () => {
           hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         >
           <Gtk.Box spacing={8}>
-            <For
-              each={hourlyForecast}
-              callback={(f) => (
+            <For each={hourlyForecast}>
+              {(f) => (
                 <Gtk.Box
                   orientation={Gtk.Orientation.VERTICAL}
                   cssClasses={["weather-hourly-item"]}
@@ -196,7 +197,7 @@ export const WeatherWidget = () => {
                   <Gtk.Label label={formatTemp(f.temp)} />
                 </Gtk.Box>
               )}
-            />
+            </For>
           </Gtk.Box>
         </Gtk.ScrolledWindow>
       </Gtk.Box>
@@ -212,9 +213,8 @@ export const WeatherWidget = () => {
           halign={Gtk.Align.START}
         />
         <Gtk.Box spacing={8} hexpand homogeneous>
-          <For
-            each={dailyForecast}
-            callback={(d) => (
+          <For each={dailyForecast}>
+            {(d) => (
               <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 cssClasses={["weather-daily-item"]}
@@ -228,7 +228,7 @@ export const WeatherWidget = () => {
                 />
               </Gtk.Box>
             )}
-          />
+          </For>
         </Gtk.Box>
       </Gtk.Box>
 

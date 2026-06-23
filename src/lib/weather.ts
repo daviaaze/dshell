@@ -120,14 +120,34 @@ export default class Weather extends GObject.Object {
     const forecasts = toArray<GWeather.Info>(list)
     const now = GLib.DateTime.new_now_local().to_unix()
 
+    logger.info("weather", `getHourlyForecast: found ${forecasts.length} forecast entries`)
+
     return forecasts
       .filter((f) => {
         const [valid, ts] = f.get_value_update()
-        return valid && ts > now && ts < now + hours * 3600
+        if (!valid) {
+          logger.info("weather", "  entry has invalid update time")
+          return false
+        }
+        const inRange = ts > now && ts < now + hours * 3600
+        if (!inRange) {
+          logger.info(
+            "weather",
+            `  entry ts=${ts} now=${now} diff=${ts - now}s — out of range`,
+          )
+        }
+        return inRange
       })
       .map((f) => {
         const [, ts] = f.get_value_update()
-        const [, temp] = f.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)
+        const isValid = f.is_valid()
+        let temp = NaN
+        if (isValid) {
+          const [tempValid, tempVal] = f.get_value_temp(
+            GWeather.TemperatureUnit.CENTIGRADE,
+          )
+          temp = tempValid ? tempVal : NaN
+        }
         return {
           time: ts,
           temp,
@@ -150,16 +170,27 @@ export default class Weather extends GObject.Object {
     const forecasts = toArray<GWeather.Info>(list)
     if (forecasts.length === 0) return []
 
+    logger.info(
+      "weather",
+      `getDailyForecast: ${forecasts.length} entries, first ts=${forecasts[0].get_value_update()[1]}`,
+    )
+
     // Group by day (using date only, ignoring time)
     const dayMap = new Map<string, GWeather.Info[]>()
     for (const f of forecasts) {
-      const [, ts] = f.get_value_update()
+      const [valid, ts] = f.get_value_update()
+      if (!valid) continue
       const dt = GLib.DateTime.new_from_unix_local(ts)
       const dayKey = dt.format("%Y-%m-%d")
       if (!dayKey) continue
       if (!dayMap.has(dayKey)) dayMap.set(dayKey, [])
       dayMap.get(dayKey)!.push(f)
     }
+
+    logger.info(
+      "weather",
+      `getDailyForecast: grouped into ${dayMap.size} days: ${Array.from(dayMap.keys()).join(", ")}`,
+    )
 
     // Skip today (index 0 = today's forecast, we want future days)
     const entries = Array.from(dayMap.entries())
@@ -172,16 +203,21 @@ export default class Weather extends GObject.Object {
       const midIcon = fs[Math.floor(fs.length / 2)].get_icon_name()
 
       for (const f of fs) {
-        const [, max] = f.get_value_temp_max(GWeather.TemperatureUnit.CENTIGRADE)
-        const [, min] = f.get_value_temp_min(GWeather.TemperatureUnit.CENTIGRADE)
-        if (max > tempMax) tempMax = max
-        if (min < tempMin) tempMin = min
+        if (!f.is_valid()) continue
+        const [maxValid, max] = f.get_value_temp_max(
+          GWeather.TemperatureUnit.CENTIGRADE,
+        )
+        const [minValid, min] = f.get_value_temp_min(
+          GWeather.TemperatureUnit.CENTIGRADE,
+        )
+        if (maxValid && max > tempMax) tempMax = max
+        if (minValid && min < tempMin) tempMin = min
       }
 
       return {
         date: ts,
-        tempMax,
-        tempMin,
+        tempMax: tempMax === -Infinity ? 0 : tempMax,
+        tempMin: tempMin === Infinity ? 0 : tempMin,
         iconName: midIcon,
         dayName: dt.format("%a") ?? "---",
       }

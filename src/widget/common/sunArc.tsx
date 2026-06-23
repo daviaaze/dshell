@@ -24,21 +24,16 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     const dayLength = ss - sr
     const fraction = dayLength > 0 ? (n - sr) / dayLength : 0
 
-    const pad = 8
+    // Layout: circular arc centered at (cx, cy), radius = r
+    // Arc spans left (π) → top → right (2π), i.e. a semicircle above the horizon
+    const pad = 16
     const arcW = w - pad * 2
-    const arcH = h * 0.65
     const cx = w / 2
-    const cy = h * 0.85
-    const rx = arcW / 2
-    const ry = arcH
+    const cy = h * 0.82
+    const r = Math.min(arcW / 2, cy - 6)  // radius: fit width AND stay within widget
 
     // ── Background fill below the arc (ground area) ──
-    cr.save()
-    cr.translate(cx, cy)
-    cr.scale(rx, ry)
-    cr.arc(0, 0, 1, Math.PI, 2 * Math.PI)
-    cr.restore()
-    cr.lineTo(cx + rx, cy)
+    cr.arc(cx, cy, r, Math.PI, 2 * Math.PI)
     cr.closePath()
     if (isDay) {
       cr.setSourceRGBA(1.0, 0.65, 0.2, 0.12)
@@ -48,18 +43,14 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     cr.fill()
 
     // ── Arc line ──
-    cr.save()
-    cr.translate(cx, cy)
-    cr.scale(rx, ry)
-    cr.arc(0, 0, 1, Math.PI, 2 * Math.PI)
-    cr.restore()
+    cr.arc(cx, cy, r, Math.PI, 2 * Math.PI)
     cr.setSourceRGBA(1, 1, 1, isDay ? 0.4 : 0.2)
     cr.setLineWidth(1.5)
     cr.stroke()
 
     // ── Horizon line ──
-    cr.moveTo(pad, cy)
-    cr.lineTo(w - pad, cy)
+    cr.moveTo(cx - r, cy)
+    cr.lineTo(cx + r, cy)
     cr.setSourceRGBA(1, 1, 1, 0.15)
     cr.setLineWidth(1)
     cr.stroke()
@@ -67,8 +58,8 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     // ── Sun position dot ──
     if (isDay && fraction >= 0 && fraction <= 1) {
       const angle = Math.PI - fraction * Math.PI // PI=sunrise (left), 0=sunset (right)
-      const sx = cx + rx * Math.cos(angle)
-      const sy = cy - ry * Math.sin(angle)
+      const sx = cx + r * Math.cos(angle)
+      const sy = cy - r * Math.sin(angle)
 
       // Glow
       cr.arc(sx, sy, 10, 0, 2 * Math.PI)
@@ -81,42 +72,43 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
       cr.fill()
     }
 
-    // ── Sunrise time label (left) ──
+    // ── Sunrise time label (left of arc) ──
     const sunriseLabel = formatTimeShort(sr)
     cr.selectFontFace("sans-serif", Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL)
     cr.setFontSize(9)
     cr.setSourceRGBA(1, 1, 1, 0.7)
 
-    const extents = cr.textExtents(sunriseLabel)
-    cr.moveTo(pad, cy + 12)
+    cr.moveTo(cx - r + 2, cy + 12)
     cr.showText(sunriseLabel)
 
     // Sunrise dot
-    cr.arc(pad + 4, cy + 12 + 3, 3, 0, 2 * Math.PI)
+    cr.arc(cx - r + 2, cy + 12 - 4, 2, 0, 2 * Math.PI)
     cr.setSourceRGBA(1.0, 0.6, 0.1, 0.7)
     cr.fill()
 
-    // ── Sunset time label (right) ──
+    // ── Sunset time label (right of arc) ──
     const sunsetLabel = formatTimeShort(ss)
-    const extents2 = cr.textExtents(sunsetLabel)
+    const extents = cr.textExtents(sunsetLabel)
     cr.setSourceRGBA(1, 1, 1, 0.7)
-    cr.moveTo(w - pad - extents2.x_advance, cy + 12)
+    cr.moveTo(cx + r - 2 - extents.x_advance, cy + 12)
     cr.showText(sunsetLabel)
 
     // Sunset dot
-    cr.arc(w - pad - 4, cy + 12 + 3, 3, 0, 2 * Math.PI)
+    cr.arc(cx + r - 2, cy + 12 - 4, 2, 0, 2 * Math.PI)
     cr.setSourceRGBA(0.8, 0.3, 0.1, 0.7)
     cr.fill()
 
     // ── "Daylight: Xh Ym" label ──
-    const hours = Math.floor(dayLength / 3600)
-    const minutes = Math.floor((dayLength % 3600) / 60)
-    const daylightLabel = `Daylight: ${hours}h ${minutes}m`
-    cr.setFontSize(8)
-    cr.setSourceRGBA(1, 1, 1, 0.5)
-    const extents3 = cr.textExtents(daylightLabel)
-    cr.moveTo(cx - extents3.x_advance / 2, h - 4)
-    cr.showText(daylightLabel)
+    if (dayLength > 0) {
+      const hours = Math.floor(dayLength / 3600)
+      const minutes = Math.floor((dayLength % 3600) / 60)
+      const daylightLabel = `Daylight: ${hours}h ${minutes}m`
+      cr.setFontSize(8)
+      cr.setSourceRGBA(1, 1, 1, 0.5)
+      const extents3 = cr.textExtents(daylightLabel)
+      cr.moveTo(cx - extents3.x_advance / 2, h - 4)
+      cr.showText(daylightLabel)
+    }
   }
 
   const area = (
