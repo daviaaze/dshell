@@ -269,10 +269,21 @@ popover.tray-menu > contents.background.menu {
 }
 
 .weather-hourly-item {
-  min-width: 48px;
-  padding: 4px 8px;
+  min-width: 36px;
+  padding: 2px 4px;
   background: alpha(var(--window-fg-color), 0.05);
-  border-radius: 8px;
+  border-radius: 6px;
+  align-items: center;
+}
+
+.weather-hourly-time {
+  font-size: 0.7em;
+  opacity: 0.6;
+}
+
+.weather-hourly-temp {
+  font-size: 0.8em;
+  font-weight: 600;
 }
 
 .weather-daily-item {

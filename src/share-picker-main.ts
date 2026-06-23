@@ -15,7 +15,9 @@
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
 import Gdk from "gi://Gdk?version=4.0"
-import { programArgs, print } from "system"
+import { programArgs } from "system"
+
+// print() is a global function in GJS, not exported from the system module
 
 // ── Parse window list from XDPH env var ─────────────────────────
 
@@ -116,8 +118,13 @@ function main() {
     flags: 0,
   })
 
-  let result: string | null = null
   let tokenRestore = allowTokenDefault
+
+  /** Print selection and quit the app — XDPH reads stdout for the result */
+  function select(value: string) {
+    print(value)
+    app.quit()
+  }
 
   app.connect("activate", () => {
     // Create window
@@ -127,8 +134,14 @@ function main() {
     win.set_hide_on_close(true)
 
     // ── Main layout ────────────────────────────────────────────
-    const mainBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8 })
-    mainBox.set_margin(12)
+    const mainBox = new Gtk.Box({
+      orientation: Gtk.Orientation.VERTICAL,
+      spacing: 8,
+      marginTop: 12,
+      marginBottom: 12,
+      marginStart: 12,
+      marginEnd: 12,
+    })
 
     // Header
     const header = new Gtk.Label({
@@ -164,8 +177,7 @@ function main() {
         const btn = new Gtk.Button({ label: text, halign: Gtk.Align.FILL, hexpand: true })
         btn.add_css_class("flat")
         btn.connect("clicked", () => {
-          result = `[SELECTION]${tokenRestore ? "r" : ""}/screen:${mon.name}\n`
-          win.close()
+          select(`[SELECTION]${tokenRestore ? "r" : ""}/screen:${mon.name}`)
         })
         monitorsBox.append(btn)
       }
@@ -195,8 +207,7 @@ function main() {
         btn.add_css_class("flat")
         btn.set_tooltip_text(`Address: ${w.address}`)
         btn.connect("clicked", () => {
-          result = `[SELECTION]${tokenRestore ? "r" : ""}/window:${w.id}\n`
-          win.close()
+          select(`[SELECTION]${tokenRestore ? "r" : ""}/window:${w.id}`)
         })
         windowsBox.append(btn)
       }
@@ -212,21 +223,20 @@ function main() {
 
     // ── Cancel button ──────────────────────────────────────────
     const cancelBtn = new Gtk.Button({ label: "Cancel", halign: Gtk.Align.CENTER })
-    cancelBtn.connect("clicked", () => win.close())
+    cancelBtn.connect("clicked", () => app.quit())
     mainBox.append(cancelBtn)
+
+    // Close button (X) → treat as cancel: quit with no output
+    win.connect("close-request", () => {
+      app.quit()
+    })
 
     win.set_child(mainBox)
     win.present()
   })
 
-  // Handle window close
   app.connect("shutdown", () => {
-    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-      if (result) {
-        print(result)
-      }
-      return GLib.SOURCE_REMOVE
-    })
+    // no-op: app quits without printing, XDPH treats empty stdout as cancel
   })
 
   app.run([])

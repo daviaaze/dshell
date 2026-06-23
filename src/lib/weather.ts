@@ -241,7 +241,10 @@ export default class Weather extends GObject.Object {
 
   /** Moon phase: degrees (0=new, 90=first, 180=full, 270=last) */
   getMoonPhase(): { phase: number; phaseName: string; phaseEmoji: string } | null {
-    const [valid, phase] = this.#weather.get_value_moonphase()
+    const result = this.#weather.get_value_moonphase()
+    const valid = result[0]
+    const phase = result[1]
+    logger.info("weather", `getMoonPhase: valid=${valid} phase=${phase}`)
     if (!valid) return null
     const d = ((phase % 360) + 360) % 360
     const idx = Math.round(d / 45) % 8

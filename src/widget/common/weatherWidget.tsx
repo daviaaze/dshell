@@ -181,26 +181,29 @@ export const WeatherWidget = () => {
       >
         <Gtk.Label
           cssClasses={["caption", "weather-section-label"]}
-          label="Hourly Forecast"
+          label="Hourly"
           halign={Gtk.Align.START}
         />
         <Gtk.ScrolledWindow
-          hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+          hscrollbarPolicy={Gtk.PolicyType.NEVER}
         >
-          <Gtk.Box spacing={8}>
+          <Gtk.Box spacing={4}>
             <For each={hourlyForecast}>
               {(f) => (
                 <Gtk.Box
                   orientation={Gtk.Orientation.VERTICAL}
                   cssClasses={["weather-hourly-item"]}
-                  spacing={2}
+                  spacing={0}
                 >
                   <Gtk.Label
-                    cssClasses={["caption"]}
+                    cssClasses={["weather-hourly-time"]}
                     label={formatTime(f.time)}
                   />
-                  <Gtk.Image iconName={f.iconName} pixelSize={20} />
-                  <Gtk.Label label={formatTemp(f.temp)} />
+                  <Gtk.Image iconName={f.iconName} pixelSize={16} />
+                  <Gtk.Label
+                    cssClasses={["weather-hourly-temp"]}
+                    label={formatTemp(f.temp)}
+                  />
                 </Gtk.Box>
               )}
             </For>
