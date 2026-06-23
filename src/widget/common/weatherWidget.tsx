@@ -127,12 +127,18 @@ export const WeatherWidget = () => {
       orientation={Gtk.Orientation.VERTICAL}
       cssClasses={["weather-widget"]}
       $={(self: Gtk.Box) => {
-        // Set initial style immediately, then subscribe for updates
-        self.set_style(
-          `background: ${gradient()}; border-radius: 12px;`,
+        const cssProvider = new Gtk.CssProvider()
+        cssProvider.load_from_string(
+          `* { background: ${gradient()}; border-radius: 12px; }`,
+        )
+        self.get_style_context().add_provider(
+          cssProvider,
+          Gtk.STYLE_PROVIDER_PRIORITY_USER,
         )
         gradient.subscribe((g) => {
-          self.set_style(`background: ${g}; border-radius: 12px;`)
+          cssProvider.load_from_string(
+            `* { background: ${g}; border-radius: 12px; }`,
+          )
         })
       }}
     >
