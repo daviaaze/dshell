@@ -4,7 +4,7 @@ import Gdk from "gi://Gdk?version=4.0"
 import Adw from "gi://Adw?version=1"
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
 import GLib from "gi://GLib?version=2.0"
-import { createBinding } from "gnim"
+import { createBinding, createState } from "gnim"
 import { app } from "#/App"
 import WindowManager from "#/lib/windowManager"
 import Screenshot from "#/lib/screenshot"
@@ -16,6 +16,10 @@ export default () => {
   const ss = Screenshot.get_default()
   const hyprland = AstalHyprland.get_default()
   const captureSettings = getScreenCaptureSettings()
+
+  // Snapshot focused client/monitor geometry before overlay steals focus
+  const [savedClientGeometry, setSavedClientGeometry] = createState<string | null>(null)
+  const [savedMonitorGeometry, setSavedMonitorGeometry] = createState<string | null>(null)
 
   // ── Handlers ──────────────────────────────────────────────────────
 
@@ -61,19 +65,13 @@ export default () => {
             ss.screenshot(true)
             break
           case "window": {
-            const client = hyprland.focused_client
-            if (client) {
-              const geometry = `${client.x},${client.y} ${client.width}x${client.height}`
-              ss.screenshotGeometry(geometry)
-            }
+            const geometry = savedClientGeometry()
+            if (geometry) ss.screenshotGeometry(geometry)
             break
           }
           case "monitor": {
-            const mon = hyprland.focused_monitor
-            if (mon) {
-              const geometry = `${mon.x},${mon.y} ${mon.width}x${mon.height}`
-              ss.screenshotGeometry(geometry)
-            }
+            const geometry = savedMonitorGeometry()
+            if (geometry) ss.screenshotGeometry(geometry)
             break
           }
         }
@@ -83,9 +81,11 @@ export default () => {
           case "fullscreen":
             ss.toggleRecording()
             break
-          case "window":
-            ss.recordWindow()
+          case "window": {
+            const geometry = savedClientGeometry()
+            if (geometry) ss.startRecording({ geometry })
             break
+          }
           case "monitor":
             ss.recordOutput()
             break
@@ -157,6 +157,17 @@ export default () => {
       keymode={Astal.Keymode.EXCLUSIVE}
       visible={createBinding(ss, "overlay-open")}
       onNotifyVisible={(self) => {
+        if (self.visible) {
+          // Snapshot geometry before our window steals Hyprland focus
+          const client = hyprland.focused_client
+          if (client) {
+            setSavedClientGeometry(`${client.x},${client.y} ${client.width}x${client.height}`)
+          }
+          const mon = hyprland.focused_monitor
+          if (mon) {
+            setSavedMonitorGeometry(`${mon.x},${mon.y} ${mon.width}x${mon.height}`)
+          }
+        }
         if (!self.visible) ss.overlayOpen = false
       }}
       anchor={

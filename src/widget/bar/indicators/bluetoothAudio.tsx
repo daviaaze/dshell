@@ -1,7 +1,7 @@
 import Bluetooth from "gi://AstalBluetooth"
 import Gdk from "gi://Gdk?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createComputed, createState, For, onMount } from "gnim"
+import { createComputed, createState, onCleanup, onMount } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
 import { useSettings } from "#/lib/settings"
 import { getDeviceBatteryPercentage } from "#/lib/bluetoothBattery"
@@ -31,11 +31,19 @@ function deviceIcon(icon: string): string {
   return ICON_MAP[icon] || "bluetooth-symbolic"
 }
 
-function batteryColor(level: number | null): string {
-  if (level === null) return ""
-  if (level < 20) return "color: #e03e3e;"
-  if (level < 50) return "color: #f5c211;"
-  return ""
+function applyColorCss(widget: Gtk.Widget, level: number | null) {
+  let css: string
+  if (level === null) return
+  if (level < 20) css = "* { color: #e03e3e; }"
+  else if (level < 50) css = "* { color: #f5c211; }"
+  else return
+
+  const provider = new Gtk.CssProvider()
+  provider.load_from_string(css)
+  widget.get_style_context().add_provider(
+    provider,
+    Gtk.STYLE_PROVIDER_PRIORITY_USER,
+  )
 }
 
 export default () => {
@@ -45,6 +53,36 @@ export default () => {
   const [deviceInfo, setDeviceInfo] = createState<
     { name: string; icon: string; battery: number | null }[]
   >([])
+
+  // Container box created once via $ callback to avoid
+  // gtk_button_set_child assertion when Gnim re-renders <For> children.
+  // Children are managed imperatively in refresh() instead.
+  let iconBox: Gtk.Box | null = null
+
+  function updateIcons(
+    devices: { name: string; icon: string; battery: number | null }[],
+  ) {
+    const box = iconBox
+    if (!box) return
+
+    // Remove old icon widgets
+    let child = box.get_first_child()
+    while (child) {
+      const next = child.get_next_sibling()
+      box.remove(child)
+      child = next
+    }
+
+    // Add icon for each connected device
+    for (const d of devices) {
+      const img = new Gtk.Image({
+        iconName: d.icon,
+        pixelSize: 18,
+      })
+      applyColorCss(img, d.battery)
+      box.append(img)
+    }
+  }
 
   onMount(() => {
     const batterySignals = new Map<string, number>()
@@ -78,15 +116,16 @@ export default () => {
         }
       }
 
-      setDeviceInfo(
-        arr
-          .filter((d) => d.connected)
-          .map((d) => ({
-            name: d.name || "Device",
-            icon: deviceIcon(d.icon || ""),
-            battery: getDeviceBatteryPercentage(d),
-          })),
-      )
+      const devices = arr
+        .filter((d) => d.connected)
+        .map((d) => ({
+          name: d.name || "Device",
+          icon: deviceIcon(d.icon || ""),
+          battery: getDeviceBatteryPercentage(d),
+        }))
+
+      setDeviceInfo(devices)
+      updateIcons(devices)
     }
 
     bluetooth.connect("notify::is-connected", refresh)
@@ -98,34 +137,30 @@ export default () => {
     () => deviceInfo().length > 0 && bar.showBluetoothBattery(),
   )
 
-  const devicesArray = deviceInfo.as((d) => d)
+  const tooltipText = deviceInfo.as((arr) =>
+    arr.length > 0
+      ? arr
+          .map((d) =>
+            d.battery !== null
+              ? `${d.name}: ${d.battery.toFixed(0)}%`
+              : d.name,
+          )
+          .join("\n")
+      : "",
+  )
 
   return (
-    <Gtk.Box
+    <Gtk.Button
       visible={visible}
       cursor={Gdk.Cursor.new_from_name("pointer", null)}
-      tooltipMarkup={devicesArray.as((arr) =>
-        arr.length > 0
-          ? arr
-              .map((d) =>
-                d.battery !== null
-                  ? `${d.name}: ${d.battery.toFixed(0)}%`
-                  : d.name,
-              )
-              .join("\n")
-          : "",
-      )}
-      spacing={4}
-    >
-      <For each={devicesArray}>
-        {(device) => (
-          <Gtk.Image
-            iconName={device.icon}
-            pixelSize={18}
-            css={batteryColor(device.battery)}
-          />
-        )}
-      </For>
-    </Gtk.Box>
+      tooltipMarkup={tooltipText}
+      $={(self) => {
+        iconBox = new Gtk.Box({ spacing: 4 })
+        self.set_child(iconBox)
+        onCleanup(() => {
+          iconBox = null
+        })
+      }}
+    />
   )
 }
