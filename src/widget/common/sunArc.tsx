@@ -139,6 +139,7 @@ export const SunArc = ({ sunrise, sunset, now, moonPhase }: SunArcProps) => {
         cr.showText(countdown)
       }
     }
+  }
 
   const area = (
     <Gtk.DrawingArea
