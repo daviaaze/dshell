@@ -107,10 +107,9 @@ function main() {
     if (arg === "--allow-token") allowTokenDefault = true
   }
 
-  // Read XDPH env
+  // Read XDPH env (pure string parsing, no GTK needed)
   const windowListStr = GLib.getenv("XDPH_WINDOW_SHARING_LIST")
   const windows = parseWindowList(windowListStr)
-  const monitors = getMonitors()
 
   // Init GTK
   const app = new Gtk.Application({
@@ -127,6 +126,10 @@ function main() {
   }
 
   app.connect("activate", () => {
+    // Query monitors inside activate handler — Gdk.Display
+    // is only available after the GTK main loop has started
+    const monitors = getMonitors()
+
     // Create window
     const win = new Gtk.Window({ application: app, title: "Share Screen / Window" })
     win.set_default_size(500, 400)
