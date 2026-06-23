@@ -175,7 +175,7 @@ export default class Weather extends GObject.Object {
       `getDailyForecast: ${forecasts.length} entries, first ts=${forecasts[0].get_value_update()[1]}`,
     )
 
-    // Group by day (using date only, ignoring time)
+    // Group by day using forecast timestamps
     const dayMap = new Map<string, GWeather.Info[]>()
     for (const f of forecasts) {
       const [valid, ts] = f.get_value_update()
@@ -192,10 +192,19 @@ export default class Weather extends GObject.Object {
       `getDailyForecast: grouped into ${dayMap.size} days: ${Array.from(dayMap.keys()).join(", ")}`,
     )
 
-    // Skip today (index 0 = today's forecast, we want future days)
-    const entries = Array.from(dayMap.entries())
-    entries.shift()
-    return entries.slice(0, days).map(([_, fs]) => {
+    // Sort days chronologically and skip today
+    const today = GLib.DateTime.new_now_local().format("%Y-%m-%d")
+    const sortedDays = Array.from(dayMap.entries()).sort(([a], [b]) =>
+      a.localeCompare(b),
+    )
+    const futureDays = sortedDays.filter(([day]) => day > today)
+
+    logger.info(
+      "weather",
+      `getDailyForecast: ${futureDays.length} future days after skipping today`,
+    )
+
+    return futureDays.slice(0, days).map(([_, fs]) => {
       let tempMax = -Infinity
       let tempMin = Infinity
       const [, ts] = fs[0].get_value_update()
