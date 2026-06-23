@@ -213,14 +213,13 @@ export default class Weather extends GObject.Object {
 
       for (const f of fs) {
         if (!f.is_valid()) continue
-        const [maxValid, max] = f.get_value_temp_max(
+        const [tempValid, tempVal] = f.get_value_temp(
           GWeather.TemperatureUnit.CENTIGRADE,
         )
-        const [minValid, min] = f.get_value_temp_min(
-          GWeather.TemperatureUnit.CENTIGRADE,
-        )
-        if (maxValid && max > tempMax) tempMax = max
-        if (minValid && min < tempMin) tempMin = min
+        if (tempValid) {
+          if (tempVal > tempMax) tempMax = tempVal
+          if (tempVal < tempMin) tempMin = tempVal
+        }
       }
 
       return {
