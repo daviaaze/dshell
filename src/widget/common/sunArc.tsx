@@ -33,8 +33,12 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     const ry = arcH
 
     // ── Background fill below the arc (ground area) ──
-    cr.moveTo(cx - rx, cy)
-    cr.arc(cx - rx, cy, rx, ry, 0, Math.PI)
+    cr.save()
+    cr.translate(cx, cy)
+    cr.scale(rx, ry)
+    cr.arc(0, 0, 1, Math.PI, 2 * Math.PI)
+    cr.restore()
+    cr.lineTo(cx + rx, cy)
     cr.closePath()
     if (isDay) {
       cr.setSourceRGBA(1.0, 0.65, 0.2, 0.12)
@@ -44,8 +48,11 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     cr.fill()
 
     // ── Arc line ──
-    cr.moveTo(cx - rx, cy)
-    cr.arc(cx - rx, cy, rx, ry, 0, Math.PI)
+    cr.save()
+    cr.translate(cx, cy)
+    cr.scale(rx, ry)
+    cr.arc(0, 0, 1, Math.PI, 2 * Math.PI)
+    cr.restore()
     cr.setSourceRGBA(1, 1, 1, isDay ? 0.4 : 0.2)
     cr.setLineWidth(1.5)
     cr.stroke()
@@ -59,8 +66,8 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
 
     // ── Sun position dot ──
     if (isDay && fraction >= 0 && fraction <= 1) {
-      const angle = Math.PI * (1 - fraction) // 0=sunrise, π=sunset
-      const sx = cx - rx * Math.cos(angle)
+      const angle = Math.PI - fraction * Math.PI // PI=sunrise (left), 0=sunset (right)
+      const sx = cx + rx * Math.cos(angle)
       const sy = cy - ry * Math.sin(angle)
 
       // Glow
@@ -81,11 +88,11 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     cr.setSourceRGBA(1, 1, 1, 0.7)
 
     const extents = cr.textExtents(sunriseLabel)
-    cr.moveTo(pad, cy + ry - extents.y_advance + 6)
+    cr.moveTo(pad, cy + 12)
     cr.showText(sunriseLabel)
 
     // Sunrise dot
-    cr.arc(pad + 4, cy + ry - extents.y_advance + 9, 3, 0, 2 * Math.PI)
+    cr.arc(pad + 4, cy + 12 + 3, 3, 0, 2 * Math.PI)
     cr.setSourceRGBA(1.0, 0.6, 0.1, 0.7)
     cr.fill()
 
@@ -93,11 +100,11 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     const sunsetLabel = formatTimeShort(ss)
     const extents2 = cr.textExtents(sunsetLabel)
     cr.setSourceRGBA(1, 1, 1, 0.7)
-    cr.moveTo(w - pad - extents2.x_advance, cy + ry - extents2.y_advance + 6)
+    cr.moveTo(w - pad - extents2.x_advance, cy + 12)
     cr.showText(sunsetLabel)
 
     // Sunset dot
-    cr.arc(w - pad - 4, cy + ry - extents2.y_advance + 9, 3, 0, 2 * Math.PI)
+    cr.arc(w - pad - 4, cy + 12 + 3, 3, 0, 2 * Math.PI)
     cr.setSourceRGBA(0.8, 0.3, 0.1, 0.7)
     cr.fill()
 
