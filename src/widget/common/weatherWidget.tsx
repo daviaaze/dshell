@@ -1,7 +1,7 @@
 import GWeather from "gi://GWeather?version=4.0"
 import GLib from "gi://GLib?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
-import { createBinding, createState, onCleanup } from "gnim"
+import { createBinding, createState, onCleanup, For } from "gnim"
 import WeatherLib from "#/lib/weather"
 import {
   weatherGradient,
@@ -59,7 +59,7 @@ export const WeatherWidget = () => {
   )
   const feelsLike = info.as((w) =>
     w?.is_valid()
-      ? `Feels like ${formatTemp(w.get_apparent())}`
+      ? `Feels like ${w.get_apparent()}`
       : "",
   )
   const skyDesc = info.as((w) => w?.get_sky() ?? "")
@@ -163,7 +163,7 @@ export const WeatherWidget = () => {
 
       {/* ── Sunrise/Sunset Arc (updates every 30s via timeout) ── */}
       <Gtk.Box cssClasses={["p-8"]}>
-        <SunArc sunrise={sunrise()} sunset={sunset()} now={now()} />
+        <SunArc sunrise={sunrise} sunset={sunset} now={now} />
       </Gtk.Box>
 
       {/* ── Hourly Forecast ── */}
@@ -180,8 +180,9 @@ export const WeatherWidget = () => {
           hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         >
           <Gtk.Box spacing={8}>
-            {hourlyForecast.as((forecasts) =>
-              forecasts.map((f) => (
+            <For
+              each={hourlyForecast}
+              callback={(f) => (
                 <Gtk.Box
                   orientation={Gtk.Orientation.VERTICAL}
                   cssClasses={["weather-hourly-item"]}
@@ -194,8 +195,8 @@ export const WeatherWidget = () => {
                   <Gtk.Image iconName={f.iconName} pixelSize={20} />
                   <Gtk.Label label={formatTemp(f.temp)} />
                 </Gtk.Box>
-              )),
-            )}
+              )}
+            />
           </Gtk.Box>
         </Gtk.ScrolledWindow>
       </Gtk.Box>
@@ -211,8 +212,9 @@ export const WeatherWidget = () => {
           halign={Gtk.Align.START}
         />
         <Gtk.Box spacing={8} hexpand homogeneous>
-          {dailyForecast.as((days) =>
-            days.map((d) => (
+          <For
+            each={dailyForecast}
+            callback={(d) => (
               <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 cssClasses={["weather-daily-item"]}
@@ -225,8 +227,8 @@ export const WeatherWidget = () => {
                   cssClasses={["weather-temp-small"]}
                 />
               </Gtk.Box>
-            )),
-          )}
+            )}
+          />
         </Gtk.Box>
       </Gtk.Box>
 

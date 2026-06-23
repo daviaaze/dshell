@@ -1,24 +1,29 @@
 import Cairo from "gi://cairo?version=1.0"
 import GLib from "gi://GLib?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
+import { Accessor, createComputed } from "gnim"
 
 interface SunArcProps {
-  sunrise: number
-  sunset: number
-  now: number
+  sunrise: Accessor<number>
+  sunset: Accessor<number>
+  now: Accessor<number>
 }
 
 export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
-  // Handle invalid/unset timestamps (initial loading)
-  if (!sunrise || !sunset || sunrise <= 0 || sunset <= 0) {
-    return <Gtk.Box heightRequest={30} /> as unknown as Gtk.DrawingArea
-  }
-
-  const isDay = now >= sunrise && now <= sunset
-  const dayLength = sunset - sunrise
-  const fraction = dayLength > 0 ? (now - sunrise) / dayLength : 0
-
   const draw = (_area: Gtk.DrawingArea, cr: Cairo.Context, w: number, h: number) => {
+    const sr = sunrise()
+    const ss = sunset()
+    const n = now()
+
+    // Handle invalid/unset timestamps (initial loading)
+    if (!sr || !ss || sr <= 0 || ss <= 0) {
+      return
+    }
+
+    const isDay = n >= sr && n <= ss
+    const dayLength = ss - sr
+    const fraction = dayLength > 0 ? (n - sr) / dayLength : 0
+
     const pad = 8
     const arcW = w - pad * 2
     const arcH = h * 0.65
@@ -70,7 +75,7 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     }
 
     // ── Sunrise time label (left) ──
-    const sunriseLabel = formatTimeShort(sunrise)
+    const sunriseLabel = formatTimeShort(sr)
     cr.selectFontFace("sans-serif", Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL)
     cr.setFontSize(9)
     cr.setSourceRGBA(1, 1, 1, 0.7)
@@ -85,7 +90,7 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
     cr.fill()
 
     // ── Sunset time label (right) ──
-    const sunsetLabel = formatTimeShort(sunset)
+    const sunsetLabel = formatTimeShort(ss)
     const extents2 = cr.textExtents(sunsetLabel)
     cr.setSourceRGBA(1, 1, 1, 0.7)
     cr.moveTo(w - pad - extents2.x_advance, cy + ry - extents2.y_advance + 6)
@@ -116,6 +121,15 @@ export const SunArc = ({ sunrise, sunset, now }: SunArcProps) => {
   ) as Gtk.DrawingArea
 
   area.set_draw_func(draw)
+
+  // Queue redraw when dependencies change
+  createComputed(() => {
+    sunrise()
+    sunset()
+    now()
+    area.queue_draw()
+  })
+
   return area
 }
 
