@@ -80,10 +80,12 @@ function getMonitors(): MonitorInfo[] {
   if (!display) return []
 
   const result: MonitorInfo[] = []
-  // Gdk.Display.get_n_monitors() returns int
-  const nMonitors = display.get_n_monitors()
+  // GDK4 uses GListModel (Gdk.MonitorListModel) — get_n_monitors() and
+  // get_monitor() from GDK3 are not available in GDK4/GJS
+  const monitorList = display.get_monitors()
+  const nMonitors = monitorList.get_n_items()
   for (let i = 0; i < nMonitors; i++) {
-    const monitor = display.get_monitor(i)
+    const monitor = monitorList.get_item(i)
     if (!monitor) continue
     const geom = monitor.geometry
     result.push({
