@@ -35,28 +35,27 @@ export const SunArc = ({ sunrise, sunset, now, moonPhase }: SunArcProps) => {
     const cy = h * 0.82
     const r = Math.min(arcW / 2, cy - 6)  // radius: fit width AND stay within widget
 
-    // ── Background fill below the arc (ground area) ──
-    cr.arc(cx, cy, r, Math.PI, 2 * Math.PI)
-    cr.closePath()
+    // ── Arc and horizon (day only) ──
     if (isDay) {
+      // ── Background fill below the arc (ground area) ──
+      cr.arc(cx, cy, r, Math.PI, 2 * Math.PI)
+      cr.closePath()
       cr.setSourceRGBA(1.0, 0.65, 0.2, 0.12)
-    } else {
-      cr.setSourceRGBA(0.2, 0.2, 0.4, 0.12)
+      cr.fill()
+
+      // ── Arc line ──
+      cr.arc(cx, cy, r, Math.PI, 2 * Math.PI)
+      cr.setSourceRGBA(1, 1, 1, 0.4)
+      cr.setLineWidth(1.5)
+      cr.stroke()
+
+      // ── Horizon line ──
+      cr.moveTo(cx - r, cy)
+      cr.lineTo(cx + r, cy)
+      cr.setSourceRGBA(1, 1, 1, 0.15)
+      cr.setLineWidth(1)
+      cr.stroke()
     }
-    cr.fill()
-
-    // ── Arc line ──
-    cr.arc(cx, cy, r, Math.PI, 2 * Math.PI)
-    cr.setSourceRGBA(1, 1, 1, isDay ? 0.4 : 0.2)
-    cr.setLineWidth(1.5)
-    cr.stroke()
-
-    // ── Horizon line ──
-    cr.moveTo(cx - r, cy)
-    cr.lineTo(cx + r, cy)
-    cr.setSourceRGBA(1, 1, 1, 0.15)
-    cr.setLineWidth(1)
-    cr.stroke()
 
     // ── Sun position dot (day only) ──
     if (isDay && fraction >= 0 && fraction <= 1) {
@@ -114,20 +113,22 @@ export const SunArc = ({ sunrise, sunset, now, moonPhase }: SunArcProps) => {
         cr.moveTo(cx - ext3.x_advance / 2, h - 4)
         cr.showText(label)
       }
-    } else if (moon) {
-      // Night: show moon phase + sunrise countdown
+    } else {
+      // Night: show moon phase (if available) + sunrise countdown
       const nextSunrise = sr + 86400 // approx same time tomorrow
       const secsUntilSunrise = Math.max(0, nextSunrise - n)
       const hrs = Math.floor(secsUntilSunrise / 3600)
       const mins = Math.floor((secsUntilSunrise % 3600) / 60)
 
-      // Moon phase emoji + name
-      cr.setFontSize(10)
-      cr.setSourceRGBA(1, 1, 1, 0.6)
-      const moonStr = `${moon.phaseEmoji} ${moon.phaseName}`
-      const ext3 = cr.textExtents(moonStr)
-      cr.moveTo(cx - ext3.x_advance / 2, h - 14)
-      cr.showText(moonStr)
+      // Moon phase (if available)
+      if (moon) {
+        cr.setFontSize(10)
+        cr.setSourceRGBA(1, 1, 1, 0.6)
+        const moonStr = `${moon.phaseEmoji} ${moon.phaseName}`
+        const ext3 = cr.textExtents(moonStr)
+        cr.moveTo(cx - ext3.x_advance / 2, h - 14)
+        cr.showText(moonStr)
+      }
 
       // Sunrise countdown
       if (hrs > 0) {
@@ -135,7 +136,8 @@ export const SunArc = ({ sunrise, sunset, now, moonPhase }: SunArcProps) => {
         cr.setSourceRGBA(1, 1, 1, 0.4)
         const countdown = `Sunrise in ${hrs}h ${mins}m`
         const ext4 = cr.textExtents(countdown)
-        cr.moveTo(cx - ext4.x_advance / 2, h - 2)
+        const y = moon ? h - 2 : h - 8
+        cr.moveTo(cx - ext4.x_advance / 2, y)
         cr.showText(countdown)
       }
     }

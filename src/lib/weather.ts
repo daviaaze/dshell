@@ -110,7 +110,7 @@ export default class Weather extends GObject.Object {
   // ── Forecast helpers ─────────────────────────────────────────────
 
   /** Returns forecast entries for the next N hours */
-  getHourlyForecast(hours: number = 8): Array<{
+  getHourlyForecast(hours: number = 12): Array<{
     time: number
     temp: number
     iconName: string
@@ -122,22 +122,18 @@ export default class Weather extends GObject.Object {
 
     logger.info("weather", `getHourlyForecast: found ${forecasts.length} forecast entries`)
 
-    return forecasts
-      .filter((f) => {
-        const [valid, ts] = f.get_value_update()
-        if (!valid) {
-          logger.info("weather", "  entry has invalid update time")
-          return false
-        }
-        const inRange = ts > now && ts < now + hours * 3600
-        if (!inRange) {
-          logger.info(
-            "weather",
-            `  entry ts=${ts} now=${now} diff=${ts - now}s — out of range`,
-          )
-        }
-        return inRange
-      })
+    const future = forecasts.filter((f) => {
+      const [valid, ts] = f.get_value_update()
+      return valid && ts > now
+    })
+
+    logger.info(
+      "weather",
+      `getHourlyForecast: ${future.length} future entries, first in ${future.length > 0 ? (future[0].get_value_update()[1] - now) : 0}s`,
+    )
+
+    return future
+      .slice(0, hours)
       .map((f) => {
         const [, ts] = f.get_value_update()
         const isValid = f.is_valid()
@@ -154,7 +150,6 @@ export default class Weather extends GObject.Object {
           iconName: f.get_icon_name(),
         }
       })
-      .slice(0, hours)
   }
 
   /** Returns daily forecast entries grouped by day */
