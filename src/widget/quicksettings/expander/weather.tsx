@@ -1,5 +1,5 @@
 import Gtk from "gi://Gtk?version=4.0"
-import { Weather as WeatherWidget } from "#/widget/common/weatherWidget"
+import { WeatherWidget } from "#/widget/common/weatherWidget"
 
 export const Weather = () => {
   return (
@@ -9,7 +9,7 @@ export const Weather = () => {
     >
       <Gtk.Label
         cssClasses={["title-3"]}
-        label={"Weather Info"}
+        label={"Weather"}
         halign={Gtk.Align.CENTER}
       />
       <WeatherWidget />
