@@ -199,38 +199,20 @@
 
 ---
 
-### 0.7 — Power Profile & Auto-cpufreq Review
+### 0.7 — Power Profile Review
 
-- **Status:** `[WIP]`
+- **Status:** `[TODO]`
 - **Effort:** Low
-- **Why:** Already implemented but has hardcoded paths, limited error handling, and no visual feedback when switching profiles. Needs hardening for production.
+- **Why:** `auto-cpufreq` integration was removed (no longer in use). Current power profile widget
+  (`powerprofiles.tsx`) uses `AstalPowerProfiles` directly with`power-profiles-daemon`.
+  Needs visual feedback on switch and tooltip info.
 - **Files:**
-  - `src/lib/autoCpufreq.ts`
-  - `src/widget/quicksettings/button-grid/autoCpufreq.tsx`
   - `src/widget/quicksettings/button-grid/powerprofiles.tsx`
-  - `nix/desktop-shell.nix`
-- **Current State:**
-  - `autoCpufreq.ts` polls pickle files every 5s to detect current profile
-  - Tries two hardcoded paths: `/opt/auto-cpufreq/override.pickle` and `/var/snap/auto-cpufreq/current/override.pickle`
-  - Falls back silently to `"balanced"` if neither path exists
-  - Detection only checks systemd or snap services
-  - `powerprofiles.tsx` uses `AstalPowerProfiles` as fallback
-  - QS button shows current profile with cycling click
-- **Production Gaps:**
-  1. **Error handling** — `pkexec auto-cpufreq --force=...` failures are only logged via `print()`. Show error toast when profile change fails (e.g., password dialog cancelled).
-  2. **Visual feedback on switch** — Add a brief spinner or transition state on the QS button while `pkexec` is running (can take 1–3s).
-  3. **Non-systemd support** — Detection checks systemd/snap only. Add OpenRC, runit detection.
-  4. **Tooltip details** — Show current profile, CPU governor, and boost status in tooltip.
-  5. **Settings integration** — Add toggle in Settings → General: "Show Power Profile in Quick Settings" (default: true).
-  6. **Auto-cpufreq availability** — If `auto-cpufreq` binary is not found, disable the toggle and show "Install auto-cpufreq" in tooltip.
+  - `src/lib/powerProfiles.ts`
 - **Acceptance:**
-  - [ ] Profile switch shows spinner/loading state while `pkexec` runs
-  - [ ] Error toast appears if `pkexec` fails or is cancelled
-  - [ ] Tooltip shows full profile details (profile name, governor, boost status)
-  - [ ] Works on non-systemd init systems (OpenRC, runit)
-  - [ ] Falls back to `AstalPowerProfiles` gracefully when auto-cpufreq is unavailable
-  - [ ] Toggleable in Settings → General
-  - [ ] No silent failures — all errors are user-visible
+  - [ ] Profile switch shows spinner/loading state
+  - [ ] Tooltip shows current profile + governor
+  - [ ] Falls back gracefully if `power-profiles-daemon` is not running
 
 ---
 

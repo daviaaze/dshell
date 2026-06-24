@@ -6,7 +6,8 @@
  */
 
 import Gtk from "gi://Gtk?version=4.0"
-import { createEffect, createState } from "gnim"
+import Adw from "gi://Adw?version=1"
+import { createEffect, createState, createBinding } from "gnim"
 import { IconNames } from "#/lib/iconNames"
 import {
   entries,
@@ -28,7 +29,22 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
   const [propsState, setPropsState] = createState<Record<string, unknown>>(
     initial?.defaultProps ?? {},
   )
-  const [showProps, setShowProps] = createState(false)
+  let panelVisible = true
+  let panelBox: Gtk.Box | null = null
+  let panelSep: Gtk.Separator | null = null
+
+  // ── viewport / background state ──────────────────────────────────────
+  const SIZES = [
+    { label: "Fill", value: -1 },
+    { label: "S", value: 320, tooltip: "320px" },
+    { label: "M", value: 768, tooltip: "768px" },
+    { label: "L", value: 1024, tooltip: "1024px" },
+    { label: "XL", value: 1920, tooltip: "1920px" },
+  ]
+  const [viewportW, setViewportW] = createState(-1)
+  const [bgMode, setBgMode] = createState("default")
+  const [extraClasses, setExtraClasses] = createState<string[]>([])
+  const isDark = createBinding(Adw.StyleManager.get_default(), "dark")
 
   // ════════════════════════════ SIDEBAR ════════════════════════════
   // Only entry rows (not category headers) for index-based lookup
@@ -234,7 +250,12 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
   }
 
   // ── build / rebuild the editable props panel ───────────────────────
+  let _buildingPanel = false
+
   const buildPropsPanel = () => {
+    // Prevent recursive rebuilds (e.g., ToggleButton toggled during construction)
+    if (_buildingPanel) return
+    _buildingPanel = true
     // Clear
     let c = propsPanel.get_first_child()
     while (c) {
@@ -243,9 +264,28 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
     }
 
     const entry = current()
-    if (!entry || !entry.editableProps) return
-    const eProps = Object.entries(entry.editableProps)
-    if (eProps.length === 0) return
+    const eProps = entry?.editableProps ? Object.entries(entry.editableProps) : []
+
+    // ── Scrollable controls ──
+    const scroller = new Gtk.ScrolledWindow({ vexpand: true })
+    const inner = new Gtk.Box({
+      orientation: Gtk.Orientation.VERTICAL,
+      spacing: 8,
+      marginStart: 8,
+      marginEnd: 8,
+      marginTop: 4,
+      marginBottom: 8,
+    })
+
+    // Styles section FIRST (always visible, even without editableProps)
+    buildStylesPanel(inner)
+
+    if (eProps.length === 0) {
+      scroller.set_child(inner)
+      propsPanel.append(scroller)
+      _buildingPanel = false
+      return
+    }
 
     // ── Header: title + reset button ──
     const headerBox = new Gtk.Box({
@@ -274,16 +314,14 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
     headerBox.append(resetBtn)
     propsPanel.append(headerBox)
 
-    // ── Scrollable controls ──
-    const scroller = new Gtk.ScrolledWindow({ vexpand: true })
-    const inner = new Gtk.Box({
-      orientation: Gtk.Orientation.VERTICAL,
-      spacing: 8,
-      marginStart: 8,
-      marginEnd: 8,
-      marginTop: 4,
-      marginBottom: 8,
-    })
+    // Styles section FIRST (always visible at top of panel)
+    buildStylesPanel(inner)
+
+    if (eProps.length > 0) {
+      inner.append(
+        new Gtk.Separator({ marginTop: 4, marginBottom: 4 }),
+      )
+    }
 
     for (const [key, def] of eProps) {
       const row = new Gtk.Box({
@@ -407,6 +445,146 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
 
     scroller.set_child(inner)
     propsPanel.append(scroller)
+    _buildingPanel = false
+  }
+
+  // ── CSS class editor ────────────────────────────────────────────────
+  const COMMON_CLASSES = [
+    "flat",
+    "card",
+    "circular",
+    "raised",
+    "linked",
+    "destructive-action",
+    "suggested-action",
+    "error",
+    "warning",
+    "success",
+    "accent",
+    "title-1",
+    "title-2",
+    "title-3",
+    "title-4",
+    "heading",
+    "body",
+    "caption",
+    "monospace",
+    "dim-label",
+    "osd",
+    "opaque",
+  ]
+
+  const buildStylesPanel = (inner: Gtk.Box) => {
+    const sep = new Gtk.Separator({ marginTop: 8, marginBottom: 8 })
+    inner.append(sep)
+
+    // Header with reset
+    const hdr = new Gtk.Box({
+      orientation: Gtk.Orientation.HORIZONTAL,
+      spacing: 4,
+    })
+    hdr.append(
+      new Gtk.Label({ label: "CSS Styles", cssClasses: ["title-4"], hexpand: true }),
+    )
+    const resetBtn = new Gtk.Button({
+      iconName: "edit-clear-all-symbolic",
+      tooltipText: "Clear all extra CSS classes",
+      cssClasses: ["flat"],
+      valign: Gtk.Align.CENTER,
+    })
+    resetBtn.connect("clicked", () => setExtraClasses([]))
+    hdr.append(resetBtn)
+    inner.append(hdr)
+
+    // Active classes as flow chips
+    const flowBox = new Gtk.FlowBox({
+      maxChildrenPerLine: 3,
+      minChildrenPerLine: 1,
+      selectionMode: Gtk.SelectionMode.NONE,
+      columnSpacing: 4,
+      rowSpacing: 4,
+      marginTop: 4,
+    })
+    const rebuildChips = () => {
+      // Clear
+      let ch = flowBox.get_first_child()
+      while (ch) {
+        flowBox.remove(ch)
+        ch = flowBox.get_first_child()
+      }
+      for (const cls of extraClasses()) {
+        const chipRow = new Gtk.Box({ spacing: 2 })
+        const lbl = new Gtk.Label({
+          label: cls,
+          cssClasses: ["caption", "monospace"],
+        })
+        chipRow.append(lbl)
+        const delBtn = new Gtk.Button({
+          iconName: "window-close-symbolic",
+          cssClasses: ["circular", "flat"],
+          valign: Gtk.Align.CENTER,
+        })
+        delBtn.connect("clicked", () => {
+          setExtraClasses(extraClasses().filter((c) => c !== cls))
+        })
+        chipRow.append(delBtn)
+        flowBox.append(chipRow)
+      }
+      flowBox.visible = extraClasses().length > 0
+    }
+    flowBox.connect("map", rebuildChips)
+    // Also rebuild on extraClasses changes via the panel rebuild cycle
+    inner.append(flowBox)
+
+    // Common class toggles (compact grid)
+    const toggleGrid = new Gtk.FlowBox({
+      maxChildrenPerLine: 3,
+      minChildrenPerLine: 1,
+      selectionMode: Gtk.SelectionMode.NONE,
+      columnSpacing: 2,
+      rowSpacing: 2,
+      marginTop: 6,
+    })
+    for (const cls of COMMON_CLASSES) {
+      const isActive = extraClasses().includes(cls)
+      const btn = new Gtk.ToggleButton({
+        label: cls,
+        active: isActive,
+        cssClasses: ["flat"],
+        tooltipText: `Toggle .${cls}`,
+      })
+      btn.connect("toggled", () => {
+        const current = extraClasses()
+        if (btn.active) {
+          setExtraClasses([...current, cls])
+        } else {
+          setExtraClasses(current.filter((c) => c !== cls))
+        }
+      })
+      toggleGrid.append(btn)
+    }
+    inner.append(toggleGrid)
+
+    // Custom class entry
+    const addRow = new Gtk.Box({ spacing: 4, marginTop: 6 })
+    const entry = new Gtk.Entry({
+      placeholderText: "custom-class",
+      hexpand: true,
+    })
+    addRow.append(entry)
+    const addBtn = new Gtk.Button({
+      label: "Add",
+      cssClasses: ["suggested-action"],
+    })
+    addBtn.connect("clicked", () => {
+      const text = entry.text.trim()
+      if (text && !extraClasses().includes(text)) {
+        setExtraClasses([...extraClasses(), text])
+      }
+      entry.text = ""
+    })
+    addRow.append(addBtn)
+    inner.append(addRow)
   }
 
   // ════════════════════════ REACTIVE RENDER ════════════════════════
@@ -422,6 +600,7 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
   createEffect(() => {
     const c = current()
     const p = propsState()
+    const xClasses = extraClasses()
 
     // Check if the slot is available (mounted)
     if (!previewSlot) return
@@ -434,6 +613,10 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
     try {
       const widget = c.render(p)
       if (widget instanceof Gtk.Widget) {
+        // Apply extra CSS classes from the Styles editor
+        for (const cls of xClasses) {
+          widget.add_css_class(cls)
+        }
         previewSlot.append(widget)
       }
     } catch (err) {
@@ -541,8 +724,12 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
           />
 
           <Gtk.Button
-            iconName="weather-clear-night-symbolic"
-            tooltipText="Toggle dark/light theme"
+            iconName={isDark.as((v) =>
+              v ? "weather-clear-symbolic" : "weather-clear-night-symbolic",
+            )}
+            tooltipText={isDark.as((v) =>
+              v ? "Switch to light theme" : "Switch to dark theme",
+            )}
             cssClasses={["flat"]}
             onClicked={() => {
               const mgr = Adw.StyleManager.get_default()
@@ -556,13 +743,71 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
             iconName="document-edit-symbolic"
             tooltipText="Toggle props editor"
             cssClasses={["flat"]}
-            onClicked={() => setShowProps(!showProps())}
             $={(self) => {
-              current.subscribe((e) => {
-                self.visible = !!(e && e.editableProps)
+              self.connect("clicked", () => {
+                panelVisible = !panelVisible
+                if (panelBox) panelBox.visible = panelVisible
+                if (panelSep) panelSep.visible = panelVisible
+                if (panelVisible) buildPropsPanel()
               })
-              const cur = current()
-              self.visible = !!(cur && cur.editableProps)
+            }}
+          />
+        </Gtk.Box>
+
+        <Gtk.Separator />
+
+        {/* Toolbar — size presets + background */}
+        <Gtk.Box
+          spacing={6}
+          marginStart={12}
+          marginEnd={12}
+          marginTop={6}
+          marginBottom={6}
+        >
+          <Gtk.Label label="Size:" cssClasses={["caption"]} valign={Gtk.Align.CENTER} />
+          <Gtk.Box
+            spacing={2}
+            hexpand
+            $={(self) => {
+              const buttons: Gtk.ToggleButton[] = []
+              for (const sz of SIZES) {
+                const btn = new Gtk.ToggleButton({
+                  label: sz.label,
+                  active: viewportW() === sz.value,
+                  tooltipText: sz.tooltip ?? sz.label,
+                  cssClasses: ["flat"],
+                })
+                btn.connect("toggled", () => {
+                  if (btn.active) {
+                    buttons.forEach((b) => {
+                      if (b !== btn) b.active = false
+                    })
+                    setViewportW(sz.value)
+                  }
+                })
+                self.append(btn)
+                buttons.push(btn)
+              }
+              // Sync buttons when viewportW changes externally
+              viewportW.subscribe((w) => {
+                for (let i = 0; i < buttons.length; i++) {
+                  buttons[i].active = SIZES[i].value === w
+                }
+              })
+            }}
+          />
+          <Gtk.Separator orientation={Gtk.Orientation.VERTICAL} />
+          <Gtk.Label label="BG:" cssClasses={["caption"]} valign={Gtk.Align.CENTER} />
+          <Gtk.DropDown
+            model={new Gtk.StringList({
+              strings: ["Default", "Checkerboard", "Light", "Dark"],
+            })}
+            selected={0}
+            $={(self) => {
+              self.connect("notify::selected", () => {
+                const modes = ["default", "checkerboard", "light", "dark"]
+                setBgMode(modes[self.selected] ?? "default")
+              })
             }}
           />
         </Gtk.Box>
@@ -570,7 +815,29 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
         <Gtk.Separator />
 
         {/* Preview canvas */}
-        <Gtk.ScrolledWindow hexpand vexpand>
+        <Gtk.ScrolledWindow
+          hexpand
+          vexpand
+          cssClasses={["preview-canvas"]}
+          $={(self) => {
+            // Background: toggle CSS classes on the full canvas area
+            bgMode.subscribe((m) => {
+              for (const cls of [
+                "preview-bg-checker",
+                "preview-bg-light",
+                "preview-bg-dark",
+              ]) {
+                self.remove_css_class(cls)
+              }
+              if (m === "checkerboard")
+                self.add_css_class("preview-bg-checker")
+              else if (m === "light")
+                self.add_css_class("preview-bg-light")
+              else if (m === "dark")
+                self.add_css_class("preview-bg-dark")
+            })
+          }}
+        >
           <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
             halign={Gtk.Align.CENTER}
@@ -581,6 +848,21 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
             marginTop={48}
             marginBottom={48}
           >
+            {/* Wrapper Box with fixed width + overflow:hidden acts as max-width */}
+            <Gtk.Box
+              orientation={Gtk.Orientation.VERTICAL}
+              $={(self) => {
+                viewportW.subscribe((w) => {
+                  if (w > 0) {
+                    self.widthRequest = w
+                    self.overflow = Gtk.Overflow.HIDDEN
+                  } else {
+                    self.widthRequest = -1
+                    self.overflow = Gtk.Overflow.VISIBLE
+                  }
+                })
+              }}
+            >
             <Gtk.Frame cssClasses={["card", "preview-frame"]}>
               <Gtk.Box
                 marginStart={24}
@@ -592,21 +874,45 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
                 hexpand
                 vexpand
                 $={(self) => {
-                  // Store reference to the slot Box for the effect
                   previewSlot = self
                 }}
               />
             </Gtk.Frame>
           </Gtk.Box>
+        </Gtk.Box>
         </Gtk.ScrolledWindow>
+
+        {/* Status bar */}
+        <Gtk.Box
+          spacing={8}
+          marginStart={12}
+          marginEnd={12}
+          marginTop={4}
+          marginBottom={4}
+        >
+          <Gtk.Label
+            cssClasses={["caption", "dim-label"]}
+            hexpand
+            $={(self) => {
+              const update = () => {
+                const w = viewportW()
+                const sizeText = w > 0 ? `${w}px × auto` : "Fill"
+                self.label = `${current().name}  ·  ${sizeText}`
+              }
+              viewportW.subscribe(update)
+              current.subscribe(update)
+              update()
+            }}
+          />
+        </Gtk.Box>
       </Gtk.Box>
 
       {/* Props panel */}
       <Gtk.Separator
         orientation={Gtk.Orientation.VERTICAL}
         $={(self) => {
-          showProps.subscribe((vis) => { self.visible = vis })
-          self.visible = showProps()
+          panelSep = self
+          self.visible = true
         }}
       />
       <Gtk.Box
@@ -614,18 +920,13 @@ export const PreviewWindow = (props: PreviewWindowProps) => {
         widthRequest={220}
         cssClasses={["preview-props-editor"]}
         $={(self) => {
+          panelBox = self
           self.append(propsPanel)
-          // Rebuild when toggling panel visibility
-          showProps.subscribe((vis) => {
-            self.visible = vis
-            if (vis) buildPropsPanel()
-          })
-          // Rebuild when switching components (panel stays open)
-          current.subscribe(() => {
-            if (showProps()) buildPropsPanel()
-          })
-          self.visible = showProps()
-          if (showProps()) buildPropsPanel()
+          // Rebuild when switching components
+          current.subscribe(() => buildPropsPanel())
+          // Rebuild when extra CSS classes change
+          extraClasses.subscribe(() => buildPropsPanel())
+          buildPropsPanel()
         }}
       />
     </Gtk.Box>

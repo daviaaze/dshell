@@ -48,6 +48,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   labels (BUTTONS, LISTS, WEATHER, etc.) between component groups.
   (`PreviewWindow.tsx`)
 
+- **Previewer: responsive viewport** — Size toggle buttons
+  (Fill / S / M / L / XL) constrain the preview frame width via
+  dynamic CSS; status bar shows current size. (`PreviewWindow.tsx`)
+
+- **Previewer: background switcher** — Gtk.DropDown with Default /
+  Checkerboard / Light / Dark backgrounds for the preview area.
+  (`PreviewWindow.tsx`)
+
+- **Previewer: CSS Styles editor** — "CSS Styles" section in the props
+  panel with toggle buttons for 20+ common Adwaita CSS classes
+  (flat, card, circular, destructive-action, etc.), active class chips
+  with remove, and custom class entry. Applied to the rendered widget
+  reactively. (`PreviewWindow.tsx`)
+
+- **Previewer: expanded editableProps** — LinkedBox (spacing, margin),
+  QuickToggleButton (hexpand), AudioControl (volume, deviceName,
+  muted, showAppMixer). All 13 entries now have editable props.
+  (`registry.tsx`)
+
 - **Previewer: component presets** — `Gtk.DropDown` in header lets you
   quickly switch between predefined prop combinations:
   - Notification: Default / Critical / Progress / With Image

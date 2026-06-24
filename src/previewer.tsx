@@ -67,6 +67,16 @@ function initCss() {
     .preview-frame {
       border-radius: 12px;
     }
+    .preview-bg-checker {
+      background-image: linear-gradient(45deg, #ddd 25%, transparent 25%), linear-gradient(-45deg, #ddd 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ddd 75%), linear-gradient(-45deg, transparent 75%, #ddd 75%);
+      background-size: 20px 20px;
+    }
+    .preview-bg-light {
+      background: #ffffff;
+    }
+    .preview-bg-dark {
+      background: #1e1e1e;
+    }
     .preview-props-editor {
       border-left: 1px solid alpha(currentColor, 0.08);
       background: alpha(currentColor, 0.02);

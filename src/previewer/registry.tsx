@@ -376,12 +376,25 @@ export const entries: ComponentEntry[] = [
     category: "Controls",
     description:
       "Audio device control: volume slider, mute toggle, device list",
-    render: () =>
+    render: (p: Record<string, unknown>) =>
       MockAudioControl({
-        volume: 75,
-        deviceName: "Built-in Audio",
+        volume: p.volume as number,
+        deviceName: p.deviceName as string,
+        muted: p.muted as boolean,
+        showAppMixer: p.showAppMixer as boolean,
       }),
-    defaultProps: {},
+    defaultProps: {
+      volume: 75,
+      deviceName: "Built-in Audio",
+      muted: false,
+      showAppMixer: false,
+    },
+    editableProps: {
+      volume: { type: "number", label: "Volume", default: 75, min: 0, max: 100 },
+      deviceName: { type: "string", label: "Device name", default: "Built-in Audio" },
+      muted: { type: "boolean", label: "Muted", default: false },
+      showAppMixer: { type: "boolean", label: "Show app mixer", default: false },
+    },
   },
 ]
 

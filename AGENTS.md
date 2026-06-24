@@ -67,6 +67,7 @@ metadata:
 | Icon picker popover (115 Adwaita icons) | `src/previewer/PreviewWindow.tsx` → `buildIconPopup()` |
 | Error boundary | `src/previewer/PreviewWindow.tsx` → `createEffect()` |
 | Component presets | `src/previewer/registry.tsx` → `ComponentEntry.presets` |
+| Responsive viewport (S/M/L/XL/Fill) + background switcher + status bar | `src/previewer/PreviewWindow.tsx` → toolbar + CSS providers |
 | Build + watch + run tool | `tools/preview.mjs` |
 | Centralized icon name constants + `IconName` type | `src/lib/iconNames.ts` |
 | Icon name audit script | `scripts/audit-icons.sh` |
