@@ -455,7 +455,7 @@
 
 ### P2.21 — Deeply personal config in distributed module **[FIXED]**
 - **File:** `nix/hyprland/default.nix`
-- **Problem:** `kb_layout = "br,us"`, `natural_scroll = true`, Catppuccin colors, `ghostty` scratchpad. A NixOS module for other users shouldn't impose keyboard layouts and color themes.
+- **Problem:** `kb_layout = "br,us"`, `natural_scroll = true`, Catppuccin colors, hardcoded terminal in scratchpad. A NixOS module for other users shouldn't impose keyboard layouts and color themes.
 - **Fix:** Make these options with sensible defaults (e.g., `us` layout, no theme enforcement).
 
 ---

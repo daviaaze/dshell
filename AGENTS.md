@@ -60,6 +60,16 @@ metadata:
 | Test harness library | `scripts/shadetest/` |
 | VM test runner | `scripts/run-vm-test.sh` |
 | Golden image capture | `scripts/capture-golden.sh` |
+| UI Previewer entry point | `src/previewer.tsx` |
+| Component registry (add your widgets here!) | `src/previewer/registry.tsx` |
+| Preview window UI | `src/previewer/PreviewWindow.tsx` |
+| Props editor controls (string, boolean, number, select, icon) | `src/previewer/PreviewWindow.tsx` → `buildPropsPanel()` |
+| Icon picker popover (115 Adwaita icons) | `src/previewer/PreviewWindow.tsx` → `buildIconPopup()` |
+| Error boundary | `src/previewer/PreviewWindow.tsx` → `createEffect()` |
+| Component presets | `src/previewer/registry.tsx` → `ComponentEntry.presets` |
+| Build + watch + run tool | `tools/preview.mjs` |
+| Centralized icon name constants + `IconName` type | `src/lib/iconNames.ts` |
+| Icon name audit script | `scripts/audit-icons.sh` |
 
 ### Critical Rules
 
@@ -304,6 +314,58 @@ And update `CHANGELOG.md`.
 - **Logging:** Use `import logger from "#/lib/logger"` for normal logs. Use `print()` only inside `.catch()` handlers to surface errors.
 - **CSS:** Global CSS in `src/shade.css`. Widget-level CSS via inline `css="..."`. Heavy use of Libadwaita built-in classes (`card`, `frame`, `background`, `linked`, `title-1`–`title-4`, `circular`, `flat`, `raised`, etc.).
 - **Code style:** No semicolons. Follow surrounding quote style. 2-space indentation.
+
+### UI Component Previewer (Storybook)
+
+A standalone GJS application for previewing individual widgets with mock props,
+with auto-restart on file change. Think Storybook for GTK/Gnim.
+
+```bash
+# Inside nix develop shell, run:
+pnpm run preview              # Opens with component list
+pnpm run preview ActionButton # Opens directly to ActionButton
+pnpm run preview:dev          # Same as above (watch mode, default)
+
+# Or from outside the shell:
+nix develop -c pnpm run preview IconButton
+```
+
+The tool:
+1. Bundles `src/previewer.tsx` with esbuild
+2. Spawns `gjs` to render the preview window
+3. Watches `src/` for file changes (`.ts`, `.tsx`, `.css`)
+4. On change: rebuilds with esbuild → kills old GJS → spawns new GJS
+
+**Adding a new component to the previewer:**
+
+1. Open `src/previewer/registry.tsx`
+2. Import your component
+3. Add a `ComponentEntry` to the `entries` array:
+
+```typescript
+{
+  name: "MyWidget",           // Display name
+  category: "Buttons",        // Sidebar group
+  description: "What it does",
+  render: (p) => MyWidget({   // How to render it
+    someProp: p.someProp as string,
+    onClicked: () => print("clicked"),
+  }),
+  defaultProps: { someProp: "hello" },
+  editableProps: {             // Optional: props editor
+    someProp: { type: "string", label: "Label", default: "hello" },
+  },
+}
+```
+
+**Limitations:** The previewer runs as a plain `Adw.Window`, not an Astal window.
+Components that depend on Astal services (e.g. `AstalBattery`, `AstalNetwork`,
+`Hyprland`) may not render correctly. It's best for pure GTK/Adw/Gnim widgets.
+
+Run with `GTK_DEBUG=interactive` for widget inspection:
+```bash
+GTK_DEBUG=interactive pnpm run preview
+```
 
 ---
 

@@ -60,13 +60,14 @@
       enable = true;
       defaultBrowser = "firefox";
       defaultTerminal = "com.mitchellh.ghostty";
+      terminalPackage = pkgs.ghostty;
     };
   };
 
   environment.systemPackages = with pkgs; [
     firefox
     moonlight-qt
-    ghostty
+    config.programs.shade.desktop.terminalPackage
     btop
     # Test artifact tools
     grim # Wayland screenshots

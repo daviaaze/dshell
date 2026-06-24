@@ -6,6 +6,7 @@
 }:
 let
   cfg = config.programs.shade.desktop.hyprland;
+  desktopCfg = config.programs.shade.desktop;
 in
 {
   imports = [
@@ -111,7 +112,7 @@ in
             ];
 
             workspace = [
-              "special:scratchpad, on-created-empty: [pseudo; size 1920 1080] ghostty"
+              "special:scratchpad, on-created-empty: [pseudo; size 1920 1080] ${lib.getExe pkgs.uwsm} app -- ${desktopCfg.defaultTerminal}"
             ];
 
             input = {

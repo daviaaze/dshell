@@ -279,7 +279,7 @@ entry.set_visibility(false)
 **Where it bit us:**
 - `lib/gschema.ts`: Default timezones `["America/Sao_Paulo", "Australia/Sydney"]`
 - `lib/weather.ts`: Hardcoded email `caiomuniz888@gmail.com` in HTTP headers
-- `nix/hyprland/default.nix`: `kb_layout = "br,us"`, Catppuccin colors, `ghostty` scratchpad
+- `nix/hyprland/default.nix`: `kb_layout = "br,us"`, Catppuccin colors, hardcoded terminal in scratchpad
 
 **Rule:**
 > **No personal data in shared code.** Use empty arrays, neutral defaults, or environment variables.

@@ -9,6 +9,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **UI Component Previewer (Storybook):** standalone GJS app for browsing and
+  previewing individual widgets with mock props, auto-restart on file change.
+  (`src/previewer.tsx`, `src/previewer/registry.tsx`,
+  `src/previewer/PreviewWindow.tsx`, `tools/preview.mjs`)
+  - `pnpm run preview` to launch
+  - `pnpm run preview ActionButton` to jump to a specific component
+  - Watch mode rebuilds and restarts on save (default, use `--no-watch` to disable)
+
+- **Previewer: sidebar navigation** with category groups and props editor panel.
+  (`src/previewer/PreviewWindow.tsx`)
+
+- **Previewer: props editor like Storybook** — controls for every prop type:
+  (`src/previewer/PreviewWindow.tsx`, `src/previewer/registry.tsx`)
+  - `boolean` → `Gtk.Switch` toggle (before: read-only label)
+  - `number` → `Gtk.SpinButton` with min/max/step (before: read-only label)
+  - `string` → `Gtk.Entry` (unchanged)
+  - `select` → `Gtk.DropDown` with options (new: urgency, etc.)
+  - `icon` → `Gtk.Entry` + `…` button → searchable popover with all 115
+    Adwaita icons in a grid, filter by name
+  - Reset button (`edit-clear-all`) to restore default props
+  - Panel rebuilds automatically when switching components
+
+- **Previewer: theme toggle** — `weather-clear-night` button in header
+  switches between FORCE_DARK / FORCE_LIGHT. (`PreviewWindow.tsx`)
+
+- **Previewer: error boundary** — component render failures show a
+  friendly error in the preview area; one broken component doesn't
+  crash the whole previewer. (`PreviewWindow.tsx`)
+
+- **Previewer: sidebar search/filter** — `Gtk.SearchEntry` at the top
+  filters components by name. (`PreviewWindow.tsx`)
+
+- **Previewer: sidebar selection highlight** — CSS for `row:selected`
+  background on the list. (`previewer.tsx`)
+
+- **Previewer: sidebar category headers** — non-interactive category
+  labels (BUTTONS, LISTS, WEATHER, etc.) between component groups.
+  (`PreviewWindow.tsx`)
+
+- **Previewer: component presets** — `Gtk.DropDown` in header lets you
+  quickly switch between predefined prop combinations:
+  - Notification: Default / Critical / Progress / With Image
+  - Slider: Default / Min / Max / Half
+  - WeatherIcon: Overcast / Clear / Rain / Snow
+  - WeatherWidget: Default / Night / Hot / Cold
+  - SunArc: Morning / Noon / Evening / Night
+  (`PreviewWindow.tsx`, `registry.tsx`)
+  - Click a component name in the sidebar to preview it
+  - Click the edit icon (📝) in the header to toggle the props panel
+  - Edit boolean/string props in real time
+
+- **Previewer: new components registered:** PowerMenu and Slider mock.
+  (`src/previewer/registry.tsx`, `src/previewer/mockSlider.tsx`)
+
+- **Previewer: 6 new mocks** — Notification, WeatherIcon, WeatherWidget,
+  AudioControl, PowerMenu, Slider
+  (`src/previewer/mocks/mockNotification.tsx`, `src/previewer/mocks/mockWeatherIcon.tsx`,
+  `src/previewer/mocks/mockWeatherWidget.tsx`, `src/previewer/mocks/mockAudioControl.tsx`,
+  `src/previewer/mockSlider.tsx`)
+
+- **IconNames — catálogo central de ícones** (`src/lib/iconNames.ts`)
+  — 115 nomes de ícones tipados, auditados contra Adwaita 50.0.
+  - `IconNames` (const object) + `IconName` (union type)
+  - Previewer importa de `#/lib/iconNames` (local `src/previewer/iconNames.ts` removido)
+
+- **`scripts/audit-icons.sh`** — script que verifica todos os nomes do
+  `IconNames` contra os SVGs do Adwaita instalado.
+  - PowerMenu: renders the full power actions popover (lock, suspend, reboot, shutdown)
+  - Slider: pure GTK4 Gtk.Scale mock (replaces unavailable Astal.Slider)
+
 - **Shared logger utility** (`src/lib/logger.ts`) — replaces all inline `const timestamp = ...` patterns with `logger.log()` that auto-prefixes every message with `[Shade] HH:MM:SS.ffffff -`
 - **SKILL.md** — pi-agent skill definition with YAML frontmatter for the agent skills ecosystem
 - **YAML frontmatter in AGENTS.md** — metadata fields for pi-agent integration

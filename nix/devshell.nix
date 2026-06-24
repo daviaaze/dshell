@@ -24,6 +24,7 @@
         python3Packages.mcp
         openssh # ssh client for VM D-Bus testing
         sshpass # password auth for local VM SSH
+        adwaita-icon-theme
       ]);
   };
 }

@@ -54,6 +54,12 @@ in
         default = "com.mitchellh.ghostty";
         description = "Desktop file name of the default terminal emulator";
       };
+      terminalPackage = lib.mkOption {
+        type = lib.types.package;
+        default = pkgs.ghostty;
+        defaultText = lib.literalExpression "pkgs.ghostty";
+        description = "Nix package providing the terminal emulator. Must match defaultTerminal.";
+      };
     };
   };
 

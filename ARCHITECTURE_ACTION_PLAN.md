@@ -391,7 +391,7 @@
 3. When `programs.shade.desktop.enable = true`:
    - Import `hyprland.nixosModules.default`
    - Import `./hyprland/default.nix` and `./hyprland/binds.nix`
-   - Install default apps (`firefox`, `ghostty`, etc.)
+   - Install default apps (`firefox`, `shade.desktop.defaultTerminal`, etc.)
 4. Update VM config to use `desktop.enable = true`
 5. Document migration in CHANGELOG.md
 

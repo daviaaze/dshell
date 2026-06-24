@@ -445,8 +445,8 @@
   2. Poll every 30 minutes via `GLib.timeout_add_seconds`
   3. Show in `systemIndicators.tsx` as a small badge: `package-upgrade-symbolic` + count
   4. Click opens terminal with update command:
-     - NixOS: `ghostty -e sudo nixos-rebuild switch`
-     - Arch: `ghostty -e sudo pacman -Syu`
+     - NixOS: `defaultTerminal -e sudo nixos-rebuild switch`
+     - Arch: `defaultTerminal -e sudo pacman -Syu`
   5. Add GSettings key `show-updates` (bool, default true)
   6. Hide indicator entirely when count is 0
   7. Tooltip shows: "N packages pending update" + "Last checked: 12:34"
