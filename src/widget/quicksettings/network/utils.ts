@@ -279,3 +279,79 @@ export function findLiveAp(
 
   return null
 }
+
+// ── Shared NM connection builder ───────────────────────────────────
+
+/** Build a NM.SimpleConnection for a WiFi network. Reused by apList and settings/network. */
+export function createNMConnection(
+  ssid: string,
+  password?: string,
+  hidden = false,
+): NM.SimpleConnection {
+  const connection = new NM.SimpleConnection()
+
+  const sCon = new NM.SettingConnection()
+  sCon.type = "802-11-wireless"
+  sCon.uuid = GLib.uuid_string_random() ?? undefined
+  sCon.id = ssid
+  connection.add_setting(sCon)
+
+  const sWifi = new NM.SettingWireless()
+  sWifi.ssid = new GLib.Bytes(new TextEncoder().encode(ssid)) as any
+  sWifi.mode = "infrastructure"
+  sWifi.hidden = hidden
+  connection.add_setting(sWifi)
+
+  if (password) {
+    const sSec = new NM.SettingWirelessSecurity()
+    sSec.key_mgmt = "wpa-psk"
+    sSec.psk = password
+    connection.add_setting(sSec)
+  }
+
+  return connection
+}
+
+/** Convert NM key management string to a human-readable security label. */
+export function securityLabelFromKeyMgmt(keyMgmt: string | null): string {
+  if (!keyMgmt) return "Open"
+  switch (keyMgmt) {
+    case "sae": return "WPA3"
+    case "wpa-psk": return "WPA2"
+    case "wpa-eap":
+    case "ieee8021x": return "Enterprise"
+    case "none": return "WEP"
+    default: return keyMgmt || "Secure"
+  }
+}
+
+/** Async wrapper for NM.RemoteConnection.commit_changes_async. */
+export function commitChangesAsync(
+  conn: NM.RemoteConnection,
+  saveToDisk: boolean,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    conn.commit_changes_async(saveToDisk, null, (_source: any, res: any) => {
+      try {
+        conn.commit_changes_finish(res)
+        resolve()
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
+}
+
+/** Async wrapper for NM.RemoteConnection.delete_async. */
+export function deleteConnectionAsync(conn: NM.RemoteConnection): Promise<void> {
+  return new Promise((resolve, reject) => {
+    conn.delete_async(null, (_source: any, res: any) => {
+      try {
+        conn.delete_finish(res)
+        resolve()
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
+}

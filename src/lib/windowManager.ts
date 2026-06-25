@@ -2,6 +2,27 @@ import Astal from "gi://Astal?version=4.0"
 import Adw from "gi://Adw?version=1"
 import GObject, { getter, register } from "gnim/gobject"
 
+// ── Generic window collection for multi-window types (bars, wallpapers, lockscreens) ──
+function windowCollection<T extends Astal.Window>(
+  initial: T[] = [],
+): {
+  getAll: () => T[]
+  add: (win: T) => void
+  remove: (win: T) => void
+} {
+  const items: T[] = [...initial]
+  return {
+    getAll: () => items,
+    add: (win: T) => {
+      items.push(win)
+    },
+    remove: (win: T) => {
+      const idx = items.indexOf(win)
+      if (idx >= 0) items.splice(idx, 1)
+    },
+  }
+}
+
 @register({ GTypeName: "WindowManager" })
 export default class WindowManager extends GObject.Object {
   static instance: WindowManager
@@ -11,9 +32,12 @@ export default class WindowManager extends GObject.Object {
     return this.instance
   }
 
-  #bars: Astal.Window[] = []
-  #wallpapers: Astal.Window[] = []
-  #lockscreens: Astal.Window[] = []
+  // Multi-window collections (one per monitor)
+  #bars = windowCollection<Astal.Window>()
+  #wallpapers = windowCollection<Astal.Window>()
+  #lockscreens = windowCollection<Astal.Window>()
+
+  // Single-window registrations
   #quicksettings: Astal.Window | null = null
   #osd: Astal.Window | null = null
   #applauncher: Astal.Window | null = null
@@ -22,19 +46,21 @@ export default class WindowManager extends GObject.Object {
   #dock: Astal.Window | null = null
   #screenshotOverlay: Astal.Window | null = null
 
+  // ── Getters ──
+
   @getter(Array)
   get bars() {
-    return this.#bars
+    return this.#bars.getAll()
   }
 
   @getter(Array)
   get wallpapers() {
-    return this.#wallpapers
+    return this.#wallpapers.getAll()
   }
 
   @getter(Array)
   get lockscreens() {
-    return this.#lockscreens
+    return this.#lockscreens.getAll()
   }
 
   @getter(Object)
@@ -72,35 +98,39 @@ export default class WindowManager extends GObject.Object {
     return this.#screenshotOverlay
   }
 
+  // ── Multi-window registration (bars, wallpapers, lockscreens) ──
+
   registerBar(win: Astal.Window) {
-    this.#bars.push(win)
+    this.#bars.add(win)
     this.notify("bars")
   }
 
   unregisterBar(win: Astal.Window) {
-    this.#bars = this.#bars.filter((b) => b !== win)
+    this.#bars.remove(win)
     this.notify("bars")
   }
 
   registerWallpaper(win: Astal.Window) {
-    this.#wallpapers.push(win)
+    this.#wallpapers.add(win)
     this.notify("wallpapers")
   }
 
   unregisterWallpaper(win: Astal.Window) {
-    this.#wallpapers = this.#wallpapers.filter((w) => w !== win)
+    this.#wallpapers.remove(win)
     this.notify("wallpapers")
   }
 
   registerLockscreen(win: Astal.Window) {
-    this.#lockscreens.push(win)
+    this.#lockscreens.add(win)
     this.notify("lockscreens")
   }
 
   unregisterLockscreen(win: Astal.Window) {
-    this.#lockscreens = this.#lockscreens.filter((l) => l !== win)
+    this.#lockscreens.remove(win)
     this.notify("lockscreens")
   }
+
+  // ── Single-window setters ──
 
   setQuicksettings(win: Astal.Window | null) {
     this.#quicksettings = win

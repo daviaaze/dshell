@@ -32,55 +32,72 @@ function getExecutableName(exec: string): string {
   return base.split(" ")[0]!.toLowerCase()
 }
 
+// ── Helpers for getAppForClient ──
+
+type ClientTerms = { cls: string | undefined; title: string | undefined; initialTitle: string | undefined }
+
+/** Match a client property against a getter on each app in the list. */
+function matchByGetter(
+  allApps: Apps.Application[],
+  terms: ClientTerms,
+  getValue: (app: Apps.Application) => string,
+): Apps.Application | null {
+  for (const app of allApps) {
+    const value = getValue(app)
+    if (!value) continue
+    if (value === terms.cls || value === terms.title || value === terms.initialTitle) {
+      return app
+    }
+  }
+  return null
+}
+
+/** Try AstalApps query on a client term, returning first result. */
+function queryTerm(
+  term: string | undefined,
+  queryFn: (q: string) => Apps.Application[],
+): Apps.Application | null {
+  if (!term) return null
+  const results = queryFn(term)
+  return results.length > 0 ? results[0]! : null
+}
+
 export function getAppForClient(
   client: Hyprland.Client,
 ): Apps.Application | null {
-  const cls = client.class?.toLowerCase()
-  const title = client.title?.toLowerCase()
-  const initialTitle = client.initialTitle?.toLowerCase()
+  const terms: ClientTerms = {
+    cls: client.class?.toLowerCase(),
+    title: client.title?.toLowerCase(),
+    initialTitle: client.initialTitle?.toLowerCase(),
+  }
 
-  if (!cls && !title) return null
+  if (!terms.cls && !terms.title) return null
 
   const allApps = getAppList()
 
-  for (const app of allApps) {
-    const entry = app.entry?.toLowerCase().replace(".desktop", "")
-    if (entry && (entry === cls || entry === title || entry === initialTitle)) {
-      return app
-    }
-  }
+  // 1. Exact desktop entry match
+  const entryMatch = matchByGetter(allApps, terms, (a) => a.entry?.toLowerCase().replace(".desktop", "") ?? "")
+  if (entryMatch) return entryMatch
 
-  if (cls) {
-    const exact = exactQuery(cls)
-    if (exact.length > 0) return exact[0]!
-  }
-  if (title) {
-    const exact = exactQuery(title)
-    if (exact.length > 0) return exact[0]!
-  }
+  // 2. Exact AstalApps query
+  const exactFromCls = queryTerm(terms.cls, exactQuery)
+  if (exactFromCls) return exactFromCls
+  const exactFromTitle = queryTerm(terms.title, exactQuery)
+  if (exactFromTitle) return exactFromTitle
 
-  for (const app of allApps) {
-    const exec = getExecutableName(app.executable)
-    if (exec && (exec === cls || exec === title || exec === initialTitle)) {
-      return app
-    }
-  }
+  // 3. Executable name match
+  const execMatch = matchByGetter(allApps, terms, (a) => getExecutableName(a.executable))
+  if (execMatch) return execMatch
 
-  for (const app of allApps) {
-    const name = app.name?.toLowerCase()
-    if (name && (name === cls || name === title || name === initialTitle)) {
-      return app
-    }
-  }
+  // 4. App name match
+  const nameMatch = matchByGetter(allApps, terms, (a) => a.name?.toLowerCase() ?? "")
+  if (nameMatch) return nameMatch
 
-  if (cls) {
-    const fuzzy = fuzzyQuery(cls)
-    if (fuzzy.length > 0) return fuzzy[0]!
-  }
-  if (title) {
-    const fuzzy = fuzzyQuery(title)
-    if (fuzzy.length > 0) return fuzzy[0]!
-  }
+  // 5. Fuzzy query fallback
+  const fuzzyFromCls = queryTerm(terms.cls, fuzzyQuery)
+  if (fuzzyFromCls) return fuzzyFromCls
+  const fuzzyFromTitle = queryTerm(terms.title, fuzzyQuery)
+  if (fuzzyFromTitle) return fuzzyFromTitle
 
   return null
 }

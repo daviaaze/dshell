@@ -8,70 +8,77 @@ import logger from "#/lib/logger"
 
 const BRIGHTNESS_PRESETS = [0.25, 0.50, 0.75, 1.0]
 
-export const AudioConfig = () => {
-  logger.log("AudioConfig:")
-  const [speakers, setSpeakers] = createState<Wireplumber.Endpoint[]>([])
-  const [defaultSpeaker, setDefaultSpeaker] =
-    createState<Wireplumber.Endpoint | null>(null)
+// ── Shared endpoint config factory (AudioConfig / MicConfig) ──
 
-  onMount(() => {
-    // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      const audio = Wireplumber.get_default()!.audio
-      const update = () => {
-        setSpeakers([...(audio.speakers ?? [])])
-        setDefaultSpeaker(audio.default_speaker)
-      }
-      update()
-      audio.connect("notify::speakers", update)
-      audio.connect("notify::default-speaker", update)
-      return GLib.SOURCE_REMOVE
-    })
-  })
-
-  logger.info("AudioConfig done")
-  return (
-    <AudioEndpointControl
-      visible={speakers.as((s) => s.length > 0)}
-      defaultDevice={defaultSpeaker}
-      devices={speakers}
-      mutedIcon="audio-volume-muted-symbolic"
-      showAppMixer
-    />
-  )
+interface EndpointConfig {
+  /** Property name on audio object (e.g. "speakers", "microphones") */
+  devicesProp: "speakers" | "microphones"
+  /** Signal for device list changes */
+  devicesSignal: "notify::speakers" | "notify::microphones"
+  /** Property name for default device */
+  defaultProp: "default_speaker" | "default_microphone"
+  /** Signal for default device changes */
+  defaultSignal: "notify::default-speaker" | "notify::default-microphone"
+  /** Muted icon name */
+  mutedIcon: string
+  /** Label for logging */
+  label: string
+  /** Whether to show the app mixer button */
+  showAppMixer?: boolean
 }
 
-export const MicConfig = () => {
-  logger.info("MicConfig:")
-  const [microphones, setMicrophones] = createState<Wireplumber.Endpoint[]>([])
-  const [defaultMicrophone, setDefaultMicrophone] =
-    createState<Wireplumber.Endpoint | null>(null)
+function createEndpointConfig(cfg: EndpointConfig) {
+  return () => {
+    logger.log(`${cfg.label}:`)
+    const [devices, setDevices] = createState<Wireplumber.Endpoint[]>([])
+    const [defaultDevice, setDefaultDevice] =
+      createState<Wireplumber.Endpoint | null>(null)
 
-  onMount(() => {
-    // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      const audio = Wireplumber.get_default()!.audio
-      const update = () => {
-        setMicrophones([...(audio.microphones ?? [])])
-        setDefaultMicrophone(audio.default_microphone)
-      }
-      update()
-      audio.connect("notify::microphones", update)
-      audio.connect("notify::default-microphone", update)
-      return GLib.SOURCE_REMOVE
+    onMount(() => {
+      GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        const audio = Wireplumber.get_default()!.audio
+        const update = () => {
+          setDevices([...(audio[cfg.devicesProp] ?? [])])
+          setDefaultDevice(audio[cfg.defaultProp])
+        }
+        update()
+        audio.connect(cfg.devicesSignal, update)
+        audio.connect(cfg.defaultSignal, update)
+        return GLib.SOURCE_REMOVE
+      })
     })
-  })
 
-  logger.log("MicConfig done")
-  return (
-    <AudioEndpointControl
-      visible={microphones.as((m) => m.length > 0)}
-      defaultDevice={defaultMicrophone}
-      devices={microphones}
-      mutedIcon="microphone-sensitivity-muted-symbolic"
-    />
-  )
+    logger.info(`${cfg.label} done`)
+    return (
+      <AudioEndpointControl
+        visible={devices.as((s) => s.length > 0)}
+        defaultDevice={defaultDevice}
+        devices={devices}
+        mutedIcon={cfg.mutedIcon}
+        showAppMixer={cfg.showAppMixer}
+      />
+    )
+  }
 }
+
+export const AudioConfig = createEndpointConfig({
+  devicesProp: "speakers",
+  devicesSignal: "notify::speakers",
+  defaultProp: "default_speaker",
+  defaultSignal: "notify::default-speaker",
+  mutedIcon: "audio-volume-muted-symbolic",
+  label: "AudioConfig",
+  showAppMixer: true,
+})
+
+export const MicConfig = createEndpointConfig({
+  devicesProp: "microphones",
+  devicesSignal: "notify::microphones",
+  defaultProp: "default_microphone",
+  defaultSignal: "notify::default-microphone",
+  mutedIcon: "microphone-sensitivity-muted-symbolic",
+  label: "MicConfig",
+})
 
 export const BrightnessSlider = () => {
   logger.log("BrightnessSlider: get_default()")

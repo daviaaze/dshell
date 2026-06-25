@@ -35,19 +35,37 @@ export interface BoundaryGeometry {
   height: number
 }
 
-// Try to find a binary in PATH, fallback to nix store
-function findBinary(name: string): string {
-  try {
-    const stdout = Process.exec(`which ${name}`)
-    if (stdout) return stdout
-  } catch {
-    // not in PATH
-  }
-  return name
+const SLURP_BIN = Process.findBinary("slurp")
+const GRIM_BIN = Process.findBinary("grim")
+
+// ── Recording backend args builder ───────────────────────────────
+
+interface RecordingArgs {
+  args: string[]
+  backendName: string
 }
 
-const SLURP_BIN = findBinary("slurp")
-const GRIM_BIN = findBinary("grim")
+function buildRecordingArgs(
+  backend: RecorderBackend,
+  filename: string,
+  geometry: string | undefined,
+  output: string | undefined,
+  audio: boolean,
+): RecordingArgs {
+  if (backend === RecorderBackend.WL_SCREENREC) {
+    const args = ["wl-screenrec", "-f", filename]
+    if (geometry) args.push("-g", geometry)
+    if (output) args.push("-o", output)
+    if (audio) args.push("--audio")
+    return { args, backendName: "wl-screenrec" }
+  } else {
+    const args = ["wf-recorder", "-f", filename, "-y"]
+    if (geometry) args.push("-g", geometry)
+    if (output) args.push("-o", output)
+    if (audio) args.push("-a")
+    return { args, backendName: "wf-recorder" }
+  }
+}
 
 @register({ GTypeName: "Screenshot" })
 export default class Screenshot extends GObject.Object {
@@ -374,34 +392,13 @@ export default class Screenshot extends GObject.Object {
       (options.geometry ? undefined : AstalHyprland.get_default().focused_monitor?.name)
 
     // Build args based on backend
-    const args: string[] = []
-    let backendName: string
-
-    if (backend === RecorderBackend.WL_SCREENREC) {
-      backendName = "wl-screenrec"
-      args.push("wl-screenrec", "-f", filename)
-      if (options.geometry) {
-        args.push("-g", options.geometry)
-      }
-      if (effectiveOutput) {
-        args.push("-o", effectiveOutput)
-      }
-      if (this.#audio) {
-        args.push("--audio")
-      }
-    } else {
-      backendName = "wf-recorder"
-      args.push("wf-recorder", "-f", filename, "-y")
-      if (options.geometry) {
-        args.push("-g", options.geometry)
-      }
-      if (effectiveOutput) {
-        args.push("-o", effectiveOutput)
-      }
-      if (this.#audio) {
-        args.push("-a")
-      }
-    }
+    const { args, backendName } = buildRecordingArgs(
+      backend,
+      filename,
+      options.geometry,
+      effectiveOutput,
+      this.#audio,
+    )
 
     logger.info(
       "screenshot",

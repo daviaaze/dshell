@@ -7,43 +7,55 @@ import { exit, programArgs, programInvocationName } from "system"
 import { app } from "#/App"
 import logger, { initLoggerFromSettings, perf } from "#/lib/logger"
 
-// Suppress "duplicate child name in GtkStack" warnings from library internals
-// (Astal/Adw periodically re-adds stack pages on NM scan or Bluetooth refresh).
-GLib.log_set_writer_func((_logDomain: string | null, _logLevels: number, message: string | null) => {
-  if (message && message.includes("duplicate child name in GtkStack")) {
-    return 1 /* GLib.LogWriterOutput.HANDLED */
-  }
-  return 0 /* GLib.LogWriterOutput.UNHANDLED */
-})
+// ── Suppress noisy GtkStack warnings during startup ──
 
-perf.start("main.ts startup")
-logger.log("main.ts starting")
+function suppressGtkStackWarnings() {
+  GLib.log_set_writer_func((_logDomain: string | null, _logLevels: number, message: string | null) => {
+    if (message && message.includes("duplicate child name in GtkStack")) {
+      return 1 /* GLib.LogWriterOutput.HANDLED */
+    }
+    return 0 /* GLib.LogWriterOutput.UNHANDLED */
+  })
+}
 
-// Initialize debug logging from GSettings (after schema is registered)
-initLoggerFromSettings()
+// ── Graceful shutdown on signals ──
 
-const localedir = GLib.build_filenamev([import.meta.datadir, "locale"])
-Gettext.bindtextdomain(import.meta.domain, localedir)
-Gettext.textdomain(import.meta.domain)
-
-// Handle SIGINT (Ctrl+C) and SIGTERM gracefully so D-Bus exports,
-// AstalNotifd daemon, and other resources are cleaned up before exit.
-// Without this, a forced kill leaks D-Bus exports and the next startup
-// hits "already exported" errors with 25s timeouts.
-let quitting = false
-for (const sig of [2 /* SIGINT */, 15 /* SIGTERM */]) {
-  GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, sig, () => {
+function setupSignalHandlers() {
+  let quitting = false
+  const handleSignal = (sig: number): true => {
     if (quitting) {
       logger.log(`received signal ${sig} again, forcing exit`)
       exit(1)
-      return GLib.SOURCE_REMOVE
+    } else {
+      quitting = true
+      logger.log(`received signal ${sig}, shutting down gracefully...`)
+      app.quit()
     }
-    quitting = true
-    logger.log(`received signal ${sig}, shutting down gracefully...`)
-    app.quit()
     return GLib.SOURCE_REMOVE
-  })
+  }
+
+  for (const sig of [2 /* SIGINT */, 15 /* SIGTERM */]) {
+    GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, sig, () => handleSignal(sig))
+  }
 }
+
+// ── i18n setup ──
+
+function setupI18n() {
+  const localedir = GLib.build_filenamev([import.meta.datadir, "locale"])
+  Gettext.bindtextdomain(import.meta.domain, localedir)
+  Gettext.textdomain(import.meta.domain)
+}
+
+// ── Main ──
+
+suppressGtkStackWarnings()
+perf.start("main.ts startup")
+logger.log("main.ts starting")
+
+initLoggerFromSettings()
+setupI18n()
+setupSignalHandlers()
 
 logger.log("calling app.runAsync")
 const exitCode = await app.runAsync([programInvocationName, ...programArgs])

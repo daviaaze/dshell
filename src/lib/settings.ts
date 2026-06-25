@@ -3,28 +3,26 @@ import { createSettings } from "gnim-schemas"
 import { createContext } from "gnim"
 import { barSchema, generalSchema, weatherSchema, timerSchema } from "./gschema"
 
-function createAppSettings() {
-  const barSettings = new Gio.Settings({ schemaId: barSchema.id })
-  const weatherSettings = new Gio.Settings({ schemaId: weatherSchema.id })
-  const generalSettings = new Gio.Settings({ schemaId: generalSchema.id })
-  const timerSettings = new Gio.Settings({ schemaId: timerSchema.id })
+// ── Helper: create a settings group from a schema ──
+
+function createSettingsGroup<T extends Gio.Settings>(schema: { id: string }) {
+  const settings = new Gio.Settings({ schemaId: schema.id }) as T
   return {
-    bar: {
-      barSettings,
-      ...createSettings(barSettings, barSchema),
-    },
-    general: {
-      generalSettings,
-      ...createSettings(generalSettings, generalSchema),
-    },
-    weather: {
-      weatherSettings,
-      ...createSettings(weatherSettings, weatherSchema),
-    },
-    timer: {
-      timerSettings,
-      ...createSettings(timerSettings, timerSchema),
-    },
+    raw: settings,
+    ...createSettings(settings, schema),
+  }
+}
+
+type SettingsGroup<T extends Gio.Settings> = ReturnType<typeof createSettingsGroup<T>>
+
+// ── App settings ──
+
+function createAppSettings() {
+  return {
+    bar: createSettingsGroup<Gio.Settings>(barSchema),
+    general: createSettingsGroup<Gio.Settings>(generalSchema),
+    weather: createSettingsGroup<Gio.Settings>(weatherSchema),
+    timer: createSettingsGroup<Gio.Settings>(timerSchema),
   }
 }
 

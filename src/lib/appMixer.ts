@@ -13,71 +13,57 @@ export interface AudioStream {
   targetNode: number | null
 }
 
-function parseStreams(pwDump: string): AudioStream[] {
+// ── Shared pipewire stream parser ──
+
+function parseAudioStreams(
+  pwDump: string,
+  predicate: (mediaClass: string) => boolean,
+  errorLabel: string,
+): AudioStream[] {
   try {
     const data = JSON.parse(pwDump)
     const streams: AudioStream[] = []
     for (const item of data) {
       const info = item.info || {}
       const props = info.props || {}
-      const mediaClass = props["media.class"] || ""
-      if (
-        mediaClass.includes("Stream") &&
-        mediaClass.includes("Audio") &&
-        mediaClass.includes("Output")
-      ) {
-        const streamProps = info.params?.Props?.[0] || {}
-        streams.push({
-          id: item.id,
-          name: props["node.name"] || "Unknown",
-          appName: props["application.name"] || props["node.name"] || "Unknown",
-          iconName:
-            props["application.icon-name"] || "audio-x-generic-symbolic",
-          volume: streamProps.volume ?? 1.0,
-          muted: streamProps.mute ?? false,
-          targetNode: null,
-        })
-      }
+      if (!predicate(props["media.class"] || "")) continue
+
+      const streamProps = info.params?.Props?.[0] || {}
+      streams.push({
+        id: item.id,
+        name: props["node.name"] || "Unknown",
+        appName: props["application.name"] || props["node.name"] || "Unknown",
+        iconName: props["application.icon-name"] || "audio-x-generic-symbolic",
+        volume: streamProps.volume ?? 1.0,
+        muted: streamProps.mute ?? false,
+        targetNode: null,
+      })
     }
     return streams
   } catch (e) {
-    logger.error("audio", "failed to parse streams:", e)
+    logger.error("audio", `failed to parse ${errorLabel}:`, e)
     return []
   }
 }
 
+function parseStreams(pwDump: string): AudioStream[] {
+  return parseAudioStreams(
+    pwDump,
+    (mc) => mc.includes("Stream") && mc.includes("Audio") && mc.includes("Output"),
+    "streams",
+  )
+}
+
 function parseCaptureStreams(pwDump: string): AudioStream[] {
-  try {
-    const data = JSON.parse(pwDump)
-    const streams: AudioStream[] = []
-    for (const item of data) {
-      const info = item.info || {}
-      const props = info.props || {}
-      const mediaClass = props["media.class"] || ""
-      if (
-        mediaClass.includes("Stream") &&
-        mediaClass.includes("Audio") &&
-        mediaClass.includes("Input") &&
-        !mediaClass.includes("Internal")
-      ) {
-        const streamProps = info.params?.Props?.[0] || {}
-        streams.push({
-          id: item.id,
-          name: props["node.name"] || "Unknown",
-          appName: props["application.name"] || props["node.name"] || "Unknown",
-          iconName:
-            props["application.icon-name"] || "audio-x-generic-symbolic",
-          volume: streamProps.volume ?? 1.0,
-          muted: streamProps.mute ?? false,
-          targetNode: null,
-        })
-      }
-    }
-    return streams
-  } catch (e) {
-    logger.error("audio", "failed to parse capture streams:", e)
-    return []
-  }
+  return parseAudioStreams(
+    pwDump,
+    (mc) =>
+      mc.includes("Stream") &&
+      mc.includes("Audio") &&
+      mc.includes("Input") &&
+      !mc.includes("Internal"),
+    "capture streams",
+  )
 }
 
 function parseTargets(pwMetadata: string): Map<number, number> {

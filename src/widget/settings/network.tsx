@@ -2,43 +2,18 @@ import Network from "gi://AstalNetwork"
 import NM from "gi://NM?version=1.0"
 import Adw from "gi://Adw?version=1"
 import Gtk from "gi://Gtk?version=4.0"
-import GLib from "gi://GLib?version=2.0"
 import { createBinding, createComputed, createState, With, For } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
 import {
   strengthFraction,
+  createNMConnection,
+  securityLabelFromKeyMgmt,
+  commitChangesAsync,
+  deleteConnectionAsync,
 } from "#/widget/quicksettings/network/utils"
 import logger from "#/lib/logger"
 
 // ── Helpers ────────────────────────────────────────────────────────
-
-/** Wrap NM.RemoteConnection.commit_changes_async in a Promise. */
-function commitChangesAsync(conn: NM.RemoteConnection, saveToDisk: boolean): Promise<void> {
-  return new Promise((resolve, reject) => {
-    conn.commit_changes_async(saveToDisk, null, (_source: any, res: any) => {
-      try {
-        conn.commit_changes_finish(res)
-        resolve()
-      } catch (e) {
-        reject(e)
-      }
-    })
-  })
-}
-
-/** Wrap NM.RemoteConnection.delete_async in a Promise. */
-function deleteConnectionAsync(conn: NM.RemoteConnection): Promise<void> {
-  return new Promise((resolve, reject) => {
-    conn.delete_async(null, (_source: any, res: any) => {
-      try {
-        conn.delete_finish(res)
-        resolve()
-      } catch (e) {
-        reject(e)
-      }
-    })
-  })
-}
 
 /** Get all known (saved) WiFi connections from NM.Client. */
 function getKnownNetworks(
@@ -59,34 +34,8 @@ function getKnownNetworks(
         const ssid = conn.get_id() ?? "Unknown Network"
 
         const sSec = conn.get_setting_wireless_security()
-        let secure = false
-        let secLabel = "Open"
-
-        if (sSec) {
-          const keyMgmt = sSec.get_key_mgmt()
-          switch (keyMgmt) {
-            case "sae":
-              secure = true
-              secLabel = "WPA3"
-              break
-            case "wpa-psk":
-              secure = true
-              secLabel = "WPA2"
-              break
-            case "wpa-eap":
-            case "ieee8021x":
-              secure = true
-              secLabel = "WPA2 Enterprise"
-              break
-            case "none":
-              secure = true
-              secLabel = "WEP"
-              break
-            default:
-              secure = true
-              secLabel = keyMgmt || "Secure"
-          }
-        }
+        const secLabel = securityLabelFromKeyMgmt(sSec?.get_key_mgmt() ?? null)
+        const secure = secLabel !== "Open"
 
         const existing = bySsid.get(ssid)
         if (existing) {
@@ -197,9 +146,7 @@ function showConnectionEditor(
         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
       >
         <Adw.PreferencesPage>
-          <Adw.PreferencesGroup title="Connection" description={settingSecurity?.get_key_mgmt() ?
-            (({ sae: "WPA3", "wpa-psk": "WPA2", "wpa-eap": "Enterprise", ieee8021x: "Enterprise", none: "WEP" } as Record<string,string>)[settingSecurity.get_key_mgmt()] || "Secure")
-            : "Open"}>
+          <Adw.PreferencesGroup title="Connection" description={securityLabelFromKeyMgmt(settingSecurity?.get_key_mgmt() ?? null)}>
             <Adw.SwitchRow
               title="Connect automatically"
               active={autoConnect}
@@ -305,36 +252,9 @@ function showHiddenNetworkDialog(parent: Gtk.Widget) {
       return
     }
 
-    // Use NM to create and activate a connection for the hidden network
     try {
-      const client = network.client
-      const connection = new NM.SimpleConnection()
-
-      // Connection settings
-      const sCon = new NM.SettingConnection()
-      sCon.type = "802-11-wireless"
-      sCon.uuid = GLib.uuid_string_random() ?? undefined
-      sCon.id = name
-
-      // Wireless settings
-      const sWifi = new NM.SettingWireless()
-      sWifi.ssid = new GLib.Bytes(name) as any
-      sWifi.mode = "infrastructure"
-      sWifi.hidden = true
-
-      connection.add_setting(sCon)
-      connection.add_setting(sWifi)
-
-      // Security settings if password provided
-      const pwd = password().trim()
-      if (pwd) {
-        const sSec = new NM.SettingWirelessSecurity()
-        sSec.key_mgmt = "wpa-psk"
-        sSec.psk = pwd
-        connection.add_setting(sSec)
-      }
-
-      client.add_and_activate_connection_async(
+      const connection = createNMConnection(name, password().trim() || undefined, true)
+      network.client.add_and_activate_connection_async(
         connection,
         wifi.device,
         null,

@@ -50,9 +50,11 @@ function formatArgs(args: unknown[]): unknown[] {
     if (a instanceof Error) return `${a.message}\n${a.stack || "(no stack)"}`
     if (typeof a === "object" && a !== null) {
       try {
-        return JSON.stringify(a)
+        const json = JSON.stringify(a)
+        // Truncate long strings to avoid flooding output
+        return json.length > 500 ? `${json.slice(0, 500)}… (truncated ${json.length}B)` : json
       } catch {
-        return String(a)
+        return `[${typeof a}]`
       }
     }
     return a
@@ -185,16 +187,7 @@ export const perf = {
     }
   },
 
-  /** Log current memory usage if available (GJS only). */
-  logMemory(label: string): void {
-    try {
-      if (typeof imports.byteArray === "undefined") return
-      const rss = Number(GLib.get_num_processors())
-      logger.debug("memory", `${label} — CPU count: ${rss}`)
-    } catch {
-      // Memory stats not available
-    }
-  },
+
 }
 
 // ── Error Boundary Helpers ───────────────────────────────────────────────────

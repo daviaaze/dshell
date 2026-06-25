@@ -23,137 +23,94 @@ import { Process } from "#/lib/process"
 
 const PAM_TIMEOUT_MS = 10000
 
-const createLocks = (onUnlock: () => void) => {
-  const { LEFT, RIGHT, TOP, BOTTOM } = Astal.WindowAnchor
-  const lock = SessionLock.Instance.new()
-  const [time, setTime] = createState(GLib.DateTime.new_now_local())
-  const [authStatus, setAuthStatus] = createState("")
-  const fingerprint = FingerprintAuth.get_default()
+// ── Auth helpers (extracted from createLocks to reduce CC) ──
 
-  const lockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-    setTime(GLib.DateTime.new_now_local())
-    return GLib.SOURCE_CONTINUE
-  })
+interface PamAuthState {
+  pendingPassword: string
+  pamTimeoutId: number
+  pamActive: boolean
+}
 
-  let savedBrightness = ""
-  try {
-    const resumeFile = Gio.File.new_for_path("/tmp/shade-brightness-resume")
-    if (resumeFile.query_exists(null)) {
-      const [, contents] = resumeFile.load_contents(null)
-      savedBrightness = new TextDecoder().decode(contents).trim()
-      resumeFile.delete(null)
-    } else {
-      savedBrightness = Process.exec("brightnessctl get")
-    }
-  } catch (e) {
-    logger.warn("lockscreen", "could not save brightness:", e)
-  }
-
-  // Shared resources (signal connections, timeouts) must be cleaned up
-  // exactly once. The <For> creates one cleanup per monitor window,
-  // so per-window onCleanup would disconnect the same signal IDs
-  // multiple times — causing "no handler with id" errors.
-  let sharedCleanedUp = false
-  const cleanupShared = () => {
-    if (sharedCleanedUp) return
-    sharedCleanedUp = true
-    fingerprint.stop()
-    fingerprint.disconnect(verifiedId)
-    fingerprint.disconnect(statusId)
-    pam.disconnect(pamPromptId)
-    pam.disconnect(pamSuccessId)
-    pam.disconnect(pamFailId)
-    pam.disconnect(pamErrorId)
-    cancelPamTimeout()
-    if (lockTimeout) GLib.source_remove(lockTimeout)
-  }
-
-  const doUnlock = () => {
-    cleanupShared()
-    lock.unlock()
-    WindowManager.get_default().lockscreens.forEach((w) => w.destroy())
-    ShellState.get_default().screenlocked = false
-    onUnlock()
-
-    if (savedBrightness) {
-      try {
-        Process.exec(`brightnessctl set ${savedBrightness}`)
-      } catch (e) {
-        logger.warn("lockscreen", "failed to restore brightness:", e)
-      }
-    }
-  }
-
-  const pam = new AstalAuth.Pam()
-  let pendingPassword = ""
-  let pamTimeoutId = 0
-  let pamActive = false
+function createPamAuth(
+  pam: AstalAuth.Pam,
+  setAuthStatus: (s: string) => void,
+  onSuccess: () => void,
+) {
+  const state: PamAuthState = { pendingPassword: "", pamTimeoutId: 0, pamActive: false }
 
   const cancelPamTimeout = () => {
-    if (pamTimeoutId) {
-      GLib.source_remove(pamTimeoutId)
-      pamTimeoutId = 0
+    if (state.pamTimeoutId) {
+      GLib.source_remove(state.pamTimeoutId)
+      state.pamTimeoutId = 0
     }
   }
 
-  const pamPromptId = pam.connect("auth-prompt-hidden", () => {
-    pam.supply_secret(pendingPassword)
-  })
-
-  const pamSuccessId = pam.connect("success", () => {
-    if (!pamActive) return
-    pamActive = false
+  const cleanup = () => {
     cancelPamTimeout()
-    doUnlock()
+  }
+
+  const promptId = pam.connect("auth-prompt-hidden", () => {
+    pam.supply_secret(state.pendingPassword)
   })
 
-  const pamFailId = pam.connect("fail", (_pam: AstalAuth.Pam, msg: string) => {
-    if (!pamActive) return
-    pamActive = false
+  const successId = pam.connect("success", () => {
+    if (!state.pamActive) return
+    state.pamActive = false
+    cancelPamTimeout()
+    onSuccess()
+  })
+
+  const failId = pam.connect("fail", (_pam: AstalAuth.Pam, msg: string) => {
+    if (!state.pamActive) return
+    state.pamActive = false
     cancelPamTimeout()
     logger.debug("lockscreen", "PAM auth failed:", msg)
     setAuthStatus("Authentication failed")
   })
 
-  const pamErrorId = pam.connect("auth-error", (_pam: AstalAuth.Pam, msg: string) => {
-    if (!pamActive) return
-    pamActive = false
+  const errorId = pam.connect("auth-error", (_pam: AstalAuth.Pam, msg: string) => {
+    if (!state.pamActive) return
+    state.pamActive = false
     cancelPamTimeout()
     logger.debug("lockscreen", "PAM auth error:", msg)
     setAuthStatus(msg || "Authentication error")
     pam.supply_secret(null)
   })
 
-  const unlock = (self: Gtk.PasswordEntry) => {
-    // Prevent re-entrancy: if a PAM auth is already in progress,
-    // calling start_authenticate() again asserts:
-    //   'priv->task == NULL' failed
-    if (pamActive) return
+  const signalIds = [promptId, successId, failId, errorId]
 
-    pendingPassword = self.get_text()
+  const unlock = (self: Gtk.PasswordEntry) => {
+    if (state.pamActive) return
+    state.pendingPassword = self.get_text()
     self.set_text("")
     setAuthStatus("Authenticating...")
-    pamActive = true
+    state.pamActive = true
     pam.start_authenticate()
 
     cancelPamTimeout()
-    pamTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PAM_TIMEOUT_MS, () => {
-      pamTimeoutId = 0
-      pamActive = false
+    state.pamTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PAM_TIMEOUT_MS, () => {
+      state.pamTimeoutId = 0
+      state.pamActive = false
       setAuthStatus("Authentication timed out")
       return GLib.SOURCE_REMOVE
     })
   }
 
+  return { unlock, cleanup, signalIds }
+}
+
+function createFingerprintAuth(
+  fingerprint: FingerprintAuth,
+  setAuthStatus: (s: string) => void,
+  onVerified: () => void,
+) {
   fingerprint.init().then(() => {
     if (fingerprint.available) {
       fingerprint.start()
     }
   })
 
-  const verifiedId = fingerprint.connect("verified", () => {
-    doUnlock()
-  })
+  const verifiedId = fingerprint.connect("verified", () => onVerified())
 
   const statusId = fingerprint.connect("status-changed", (_, status) => {
     if (status === "verify-no-match") {
@@ -162,6 +119,81 @@ const createLocks = (onUnlock: () => void) => {
       setAuthStatus("Try again...")
     }
   })
+
+  const cleanup = () => {
+    fingerprint.stop()
+    fingerprint.disconnect(verifiedId)
+    fingerprint.disconnect(statusId)
+  }
+
+  return { signalIds: [verifiedId, statusId], cleanup }
+}
+
+// ── Brightness save/restore ──
+
+function saveBrightness(): string {
+  try {
+    const resumeFile = Gio.File.new_for_path("/tmp/shade-brightness-resume")
+    if (resumeFile.query_exists(null)) {
+      const [, contents] = resumeFile.load_contents(null)
+      const value = new TextDecoder().decode(contents).trim()
+      resumeFile.delete(null)
+      return value
+    }
+    return Process.exec("brightnessctl get")
+  } catch (e) {
+    logger.warn("lockscreen", "could not save brightness:", e)
+    return ""
+  }
+}
+
+function restoreBrightness(value: string) {
+  if (!value) return
+  try {
+    Process.exec(`brightnessctl set ${value}`)
+  } catch (e) {
+    logger.warn("lockscreen", "failed to restore brightness:", e)
+  }
+}
+
+// ── Main lockscreen creation ──
+
+const createLocks = (onUnlock: () => void) => {
+  const { LEFT, RIGHT, TOP, BOTTOM } = Astal.WindowAnchor
+  const lock = SessionLock.Instance.new()
+  const [time, setTime] = createState(GLib.DateTime.new_now_local())
+  const [authStatus, setAuthStatus] = createState("")
+  const fingerprint = FingerprintAuth.get_default()
+  const savedBrightness = saveBrightness()
+
+  const lockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+    setTime(GLib.DateTime.new_now_local())
+    return GLib.SOURCE_CONTINUE
+  })
+
+  let sharedCleanedUp = false
+
+  const cleanupAll = () => {
+    if (sharedCleanedUp) return
+    sharedCleanedUp = true
+    pamAuth.cleanup()
+    fpAuth.cleanup()
+    if (lockTimeout) GLib.source_remove(lockTimeout)
+  }
+
+  const doUnlock = () => {
+    cleanupAll()
+    lock.unlock()
+    WindowManager.get_default().lockscreens.forEach((w) => w.destroy())
+    ShellState.get_default().screenlocked = false
+    onUnlock()
+    restoreBrightness(savedBrightness)
+  }
+
+  const pam = new AstalAuth.Pam()
+  const pamAuth = createPamAuth(pam, setAuthStatus, doUnlock)
+
+  const fpAuth = createFingerprintAuth(fingerprint, setAuthStatus, doUnlock)
 
   const fpStateBinding = createBinding(fingerprint, "state")
   const fpErrorBinding = createBinding(fingerprint, "error-message")
@@ -173,7 +205,7 @@ const createLocks = (onUnlock: () => void) => {
           $={(self) => {
             WindowManager.get_default().registerLockscreen(self)
             onCleanup(() => {
-              cleanupShared()
+              cleanupAll()
               WindowManager.get_default().unregisterLockscreen(self)
             })
           }}

@@ -76,42 +76,41 @@ export default () => {
   ): boolean => {
     const clients = clientsList() ?? []
 
-    switch (keyval) {
-      case Gdk.KEY_Tab:
-      case Gdk.KEY_Right:
-        if (clients.length > 0) {
-          setSelectedIndex((i) => (i + 1) % clients.length)
-        }
+    // Group keys by action, then build a flat lookup table
+    const keyGroups: [number[], () => boolean][] = [
+      [[Gdk.KEY_Tab, Gdk.KEY_Right], () => {
+        if (clients.length > 0) setSelectedIndex((i) => (i + 1) % clients.length)
         return true
-      case Gdk.KEY_ISO_Left_Tab:
-      case Gdk.KEY_Left:
-        if (clients.length > 0) {
-          setSelectedIndex((i) => (i - 1 + clients.length) % clients.length)
-        }
+      }],
+      [[Gdk.KEY_ISO_Left_Tab, Gdk.KEY_Left], () => {
+        if (clients.length > 0) setSelectedIndex((i) => (i - 1 + clients.length) % clients.length)
         return true
-      case Gdk.KEY_Return:
-      case Gdk.KEY_KP_Enter:
-        if (clients[selectedIndex()]) {
-          doFocus(clients[selectedIndex()])
-        }
+      }],
+      [[Gdk.KEY_Return, Gdk.KEY_KP_Enter], () => {
+        if (clients[selectedIndex()]) doFocus(clients[selectedIndex()])
         return true
-      case Gdk.KEY_Escape:
+      }],
+      [[Gdk.KEY_Escape], () => {
         closeSwitcher()
         return true
-      case Gdk.KEY_q:
-      case Gdk.KEY_Q:
-        if (clients[selectedIndex()]) {
-          clients[selectedIndex()].kill()
-        }
+      }],
+      [[Gdk.KEY_q, Gdk.KEY_Q], () => {
+        if (clients[selectedIndex()]) clients[selectedIndex()].kill()
         return true
-      case Gdk.KEY_Super_L:
-      case Gdk.KEY_Super_R:
-      case Gdk.KEY_Meta_L:
-      case Gdk.KEY_Meta_R:
+      }],
+      [[Gdk.KEY_Super_L, Gdk.KEY_Super_R, Gdk.KEY_Meta_L, Gdk.KEY_Meta_R], () => {
         superPressed = true
         return false
+      }],
+    ]
+
+    const keyActions: Record<number, () => boolean> = {}
+    for (const [keys, action] of keyGroups) {
+      for (const key of keys) keyActions[key] = action
     }
-    return false
+
+    const action = keyActions[keyval]
+    return action ? action() : false
   }
 
   const handleKeyReleased = (

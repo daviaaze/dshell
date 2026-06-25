@@ -250,6 +250,17 @@ export class Process extends GObject.Object {
         const [, argv] = GLib.shell_parse_argv(cmd)
         return Process.execAsyncv(argv!)
     }
+
+    /**
+     * Try to find a binary in PATH, falling back to the name itself.
+     */
+    static findBinary(name: string): string {
+      try {
+        return Process.exec(`which ${name}`)
+      } catch {
+        return name
+      }
+    }
 }
 
 type Args = {

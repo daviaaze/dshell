@@ -3,7 +3,6 @@ import Gio from "gi://Gio"
 import Gtk from "gi://Gtk?version=4.0"
 import Gdk from "gi://Gdk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
-import Astal from "gi://Astal?version=4.0"
 import { createRoot } from "gnim"
 import { register } from "gnim/gobject"
 import { gettext } from "gettext"
@@ -15,15 +14,6 @@ import css from "./shade.css"
 
 @register()
 export class ShadeShell extends Adw.Application {
-  declare osd: Astal.Window
-  declare applauncher: Astal.Window
-  declare notifications: Astal.Window
-  declare bar: Astal.Window[]
-  declare wallpaper: Astal.Window[]
-  declare lockscreen: Astal.Window[]
-  declare quicksettings: Astal.Window
-  declare settings: Adw.Window
-
   constructor() {
     super({
       applicationId: import.meta.domain,
@@ -32,9 +22,6 @@ export class ShadeShell extends Adw.Application {
     })
     GLib.set_prgname(import.meta.name)
     GLib.set_application_name(gettext("Shade Shell"))
-    this.bar = []
-    this.wallpaper = []
-    this.lockscreen = []
     registerActions(this)
   }
 
@@ -60,16 +47,23 @@ export class ShadeShell extends Adw.Application {
 
   vfunc_command_line(cmd: Gio.ApplicationCommandLine) {
     logger.debug("app", `vfunc_command_line isRemote=${cmd.isRemote}`)
-    if (cmd.isRemote) requestHandler(cmd, this)
-    else {
-      perf.start("widgets-mount", "mount")
-      createRoot((dispose) => {
-        this.connect("shutdown", dispose)
-        this.initCss()
-        SettingsProvider(() => widgets())
-      })
+    if (cmd.isRemote) {
+      requestHandler(cmd, this)
+    } else {
+      this.bootstrapUi()
     }
     return 0
   }
+
+  /** Initialize CSS, then mount all widgets inside the SettingsProvider context. */
+  private bootstrapUi() {
+    perf.start("widgets-mount", "mount")
+    createRoot((dispose) => {
+      this.connect("shutdown", dispose)
+      this.initCss()
+      SettingsProvider(() => widgets())
+    })
+  }
 }
+
 export const app = new ShadeShell()

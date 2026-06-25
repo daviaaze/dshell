@@ -30,105 +30,45 @@ export const WeatherIcon = () => {
   )
 }
 
+// ── Data layer: all reactive bindings extracted from WeatherWidget ──
+
+function useWeatherData(weather: typeof WeatherLib.get_default, info: ReturnType<typeof createBinding>) {
+  const [now, setNow] = createState(GLib.DateTime.new_now_local().to_unix())
+  const nowTimerId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 30, () => {
+    setNow(GLib.DateTime.new_now_local().to_unix())
+    return GLib.SOURCE_CONTINUE
+  })
+  onCleanup(() => { if (nowTimerId) GLib.Source.remove(nowTimerId) })
+
+  const [gradient, setGradient] = createState("linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)")
+  info.subscribe((w) => {
+    setGradient(w?.is_valid() ? weatherGradient(w.get_icon_name() ?? "") : "linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)")
+  })
+
+  return {
+    now,
+    gradient,
+    locationName: info.as((w) => w?.get_location_name() ?? "\u2014"),
+    temp: info.as((w) => w?.is_valid() ? formatTemp(w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1]) : "--\u00b0"),
+    feelsLike: info.as((w) => w?.is_valid() ? `Feels like ${w.get_apparent()}` : ""),
+    skyDesc: info.as((w) => w?.get_sky() ?? ""),
+    iconName: info.as((w) => w?.get_icon_name() ?? "weather-none-available-symbolic"),
+    sunrise: info.as((w) => w?.is_valid() ? w.get_value_sunrise()[1] : 0),
+    sunset: info.as((w) => w?.is_valid() ? w.get_value_sunset()[1] : 0),
+    windSpeed: info.as((w) => { if (!w?.is_valid()) return 0; const [, s] = w.get_value_wind(GWeather.SpeedUnit.KMH); return s }),
+    windDir: info.as((w) => { if (!w?.is_valid()) return 0; const [, , d] = w.get_value_wind(GWeather.SpeedUnit.KMH); return d }),
+    humidity: info.as((w) => { if (!w?.is_valid()) return 0; const h = w.get_humidity(); return h ? parseFloat(h) : 0 }),
+    pressure: info.as((w) => { if (!w?.is_valid()) return 0; const [, p] = w.get_value_pressure(GWeather.PressureUnit.HPA); return p }),
+    hourlyForecast: info.as((w) => w?.is_valid() ? weather.getHourlyForecast(8) : []),
+    dailyForecast: info.as((w) => w?.is_valid() ? weather.getDailyForecast(5) : []),
+    moonPhase: info.as((w) => w?.is_valid() ? weather.getMoonPhase() : null),
+  }
+}
+
 export const WeatherWidget = () => {
   const weather = WeatherLib.get_default()
   const info = createBinding(weather, "info")
-
-  // Track 'now' every 30s so the sun arc stays current
-  const [now, setNow] = createState(GLib.DateTime.new_now_local().to_unix())
-  const nowTimerId = GLib.timeout_add_seconds(
-    GLib.PRIORITY_DEFAULT,
-    30,
-    () => {
-      setNow(GLib.DateTime.new_now_local().to_unix())
-      return GLib.SOURCE_CONTINUE
-    },
-  )
-  onCleanup(() => {
-    if (nowTimerId) GLib.Source.remove(nowTimerId)
-  })
-
-  // Reactive bindings from weather info
-  const locationName = info.as((w) => w?.get_location_name() ?? "—")
-  const temp = info.as((w) =>
-    w?.is_valid()
-      ? formatTemp(
-          w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1],
-        )
-      : "--°",
-  )
-  const feelsLike = info.as((w) =>
-    w?.is_valid()
-      ? `Feels like ${w.get_apparent()}`
-      : "",
-  )
-  const skyDesc = info.as((w) => w?.get_sky() ?? "")
-  const iconName = info.as(
-    (w) => w?.get_icon_name() ?? "weather-none-available-symbolic",
-  )
-
-  // Gradient based on weather icon name
-  const [gradient, setGradient] = createState(
-    "linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)",
-  )
-  info.subscribe((w) => {
-    setGradient(
-      w?.is_valid()
-        ? weatherGradient(w.get_icon_name() ?? "")
-        : "linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)",
-    )
-  })
-
-  // Sunrise/sunset
-  const sunrise = info.as((w) =>
-    w?.is_valid() ? w.get_value_sunrise()[1] : 0,
-  )
-  const sunset = info.as((w) =>
-    w?.is_valid() ? w.get_value_sunset()[1] : 0,
-  )
-
-  // Detail data — GJS maps GIR out-params to return values:
-  // get_value_wind(unit) → [isValid, speed, WindDirection] (enum 1-16, not degrees)
-  // get_humidity() → string (e.g. "55%") — no out-params
-  // get_value_pressure(unit) → [isValid, hPa]
-  const windSpeed = info.as((w) => {
-    if (!w?.is_valid()) return 0
-    const [, speed] = w.get_value_wind(GWeather.SpeedUnit.KMH)
-    return speed
-  })
-  const windDir = info.as((w) => {
-    if (!w?.is_valid()) return 0
-    const [, , dir] = w.get_value_wind(GWeather.SpeedUnit.KMH)
-    return dir // GWeatherWindDirection enum (1-16)
-  })
-  const humidity = info.as((w) => {
-    if (!w?.is_valid()) return 0
-    const hStr = w.get_humidity()
-    return hStr ? parseFloat(hStr) : 0
-  })
-  const pressure = info.as((w) => {
-    if (!w?.is_valid()) return 0
-    const [, p] = w.get_value_pressure(GWeather.PressureUnit.HPA)
-    return p
-  })
-
-  // Forecast
-  const hourlyForecast = info.as((w) => {
-    if (!w?.is_valid()) return []
-    const list = weather.getHourlyForecast(8)
-    return list
-  })
-  const dailyForecast = info.as((w) => {
-    if (!w?.is_valid()) return []
-    const list = weather.getDailyForecast(5)
-    return list
-  })
-
-  // Moon phase (used by SunArc at night)
-  const moonPhase = info.as((w) => {
-    if (!w?.is_valid()) return null
-    return weather.getMoonPhase()
-  })
+  const data = useWeatherData(weather, info)
 
   return (
     <Gtk.Box
@@ -137,13 +77,13 @@ export const WeatherWidget = () => {
       $={(self: Gtk.Box) => {
         const cssProvider = new Gtk.CssProvider()
         cssProvider.load_from_string(
-          `* { background: ${gradient()}; border-radius: 12px; }`,
+          `* { background: ${data.gradient()}; border-radius: 12px; }`,
         )
         self.get_style_context().add_provider(
           cssProvider,
           Gtk.STYLE_PROVIDER_PRIORITY_USER,
         )
-        gradient.subscribe((g) => {
+        data.gradient.subscribe((g) => {
           cssProvider.load_from_string(
             `* { background: ${g}; border-radius: 12px; }`,
           )
@@ -152,26 +92,26 @@ export const WeatherWidget = () => {
     >
       {/* ── Header: Icon + Location ── */}
       <Gtk.Box spacing={12} cssClasses={["p-12"]}>
-        <Gtk.Image iconName={iconName} pixelSize={48} />
+        <Gtk.Image iconName={data.iconName} pixelSize={48} />
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
           <Gtk.Label
             cssClasses={["title-3"]}
-            label={locationName}
+            label={data.locationName}
             halign={Gtk.Align.START}
           />
           <Gtk.Label
             cssClasses={["weather-temp"]}
-            label={temp}
+            label={data.temp}
             halign={Gtk.Align.START}
           />
-          <Gtk.Label label={feelsLike} halign={Gtk.Align.START} />
-          <Gtk.Label label={skyDesc} halign={Gtk.Align.START} />
+          <Gtk.Label label={data.feelsLike} halign={Gtk.Align.START} />
+          <Gtk.Label label={data.skyDesc} halign={Gtk.Align.START} />
         </Gtk.Box>
       </Gtk.Box>
 
       {/* ── Sunrise/Sunset Arc (updates every 30s via timeout) ── */}
       <Gtk.Box cssClasses={["p-8"]}>
-        <SunArc sunrise={sunrise} sunset={sunset} now={now} moonPhase={moonPhase} />
+        <SunArc sunrise={data.sunrise} sunset={data.sunset} now={data.now} moonPhase={data.moonPhase} />
       </Gtk.Box>
 
       {/* ── Hourly Forecast ── */}
@@ -188,7 +128,7 @@ export const WeatherWidget = () => {
           hscrollbarPolicy={Gtk.PolicyType.NEVER}
         >
           <Gtk.Box spacing={4}>
-            <For each={hourlyForecast}>
+            <For each={data.hourlyForecast}>
               {(f) => (
                 <Gtk.Box
                   orientation={Gtk.Orientation.VERTICAL}
@@ -222,7 +162,7 @@ export const WeatherWidget = () => {
           halign={Gtk.Align.START}
         />
         <Gtk.Box spacing={8} hexpand homogeneous>
-          <For each={dailyForecast}>
+          <For each={data.dailyForecast}>
             {(d) => (
               <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
@@ -259,11 +199,11 @@ export const WeatherWidget = () => {
             hexpand
           >
             <Gtk.Label
-              label={windSpeed.as((s) => `${s.toFixed(0)} km/h`)}
+              label={data.windSpeed.as((s) => `${s.toFixed(0)} km/h`)}
               cssClasses={["weather-detail-value"]}
             />
             <Gtk.Label
-              label={windDir.as((d) => windDirectionLabel(d))}
+              label={data.windDir.as((d) => windDirectionLabel(d))}
               cssClasses={["caption"]}
             />
           </Gtk.Box>
@@ -274,7 +214,7 @@ export const WeatherWidget = () => {
             hexpand
           >
             <Gtk.Label
-              label={humidity.as((h) => `${h.toFixed(0)}%`)}
+              label={data.humidity.as((h) => `${h.toFixed(0)}%`)}
               cssClasses={["weather-detail-value"]}
             />
             <Gtk.Label label="Humidity" cssClasses={["caption"]} />
@@ -286,7 +226,7 @@ export const WeatherWidget = () => {
             hexpand
           >
             <Gtk.Label
-              label={pressure.as((p) => `${p.toFixed(0)} hPa`)}
+              label={data.pressure.as((p) => `${p.toFixed(0)} hPa`)}
               cssClasses={["weather-detail-value"]}
             />
             <Gtk.Label label="Pressure" cssClasses={["caption"]} />
