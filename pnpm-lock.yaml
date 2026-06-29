@@ -16,22 +16,22 @@ importers:
         version: 0.3.0
     devDependencies:
       '@eslint/js':
-        specifier: latest
+        specifier: ^10.0.1
         version: 10.0.1(eslint@10.4.1)
       '@girs/adw-1':
-        specifier: latest
+        specifier: ^1.10.0-4.0.4
         version: 1.10.0-4.0.4
       esbuild:
-        specifier: latest
+        specifier: ^0.28.0
         version: 0.28.0
       eslint:
-        specifier: latest
+        specifier: ^10.4.1
         version: 10.4.1
       typescript:
-        specifier: latest
+        specifier: ^6.0.3
         version: 6.0.3
       typescript-eslint:
-        specifier: latest
+        specifier: ^8.60.0
         version: 8.60.0(eslint@10.4.1)(typescript@6.0.3)
 
 packages:
