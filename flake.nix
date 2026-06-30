@@ -3,8 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-    astal.url = "github:aylur/astal";
-    hyprland.url = "github:hyprwm/Hyprland";
+    astal = {
+      url = "github:aylur/astal";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    hyprland = {
+      url = "github:hyprwm/Hyprland";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -48,6 +54,8 @@
         ninja
         desktop-file-utils
         libxml2
+        esbuild
+        nodejs
       ];
 
       buildInputs =
@@ -64,8 +72,6 @@
           gtk4
           gtk4-layer-shell
           gjs
-          esbuild
-          nodejs
         ]
         ++ astalPackages;
 

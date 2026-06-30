@@ -50,15 +50,16 @@ pkgs.stdenv.mkDerivation {
     inherit src pname version;
     nativeBuildInputs = with pkgs; [
       pnpmConfigHook
-      pnpm
+      pnpm_10
     ];
 
     CI = "true";
 
     pnpmDeps = fetchPnpmDeps {
       inherit pname version src;
-      fetcherVersion = 3;
-      hash = "sha256-RF4P5tpUw3qK6ckAMhIwNXxAhwRzRiXlAZffQU1hF3E=";
+      pnpm = pkgs.pnpm_10;
+      fetcherVersion = 4;
+      hash = "sha256-A7392I3aGti8qEXO7J5VOyy9CAGIlM2DnKwQtVr1ynE=";
     };
 
     installPhase = ''

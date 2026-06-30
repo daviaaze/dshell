@@ -14,7 +14,7 @@
       ++ wrapperPackages
       ++ (with pkgs; [
         libnotify
-        pnpm
+        pnpm_10
         nixd
         nixfmt-rfc-style
         nix-output-monitor
