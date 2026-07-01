@@ -216,13 +216,13 @@ If someone wants to contribute to Shade, they should read in this order:
 1. **GJS Guide** (chapters 1–3, 8, 10) — understand imports, GObject, async/await
 2. **Astal Guide** — project structure, CLI, basic widgets
 3. **Gnim README** — JSX patterns, `createState`, `createBinding`, `For`, `With`
-4. **Shade `AGENTS.md`** — project conventions, build system, known pitfalls
-5. **GTK 4 Widget Gallery** — know what widgets exist and their capabilities
-6. **Libadwaita Demo** — run `adwaita-1-demo` to see all Adw widgets in action
-7. **Study one reference shell** (matshell or faiyt-ags) — see how others structure `widget/` and `lib/`
-8. **Read Astal source** for any service you plan to use — the Vala is the ultimate documentation
+4. **Shade `CONTRIBUTING.md`** — project conventions, build system, known pitfalls
+5. **Shade `POSTMORTEM.md`** — GJS/GObject bug patterns and pre-flight checklist specific to this codebase
+6. **GTK 4 Widget Gallery** — know what widgets exist and their capabilities
+7. **Libadwaita Demo** — run `adwaita-1-demo` to see all Adw widgets in action
+8. **Study one reference shell** (matshell or faiyt-ags) — see how others structure `widget/` and `lib/`
+9. **Read Astal source** for any service you plan to use — the Vala is the ultimate documentation
 
 ---
 
-> **Last updated:** After full codebase audit  
 > **Next review:** Quarterly or when Astal/Gnim releases a major version

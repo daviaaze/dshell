@@ -1,6 +1,0 @@
-{
-    "nixEnvSelector.nixFile": "${workspaceFolder}/flake.nix",
-    "nixEnvSelector.useFlakes": true,
-    "nixEnvSelector.flakeShell": "default",
-    "typescript.tsdk": "node_modules/typescript/lib"
-}

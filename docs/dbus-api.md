@@ -57,10 +57,12 @@ Useful for scripting and manual invocation. Internally uses `Gio.SimpleAction.ac
 |--------|-----|-----------|-------------|
 | `screenshot` | `shade-shell screenshot` | — | Full-screen screenshot (saved to disk) |
 | `screenshot-area` | `shade-shell screenshot-area` | `SUPER+SHIFT+S` | Area selection screenshot |
+| `screenshot-overlay` | `shade-shell screenshot-overlay` | `PRINT` | Toggle the on-screen capture overlay UI |
 | `record` | `shade-shell record` | `SUPER+ALT+R` | Toggle full-screen recording (wf-recorder) |
 | `record-area` | `shade-shell record-area` | — | Record a selected area |
 | `record-window` | `shade-shell record-window` | — | Record a specific window |
 | `record-output` | `shade-shell record-output` | — | Record a specific monitor/output |
+| `record-window-address` | `shade-shell record-window-address <addr>` | — | Record a window by Hyprland address (takes an extra arg) |
 
 ### Device Controls
 

@@ -17,9 +17,12 @@ Built with [Astal](https://aylur.github.io/astal/) (AyLur's toolkit) and [Gnim](
 - **Dock** — bottom taskbar with pinned and running apps
 - **Wallpaper** — per-monitor background with automatic day/night switching
 - **Dynamic Theming** — Material You color extraction from wallpaper via `matugen`
-- **Recording** — screen, region, and window recording with `wf-recorder`
+- **Screenshot** — full-screen and area capture with on-screen overlay (`grim`/`slurp`) and share picker for `xdg-desktop-portal-hyprland`
+- **Recording** — screen, region, and window recording with `wf-recorder`, with a recording status bar and screen-edge boundary indicator
 - **Auto Idle** — configurable idle timeout with screen dim and auto-lock via `hypridle`
 - **Night Light** — blue light filter with temperature slider and auto-schedule
+- **Timer / Pomodoro** — countdown timer and pomodoro work/break cycle in the clock popover and QS button grid
+- **Audio Visualizer** — optional `AstalCava` meter (degrades gracefully if unavailable)
 
 ## Quick Start
 
@@ -70,23 +73,33 @@ systemctl --user enable --now shade-shell
 src/
 ├── main.ts            # GJS entry point
 ├── App.tsx            # Adw.Application subclass
+├── share-picker-main.ts  # XDPH custom share picker (standalone binary)
+├── previewer.tsx      # Standalone UI component previewer (storybook-like)
 ├── lib/               # Core services and utilities
 │   ├── keyboard.ts    # Keyboard layout manager
 │   ├── logger.ts      # Shared logging with timestamps
 │   ├── shellState.ts  # Reactive state singleton (launcher, QS, lock)
 │   ├── monitors.ts    # Gdk monitor tracking + Hyprland mapping
-│   └── ...            # Brightness, weather, fingerprint, theming, etc.
+│   └── ...            # brightness, weather, fingerprint, theming,
+│                     #   nightLight, hypridle, clipboard, appMixer,
+│                     #   notificationHistory, audioAutoSwitch, etc.
 ├── widget/            # UI widgets
 │   ├── bar/           # Status bar and sub-widgets
 │   ├── applauncher/   # Application launcher
-│   ├── quicksettings/ # Quick settings panel
+│   ├── quicksettings/ # Quick settings panel, sliders, button grid,
+│   │                 #   expanders, tray, timer, cava handler
 │   ├── notifications/ # Notification popups
 │   ├── lockscreen/    # Lock screen
 │   ├── dock/          # Taskbar dock
 │   ├── windowswitcher/# Alt-Tab switcher
 │   ├── wallpaper/     # Background window
 │   ├── osd/           # Volume/brightness popups
-│   └── settings/      # Preferences window
+│   ├── common/        # Shared widgets (ActionButton, audioControl, powerMenu…)
+│   ├── settings/      # Preferences window
+│   ├── screenshot-overlay/   # On-screen capture UI
+│   ├── region-selector/     # Custom area selection overlay
+│   ├── recording-bar/       # Recording status bar
+│   └── recording-boundary/  # Screen-edge recording markers
 └── shade.css          # Global styles
 ```
 
@@ -103,16 +116,21 @@ src/
 
 ## Keybindings
 
+Keybindings are declared in `nix/hyprland/binds.nix` as static Hyprland config; Shade itself does not register keybinds at runtime.
+
 | Key | Action |
 |-----|--------|
 | `Super+Space` | App launcher |
 | `Super+N` | Quick settings |
 | `Super+W` | Toggle bar visibility |
 | `Super+Tab` | Window switcher |
-| 3-finger swipe right | App launcher |
-| 3-finger swipe left | Quick settings |
-
-Keybindings are registered dynamically by Shade at startup via `hyprctl keyword`.
+| `Super+Shift+V` | Clipboard (prefix `>` in launcher) |
+| `Super+Alt+R` | Toggle fullscreen recording |
+| `Super+Shift+S` | Area screenshot |
+| `Print` | Screenshot overlay / capture UI |
+| `XF86TouchpadToggle` | Toggle touchpad |
+| 3-finger swipe right | App launcher (Hyprland gesture) |
+| 3-finger swipe left | Quick settings (Hyprland gesture) |
 
 ## Debugging
 

@@ -30,10 +30,10 @@ nix run .#nixosConfigurations.vm.config.system.build.vm
 
 ## Architecture Invariants
 
-See [AGENTS.md](./AGENTS.md) for the complete list. Critical ones:
+Critical rules that have caused real bugs in this codebase (see `POSTMORTEM.md` for the case studies):
 
 1. **`GObject.notify()` is always kebab-case** — `this.notify("launcher-open")` not `this.notify("launcherOpen")`
-2. **`Notifd.get_default()` must be deferred** via `GLib.idle_add` — never call synchronously
+2. **`Notifd.get_default()` must be deferred** via `GLib.idle_add` — never call synchronously (use `getNotifdSafe()` from `#/lib/notifdGuard`)
 3. **`GLib.List` is not iterable** — use `toArray()` from `#/lib/gjsUtils`
 4. **`<For>` cannot nest inside `<With>`** — use reactive `visible` bindings instead
 
