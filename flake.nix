@@ -120,7 +120,6 @@
       nixosConfigurations.vm = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
-          ./nix/vm.nix
           self.nixosModules.default
         ];
       };
@@ -128,7 +127,6 @@
       nixosConfigurations.vm-vnc = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
-          ./nix/vm-vnc.nix
           self.nixosModules.default
         ];
       };

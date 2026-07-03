@@ -1,27 +1,11 @@
 #!/usr/bin/env node
-/**
- * preview.mjs — GJS Component Previewer with live reload
- *
- * Bundles the previewer entry point with esbuild, spawns gjs to render it,
- * watches src/ for file changes, and auto-restarts the GJS process on rebuild.
- *
- * Usage:
- *   node tools/preview.mjs                 # Opens component picker
- *   node tools/preview.mjs ActionButton    # Opens directly to ActionButton
- *   node tools/preview.mjs --watch         # Explicit watch mode (default)
- *   node tools/preview.mjs --no-watch      # Single build + run
- *
- * Dependencies:
- *   - Node.js (already in dev deps via esbuild)
- *   - esbuild (already in dev deps)
- *   - GJS + GTK4 / Adwaita (nix develop shell provides these)
- */
 
 import * as esbuild from "esbuild"
 import { spawn } from "child_process"
-import { watch, statSync, existsSync, mkdirSync } from "fs"
+import { watch, existsSync, mkdirSync } from "fs"
 import { resolve, dirname } from "path"
 import { fileURLToPath } from "url"
+import { process, console } from "node"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, "..")
@@ -39,12 +23,7 @@ function makeConfig() {
     bundle: true,
     outfile: OUTFILE,
     format: "esm",
-    external: [
-      "gi://*",
-      "resource://*",
-      "system",
-      "gettext",
-    ],
+    external: ["gi://*", "resource://*", "system", "gettext"],
     loader: {
       ".css": "text",
     },
@@ -107,34 +86,41 @@ function setupWatcher(ctx) {
   const srcDir = resolve(ROOT, "src")
 
   // Use fs.watch with recursive for simplicity (no extra deps)
-  const fsWatcher = watch(srcDir, { recursive: true }, async (_event, filename) => {
-    if (!filename) return
-    // Ignore editor temp files and non-TS/TSX/CSS files
-    if (
-      filename.endsWith("~") ||
-      filename.startsWith(".") ||
-      !/\.(ts|tsx|css)$/.test(filename)
-    ) {
-      return
-    }
-
-    console.log(`[preview] 🔄 ${filename} changed — rebuilding...`)
-
-    try {
-      const result = await ctx.rebuild()
-      if (result.errors.length > 0) {
-        console.error(`[preview] ❌ Build errors:`)
-        for (const err of result.errors) {
-          console.error(`  ${err.text}`)
-        }
+  const fsWatcher = watch(
+    srcDir,
+    { recursive: true },
+    async (_event, filename) => {
+      if (!filename) return
+      // Ignore editor temp files and non-TS/TSX/CSS files
+      if (
+        filename.endsWith("~") ||
+        filename.startsWith(".") ||
+        !/\.(ts|tsx|css)$/.test(filename)
+      ) {
         return
       }
-      console.log(`[preview] ✅ Rebuild complete — restarting...`)
-      startGjs()
-    } catch (e) {
-      console.error(`[preview] ❌ Build failed:`, e instanceof Error ? e.message : e)
-    }
-  })
+
+      console.log(`[preview] 🔄 ${filename} changed — rebuilding...`)
+
+      try {
+        const result = await ctx.rebuild()
+        if (result.errors.length > 0) {
+          console.error(`[preview] ❌ Build errors:`)
+          for (const err of result.errors) {
+            console.error(`  ${err.text}`)
+          }
+          return
+        }
+        console.log(`[preview] ✅ Rebuild complete — restarting...`)
+        startGjs()
+      } catch (e) {
+        console.error(
+          `[preview] ❌ Build failed:`,
+          e instanceof Error ? e.message : e,
+        )
+      }
+    },
+  )
 
   watcherCleanup = () => {
     fsWatcher.close()
