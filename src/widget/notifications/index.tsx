@@ -9,6 +9,7 @@ import { app } from "#/App"
 import WindowManager from "#/lib/windowManager"
 import { getNotifdSafe } from "#/lib/notifdGuard"
 import { useSettings } from "#/lib/settings"
+import logger from "#/lib/logger"
 
 const NotificationContent = ({
   notifd,
@@ -159,10 +160,7 @@ export default () => {
 
     GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 15, () => {
       if (!initialized) {
-        print(
-          "[Shade] [WARN] [notifications] Notifd.get_default() has not completed after 15s — " +
-            "D-Bus handshake may be hung. Notifications widget will not show.",
-        )
+        logger.warn("notifications", "Notifd.get_default() has not completed after 15s — D-Bus handshake may be hung. Notifications widget will not show.")
       }
       return GLib.SOURCE_REMOVE
     })

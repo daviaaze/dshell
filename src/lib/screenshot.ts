@@ -1,5 +1,6 @@
 import AstalHyprland from "gi://AstalHyprland?version=0.1"
 import GLib from "gi://GLib?version=2.0"
+import Gio from "gi://Gio?version=2.0"
 import GObject, { getter, register, setter, signal } from "gnim/gobject"
 import logger from "#/lib/logger"
 import { Process } from "#/lib/process"
@@ -33,6 +34,25 @@ export interface BoundaryGeometry {
   y: number
   width: number
   height: number
+}
+
+// ── Directory helpers ────────────────────────────────────────────
+
+/**
+ * Ensure SCREENSHOT_DIR exists. If it cannot be created, falls back to /tmp
+ * and updates SCREENSHOT_DIR. Logs errors via logger.
+ */
+function ensureScreenshotDir(): string {
+  const dir = Gio.File.new_for_path(SCREENSHOT_DIR)
+  try {
+    if (dir.query_exists(null)) return SCREENSHOT_DIR
+    dir.make_directory_with_parents(null)
+    logger.info("screenshot", `created screenshot directory: ${SCREENSHOT_DIR}`)
+    return SCREENSHOT_DIR
+  } catch (e) {
+    logger.error("screenshot", `failed to create ${SCREENSHOT_DIR}: ${(e as Error).message}, falling back to /tmp`)
+    return `${GLib.get_tmp_dir()}/shade-screenshots`
+  }
 }
 
 const SLURP_BIN = Process.findBinary("slurp")
@@ -246,9 +266,9 @@ export default class Screenshot extends GObject.Object {
 
   /** Take a screenshot of a specific geometry */
   screenshotGeometry(geometry: string) {
-    GLib.mkdir_with_parents(SCREENSHOT_DIR, 0o755)
+    const dir = ensureScreenshotDir()
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
-    const filename = `${SCREENSHOT_DIR}/${timestamp}.png`
+    const filename = `${dir}/${timestamp}.png`
 
     Process.execAsync(`${GRIM_BIN} -g "${geometry}" "${filename}"`)
       .then(() => {
@@ -354,9 +374,9 @@ export default class Screenshot extends GObject.Object {
       return
     }
 
-    GLib.mkdir_with_parents(SCREENSHOT_DIR, 0o755)
+    const dir = ensureScreenshotDir()
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
-    const filename = `${SCREENSHOT_DIR}/${timestamp}.png`
+    const filename = `${dir}/${timestamp}.png`
 
     Process.execAsync(`${GRIM_BIN} "${filename}"`)
       .then(() => {
@@ -701,6 +721,16 @@ export default class Screenshot extends GObject.Object {
   }
 
   dispose() {
+    // Kill any active freeze process first (screenshot overlay)
+    if (this.#freezeProcess) {
+      try {
+        this.#freezeProcess.signal(2)
+        this.#freezeProcess.signal(15)
+      } catch {
+        /* process may already be dead */
+      }
+      this.#freezeProcess = null
+    }
     if (this.#durationTimer) {
       GLib.Source.remove(this.#durationTimer)
       this.#durationTimer = null

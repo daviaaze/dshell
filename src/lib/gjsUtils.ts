@@ -1,9 +1,14 @@
+import logger from '#/lib/logger'
+
 export function toArray<T>(list: any): T[] {
   if (!list) return []
   if (Array.isArray(list)) return list
   const arr: T[] = []
   let l = list
+  let totalCount = 0
+  let skippedCount = 0
   while (l) {
+    totalCount++
     try {
       const item = l.data !== undefined ? l.data : l
       if (item !== undefined && item !== null) {
@@ -11,14 +16,17 @@ export function toArray<T>(list: any): T[] {
       }
       l = l.next
     } catch {
-      // Skip items with unreadable GIR data (e.g. NM pointers that
-      // GJS can't marshal — "Can't convert non-null pointer to JS value")
+      skippedCount++
+      logger.debug('gir', 'toArray: skipping item, GIR data unreadable')
       try {
         l = l.next
       } catch {
         break
       }
     }
+  }
+  if (totalCount > 0 && skippedCount > 0) {
+    logger.debug('gir', `toArray: ${skippedCount}/${totalCount} items skipped`)
   }
   return arr
 }

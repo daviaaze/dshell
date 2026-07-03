@@ -1,5 +1,6 @@
 import Gio from "gi://Gio?version=2.0"
 import GLib from "gi://GLib?version=2.0"
+import logger from "#/lib/logger"
 
 const BUS_NAME = "net.hadess.PowerProfiles"
 const OBJECT_PATH = "/net/hadess/PowerProfiles"
@@ -42,7 +43,7 @@ export default class PowerProfiles {
       )
     } catch (e) {
       if (e instanceof(Error))
-        print("PowerProfiles: set_active_profile failed:", e.message)
+        logger.warn("power-profiles", "set_active_profile failed:", e.message)
     }
   }
 
@@ -74,7 +75,7 @@ export default class PowerProfiles {
       )
     } catch (e) {
       if (e instanceof(Error))
-        print("PowerProfiles: failed to connect to system bus:", e.message)
+        logger.warn("power-profiles", "failed to connect to system bus:", e.message)
     }
   }
 }

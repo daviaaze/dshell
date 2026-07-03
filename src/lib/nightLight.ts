@@ -164,12 +164,6 @@ export default class NightLight extends GObject.Object {
       }
       this.#process = null
     }
-    // Also kill any stray hyprsunset processes we may have started
-    try {
-      Process.exec("pkill -f 'hyprsunset --temperature'")
-    } catch {
-      /* ignore */
-    }
   }
 
   #checkSchedule() {
