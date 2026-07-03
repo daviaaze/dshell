@@ -10,6 +10,7 @@ import WindowManager from "#/lib/windowManager"
 import { getNotifdSafe } from "#/lib/notifdGuard"
 import { useSettings } from "#/lib/settings"
 import logger from "#/lib/logger"
+import ShellState from "#/lib/shellState"
 
 const NotificationContent = ({
   notifd,
@@ -166,6 +167,8 @@ export default () => {
     })
   })
 
+  const screenlocked = createBinding(ShellState.get_default(), "screenlocked")
+
   return (
     <Astal.Window
       $={(self) => WindowManager.get_default().setNotifications(self)}
@@ -173,7 +176,11 @@ export default () => {
       margin={12}
       cssClasses={["notifications"]}
       visible={createComputed(
-        () => notifd() !== null && notificationCount() > 0 && !dontDisturb(),
+        () =>
+          notifd() !== null &&
+          notificationCount() > 0 &&
+          !dontDisturb() &&
+          !screenlocked(),
       )}
       anchor={
         Astal.WindowAnchor.RIGHT |

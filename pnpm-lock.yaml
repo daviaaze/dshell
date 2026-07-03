@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       gnim:
-        specifier: ^1.9.1
+        specifier: 1.9.1
         version: 1.9.1
       gnim-schemas:
         specifier: ^0.3.0

@@ -5,7 +5,7 @@ import Touchpad from "#/lib/touchpad"
 import { openSettings } from "#/widget"
 import { toggleWindowSwitcher } from "#/widget/windowswitcher"
 import Gio from "gi://Gio?version=2.0"
-import logger from "#/lib/logger"
+import logger, { perf } from "#/lib/logger"
 
 // ── Action definitions ──
 // Each entry maps a GAction name to its handler. Handlers receive the app instance
@@ -100,10 +100,15 @@ export const requestHandler = (
   logger.debug("dbus", `requestHandler args=${args.slice(1).join(" ")}`)
 
   const command = args[1]
+  if (!command) {
+    logger.warn("dbus", "no command provided")
+    cmd.done()
+    return
+  }
   const handler = commandRoutes[command]
 
   if (handler) {
-    handler(app, args)
+    perf.measureSync(`dbus-${command}`, () => handler(app, args), "dbus")
   } else {
     logger.warn("dbus", `unknown command: ${command}`)
   }
