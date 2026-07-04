@@ -84,4 +84,4 @@ describe("DeferredSingleton", () => {
   })
 })
 
-run()
+await run()

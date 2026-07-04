@@ -23,6 +23,7 @@ export class ColorScheme extends Object {
   #colorScheme: DarkModes = 0
   #initialized = false
   #weather: Weather | null = null
+  #weatherHandlerId = 0
   #timerId: GLib.Source | null = null
   #shadeSettings: {
     colorScheme: Accessor<DarkModes>
@@ -145,7 +146,19 @@ export class ColorScheme extends Object {
     }
 
     updateFromWeather()
-    weather.connect("notify::info", updateFromWeather)
+    this.#weatherHandlerId = weather.connect("notify::info", updateFromWeather)
+  }
+
+  dispose() {
+    if (this.#weatherHandlerId !== 0 && this.#weather) {
+      try { this.#weather.disconnect(this.#weatherHandlerId) } catch {}
+      this.#weatherHandlerId = 0
+    }
+    if (this.#timerId) {
+      clearTimeout(this.#timerId)
+      this.#timerId = null
+    }
+    this.#initialized = false
   }
 
   constructor() {

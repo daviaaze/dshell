@@ -16,7 +16,8 @@ export default class PowerProfiles {
   }
 
   #proxy: Gio.DBusProxy | null = null
-  #listeners: Array<() => void> = []
+  #listeners = new Map<number, () => void>()
+  #nextId = 0
 
   get activeProfile(): Profile {
     if (!this.#proxy) return "balanced"
@@ -48,9 +49,21 @@ export default class PowerProfiles {
   }
 
   connect(_signal: string, callback: () => void) {
-    this.#listeners.push(callback)
+    const id = this.#nextId++
+    this.#listeners.set(id, callback)
     // Initialize proxy on first connect
     if (!this.#proxy) this.#initProxy()
+    return id
+  }
+
+  disconnect(id: number) {
+    this.#listeners.delete(id)
+  }
+
+  dispose() {
+    this.#listeners.clear()
+    this.#nextId = 0
+    this.#proxy = null
   }
 
   #initProxy() {
@@ -69,7 +82,7 @@ export default class PowerProfiles {
         "g-properties-changed",
         (_proxy: Gio.DBusProxy, changed: GLib.Variant, _invalidated: string[]) => {
           if (changed.lookup_value("ActiveProfile", null) !== null) {
-            for (const cb of this.#listeners) cb()
+            for (const cb of this.#listeners.values()) cb()
           }
         },
       )

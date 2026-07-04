@@ -33,6 +33,13 @@ export default class FingerprintAuth extends GObject.Object {
     return this.#available
   }
 
+  dispose() {
+    if (this.#signalId !== 0 && this.#deviceProxy) {
+      try { this.#deviceProxy.disconnect(this.#signalId) } catch {}
+      this.#signalId = 0
+    }
+  }
+
   @getter(String)
   get state() {
     return this.#state

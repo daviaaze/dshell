@@ -54,6 +54,7 @@ export default class NotificationHistory extends GObject.Object {
   #history: HistoryEntry[] = []
   #limit = 100
   #ignoredApps: string[] = []
+  #notifdHandlerId = 0
   #settings: {
     notificationHistoryLimit: Accessor<number>
     notificationIgnoredApps: Accessor<string[]>
@@ -103,7 +104,7 @@ export default class NotificationHistory extends GObject.Object {
   #initNotifd() {
     const notifd = getNotifdSafe()
     if (!notifd) return
-    notifd.connect("notified", (_, id) => {
+    this.#notifdHandlerId = notifd.connect("notified", (_, id) => {
       const n = notifd.get_notification(id)
       if (!n) return
       if (this.#ignoredApps.includes(n.appName.toLowerCase())) return
@@ -152,5 +153,15 @@ export default class NotificationHistory extends GObject.Object {
 
   setIgnoredApps(apps: string[]) {
     this.#ignoredApps = apps.map((a) => a.toLowerCase())
+  }
+
+  dispose() {
+    if (this.#notifdHandlerId !== 0) {
+      const notifd = getNotifdSafe()
+      if (notifd) {
+        try { notifd.disconnect(this.#notifdHandlerId) } catch {}
+      }
+      this.#notifdHandlerId = 0
+    }
   }
 }

@@ -168,6 +168,24 @@ export default () => {
                 )
               }
             </For>
+            <Adw.StatusPage
+              visible={list.as((l) => l.length === 0)}
+              iconName={mode.as((m) =>
+                m === "clipboard"
+                  ? "edit-paste-symbolic"
+                  : "system-search-symbolic",
+              )}
+              title={mode.as((m) =>
+                m === "clipboard"
+                  ? "Nenhum resultado no histórico"
+                  : "Nenhum aplicativo encontrado",
+              )}
+              description={mode.as((m) =>
+                m === "clipboard"
+                  ? "Copie algo para aparecer aqui"
+                  : "Tente um termo de busca diferente",
+              )}
+            />
           </Gtk.Box>
         </Gtk.ScrolledWindow>
       </Gtk.Box>

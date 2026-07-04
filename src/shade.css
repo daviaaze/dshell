@@ -306,3 +306,20 @@ popover.tray-menu > contents.background.menu {
 .weather-refresh {
   margin: 4px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all transitions and animations for accessibility */
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /* Keep revealer functional but instant */
+  GtkRevealer {
+    transition-duration: 0ms !important;
+  }
+}

@@ -98,4 +98,4 @@ describe("signalIconName", () => {
   })
 })
 
-run()
+await run()

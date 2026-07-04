@@ -150,4 +150,4 @@ describe("requestHandler action completeness", () => {
   })
 })
 
-run(import.meta.url)
+await run(import.meta.url)

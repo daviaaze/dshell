@@ -19,6 +19,7 @@ export default class Weather extends GObject.Object {
   #location: GWeather.Location | undefined
   #geo = Geolocation.get_default()
   #updateTimer: number | null = null
+  #weatherHandlerId = 0
   #initialized = false
 
   @getter(GWeather.Info)
@@ -289,7 +290,7 @@ export default class Weather extends GObject.Object {
     this.#weather.set_enabled_providers(GWeather.Provider.MET_NO)
     this.#weather.set_contact_info("caiomuniz888@gmail.com")
 
-    this.#weather.connect("updated", () => {
+    this.#weatherHandlerId = this.#weather.connect("updated", () => {
       logger.info(
         "weather",
         `updated: valid=${this.#weather.is_valid()}` +
@@ -299,5 +300,16 @@ export default class Weather extends GObject.Object {
       )
       this.notify("info")
     })
+  }
+
+  dispose() {
+    if (this.#weatherHandlerId !== 0) {
+      try { this.#weather.disconnect(this.#weatherHandlerId) } catch {}
+      this.#weatherHandlerId = 0
+    }
+    if (this.#updateTimer !== null) {
+      GLib.source_remove(this.#updateTimer)
+      this.#updateTimer = null
+    }
   }
 }

@@ -292,4 +292,4 @@ describe("Hypridle dispose", () => {
   })
 })
 
-run(import.meta.url)
+await run(import.meta.url)
