@@ -65,14 +65,14 @@
  */
 
 // Re-export all components for convenience
-export { QuickToggleButton } from "./quickToggleButton"
-export { IconButton, IconMenuButton } from "./iconButton"
-export { IconInfoRow } from "./iconInfoRow"
-export { LinkedBox } from "./linkedBox"
-export { Slider } from "./slider"
-export { ActionButton } from "./actionButton"
-export { PowerMenu } from "./powerMenu"
-export { AudioEndpointControl, getVolumeIcon } from "./audioControl"
-export { WeatherWidget, WeatherIcon } from "./weatherWidget"
-export { usePopoverCleanup } from "./popoverCleanup"
-export { default as Notification } from "./notification"
+export {QuickToggleButton} from './quickToggleButton';
+export {IconButton, IconMenuButton} from './iconButton';
+export {IconInfoRow} from './iconInfoRow';
+export {LinkedBox} from './linkedBox';
+export {Slider} from './slider';
+export {ActionButton} from './actionButton';
+export {PowerMenu} from './powerMenu';
+export {AudioEndpointControl, getVolumeIcon} from './audioControl';
+export {WeatherWidget, WeatherIcon} from './weatherWidget';
+export {usePopoverCleanup} from './popoverCleanup';
+export {default as Notification} from './notification';

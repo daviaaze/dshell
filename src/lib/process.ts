@@ -1,17 +1,17 @@
-import Gio from "gi://Gio?version=2.0"
-import GLib from "gi://GLib?version=2.0"
-import GObject, { register, signal } from "gnim/gobject"
+import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
+import GObject, {register, signal} from 'gnim/gobject';
 
-const encoder = new TextEncoder()
+const encoder = new TextEncoder();
 
 export namespace Process {
     export interface SignalSignatures extends GObject.Object.SignalSignatures {
-        stdout: Process["stdout"]
-        stderr: Process["stderr"]
-        exit: Process["exit"]
+        stdout: Process['stdout'];
+        stderr: Process['stderr'];
+        exit: Process['exit'];
     }
     export interface ConstructorProps extends GObject.Object.ConstructorProps {
-        argv: string[]
+        argv: string[];
     }
 }
 
@@ -19,55 +19,55 @@ export namespace Process {
 export class Process extends GObject.Object {
     @signal(String)
     protected stdout(out: string) {
-        void out
+        void out;
     }
 
     @signal(String)
     protected stderr(err: string) {
-        void err
+        void err;
     }
 
     @signal(Number, Boolean)
     protected exit(code: number, signaled: boolean) {
-        void [code, signaled]
+        void [code, signaled];
     }
 
-    #encoder = new TextEncoder()
-    #outStream: Gio.DataInputStream
-    #errStream: Gio.DataInputStream
-    #inStream: Gio.DataOutputStream
-    #process: Gio.Subprocess
+    #encoder = new TextEncoder();
+    #outStream: Gio.DataInputStream;
+    #errStream: Gio.DataInputStream;
+    #inStream: Gio.DataOutputStream;
+    #process: Gio.Subprocess;
 
     #readStream(stream: Gio.DataInputStream) {
         stream.read_line_async(GLib.PRIORITY_DEFAULT, null, (_, res) => {
             try {
-                const [output] = stream.read_line_finish_utf8(res)
+                const [output] = stream.read_line_finish_utf8(res);
                 if (output !== null) {
                     if (stream === this.#errStream) {
-                        this.stderr(output.trim())
+                        this.stderr(output.trim());
                     } else {
-                        this.stdout(output.trim())
+                        this.stdout(output.trim());
                     }
-                    this.#readStream(stream)
+                    this.#readStream(stream);
                 }
             } catch (error) {
-                console.error(error)
+                console.error(error);
             }
-        })
+        });
     }
 
     connect<S extends keyof Process.SignalSignatures>(
         signal: S,
-        callback: GObject.SignalCallback<this, Process.SignalSignatures[S]>,
+        callback: GObject.SignalCallback<this, Process.SignalSignatures[S]>
     ): number {
-        return super.connect(signal, callback)
+        return super.connect(signal, callback);
     }
 
     /**
      * Force quit the subprocess.
      */
     kill(): void {
-        this.#process.force_exit()
+        this.#process.force_exit();
     }
 
     /**
@@ -76,7 +76,7 @@ export class Process extends GObject.Object {
      * @param signal Signal number to be sent
      */
     signal(signal: number): void {
-        this.#process.send_signal(signal)
+        this.#process.send_signal(signal);
     }
 
     /**
@@ -93,13 +93,13 @@ export class Process extends GObject.Object {
                 null,
                 (_, res) => {
                     try {
-                        resolve(this.#inStream.write_all_finish(res))
+                        resolve(this.#inStream.write_all_finish(res));
                     } catch (error) {
-                        reject(error)
+                        reject(error);
                     }
-                },
-            )
-        })
+                }
+            );
+        });
     }
 
     /**
@@ -115,46 +115,46 @@ export class Process extends GObject.Object {
                 null,
                 (_, res) => {
                     try {
-                        resolve(void this.#inStream.write_all_finish(res))
+                        resolve(void this.#inStream.write_all_finish(res));
                     } catch (error) {
-                        reject(error)
+                        reject(error);
                     }
-                },
-            )
-        })
+                }
+            );
+        });
     }
 
-    constructor({ argv }: Process.ConstructorProps) {
-        super()
+    constructor({argv}: Process.ConstructorProps) {
+        super();
         const process = (this.#process = Gio.Subprocess.new(
             argv,
             Gio.SubprocessFlags.STDIN_PIPE |
                 Gio.SubprocessFlags.STDOUT_PIPE |
-                Gio.SubprocessFlags.STDERR_PIPE,
-        ))
+                Gio.SubprocessFlags.STDERR_PIPE
+        ));
 
-        this.#inStream = Gio.DataOutputStream.new(process.get_stdin_pipe()!)
-        this.#outStream = Gio.DataInputStream.new(process.get_stdout_pipe()!)
-        this.#errStream = Gio.DataInputStream.new(process.get_stderr_pipe()!)
+        this.#inStream = Gio.DataOutputStream.new(process.get_stdin_pipe()!);
+        this.#outStream = Gio.DataInputStream.new(process.get_stdout_pipe()!);
+        this.#errStream = Gio.DataInputStream.new(process.get_stderr_pipe()!);
 
-        this.#readStream(this.#outStream)
-        this.#readStream(this.#errStream)
+        this.#readStream(this.#outStream);
+        this.#readStream(this.#errStream);
 
         process.wait_async(null, (_, res) => {
             try {
-                process.wait_finish(res)
+                process.wait_finish(res);
             } catch {
                 // ignore
             }
 
             if (process.get_if_exited()) {
-                this.exit(process.get_exit_status(), false)
+                this.exit(process.get_exit_status(), false);
             }
 
             if (process.get_if_signaled()) {
-                this.exit(process.get_term_sig(), true)
+                this.exit(process.get_term_sig(), true);
             }
-        })
+        });
     }
 
     /**
@@ -163,7 +163,7 @@ export class Process extends GObject.Object {
      * elements as the argument list.
      */
     static subprocessv(cmd: string[]) {
-        return new Process({ argv: cmd })
+        return new Process({argv: cmd});
     }
 
     /**
@@ -171,8 +171,8 @@ export class Process extends GObject.Object {
      * which is parsed using {@link GLib.shell_parse_argv}.
      */
     static subprocess(cmd: string) {
-        const [, argv] = GLib.shell_parse_argv(cmd)
-        return Process.subprocessv(argv!)
+        const [, argv] = GLib.shell_parse_argv(cmd);
+        return Process.subprocessv(argv!);
     }
 
     /**
@@ -186,14 +186,14 @@ export class Process extends GObject.Object {
     static execv(cmd: string[]) {
         const process = Gio.Subprocess.new(
             cmd,
-            Gio.SubprocessFlags.STDERR_PIPE | Gio.SubprocessFlags.STDOUT_PIPE,
-        )
+            Gio.SubprocessFlags.STDERR_PIPE | Gio.SubprocessFlags.STDOUT_PIPE
+        );
 
-        const [, out, err] = process.communicate_utf8(null, null)
+        const [, out, err] = process.communicate_utf8(null, null);
         if (process.get_successful()) {
-            return out.trim()
+            return out.trim();
         } else {
-            throw new Error(err)
+            throw new Error(err);
         }
     }
 
@@ -205,8 +205,8 @@ export class Process extends GObject.Object {
      * @return stdout of the subprocess
      */
     static exec(cmd: string) {
-        const [, argv] = GLib.shell_parse_argv(cmd)
-        return Process.execv(argv!)
+        const [, argv] = GLib.shell_parse_argv(cmd);
+        return Process.execv(argv!);
     }
 
     /**
@@ -220,23 +220,23 @@ export class Process extends GObject.Object {
     static execAsyncv(cmd: string[]): Promise<string> {
         const process = Gio.Subprocess.new(
             cmd,
-            Gio.SubprocessFlags.STDERR_PIPE | Gio.SubprocessFlags.STDOUT_PIPE,
-        )
+            Gio.SubprocessFlags.STDERR_PIPE | Gio.SubprocessFlags.STDOUT_PIPE
+        );
 
         return new Promise((resolve, reject) => {
             process.communicate_utf8_async(null, null, (_, res) => {
                 try {
-                    const [, out, err] = process.communicate_utf8_finish(res)
+                    const [, out, err] = process.communicate_utf8_finish(res);
                     if (process.get_successful()) {
-                        return resolve(out.trim())
+                        return resolve(out.trim());
                     } else {
-                        reject(new Error(err.trim()))
+                        reject(new Error(err.trim()));
                     }
                 } catch (error) {
-                    reject(error)
+                    reject(error);
                 }
-            })
-        })
+            });
+        });
     }
 
     /**
@@ -247,63 +247,65 @@ export class Process extends GObject.Object {
      * @return stdout of the subprocess
      */
     static execAsync(cmd: string) {
-        const [, argv] = GLib.shell_parse_argv(cmd)
-        return Process.execAsyncv(argv!)
+        const [, argv] = GLib.shell_parse_argv(cmd);
+        return Process.execAsyncv(argv!);
     }
 
     /**
      * Try to find a binary in PATH, falling back to the name itself.
      */
     static findBinary(name: string): string {
-      try {
-        return Process.exec(`which ${name}`)
-      } catch {
-        return name
-      }
+        try {
+            return Process.exec(`which ${name}`);
+        } catch {
+            return name;
+        }
     }
 }
 
 type Args = {
-    cmd: string | string[]
-    out?: (stdout: string) => void
-    err?: (stderr: string) => void
-}
+    cmd: string | string[];
+    out?: (stdout: string) => void;
+    err?: (stderr: string) => void;
+};
 
-export function subprocess(args: Args): Process
+export function subprocess(args: Args): Process;
 
 export function subprocess(
     cmd: string | string[],
     onOut?: (stdout: string) => void,
-    onErr?: (stderr: string) => void,
-): Process
+    onErr?: (stderr: string) => void
+): Process;
 
 export function subprocess(
     argsOrCmd: Args | string | string[],
     onOut: (stdout: string) => void = print,
-    onErr: (stderr: string) => void = printerr,
+    onErr: (stderr: string) => void = printerr
 ) {
-    const args = Array.isArray(argsOrCmd) || typeof argsOrCmd === "string"
-    const { cmd, err, out } = {
+    const args = Array.isArray(argsOrCmd) || typeof argsOrCmd === 'string';
+    const {cmd, err, out} = {
         cmd: args ? argsOrCmd : argsOrCmd.cmd,
         err: args ? onErr : argsOrCmd.err || onErr,
         out: args ? onOut : argsOrCmd.out || onOut,
-    }
+    };
 
-    const proc = Array.isArray(cmd) ? Process.subprocessv(cmd) : Process.subprocess(cmd)
-    proc.connect("stdout", (_, stdout: string) => out(stdout))
-    proc.connect("stderr", (_, stderr: string) => err(stderr))
-    return proc
+    const proc = Array.isArray(cmd)
+        ? Process.subprocessv(cmd)
+        : Process.subprocess(cmd);
+    proc.connect('stdout', (_, stdout: string) => out(stdout));
+    proc.connect('stderr', (_, stderr: string) => err(stderr));
+    return proc;
 }
 
 /** @throws {Error} Throws stderr */
 export function exec(cmd: string | string[]) {
-    return Array.isArray(cmd) ? Process.execv(cmd) : Process.exec(cmd)
+    return Array.isArray(cmd) ? Process.execv(cmd) : Process.exec(cmd);
 }
 
 export function execAsync(cmd: string | string[]): Promise<string> {
     if (Array.isArray(cmd)) {
-        return Process.execAsyncv(cmd)
+        return Process.execAsyncv(cmd);
     } else {
-        return Process.execAsync(cmd)
+        return Process.execAsync(cmd);
     }
 }

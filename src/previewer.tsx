@@ -12,35 +12,35 @@
  * and automatically restarts this process — giving an instant feedback loop.
  */
 
-import Adw from "gi://Adw?version=1"
-import Gdk from "gi://Gdk?version=4.0"
-import Gtk from "gi://Gtk?version=4.0"
-import GLib from "gi://GLib?version=2.0"
-import { exit, programInvocationName } from "system"
-import { createRoot } from "gnim"
-import { PreviewWindow } from "./previewer/PreviewWindow"
-import css from "./shade.css"
+import Adw from 'gi://Adw?version=1';
+import Gdk from 'gi://Gdk?version=4.0';
+import Gtk from 'gi://Gtk?version=4.0';
+import GLib from 'gi://GLib?version=2.0';
+import {exit, programInvocationName} from 'system';
+import {createRoot} from 'gnim';
+import {PreviewWindow} from './previewer/PreviewWindow';
+import css from './shade.css';
 
-const APP_ID = "com.caioasmuniz.shade_shell.previewer"
+const APP_ID = 'com.caioasmuniz.shade_shell.previewer';
 
 function initCss() {
-  const display = Gdk.Display.get_default()
-  if (!display) {
-    print("[previewer] No display — cannot load CSS")
-    return
-  }
-  const provider = new Gtk.CssProvider()
-  provider.load_from_data(css, -1)
-  Gtk.StyleContext.add_provider_for_display(
-    display,
-    provider,
-    Gtk.STYLE_PROVIDER_PRIORITY_USER,
-  )
+    const display = Gdk.Display.get_default();
+    if (!display) {
+        print('[previewer] No display — cannot load CSS');
+        return;
+    }
+    const provider = new Gtk.CssProvider();
+    provider.load_from_data(css, -1);
+    Gtk.StyleContext.add_provider_for_display(
+        display,
+        provider,
+        Gtk.STYLE_PROVIDER_PRIORITY_USER
+    );
 
-  // Also load a small base style that makes the preview canvas look right
-  const baseProvider = new Gtk.CssProvider()
-  baseProvider.load_from_data(
-    `
+    // Also load a small base style that makes the preview canvas look right
+    const baseProvider = new Gtk.CssProvider();
+    baseProvider.load_from_data(
+        `
     .preview-canvas { padding: 24px; }
     .preview-sidebar {
       border-right: 1px solid alpha(currentColor, 0.08);
@@ -99,48 +99,48 @@ function initCss() {
       margin: 4px;
     }
     `,
-    -1,
-  )
-  Gtk.StyleContext.add_provider_for_display(
-    display,
-    baseProvider,
-    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-  )
+        -1
+    );
+    Gtk.StyleContext.add_provider_for_display(
+        display,
+        baseProvider,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    );
 }
 
 // Component name comes from env var (set by tools/preview.mjs)
 // to avoid GLib.Application trying to parse it as a file.
-const initialComponent = GLib.getenv("SHADE_PREVIEW_COMPONENT") || undefined
+const initialComponent = GLib.getenv('SHADE_PREVIEW_COMPONENT') || undefined;
 
 const app = new Adw.Application({
-  applicationId: APP_ID,
-})
+    applicationId: APP_ID,
+});
 
-app.connect("activate", () => {
-  initCss()
+app.connect('activate', () => {
+    initCss();
 
-  createRoot((dispose) => {
-    app.connect("shutdown", dispose)
+    createRoot(dispose => {
+        app.connect('shutdown', dispose);
 
-    const win = app.get_active_window() as Adw.Window | null
-    if (win) {
-      // If window exists, just present it
-      win.present()
-      return
-    }
+        const win = app.get_active_window() as Adw.Window | null;
+        if (win) {
+            // If window exists, just present it
+            win.present();
+            return;
+        }
 
-    const previewWin = new Adw.Window({
-      application: app,
-      title: "Shade — UI Previewer",
-      defaultWidth: 900,
-      defaultHeight: 680,
-    })
+        const previewWin = new Adw.Window({
+            application: app,
+            title: 'Shade — UI Previewer',
+            defaultWidth: 900,
+            defaultHeight: 680,
+        });
 
-    previewWin.content = PreviewWindow({ initialComponent })
-    previewWin.present()
-  })
-})
+        previewWin.content = PreviewWindow({initialComponent});
+        previewWin.present();
+    });
+});
 
 // Only pass the program name — no extra args to avoid file-open errors
-const exitCode = await app.runAsync([programInvocationName])
-exit(exitCode)
+const exitCode = await app.runAsync([programInvocationName]);
+exit(exitCode);

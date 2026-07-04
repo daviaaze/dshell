@@ -1,5 +1,5 @@
-import Gtk from "gi://Gtk?version=4.0"
-import Adw from "gi://Adw?version=1"
+import Gtk from 'gi://Gtk?version=4.0';
+import Adw from 'gi://Adw?version=1';
 
 /**
  * A button with an icon and label, styled as a flat menu item.
@@ -13,17 +13,19 @@ import Adw from "gi://Adw?version=1"
  *   onClicked={() => { doPoweroff(); popover.popdown() }} />
  */
 export const ActionButton = (props: {
-  iconName: string
-  label: string
-  destructive?: boolean
-  visible?: boolean | import("gnim").Accessor<boolean>
-  onClicked: () => void
+    iconName: string;
+    label: string;
+    destructive?: boolean;
+    visible?: boolean | import('gnim').Accessor<boolean>;
+    onClicked: () => void;
 }) => (
-  <Gtk.Button
-    visible={props.visible ?? true}
-    cssClasses={props.destructive ? ["flat", "destructive-action"] : ["flat"]}
-    onClicked={props.onClicked}
-  >
-    <Adw.ButtonContent iconName={props.iconName} label={props.label} />
-  </Gtk.Button>
-)
+    <Gtk.Button
+        visible={props.visible ?? true}
+        cssClasses={
+            props.destructive ? ['flat', 'destructive-action'] : ['flat']
+        }
+        onClicked={props.onClicked}
+    >
+        <Adw.ButtonContent iconName={props.iconName} label={props.label} />
+    </Gtk.Button>
+);

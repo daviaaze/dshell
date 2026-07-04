@@ -18,21 +18,21 @@
  * `connect()` and manage the handler ID manually in `dispose()`.
  */
 
-import type GObject from "gi://GObject?version=2.0"
+import type GObject from 'gi://GObject?version=2.0';
 
 // ── Internal tracker ────────────────────────────────────────────
 
-type CleanupEntry = { obj: GObject.Object; handlerId: number }
+type CleanupEntry = {obj: GObject.Object; handlerId: number};
 
-const nodeRegistry = new WeakMap<object, CleanupEntry[]>()
+const nodeRegistry = new WeakMap<object, CleanupEntry[]>();
 
 function getOrCreateEntries(node: object): CleanupEntry[] {
-  let entries = nodeRegistry.get(node)
-  if (!entries) {
-    entries = []
-    nodeRegistry.set(node, entries)
-  }
-  return entries
+    let entries = nodeRegistry.get(node);
+    if (!entries) {
+        entries = [];
+        nodeRegistry.set(node, entries);
+    }
+    return entries;
 }
 
 /**
@@ -46,15 +46,15 @@ function getOrCreateEntries(node: object): CleanupEntry[] {
  * @returns The GObject handler ID (can be used for manual disconnect before cleanup)
  */
 export function connectFor(
-  node: object,
-  obj: GObject.Object,
-  signal: string,
-  callback: (...args: any[]) => void,
+    node: object,
+    obj: GObject.Object,
+    signal: string,
+    callback: (...args: any[]) => void
 ): number {
-  const handlerId = obj.connect(signal, callback)
-  const entries = getOrCreateEntries(node)
-  entries.push({ obj, handlerId })
-  return handlerId
+    const handlerId = obj.connect(signal, callback);
+    const entries = getOrCreateEntries(node);
+    entries.push({obj, handlerId});
+    return handlerId;
 }
 
 /**
@@ -67,11 +67,11 @@ export function connectFor(
  * @returns The handler ID
  */
 export function connectDestroy(
-  node: object,
-  widget: GObject.Object,
-  callback: () => void,
+    node: object,
+    widget: GObject.Object,
+    callback: () => void
 ): number {
-  return connectFor(node, widget, "destroy", callback)
+    return connectFor(node, widget, 'destroy', callback);
 }
 
 /**
@@ -82,14 +82,14 @@ export function connectDestroy(
  * @param node  The Gnim node whose handlers should be disconnected
  */
 export function cleanupNode(node: object): void {
-  const entries = nodeRegistry.get(node)
-  if (!entries) return
-  for (const { obj, handlerId } of entries) {
-    try {
-      obj.disconnect(handlerId)
-    } catch {
-      // Object may already be finalized — safe to ignore
+    const entries = nodeRegistry.get(node);
+    if (!entries) return;
+    for (const {obj, handlerId} of entries) {
+        try {
+            obj.disconnect(handlerId);
+        } catch {
+            // Object may already be finalized — safe to ignore
+        }
     }
-  }
-  nodeRegistry.delete(node)
+    nodeRegistry.delete(node);
 }

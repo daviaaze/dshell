@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "types": "npx @ts-for-gir/cli generate -o @girs --ignoreVersionConflicts",
     "check": "tsc --noEmit",
     "check:all": "pnpm run types && pnpm run lint && pnpm run check",
@@ -28,6 +30,12 @@
     "gnim-schemas": "^0.3.0"
   },
   "prettier": {
-    "semi": false
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 4,
+    "trailingComma": "es5",
+    "bracketSpacing": false,
+    "arrowParens": "avoid",
+    "quoteProps": "as-needed"
   }
 }

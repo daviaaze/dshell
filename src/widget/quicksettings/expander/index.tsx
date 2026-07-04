@@ -1,51 +1,51 @@
-import Gtk from "gi://Gtk?version=4.0"
-import { createState } from "gnim"
-import { Battery, BatteryIcon } from "./battery"
-import { Media, MediaIcon } from "./media"
-import { Calendar, CalendarIcon } from "./calendar"
-import { WeatherIcon } from "#/widget/common/weatherWidget"
-import { Weather } from "./weather"
-import { WorldClock } from "./worldClock"
-import Adw from "gi://Adw?version=1"
+import Gtk from 'gi://Gtk?version=4.0';
+import {createState} from 'gnim';
+import {Battery, BatteryIcon} from './battery';
+import {Media, MediaIcon} from './media';
+import {Calendar, CalendarIcon} from './calendar';
+import {WeatherIcon} from '#/widget/common/weatherWidget';
+import {Weather} from './weather';
+import {WorldClock} from './worldClock';
+import Adw from 'gi://Adw?version=1';
 
 export const Expander = () => {
-  const [visible, setVisible] = createState(false)
+    const [visible, setVisible] = createState(false);
 
-  const Heading = () => (
-    <Gtk.ToggleButton
-      onClicked={() => setVisible(!visible())}
-      active={visible}
-      cssClasses={["flat"]}
-    >
-      <Gtk.Box spacing={8} cssClasses={["popover-padded"]}>
-        <Adw.WrapBox halign={Gtk.Align.CENTER} hexpand>
-          <MediaIcon />
-          <CalendarIcon />
-          <BatteryIcon />
-          <WeatherIcon />
-        </Adw.WrapBox>
-        <Gtk.Image
-          halign={Gtk.Align.END}
-          iconName={visible.as((v) =>
-            v ? "go-up-symbolic" : "go-down-symbolic",
-          )}
-        />
-      </Gtk.Box>
-    </Gtk.ToggleButton>
-  )
+    const Heading = () => (
+        <Gtk.ToggleButton
+            onClicked={() => setVisible(!visible())}
+            active={visible}
+            cssClasses={['flat']}
+        >
+            <Gtk.Box spacing={8} cssClasses={['popover-padded']}>
+                <Adw.WrapBox halign={Gtk.Align.CENTER} hexpand>
+                    <MediaIcon />
+                    <CalendarIcon />
+                    <BatteryIcon />
+                    <WeatherIcon />
+                </Adw.WrapBox>
+                <Gtk.Image
+                    halign={Gtk.Align.END}
+                    iconName={visible.as(v =>
+                        v ? 'go-up-symbolic' : 'go-down-symbolic'
+                    )}
+                />
+            </Gtk.Box>
+        </Gtk.ToggleButton>
+    );
 
-  return (
-    <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-      <Heading />
-      <Gtk.Revealer revealChild={visible}>
+    return (
         <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-          <Media />
-          <Battery />
-          <Weather />
-          <Calendar />
-          <WorldClock />
+            <Heading />
+            <Gtk.Revealer revealChild={visible}>
+                <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
+                    <Media />
+                    <Battery />
+                    <Weather />
+                    <Calendar />
+                    <WorldClock />
+                </Gtk.Box>
+            </Gtk.Revealer>
         </Gtk.Box>
-      </Gtk.Revealer>
-    </Gtk.Box>
-  )
-}
+    );
+};
