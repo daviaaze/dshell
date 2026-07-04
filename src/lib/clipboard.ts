@@ -22,9 +22,11 @@ function parseCliphist(output: string): ClipboardItem[] {
   return items
 }
 
-export function getClipboardHistory(callback: (items: ClipboardItem[]) => void) {
+export async function getClipboardHistory(
+  callback: (items: ClipboardItem[]) => void,
+) {
   try {
-    const out = Process.exec("cliphist list")
+    const out = await Process.execAsync("cliphist list")
     callback(parseCliphist(out))
   } catch (e) {
     logger.error("clipboard", "failed to get history:", e)
@@ -32,28 +34,30 @@ export function getClipboardHistory(callback: (items: ClipboardItem[]) => void) 
   }
 }
 
-export function searchClipboard(
+export async function searchClipboard(
   query: string,
   callback: (items: ClipboardItem[]) => void,
 ) {
-  getClipboardHistory((items) => {
+  await getClipboardHistory((items) => {
     if (!query) return callback(items.slice(0, 20))
     const lower = query.toLowerCase()
-    callback(items.filter((item) => item.text.toLowerCase().includes(lower)).slice(0, 20))
+    callback(
+      items.filter((item) => item.text.toLowerCase().includes(lower)).slice(0, 20),
+    )
   })
 }
 
-export function copyClipboardItem(id: string) {
+export async function copyClipboardItem(id: string) {
   try {
-    Process.exec(`sh -c 'cliphist decode "${id}" | wl-copy'`)
+    await Process.execAsync(`sh -c 'cliphist decode "${id}" | wl-copy'`)
   } catch (e) {
     logger.error("clipboard", "failed to copy item:", e)
   }
 }
 
-export function deleteClipboardItem(id: string) {
+export async function deleteClipboardItem(id: string) {
   try {
-    Process.exec(`cliphist delete "${id}"`)
+    await Process.execAsync(`cliphist delete "${id}"`)
   } catch (e) {
     logger.error("clipboard", "failed to delete item:", e)
   }
