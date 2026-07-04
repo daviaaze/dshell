@@ -50,7 +50,10 @@ function ensureScreenshotDir(): string {
     logger.info("screenshot", `created screenshot directory: ${SCREENSHOT_DIR}`)
     return SCREENSHOT_DIR
   } catch (e) {
-    logger.error("screenshot", `failed to create ${SCREENSHOT_DIR}: ${(e as Error).message}, falling back to /tmp`)
+    logger.error(
+      "screenshot",
+      `failed to create ${SCREENSHOT_DIR}: ${(e as Error).message}, falling back to /tmp`,
+    )
     return `${GLib.get_tmp_dir()}/shade-screenshots`
   }
 }
@@ -117,7 +120,12 @@ export default class Screenshot extends GObject.Object {
 
   // ── Boundary state ───────────────────────────────────────────────
   #boundaryVisible = false
-  #boundaryGeometry: { x: number; y: number; width: number; height: number } | null = null
+  #boundaryGeometry: {
+    x: number
+    y: number
+    width: number
+    height: number
+  } | null = null
 
   // ── Virtual monitors ─────────────────────────────────────────────
   #virtualMonitors: VirtualMonitor[] = []
@@ -272,8 +280,9 @@ export default class Screenshot extends GObject.Object {
 
     Process.execAsync(`${GRIM_BIN} -g "${geometry}" "${filename}"`)
       .then(() => {
-        Process.execAsync(`sh -c 'wl-copy < "${filename}"'`)
-          .catch((e) => logger.warn("screenshot", "wl-copy failed:", e))
+        Process.execAsync(`sh -c 'wl-copy < "${filename}"'`).catch((e) =>
+          logger.warn("screenshot", "wl-copy failed:", e),
+        )
         this.#notify("Screenshot saved", filename, "camera-photo-symbolic")
       })
       .catch((e) => logger.error("screenshot", "grim failed:", e))
@@ -380,8 +389,9 @@ export default class Screenshot extends GObject.Object {
 
     Process.execAsync(`${GRIM_BIN} "${filename}"`)
       .then(() => {
-        Process.execAsync(`sh -c 'wl-copy < "${filename}"'`)
-          .catch((e) => logger.warn("screenshot", "wl-copy failed:", e))
+        Process.execAsync(`sh -c 'wl-copy < "${filename}"'`).catch((e) =>
+          logger.warn("screenshot", "wl-copy failed:", e),
+        )
         this.#notify("Screenshot saved", filename, "camera-photo-symbolic")
       })
       .catch((e) => logger.error("screenshot", "grim failed:", e))
@@ -409,7 +419,9 @@ export default class Screenshot extends GObject.Object {
     // If no geometry and no output specified, default to focused monitor
     const effectiveOutput =
       options.output ??
-      (options.geometry ? undefined : AstalHyprland.get_default().focused_monitor?.name)
+      (options.geometry
+        ? undefined
+        : AstalHyprland.get_default().focused_monitor?.name)
 
     // Build args based on backend
     const { args, backendName } = buildRecordingArgs(
@@ -452,7 +464,9 @@ export default class Screenshot extends GObject.Object {
 
     // Start duration timer
     this.#durationTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-      this.#recordingElapsed = Math.floor((Date.now() - this.#recordingStartTime) / 1000)
+      this.#recordingElapsed = Math.floor(
+        (Date.now() - this.#recordingStartTime) / 1000,
+      )
       this.notify("recording-elapsed")
       return this.#recording // keep running while recording
     })
@@ -530,7 +544,11 @@ export default class Screenshot extends GObject.Object {
     }
     if (!outputName) {
       logger.error("screenshot", "no output name, cannot record output")
-      this.#notify("Recording failed", "No monitor found", "dialog-error-symbolic")
+      this.#notify(
+        "Recording failed",
+        "No monitor found",
+        "dialog-error-symbolic",
+      )
       return
     }
     this.startRecording({ output: outputName })
@@ -560,7 +578,11 @@ export default class Screenshot extends GObject.Object {
     const target = clients.find((c) => c.address === address)
     if (!target) {
       logger.error("screenshot", `window with address ${address} not found`)
-      this.#notify("Recording failed", "Window not found", "dialog-error-symbolic")
+      this.#notify(
+        "Recording failed",
+        "Window not found",
+        "dialog-error-symbolic",
+      )
       return
     }
     const geometry = `${target.x},${target.y} ${target.width}x${target.height}`
@@ -574,7 +596,11 @@ export default class Screenshot extends GObject.Object {
     const client = hyprland.focused_client
     if (!client) {
       logger.error("screenshot", "no focused client, cannot record window")
-      this.#notify("Recording failed", "No window focused", "dialog-error-symbolic")
+      this.#notify(
+        "Recording failed",
+        "No window focused",
+        "dialog-error-symbolic",
+      )
       return
     }
     const geometry = `${client.x},${client.y} ${client.width}x${client.height}`
@@ -623,7 +649,9 @@ export default class Screenshot extends GObject.Object {
       try {
         this.#freezeProcess.signal(2)
         this.#freezeProcess.signal(15)
-      } catch { /* already dead */ }
+      } catch {
+        /* already dead */
+      }
       this.#freezeProcess = null
     }
     this.freezeActive = false
@@ -643,13 +671,14 @@ export default class Screenshot extends GObject.Object {
 
   // ── Virtual monitors ──────────────────────────────────────────────
 
-  createVirtualMonitor(resolution = "1920x1080", fps = 60): VirtualMonitor | null {
+  createVirtualMonitor(
+    resolution = "1920x1080",
+    fps = 60,
+  ): VirtualMonitor | null {
     try {
       Process.exec("hyprctl output create headless SHADE-VMON")
       const monitors = JSON.parse(Process.exec("hyprctl -j monitors all"))
-      const vmon = monitors.find((m: any) =>
-        m.name.startsWith("SHADE-VMON"),
-      )
+      const vmon = monitors.find((m: any) => m.name.startsWith("SHADE-VMON"))
       if (!vmon) {
         // Fallback: find any HEADLESS monitor
         const headless = monitors.find((m: any) =>
@@ -668,14 +697,22 @@ export default class Screenshot extends GObject.Object {
         this.notify("virtual-monitors")
         return vm
       }
-      Process.exec(`hyprctl keyword monitor ${vmon.name},${resolution}@${fps},auto-right,1`)
+      Process.exec(
+        `hyprctl keyword monitor ${vmon.name},${resolution}@${fps},auto-right,1`,
+      )
       const vm: VirtualMonitor = { name: vmon.name, resolution, fps }
       this.#virtualMonitors.push(vm)
       this.notify("virtual-monitors")
-      logger.info("screenshot", `created virtual monitor: ${vm.name} (${resolution}@${fps})`)
+      logger.info(
+        "screenshot",
+        `created virtual monitor: ${vm.name} (${resolution}@${fps})`,
+      )
       return vm
     } catch (e) {
-      logger.error("screenshot", `failed to create virtual monitor: ${(e as Error).message}`)
+      logger.error(
+        "screenshot",
+        `failed to create virtual monitor: ${(e as Error).message}`,
+      )
       return null
     }
   }
@@ -686,7 +723,10 @@ export default class Screenshot extends GObject.Object {
         Process.exec(`hyprctl output remove ${vm.name}`)
         logger.info("screenshot", `removed virtual monitor: ${vm.name}`)
       } catch (e) {
-        logger.warn("screenshot", `failed to remove ${vm.name}: ${(e as Error).message}`)
+        logger.warn(
+          "screenshot",
+          `failed to remove ${vm.name}: ${(e as Error).message}`,
+        )
       }
     }
     this.#virtualMonitors = []
@@ -704,7 +744,12 @@ export default class Screenshot extends GObject.Object {
       const hyprland = AstalHyprland.get_default()
       const mon = hyprland.monitors.find((m) => m.name === share.target)
       if (mon) {
-        this.showBoundary({ x: mon.x, y: mon.y, width: mon.width, height: mon.height })
+        this.showBoundary({
+          x: mon.x,
+          y: mon.y,
+          width: mon.width,
+          height: mon.height,
+        })
       }
     }
   }

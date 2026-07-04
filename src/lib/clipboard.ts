@@ -42,7 +42,9 @@ export async function searchClipboard(
     if (!query) return callback(items.slice(0, 20))
     const lower = query.toLowerCase()
     callback(
-      items.filter((item) => item.text.toLowerCase().includes(lower)).slice(0, 20),
+      items
+        .filter((item) => item.text.toLowerCase().includes(lower))
+        .slice(0, 20),
     )
   })
 }

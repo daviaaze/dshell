@@ -47,7 +47,9 @@ function getNormalizedSelection(
 export default () => {
   const ss = Screenshot.get_default()
   const hyprland = AstalHyprland.get_default()
-  const [selStart, setSelStart] = createState<{ x: number; y: number } | null>(null)
+  const [selStart, setSelStart] = createState<{ x: number; y: number } | null>(
+    null,
+  )
   const [selEnd, setSelEnd] = createState<{ x: number; y: number } | null>(null)
   const [windows, setWindows] = createState<WindowGeometry[]>([])
 
@@ -94,7 +96,12 @@ export default () => {
 
   // ── Drawing ──────────────────────────────────────────────────
 
-  const draw = (_area: Gtk.DrawingArea, cr: Cairo.Context, w: number, h: number) => {
+  const draw = (
+    _area: Gtk.DrawingArea,
+    cr: Cairo.Context,
+    w: number,
+    h: number,
+  ) => {
     const sel = getNormalizedSelection(selStart(), selEnd())
 
     // ── Dim background ────────────────────────────────────────
@@ -115,7 +122,10 @@ export default () => {
     // ── Window hints ──────────────────────────────────────────
     const wins = windows()
     cr.setSourceRGBA(
-      WINDOW_HINT_COLOR.r, WINDOW_HINT_COLOR.g, WINDOW_HINT_COLOR.b, WINDOW_HINT_COLOR.a,
+      WINDOW_HINT_COLOR.r,
+      WINDOW_HINT_COLOR.g,
+      WINDOW_HINT_COLOR.b,
+      WINDOW_HINT_COLOR.a,
     )
     cr.setLineWidth(1)
     for (const win of wins) {
@@ -129,7 +139,10 @@ export default () => {
     if (!sel) return
 
     cr.setSourceRGBA(
-      BORDER_COLOR.r, BORDER_COLOR.g, BORDER_COLOR.b, BORDER_COLOR.a,
+      BORDER_COLOR.r,
+      BORDER_COLOR.g,
+      BORDER_COLOR.b,
+      BORDER_COLOR.a,
     )
     cr.setLineWidth(BORDER_WIDTH)
     cr.rectangle(sel.x, sel.y, sel.width, sel.height)
@@ -150,27 +163,51 @@ export default () => {
 
     // Dimension label
     const label = `${sel.width} × ${sel.height}`
-    cr.selectFontFace("sans-serif", Cairo.FontSlant.NORMAL, Cairo.FontWeight.BOLD)
+    cr.selectFontFace(
+      "sans-serif",
+      Cairo.FontSlant.NORMAL,
+      Cairo.FontWeight.BOLD,
+    )
     cr.setFontSize(13)
     const ext = cr.textExtents(label)
     const tx = sel.x + sel.width / 2 - ext.width / 2
     const ty = sel.y + sel.height + 24
     const pad = 4
-    cr.rectangle(tx - pad, ty - ext.height + pad, ext.width + pad * 2, ext.height + pad)
+    cr.rectangle(
+      tx - pad,
+      ty - ext.height + pad,
+      ext.width + pad * 2,
+      ext.height + pad,
+    )
     cr.setSourceRGBA(0, 0, 0, 0.6)
     cr.fill()
     cr.moveTo(tx, ty)
-    cr.setSourceRGBA(DIM_TEXT_COLOR.r, DIM_TEXT_COLOR.g, DIM_TEXT_COLOR.b, DIM_TEXT_COLOR.a)
+    cr.setSourceRGBA(
+      DIM_TEXT_COLOR.r,
+      DIM_TEXT_COLOR.g,
+      DIM_TEXT_COLOR.b,
+      DIM_TEXT_COLOR.a,
+    )
     cr.showText(label)
 
     // Hint text at bottom
-    const hint = "Drag to select · Click a window to snap · Enter to confirm · Esc to cancel"
-    cr.selectFontFace("sans-serif", Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL)
+    const hint =
+      "Drag to select · Click a window to snap · Enter to confirm · Esc to cancel"
+    cr.selectFontFace(
+      "sans-serif",
+      Cairo.FontSlant.NORMAL,
+      Cairo.FontWeight.NORMAL,
+    )
     cr.setFontSize(12)
     const hExt = cr.textExtents(hint)
     const hx = w / 2 - hExt.width / 2
     const hy = h - 32
-    cr.rectangle(hx - pad, hy - hExt.height + pad, hExt.width + pad * 2, hExt.height + pad)
+    cr.rectangle(
+      hx - pad,
+      hy - hExt.height + pad,
+      hExt.width + pad * 2,
+      hExt.height + pad,
+    )
     cr.setSourceRGBA(0, 0, 0, 0.5)
     cr.fill()
     cr.moveTo(hx, hy)
@@ -195,11 +232,21 @@ export default () => {
     if (s) setSelEnd({ x: s.x + ox, y: s.y + oy })
   }
 
-  const onClickPressed = (_g: Gtk.GestureClick, _n: number, cx: number, cy: number) => {
+  const onClickPressed = (
+    _g: Gtk.GestureClick,
+    _n: number,
+    cx: number,
+    cy: number,
+  ) => {
     const wins = windows()
     // Check window snap
     for (const win of wins) {
-      if (cx >= win.x && cx <= win.x + win.width && cy >= win.y && cy <= win.y + win.height) {
+      if (
+        cx >= win.x &&
+        cx <= win.x + win.width &&
+        cy >= win.y &&
+        cy <= win.y + win.height
+      ) {
         setSelStart({ x: win.x, y: win.y })
         setSelEnd({ x: win.x + win.width, y: win.y + win.height })
         return
@@ -213,8 +260,14 @@ export default () => {
   // ── Keyboard ─────────────────────────────────────────────────
 
   const handleKey = (_ctrl: Gtk.EventControllerKey, keyval: number) => {
-    if (keyval === Gdk.KEY_Escape) { cancelSelection(); return true }
-    if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) { confirmSelection(); return true }
+    if (keyval === Gdk.KEY_Escape) {
+      cancelSelection()
+      return true
+    }
+    if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
+      confirmSelection()
+      return true
+    }
     return false
   }
 
@@ -242,11 +295,7 @@ export default () => {
       css={"background-color: transparent;"}
     >
       <Gtk.Overlay>
-        <Gtk.DrawingArea
-          $={(self) => self.setDrawFunc(draw)}
-          hexpand
-          vexpand
-        >
+        <Gtk.DrawingArea $={(self) => self.setDrawFunc(draw)} hexpand vexpand>
           <Gtk.GestureDrag
             $={(self) => {
               self.connect("drag-begin", onDragBegin)
