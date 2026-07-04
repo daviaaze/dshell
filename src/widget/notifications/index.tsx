@@ -3,7 +3,7 @@ import Hyprland from "gi://AstalHyprland"
 import Astal from "gi://Astal?version=4.0"
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
-import { For, createBinding, createState, createComputed, onMount } from "gnim"
+import { For, createBinding, createState, createComputed, onMount, onCleanup } from "gnim"
 import Notification from "#/widget/common/notification"
 import { app } from "#/App"
 import WindowManager from "#/lib/windowManager"
@@ -11,6 +11,7 @@ import { getNotifdSafe } from "#/lib/notifdGuard"
 import { useSettings } from "#/lib/settings"
 import logger from "#/lib/logger"
 import ShellState from "#/lib/shellState"
+import { connectFor, cleanupNode } from "#/lib/connectFor"
 
 const NotificationContent = ({
   notifd,
@@ -96,7 +97,9 @@ const NotificationContent = ({
       orientation={Gtk.Orientation.VERTICAL}
       spacing={4}
       $={() => {
-        notifd.connect("notified", (_, id) => addNotification(id))
+        const _hn = {}
+        connectFor(_hn, notifd, "notified", (_, id) => addNotification(id))
+        onCleanup(() => cleanupNode(_hn))
       }}
     >
       <For each={notifications((n) => n.reverse())}>
@@ -127,6 +130,7 @@ export default () => {
   // Also add a timeout guard: if the D-Bus handshake hangs, log a warning
   // after 15 seconds so we know the widget silently never initialized.
   onMount(() => {
+    const _hn = {}
     let initialized = false
 
     // Check if Notifd is already cached from pre-init (services-init phase).
@@ -137,10 +141,11 @@ export default () => {
       if (cached) {
         setNotifd(cached)
         setDontDisturb(cached.dontDisturb)
-        cached.connect("notify::dontDisturb", () => {
+        connectFor(_hn, cached, "notify::dontDisturb", () => {
           setDontDisturb(cached.dontDisturb)
         })
       }
+      onCleanup(() => cleanupNode(_hn))
       return
     }
 
@@ -153,7 +158,7 @@ export default () => {
       }
       setNotifd(n)
       setDontDisturb(n.dontDisturb)
-      n.connect("notify::dontDisturb", () => {
+      connectFor(_hn, n, "notify::dontDisturb", () => {
         setDontDisturb(n.dontDisturb)
       })
       return GLib.SOURCE_REMOVE
@@ -165,6 +170,7 @@ export default () => {
       }
       return GLib.SOURCE_REMOVE
     })
+    onCleanup(() => cleanupNode(_hn))
   })
 
   const screenlocked = createBinding(ShellState.get_default(), "screenlocked")

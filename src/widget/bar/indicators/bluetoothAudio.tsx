@@ -5,6 +5,7 @@ import { createComputed, createState, onCleanup, onMount } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
 import { useSettings } from "#/lib/settings"
 import { getDeviceBatteryPercentage } from "#/lib/bluetoothBattery"
+import { connectFor, cleanupNode } from "#/lib/connectFor"
 
 const ICON_MAP: Record<string, string> = {
   "audio-headset": "audio-headset-symbolic",
@@ -85,6 +86,7 @@ export default () => {
   }
 
   onMount(() => {
+    const _hn = {}
     const batterySignals = new Map<string, number>()
 
     function refresh() {
@@ -128,9 +130,25 @@ export default () => {
       updateIcons(devices)
     }
 
-    bluetooth.connect("notify::is-connected", refresh)
-    bluetooth.connect("notify::devices", refresh)
+    connectFor(_hn, bluetooth, "notify::is-connected", refresh)
+    connectFor(_hn, bluetooth, "notify::devices", refresh)
     refresh()
+    onCleanup(() => {
+      // Disconnect per-device battery signals
+      for (const [, id] of batterySignals) {
+        try {
+          const dev = toArray<any>(bluetooth.devices || []).find(
+            (d) => d.address,
+          )
+          if (dev) dev.disconnect(id)
+        } catch {
+          /* ignore */
+        }
+      }
+      batterySignals.clear()
+      // Clean up bluetooth-level connects
+      cleanupNode(_hn)
+    })
   })
 
   const visible = createComputed(

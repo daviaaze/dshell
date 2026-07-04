@@ -1,6 +1,7 @@
 import GObject from "gi://GObject?version=2.0"
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
+import { connectFor } from "#/lib/connectFor"
 
 const TIMEOUT_MS = 2000
 
@@ -35,7 +36,7 @@ export default ({
       // the main thread with Wireplumber/Brightness singleton init.
       GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
         for (const signal of signals) {
-          connectable.connect(signal, showPopup)
+          connectFor(self, connectable, signal, showPopup)
         }
         return GLib.SOURCE_REMOVE
       })

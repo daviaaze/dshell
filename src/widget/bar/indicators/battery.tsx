@@ -1,7 +1,8 @@
 import Batery from "gi://AstalBattery"
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
-import { createState, onMount } from "gnim"
+import { createState, onMount, onCleanup } from "gnim"
+import { connectFor, cleanupNode } from "#/lib/connectFor"
 
 export default () => {
   const [visible, setVisible] = createState(false)
@@ -10,6 +11,7 @@ export default () => {
   const [cssClasses, setCssClasses] = createState<string[]>([])
 
   onMount(() => {
+    const _hn = {}
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       const b = Batery.get_default()
       const update = () => {
@@ -25,12 +27,13 @@ export default () => {
           setCssClasses([])
       }
       update()
-      b.connect("notify::is-present", update)
-      b.connect("notify::battery-icon-name", update)
-      b.connect("notify::percentage", update)
-      b.connect("notify::warning-level", update)
+      connectFor(_hn, b, "notify::is-present", update)
+      connectFor(_hn, b, "notify::battery-icon-name", update)
+      connectFor(_hn, b, "notify::percentage", update)
+      connectFor(_hn, b, "notify::warning-level", update)
       return GLib.SOURCE_REMOVE
     })
+    onCleanup(() => cleanupNode(_hn))
   })
 
   return (

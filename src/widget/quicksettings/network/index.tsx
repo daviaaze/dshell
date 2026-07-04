@@ -1,7 +1,7 @@
 import Network from "gi://AstalNetwork"
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
-import { createBinding, createComputed, createState, onMount, With } from "gnim"
+import { createBinding, createComputed, createState, onMount, onCleanup, With } from "gnim"
 import { QuickToggleButton } from "#/widget/common/quickToggleButton"
 import { LinkedBox } from "#/widget/common/linkedBox"
 import WifiPopover from "./wifiPopover"
@@ -22,9 +22,10 @@ const WifiQuicksettingsButton = () => {
   const [wifiReady, setWifiReady] = createState(false)
 
   onMount(() => {
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      let wifiSignalIds: number[] = []
+    let wifiSignalIds: number[] = []
+    let unsubWifi: (() => void) | null = null
 
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       const cleanupWifiSignals = () => {
         const w = network.wifi
         for (const id of wifiSignalIds) {
@@ -55,13 +56,23 @@ const WifiQuicksettingsButton = () => {
       try {
         logger.log("Network: wifi binding")
         const wifiBinding = createBinding(network, "wifi")
-        wifiBinding.subscribe(onWifiDeviceChanged)
+        unsubWifi = wifiBinding.subscribe(onWifiDeviceChanged)
         onWifiDeviceChanged()
       } catch (e) {
         logger.error("network", "wifi binding failed:", e)
       }
       setWifiReady(true)
       return GLib.SOURCE_REMOVE
+    })
+    onCleanup(() => {
+      // Disconnect wifi device-level signals
+      const w = network.wifi
+      for (const id of wifiSignalIds) {
+        try { if (w) w.disconnect(id) } catch { /* already dead */ }
+      }
+      // Unsubscribe wifi binding
+      if (unsubWifi) unsubWifi()
+      wifiSignalIds = []
     })
   })
 

@@ -1,22 +1,25 @@
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
-import { createState, onMount } from "gnim"
+import { createState, onMount, onCleanup } from "gnim"
 import KeyboardLayout from "#/lib/keyboard"
+import { connectFor, cleanupNode } from "#/lib/connectFor"
 
 export default () => {
   const [layout, setLayout] = createState("")
   const [available, setAvailable] = createState(false)
 
   onMount(() => {
+    const _hn = {}
     // Defer KeyboardLayout D-Bus proxy to avoid blocking the main loop
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       const keyboard = KeyboardLayout.get_default()
       setLayout(keyboard.layout)
       setAvailable(keyboard.available)
-      keyboard.connect("notify::layout", () => setLayout(keyboard.layout))
-      keyboard.connect("notify::available", () => setAvailable(keyboard.available))
+      connectFor(_hn, keyboard, "notify::layout", () => setLayout(keyboard.layout))
+      connectFor(_hn, keyboard, "notify::available", () => setAvailable(keyboard.available))
       return GLib.SOURCE_REMOVE
     })
+    onCleanup(() => cleanupNode(_hn))
   })
 
   return (

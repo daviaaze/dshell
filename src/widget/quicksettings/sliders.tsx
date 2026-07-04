@@ -1,10 +1,11 @@
 import Wireplumber from "gi://AstalWp"
 import GLib from "gi://GLib?version=2.0"
-import { createBinding, createState, onMount } from "gnim"
+import { createBinding, createState, onMount, onCleanup } from "gnim"
 import Brightness from "#/lib/brightness"
 import { AudioEndpointControl } from "#/widget/common/audioControl"
 import { Slider } from "#/widget/common/slider"
 import logger from "#/lib/logger"
+import { connectFor, cleanupNode } from "#/lib/connectFor"
 
 const BRIGHTNESS_PRESETS = [0.25, 0.50, 0.75, 1.0]
 
@@ -35,6 +36,7 @@ function createEndpointConfig(cfg: EndpointConfig) {
       createState<Wireplumber.Endpoint | null>(null)
 
     onMount(() => {
+      const _hn = {}
       GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
         const audio = Wireplumber.get_default()!.audio
         const update = () => {
@@ -42,10 +44,11 @@ function createEndpointConfig(cfg: EndpointConfig) {
           setDefaultDevice(audio[cfg.defaultProp])
         }
         update()
-        audio.connect(cfg.devicesSignal, update)
-        audio.connect(cfg.defaultSignal, update)
+        connectFor(_hn, audio, cfg.devicesSignal, update)
+        connectFor(_hn, audio, cfg.defaultSignal, update)
         return GLib.SOURCE_REMOVE
       })
+      onCleanup(() => cleanupNode(_hn))
     })
 
     logger.info(`${cfg.label} done`)

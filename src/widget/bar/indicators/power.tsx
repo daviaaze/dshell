@@ -1,5 +1,4 @@
 import Gtk from "gi://Gtk?version=4.0"
-import GLib from "gi://GLib?version=2.0"
 import { createState, onMount } from "gnim"
 import PowerProfiles from "#/lib/powerProfiles"
 
@@ -16,11 +15,8 @@ export default () => {
       setIconName(pp.iconName)
       setTooltip(p)
     }
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      pp.connect("notify::activeProfile", update)
-      update()
-      return GLib.SOURCE_REMOVE
-    })
+    pp.connect("notify::activeProfile", update)
+    update()
   })
 
   return (

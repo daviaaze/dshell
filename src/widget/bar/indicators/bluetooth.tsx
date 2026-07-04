@@ -1,8 +1,9 @@
 import Bluetooth from "gi://AstalBluetooth"
 import Gtk from "gi://Gtk?version=4.0"
 import GLib from "gi://GLib?version=2.0"
-import { createState, onMount } from "gnim"
+import { createState, onMount, onCleanup } from "gnim"
 import { toArray } from "#/lib/gjsUtils"
+import { connectFor, cleanupNode } from "#/lib/connectFor"
 
 export default () => {
   const [iconName, setIconName] = createState("bluetooth-disconnected-symbolic")
@@ -10,6 +11,7 @@ export default () => {
   const [tooltip, setTooltip] = createState("")
 
   onMount(() => {
+    const _hn = {}
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       const bt = Bluetooth.get_default()
       const update = () => {
@@ -31,11 +33,12 @@ export default () => {
         }
       }
       update()
-      bt.connect("notify::is-powered", update)
-      bt.connect("notify::is-connected", update)
-      bt.connect("notify::devices", update)
+      connectFor(_hn, bt, "notify::is-powered", update)
+      connectFor(_hn, bt, "notify::is-connected", update)
+      connectFor(_hn, bt, "notify::devices", update)
       return GLib.SOURCE_REMOVE
     })
+    onCleanup(() => cleanupNode(_hn))
   })
 
   return (

@@ -1,7 +1,8 @@
 import Network from "gi://AstalNetwork"
 import Gtk from "gi://Gtk?version=4.0"
-import { createState, onMount } from "gnim"
+import { createState, onMount, onCleanup } from "gnim"
 import { wifiIconName } from "#/widget/quicksettings/network/utils"
+import { connectFor, cleanupNode } from "#/lib/connectFor"
 
 export default () => {
   const network = Network.get_default()
@@ -9,14 +10,29 @@ export default () => {
   const [visible, setVisible] = createState(false)
 
   onMount(() => {
+    const _hn = {}
     let wifiSignalIds: number[] = []
 
     const cleanupWifiSignals = () => {
       const w = network.wifi
+      if (!w) {
+        wifiSignalIds = []
+        return
+      }
       for (const id of wifiSignalIds) {
-        if (w) w.disconnect(id)
+        try { w.disconnect(id) } catch { /* already dead */ }
       }
       wifiSignalIds = []
+    }
+
+    const connectWifiSignals = () => {
+      cleanupWifiSignals()
+      const w = network.wifi
+      if (w) {
+        wifiSignalIds.push(w.connect("notify::state", update))
+        wifiSignalIds.push(w.connect("notify::strength", update))
+        wifiSignalIds.push(w.connect("notify::enabled", update))
+      }
     }
 
     const update = () => {
@@ -38,27 +54,19 @@ export default () => {
       }
     }
 
-    network.connect("notify::primary", update)
-    network.connect("notify::wifi", () => {
-      cleanupWifiSignals()
-      const w = network.wifi
-      if (w) {
-        wifiSignalIds.push(w.connect("notify::state", update))
-        wifiSignalIds.push(w.connect("notify::strength", update))
-        wifiSignalIds.push(w.connect("notify::enabled", update))
-      }
+    connectFor(_hn, network, "notify::primary", update)
+    connectFor(_hn, network, "notify::wifi", () => {
+      connectWifiSignals()
       update()
     })
-    network.connect("notify::wired", update)
-
-    const w = network.wifi
-    if (w) {
-      wifiSignalIds.push(w.connect("notify::state", update))
-      wifiSignalIds.push(w.connect("notify::strength", update))
-      wifiSignalIds.push(w.connect("notify::enabled", update))
-    }
-
+    connectFor(_hn, network, "notify::wired", update)
+    connectWifiSignals()
     update()
+
+    onCleanup(() => {
+      cleanupWifiSignals()
+      cleanupNode(_hn)
+    })
   })
 
   return (
