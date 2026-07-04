@@ -57,6 +57,8 @@ export default class Theming extends GObject.Object {
     wallpaperNight: Accessor<string>
   } | null = null
   #initialized = false
+  #unsubs: Array<() => void> = []
+  #debounceSourceId: number | null = null
 
   @getter(Boolean)
   get enabled() {
@@ -93,16 +95,16 @@ export default class Theming extends GObject.Object {
     this.#settings = settings
     this.#enabled = settings.dynamicThemingEnabled()
 
-    settings.dynamicThemingEnabled.subscribe(() => {
+    const unsubEnabled = settings.dynamicThemingEnabled.subscribe(() => {
       const newEnabled = settings.dynamicThemingEnabled()
       if (newEnabled !== this.#enabled) {
         this.enabled = newEnabled
       }
     })
+    const unsubDay = settings.wallpaperDay.subscribe(() => this.#onWallpaperChange())
+    const unsubNight = settings.wallpaperNight.subscribe(() => this.#onWallpaperChange())
 
-    // Listen for wallpaper changes
-    settings.wallpaperDay.subscribe(() => this.#onWallpaperChange())
-    settings.wallpaperNight.subscribe(() => this.#onWallpaperChange())
+    this.#unsubs = [unsubEnabled, unsubDay, unsubNight]
 
     if (this.#enabled) {
       this.#regenerate()
@@ -111,8 +113,12 @@ export default class Theming extends GObject.Object {
 
   #onWallpaperChange() {
     if (this.#enabled) {
-      // Debounce: wait a bit for the file to be written
-      GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+      // Cancel previous debounce to avoid stacking timers
+      if (this.#debounceSourceId !== null) {
+        GLib.Source.remove(this.#debounceSourceId)
+      }
+      this.#debounceSourceId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+        this.#debounceSourceId = null
         this.#regenerate()
         return GLib.SOURCE_REMOVE
       })
@@ -150,9 +156,6 @@ export default class Theming extends GObject.Object {
   #applyColors(colors: { primary: string; secondary: string; error: string }) {
     this.#clear()
 
-    // Override accent colors at PRIORITY_USER + 1 — shade.css tokens at
-    // PRIORITY_USER provide fallbacks. Libadwaita uses these named colors
-    // for buttons, toggles, sliders, focus rings, etc.
     const css = `
       @define-color accent_color ${colors.primary};
       @define-color accent_bg_color ${colors.primary};
@@ -183,5 +186,25 @@ export default class Theming extends GObject.Object {
       }
       this.#cssProvider = null
     }
+  }
+
+  dispose() {
+    // Unsubscribe all Gnim subscriptions
+    for (const unsub of this.#unsubs) {
+      try { unsub() } catch { /* ignore */ }
+    }
+    this.#unsubs = []
+
+    // Cancel pending debounce
+    if (this.#debounceSourceId !== null) {
+      GLib.Source.remove(this.#debounceSourceId)
+      this.#debounceSourceId = null
+    }
+
+    // Remove CSS provider
+    this.#clear()
+    this.#initialized = false
+    this.#settings = null
+    logger.debug("theme", "Theming disposed")
   }
 }

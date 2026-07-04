@@ -21,6 +21,7 @@ import logger from "#/lib/logger"
 import FingerprintAuth from "#/lib/fingerprint"
 import { Process } from "#/lib/process"
 import { LockscreenNotifications } from "./notifications"
+import { LockscreenWidgets } from "./widgets"
 
 const PAM_TIMEOUT_MS = 10000
 
@@ -288,6 +289,7 @@ const createLocks = (onUnlock: () => void) => {
                 cssClasses={["flat"]}
                 onClicked={() => fingerprint.retry()}
               />
+              <LockscreenWidgets position="center" />
             </Gtk.Box>
             <Gtk.Box
               $type="end"
@@ -296,6 +298,7 @@ const createLocks = (onUnlock: () => void) => {
               orientation={Gtk.Orientation.VERTICAL}
               marginTop={12}
             >
+              <LockscreenWidgets position="end" />
               <LockscreenNotifications />
             </Gtk.Box>
           </Gtk.CenterBox>
