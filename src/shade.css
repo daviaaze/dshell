@@ -321,12 +321,12 @@ popover.tray-menu > contents.background.menu {
 @media (prefers-reduced-motion: reduce) {
     /* Disable all transitions and animations for accessibility */
     * {
-        transition: none !important;
-        animation: none !important;
+        transition-property: none;
+        transition-duration: 0ms;
     }
 
     /* Keep revealer functional but instant */
     GtkRevealer {
-        transition-duration: 0ms !important;
+        transition-duration: 0ms;
     }
 }
