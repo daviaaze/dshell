@@ -2,7 +2,8 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
-import {createBinding, onCleanup} from 'gnim';
+import GObject from 'gi://GObject';
+import {onCleanup} from 'gnim';
 import {app} from '#/App';
 import {monitors} from '#/lib/monitors';
 import Screenshot, {BoundaryGeometry} from '#/lib/screenshot';
@@ -10,43 +11,43 @@ import {getScreenCaptureSettings} from '#/lib/screenCaptureSettings';
 import {toArray} from '#/lib/gjsUtils';
 
 /** Check if two rectangles overlap */
-function rectsOverlap(
-    ax: number,
-    ay: number,
-    aw: number,
-    ah: number,
-    bx: number,
-    by: number,
-    bw: number,
-    bh: number
+function rectOverlap(
+    x1: number,
+    y1: number,
+    w1: number,
+    h1: number,
+    x2: number,
+    y2: number,
+    w2: number,
+    h2: number
 ): boolean {
-    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+    return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
 }
 
 /**
  * For a single monitor, draw the portion of the boundary border
- * that falls within this monitor's coordinate space.
+ * that is visible on that monitor.
  */
 function drawBoundaryForMonitor(
     cr: Cairo.Context,
     monitor: Gdk.Monitor,
-    geometry: BoundaryGeometry,
+    geom: BoundaryGeometry,
     color: {r: number; g: number; b: number; a: number},
     borderWidth: number
-) {
-    const monGeom = monitor.geometry;
-    const mx = monGeom.x;
-    const my = monGeom.y;
-    const mw = monGeom.width;
-    const mh = monGeom.height;
+): void {
+    const geo = monitor.geometry;
+    const mx = geo.x;
+    const my = geo.y;
+    const mw = geo.width;
+    const mh = geo.height;
 
-    // If geometry doesn't overlap this monitor at all, skip
+    // Check if boundary overlaps this monitor
     if (
-        !rectsOverlap(
-            geometry.x,
-            geometry.y,
-            geometry.width,
-            geometry.height,
+        !rectOverlap(
+            geom.x,
+            geom.y,
+            geom.width,
+            geom.height,
             mx,
             my,
             mw,
@@ -56,16 +57,15 @@ function drawBoundaryForMonitor(
         return;
     }
 
-    // Clip drawing to monitor area
-    // The DrawingArea is sized to the monitor, so coordinates are relative to 0,0
-    // We need to translate geometry into monitor-local coordinates
-    const localX = geometry.x - mx;
-    const localY = geometry.y - my;
-    const localW = geometry.width;
-    const localH = geometry.height;
+    // Clamp the boundary to the monitor's coordinate space
+    const localX = geom.x - mx;
+    const localY = geom.y - my;
+    const localW = geom.width;
+    const localH = geom.height;
 
-    cr.setSourceRGBA(color.r, color.g, color.b, color.a);
+    cr.setSourceRGBA(color.r, color.g, color.b, 0.65);
     cr.setLineWidth(borderWidth);
+    cr.setDash([8, 4], 0);
     cr.setLineCap(Cairo.LineCap.SQUARE);
 
     // Only draw the visible portion of each border edge
@@ -101,62 +101,77 @@ function drawBoundaryForMonitor(
     cr.stroke();
 }
 
+const parseColor = (
+    hex: string
+): {r: number; g: number; b: number; a: number} => {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substring(0, 2), 16) / 255;
+    const g = parseInt(h.substring(2, 4), 16) / 255;
+    const b = parseInt(h.substring(4, 6), 16) / 255;
+    return {r, g, b, a: 1.0};
+};
+
 export default () => {
     const ss = Screenshot.get_default();
     const captureSettings = getScreenCaptureSettings();
-
-    // Parse boundary color from settings (format: "#FF0000")
-    const parseColor = (
-        hex: string
-    ): {r: number; g: number; b: number; a: number} => {
-        const h = hex.replace('#', '');
-        const r = parseInt(h.substring(0, 2), 16) / 255;
-        const g = parseInt(h.substring(2, 4), 16) / 255;
-        const b = parseInt(h.substring(4, 6), 16) / 255;
-        return {r, g, b, a: 1.0};
-    };
-
     const defaultColor = parseColor(captureSettings.recordingBoundaryColor());
     const BORDER_WIDTH = 3;
-
     const monList = toArray<Gdk.Monitor>(monitors);
 
-    return monList.map((monitor: Gdk.Monitor) => (
-        <Astal.Window
-            $={self => {
-                onCleanup(() => self.destroy());
-            }}
-            gdkmonitor={monitor}
-            application={app}
-            layer={Astal.Layer.OVERLAY}
-            anchor={
+    const windows: Astal.Window[] = [];
+
+    for (const monitor of monList) {
+        const win = new Astal.Window({
+            application: app,
+            gdkmonitor: monitor,
+            layer: Astal.Layer.OVERLAY,
+            anchor:
                 Astal.WindowAnchor.TOP |
                 Astal.WindowAnchor.RIGHT |
                 Astal.WindowAnchor.BOTTOM |
-                Astal.WindowAnchor.LEFT
-            }
-            exclusivity={Astal.Exclusivity.IGNORE}
-            visible={createBinding(ss, 'boundary-visible')}
-            css={'background-color: transparent;'}
-        >
-            <Gtk.DrawingArea
-                $={self => {
-                    self.set_draw_func((_area, cr, _w, _h) => {
-                        if (!ss.boundaryGeometry) return;
-                        const geom =
-                            ss.boundaryGeometry as BoundaryGeometry;
-                        drawBoundaryForMonitor(
-                            cr,
-                            monitor,
-                            geom,
-                            defaultColor,
-                            BORDER_WIDTH
-                        );
-                    });
-                }}
-                hexpand
-                vexpand
-            />
-        </Astal.Window>
-    ));
+                Astal.WindowAnchor.LEFT,
+            exclusivity: Astal.Exclusivity.IGNORE,
+        });
+
+        win.set_css('background-color: transparent;');
+
+        const drawingArea = new Gtk.DrawingArea({
+            hexpand: true,
+            vexpand: true,
+        });
+
+        drawingArea.set_draw_func((_area, cr, _w, _h) => {
+            if (!ss.boundaryGeometry) return;
+            const geom = ss.boundaryGeometry as BoundaryGeometry;
+            drawBoundaryForMonitor(
+                cr,
+                monitor,
+                geom,
+                defaultColor,
+                BORDER_WIDTH
+            );
+        });
+
+        win.set_child(drawingArea);
+
+        // Bind boundary-visible to window visible
+        ss.bind_property(
+            'boundary-visible',
+            win,
+            'visible',
+            GObject.BindingFlags.SYNC_CREATE
+        );
+
+        windows.push(win);
+        win.show();
+    }
+
+    onCleanup(() => {
+        for (const w of windows) w.destroy();
+    });
+
+    // Dummy element to anchor cleanup lifecycle in gnim
+    return (
+        <Gtk.Box visible={false} />
+    );
 };
