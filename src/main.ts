@@ -14,17 +14,14 @@ function suppressGtkStackWarnings() {
     GLib.log_set_writer_func(
         (
             _logLevels: number,
-            fields: Array<{key: string; value: unknown}>
+            fields: Record<string, unknown>
         ) => {
             // Bail out during shutdown / GC to avoid touching destroyed actors
             if (shuttingDown) {
                 return 1; /* GLib.LogWriterOutput.HANDLED */
             }
             const message =
-                (fields.find(
-                    (f: {key: string; value: unknown}) =>
-                        f.key === 'MESSAGE'
-                )?.value as string) ?? '';
+                (fields.MESSAGE as string) ?? '';
             if (
                 message.includes('duplicate child name in GtkStack') ||
                 message.includes('Theme parser error') ||
