@@ -82,12 +82,12 @@ function useWeatherData(
         sunset: info.as(w => (w?.is_valid() ? w.get_value_sunset()[1] : 0)),
         windSpeed: info.as(w => {
             if (!w?.is_valid()) return 0;
-            const [, s] = w.get_value_wind(GWeather.SpeedUnit.KMH);
+            const [, s] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
             return s;
         }),
         windDir: info.as(w => {
             if (!w?.is_valid()) return 0;
-            const [, , d] = w.get_value_wind(GWeather.SpeedUnit.KMH);
+            const [, , d] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
             return d;
         }),
         humidity: info.as(w => {

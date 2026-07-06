@@ -284,7 +284,7 @@ export default class Weather extends GObject.Object {
         pressure: number;
     } {
         const [, speed, dir] = this.#weather.get_value_wind(
-            GWeather.SpeedUnit.KPH
+            GWeather.SpeedUnit.DEFAULT
         );
         const humStr = this.#weather.get_humidity();
         const humidity = humStr ? parseFloat(humStr) : 0;
