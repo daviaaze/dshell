@@ -9,11 +9,9 @@ import {LinkedBox} from '#/widget/common/linkedBox';
 import {toArray} from '#/lib/gjsUtils';
 
 export default () => {
-    logger.log('Bluetooth: get_default()');
     // ButtonGrid items only render when quicksettings opens — D-Bus
     // services are already available by then, so synchronous call is safe.
     const bluetooth = AstalBluetooth.get_default();
-    logger.log('Bluetooth: done');
     const [connectingAddress, setConnectingAddress] = createState<
         string | null
     >(null);

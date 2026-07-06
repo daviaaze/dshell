@@ -30,7 +30,7 @@ interface EndpointConfig {
 
 function createEndpointConfig(cfg: EndpointConfig) {
     return () => {
-        logger.log(`${cfg.label}:`);
+        logger.log('audio', `${cfg.label}:`);
         const [devices, setDevices] = createState<Wireplumber.Endpoint[]>([]);
         const [defaultDevice, setDefaultDevice] =
             createState<Wireplumber.Endpoint | null>(null);
@@ -51,7 +51,7 @@ function createEndpointConfig(cfg: EndpointConfig) {
             onCleanup(() => cleanupNode(_hn));
         });
 
-        logger.info(`${cfg.label} done`);
+        logger.info('audio', `${cfg.label} done`);
         return (
             <AudioEndpointControl
                 visible={devices.as(s => s.length > 0)}
@@ -84,7 +84,7 @@ export const MicConfig = createEndpointConfig({
 });
 
 export const BrightnessSlider = () => {
-    logger.log('BrightnessSlider: get_default()');
+    logger.debug('brightness', 'BrightnessSlider: get_default()');
     const brightness = Brightness.get_default();
     const [presetIndex, setPresetIndex] = createState(0);
 
@@ -95,7 +95,7 @@ export const BrightnessSlider = () => {
         brightness.set({screen: value});
     };
 
-    logger.log('BrightnessSlider: done');
+    logger.debug('brightness', 'BrightnessSlider: done');
     return (
         <Slider
             visible={createBinding(brightness, 'screen').as(v => v > 0)}

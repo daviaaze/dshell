@@ -143,7 +143,7 @@ export default () => {
                 >
                     <Gtk.DrawingArea
                         $={self => {
-                            self.setDrawFunc((_area, cr, _w, _h) => {
+                            self.set_draw_func((_area, cr, _w, _h) => {
                                 if (!ss.boundaryGeometry) return;
                                 const geom =
                                     ss.boundaryGeometry as BoundaryGeometry;

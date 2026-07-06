@@ -21,7 +21,6 @@ interface WifiWrap {
 }
 
 const WifiQuicksettingsButton = () => {
-    logger.log('Network: get_default()');
     const network = Network.get_default();
 
     const [wifiWrap, setWifiWrap] = createState<WifiWrap>({
@@ -75,7 +74,7 @@ const WifiQuicksettingsButton = () => {
             };
 
             try {
-                logger.log('Network: wifi binding');
+                logger.debug('network', 'wifi binding ready');
                 const wifiBinding = createBinding(network, 'wifi');
                 unsubWifi = wifiBinding.subscribe(onWifiDeviceChanged);
                 onWifiDeviceChanged();

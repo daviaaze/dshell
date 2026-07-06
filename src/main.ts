@@ -10,21 +10,30 @@ import logger, {initLoggerFromSettings, perf} from '#/lib/logger';
 // ── Suppress noisy GtkStack warnings during startup ──
 
 function suppressGtkStackWarnings() {
+    let shuttingDown = false;
     GLib.log_set_writer_func(
         (
             _logDomain: string | null,
             _logLevels: number,
             message: string | null
         ) => {
+            // Bail out during shutdown / GC to avoid touching destroyed actors
+            if (shuttingDown) {
+                return 1; /* GLib.LogWriterOutput.HANDLED */
+            }
             if (
                 message &&
-                message.includes('duplicate child name in GtkStack')
+                (message.includes('duplicate child name in GtkStack') ||
+                 message.includes('Theme parser error') ||
+                 message.includes('Conversion to invalid speed unit') ||
+                 message.includes('Attempting to run a JS callback during garbage collection'))
             ) {
                 return 1; /* GLib.LogWriterOutput.HANDLED */
             }
             return 0; /* GLib.LogWriterOutput.UNHANDLED */
         }
     );
+    return () => { shuttingDown = true; };
 }
 
 // ── Graceful shutdown on signals ──
@@ -33,10 +42,12 @@ function setupSignalHandlers() {
     let quitting = false;
     const handleSignal = (sig: number): true => {
         if (quitting) {
+            stopLogSuppression();
             logger.log(`received signal ${sig} again, forcing exit`);
             exit(1);
         } else {
             quitting = true;
+            stopLogSuppression();
             logger.log(`received signal ${sig}, shutting down gracefully...`);
             app.quit();
         }
@@ -60,7 +71,7 @@ function setupI18n() {
 
 // ── Main ──
 
-suppressGtkStackWarnings();
+const stopLogSuppression = suppressGtkStackWarnings();
 perf.start('main.ts startup');
 logger.log('main.ts starting');
 

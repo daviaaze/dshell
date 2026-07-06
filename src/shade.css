@@ -281,7 +281,6 @@ popover.tray-menu > contents.background.menu {
     padding: 2px 4px;
     background: alpha(var(--window-fg-color), 0.05);
     border-radius: 6px;
-    align-items: center;
 }
 
 .weather-hourly-time {

@@ -115,14 +115,12 @@ const PlaybackStatus = ({player}: {player: Mpris.Player}) => (
 );
 
 export const MediaIcon = () => {
-    logger.log('MediaIcon: Mpris.get_default()...');
     let mpris: Mpris.Mpris | null = null;
     try {
         mpris = Mpris.get_default();
     } catch (e) {
         logger.warn('media', 'Failed to initialize Mpris:', e);
     }
-    logger.log('MediaIcon: Mpris done');
 
     if (!mpris) {
         return <Gtk.Box visible={false} />;
@@ -151,14 +149,12 @@ export const MediaIcon = () => {
 };
 
 export const Media = () => {
-    logger.log('Media: Mpris.get_default()...');
     let mpris: Mpris.Mpris | null = null;
     try {
         mpris = Mpris.get_default();
     } catch (e) {
         logger.warn('media', 'Failed to initialize Mpris:', e);
     }
-    logger.log('Media: Mpris done');
 
     if (!mpris) {
         return <Gtk.Box visible={false} />;

@@ -2,6 +2,7 @@ import Network from 'gi://AstalNetwork';
 import NM from 'gi://NM?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
+import GLib from 'gi://GLib?version=2.0';
 import {createBinding, createComputed, createState, Accessor, For} from 'gnim';
 import {toArray} from '#/lib/gjsUtils';
 import {

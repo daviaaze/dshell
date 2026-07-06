@@ -428,8 +428,7 @@ export default () => {
     return (
         <>
             {wifi() && (
-                <>
-                    {/* WiFi Section */}
+                    /* WiFi Section */
                     <Adw.PreferencesGroup
                         title="Wi-Fi"
                         description="Wireless network connections"
@@ -488,7 +487,6 @@ export default () => {
                             />
                         </Adw.ActionRow>
                     </Adw.PreferencesGroup>
-                </>
             )}
 
             <Adw.PreferencesGroup

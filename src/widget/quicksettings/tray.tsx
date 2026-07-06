@@ -6,13 +6,10 @@ import ShellState from '#/lib/shellState';
 import {PowerMenu} from '#/widget/common/powerMenu';
 import {IconButton, IconMenuButton} from '#/widget/common/iconButton';
 import {openSettings} from '#/widget';
-import logger from '#/lib/logger';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
 
 export const TrayBox = () => {
-    logger.log('Tray: get_default()...');
     const tray = Tray.get_default();
-    logger.log('Tray: done');
 
     const LockButton = () => (
         <IconButton

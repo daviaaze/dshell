@@ -562,7 +562,7 @@ export default () => {
                 <Gtk.DrawingArea
                     $={self => {
                         daRef = self;
-                        self.setDrawFunc(draw);
+                        self.set_draw_func(draw);
                     }}
                     hexpand
                     vexpand
@@ -577,7 +577,7 @@ export default () => {
                     />
                     <Gtk.GestureClick
                         $={self => {
-                            self.setButton(1);
+                            self.set_button(1);
                             self.connect('pressed', onClickPressed);
                         }}
                     />

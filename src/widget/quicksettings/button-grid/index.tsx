@@ -1,5 +1,4 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import logger from '#/lib/logger';
 import Powerprofiles from './powerprofiles';
 
 import ColorScheme from './colorScheme';
@@ -14,8 +13,6 @@ import Touchpad from './touchpad';
 import TouchpadLib from '#/lib/touchpad';
 
 export const ButtonGrid = ({cols = 2}: {cols?: number}) => {
-    logger.log('ButtonGrid: loading');
-    logger.log('ButtonGrid: rendering');
     const nightLight = NightLightLib.get_default();
     const items = [
         <Powerprofiles />,

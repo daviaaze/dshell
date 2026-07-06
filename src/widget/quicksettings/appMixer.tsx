@@ -3,14 +3,11 @@ import Wireplumber from 'gi://AstalWp';
 import GLib from 'gi://GLib?version=2.0';
 import {createBinding, createState, For, onMount, onCleanup} from 'gnim';
 import AppMixer from '#/lib/appMixer';
-import logger from '#/lib/logger';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
 import {connectFor, cleanupNode} from '#/lib/connectFor';
 
 export default () => {
-    logger.log('AppMixer: get_default()');
     const mixer = AppMixer.get_default();
-    logger.log('AppMixer: done');
 
     const streams = createBinding(mixer, 'streams');
     const [speakers, setSpeakers] = createState<Wireplumber.Endpoint[]>([]);

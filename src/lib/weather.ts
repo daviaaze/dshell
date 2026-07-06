@@ -130,7 +130,7 @@ export default class Weather extends GObject.Object {
         const forecasts = toArray<GWeather.Info>(list);
         const now = GLib.DateTime.new_now_local().to_unix();
 
-        logger.info(
+        logger.debug(
             'weather',
             `getHourlyForecast: found ${forecasts.length} forecast entries`
         );
@@ -140,7 +140,7 @@ export default class Weather extends GObject.Object {
             return valid && ts > now;
         });
 
-        logger.info(
+        logger.debug(
             'weather',
             `getHourlyForecast: ${future.length} future entries, first in ${future.length > 0 ? future[0].get_value_update()[1] - now : 0}s`
         );
@@ -176,7 +176,7 @@ export default class Weather extends GObject.Object {
         const forecasts = toArray<GWeather.Info>(list);
         if (forecasts.length === 0) return [];
 
-        logger.info(
+        logger.debug(
             'weather',
             `getDailyForecast: ${forecasts.length} entries, first ts=${forecasts[0].get_value_update()[1]}`
         );
@@ -193,7 +193,7 @@ export default class Weather extends GObject.Object {
             dayMap.get(dayKey)!.push(f);
         }
 
-        logger.info(
+        logger.debug(
             'weather',
             `getDailyForecast: grouped into ${dayMap.size} days: ${Array.from(dayMap.keys()).join(', ')}`
         );
@@ -205,7 +205,7 @@ export default class Weather extends GObject.Object {
         );
         const futureDays = sortedDays.filter(([day]) => day > today);
 
-        logger.info(
+        logger.debug(
             'weather',
             `getDailyForecast: ${futureDays.length} future days after skipping today`
         );
@@ -284,7 +284,7 @@ export default class Weather extends GObject.Object {
         pressure: number;
     } {
         const [, speed, dir] = this.#weather.get_value_wind(
-            GWeather.SpeedUnit.KMH
+            GWeather.SpeedUnit.KPH
         );
         const humStr = this.#weather.get_humidity();
         const humidity = humStr ? parseFloat(humStr) : 0;
