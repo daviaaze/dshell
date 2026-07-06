@@ -236,8 +236,12 @@ export const screenCaptureSchema = new Schema({
     path: path + 'screen-capture/',
 })
     .key('recorder-backend', 'i', {
+        default: 2,
+        summary: 'Recording backend (0 = wl-screenrec, 1 = wf-recorder, 2 = auto)',
+    })
+    .key('recording-format', 'i', {
         default: 0,
-        summary: 'Recording backend (0 = wl-screenrec, 1 = wf-recorder)',
+        summary: 'Recording container format (0 = mp4, 1 = webm)',
     })
     .key('screenshot-format', 'i', {
         default: 0,

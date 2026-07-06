@@ -81,7 +81,9 @@
         bash
         curl
         grim
+        wl-screenrec
         wf-recorder
+        wayfreeze
         wl-clipboard
         cliphist
         hyprsunset

@@ -4,9 +4,20 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
+import {getScreenCaptureSettings} from '#/lib/screenCaptureSettings';
 
 export default () => {
     const screenshot = Screenshot.get_default();
+    const captureSettings = getScreenCaptureSettings();
+
+    // Dismiss the popover and run `fn` shortly after, so the selector/overlay
+    // that follows gets a clean input grab instead of fighting the popover.
+    const dismissAnd = (fn: () => void, delay = 150) =>
+        (btn: Gtk.Button) => {
+            const root = btn.get_root();
+            if (root instanceof Gtk.Popover) root.popdown();
+            setTimeout(fn, delay);
+        };
 
     const popover = (
         <Gtk.Popover cssClasses={[]}>
@@ -28,7 +39,7 @@ export default () => {
                             label="Fullscreen"
                         />
                     </Gtk.Button>
-                    <Gtk.Button onClicked={() => screenshot.screenshot(false)}>
+                    <Gtk.Button onClicked={dismissAnd(() => screenshot.screenshot(false))}>
                         <Adw.ButtonContent
                             iconName="selection-mode-symbolic"
                             label="Area"
@@ -51,21 +62,14 @@ export default () => {
                             label="Fullscreen"
                         />
                     </Gtk.Button>
-                    <Gtk.Button onClicked={() => screenshot.recordArea()}>
+                    <Gtk.Button onClicked={dismissAnd(() => screenshot.recordArea())}>
                         <Adw.ButtonContent
                             iconName="selection-mode-symbolic"
                             label="Area"
                         />
                     </Gtk.Button>
                     <Gtk.Button
-                        onClicked={btn => {
-                            const pop = btn.get_root() as Gtk.Popover | null;
-                            if (pop instanceof Gtk.Popover) pop.popdown();
-                            setTimeout(
-                                () => screenshot.recordOutputVisual(),
-                                200
-                            );
-                        }}
+                        onClicked={dismissAnd(() => screenshot.recordOutputVisual())}
                     >
                         <Adw.ButtonContent
                             iconName="video-display-symbolic"
@@ -73,14 +77,7 @@ export default () => {
                         />
                     </Gtk.Button>
                     <Gtk.Button
-                        onClicked={btn => {
-                            const pop = btn.get_root() as Gtk.Popover | null;
-                            if (pop instanceof Gtk.Popover) pop.popdown();
-                            setTimeout(
-                                () => screenshot.recordWindowVisual(),
-                                200
-                            );
-                        }}
+                        onClicked={dismissAnd(() => screenshot.recordWindowVisual())}
                     >
                         <Adw.ButtonContent
                             iconName="focus-windows-symbolic"
@@ -91,9 +88,9 @@ export default () => {
 
                 <Gtk.Separator />
 
-                {/* Audio toggle */}
+                {/* Audio + recording format toggles */}
                 <Gtk.Box
-                    spacing={8}
+                    spacing={12}
                     orientation={Gtk.Orientation.HORIZONTAL}
                     marginStart={4}
                 >
@@ -104,7 +101,51 @@ export default () => {
                         }}
                     />
                     <Gtk.Label label="Record Audio" />
+
+                    {/* WebM (VP9). Unchecked = MP4 (H.264), the default. */}
+                    <Gtk.CheckButton
+                        active={createBinding(
+                            captureSettings.settings,
+                            'recording-format'
+                        ).as(v => v === 1)}
+                        onNotifyActive={({active}) => {
+                            captureSettings.setRecordingFormat(active ? 1 : 0);
+                        }}
+                    />
+                    <Gtk.Label label="WebM" />
                 </Gtk.Box>
+
+                <Gtk.Separator />
+
+                {/* Virtual monitor: headless output for OBS/camera capture.
+                     Reads resolution/fps from gschema; toggles create/remove. */}
+                <Gtk.Button
+                    onClicked={() => {
+                        if (screenshot.virtualMonitors.length > 0) {
+                            screenshot.removeVirtualMonitors();
+                        } else {
+                            void screenshot.createVirtualMonitor(
+                                captureSettings.virtualMonitorResolution(),
+                                captureSettings.virtualMonitorFps()
+                            );
+                        }
+                    }}
+                >
+                    <Adw.ButtonContent
+                        iconName={createBinding(
+                            screenshot,
+                            'virtualMonitorActive'
+                        ).as(active =>
+                            active
+                                ? 'user-trash-symbolic'
+                                : 'video-display-symbolic'
+                        )}
+                        label={createBinding(
+                            screenshot,
+                            'virtualMonitorActive'
+                        ).as(active => (active ? 'Remove VM' : 'Add VM'))}
+                    />
+                </Gtk.Button>
             </Gtk.Box>
         </Gtk.Popover>
     ) as Gtk.Popover;
