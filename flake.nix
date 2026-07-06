@@ -81,6 +81,7 @@
         bash
         curl
         grim
+        imagemagick
         wl-screenrec
         wf-recorder
         wayfreeze

@@ -6,7 +6,7 @@ import notifications from './notifications';
 import osd from './osd';
 import quicksettings from './quicksettings';
 import windowswitcher from './windowswitcher';
-import screenshotOverlay from './screenshot-overlay';
+import screenshotUi from './screenshot-ui';
 import regionSelector from './region-selector';
 import recordingBar from './recording-bar';
 import recordingBoundary from './recording-boundary';
@@ -147,7 +147,7 @@ function getWidgetDescriptors(): WidgetDescriptor[] {
         {name: 'quicksettings', mount: quicksettings},
         {name: 'lockscreen', mount: LockScreen},
         {name: 'windowswitcher', mount: windowswitcher},
-        {name: 'screenshot-overlay', mount: screenshotOverlay},
+        {name: 'screenshot-ui', mount: screenshotUi},
         {name: 'region-selector', mount: regionSelector},
         {name: 'recording-bar', mount: recordingBar},
         {name: 'recording-boundary', mount: recordingBoundary},

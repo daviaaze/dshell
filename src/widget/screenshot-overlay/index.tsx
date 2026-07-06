@@ -55,11 +55,15 @@ export default () => {
             `capture: mode=${mode}, target=${target}`
         );
 
-        // For area selection, close toolbar and open region-selector
+        // For area selection, close toolbar and open region-selector.
+        // Keep freeze alive through the transition so the user doesn't see
+        // a flash of unfrozen content between overlay close and region-selector.
         if (target === 'area') {
+            ss.setFreezeKeepAlive(true);
             close();
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
-                ss.regionSelectorOpen = true;
+                ss.openRegionSelectorForCapture(mode);
+                ss.setFreezeKeepAlive(false);
                 return GLib.SOURCE_REMOVE;
             });
             return;

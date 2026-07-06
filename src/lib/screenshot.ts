@@ -1,3 +1,4 @@
+import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
@@ -61,6 +62,7 @@ function ensureScreenshotDir(): string {
 }
 
 const GRIM_BIN = Process.findBinary('grim');
+const MAGICK_BIN = Process.findBinary('magick');
 
 // ── Recording backend args builder ───────────────────────────────
 
@@ -132,6 +134,10 @@ export default class Screenshot extends GObject.Object {
     #regionSelectorOpen = false;
     #pendingCaptureGeometry: string | null = null;
 
+    // ── Stage texture (frozen frame) ───────────────────────────────────
+    #stagePixPath: string | null = null;
+    #stageTexture: Gdk.Texture | null = null;
+
     // ── Freeze state ─────────────────────────────────────────────────
     #freezeActive = false;
     #freezeProcess: Process | null = null;
@@ -139,6 +145,9 @@ export default class Screenshot extends GObject.Object {
     // running. Prevents the regionSelectorOpen setter from unfreezing when the
     // selector closes on confirm (the frozen frame is still needed by grim).
     #freezeCapturePending = false;
+    // True when the overlay closes but we want to keep the freeze alive for a
+    // pending area-capture transition (overlay → region-selector gap).
+    #freezeKeepAlive = false;
 
     // ── Boundary state ───────────────────────────────────────────────
     #boundaryVisible = false;
@@ -184,8 +193,23 @@ export default class Screenshot extends GObject.Object {
     @setter(Boolean)
     set overlayOpen(v: boolean) {
         if (this.#overlayOpen === v) return;
+
+        if (v) {
+            // Capture stage (grim on focused monitor) as the frozen background.
+            // The grim PNG serves as the freeze — no wayfreeze needed.
+            this.#captureStageSync();
+            if (!this.#stagePixPath) {
+                logger.error('screenshot', 'stage capture failed, aborting overlay');
+                return;
+            }
+        }
+
         this.#overlayOpen = v;
         this.notify('overlay-open');
+
+        if (!v) {
+            this.#cleanupStage();
+        }
     }
 
     @getter(String)
@@ -268,9 +292,13 @@ export default class Screenshot extends GObject.Object {
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
             this.#freezeCapturePending = false;
             if (this.#selectedMode === 'screenshot') {
-                // screenshotGeometry releases the freeze once grim has the
-                // frame (we want the frozen frame for a still capture).
-                this.screenshotGeometry(geometry);
+                // Redesign: crop from the frozen stage texture if available,
+                // otherwise fall back to grim -g (old path).
+                if (this.#stagePixPath) {
+                    this.captureFromStage(geometry);
+                } else {
+                    this.screenshotGeometry(geometry);
+                }
             } else {
                 // Recording must capture LIVE content, so unfreeze as soon as
                 // the recorder process is launched (it has its own grab).
@@ -279,6 +307,122 @@ export default class Screenshot extends GObject.Object {
             }
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    // ── Stage capture and crop (capture-then-crop redesign) ───────────
+
+    /**
+     * Capture the focused monitor with grim (no -g) into a temp PNG and load
+     * it as a Gdk.Texture. The texture is displayed as the frozen background
+     * in the overlay. No wayfreeze needed — the grim PNG IS the freeze.
+     */
+    #captureStageSync() {
+        this.#cleanupStage();
+
+        const hyprland = AstalHyprland.get_default();
+        const monitor = hyprland.focused_monitor;
+        const monitorName = monitor?.name || '';
+
+        const stagePix = `${GLib.get_tmp_dir()}/dshell-stage-${Date.now()}.png`;
+
+        try {
+            if (monitorName) {
+                Process.exec(`${GRIM_BIN} -o "${monitorName}" "${stagePix}"`);
+            } else {
+                Process.exec(`${GRIM_BIN} "${stagePix}"`);
+            }
+        } catch (e) {
+            logger.error('screenshot', `stage capture failed: ${e}`);
+            return;
+        }
+
+        this.#stagePixPath = stagePix;
+        this.#stageTexture = Gdk.Texture.new_from_filename(stagePix);
+        this.notify('stage-texture');
+    }
+
+    /** Clean up the frozen stage texture and temp file */
+    #cleanupStage() {
+        if (this.#stageTexture) {
+            this.#stageTexture = null;
+            this.notify('stage-texture');
+        }
+        if (this.#stagePixPath) {
+            try {
+                const f = Gio.File.new_for_path(this.#stagePixPath);
+                f.delete(null);
+            } catch { /* file may already be deleted */ }
+            this.#stagePixPath = null;
+        }
+    }
+
+    /**
+     * 👇 Capture API for the unified overlay
+     *
+     * Crops the frozen stage texture using ImageMagick (or copies it for
+     * fullscreen). geometry is a `magick -crop` region string in compositor
+     * coordinates (e.g. "1920x1080+0+0"), or null for the full stage.
+     *
+     * GNOME Mutter does the same thing: captures the stage ONCE, then crops
+     * the frozen texture for output. No re-capture from the live compositor.
+     */
+    async captureFromStage(geometry: string | null) {
+        if (!this.#stagePixPath) {
+            logger.error('screenshot', 'no stage texture for capture');
+            this.#notify(
+                'Screenshot failed',
+                'No frozen frame available',
+                'dialog-error-symbolic'
+            );
+            return;
+        }
+
+        const dir = ensureScreenshotDir();
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `${dir}/${timestamp}.png`;
+
+        try {
+            if (geometry) {
+                logger.info(
+                    'screenshot',
+                    `captureFromStage: crop ${geometry} from stage`
+                );
+                await Process.execAsync(
+                    `${MAGICK_BIN} "${this.#stagePixPath}" -crop ${geometry} +repage "${filename}"`
+                );
+            } else {
+                logger.info('screenshot', 'captureFromStage: full stage copy');
+                await Process.execAsync(
+                    `cp "${this.#stagePixPath}" "${filename}"`
+                );
+            }
+
+            // Copy to clipboard
+            Process.execAsync(
+                `sh -c 'wl-copy -t image/png < "${filename}"'`
+            ).catch(e =>
+                logger.warn('screenshot', 'wl-copy failed:', e)
+            );
+
+            this.#notify('Screenshot saved', filename, 'camera-photo-symbolic');
+            this.overlayOpen = false;
+        } catch (e) {
+            logger.error('screenshot', `capture failed: ${e}`);
+            this.#notify(
+                'Screenshot failed',
+                String(e),
+                'dialog-error-symbolic'
+            );
+        }
+    }
+
+    /**
+     * 👇 Export stage-texture getter so the unified overlay widget can bind
+     * to it as the frozen background.
+     */
+    @getter(GObject.Object)
+    get stageTexture(): Gdk.Texture | null {
+        return this.#stageTexture;
     }
 
     /** Take a screenshot of a specific geometry */
@@ -370,9 +514,11 @@ export default class Screenshot extends GObject.Object {
     }
 
     screenshot(fullscreen: boolean) {
-        // For area selection, use the overlay's region-selector instead of slurp
         if (!fullscreen) {
-            this.openRegionSelectorForCapture('screenshot');
+            // Open unified overlay in area mode (capture-then-crop path)
+            this.selectedMode = 'screenshot';
+            this.selectedTarget = 'area';
+            this.overlayOpen = true;
             return;
         }
 
@@ -393,7 +539,8 @@ export default class Screenshot extends GObject.Object {
                     'camera-photo-symbolic'
                 );
             })
-            .catch(e => logger.error('screenshot', 'grim failed:', e));
+            .catch(e => logger.error('screenshot', 'grim failed:', e))
+            .finally(() => this.stopFreeze());
     }
 
     toggleRecording() {
@@ -701,6 +848,14 @@ export default class Screenshot extends GObject.Object {
 
     hideOverlay() {
         this.overlayOpen = false;
+    }
+
+    /**
+     * When set, the overlay close won't stop the freeze. Used during the
+     * overlay → region-selector transition for area captures.
+     */
+    setFreezeKeepAlive(v: boolean) {
+        this.#freezeKeepAlive = v;
     }
 
     // ── Freeze management ────────────────────────────────────────────
