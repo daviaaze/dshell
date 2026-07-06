@@ -16,24 +16,29 @@ function suppressGtkStackWarnings() {
             _logLevels: number,
             fields: Record<string, unknown>
         ) => {
-            // Bail out during shutdown / GC to avoid touching destroyed actors
+            // Suppress everything during shutdown to avoid GC callback loops
             if (shuttingDown) {
                 return 1; /* GLib.LogWriterOutput.HANDLED */
             }
-            const message =
-                (fields.MESSAGE as string) ?? '';
-            const domain =
-                (fields.GLIB_DOMAIN as string) ?? '';
-            if (
-                domain === 'GWeather' ||
-                message.includes('duplicate child name in GtkStack') ||
-                message.includes('Theme parser error') ||
-                message.includes('Conversion to invalid speed unit') ||
-                message.includes(
-                    'Attempting to run a JS callback during garbage collection'
-                )
-            ) {
-                return 1; /* GLib.LogWriterOutput.HANDLED */
+            try {
+                const message =
+                    (fields.MESSAGE as string) ?? '';
+                const domain =
+                    (fields.GLIB_DOMAIN as string) ?? '';
+                if (
+                    domain === 'GWeather' ||
+                    message.includes('duplicate child name in GtkStack') ||
+                    message.includes('Theme parser error') ||
+                    message.includes('Conversion to invalid speed unit') ||
+                    message.includes(
+                        'Attempting to run a JS callback during'
+                    )
+                ) {
+                    return 1; /* GLib.LogWriterOutput.HANDLED */
+                }
+            } catch {
+                // Fields may be unavailable during GC — suppress gracefully
+                return 1;
             }
             return 0; /* GLib.LogWriterOutput.UNHANDLED */
         }
