@@ -7,6 +7,7 @@ import {useSettings} from '#/lib/settings';
 import {toArray} from '#/lib/gjsUtils';
 import {getAppList, exactQuery} from '#/lib/apps';
 import {ActionButton} from '#/widget/common/actionButton';
+import logger from '#/lib/logger';
 
 interface DockItemProps {
     desktopFile: string;
@@ -27,19 +28,23 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
 
     const handleLeftClick = () => {
         if (running) {
+            logger.debug('dock', `focus: ${desktopFile}`);
             clients[0].focus();
         } else if (pinned) {
+            logger.debug('dock', `launch: ${desktopFile}`);
             GLib.spawn_command_line_async(`gtk-launch ${desktopFile}`);
         }
     };
 
     const handleClose = () => {
+        logger.debug('dock', `close: ${desktopFile} (${clients.length} windows)`);
         for (const client of clients) {
             client.kill();
         }
     };
 
     const handlePinToggle = () => {
+        logger.info('dock', `${pinned ? 'unpin' : 'pin'}: ${desktopFile}`);
         const current = bar.dockPinnedApps() as string[];
         if (pinned) {
             bar.dockPinnedApps.set(current.filter(d => d !== desktopFile));

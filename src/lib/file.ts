@@ -1,5 +1,6 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import logger from '#/lib/logger';
 
 export function readFile(file: string | Gio.File) {
     const f = typeof file === 'string' ? Gio.File.new_for_path(file) : file;
@@ -143,7 +144,7 @@ export function monitorFile(
 
     monitorFiles.add(mon);
     mon.connect('notify::cancelled', () => {
-        print(path, 'cancelled');
+        logger.debug('file', `monitor cancelled: ${path}`);
         monitorFiles.delete(mon);
     });
     return mon;

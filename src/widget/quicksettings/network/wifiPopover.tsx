@@ -3,6 +3,7 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, Accessor} from 'gnim';
 import ApList from './apList';
+import logger from '#/lib/logger';
 
 interface WifiPopoverProps {
     wifi: Network.Wifi;
@@ -24,7 +25,10 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
                 <Gtk.Button
                     hexpand
                     sensitive={wifiEnabled}
-                    onClicked={() => wifi.scan()}
+                    onClicked={() => {
+                        logger.debug('network', 'wifi scan triggered');
+                        wifi.scan();
+                    }}
                 >
                     <Adw.ButtonContent
                         iconName={scanning.as(s =>
@@ -35,7 +39,12 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
                         label="Scan"
                     />
                 </Gtk.Button>
-                <Gtk.Button onClicked={() => (wifi.enabled = !wifi.enabled)}>
+                <Gtk.Button
+                    onClicked={() => {
+                        logger.info('network', `wifi ${wifi.enabled ? 'disabled' : 'enabled'}`);
+                        wifi.enabled = !wifi.enabled;
+                    }}
+                >
                     <Adw.ButtonContent
                         iconName={wifiEnabled.as(enabled =>
                             enabled

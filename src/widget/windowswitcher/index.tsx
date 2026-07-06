@@ -7,12 +7,17 @@ import {createBinding, createState, For, onCleanup} from 'gnim';
 import {app} from '#/App';
 import {toArray} from '#/lib/gjsUtils';
 import SwitcherItem from './item';
+import logger from '#/lib/logger';
 
 let switcherWindow: Astal.Window | null = null;
 
 export const toggleWindowSwitcher = () => {
     if (switcherWindow) {
-        switcherWindow.visible = !switcherWindow.visible;
+        const nextVisible = !switcherWindow.visible;
+        logger.debug('wm', `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`);
+        switcherWindow.visible = nextVisible;
+    } else {
+        logger.debug('wm', 'windowSwitcher toggled (no window yet)');
     }
 };
 

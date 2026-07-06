@@ -4,6 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import {createSettings, Schema} from 'gnim-schemas';
 import {Accessor, Setter} from 'gnim';
+import logger from '#/lib/logger';
 
 export enum DarkModes {
     AUTO,
@@ -121,8 +122,9 @@ export class ColorScheme extends Object {
         }
     ) {
         if (this.#initialized) {
-            print(
-                '[Shade] [WARN] [colorScheme] init() called but already initialized — skipping'
+            logger.warn(
+                'colorscheme',
+                'init() called but already initialized — skipping'
             );
             return;
         }
@@ -161,6 +163,7 @@ export class ColorScheme extends Object {
     }
 
     dispose() {
+        logger.debug('colorscheme', 'disposing');
         if (this.#weatherHandlerId !== 0 && this.#weather) {
             try {
                 this.#weather.disconnect(this.#weatherHandlerId);

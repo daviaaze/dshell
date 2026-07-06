@@ -2,6 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register, setter} from 'gnim/gobject';
+import logger from '#/lib/logger';
 
 @register({GTypeName: 'IdleInhibit'})
 export default class Inhibit extends GObject.Object {
@@ -51,6 +52,10 @@ export default class Inhibit extends GObject.Object {
     set idle(state) {
         if (state === this.#idle) return;
         this.#idle = state;
+        logger.info(
+            'inhibit',
+            `idle ${state ? 'enabled' : 'disabled'}${state && this.#duration > 0 ? ` (${this.#duration / 60000}min)` : ''}`
+        );
         if (state) {
             if (this.#cookie !== 0) this.#app?.uninhibit(this.#cookie);
             this.#cookie =
@@ -99,8 +104,9 @@ export default class Inhibit extends GObject.Object {
 
     init(app: Adw.Application) {
         if (this.#initialized) {
-            print(
-                '[Shade] [WARN] [inhibit] init() called but already initialized — skipping'
+            logger.warn(
+                'inhibit',
+                'init() called but already initialized — skipping'
             );
             return;
         }

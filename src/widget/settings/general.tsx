@@ -5,6 +5,7 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For} from 'gnim';
 import {TEMP_MIN, TEMP_MAX} from '#/lib/nightLight';
+import logger from '#/lib/logger';
 
 export default () => {
     const settings = useSettings().general;
@@ -307,6 +308,7 @@ export default () => {
                         const current =
                             settings.notificationIgnoredApps() as string[];
                         if (!current.includes(name)) {
+                            logger.info('settings', `ignore app added: ${name}`);
                             settings.setNotificationIgnoredApps([
                                 ...current,
                                 name,
@@ -325,6 +327,7 @@ export default () => {
                                 onClicked={() => {
                                     const current =
                                         settings.notificationIgnoredApps() as string[];
+                                    logger.info('settings', `ignore app removed: ${app}`);
                                     settings.setNotificationIgnoredApps(
                                         current.filter(a => a !== app)
                                     );

@@ -3,6 +3,7 @@ import Weather from '#/lib/weather';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GWeather from 'gi://GWeather?version=4.0';
+import logger from '#/lib/logger';
 
 export default () => {
     const settings = useSettings().weather;
@@ -45,7 +46,10 @@ export default () => {
             <Adw.ActionRow
                 title={'Detect Location Now'}
                 activatable
-                onActivated={() => weather.detectLocation()}
+                onActivated={() => {
+                    logger.info('weather', 'manual location detection triggered');
+                    weather.detectLocation();
+                }}
             >
                 <Gtk.Image
                     $type="prefix"
@@ -56,13 +60,14 @@ export default () => {
             <Adw.ActionRow
                 title={'Update Weather'}
                 activatable
-                onActivated={() =>
+                onActivated={() => {
+                    logger.info('weather', 'manual weather update triggered');
                     (weather.location =
                         GWeather.Location.get_world()?.find_nearest_city(
                             settings.latitude(),
                             settings.longitude()
                         ))
-                }
+                }}
             >
                 <Gtk.Image
                     $type="prefix"

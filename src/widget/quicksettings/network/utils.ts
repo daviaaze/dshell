@@ -1,5 +1,6 @@
 import Network from 'gi://AstalNetwork';
 import {toArray} from '#/lib/gjsUtils';
+import logger from '#/lib/logger';
 
 // ── NM 802.11 flag constants ──────────────────────────────────────
 // NM.__80211ApSecurityFlags is not reliably exposed across GIR versions.
@@ -351,6 +352,7 @@ export function commitChangesAsync(
                     conn.commit_changes_finish(res);
                     resolve();
                 } catch (e) {
+                    logger.warn('network', 'commit_changes failed:', e);
                     reject(e);
                 }
             }
@@ -368,6 +370,7 @@ export function deleteConnectionAsync(
                 conn.delete_finish(res);
                 resolve();
             } catch (e) {
+                logger.warn('network', 'delete_connection failed:', e);
                 reject(e);
             }
         });
