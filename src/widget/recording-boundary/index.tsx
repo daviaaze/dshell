@@ -2,7 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
-import {createBinding, For, onCleanup} from 'gnim';
+import {createBinding, onCleanup} from 'gnim';
 import {app} from '#/App';
 import {monitors} from '#/lib/monitors';
 import Screenshot, {BoundaryGeometry} from '#/lib/screenshot';
@@ -121,46 +121,42 @@ export default () => {
 
     const monList = toArray<Gdk.Monitor>(monitors);
 
-    return (
-        <For each={() => monList}>
-            {(monitor: Gdk.Monitor) => (
-                <Astal.Window
-                    $={self => {
-                        onCleanup(() => self.destroy());
-                    }}
-                    gdkmonitor={monitor}
-                    application={app}
-                    layer={Astal.Layer.OVERLAY}
-                    anchor={
-                        Astal.WindowAnchor.TOP |
-                        Astal.WindowAnchor.RIGHT |
-                        Astal.WindowAnchor.BOTTOM |
-                        Astal.WindowAnchor.LEFT
-                    }
-                    exclusivity={Astal.Exclusivity.IGNORE}
-                    visible={createBinding(ss, 'boundary-visible')}
-                    css={'background-color: transparent;'}
-                >
-                    <Gtk.DrawingArea
-                        $={self => {
-                            self.set_draw_func((_area, cr, _w, _h) => {
-                                if (!ss.boundaryGeometry) return;
-                                const geom =
-                                    ss.boundaryGeometry as BoundaryGeometry;
-                                drawBoundaryForMonitor(
-                                    cr,
-                                    monitor,
-                                    geom,
-                                    defaultColor,
-                                    BORDER_WIDTH
-                                );
-                            });
-                        }}
-                        hexpand
-                        vexpand
-                    />
-                </Astal.Window>
-            )}
-        </For>
-    );
+    return monList.map((monitor: Gdk.Monitor) => (
+        <Astal.Window
+            $={self => {
+                onCleanup(() => self.destroy());
+            }}
+            gdkmonitor={monitor}
+            application={app}
+            layer={Astal.Layer.OVERLAY}
+            anchor={
+                Astal.WindowAnchor.TOP |
+                Astal.WindowAnchor.RIGHT |
+                Astal.WindowAnchor.BOTTOM |
+                Astal.WindowAnchor.LEFT
+            }
+            exclusivity={Astal.Exclusivity.IGNORE}
+            visible={createBinding(ss, 'boundary-visible')}
+            css={'background-color: transparent;'}
+        >
+            <Gtk.DrawingArea
+                $={self => {
+                    self.set_draw_func((_area, cr, _w, _h) => {
+                        if (!ss.boundaryGeometry) return;
+                        const geom =
+                            ss.boundaryGeometry as BoundaryGeometry;
+                        drawBoundaryForMonitor(
+                            cr,
+                            monitor,
+                            geom,
+                            defaultColor,
+                            BORDER_WIDTH
+                        );
+                    });
+                }}
+                hexpand
+                vexpand
+            />
+        </Astal.Window>
+    ));
 };
