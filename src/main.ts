@@ -22,7 +22,10 @@ function suppressGtkStackWarnings() {
             }
             const message =
                 (fields.MESSAGE as string) ?? '';
+            const domain =
+                (fields.GLIB_DOMAIN as string) ?? '';
             if (
+                domain === 'GWeather' ||
                 message.includes('duplicate child name in GtkStack') ||
                 message.includes('Theme parser error') ||
                 message.includes('Conversion to invalid speed unit') ||
