@@ -55,14 +55,23 @@ export default () => {
     );
     const [windows, setWindows] = createState<WindowGeometry[]>([]);
 
+    // Global origin of the monitor the selector covers. Drag/click coords are
+    // local to that monitor, but grim/wl-screenrec -g (without -o) expect
+    // global compositor coords — so we add this offset when capturing and
+    // subtract it when drawing global window geometry.
+    const [monOrigin, setMonOrigin] = createState<{x: number; y: number}>({
+        x: 0,
+        y: 0,
+    });
+
     // ── Confirm / Cancel ─────────────────────────────────────────
 
     const confirmSelection = () => {
         const sel = getNormalizedSelection(selStart(), selEnd());
-        if (sel) {
-            const geometry = `${sel.x},${sel.y} ${sel.width}x${sel.height}`;
-            ss.captureArea(geometry);
-        }
+        if (!sel) return;
+        const o = monOrigin();
+        const geometry = `${sel.x + o.x},${sel.y + o.y} ${sel.width}x${sel.height}`;
+        ss.captureArea(geometry);
     };
 
     const cancelSelection = () => {
@@ -145,9 +154,12 @@ export default () => {
             WINDOW_HINT_COLOR.a
         );
         cr.setLineWidth(1);
+        const o = monOrigin();
         for (const win of wins) {
-            if (win.x < w && win.y < h) {
-                cr.rectangle(win.x, win.y, win.width, win.height);
+            const lx = win.x - o.x;
+            const ly = win.y - o.y;
+            if (lx < w && ly < h) {
+                cr.rectangle(lx, ly, win.width, win.height);
                 cr.stroke();
             }
         }
@@ -256,16 +268,25 @@ export default () => {
         cy: number
     ) => {
         const wins = windows();
+        const o = monOrigin();
+        // Click coords are local to the monitor; windows are in global coords.
+        const gx = cx + o.x;
+        const gy = cy + o.y;
         // Check window snap
         for (const win of wins) {
             if (
-                cx >= win.x &&
-                cx <= win.x + win.width &&
-                cy >= win.y &&
-                cy <= win.y + win.height
+                gx >= win.x &&
+                gx <= win.x + win.width &&
+                gy >= win.y &&
+                gy <= win.y + win.height
             ) {
-                setSelStart({x: win.x, y: win.y});
-                setSelEnd({x: win.x + win.width, y: win.y + win.height});
+                // Store LOCAL coords so drawing stays correct; the global
+                // offset is re-added at capture time.
+                setSelStart({x: win.x - o.x, y: win.y - o.y});
+                setSelEnd({
+                    x: win.x + win.width - o.x,
+                    y: win.y + win.height - o.y,
+                });
                 return;
             }
         }
@@ -297,6 +318,10 @@ export default () => {
             visible={createBinding(ss, 'region-selector-open')}
             onNotifyVisible={self => {
                 if (self.visible) {
+                    const mon = hyprland.focused_monitor;
+                    if (mon) {
+                        setMonOrigin({x: mon.x, y: mon.y});
+                    }
                     setSelStart(null);
                     setSelEnd(null);
                     loadWindows();
