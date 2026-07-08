@@ -1,5 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Powerprofiles from './powerprofiles';
+import Conservation from './conservation';
 
 import ColorScheme from './colorScheme';
 import Bluetooth from './bluetooth';
@@ -16,6 +17,7 @@ export const ButtonGrid = ({cols = 2}: {cols?: number}) => {
     const nightLight = NightLightLib.get_default();
     const items = [
         <Powerprofiles />,
+        <Conservation />,
         <ColorScheme />,
         <Bluetooth />,
         <Network />,
