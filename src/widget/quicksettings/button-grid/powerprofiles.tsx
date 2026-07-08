@@ -1,11 +1,11 @@
+import {createState, onMount, onCleanup} from 'gnim';
+import Adw from 'gi://Adw?version=1';
+import GLib from 'gi://GLib?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import PowerProfiles, {profileLabel, nextProfile} from '#/lib/powerProfiles';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
-
-import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
-import {createState, onMount} from 'gnim';
-import Adw from 'gi://Adw?version=1';
+import {connectFor, cleanupNode} from '#/lib/connectFor';
 
 export default () => {
     const [iconName, setIconName] = createState(
@@ -18,6 +18,7 @@ export default () => {
     const pp = PowerProfiles.get_default();
 
     onMount(() => {
+        const _hn = {};
         const update = () => {
             const p = pp.activeProfile;
             setActiveProfile(p);
@@ -25,10 +26,11 @@ export default () => {
             setLabel(profileLabel(p));
         };
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            pp.connect('notify::activeProfile', update);
+            connectFor(_hn, pp, 'notify::activeProfile', update);
             update();
             return GLib.SOURCE_REMOVE;
         });
+        onCleanup(() => cleanupNode(_hn));
     });
 
     const setProfile = (p: 'power-saver' | 'balanced' | 'performance') => {
