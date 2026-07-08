@@ -270,6 +270,19 @@ export const screenCaptureSchema = new Schema({
     .key('overlay-freeze-enabled', 'b', {
         default: true,
         summary: 'Freeze screen when opening the capture overlay',
+    })
+    .key('audio-input-id', 'i', {
+        default: -1,
+        summary: 'PipeWire node ID for recording audio input (-1 = system default)',
+    })
+    .key('recording-quality', 'i', {
+        default: 1,
+        summary: 'Recording quality preset (0=Low, 1=Medium, 2=High)',
+        range: {min: 0, max: 2},
+    })
+    .key('preview-thumbnails-enabled', 'b', {
+        default: true,
+        summary: 'Show live preview thumbnails in capture overlay',
     });
 
 export default defineSchemaList([

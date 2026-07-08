@@ -1,5 +1,6 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import AstalWp from 'gi://AstalWp?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import GObject, {getter, register, setter} from 'gnim/gobject';
@@ -77,7 +78,9 @@ function buildRecordingArgs(
     geometry: string | undefined,
     output: string | undefined,
     audio: boolean,
-    format: RecordingFormat = RecordingFormat.MP4
+    format: RecordingFormat = RecordingFormat.MP4,
+    audioInputId: number = -1,
+    quality: number = 1,
 ): RecordingArgs {
     const isWebm = format === RecordingFormat.WEBM;
     if (backend === RecorderBackend.WL_SCREENREC) {
@@ -85,6 +88,17 @@ function buildRecordingArgs(
         if (geometry) args.push('-g', geometry);
         if (output) args.push('-o', output);
         if (audio) args.push('--audio');
+        // Audio input selection (specific node ID)
+        if (audioInputId !== -1) {
+            const wp = AstalWp.get_default();
+            const mic = wp?.audio.get_microphone(audioInputId);
+            if (mic?.name) {
+                args.push('--audio-device', mic.name);
+            }
+        }
+        // Quality preset
+        const q = quality === 0 ? 3 : quality === 2 ? 8 : 5;
+        args.push('--quality', String(q));
         // WebM requires a VP* video codec. The muxer is auto-detected from
         // the .webm extension and the audio codec auto-selects opus for it.
         if (isWebm) args.push('--codec', 'vp9');
@@ -98,6 +112,13 @@ function buildRecordingArgs(
             // wf-recorder defaults to aac, which is invalid in a webm muxer.
             if (isWebm) args.push('-C', 'libopus');
         }
+        // Audio input selection (specific node ID)
+        if (audioInputId !== -1) {
+            args.push('--audio', `pipewire_node.restore.id=${audioInputId}`);
+        }
+        // Quality preset
+        const crf = quality === 0 ? 33 : quality === 2 ? 23 : 28;
+        args.push('--codec-param', `crf=${crf}`);
         if (isWebm) args.push('-c', 'libvpx');
         return {args, backendName: 'wf-recorder'};
     }
@@ -161,6 +182,16 @@ export default class Screenshot extends GObject.Object {
     // ── Virtual monitors ─────────────────────────────────────────────
     #virtualMonitors: VirtualMonitor[] = [];
 
+    // ── Audio input selection ────────────────────────────────────────
+    #selectedAudioInput = -1; // -1 = system default
+    #selectedAudioInputName = 'System Default';
+
+    // ── Recording quality ────────────────────────────────────────────
+    #recordingQuality = 1; // 0=Low, 1=Medium, 2=High
+
+    // ── Preview thumbnails ───────────────────────────────────────────
+    #previewThumbnails = true;
+
     @getter(Number)
     get recordingElapsed() {
         return this.#recordingElapsed;
@@ -181,6 +212,56 @@ export default class Screenshot extends GObject.Object {
         if (this.#audio === value) return;
         this.#audio = value;
         this.notify('audio');
+    }
+
+    @getter(Number)
+    get selectedAudioInput() {
+        return this.#selectedAudioInput;
+    }
+
+    @setter(Number)
+    set selectedAudioInput(value: number) {
+        if (this.#selectedAudioInput === value) return;
+        this.#selectedAudioInput = value;
+        this.notify('selected-audio-input');
+        // Update name for display
+        if (value === -1) {
+            this.#selectedAudioInputName = 'System Default';
+        } else {
+            const wp = AstalWp.get_default();
+            const mic = wp?.audio.get_microphone(value);
+            this.#selectedAudioInputName = mic?.description || `Input ${value}`;
+        }
+        this.notify('selected-audio-input-name');
+    }
+
+    @getter(String)
+    get selectedAudioInputName() {
+        return this.#selectedAudioInputName;
+    }
+
+    @getter(Number)
+    get recordingQuality() {
+        return this.#recordingQuality;
+    }
+
+    @setter(Number)
+    set recordingQuality(value: number) {
+        if (this.#recordingQuality === value) return;
+        this.#recordingQuality = value;
+        this.notify('recording-quality');
+    }
+
+    @getter(Boolean)
+    get previewThumbnails() {
+        return this.#previewThumbnails;
+    }
+
+    @setter(Boolean)
+    set previewThumbnails(value: boolean) {
+        if (this.#previewThumbnails === value) return;
+        this.#previewThumbnails = value;
+        this.notify('preview-thumbnails');
     }
 
     // ── Overlay state getters/setters ─────────────────────────────────
@@ -584,7 +665,9 @@ export default class Screenshot extends GObject.Object {
             options.geometry,
             effectiveOutput,
             this.#audio,
-            format
+            format,
+            this.#selectedAudioInput,
+            this.#recordingQuality,
         );
 
         logger.info(
