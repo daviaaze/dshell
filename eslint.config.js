@@ -12,7 +12,7 @@ export default tseslint.config(
     // ── Project-specific rules ─────────────────────────────────────────
     {
         rules: {
-            '@typescript-eslint/no-explicit-any': 'off',
+            '@typescript-eslint/no-explicit-any': 'error',
 
             // GJS-specific restrictions — ban legacy globals
             'no-restricted-globals': [

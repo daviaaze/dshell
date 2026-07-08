@@ -1,8 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createBinding, createComputed} from 'gnim';
+import {createBinding} from 'gnim';
 import {app} from '#/App';
 import Screenshot from '#/lib/screenshot';
 

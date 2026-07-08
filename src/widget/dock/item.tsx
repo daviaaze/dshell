@@ -7,6 +7,7 @@ import {useSettings} from '#/lib/settings';
 import {toArray} from '#/lib/gjsUtils';
 import {getAppList, exactQuery} from '#/lib/apps';
 import {ActionButton} from '#/widget/common/actionButton';
+import AstalApps from 'gi://AstalApps?version=0.1';
 import logger from '#/lib/logger';
 
 interface DockItemProps {
@@ -20,7 +21,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
     const {bar} = useSettings();
 
     const app =
-        toArray(getAppList()).find(a => a.entry === desktopFile) ||
+        toArray(getAppList()).find((a: AstalApps.Application) => a.entry === desktopFile) ||
         exactQuery(desktopFile.replace('.desktop', ''))?.[0];
 
     const iconName = app?.iconName || 'application-x-executable-symbolic';

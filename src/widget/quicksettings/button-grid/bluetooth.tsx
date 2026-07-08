@@ -1,8 +1,6 @@
 import AstalBluetooth from 'gi://AstalBluetooth';
-import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
-import {createBinding, createComputed, createState, For, onMount} from 'gnim';
+import {createBinding, createComputed, createState, For} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import logger from '#/lib/logger';
 import {LinkedBox} from '#/widget/common/linkedBox';

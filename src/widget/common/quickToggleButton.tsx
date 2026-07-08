@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, JSX} from 'gnim';
+import {Accessor} from "gnim";;
 import {usePopoverCleanup} from './popoverCleanup';
 
 interface QuickToggleButtonProps {

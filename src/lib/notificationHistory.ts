@@ -1,4 +1,3 @@
-import Notifd from 'gi://AstalNotifd';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register} from 'gnim/gobject';
@@ -55,10 +54,6 @@ export default class NotificationHistory extends GObject.Object {
     #limit = 100;
     #ignoredApps: string[] = [];
     #notifdHandlerId = 0;
-    #settings: {
-        notificationHistoryLimit: Accessor<number>;
-        notificationIgnoredApps: Accessor<string[]>;
-    } | null = null;
 
     @getter(Array)
     get history() {
@@ -69,7 +64,6 @@ export default class NotificationHistory extends GObject.Object {
         notificationHistoryLimit: Accessor<number>;
         notificationIgnoredApps: Accessor<string[]>;
     }) {
-        this.#settings = settings;
         this.#limit = settings.notificationHistoryLimit() || 100;
         this.#ignoredApps =
             settings.notificationIgnoredApps()?.map(a => a.toLowerCase()) || [];

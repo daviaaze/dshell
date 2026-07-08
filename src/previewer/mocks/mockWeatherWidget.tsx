@@ -111,7 +111,7 @@ export const MockWeatherWidget = (props: MockWeatherWidgetProps) => {
     } = props;
 
     const d = MOCK_DATA;
-    const [gradient, setGradient] = createState(
+    const [gradient] = createState(
         'linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)'
     );
     const hourly = mockHourly(8);

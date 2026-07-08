@@ -5,7 +5,7 @@
  */
 
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createState} from 'gnim';
+import {createState} from 'gnim';
 
 interface MockSliderProps {
     icon?: string;

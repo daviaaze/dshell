@@ -128,7 +128,7 @@ export function monitorFile(
 
         let i: Gio.FileInfo | null;
         while ((i = enumerator.next_file(null)) !== null) {
-            if (i.get_file_type() == Gio.FileType.DIRECTORY) {
+            if (i.get_file_type() === Gio.FileType.DIRECTORY) {
                 const filepath = monitoredFile
                     .get_child(i.get_name())
                     .get_path();

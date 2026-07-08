@@ -1,4 +1,3 @@
-import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register, setter} from 'gnim/gobject';
 import logger from '#/lib/logger';
 

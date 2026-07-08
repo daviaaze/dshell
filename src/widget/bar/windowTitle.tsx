@@ -1,5 +1,4 @@
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango?version=1.0';
 import {Accessor, createBinding, createComputed} from 'gnim';

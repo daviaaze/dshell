@@ -59,14 +59,12 @@ export default () => {
         }
     });
 
-    let superPressed = false;
     let superReleased = false;
 
     const closeSwitcher = () => {
         if (switcherWindow) {
             switcherWindow.visible = false;
         }
-        superPressed = false;
         superReleased = false;
     };
 
@@ -132,7 +130,6 @@ export default () => {
                     Gdk.KEY_Meta_R,
                 ],
                 () => {
-                    superPressed = true;
                     return false;
                 },
             ],
@@ -175,7 +172,6 @@ export default () => {
     const onOpen = () => {
         const clients = clientsList() ?? [];
         setSelectedIndex(clients.length > 1 ? 1 : 0);
-        superPressed = false;
         superReleased = false;
         boxRef?.grab_focus();
     };

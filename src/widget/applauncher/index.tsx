@@ -21,10 +21,6 @@ const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 type LauncherMode = 'apps' | 'clipboard';
 type ListItem = Apps.Application | ClipboardItem;
 
-function isApp(item: ListItem): item is Apps.Application {
-    return 'entry' in item;
-}
-
 export default () => {
     const barCfg = useSettings().bar;
     const hyprland = Hyprland.get_default();

@@ -2,7 +2,6 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {
     ClipboardItem,
     copyClipboardItem,
-    deleteClipboardItem,
     formatClipboardPreview,
 } from '#/lib/clipboard';
 import WindowManager from '#/lib/windowManager';

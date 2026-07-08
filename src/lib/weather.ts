@@ -273,7 +273,7 @@ export default class Weather extends GObject.Object {
             {name: 'Last Quarter', emoji: '🌗'},
             {name: 'Waning Crescent', emoji: '🌘'},
         ];
-        return {phase, ...PHASES[idx]};
+        return {phase, phaseName: PHASES[idx]!.name, phaseEmoji: PHASES[idx]!.emoji};
     }
 
     /** Current conditions detail data */

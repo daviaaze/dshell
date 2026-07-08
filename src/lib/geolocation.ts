@@ -4,12 +4,6 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import logger from '#/lib/logger';
 
-interface GeoClueLocation {
-    Latitude: GLib.Variant<number>;
-    Longitude: GLib.Variant<number>;
-    Accuracy: GLib.Variant<number>;
-}
-
 @register({GTypeName: 'Geolocation'})
 export default class Geolocation extends GObject.Object {
     static instance: Geolocation;

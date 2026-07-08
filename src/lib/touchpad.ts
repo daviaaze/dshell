@@ -1,6 +1,5 @@
 import GObject, {getter, register, setter, signal} from 'gnim/gobject';
 import {Process} from '#/lib/process';
-import Gio from 'gi://Gio?version=2.0';
 import logger from '#/lib/logger';
 
 logger.info('touchpad', 'module loaded');

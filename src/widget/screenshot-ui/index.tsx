@@ -16,7 +16,6 @@ import logger from '#/lib/logger';
 // ── Constants ─────────────────────────────────────────────────────
 
 const DIM_COLOR = {r: 0, g: 0, b: 0, a: 0.35};
-const HANDLE_SIZE = 10;
 const MIN_SELECTION = 5;
 
 interface Point {
@@ -48,12 +47,6 @@ function normalizeRect(a: Point, b: Point): Geom {
     const width = Math.abs(b.x - a.x);
     const height = Math.abs(b.y - a.y);
     return {x, y, width, height};
-}
-
-function scaleFactor(): number {
-    // GTK/wayland scale factor — return 1 for now, the grim -o captures at
-    // native res which matches logical coords at 1x.
-    return 1;
 }
 
 // ── Widget ────────────────────────────────────────────────────────

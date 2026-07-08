@@ -29,7 +29,7 @@ export default () => {
                                 light: 1,
                                 dark: 2,
                             };
-                            settings.setColorScheme(map[self.activeName] ?? 0);
+                            settings.setColorScheme(map[self.activeName ?? 'auto'] ?? 0);
                         }}
                         activeName={(settings.colorScheme as any).as(
                             (v: number) =>

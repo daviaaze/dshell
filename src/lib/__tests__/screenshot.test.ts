@@ -8,7 +8,6 @@
  */
 
 import Screenshot from '#/lib/screenshot';
-import GLib from 'gi://GLib?version=2.0';
 import {describe, it, expect, run} from './test-runner';
 
 describe('Screenshot singleton', () => {
@@ -52,7 +51,6 @@ describe('Screenshot dispose', () => {
 
 describe('Screenshot dir path', () => {
     it('SCREENSHOT_DIR is under Pictures', () => {
-        const home = GLib.get_home_dir();
         // Test that the dir constant pattern is correct by checking
         // that the constants module exports a valid path
         expect(true).toBe(true);

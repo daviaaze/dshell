@@ -6,7 +6,6 @@
  * Run: pnpm run test:compile && nix develop -c gjs -m build/test/requestHandler.test.js
  */
 
-import Gio from 'gi://Gio?version=2.0';
 import {describe, it, expect, run} from './test-runner';
 
 // ── Action resolver (mirrors requestHandler logic) ──────────────────────────
