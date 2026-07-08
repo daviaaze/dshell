@@ -24,7 +24,7 @@ function setupSignalHandlers() {
     };
 
     for (const sig of [2 /* SIGINT */, 15 /* SIGTERM */]) {
-        GLibUnix.signal_add_full(GLib.PRIORITY_DEFAULT, sig, () =>
+        GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, sig, () =>
             handleSignal(sig)
         );
     }
