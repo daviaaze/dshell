@@ -167,7 +167,5 @@ export default () => {
     });
 
     // Dummy element to anchor cleanup lifecycle in gnim
-    return (
-        <Gtk.Box visible={false} />
-    );
+    return null;
 };
