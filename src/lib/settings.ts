@@ -3,28 +3,29 @@ import {createSettings} from 'gnim-schemas';
 import {createContext} from 'gnim';
 import {barSchema, generalSchema, weatherSchema, timerSchema} from './gschema';
 
+// Constraint derived from gnim-schemas' own `createSettings` signature so we
+// preserve full schema type inference (accessors + setters) without leaking an
+// explicit `any` into the codebase.
+type AnySchema = Parameters<typeof createSettings>[1];
+
 // ── Helper: create a settings group from a schema ──
 
-function createSettingsGroup<T extends Gio.Settings>(schema: {id: string}) {
-    const settings = new Gio.Settings({schemaId: schema.id}) as T;
+function createSettingsGroup<S extends AnySchema>(schema: S) {
+    const settings = new Gio.Settings({schemaId: schema.id});
     return {
         raw: settings,
         ...createSettings(settings, schema),
     };
 }
 
-type SettingsGroup<T extends Gio.Settings> = ReturnType<
-    typeof createSettingsGroup<T>
->;
-
 // ── App settings ──
 
 function createAppSettings() {
     return {
-        bar: createSettingsGroup<Gio.Settings>(barSchema),
-        general: createSettingsGroup<Gio.Settings>(generalSchema),
-        weather: createSettingsGroup<Gio.Settings>(weatherSchema),
-        timer: createSettingsGroup<Gio.Settings>(timerSchema),
+        bar: createSettingsGroup(barSchema),
+        general: createSettingsGroup(generalSchema),
+        weather: createSettingsGroup(weatherSchema),
+        timer: createSettingsGroup(timerSchema),
     };
 }
 

@@ -1,5 +1,3 @@
-/// <reference path="../@girs/gi.d.ts" />
-
 export declare global {
     interface ImportMeta {
         name: string;
