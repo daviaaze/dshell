@@ -1,33 +1,33 @@
 import logger from '#/lib/logger';
-import {Process} from '#/lib/process';
+import {
+    getHistory,
+    searchHistory,
+    copyEntryToClipboard,
+    deleteEntry,
+} from '#/lib/clipboardHistory';
+import type {ClipboardEntry} from '#/lib/clipboardHistory';
 
+/** @deprecated Use ClipboardEntry from clipboardHistory instead. */
 export interface ClipboardItem {
     id: string;
     text: string;
     timestamp: number;
 }
 
-function parseCliphist(output: string): ClipboardItem[] {
-    const lines = output.trim().split('\n');
-    const items: ClipboardItem[] = [];
-    for (const line of lines) {
-        const tabIndex = line.indexOf('\t');
-        if (tabIndex === -1) continue;
-        const id = line.slice(0, tabIndex).trim();
-        const text = line.slice(tabIndex + 1).trim();
-        if (id && text) {
-            items.push({id, text, timestamp: Date.now()});
-        }
-    }
-    return items;
+function entryToItem(entry: ClipboardEntry): ClipboardItem {
+    return {
+        id: entry.id,
+        text: entry.type === 'text' ? entry.content : '[Image]',
+        timestamp: entry.timestamp,
+    };
 }
 
 export async function getClipboardHistory(
     callback: (items: ClipboardItem[]) => void
 ) {
     try {
-        const out = await Process.execAsync('cliphist list');
-        callback(parseCliphist(out));
+        const entries = getHistory();
+        callback(entries.map(entryToItem));
     } catch (e) {
         logger.error('clipboard', 'failed to get history:', e);
         callback([]);
@@ -38,20 +38,37 @@ export async function searchClipboard(
     query: string,
     callback: (items: ClipboardItem[]) => void
 ) {
-    await getClipboardHistory(items => {
-        if (!query) return callback(items.slice(0, 20));
-        const lower = query.toLowerCase();
-        callback(
-            items
-                .filter(item => item.text.toLowerCase().includes(lower))
-                .slice(0, 20)
-        );
-    });
+    try {
+        if (!query) {
+            const entries = getHistory().slice(0, 20);
+            callback(entries.map(entryToItem));
+            return;
+        }
+        const entries = searchHistory(query);
+        callback(entries.map(entryToItem));
+    } catch (e) {
+        logger.error('clipboard', 'failed to search history:', e);
+        callback([]);
+    }
 }
 
-export async function copyClipboardItem(id: string) {
+export async function copyClipboardItem(item: ClipboardItem) {
     try {
-        await Process.execAsync(`sh -c 'cliphist decode "${id}" | wl-copy'`);
+        // Find the actual entry in our history to get the full record
+        const entries = getHistory();
+        const entry = entries.find(e => e.id === item.id);
+        if (entry) {
+            await copyEntryToClipboard(entry);
+        } else {
+            // Fallback: if the entry isn't found (shouldn't happen), try to
+            // reconstruct from the ClipboardItem. For text, use the text field.
+            // For images, we can't reconstruct without the file.
+            logger.warn('clipboard', 'entry not found in history, creating from item');
+            const display = (await import('gi://Gdk?version=4.0')).Display.get_default();
+            if (display) {
+                display.get_clipboard().set(item.text);
+            }
+        }
     } catch (e) {
         logger.error('clipboard', 'failed to copy item:', e);
     }
@@ -59,7 +76,7 @@ export async function copyClipboardItem(id: string) {
 
 export async function deleteClipboardItem(id: string) {
     try {
-        await Process.execAsync(`cliphist delete "${id}"`);
+        deleteEntry(id);
     } catch (e) {
         logger.error('clipboard', 'failed to delete item:', e);
     }

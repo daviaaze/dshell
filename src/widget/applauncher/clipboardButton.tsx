@@ -13,7 +13,7 @@ export default ({item}: {item: ClipboardItem}) => {
         <Gtk.Button
             cssClasses={['app-button']}
             onClicked={() => {
-                copyClipboardItem(item.id);
+                copyClipboardItem(item);
                 WindowManager.get_default().applauncher!.visible = false;
             }}
         >

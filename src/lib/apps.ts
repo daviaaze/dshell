@@ -1,6 +1,9 @@
 import Apps from 'gi://AstalApps';
+import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
 import Hyprland from 'gi://AstalHyprland';
 import {toArray} from '#/lib/gjsUtils';
+import logger from '#/lib/logger';
 
 const apps = new Apps.Apps({
     nameMultiplier: 4,
@@ -10,7 +13,7 @@ const apps = new Apps.Apps({
 });
 
 const CLASS_OVERRIDES: Record<string, string> = {
-    'code-url-handler': 'vscode',
+    'code-url-handler': 'code',
 };
 
 export function getAppList(): Apps.Application[] {
@@ -121,12 +124,19 @@ export function getAppForClient(
 
 export function getAppIcon(client: Hyprland.Client): string {
     const cls = client.class;
-    if (cls && CLASS_OVERRIDES[cls]) {
-        return CLASS_OVERRIDES[cls];
-    }
+    if (!cls) return 'image-missing-symbolic';
 
+    // Check hardcoded overrides first
+    if (CLASS_OVERRIDES[cls]) return CLASS_OVERRIDES[cls];
+
+    // Try AstalApps database lookup
     const app = getAppForClient(client);
-    return app?.iconName || 'image-missing-symbolic';
+    if (app?.iconName) return app.iconName;
+
+    // Fallback: use the client class as an icon name directly.
+    // Most apps set their wm_class to match their icon name (e.g.
+    // class "firefox" → icon "firefox", class "Code" → icon "code").
+    return cls.toLowerCase();
 }
 
 export function getDesktopFileForClient(
@@ -134,4 +144,70 @@ export function getDesktopFileForClient(
 ): string | null {
     const app = getAppForClient(client);
     return app?.entry || null;
+}
+
+// ── App database auto-refresh ──
+// AstalApps loads desktop files once at construction. Newly installed apps
+// won't appear until the database is reloaded. We watch the standard desktop
+// file directories and call reload() on changes.
+
+const DESKTOP_DIRS = [
+    `${GLib.get_home_dir()}/.local/share/applications`,
+    '/run/current-system/sw/share/applications',
+    `${GLib.get_home_dir()}/.nix-profile/share/applications`,
+];
+
+let reloadDebounceId: number | null = null;
+
+/**
+ * Reload the AstalApps database so newly installed apps appear in search
+ * results and the app launcher without needing to restart the shell.
+ */
+export function reloadApps() {
+    apps.reload();
+    logger.info('apps', 'AstalApps database reloaded');
+}
+
+/**
+ * Start watching desktop file directories for changes and auto-reload.
+ * Call once during app initialization.
+ */
+export function initAppWatcher() {
+    for (const dir of DESKTOP_DIRS) {
+        const file = Gio.File.new_for_path(dir);
+        if (!file.query_exists(null)) continue;
+
+        const monitor = file.monitor(
+            Gio.FileMonitorFlags.WATCH_HARD_LINKS |
+                Gio.FileMonitorFlags.WATCH_MOVES,
+            null
+        );
+
+        monitor.connect('changed', (_mon, _file, _other, event) => {
+            // Only reload on file creation/deletion, not on attribute changes
+            if (
+                event === Gio.FileMonitorEvent.CREATED ||
+                event === Gio.FileMonitorEvent.DELETED ||
+                event === Gio.FileMonitorEvent.MOVED_IN ||
+                event === Gio.FileMonitorEvent.MOVED_OUT
+            ) {
+                // Debounce: multiple file changes happen in quick succession
+                // (e.g. nixos-rebuild creating many .desktop files)
+                if (reloadDebounceId !== null) {
+                    GLib.source_remove(reloadDebounceId);
+                }
+                reloadDebounceId = GLib.timeout_add(
+                    GLib.PRIORITY_DEFAULT,
+                    2000,
+                    () => {
+                        reloadDebounceId = null;
+                        reloadApps();
+                        return GLib.SOURCE_REMOVE;
+                    }
+                );
+            }
+        });
+
+        logger.info('apps', `Watching ${dir} for new desktop files`);
+    }
 }

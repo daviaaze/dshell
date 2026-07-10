@@ -13,24 +13,22 @@ in
       "SUPER,B,exec,${uwsm-app cfg.defaultBrowser}"
       "SUPER,V,exec,pkill pwvucontrol || pwvucontrol"
       "SUPER,E,exec,${uwsm-app cfg.defaultFileManager}"
+      "SUPER,C,exec,${uwsm-app "code"}"
       "SUPERSHIFT,V,exec,${shade-action "toggle-clipboard"}"
-      "SUPERALT,R,exec,${shade-action "record"}"
-      "SUPERSHIFT,S,exec,${shade-action "screenshot-area"}"
-      ",XF86TouchpadToggle,exec,${shade-action "toggle-touchpad"}"
 
-      ", PRINT, exec, ${shade-action "screenshot-overlay"}"
+      "SUPERSHIFT,R,exec,hyprctl reload;${pkgs.libnotify}/bin/notify-send 'Hyprland reloaded'"
+      "SUPERCTRL,R,exec,systemctl --user restart shade-shell"
 
-      "SUPERSHIFT,R,exec, hyprctl reload;${pkgs.libnotify}/bin/notify-send 'Hyprland had just reloaded!'"
       "SUPERSHIFT,Q,exec,pkill Hyprland"
 
       "SUPERSHIFT,F,togglefloating,active"
       "SUPERSHIFT,G,togglegroup"
       "SUPER,G,changegroupactive,f"
       "SUPER,Q,killactive"
-      "SUPER,P,exec, hyprctl dispatch pseudo"
-      "SUPERSHIFT,P,exec, hyprctl --batch 'dispatch togglefloating 1;dispatch resizeactive exact 1920 1080;dispatch togglefloating 0;dispatch pseudo'"
+      "SUPER,P,exec,hyprctl dispatch pseudo"
+      "SUPERSHIFT,P,exec,hyprctl --batch 'dispatch togglefloating 1;dispatch resizeactive exact 1920 1080;dispatch togglefloating 0;dispatch pseudo'"
       "SUPER,F,fullscreen"
-      ",Pause,togglespecialworkspace, scratchpad"
+      ",Pause,togglespecialworkspace,scratchpad"
       ",Insert,togglespecialworkspace,scratchpad"
       "SUPER,Insert,movetoworkspace,special:scratchpad"
       "SUPER,Pause,movetoworkspace,special:scratchpad"
@@ -39,6 +37,7 @@ in
       "SUPER,n,exec,${shade-action "toggle-quicksettings"}"
       "SUPER,w,exec,${shade-action "toggle-bar"}"
       "SUPER,TAB,exec,${shade-action "toggle-windowswitcher"}"
+      "SUPER,comma,exec,${shade-action "toggle-settings"}"
 
       ",XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
       ",XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"
@@ -73,18 +72,18 @@ in
       "SUPERALT,k,workspace,+1"
       "SUPERSHIFTALT,i,movetoworkspace,-1"
       "SUPERSHIFTALT,k,movetoworkspace,+1"
-      ", XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-      ",XF86AudioMicMute, exec, wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
+      ",XF86AudioMute,exec,wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+      ",XF86AudioMicMute,exec,wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
     ];
 
     bindl = [
-      ",XF86MonBrightnessUp, exec, ${lib.getExe pkgs.brightnessctl} set +5%"
-      ",XF86MonBrightnessDown, exec, ${lib.getExe pkgs.brightnessctl} set 5%-"
+      ",XF86MonBrightnessUp,exec,${lib.getExe pkgs.brightnessctl} set +5%"
+      ",XF86MonBrightnessDown,exec,${lib.getExe pkgs.brightnessctl} set 5%-"
     ];
 
     bindle = [
-      ", XF86AudioRaiseVolume, exec, wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+"
-      ", XF86AudioLowerVolume, exec, wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-"
+      ",XF86AudioRaiseVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+"
+      ",XF86AudioLowerVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-"
     ];
 
     bindm = [

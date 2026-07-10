@@ -85,8 +85,6 @@
         wl-screenrec
         wf-recorder
         wayfreeze
-        wl-clipboard
-        cliphist
         hyprsunset
         hypridle
         matugen

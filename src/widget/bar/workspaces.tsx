@@ -54,7 +54,6 @@ export default ({
                             {(client: Hyprland.Client) => (
                                 <Adw.Toggle
                                     name={client.address}
-                                    iconName={getAppIcon(client)}
                                     child={
                                         (
                                             <Gtk.Image

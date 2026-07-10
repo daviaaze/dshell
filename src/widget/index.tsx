@@ -23,6 +23,8 @@ import {getNotifdSafe} from '#/lib/notifdGuard';
 import NotificationHistory from '#/lib/notificationHistory';
 import TimerService from './quicksettings/timer/TimerService';
 import {initAutoSwitch} from '#/lib/audioAutoSwitch';
+import {initAppWatcher} from '#/lib/apps';
+import {initClipboardHistory} from '#/lib/clipboardHistory';
 import {app} from '#/App';
 import {useSettings} from '#/lib/settings';
 import WindowManager from '#/lib/windowManager';
@@ -125,6 +127,14 @@ function getServiceDescriptors(
                     s.timer.pomodoroLongBreakDuration(),
                     s.timer.pomodoroSessionsBeforeLongBreak()
                 ),
+        },
+        {
+            name: 'AppWatcher',
+            init: () => initAppWatcher(),
+        },
+        {
+            name: 'ClipboardHistory',
+            init: () => initClipboardHistory(),
         },
     ];
 }

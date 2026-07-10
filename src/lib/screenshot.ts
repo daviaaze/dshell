@@ -479,11 +479,7 @@ export default class Screenshot extends GObject.Object {
             }
 
             // Copy to clipboard
-            Process.execAsync(
-                `sh -c 'wl-copy -t image/png < "${filename}"'`
-            ).catch(e =>
-                logger.warn('screenshot', 'wl-copy failed:', e)
-            );
+            copyImageToClipboard(filename);
 
             this.#notify('Screenshot saved', filename, 'camera-photo-symbolic');
             this.overlayOpen = false;
@@ -514,11 +510,7 @@ export default class Screenshot extends GObject.Object {
 
         Process.execAsync(`${GRIM_BIN} -g "${geometry}" "${filename}"`)
             .then(() => {
-                Process.execAsync(
-                    `sh -c 'wl-copy -t image/png < "${filename}"'`
-                ).catch(e =>
-                    logger.warn('screenshot', 'wl-copy failed:', e)
-                );
+                copyImageToClipboard(filename);
                 this.#notify(
                     'Screenshot saved',
                     filename,
@@ -609,11 +601,7 @@ export default class Screenshot extends GObject.Object {
 
         Process.execAsync(`${GRIM_BIN} "${filename}"`)
             .then(() => {
-                Process.execAsync(
-                    `sh -c 'wl-copy -t image/png < "${filename}"'`
-                ).catch(e =>
-                    logger.warn('screenshot', 'wl-copy failed:', e)
-                );
+                copyImageToClipboard(filename);
                 this.#notify(
                     'Screenshot saved',
                     filename,

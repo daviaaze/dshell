@@ -12,12 +12,9 @@ in
   config = lib.mkIf cfg.enable {
     home.packages = with pkgs; [
       grim
-      wl-clipboard
       qalculate-gtk
       wf-recorder
       wl-screenrec
-      cliphist
-      wl-clip-persist
       brightnessctl
       playerctl
       libnotify
@@ -25,26 +22,7 @@ in
 
     services = {
       ssh-agent.enable = true;
-      udiskie.enable = true;
       polkit-gnome.enable = true;
-      kdeconnect = {
-        enable = true;
-        indicator = true;
-      };
-      cliphist.enable = true;
-    };
-
-    # Fix cliphist and wl-clip-persist failing because WAYLAND_DISPLAY
-    # is not passed to systemd user services by default.
-    systemd.user.services.cliphist = {
-      Service = {
-        PassEnvironment = [ "WAYLAND_DISPLAY" "XDG_RUNTIME_DIR" ];
-      };
-    };
-    systemd.user.services.cliphist-images = {
-      Service = {
-        PassEnvironment = [ "WAYLAND_DISPLAY" "XDG_RUNTIME_DIR" ];
-      };
     };
 
     # KDE Connect needs a Qt platform plugin on non-KDE desktops.
@@ -96,21 +74,5 @@ in
       };
     };
 
-    # wl-clip-persist keeps clipboard content after the source app closes.
-    # No Home Manager module exists for this, so we define the service manually.
-    systemd.user.services.wl-clip-persist = {
-      Unit = {
-        Description = "Persist clipboard after app closes";
-        PartOf = [ "graphical-session.target" ];
-      };
-      Service = {
-        ExecStart = "${pkgs.wl-clip-persist}/bin/wl-clip-persist --clipboard regular";
-        Restart = "on-failure";
-        PassEnvironment = [ "WAYLAND_DISPLAY" "XDG_RUNTIME_DIR" ];
-      };
-      Install = {
-        WantedBy = [ "graphical-session.target" ];
-      };
-    };
   };
 }
