@@ -130,7 +130,7 @@ export const expect = (actual: unknown) => ({
 
 const ASYNC_TIMEOUT_MS = 5000;
 
-export async function run(importMetaUrl?: string) {
+export async function run(_importMetaUrl?: string) {
     let passed = 0;
     let failed = 0;
 

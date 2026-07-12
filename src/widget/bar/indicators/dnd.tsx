@@ -1,8 +1,8 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {createState, onMount, onCleanup} from 'gnim';
-import {getNotifdSafe} from '#/lib/notifdGuard';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import {getNotifdSafe} from '#/lib/services/notifications/guard';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
     const [visible, setVisible] = createState(false);

@@ -1,15 +1,14 @@
 import GObject, {getter, register, setter} from 'gnim/gobject';
-import {Process} from '#/lib/process';
+import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
-import Gio from 'gi://Gio?version=2.0';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 import {Accessor} from 'gnim';
+import {writeHypridleConfig, deleteHypridleConfig, type HypridleConfig} from './hypridleConfig';
 
-const CONFIG_PATH = `${GLib.get_user_config_dir()}/hypr/hypridle.conf`;
 
 @register({GTypeName: 'Hypridle'})
 export default class Hypridle extends GObject.Object {
-    static instance: Hypridle;
+    static readonly instance: Hypridle;
     static get_default() {
         if (!this.instance) this.instance = new Hypridle();
         return this.instance;
@@ -182,6 +181,16 @@ export default class Hypridle extends GObject.Object {
         return GLib.find_program_in_path('hypridle') !== null;
     }
 
+    #subscribeSetting<T>(
+        accessor: Accessor<T>,
+        onChange: (value: T) => void,
+    ) {
+        accessor.subscribe(() => {
+            const v = accessor();
+            onChange(v);
+        });
+    }
+
     init(settings: {
         autoLockEnabled: Accessor<boolean>;
         idleTimeout: Accessor<number>;
@@ -201,10 +210,7 @@ export default class Hypridle extends GObject.Object {
         setSuspendTimeout: (v: number) => void;
     }) {
         if (this.#settings) {
-            logger.warn(
-                'hypridle',
-                'init() called but already initialized — skipping'
-            );
+            logger.warn('hypridle', 'init() called but already initialized — skipping');
             return;
         }
         this.#settings = settings;
@@ -217,20 +223,17 @@ export default class Hypridle extends GObject.Object {
         this.#suspendEnabled = settings.suspendEnabled();
         this.#suspendTimeout = settings.suspendTimeout();
 
-        settings.autoLockEnabled.subscribe(() => {
-            const v = settings.autoLockEnabled();
+        this.#subscribeSetting(settings.autoLockEnabled, v => {
             if (this.#enabled === v) return;
             this.#enabled = v;
             this.notify('enabled');
             this.#apply();
         });
 
-        settings.idleTimeout.subscribe(() => {
-            const v = settings.idleTimeout();
+        this.#subscribeSetting(settings.idleTimeout, v => {
             if (this.#idleTimeout === v) return;
             this.#idleTimeout = v;
             this.notify('idle-timeout');
-            // Ensure dpms/suspend timeouts stay ahead of the lock timeout
             if (this.#dpmsTimeout < v + 10) {
                 this.#dpmsTimeout = v + 10;
                 this.notify('dpms-timeout');
@@ -242,36 +245,31 @@ export default class Hypridle extends GObject.Object {
             this.#apply();
         });
 
-        settings.screenDimEnabled.subscribe(() => {
-            const v = settings.screenDimEnabled();
+        this.#subscribeSetting(settings.screenDimEnabled, v => {
             if (this.#dimEnabled === v) return;
             this.#dimEnabled = v;
             this.notify('dim-enabled');
             this.#apply();
         });
 
-        settings.screenDimTimeout.subscribe(() => {
-            const v = settings.screenDimTimeout();
+        this.#subscribeSetting(settings.screenDimTimeout, v => {
             if (this.#dimTimeout === v) return;
             this.#dimTimeout = v;
             this.notify('dim-timeout');
             this.#apply();
         });
 
-        settings.dpmsEnabled.subscribe(() => {
-            const v = settings.dpmsEnabled();
+        this.#subscribeSetting(settings.dpmsEnabled, v => {
             if (this.#dpmsEnabled === v) return;
             this.#dpmsEnabled = v;
             this.notify('dpms-enabled');
             this.#apply();
         });
 
-        settings.dpmsTimeout.subscribe(() => {
-            const v = settings.dpmsTimeout();
+        this.#subscribeSetting(settings.dpmsTimeout, v => {
             if (this.#dpmsTimeout === v) return;
             this.#dpmsTimeout = v;
             this.notify('dpms-timeout');
-            // Ensure suspend timeout stays ahead of dpms timeout
             if (this.#suspendTimeout < v + 10) {
                 this.#suspendTimeout = v + 10;
                 this.notify('suspend-timeout');
@@ -279,26 +277,20 @@ export default class Hypridle extends GObject.Object {
             this.#apply();
         });
 
-        settings.suspendEnabled.subscribe(() => {
-            const v = settings.suspendEnabled();
+        this.#subscribeSetting(settings.suspendEnabled, v => {
             if (this.#suspendEnabled === v) return;
             this.#suspendEnabled = v;
             this.notify('suspend-enabled');
             this.#apply();
         });
 
-        settings.suspendTimeout.subscribe(() => {
-            const v = settings.suspendTimeout();
+        this.#subscribeSetting(settings.suspendTimeout, v => {
             if (this.#suspendTimeout === v) return;
             this.#suspendTimeout = v;
             this.notify('suspend-timeout');
             this.#apply();
         });
 
-        // Caffeinated mode (GTK idle inhibit) is handled BY hypridle itself.
-        // hypridle monitors the org.freedesktop.ScreenSaver D-Bus interface
-        // and automatically pauses its listeners when an inhibitor is active.
-        // We don't need to start/stop the process — just let inhibit work.
         this.#apply();
     }
 
@@ -317,77 +309,16 @@ export default class Hypridle extends GObject.Object {
     }
 
     #writeConfig() {
-        try {
-            const dir = Gio.File.new_for_path(
-                `${GLib.get_user_config_dir()}/hypr`
-            );
-            if (!dir.query_exists(null)) {
-                dir.make_directory_with_parents(null);
-            }
-
-            const lines = [
-                'general {',
-                '  lock_cmd = shade-shell lockscreen',
-                '  before_sleep_cmd = shade-shell lockscreen',
-                '  after_sleep_cmd = hyprctl dispatch dpms on',
-                '}',
-            ];
-
-            // Tier 1: dim screen before lock
-            if (this.#dimEnabled && this.#dimTimeout < this.#idleTimeout) {
-                lines.push(
-                    '',
-                    'listener {',
-                    `  timeout = ${this.#dimTimeout}`,
-                    "  on-timeout = sh -c 'brightnessctl get > /tmp/shade-brightness-resume && brightnessctl set 10%'",
-                    "  on-resume = sh -c '[ -f /tmp/shade-brightness-resume ] && brightnessctl set $(cat /tmp/shade-brightness-resume) && rm -f /tmp/shade-brightness-resume'",
-                    '}'
-                );
-            }
-
-            // Tier 2: lock screen
-            lines.push(
-                '',
-                'listener {',
-                `  timeout = ${this.#idleTimeout}`,
-                '  on-timeout = shade-shell lockscreen',
-                '}'
-            );
-
-            // Tier 3: turn off display (DPMS)
-            if (this.#dpmsEnabled && this.#dpmsTimeout > this.#idleTimeout) {
-                lines.push(
-                    '',
-                    'listener {',
-                    `  timeout = ${this.#dpmsTimeout}`,
-                    '  on-timeout = hyprctl dispatch dpms off',
-                    '  on-resume = hyprctl dispatch dpms on',
-                    '}'
-                );
-            }
-
-            // Tier 4: suspend system
-            if (
-                this.#suspendEnabled &&
-                this.#suspendTimeout > this.#dpmsTimeout
-            ) {
-                lines.push(
-                    '',
-                    'listener {',
-                    `  timeout = ${this.#suspendTimeout}`,
-                    '  on-timeout = systemctl suspend',
-                    '}'
-                );
-            }
-
-            const config = lines.join('\n') + '\n';
-            GLib.file_set_contents(
-                CONFIG_PATH,
-                new TextEncoder().encode(config)
-            );
-        } catch (e) {
-            logger.error('hypridle', 'failed to write config:', e);
-        }
+        const cfg: HypridleConfig = {
+            dimEnabled: this.#dimEnabled,
+            dimTimeout: this.#dimTimeout,
+            idleTimeout: this.#idleTimeout,
+            dpmsEnabled: this.#dpmsEnabled,
+            dpmsTimeout: this.#dpmsTimeout,
+            suspendEnabled: this.#suspendEnabled,
+            suspendTimeout: this.#suspendTimeout,
+        };
+        writeHypridleConfig(cfg);
     }
 
     #restart() {
@@ -433,14 +364,7 @@ export default class Hypridle extends GObject.Object {
         }
         // Remove the config file so external hypridle instances
         // (e.g. systemd services) don't pick up the lock listener
-        try {
-            const file = Gio.File.new_for_path(CONFIG_PATH);
-            if (file.query_exists(null)) {
-                file.delete(null);
-            }
-        } catch (e) {
-            logger.error('hypridle', 'failed to delete config file:', e);
-        }
+        deleteHypridleConfig();
     }
 
     dispose() {

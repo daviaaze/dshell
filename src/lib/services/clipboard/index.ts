@@ -1,11 +1,25 @@
-import logger from '#/lib/logger';
+/**
+ * @deprecated Use `#/lib/services/clipboard/history` directly instead.
+ *
+ * This module is a thin compatibility wrapper that converts the modern
+ * `ClipboardEntry`-based API from `history.ts` into a callback-based
+ * interface with `ClipboardItem` types. New code should import from
+ * `history.ts` directly for a simpler, promise-based API.
+ *
+ * Migrate:
+ *   `getClipboardHistory(cb)` → `const entries = getHistory()`
+ *   `searchClipboard(q, cb)`  → `const results = searchHistory(q)`
+ *   `ClipboardItem`           → `ClipboardEntry`
+ */
+
+import logger from '#/lib/core/logger';
 import {
     getHistory,
     searchHistory,
     copyEntryToClipboard,
     deleteEntry,
-} from '#/lib/clipboardHistory';
-import type {ClipboardEntry} from '#/lib/clipboardHistory';
+} from '#/lib/services/clipboard/history';
+import type {ClipboardEntry} from '#/lib/services/clipboard/history';
 
 /** @deprecated Use ClipboardEntry from clipboardHistory instead. */
 export interface ClipboardItem {

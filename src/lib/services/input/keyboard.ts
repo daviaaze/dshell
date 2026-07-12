@@ -1,7 +1,7 @@
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register, signal} from 'gnim/gobject';
-import logger from '#/lib/logger';
-import {Process} from '#/lib/process';
+import logger from '#/lib/core/logger';
+import {Process} from '#/lib/core/process';
 
 interface KeyboardDevice {
     name: string;
@@ -22,7 +22,7 @@ function parseLayoutName(fullName: string): string {
 
 @register({GTypeName: 'KeyboardLayout'})
 export default class KeyboardLayout extends GObject.Object {
-    static instance: KeyboardLayout;
+    static readonly instance: KeyboardLayout;
 
     static get_default() {
         if (!this.instance) this.instance = new KeyboardLayout();

@@ -38,13 +38,12 @@ export const MockAudioControl = (props: MockAudioControlProps) => {
         setVolume(Math.round(scaleAdjustment.value));
     });
 
-    const volIcon = isMuted()
-        ? 'audio-volume-muted-symbolic'
-        : volume() > 50
-          ? 'audio-volume-high-symbolic'
-          : volume() > 20
-            ? 'audio-volume-medium-symbolic'
-            : 'audio-volume-low-symbolic';
+    const volIcon = (() => {
+        if (isMuted()) return 'audio-volume-muted-symbolic';
+        if (volume() > 50) return 'audio-volume-high-symbolic';
+        if (volume() > 20) return 'audio-volume-medium-symbolic';
+        return 'audio-volume-low-symbolic';
+    })();
 
     return (
         <Gtk.Box

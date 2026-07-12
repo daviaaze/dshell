@@ -1,8 +1,8 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {createState, onMount, onCleanup} from 'gnim';
-import KeyboardLayout from '#/lib/keyboard';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import KeyboardLayout from '#/lib/services/input/keyboard';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
     const [layout, setLayout] = createState('');

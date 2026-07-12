@@ -6,11 +6,11 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 import {createBinding, createState} from 'gnim';
 import {app} from '#/App';
-import WindowManager from '#/lib/windowManager';
-import Screenshot from '#/lib/screenshot';
-import {getScreenCaptureSettings} from '#/lib/screenCaptureSettings';
+import WindowManager from '#/lib/services/state/windowManager';
+import Screenshot from '#/lib/services/capture/screenshot';
+import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
 import {LinkedBox} from '#/widget/common/linkedBox';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 export default () => {
     const ss = Screenshot.get_default();

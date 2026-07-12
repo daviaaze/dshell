@@ -2,13 +2,13 @@ import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register, setter} from 'gnim/gobject';
 import Geolocation from './geolocation';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 import {Accessor} from 'gnim';
-import {toArray} from '#/lib/gjsUtils';
+import {toArray} from '#/lib/core/gjsUtils';
 
 @register({GTypeName: 'Weather'})
 export default class Weather extends GObject.Object {
-    static instance: Weather;
+    static readonly instance: Weather;
 
     static get_default() {
         if (!this.instance) this.instance = new Weather();
@@ -21,6 +21,7 @@ export default class Weather extends GObject.Object {
     #updateTimer: number | null = null;
     #weatherHandlerId = 0;
     #initialized = false;
+    #generalSettings: Gio.Settings;
 
     @getter(GWeather.Info)
     get info() {
@@ -308,6 +309,10 @@ export default class Weather extends GObject.Object {
         this.#weather.set_enabled_providers(GWeather.Provider.MET_NO);
         this.#weather.set_contact_info('caiomuniz888@gmail.com');
 
+        this.#generalSettings = new Gio.Settings({
+            schema_id: `${import.meta.domain}.general`,
+        });
+
         this.#weatherHandlerId = this.#weather.connect('updated', () => {
             logger.info(
                 'weather',
@@ -317,6 +322,24 @@ export default class Weather extends GObject.Object {
                     ` loc=${this.#weather.get_location_name() || 'null'}`
             );
             this.notify('info');
+
+            // Persist daytime/sunrise/sunset for other services
+            if (this.#weather.is_valid()) {
+                const [, sunrise] = this.#weather.get_value_sunrise();
+                const [, sunset] = this.#weather.get_value_sunset();
+                this.#generalSettings.set_boolean(
+                    'weather-is-daytime',
+                    this.#weather.is_daytime()
+                );
+                this.#generalSettings.set_double(
+                    'weather-sunrise-time',
+                    sunrise
+                );
+                this.#generalSettings.set_double(
+                    'weather-sunset-time',
+                    sunset
+                );
+            }
         });
     }
 
@@ -324,7 +347,7 @@ export default class Weather extends GObject.Object {
         if (this.#weatherHandlerId !== 0) {
             try {
                 this.#weather.disconnect(this.#weatherHandlerId);
-            } catch {}
+            } catch { /* ignore */ }
             this.#weatherHandlerId = 0;
         }
         if (this.#updateTimer !== null) {

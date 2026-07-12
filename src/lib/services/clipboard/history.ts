@@ -1,7 +1,7 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 export interface ClipboardEntry {
     id: string;
@@ -66,6 +66,7 @@ function saveHistory(): void {
 }
 
 function generateId(): string {
+    // eslint-disable-next-line sonarjs/pseudo-random
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
@@ -148,16 +149,6 @@ function addEntry(data: {type: 'text' | 'image'; content: string; mimeType: stri
 
     // Evict oldest unpinned entries beyond the limit
     if (history.length > MAX_HISTORY) {
-        // Count pinned entries
-        let pinnedCount = 0;
-        let evictable = 0;
-        for (let i = history.length - 1; i >= 0; i--) {
-            if (history[i]!.pinned) {
-                pinnedCount++;
-            } else {
-                evictable++;
-            }
-        }
         const targetEvict = history.length - MAX_HISTORY;
         if (targetEvict > 0) {
             // Remove oldest unpinned entries

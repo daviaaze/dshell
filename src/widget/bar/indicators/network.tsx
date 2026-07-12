@@ -2,7 +2,7 @@ import Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createState, onMount, onCleanup} from 'gnim';
 import {wifiIconName} from '#/widget/quicksettings/network/utils';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
     const network = Network.get_default();

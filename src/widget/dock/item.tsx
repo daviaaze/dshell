@@ -4,11 +4,11 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 import {onCleanup} from 'gnim';
 import {useSettings} from '#/lib/settings';
-import {toArray} from '#/lib/gjsUtils';
-import {getAppList, exactQuery} from '#/lib/apps';
+import {toArray} from '#/lib/core/gjsUtils';
+import {getAppList, exactQuery} from '#/lib/services/state/apps';
 import {ActionButton} from '#/widget/common/actionButton';
 import AstalApps from 'gi://AstalApps?version=0.1';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 interface DockItemProps {
     desktopFile: string;
@@ -114,6 +114,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     const status = <Gtk.Box />;
                     // Update status indicator reactively
                     const updateStatus = () => {
+                        // eslint-disable-next-line sonarjs/no-nested-conditional
                         status.css = active
                             ? `
                 min-width: 16px;

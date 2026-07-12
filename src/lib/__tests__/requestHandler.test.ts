@@ -16,9 +16,11 @@ function resolveAction(args: string[]): string | null {
     else if (args[1] === 'clipboard') return 'toggle-clipboard';
     else if (args[1] === 'screenshot') return 'screenshot';
     else if (args[1] === 'screenshot-area') return 'screenshot-area';
+    else if (args[1] === 'screenshot-overlay') return 'screenshot-overlay';
     else if (args[1] === 'record') return 'record';
     else if (args[1] === 'record-area') return 'record-area';
     else if (args[1] === 'record-window') return 'record-window';
+    else if (args[1] === 'record-window-address') return 'record-window-address';
     else if (args[1] === 'record-output') return 'record-output';
     else if (args[1] === 'touchpad') return 'toggle-touchpad';
     return null;
@@ -105,7 +107,7 @@ describe('requestHandler action resolution', () => {
 // ── Action completeness ─────────────────────────────────────────────────────
 
 describe('requestHandler action completeness', () => {
-    // All actions registered in registerActions() should have a CLI route
+    // All actions registered via registerCommands() should have a CLI route
     const registeredActions = [
         'toggle-applauncher',
         'toggle-quicksettings',
@@ -117,9 +119,11 @@ describe('requestHandler action completeness', () => {
         'lockscreen',
         'screenshot',
         'screenshot-area',
+        'screenshot-overlay',
         'record',
         'record-area',
         'record-window',
+        'record-window-address',
         'record-output',
         'toggle-touchpad',
     ];
@@ -132,9 +136,11 @@ describe('requestHandler action completeness', () => {
         'clipboard',
         'screenshot',
         'screenshot-area',
+        'screenshot-overlay',
         'record',
         'record-area',
         'record-window',
+        'record-window-address',
         'record-output',
         'touchpad',
     ];

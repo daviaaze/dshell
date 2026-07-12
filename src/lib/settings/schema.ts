@@ -227,6 +227,20 @@ export const generalSchema = new Schema({
         default: [],
         summary:
             'Debug categories to enable (empty = all). Categories: mount, state, theme, dbus, exec, perf, memory',
+    })
+
+    // ── Weather-derived state (set by Weather service, consumed by ColorScheme, NightLight) ──
+    .key('weather-is-daytime', 'b', {
+        default: true,
+        summary: 'Whether it is currently daytime (set by Weather service)',
+    })
+    .key('weather-sunrise-time', 'd', {
+        default: 0.0,
+        summary: 'Unix timestamp of next sunrise (set by Weather service)',
+    })
+    .key('weather-sunset-time', 'd', {
+        default: 0.0,
+        summary: 'Unix timestamp of next sunset (set by Weather service)',
     });
 
 // ── Screen Capture ───────────────────────────────────────────────

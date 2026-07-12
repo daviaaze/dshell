@@ -5,7 +5,7 @@
  */
 
 import Gtk from 'gi://Gtk?version=4.0';
-import {IconNames, type IconName} from '#/lib/iconNames';
+import {IconNames, type IconName} from '#/lib/core/iconNames';
 
 interface MockWeatherIconProps {
     iconName?: IconName;

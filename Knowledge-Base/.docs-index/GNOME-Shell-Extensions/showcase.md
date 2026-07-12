@@ -1,5 +1,0 @@
-# GNOME Shell Extensions — /showcase
-
-> Source: https://gjs.guide/showcase
-
-GJS Showcase | GNOME JavaScript Skip to content Return to top On this page GJS Showcase ​ Many amazing apps have been built in GJS. Check them out below! Workbench ​ Workbench is an interactive tool for quickly learning the GNOME platform, with over a hundred demos in JavaScript alongside implementations in Python, Rust and Vala. It has an active community of developers, designers and users of all experience levels contributing daily. Go To Project GNOME Weather ​ An application that allows you to monitor the current weather conditions for your city, or anywhere in the world, and to access updated forecasts provided by various internet services. Go To Project GNOME Maps ​ Maps gives you quick access to maps all across the world. Go To Project GNOME Sound Recorder ​ A simple and modern sound recorder. Go To Project

@@ -5,10 +5,10 @@ import Cairo from 'gi://cairo?version=1.0';
 import GObject from 'gi://GObject';
 import {onCleanup} from 'gnim';
 import {app} from '#/App';
-import {monitors} from '#/lib/monitors';
-import Screenshot, {BoundaryGeometry} from '#/lib/screenshot';
-import {getScreenCaptureSettings} from '#/lib/screenCaptureSettings';
-import {toArray} from '#/lib/gjsUtils';
+import {monitors} from '#/lib/services/monitoring/monitors';
+import Screenshot, {BoundaryGeometry} from '#/lib/services/capture/screenshot';
+import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
+import {toArray} from '#/lib/core/gjsUtils';
 
 /** Check if two rectangles overlap */
 function rectOverlap(

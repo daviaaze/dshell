@@ -1,11 +1,11 @@
 import Wireplumber from 'gi://AstalWp';
 import GLib from 'gi://GLib?version=2.0';
 import {createBinding, createState, onMount, onCleanup} from 'gnim';
-import Brightness from '#/lib/brightness';
+import Brightness from '#/lib/services/display/brightness';
 import {AudioEndpointControl} from '#/widget/common/audioControl';
 import {Slider} from '#/widget/common/slider';
-import logger from '#/lib/logger';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import logger from '#/lib/core/logger';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 const BRIGHTNESS_PRESETS = [0.25, 0.5, 0.75, 1.0];
 
@@ -39,6 +39,7 @@ function createEndpointConfig(cfg: EndpointConfig) {
             const _hn = {};
             GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
                 const audio = Wireplumber.get_default()!.audio;
+                // eslint-disable-next-line sonarjs/no-nested-functions
                 const update = () => {
                     setDevices([...(audio[cfg.devicesProp] ?? [])]);
                     setDefaultDevice(audio[cfg.defaultProp]);

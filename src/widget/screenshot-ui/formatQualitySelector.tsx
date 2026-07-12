@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
-import Screenshot from '#/lib/screenshot';
-import {getScreenCaptureSettings} from '#/lib/screenCaptureSettings';
+import Screenshot from '#/lib/services/capture/screenshot';
+import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
 
 export default () => {
     const ss = Screenshot.get_default();

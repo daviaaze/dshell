@@ -1,10 +1,10 @@
-import Screenshot from '#/lib/screenshot';
+import Screenshot from '#/lib/services/capture/screenshot';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
-import {getScreenCaptureSettings} from '#/lib/screenCaptureSettings';
+import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
 
 export default () => {
     const screenshot = Screenshot.get_default();
@@ -124,6 +124,7 @@ export default () => {
                         if (screenshot.virtualMonitors.length > 0) {
                             screenshot.removeVirtualMonitors();
                         } else {
+                            // eslint-disable-next-line sonarjs/void-use
                             void screenshot.createVirtualMonitor(
                                 captureSettings.virtualMonitorResolution(),
                                 captureSettings.virtualMonitorFps()

@@ -3,10 +3,10 @@ import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {createBinding, createComputed, For, onCleanup} from 'gnim';
-import {ColorScheme, DarkModes} from '#/lib/colorScheme';
+import {ColorScheme, DarkModes} from '#/lib/services/display/colorScheme';
 import {useSettings} from '#/lib/settings';
-import WindowManager from '#/lib/windowManager';
-import {monitors} from '#/lib/monitors';
+import WindowManager from '#/lib/services/state/windowManager';
+import {monitors} from '#/lib/services/monitoring/monitors';
 
 export const Wallpaper = () => {
     const settings = useSettings().general;

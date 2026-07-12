@@ -2,10 +2,10 @@ import Bluetooth from 'gi://AstalBluetooth';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createComputed, createState, onCleanup, onMount} from 'gnim';
-import {toArray} from '#/lib/gjsUtils';
+import {toArray} from '#/lib/core/gjsUtils';
 import {useSettings} from '#/lib/settings';
-import {getDeviceBatteryPercentage} from '#/lib/bluetoothBattery';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import {getDeviceBatteryPercentage} from '#/lib/services/monitoring/bluetoothBattery';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 const ICON_MAP: Record<string, string> = {
     'audio-headset': 'audio-headset-symbolic',
@@ -98,6 +98,7 @@ export default () => {
                 setDeviceInfo([]);
                 return;
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const arr = toArray<any>(list);
 
             // Disconnect battery signals for devices no longer connected
@@ -136,6 +137,7 @@ export default () => {
             // Disconnect per-device battery signals
             for (const [, id] of batterySignals) {
                 try {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const dev = toArray<any>(bluetooth.devices || []).find(
                         d => d.address
                     );

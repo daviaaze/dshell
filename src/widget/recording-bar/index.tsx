@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {createBinding} from 'gnim';
 import {app} from '#/App';
-import Screenshot from '#/lib/screenshot';
+import Screenshot from '#/lib/services/capture/screenshot';
 
 function formatDuration(seconds: number): string {
     const m = Math.floor(seconds / 60);

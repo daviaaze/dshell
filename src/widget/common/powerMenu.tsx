@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import ShellState from '#/lib/shellState';
-import logger from '#/lib/logger';
-import {Process} from '#/lib/process';
+import ShellState from '#/lib/services/state/shellState';
+import logger from '#/lib/core/logger';
+import {Process} from '#/lib/core/process';
 import {ActionButton} from './actionButton';
 
 export const PowerMenu = () => {

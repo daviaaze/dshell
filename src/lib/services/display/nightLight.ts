@@ -1,8 +1,8 @@
 import GObject, {getter, register, setter} from 'gnim/gobject';
-import {Process} from '#/lib/process';
+import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
-import {ColorScheme} from '#/lib/colorScheme';
-import logger from '#/lib/logger';
+import Gio from 'gi://Gio?version=2.0';
+import logger from '#/lib/core/logger';
 import {Accessor} from 'gnim';
 
 export const TEMP_MIN = 2000;
@@ -10,10 +10,18 @@ export const TEMP_MAX = 6500;
 
 @register({GTypeName: 'NightLight'})
 export default class NightLight extends GObject.Object {
-    static instance: NightLight;
+    static readonly instance: NightLight;
     static get_default() {
         if (!this.instance) this.instance = new NightLight();
         return this.instance;
+    }
+
+    constructor() {
+        super();
+
+        this.#generalSettings = new Gio.Settings({
+            schema_id: `${import.meta.domain}.general`,
+        });
     }
 
     #enabled = false;
@@ -21,8 +29,9 @@ export default class NightLight extends GObject.Object {
     #autoSchedule = false;
     #process: Process | null = null;
     #pollTimer: number | null = null;
-    #colorScheme: ColorScheme | null = null;
     #initialized = false;
+    #generalHandlerId = 0;
+    #generalSettings: Gio.Settings;
     #settings: {
         nightLightEnabled: Accessor<boolean>;
         nightLightTemperature: Accessor<number>;
@@ -88,8 +97,7 @@ export default class NightLight extends GObject.Object {
             setNightLightEnabled: (v: boolean) => void;
             setNightLightTemperature: (v: number) => void;
             setNightLightAutoSchedule: (v: boolean) => void;
-        },
-        colorScheme: ColorScheme
+        }
     ) {
         if (this.#initialized) {
             logger.warn(
@@ -100,7 +108,6 @@ export default class NightLight extends GObject.Object {
         }
         this.#initialized = true;
         this.#settings = settings;
-        this.#colorScheme = colorScheme;
         this.#enabled = settings.nightLightEnabled();
         this.#temperature = settings.nightLightTemperature();
         this.#autoSchedule = settings.nightLightAutoSchedule();
@@ -131,6 +138,12 @@ export default class NightLight extends GObject.Object {
                 this.#checkSchedule();
             }
         });
+
+        // Listen for daytime changes from GSettings
+        this.#generalHandlerId = this.#generalSettings.connect(
+            'changed::weather-is-daytime',
+            () => this.#checkSchedule()
+        );
 
         this.#sync();
         this.#startPoll();
@@ -170,8 +183,8 @@ export default class NightLight extends GObject.Object {
     }
 
     #checkSchedule() {
-        if (!this.#autoSchedule || !this.#colorScheme) return;
-        const isDaytime = this.#colorScheme.daytime;
+        if (!this.#autoSchedule) return;
+        const isDaytime = this.#generalSettings.get_boolean('weather-is-daytime');
         const shouldBeOn = !isDaytime;
         if (this.#enabled !== shouldBeOn) {
             this.enabled = shouldBeOn;
@@ -191,6 +204,12 @@ export default class NightLight extends GObject.Object {
     }
 
     dispose() {
+        if (this.#generalHandlerId !== 0) {
+            try {
+                this.#generalSettings.disconnect(this.#generalHandlerId);
+            } catch { /* ignore */ }
+            this.#generalHandlerId = 0;
+        }
         if (this.#pollTimer) {
             GLib.source_remove(this.#pollTimer);
             this.#pollTimer = null;

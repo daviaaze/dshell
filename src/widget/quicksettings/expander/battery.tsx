@@ -38,12 +38,11 @@ export const BatteryIcon = () => {
             primary={createBinding(battery, 'percentage').as(
                 p => (p * 100).toFixed(0) + '%'
             )}
-            secondary={timeTo(timeTo =>
-                timeTo === 0
-                    ? 'Full'
-                    : fmtDuration(timeTo) +
-                      (battery.get_charging() ? ' to full' : ' to empty')
-            )}
+            secondary={timeTo(timeTo => {
+                if (timeTo === 0) return 'Full';
+                const suffix = battery.get_charging() ? ' to full' : ' to empty';
+                return fmtDuration(timeTo) + suffix;
+            })}
         />
     );
 };

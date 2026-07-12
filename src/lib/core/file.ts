@@ -1,6 +1,6 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 export function readFile(file: string | Gio.File) {
     const f = typeof file === 'string' ? Gio.File.new_for_path(file) : file;
@@ -60,7 +60,10 @@ export function writeFileAsync(
             typeof file === 'string' ? Gio.File.new_for_path(file) : file;
         const path = typeof file === 'string' ? file : gfile.get_path();
 
-        if (!path) return reject(Error('path is null'));
+        if (!path) {
+            reject(Error('path is null'));
+            return;
+        }
 
         const dir = GLib.path_get_dirname(path);
         if (!GLib.file_test(dir, GLib.FileTest.IS_DIR)) {
@@ -85,9 +88,6 @@ export function writeFileAsync(
     });
 }
 
-// make sure monitor file ref count does not drop to 0
-const monitorFiles = new Set<Gio.FileMonitor>();
-
 export function monitorFile(
     path: string,
     callback: (file: string, event: Gio.FileMonitorEvent) => void
@@ -104,7 +104,7 @@ export function monitorFile(
     mon.connect('changed', (_, file, _file, event) => {
         const path = file.get_path();
         if (path) {
-            if (event === Gio.FileMonitorEvent.CREATED && path) {
+            if (event === Gio.FileMonitorEvent.CREATED) {
                 monitorFile(path, callback);
             }
 
@@ -132,7 +132,7 @@ export function monitorFile(
                 const filepath = monitoredFile
                     .get_child(i.get_name())
                     .get_path();
-                if (filepath != null) {
+                if (filepath !== null) {
                     const m = monitorFile(filepath, callback);
                     mon.connect('notify::cancelled', () => {
                         m.cancel();

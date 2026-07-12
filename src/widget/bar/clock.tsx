@@ -11,7 +11,7 @@ import {
 } from 'gnim';
 import {useSettings} from '#/lib/settings';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
-import {fmtOffset, cityName} from '#/lib/time';
+import {fmtOffset, cityName} from '#/lib/core/time';
 import TimerService from '#/widget/quicksettings/timer/TimerService';
 import {TimerSection} from '#/widget/quicksettings/timer/TimerSection';
 

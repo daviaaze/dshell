@@ -2,8 +2,8 @@ import Hyprland from 'gi://AstalHyprland';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, For, Accessor, With} from 'gnim';
-import {toArray} from '#/lib/gjsUtils';
-import {getAppIcon} from '#/lib/apps';
+import {toArray} from '#/lib/core/gjsUtils';
+import {getAppIcon} from '#/lib/services/state/apps';
 
 export default ({
     monitor,

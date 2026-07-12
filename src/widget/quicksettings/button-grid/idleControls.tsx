@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import Hypridle from '#/lib/hypridle';
+import Hypridle from '#/lib/services/power/hypridle';
 
 export default () => {
     const hypridle = Hypridle.get_default();

@@ -3,7 +3,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Accessor, createBinding, createState, onMount} from 'gnim';
-import ShellState from '#/lib/shellState';
+import ShellState from '#/lib/services/state/shellState';
 import KeepAwakeIndicator from './indicators/keepAwake';
 import PowerIndicator from './indicators/power';
 import BluetoothIndicator from './indicators/bluetooth';

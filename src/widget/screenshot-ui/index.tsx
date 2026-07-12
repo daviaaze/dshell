@@ -7,11 +7,11 @@ import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {createBinding, createState} from 'gnim';
 import {app} from '#/App';
-import Screenshot from '#/lib/screenshot';
-import WindowManager from '#/lib/windowManager';
+import Screenshot from '#/lib/services/capture/screenshot';
+import WindowManager from '#/lib/services/state/windowManager';
 import {LinkedBox} from '#/widget/common/linkedBox';
-import {getScreenCaptureSettings} from '#/lib/screenCaptureSettings';
-import logger from '#/lib/logger';
+import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
+import logger from '#/lib/core/logger';
 
 // ── Constants ─────────────────────────────────────────────────────
 

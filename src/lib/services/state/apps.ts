@@ -2,8 +2,8 @@ import Apps from 'gi://AstalApps';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Hyprland from 'gi://AstalHyprland';
-import {toArray} from '#/lib/gjsUtils';
-import logger from '#/lib/logger';
+import {toArray} from '#/lib/core/gjsUtils';
+import logger from '#/lib/core/logger';
 
 const apps = new Apps.Apps({
     nameMultiplier: 4,

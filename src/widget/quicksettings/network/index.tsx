@@ -13,7 +13,7 @@ import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
 import WifiPopover from './wifiPopover';
 import {wifiIconName} from './utils';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 interface WifiWrap {
     wifi: Network.Wifi | null;
@@ -44,6 +44,7 @@ const WifiQuicksettingsButton = () => {
             };
 
             const onWifiPropertyChanged = () => {
+                // eslint-disable-next-line sonarjs/no-nested-functions
                 setWifiWrap(prev => ({
                     wifi: network.wifi,
                     tick: prev.tick + 1,
@@ -53,6 +54,7 @@ const WifiQuicksettingsButton = () => {
             const onWifiDeviceChanged = () => {
                 cleanupWifiSignals();
                 const w = network.wifi;
+                // eslint-disable-next-line sonarjs/no-nested-functions
                 setWifiWrap(prev => ({wifi: w, tick: prev.tick + 1}));
                 if (w !== wifiDevice()) {
                     setWifiDevice(w);

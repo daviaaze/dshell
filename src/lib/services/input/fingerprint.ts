@@ -1,7 +1,7 @@
 import GObject, {getter, register, signal} from 'gnim/gobject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 const FPRINTD_SERVICE = 'net.reactivated.Fprint';
 const FPRINTD_MANAGER = '/net/reactivated/Fprint/Manager';
@@ -11,7 +11,7 @@ type FingerprintState = 'idle' | 'initializing' | 'verifying' | 'error';
 
 @register({GTypeName: 'FingerprintAuth'})
 export default class FingerprintAuth extends GObject.Object {
-    static instance: FingerprintAuth;
+    static readonly instance: FingerprintAuth;
 
     static get_default() {
         if (!this.instance) this.instance = new FingerprintAuth();
@@ -37,7 +37,7 @@ export default class FingerprintAuth extends GObject.Object {
         if (this.#signalId !== 0 && this.#deviceProxy) {
             try {
                 this.#deviceProxy.disconnect(this.#signalId);
-            } catch {}
+            } catch { /* ignore */ }
             this.#signalId = 0;
         }
     }

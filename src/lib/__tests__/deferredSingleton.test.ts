@@ -4,7 +4,7 @@
  * Run: gjs -m src/lib/__tests__/deferredSingleton.test.ts
  */
 import {describe, it, expect, run} from './test-runner';
-import {DeferredSingleton} from '../deferredSingleton';
+import {DeferredSingleton} from '../core/deferredSingleton';
 
 describe('DeferredSingleton', () => {
     it('returns the factory result on first get()', () => {

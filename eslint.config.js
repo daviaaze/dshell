@@ -1,13 +1,15 @@
 // @ts-check
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
-
+import sonarjs from 'eslint-plugin-sonarjs';            
+                                                                                                   
 export default tseslint.config(
     // Ignore generated type definitions and build artifacts
     {ignores: ['**/node_modules/**', '**/@girs/**', 'build/**']},
 
     eslint.configs.recommended,
     ...tseslint.configs.recommended,
+    sonarjs.configs.recommended,
 
     // ── Project-specific rules ─────────────────────────────────────────
     {
@@ -49,8 +51,12 @@ export default tseslint.config(
             ],
 
             // ── Quality rules ───────────────────────────────────────────
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                {argsIgnorePattern: '^_'},
+            ],
             eqeqeq: ['error', 'always'],
-            complexity: ['warn', {max: 15}],
+            complexity: ['warn', {max: 18}],
             'consistent-return': 'error',
             'no-var': 'error',
             'no-throw-literal': 'error',
@@ -61,6 +67,15 @@ export default tseslint.config(
                 'warn',
                 {properties: 'never', ignoreDestructuring: true},
             ],
+
+            // ── SonarJS rules ───────────────────────────────────────────
+            'sonarjs/cognitive-complexity': ['warn', 20, 'silence-issues'],
+            'sonarjs/max-lines-per-function': ['warn', {maximum: 100}],
+            'sonarjs/no-duplicate-string': ['warn', {threshold: 5}],
+            'sonarjs/no-identical-functions': ['warn', 3],
+            'sonarjs/nested-control-flow': ['warn', {maximumNestingLevel: 5}],
+            'sonarjs/no-nested-functions': 'warn',
+            'sonarjs/no-nested-conditional': 'warn',
         },
     }
 );

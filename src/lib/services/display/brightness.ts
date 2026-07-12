@@ -1,12 +1,13 @@
-import {Process} from '#/lib/process';
-import {readFile, monitorFile} from '#/lib/file';
+import {Process} from '#/lib/core/process';
+import {readFile, monitorFile} from '#/lib/core/file';
+import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {register, Object, getter, setter} from 'gnim/gobject';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'Brightness'})
 export default class Brightness extends Object {
-    static instance: Brightness;
+    static readonly instance: Brightness;
     static get_default() {
         if (!this.instance) this.instance = new Brightness();
         return this.instance;
@@ -18,9 +19,14 @@ export default class Brightness extends Object {
     #kbd = 0;
     #screenMax = 0;
     #screen = 0;
-    #screenMonitor: any = null;
-    #kbdMonitor: any = null;
+    #screenMonitor: Gio.FileMonitor | null = null;
+    #kbdMonitor: Gio.FileMonitor | null = null;
     #ready = false;
+
+    @getter(Boolean)
+    get ready() {
+        return this.#ready;
+    }
 
     @getter(Number)
     get kbd() {
@@ -126,7 +132,7 @@ export default class Brightness extends Object {
                         const v = readFile(f);
                         this.#screen = Number(v) / this.#screenMax;
                         this.notify('screen');
-                    } catch (e: any) {
+                    } catch (e) {
                         logger.error(
                             'hw',
                             'failed to read screen brightness:',
@@ -146,7 +152,7 @@ export default class Brightness extends Object {
                         const v = readFile(f);
                         this.#kbd = Number(v) / this.#kbdMax;
                         this.notify('kbd');
-                    } catch (e: any) {
+                    } catch (e) {
                         logger.error('hw', 'failed to read kbd brightness:', e);
                     }
                 }
@@ -154,5 +160,16 @@ export default class Brightness extends Object {
         }
 
         this.#ready = true;
+    }
+
+    dispose() {
+        if (this.#screenMonitor) {
+            this.#screenMonitor.cancel();
+            this.#screenMonitor = null;
+        }
+        if (this.#kbdMonitor) {
+            this.#kbdMonitor.cancel();
+            this.#kbdMonitor = null;
+        }
     }
 }

@@ -2,9 +2,10 @@ import Network from 'gi://AstalNetwork';
 import NM from 'gi://NM?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
+import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {createBinding, createComputed, createState, Accessor, For} from 'gnim';
-import {toArray} from '#/lib/gjsUtils';
+import {toArray} from '#/lib/core/gjsUtils';
 import {
     bssidOf,
     bssidEquals,
@@ -16,7 +17,7 @@ import {
     escapeLabel,
     createNMConnection,
 } from './utils';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 interface ApListProps {
     wifi: Network.Wifi;
@@ -74,7 +75,7 @@ async function connectViaNM(
             wifi.device,
             null,
             null,
-            (_source: any, res: any) => {
+            (_source: unknown, res: Gio.AsyncResult) => {
                 try {
                     client.add_and_activate_connection_finish(res);
                     resolve();
@@ -165,11 +166,11 @@ function createDoForget(
             const conns = liveAp.get_connections();
             if (!conns) return;
             for (const conn of toArray<NM.RemoteConnection>(conns)) {
-                conn.delete_async(null, (_source: any, res: any) => {
+                conn.delete_async(null, (_source: unknown, res: Gio.AsyncResult) => {
                     try {
                         conn.delete_finish(res);
-                    } catch (e: any) {
-                        logger.error('network', 'forget failed:', e.message);
+                    } catch (e) {
+                        logger.error('network', 'forget failed:', (e as Error).message);
                     }
                 });
             }

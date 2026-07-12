@@ -6,15 +6,15 @@ import Adw from 'gi://Adw?version=1';
 import {createBinding, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
-import {searchClipboard} from '#/lib/clipboard';
-import {getAppList, fuzzyQuery} from '#/lib/apps';
+import {searchClipboard} from '#/lib/services/clipboard';
+import {getAppList, fuzzyQuery} from '#/lib/services/state/apps';
 import {useSettings} from '#/lib/settings';
 import {app} from '#/App';
-import WindowManager from '#/lib/windowManager';
-import ShellState from '#/lib/shellState';
-import logger from '#/lib/logger';
+import WindowManager from '#/lib/services/state/windowManager';
+import ShellState from '#/lib/services/state/shellState';
+import logger from '#/lib/core/logger';
 import Apps from 'gi://AstalApps';
-import type {ClipboardItem} from '#/lib/clipboard';
+import type {ClipboardItem} from '#/lib/services/clipboard';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 

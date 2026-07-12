@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio';
 import {createSettings} from 'gnim-schemas';
 import {createContext} from 'gnim';
-import {barSchema, generalSchema, weatherSchema, timerSchema} from './gschema';
+import {barSchema, generalSchema, weatherSchema, timerSchema} from './schema';
 
 // Constraint derived from gnim-schemas' own `createSettings` signature so we
 // preserve full schema type inference (accessors + setters) without leaking an

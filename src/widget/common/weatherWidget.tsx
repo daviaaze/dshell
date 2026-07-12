@@ -2,13 +2,13 @@ import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createState, onCleanup, For} from 'gnim';
-import WeatherLib from '#/lib/weather';
+import WeatherLib from '#/lib/services/location/weather';
 import {
     weatherGradient,
     formatTemp,
     formatTime,
     windDirectionLabel,
-} from '#/lib/weatherUtils';
+} from '#/lib/services/location/weatherUtils';
 import {SunArc} from '#/widget/common/sunArc';
 
 export const WeatherIcon = () => {

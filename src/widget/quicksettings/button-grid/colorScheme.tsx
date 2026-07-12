@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
-import {ColorScheme, DarkModes} from '#/lib/colorScheme';
+import {ColorScheme, DarkModes} from '#/lib/services/display/colorScheme';
 
 export default () => {
     const colorScheme = ColorScheme.get_default();
@@ -50,13 +50,15 @@ export default () => {
                 return 'Dark Mode';
             })}
             onClick={() => {
-                if (colorScheme.colorScheme === DarkModes.LIGHT)
-                    return (colorScheme.colorScheme = DarkModes.DARK);
-                if (colorScheme.colorScheme === DarkModes.DARK)
-                    return (colorScheme.colorScheme = DarkModes.LIGHT);
-                else if (colorScheme.daytime)
+                if (colorScheme.colorScheme === DarkModes.LIGHT) {
                     colorScheme.colorScheme = DarkModes.DARK;
-                else colorScheme.colorScheme = DarkModes.LIGHT;
+                } else if (colorScheme.colorScheme === DarkModes.DARK) {
+                    colorScheme.colorScheme = DarkModes.LIGHT;
+                } else if (colorScheme.daytime) {
+                    colorScheme.colorScheme = DarkModes.DARK;
+                } else {
+                    colorScheme.colorScheme = DarkModes.LIGHT;
+                }
             }}
             popover={popover}
         />

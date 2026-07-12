@@ -2,8 +2,8 @@ import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, createState, onMount, onCleanup} from 'gnim';
 import Notification from '#/widget/common/notification';
-import {getNotifdSafe} from '#/lib/notifdGuard';
-import logger from '#/lib/logger';
+import {getNotifdSafe} from '#/lib/services/notifications/guard';
+import logger from '#/lib/core/logger';
 
 /**
  * LockscreenNotifications — displays active notifications on the lockscreen.
@@ -77,6 +77,7 @@ export const LockscreenNotifications = () => {
         );
 
         const dismissedId = notifd.connect('dismissed', (_, id: number) => {
+            // eslint-disable-next-line sonarjs/no-nested-functions
             setNotifications(prev => prev.filter(x => x.id !== id));
         });
 

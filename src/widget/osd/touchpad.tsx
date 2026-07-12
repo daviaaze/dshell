@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
-import Touchpad from '#/lib/touchpad';
+import Touchpad from '#/lib/services/input/touchpad';
 
 export default () => {
     const touchpad = Touchpad.get_default();

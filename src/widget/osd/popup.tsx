@@ -1,7 +1,7 @@
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import {connectFor} from '#/lib/connectFor';
+import {connectFor} from '#/lib/core/connectFor';
 
 const TIMEOUT_MS = 2000;
 
@@ -29,6 +29,7 @@ export default ({
                 self.revealChild = true;
                 timeoutId = setTimeout(() => {
                     self.revealChild = false;
+                    // eslint-disable-next-line sonarjs/no-nested-functions
                     visibilityTimeoutId = setTimeout(
                         () => (self.visible = false),
                         200

@@ -1,7 +1,7 @@
-import {Process} from '#/lib/process';
+import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register} from 'gnim/gobject';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 export interface AudioStream {
     id: number;
@@ -15,6 +15,28 @@ export interface AudioStream {
 
 // ── Shared pipewire stream parser ──
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function streamFromPwItem(item: any): AudioStream | null {
+    const info = item.info || {};
+    const props = info.props || {};
+    const streamProps = info.params?.Props?.[0] || {};
+
+    return {
+        id: item.id,
+        name: props['node.name'] || 'Unknown',
+        appName:
+            props['application.name'] ||
+            props['node.name'] ||
+            'Unknown',
+        iconName:
+            props['application.icon-name'] ||
+            'audio-x-generic-symbolic',
+        volume: streamProps.volume ?? 1.0,
+        muted: streamProps.mute ?? false,
+        targetNode: null,
+    };
+}
+
 function parseAudioStreams(
     pwDump: string,
     predicate: (mediaClass: string) => boolean,
@@ -24,25 +46,11 @@ function parseAudioStreams(
         const data = JSON.parse(pwDump);
         const streams: AudioStream[] = [];
         for (const item of data) {
-            const info = item.info || {};
-            const props = info.props || {};
+            const props = item.info?.props || {};
             if (!predicate(props['media.class'] || '')) continue;
 
-            const streamProps = info.params?.Props?.[0] || {};
-            streams.push({
-                id: item.id,
-                name: props['node.name'] || 'Unknown',
-                appName:
-                    props['application.name'] ||
-                    props['node.name'] ||
-                    'Unknown',
-                iconName:
-                    props['application.icon-name'] ||
-                    'audio-x-generic-symbolic',
-                volume: streamProps.volume ?? 1.0,
-                muted: streamProps.mute ?? false,
-                targetNode: null,
-            });
+            const stream = streamFromPwItem(item);
+            if (stream) streams.push(stream);
         }
         return streams;
     } catch (e) {
@@ -93,7 +101,7 @@ function parseTargets(pwMetadata: string): Map<number, number> {
 
 @register({GTypeName: 'AppMixer'})
 export default class AppMixer extends GObject.Object {
-    static instance: AppMixer;
+    static readonly instance: AppMixer;
     static get_default() {
         if (!this.instance) this.instance = new AppMixer();
         return this.instance;

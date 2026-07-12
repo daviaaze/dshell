@@ -3,8 +3,8 @@ import {
     ClipboardItem,
     copyClipboardItem,
     formatClipboardPreview,
-} from '#/lib/clipboard';
-import WindowManager from '#/lib/windowManager';
+} from '#/lib/services/clipboard';
+import WindowManager from '#/lib/services/state/windowManager';
 
 export default ({item}: {item: ClipboardItem}) => {
     const preview = formatClipboardPreview(item.text);

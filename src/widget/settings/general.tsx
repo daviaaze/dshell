@@ -1,11 +1,11 @@
-import WindowManager from '#/lib/windowManager';
+import WindowManager from '#/lib/services/state/windowManager';
 import {useSettings} from '#/lib/settings';
-import Theming from '#/lib/theming';
+import PaletteGenerator from '#/style/palette';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For} from 'gnim';
-import {TEMP_MIN, TEMP_MAX} from '#/lib/nightLight';
-import logger from '#/lib/logger';
+import {TEMP_MIN, TEMP_MAX} from '#/lib/services/display/nightLight';
+import logger from '#/lib/core/logger';
 
 export default () => {
     const settings = useSettings().general;
@@ -31,6 +31,7 @@ export default () => {
                             };
                             settings.setColorScheme(map[self.activeName ?? 'auto'] ?? 0);
                         }}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         activeName={(settings.colorScheme as any).as(
                             (v: number) =>
                                 ['auto', 'light', 'dark'][v] ?? 'auto'
@@ -110,7 +111,7 @@ export default () => {
                 <Adw.SwitchRow
                     title={'Enable Dynamic Theming'}
                     subtitle={
-                        Theming.get_default().available
+                        PaletteGenerator.get_default().available
                             ? ''
                             : 'Install matugen to enable'
                     }
@@ -123,7 +124,7 @@ export default () => {
                     cssClasses={['suggested-action', 'popover-padded']}
                     halign={Gtk.Align.CENTER}
                     label="Regenerate from Wallpaper"
-                    onClicked={() => Theming.get_default().regenerate()}
+                    onClicked={() => PaletteGenerator.get_default().regenerate()}
                 />
             </Adw.PreferencesGroup>
 

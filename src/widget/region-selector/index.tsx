@@ -5,9 +5,9 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Cairo from 'gi://cairo?version=1.0';
 import {createBinding, createState} from 'gnim';
 import {app} from '#/App';
-import {Process} from '#/lib/process';
-import Screenshot from '#/lib/screenshot';
-import logger from '#/lib/logger';
+import {Process} from '#/lib/core/process';
+import Screenshot from '#/lib/services/capture/screenshot';
+import logger from '#/lib/core/logger';
 
 interface WindowGeometry {
     address: string;

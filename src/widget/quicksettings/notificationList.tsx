@@ -5,8 +5,9 @@ import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {createBinding, createState, For, onMount} from 'gnim';
 import Notification from '#/widget/common/notification';
-import NotificationHistory from '#/lib/notificationHistory';
-import {getNotifdSafe} from '#/lib/notifdGuard';
+import NotificationHistory from '#/lib/services/notifications/history';
+import {getNotifdSafe} from '#/lib/services/notifications/guard';
+import type {HistoryEntry} from '#/lib/services/notifications/history';
 import {useSettings} from '#/lib/settings';
 
 /**
@@ -45,6 +46,7 @@ const NotificationListContent = ({
                 halign={Gtk.Align.END}
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
                 onClicked={() =>
+                    // eslint-disable-next-line sonarjs/no-nested-functions
                     notifd.get_notifications().forEach(n => n.dismiss())
                 }
             >
@@ -109,6 +111,7 @@ const NotificationListContent = ({
                 <Gtk.Button
                     iconName={'edit-clear-all-symbolic'}
                     valign={Gtk.Align.END}
+                    // eslint-disable-next-line sonarjs/no-nested-functions
                     onClicked={() => notifications.forEach(n => n.dismiss())}
                 />
             </Gtk.Box>
@@ -203,7 +206,7 @@ const NotificationListContent = ({
                         h.slice(0, 20)
                     )}
                 >
-                    {(entry: any) => <HistoryItem entry={entry} />}
+                    {(entry: HistoryEntry) => <HistoryItem entry={entry} />}
                 </For>
                 <Adw.StatusPage
                     visible={createBinding(history, 'history').as(

@@ -4,129 +4,28 @@ import AstalWp from 'gi://AstalWp?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import GObject, {getter, register, setter} from 'gnim/gobject';
-import logger from '#/lib/logger';
-import {Process} from '#/lib/process';
-import {getScreenCaptureSettings} from '#/lib/screenCaptureSettings';
+import logger from '#/lib/core/logger';
+import {Process} from '#/lib/core/process';
+import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
+import {RecorderBackend, RecordingFormat, type VirtualMonitor, type BoundaryGeometry} from './types';
+import {
+    ensureScreenshotDir,
+    buildRecordingArgs,
+    resolveBackend,
+    formatDuration,
+    notify,
+    copyImageToClipboard,
+    GRIM_BIN,
+    MAGICK_BIN,
+    RECORDING_DIR,
+} from './utils';
 
-enum RecorderBackend {
-    WL_SCREENREC = 0,
-    WF_RECORDER = 1,
-    AUTO = 2,
-}
-
-enum RecordingFormat {
-    MP4 = 0,
-    WEBM = 1,
-}
-
-const SCREENSHOT_DIR = `${GLib.get_home_dir()}/Pictures/Screenshots`;
-const RECORDING_DIR = `${GLib.get_home_dir()}/Videos`;
-
-// ── Types ─────────────────────────────────────────────────────────
-
-export interface VirtualMonitor {
-    name: string;
-    resolution: string;
-    fps: number;
-}
-
-export interface BoundaryGeometry {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-// ── Directory helpers ────────────────────────────────────────────
-
-/**
- * Ensure SCREENSHOT_DIR exists. If it cannot be created, falls back to /tmp
- * and updates SCREENSHOT_DIR. Logs errors via logger.
- */
-function ensureScreenshotDir(): string {
-    const dir = Gio.File.new_for_path(SCREENSHOT_DIR);
-    try {
-        if (dir.query_exists(null)) return SCREENSHOT_DIR;
-        dir.make_directory_with_parents(null);
-        logger.info(
-            'screenshot',
-            `created screenshot directory: ${SCREENSHOT_DIR}`
-        );
-        return SCREENSHOT_DIR;
-    } catch (e) {
-        logger.error(
-            'screenshot',
-            `failed to create ${SCREENSHOT_DIR}: ${(e as Error).message}, falling back to /tmp`
-        );
-        return `${GLib.get_tmp_dir()}/shade-screenshots`;
-    }
-}
-
-const GRIM_BIN = Process.findBinary('grim');
-const MAGICK_BIN = Process.findBinary('magick');
-
-// ── Recording backend args builder ───────────────────────────────
-
-interface RecordingArgs {
-    args: string[];
-    backendName: string;
-}
-
-function buildRecordingArgs(
-    backend: RecorderBackend,
-    filename: string,
-    geometry: string | undefined,
-    output: string | undefined,
-    audio: boolean,
-    format: RecordingFormat = RecordingFormat.MP4,
-    audioInputId: number = -1,
-    quality: number = 1,
-): RecordingArgs {
-    const isWebm = format === RecordingFormat.WEBM;
-    if (backend === RecorderBackend.WL_SCREENREC) {
-        const args = ['wl-screenrec', '-f', filename];
-        if (geometry) args.push('-g', geometry);
-        if (output) args.push('-o', output);
-        if (audio) args.push('--audio');
-        // Audio input selection (specific node ID)
-        if (audioInputId !== -1) {
-            const wp = AstalWp.get_default();
-            const mic = wp?.audio.get_microphone(audioInputId);
-            if (mic?.name) {
-                args.push('--audio-device', mic.name);
-            }
-        }
-        // Quality preset
-        const q = quality === 0 ? 3 : quality === 2 ? 8 : 5;
-        args.push('--quality', String(q));
-        // WebM requires a VP* video codec. The muxer is auto-detected from
-        // the .webm extension and the audio codec auto-selects opus for it.
-        if (isWebm) args.push('--codec', 'vp9');
-        return {args, backendName: 'wl-screenrec'};
-    } else {
-        const args = ['wf-recorder', '-f', filename, '-y'];
-        if (geometry) args.push('-g', geometry);
-        if (output) args.push('-o', output);
-        if (audio) {
-            args.push('-a');
-            // wf-recorder defaults to aac, which is invalid in a webm muxer.
-            if (isWebm) args.push('-C', 'libopus');
-        }
-        // Audio input selection (specific node ID)
-        if (audioInputId !== -1) {
-            args.push('--audio', `pipewire_node.restore.id=${audioInputId}`);
-        }
-        // Quality preset
-        const crf = quality === 0 ? 33 : quality === 2 ? 23 : 28;
-        args.push('--codec-param', `crf=${crf}`);
-        if (isWebm) args.push('-c', 'libvpx');
-        return {args, backendName: 'wf-recorder'};
-    }
-}
+export {RecorderBackend, RecordingFormat} from './types';
+export type {VirtualMonitor, BoundaryGeometry} from './types';
 
 @register({GTypeName: 'Screenshot'})
 export default class Screenshot extends GObject.Object {
-    static instance: Screenshot;
+    static readonly instance: Screenshot;
 
     static get_default() {
         if (!this.instance) this.instance = new Screenshot();
@@ -170,14 +69,14 @@ export default class Screenshot extends GObject.Object {
     // pending area-capture transition (overlay → region-selector gap).
     #freezeKeepAlive = false;
 
+    @getter(Boolean)
+    get freezeKeepAlive() {
+        return this.#freezeKeepAlive;
+    }
+
     // ── Boundary state ───────────────────────────────────────────────
     #boundaryVisible = false;
-    #boundaryGeometry: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    } | null = null;
+    #boundaryGeometry: BoundaryGeometry | null = null;
 
     // ── Virtual monitors ─────────────────────────────────────────────
     #virtualMonitors: VirtualMonitor[] = [];
@@ -191,6 +90,8 @@ export default class Screenshot extends GObject.Object {
 
     // ── Preview thumbnails ───────────────────────────────────────────
     #previewThumbnails = true;
+
+    // ── Getters / Setters ────────────────────────────────────────────
 
     @getter(Number)
     get recordingElapsed() {
@@ -276,8 +177,6 @@ export default class Screenshot extends GObject.Object {
         if (this.#overlayOpen === v) return;
 
         if (v) {
-            // Capture stage (grim on focused monitor) as the frozen background.
-            // The grim PNG serves as the freeze — no wayfreeze needed.
             this.#captureStageSync();
             if (!this.#stagePixPath) {
                 logger.error('screenshot', 'stage capture failed, aborting overlay');
@@ -328,13 +227,8 @@ export default class Screenshot extends GObject.Object {
         this.#regionSelectorOpen = v;
         this.notify('region-selector-open');
         if (v) {
-            // Opening the region selector: freeze outputs so the user can
-            // draw a selection on a stable frame (GNOME/Sway area-screenshot
-            // UX). startFreeze is a no-op if wayfreeze is unavailable.
             this.startFreeze();
         } else if (this.#freezeActive && !this.#freezeCapturePending) {
-            // Closing without a pending capture = the user cancelled: release
-            // the freeze so outputs resume immediately.
             this.stopFreeze();
         }
     }
@@ -354,35 +248,24 @@ export default class Screenshot extends GObject.Object {
     openRegionSelectorForCapture(mode: 'screenshot' | 'recording') {
         this.selectedMode = mode;
         this.selectedTarget = 'area';
-        // Open the region-selector directly. Callers that live inside a
-        // popover (QS buttons) are expected to dismiss it first so the
-        // selector gets a clean grab.
         this.regionSelectorOpen = true;
     }
 
     /** Called by region-selector when user confirms a selection */
     captureArea(geometry: string) {
         this.pendingCaptureGeometry = geometry;
-        // Keep the freeze alive through the unmap delay; the setter won't
-        // release it because a capture is pending.
         this.#freezeCapturePending = true;
         this.regionSelectorOpen = false;
 
-        // Defer capture so the region-selector window has time to unmap,
-        // otherwise grim/wl-screenrec capture the selector overlay itself.
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
             this.#freezeCapturePending = false;
             if (this.#selectedMode === 'screenshot') {
-                // Redesign: crop from the frozen stage texture if available,
-                // otherwise fall back to grim -g (old path).
                 if (this.#stagePixPath) {
                     this.captureFromStage(geometry);
                 } else {
                     this.screenshotGeometry(geometry);
                 }
             } else {
-                // Recording must capture LIVE content, so unfreeze as soon as
-                // the recorder process is launched (it has its own grab).
                 this.startRecording({geometry});
                 this.stopFreeze();
             }
@@ -390,13 +273,8 @@ export default class Screenshot extends GObject.Object {
         });
     }
 
-    // ── Stage capture and crop (capture-then-crop redesign) ───────────
+    // ── Stage capture and crop ───────────────────────────────────────
 
-    /**
-     * Capture the focused monitor with grim (no -g) into a temp PNG and load
-     * it as a Gdk.Texture. The texture is displayed as the frozen background
-     * in the overlay. No wayfreeze needed — the grim PNG IS the freeze.
-     */
     #captureStageSync() {
         this.#cleanupStage();
 
@@ -422,7 +300,6 @@ export default class Screenshot extends GObject.Object {
         this.notify('stage-texture');
     }
 
-    /** Clean up the frozen stage texture and temp file */
     #cleanupStage() {
         if (this.#stageTexture) {
             this.#stageTexture = null;
@@ -437,23 +314,13 @@ export default class Screenshot extends GObject.Object {
         }
     }
 
-    /**
-     * 👇 Capture API for the unified overlay
-     *
-     * Crops the frozen stage texture using ImageMagick (or copies it for
-     * fullscreen). geometry is a `magick -crop` region string in compositor
-     * coordinates (e.g. "1920x1080+0+0"), or null for the full stage.
-     *
-     * GNOME Mutter does the same thing: captures the stage ONCE, then crops
-     * the frozen texture for output. No re-capture from the live compositor.
-     */
     async captureFromStage(geometry: string | null) {
         if (!this.#stagePixPath) {
             logger.error('screenshot', 'no stage texture for capture');
-            this.#notify(
+            notify(
                 'Screenshot failed',
                 'No frozen frame available',
-                'dialog-error-symbolic'
+                ICON_ERROR
             );
             return;
         }
@@ -478,31 +345,24 @@ export default class Screenshot extends GObject.Object {
                 );
             }
 
-            // Copy to clipboard
             copyImageToClipboard(filename);
-
-            this.#notify('Screenshot saved', filename, 'camera-photo-symbolic');
+            notify('Screenshot saved', filename, 'camera-photo-symbolic');
             this.overlayOpen = false;
         } catch (e) {
             logger.error('screenshot', `capture failed: ${e}`);
-            this.#notify(
+            notify(
                 'Screenshot failed',
                 String(e),
-                'dialog-error-symbolic'
+                ICON_ERROR
             );
         }
     }
 
-    /**
-     * 👇 Export stage-texture getter so the unified overlay widget can bind
-     * to it as the frozen background.
-     */
     @getter(GObject.Object)
     get stageTexture(): Gdk.Texture | null {
         return this.#stageTexture;
     }
 
-    /** Take a screenshot of a specific geometry */
     screenshotGeometry(geometry: string) {
         const dir = ensureScreenshotDir();
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -511,7 +371,7 @@ export default class Screenshot extends GObject.Object {
         Process.execAsync(`${GRIM_BIN} -g "${geometry}" "${filename}"`)
             .then(() => {
                 copyImageToClipboard(filename);
-                this.#notify(
+                notify(
                     'Screenshot saved',
                     filename,
                     'camera-photo-symbolic'
@@ -524,7 +384,7 @@ export default class Screenshot extends GObject.Object {
             });
     }
 
-    // ── Freeze state getters/setters ──────────────────────────────────
+    // ── Freeze state ─────────────────────────────────────────────────
 
     @getter(Boolean)
     get freezeActive() {
@@ -538,7 +398,7 @@ export default class Screenshot extends GObject.Object {
         this.notify('freeze-active');
     }
 
-    // ── Boundary state getters/setters ────────────────────────────────
+    // ── Boundary state ───────────────────────────────────────────────
 
     @getter(Boolean)
     get boundaryVisible() {
@@ -563,32 +423,22 @@ export default class Screenshot extends GObject.Object {
         this.notify('boundary-geometry');
     }
 
-    // ── Virtual monitors ──────────────────────────────────────────────
+    // ── Virtual monitors ─────────────────────────────────────────────
 
     @getter(Array)
     get virtualMonitors() {
         return [...this.#virtualMonitors];
     }
 
-    /** Whether at least one virtual monitor is active (bindable boolean). */
     @getter(Boolean)
     get virtualMonitorActive() {
         return this.#virtualMonitors.length > 0;
     }
 
-    #notify(
-        title: string,
-        body: string,
-        icon: string = 'dialog-information-symbolic'
-    ) {
-        Process.execAsync(
-            `notify-send -a shade-shell -i ${icon} "${title}" "${body}"`
-        ).catch(e => logger.warn('screenshot', 'notify-send failed:', e));
-    }
+    // ── Screenshot methods ───────────────────────────────────────────
 
     screenshot(fullscreen: boolean) {
         if (!fullscreen) {
-            // Open unified overlay in area mode (capture-then-crop path)
             this.selectedMode = 'screenshot';
             this.selectedTarget = 'area';
             this.overlayOpen = true;
@@ -602,7 +452,7 @@ export default class Screenshot extends GObject.Object {
         Process.execAsync(`${GRIM_BIN} "${filename}"`)
             .then(() => {
                 copyImageToClipboard(filename);
-                this.#notify(
+                notify(
                     'Screenshot saved',
                     filename,
                     'camera-photo-symbolic'
@@ -612,6 +462,8 @@ export default class Screenshot extends GObject.Object {
             .finally(() => this.stopFreeze());
     }
 
+    // ── Recording methods ────────────────────────────────────────────
+
     toggleRecording() {
         if (this.#recording) {
             this.stopRecording();
@@ -620,65 +472,33 @@ export default class Screenshot extends GObject.Object {
         }
     }
 
-    startRecording(
-        options: {geometry?: string; output?: string} = {},
-        forceBackend?: RecorderBackend
-    ) {
-        if (this.#recording) return;
-
-        // Read backend + format preference from GSettings. When the caller
-        // forces a backend (auto-fallback path), honor it directly.
-        const settings = getScreenCaptureSettings();
-        const pref =
-            forceBackend ?? (settings.recorderBackend() as RecorderBackend);
-        const backend = this.#resolveBackend(pref);
-        const format = settings.recordingFormat() as RecordingFormat;
-        const ext = format === RecordingFormat.WEBM ? 'webm' : 'mp4';
-
+    #resolveRecordingFilename(ext: string): string {
         GLib.mkdir_with_parents(RECORDING_DIR, 0o755);
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `${RECORDING_DIR}/${timestamp}.${ext}`;
+        return `${RECORDING_DIR}/${timestamp}.${ext}`;
+    }
 
-        // If no geometry and no output specified, default to focused monitor
-        const effectiveOutput =
-            options.output ??
-            (options.geometry
-                ? undefined
-                : AstalHyprland.get_default().focused_monitor?.name);
+    #resolveEffectiveOutput(options: {geometry?: string; output?: string}): string | undefined {
+        return options.output ??
+            (options.geometry ? undefined : AstalHyprland.get_default().focused_monitor?.name);
+    }
 
-        // Build args based on backend
-        const {args, backendName} = buildRecordingArgs(
-            backend,
-            filename,
-            options.geometry,
-            effectiveOutput,
-            this.#audio,
-            format,
-            this.#selectedAudioInput,
-            this.#recordingQuality,
-        );
-
-        logger.info(
-            'screenshot',
-            `starting ${backendName} with args: ${args.join(' ')}`
-        );
-
-        let proc: Process;
+    #spawnRecorder(args: string[], backendName: string): Process | null {
         try {
-            proc = Process.subprocessv(args);
+            return Process.subprocessv(args);
         } catch (e) {
-            logger.error(
-                'screenshot',
-                `failed to spawn ${backendName}: ${(e as Error).message}`
-            );
-            this.#notify(
-                'Recording failed',
-                `Could not start ${backendName}: ${(e as Error).message}`,
-                'dialog-error-symbolic'
-            );
-            return;
+            logger.error('screenshot', `failed to spawn ${backendName}: ${(e as Error).message}`);
+            notify(MSG_RECORDING_FAILED, `Could not start ${backendName}: ${(e as Error).message}`, ICON_ERROR);
+            return null;
         }
+    }
 
+    #initRecordingState(
+        proc: Process,
+        filename: string,
+        backendName: string,
+        forceBackend: RecorderBackend | undefined,
+    ) {
         this.#recording = true;
         this.#stopRequested = false;
         this.#recordingIsRetry = forceBackend !== undefined;
@@ -689,95 +509,90 @@ export default class Screenshot extends GObject.Object {
         this.#recordingBackendName = backendName;
         this.notify('recording');
         this.notify('recording-elapsed');
+    }
 
-        // Start duration timer
-        this.#durationTimer = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            1000,
-            () => {
-                this.#recordingElapsed = Math.floor(
-                    (Date.now() - this.#recordingStartTime) / 1000
-                );
-                this.notify('recording-elapsed');
-                return this.#recording; // keep running while recording
-            }
-        );
-
-        this.#notify('Recording started', filename, 'media-record-symbolic');
-
-        // Show recording boundary if enabled
-        if (options.geometry) {
-            const [pos, size] = options.geometry.split(' ');
-            const [x, y] = pos.split(',').map(Number);
-            const [w, h] = size.split('x').map(Number);
-            this.showBoundary({x, y, width: w, height: h});
-        }
-
-        proc.connect('exit', () => {
-            const durationMs = Date.now() - this.#recordingStartTime;
-            const durationStr = this.#formatDuration(durationMs);
-            const success = this.#stopRequested || durationMs >= 1000;
-            const name = this.#recordingBackendName || backendName;
-
-            // Auto-fallback: wl-screenrec can die fast when no vaapi/GPU is
-            // available. If "auto" was requested, transparently retry once
-            // with wf-recorder before reporting failure.
-            if (
-                !success &&
-                !this.#recordingIsRetry &&
-                backend === RecorderBackend.WL_SCREENREC &&
-                pref === RecorderBackend.AUTO
-            ) {
-                logger.warn(
-                    'screenshot',
-                    `${name} exited after ${durationMs}ms; retrying with wf-recorder`
-                );
-                this.#resetRecordingProcess();
-                this.startRecording(options, RecorderBackend.WF_RECORDER);
-                return;
-            }
-
-            logger.info(
-                'screenshot',
-                `${name} exited after ${durationStr} (${durationMs}ms)`
-            );
-
-            if (success) {
-                this.#notify(
-                    'Recording stopped',
-                    `Duration: ${durationStr}\nSaved to: ${this.#recordingFile}`,
-                    'media-playback-stop-symbolic'
-                );
-            } else {
-                this.#notify(
-                    'Recording failed',
-                    `${name} exited immediately (${durationMs}ms). Check geometry/output and that no other recorder is running.`,
-                    'dialog-error-symbolic'
-                );
-            }
-
-            this.#resetRecordingProcess();
-            this.notify('recording');
+    #startDurationTimer() {
+        this.#durationTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            this.#recordingElapsed = Math.floor((Date.now() - this.#recordingStartTime) / 1000);
             this.notify('recording-elapsed');
+            return this.#recording;
         });
     }
 
-    #resolveBackend(pref: RecorderBackend): RecorderBackend {
-        if (pref === RecorderBackend.AUTO) {
-            // Prefer wl-screenrec (GPU/vaapi) when installed; otherwise fall
-            // back to wf-recorder. wl-screenrec also gets a runtime fallback
-            // in the exit handler if it dies fast (e.g. no vaapi on NVIDIA).
-            return Process.findBinary('wl-screenrec') !== 'wl-screenrec'
-                ? RecorderBackend.WL_SCREENREC
-                : RecorderBackend.WF_RECORDER;
+    #showRecordingBoundary(geometry: string) {
+        const [pos, size] = geometry.split(' ');
+        const [x, y] = pos!.split(',').map(Number);
+        const [w, h] = size!.split('x').map(Number);
+        this.showBoundary({x, y, width: w, height: h});
+    }
+
+    #onRecordingExit(
+        proc: Process,
+        options: {geometry?: string; output?: string},
+        backend: RecorderBackend,
+        pref: RecorderBackend,
+    ) {
+        const durationMs = Date.now() - this.#recordingStartTime;
+        const durationStr = formatDuration(durationMs);
+        const success = this.#stopRequested || durationMs >= 1000;
+        const name = this.#recordingBackendName || '';
+
+        if (!success && !this.#recordingIsRetry && backend === RecorderBackend.WL_SCREENREC && pref === RecorderBackend.AUTO) {
+            logger.warn('screenshot', `${name} exited after ${durationMs}ms; retrying with wf-recorder`);
+            this.#resetRecordingProcess();
+            this.startRecording(options, RecorderBackend.WF_RECORDER);
+            return;
         }
-        return pref;
+
+        logger.info('screenshot', `${name} exited after ${durationStr} (${durationMs}ms)`);
+
+        if (success) {
+            notify('Recording stopped', `Duration: ${durationStr}\nSaved to: ${this.#recordingFile}`, 'media-playback-stop-symbolic');
+        } else {
+            notify(MSG_RECORDING_FAILED, `${name} exited immediately (${durationMs}ms). Check geometry/output and that no other recorder is running.`, ICON_ERROR);
+        }
+
+        this.#resetRecordingProcess();
+        this.notify('recording');
+        this.notify('recording-elapsed');
+    }
+
+    startRecording(
+        options: {geometry?: string; output?: string} = {},
+        forceBackend?: RecorderBackend
+    ) {
+        if (this.#recording) return;
+
+        const settings = getScreenCaptureSettings();
+        const pref = forceBackend ?? (settings.recorderBackend() as RecorderBackend);
+        const backend = resolveBackend(pref);
+        const format = settings.recordingFormat() as RecordingFormat;
+        const ext = format === RecordingFormat.WEBM ? 'webm' : 'mp4';
+
+        const filename = this.#resolveRecordingFilename(ext);
+        const effectiveOutput = this.#resolveEffectiveOutput(options);
+
+        const {args, backendName} = buildRecordingArgs(
+            backend, filename, options.geometry, effectiveOutput,
+            this.#audio, format, this.#selectedAudioInput, this.#recordingQuality,
+        );
+
+        logger.info('screenshot', `starting ${backendName} with args: ${args.join(' ')}`);
+
+        const proc = this.#spawnRecorder(args, backendName);
+        if (!proc) return;
+
+        this.#initRecordingState(proc, filename, backendName, forceBackend);
+        this.#startDurationTimer();
+
+        notify('Recording started', filename, 'media-record-symbolic');
+
+        if (options.geometry) this.#showRecordingBoundary(options.geometry);
+
+        proc.connect('exit', () => this.#onRecordingExit(proc, options, backend, pref));
     }
 
     #resetRecordingProcess() {
-        // Tear down the active recording's internal state without emitting
-        // signals/notifications. Used by both the final exit path (which then
-        // notifies) and the auto-fallback retry path (which re-launches).
         this.#recording = false;
         this.#stopRequested = false;
         if (this.#durationTimer) {
@@ -792,22 +607,11 @@ export default class Screenshot extends GObject.Object {
         this.#recordingBackendName = '';
     }
 
-    #formatDuration(ms: number): string {
-        const totalSeconds = Math.round(ms / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        if (minutes > 0) {
-            return `${minutes}m ${seconds}s`;
-        }
-        return `${seconds}s`;
-    }
-
     recordArea() {
         if (this.#recording) return;
         this.openRegionSelectorForCapture('recording');
     }
 
-    /** Record a specific output (monitor) by name */
     recordOutput(outputName?: string) {
         if (this.#recording) return;
         if (!outputName) {
@@ -817,17 +621,16 @@ export default class Screenshot extends GObject.Object {
         }
         if (!outputName) {
             logger.error('screenshot', 'no output name, cannot record output');
-            this.#notify(
-                'Recording failed',
+            notify(
+                MSG_RECORDING_FAILED,
                 'No monitor found',
-                'dialog-error-symbolic'
+                ICON_ERROR
             );
             return;
         }
         this.startRecording({output: outputName});
     }
 
-    /** Visually select an output (monitor) to record: open overlay for selection */
     recordOutputVisual() {
         if (this.#recording) return;
         this.selectedMode = 'recording';
@@ -835,7 +638,6 @@ export default class Screenshot extends GObject.Object {
         this.overlayOpen = true;
     }
 
-    /** Visually select a window to record: open overlay for selection */
     recordWindowVisual() {
         if (this.#recording) return;
         this.selectedMode = 'recording';
@@ -843,7 +645,6 @@ export default class Screenshot extends GObject.Object {
         this.overlayOpen = true;
     }
 
-    /** Record a specific window by address */
     recordWindowByAddress(address: string) {
         if (this.#recording) return;
         const hyprland = AstalHyprland.get_default();
@@ -854,10 +655,10 @@ export default class Screenshot extends GObject.Object {
                 'screenshot',
                 `window with address ${address} not found`
             );
-            this.#notify(
-                'Recording failed',
+            notify(
+                MSG_RECORDING_FAILED,
                 'Window not found',
-                'dialog-error-symbolic'
+                ICON_ERROR
             );
             return;
         }
@@ -875,10 +676,10 @@ export default class Screenshot extends GObject.Object {
                 'screenshot',
                 'no focused client, cannot record window'
             );
-            this.#notify(
-                'Recording failed',
+            notify(
+                MSG_RECORDING_FAILED,
                 'No window focused',
-                'dialog-error-symbolic'
+                ICON_ERROR
             );
             return;
         }
@@ -893,8 +694,6 @@ export default class Screenshot extends GObject.Object {
         try {
             this.#recordingProcess.signal(2);
         } catch (e) {
-            // Process may already be dead; escalate to SIGTERM (matching
-            // stopFreeze/dispose) and swallow to protect the caller.
             logger.warn(
                 'screenshot',
                 `SIGINT to recorder failed: ${(e as Error).message}`
@@ -921,10 +720,6 @@ export default class Screenshot extends GObject.Object {
         this.overlayOpen = false;
     }
 
-    /**
-     * When set, the overlay close won't stop the freeze. Used during the
-     * overlay → region-selector transition for area captures.
-     */
     setFreezeKeepAlive(v: boolean) {
         this.#freezeKeepAlive = v;
     }
@@ -983,9 +778,6 @@ export default class Screenshot extends GObject.Object {
         try {
             await Process.execAsync('hyprctl output create headless SHADE-VMON');
 
-            // The new headless output isn't registered instantly; poll until
-            // it shows up (or give up after ~1s). Uses async exec so the shell
-            // main loop isn't blocked while waiting.
             let vmon: {name: string} | null = null;
             for (let attempt = 0; attempt < 10; attempt++) {
                 const monitors = JSON.parse(
@@ -1013,10 +805,10 @@ export default class Screenshot extends GObject.Object {
                     'screenshot',
                     'failed to find created virtual monitor'
                 );
-                this.#notify(
+                notify(
                     'Virtual monitor',
                     'Hyprland did not register the headless output.',
-                    'dialog-error-symbolic'
+                    ICON_ERROR
                 );
                 return null;
             }
@@ -1038,10 +830,10 @@ export default class Screenshot extends GObject.Object {
                 'screenshot',
                 `failed to create virtual monitor: ${(e as Error).message}`
             );
-            this.#notify(
+            notify(
                 'Virtual monitor',
                 `Could not create virtual monitor: ${(e as Error).message}`,
-                'dialog-error-symbolic'
+                ICON_ERROR
             );
             return null;
         }
@@ -1067,8 +859,36 @@ export default class Screenshot extends GObject.Object {
         this.notify('virtual-monitor-active');
     }
 
+    /** Register GAction commands for screenshot/recording. */
+    registerCommands(app: Gio.Application) {
+        const actions: Record<string, () => void> = {
+            screenshot: () => this.screenshot(true),
+            'screenshot-area': () => this.screenshot(false),
+            'screenshot-overlay': () => this.toggleOverlay(),
+            record: () => this.toggleRecording(),
+            'record-area': () => this.recordArea(),
+            'record-window': () => this.recordWindow(),
+            'record-output': () => this.recordOutput(),
+        };
+        for (const [name, fn] of Object.entries(actions)) {
+            const action = Gio.SimpleAction.new(name, null);
+            action.connect('activate', fn);
+            app.add_action(action);
+        }
+
+        // record-window-address takes a string parameter (window address)
+        const addressAction = Gio.SimpleAction.new(
+            'record-window-address',
+            GLib.VariantType.new('s')
+        );
+        addressAction.connect('activate', (_action, param) => {
+            const address = param?.get_string()[0];
+            if (address) this.recordWindowByAddress(address);
+        });
+        app.add_action(addressAction);
+    }
+
     dispose() {
-        // Kill any active freeze process first (screenshot overlay)
         if (this.#freezeProcess) {
             try {
                 this.#freezeProcess.signal(2);

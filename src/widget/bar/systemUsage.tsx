@@ -2,11 +2,11 @@ import GTop from 'gi://GTop';
 import {useSettings} from '#/lib/settings';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import {Process} from '#/lib/process';
+import {Process} from '#/lib/core/process';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Accessor, createState, onCleanup} from 'gnim';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 /** Auto-discover the coretemp Package id 0 sensor path. */
 function findCoretempPath(): string | null {
@@ -30,12 +30,12 @@ function findCoretempPath(): string | null {
                 ) {
                     return `/sys/class/hwmon/${hwmonName}/temp1_input`;
                 }
-            } catch (_) {
+            } catch { // eslint-disable-line no-empty
                 // hwmon entry without a name file — skip
             }
         }
-    } catch (e: any) {
-        logger.error('systemUsage', 'hwmon enumeration failed:', e.message);
+    } catch (e) {
+        logger.error('systemUsage', 'hwmon enumeration failed:', (e as Error).message);
     } finally {
         iter?.close(null);
     }
@@ -108,7 +108,7 @@ export default ({
                     setTemp(value / 100000);
                     setTempAvailable(true);
                 }
-            } catch (e: any) {
+            } catch (e) {
                 logger.error('systemUsage', 'failed to read temperature:', e);
                 setTempAvailable(false);
                 tempFailed = true;

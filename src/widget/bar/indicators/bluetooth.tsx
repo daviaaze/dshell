@@ -2,8 +2,8 @@ import Bluetooth from 'gi://AstalBluetooth';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {createState, onMount, onCleanup} from 'gnim';
-import {toArray} from '#/lib/gjsUtils';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import {toArray} from '#/lib/core/gjsUtils';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
     const [iconName, setIconName] = createState(
@@ -32,8 +32,11 @@ export default () => {
                 );
                 const list = bt.devices;
                 if (list) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any, sonarjs/no-nested-functions
                     const names = toArray<any>(list)
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any, sonarjs/no-nested-functions
                         .filter((d: any) => d.connected)
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any, sonarjs/no-nested-functions
                         .map((d: any) => d.name);
                     setTooltip(
                         names.length > 0 ? names.join(', ') : 'Bluetooth'

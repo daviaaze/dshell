@@ -1,6 +1,5 @@
 import {createState, onMount, onCleanup} from 'gnim';
-import Gtk from 'gi://Gtk?version=4.0';
-import {isConservationEnabled, toggleConservation} from '#/lib/batteryConservation';
+import {isConservationEnabled, toggleConservation} from '#/lib/services/power/batteryConservation';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import GLib from 'gi://GLib?version=2.0';
 

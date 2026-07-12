@@ -2,8 +2,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Wireplumber from 'gi://AstalWp';
 import {createState, onMount, onCleanup} from 'gnim';
-import Screenshot from '#/lib/screenshot';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import Screenshot from '#/lib/services/capture/screenshot';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
     const ss = Screenshot.get_default();

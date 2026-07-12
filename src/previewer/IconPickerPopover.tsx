@@ -6,7 +6,7 @@
  */
 
 import Gtk from 'gi://Gtk?version=4.0';
-import {IconNames} from '#/lib/iconNames';
+import {IconNames} from '#/lib/core/iconNames';
 
 let _iconPickerPopover: Gtk.Popover | null = null;
 let _iconPickerEntry: Gtk.Entry | null = null;

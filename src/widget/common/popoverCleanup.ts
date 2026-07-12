@@ -1,4 +1,4 @@
-import {logger} from '#/lib/logger';
+import {logger} from '#/lib/core/logger';
 import Gtk from 'gi://Gtk?version=4.0';
 
 /**
@@ -10,6 +10,7 @@ export function usePopoverCleanup(
     self: (Gtk.Widget & {popover?: Gtk.Popover}) | Gtk.MenuButton
 ) {
     self.connect('destroy', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const popover = self.popover ?? (self as any).get_popover?.();
         if (popover) {
             try {

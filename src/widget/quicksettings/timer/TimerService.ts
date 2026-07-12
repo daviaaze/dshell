@@ -2,13 +2,13 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register} from 'gnim/gobject';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 
 @register({GTypeName: 'TimerService'})
 export default class TimerService extends GObject.Object {
-    static instance: TimerService;
+    static readonly instance: TimerService;
     static get_default() {
         if (!this.instance) this.instance = new TimerService();
         return this.instance;
@@ -169,11 +169,10 @@ export default class TimerService extends GObject.Object {
 
     #onComplete() {
         const isPomodoro = this.#mode === 'pomodoro';
-        const title = isPomodoro
-            ? this.#pomodoroIsBreak
-                ? 'Break over! Back to work.'
-                : 'Work session complete!'
-            : 'Timer finished!';
+        const title = (() => {
+            if (!isPomodoro) return 'Timer finished!';
+            return this.#pomodoroIsBreak ? 'Break over! Back to work.' : 'Work session complete!';
+        })();
         const body = isPomodoro
             ? `Session ${this.#pomodoroSession} complete.`
             : this.#label;

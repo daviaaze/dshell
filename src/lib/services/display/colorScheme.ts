@@ -1,10 +1,9 @@
 import {register, Object, getter, setter} from 'gnim/gobject';
-import Weather from './weather';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import {createSettings, Schema} from 'gnim-schemas';
 import {Accessor, Setter} from 'gnim';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 export enum DarkModes {
     AUTO,
@@ -14,7 +13,7 @@ export enum DarkModes {
 
 @register({GTypeName: 'ColorScheme'})
 export class ColorScheme extends Object {
-    static instance: ColorScheme;
+    static readonly instance: ColorScheme;
     static get_default() {
         if (!this.instance) this.instance = new ColorScheme();
         return this.instance;
@@ -23,9 +22,8 @@ export class ColorScheme extends Object {
     #daytime: boolean = true;
     #colorScheme: DarkModes = 0;
     #initialized = false;
-    #weather: Weather | null = null;
-    #weatherHandlerId = 0;
     #timerId: GLib.Source | null = null;
+    #generalHandlerId = 0;
     #shadeSettings: {
         colorScheme: Accessor<DarkModes>;
         setColorScheme: (v: DarkModes) => void;
@@ -34,6 +32,7 @@ export class ColorScheme extends Object {
         setColorScheme: Setter<string>;
         setGtkTheme: Setter<string>;
     };
+    #generalSettings: Gio.Settings;
 
     @getter(Number)
     get colorScheme() {
@@ -54,6 +53,8 @@ export class ColorScheme extends Object {
                 return 'Light';
             case DarkModes.DARK:
                 return 'Dark';
+            default:
+                return 'Auto';
         }
     }
 
@@ -98,10 +99,13 @@ export class ColorScheme extends Object {
                     .valueOf() as number
             );
 
-        if (!this.#weather) return;
+        const sunrise = this.#generalSettings.get_double('weather-sunrise-time');
+        const sunset = this.#generalSettings.get_double('weather-sunset-time');
+        if (sunrise <= 0 || sunset <= 0) return;
+
         const interval = this.#daytime
-            ? msUntil(this.#weather.info.get_value_sunset()[1])
-            : msUntil(this.#weather.info.get_value_sunrise()[1]);
+            ? msUntil(sunset)
+            : msUntil(sunrise);
 
         this.#timerId = setTimeout(() => {
             this.#timerId = null;
@@ -115,7 +119,6 @@ export class ColorScheme extends Object {
     }
 
     init(
-        weather: Weather,
         settings: {
             colorScheme: Accessor<DarkModes>;
             setColorScheme: (v: DarkModes) => void;
@@ -129,7 +132,6 @@ export class ColorScheme extends Object {
             return;
         }
         this.#initialized = true;
-        this.#weather = weather;
         this.#shadeSettings = settings;
         const colorSchemeSetting = settings.colorScheme;
         this.colorScheme = colorSchemeSetting();
@@ -141,9 +143,16 @@ export class ColorScheme extends Object {
             }
         });
 
-        const updateFromWeather = () => {
-            if (weather.info.is_valid()) {
-                const newDaytime = weather.info.is_daytime();
+        // Read initial daytime from GSettings
+        this.#daytime = this.#generalSettings.get_boolean('weather-is-daytime');
+        this.notify('daytime');
+        this.timeout();
+
+        // Listen for weather-derived changes
+        this.#generalHandlerId = this.#generalSettings.connect(
+            'changed::weather-is-daytime',
+            () => {
+                const newDaytime = this.#generalSettings.get_boolean('weather-is-daytime');
                 if (newDaytime !== this.#daytime) {
                     this.#daytime = newDaytime;
                     this.notify('daytime');
@@ -153,22 +162,16 @@ export class ColorScheme extends Object {
                 }
                 this.timeout();
             }
-        };
-
-        updateFromWeather();
-        this.#weatherHandlerId = weather.connect(
-            'notify::info',
-            updateFromWeather
         );
     }
 
     dispose() {
         logger.debug('colorscheme', 'disposing');
-        if (this.#weatherHandlerId !== 0 && this.#weather) {
+        if (this.#generalHandlerId !== 0) {
             try {
-                this.#weather.disconnect(this.#weatherHandlerId);
-            } catch {}
-            this.#weatherHandlerId = 0;
+                this.#generalSettings.disconnect(this.#generalHandlerId);
+            } catch { /* ignore */ }
+            this.#generalHandlerId = 0;
         }
         if (this.#timerId) {
             clearTimeout(this.#timerId);
@@ -179,6 +182,10 @@ export class ColorScheme extends Object {
 
     constructor() {
         super();
+
+        this.#generalSettings = new Gio.Settings({
+            schema_id: `${import.meta.domain}.general`,
+        });
 
         this.#gsettings = createSettings(
             new Gio.Settings({

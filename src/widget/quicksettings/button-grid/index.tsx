@@ -9,9 +9,9 @@ import {QuickTimerButton} from '../timer/QuickTimerButton';
 import Network from '#/widget/quicksettings/network';
 import Screenshot from './screenshot';
 import NightLight from './nightLight';
-import NightLightLib from '#/lib/nightLight';
+import NightLightLib from '#/lib/services/display/nightLight';
 import Touchpad from './touchpad';
-import TouchpadLib from '#/lib/touchpad';
+import TouchpadLib from '#/lib/services/input/touchpad';
 
 export const ButtonGrid = ({cols = 2}: {cols?: number}) => {
     const nightLight = NightLightLib.get_default();

@@ -1,6 +1,7 @@
+import Gio from 'gi://Gio?version=2.0';
 import Network from 'gi://AstalNetwork';
-import {toArray} from '#/lib/gjsUtils';
-import logger from '#/lib/logger';
+import {toArray} from '#/lib/core/gjsUtils';
+import logger from '#/lib/core/logger';
 
 // ── NM 802.11 flag constants ──────────────────────────────────────
 // NM.__80211ApSecurityFlags is not reliably exposed across GIR versions.
@@ -14,7 +15,7 @@ const NM_AP_FLAGS_PRIVACY = 0x00000001;
 
 // ── Byte-string helpers ────────────────────────────────────────────
 
-export function bytesToString(value: any): string | null {
+export function bytesToString(value: unknown): string | null {
     if (value === null || value === undefined) return null;
     if (typeof value === 'string') return value;
     if (value instanceof Uint8Array) {
@@ -57,7 +58,7 @@ export function bssidOf(ap: Network.AccessPoint): string | null {
     }
 }
 
-export function bssidEquals(a: any, b: any): boolean {
+export function bssidEquals(a: unknown, b: unknown): boolean {
     const sa = bytesToString(a);
     const sb = bytesToString(b);
     if (sa === null || sb === null) return false;
@@ -198,14 +199,7 @@ export function isSaved(ap: Network.AccessPoint): boolean {
     try {
         const conns = ap.get_connections();
         if (!conns) return false;
-        // GLib.List check
-        let count = 0;
-        let l: any = conns;
-        while (l) {
-            count++;
-            l = l.next;
-        }
-        return count > 0;
+        return toArray(conns).length > 0;
     } catch {
         return false;
     }
@@ -305,6 +299,7 @@ export function createNMConnection(
     connection.add_setting(sCon);
 
     const sWifi = new NM.SettingWireless();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     sWifi.ssid = new GLib.Bytes(new TextEncoder().encode(ssid)) as any;
     sWifi.mode = 'infrastructure';
     sWifi.hidden = hidden;
@@ -347,7 +342,7 @@ export function commitChangesAsync(
         conn.commit_changes_async(
             saveToDisk,
             null,
-            (_source: any, res: any) => {
+            (_source: unknown, res: Gio.AsyncResult) => {
                 try {
                     conn.commit_changes_finish(res);
                     resolve();
@@ -365,7 +360,7 @@ export function deleteConnectionAsync(
     conn: NM.RemoteConnection
 ): Promise<void> {
     return new Promise((resolve, reject) => {
-        conn.delete_async(null, (_source: any, res: any) => {
+        conn.delete_async(null, (_source: unknown, res: Gio.AsyncResult) => {
             try {
                 conn.delete_finish(res);
                 resolve();

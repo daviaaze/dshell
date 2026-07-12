@@ -4,6 +4,7 @@ import GObject, {register, signal} from 'gnim/gobject';
 
 const encoder = new TextEncoder();
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Process {
     export interface SignalSignatures extends GObject.Object.SignalSignatures {
         stdout: Process['stdout'];
@@ -18,18 +19,18 @@ export namespace Process {
 @register()
 export class Process extends GObject.Object {
     @signal(String)
-    protected stdout(out: string) {
-        void out;
+    protected stdout(_out: string) {
+        // signal parameter intentionally unused
     }
 
     @signal(String)
-    protected stderr(err: string) {
-        void err;
+    protected stderr(_err: string) {
+        // signal parameter intentionally unused
     }
 
     @signal(Number, Boolean)
-    protected exit(code: number, signaled: boolean) {
-        void [code, signaled];
+    protected exit(_code: number, _signaled: boolean) {
+        // signal parameters intentionally unused
     }
 
     #encoder = new TextEncoder();
@@ -115,7 +116,7 @@ export class Process extends GObject.Object {
                 null,
                 (_, res) => {
                     try {
-                        resolve(void this.#inStream.write_all_finish(res));
+                        resolve(this.#inStream.write_all_finish(res));
                     } catch (error) {
                         reject(error);
                     }
@@ -228,7 +229,7 @@ export class Process extends GObject.Object {
                 try {
                     const [, out, err] = process.communicate_utf8_finish(res);
                     if (process.get_successful()) {
-                        return resolve(out.trim());
+                        resolve(out.trim());
                     } else {
                         reject(new Error(err.trim()));
                     }

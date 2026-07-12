@@ -1,7 +1,7 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
-import Screenshot from '#/lib/screenshot';
+import Screenshot from '#/lib/services/capture/screenshot';
 
 function formatDuration(seconds: number): string {
     const m = Math.floor(seconds / 60);

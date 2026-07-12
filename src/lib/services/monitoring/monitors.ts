@@ -4,7 +4,7 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register} from 'gnim/gobject';
 import {createBinding} from 'gnim';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 /**
  * Map a Gdk.Monitor to its corresponding AstalHyprland.Monitor.
@@ -41,7 +41,7 @@ const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor => {
 
 @register({GTypeName: 'MonitorService'})
 class MonitorService extends GObject.Object {
-    static instance: MonitorService;
+    static readonly instance: MonitorService;
 
     static get_default() {
         if (!this.instance) this.instance = new MonitorService();

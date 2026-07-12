@@ -3,7 +3,7 @@ import NM from 'gi://NM?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed, createState, With, For} from 'gnim';
-import {toArray} from '#/lib/gjsUtils';
+import {toArray} from '#/lib/core/gjsUtils';
 import {
     strengthFraction,
     createNMConnection,
@@ -11,7 +11,7 @@ import {
     commitChangesAsync,
     deleteConnectionAsync,
 } from '#/widget/quicksettings/network/utils';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -618,13 +618,11 @@ export default () => {
             >
                 <Adw.ActionRow
                     title="Connectivity"
-                    subtitle={createBinding(network, 'connectivity').as(c =>
-                        c === Network.Connectivity.FULL
-                            ? 'Full internet access'
-                            : c === Network.Connectivity.LIMITED
-                              ? 'Limited connectivity'
-                              : 'No connectivity'
-                    )}
+                    subtitle={createBinding(network, 'connectivity').as(c => {
+                        if (c === Network.Connectivity.FULL) return 'Full internet access';
+                        if (c === Network.Connectivity.LIMITED) return 'Limited connectivity';
+                        return 'No connectivity';
+                    })}
                 />
             </Adw.PreferencesGroup>
         </>

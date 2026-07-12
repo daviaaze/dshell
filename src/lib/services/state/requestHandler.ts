@@ -1,59 +1,10 @@
-import ShellState from '#/lib/shellState';
-import WindowManager from '#/lib/windowManager';
-import Screenshot from '#/lib/screenshot';
-import Touchpad from '#/lib/touchpad';
-import {openSettings} from '#/widget';
-import {toggleWindowSwitcher} from '#/widget/windowswitcher';
 import Gio from 'gi://Gio?version=2.0';
-import logger, {perf} from '#/lib/logger';
-
-// ── Action definitions ──
-// Each entry maps a GAction name to its handler. Handlers receive the app instance
-// for actions that need it (e.g. toggling bar visibility).
-
-function buildActions(app: Gio.Application): Record<string, () => void> {
-    const state = ShellState.get_default();
-    const wm = WindowManager.get_default();
-    const screenshot = Screenshot.get_default();
-    const touchpad = Touchpad.get_default();
-
-    return {
-        'toggle-applauncher': () => state.toggleLauncher(),
-        'toggle-quicksettings': () => state.toggleQuickSettings(),
-        'toggle-bar': () =>
-            wm.bars.forEach(bar => (bar.visible = !bar.visible)),
-        'toggle-windowswitcher': () => toggleWindowSwitcher(),
-        'toggle-settings': () => openSettings(),
-        'toggle-clipboard': () => state.toggleClipboard(),
-        'open-clipboard': () => state.openClipboard(),
-        lockscreen: () => {
-            state.screenlocked = true;
-        },
-        screenshot: () => screenshot.screenshot(true),
-        'screenshot-area': () => screenshot.screenshot(false),
-        'screenshot-overlay': () => screenshot.toggleOverlay(),
-        record: () => screenshot.toggleRecording(),
-        'record-area': () => screenshot.recordArea(),
-        'record-window': () => screenshot.recordWindow(),
-        'record-output': () => screenshot.recordOutput(),
-        'toggle-touchpad': () => touchpad.toggle(),
-    };
-}
-
-// ── Register GActions on the application ──
-
-export function registerActions(app: Gio.Application) {
-    for (const [name, fn] of Object.entries(buildActions(app))) {
-        const action = Gio.SimpleAction.new(name, null);
-        action.connect('activate', fn);
-        app.add_action(action);
-    }
-}
+import GLib from 'gi://GLib?version=2.0';
+import logger, {perf} from '#/lib/core/logger';
 
 // ── CLI command routing table ──
-// Maps command-line subcommands to action names and parameter handling.
-// For commands that need extra args (e.g. record-window-address), use a handler
-// function instead of a simple action name.
+// Maps command-line subcommands to GAction activations.
+// Each service registers its own GActions via registerCommands().
 
 type CommandHandler = (app: Gio.Application, args: string[]) => void;
 
@@ -76,6 +27,14 @@ const commandRoutes: Record<string, CommandHandler> = {
     record: actionCommand('record'),
     'record-area': actionCommand('record-area'),
     'record-window': actionCommand('record-window'),
+    'record-window-address': (app, args) => {
+        if (args[2] && app.lookup_action('record-window-address')) {
+            app.activate_action(
+                'record-window-address',
+                new GLib.Variant('s', args[2])
+            );
+        }
+    },
     'record-output': actionCommand('record-output'),
     touchpad: actionCommand('toggle-touchpad'),
     toggle: (app, args) => {
@@ -85,9 +44,6 @@ const commandRoutes: Record<string, CommandHandler> = {
         } else {
             logger.warn('dbus', 'toggle requires a target (e.g. toggle bar)');
         }
-    },
-    'record-window-address': (app, args) => {
-        if (args[2]) Screenshot.get_default().recordWindowByAddress(args[2]);
     },
 };
 

@@ -146,12 +146,11 @@ export const SunArc = ({sunrise, sunset, now, moonPhase}: SunArcProps) => {
             // Sunrise countdown (always show)
             cr.setFontSize(8);
             cr.setSourceRGBA(1, 1, 1, 0.4);
-            const countdown =
-                hrs > 0
-                    ? `Sunrise in ${hrs}h ${mins}m`
-                    : secsUntilSunrise > 0
-                      ? `Sunrise in ${secsUntilSunrise}s`
-                      : `Sunrise now?`;
+            const countdown = (() => {
+                if (hrs > 0) return `Sunrise in ${hrs}h ${mins}m`;
+                if (secsUntilSunrise > 0) return `Sunrise in ${secsUntilSunrise}s`;
+                return 'Sunrise now?';
+            })();
             const ext4 = cr.textExtents(countdown);
             cr.moveTo(cx - ext4.x_advance / 2, h - 2);
             cr.showText(countdown);

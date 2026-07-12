@@ -3,15 +3,15 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import {app} from '#/App';
-import WindowManager from '#/lib/windowManager';
+import WindowManager from '#/lib/services/state/windowManager';
 import {useSettings} from '#/lib/settings';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 import {NotificationList} from './notificationList';
 import {TrayBox} from './tray';
 import {AudioConfig, BrightnessSlider, MicConfig} from './sliders';
 import {ButtonGrid} from './button-grid';
 import {Expander} from './expander';
-import ShellState from '#/lib/shellState';
+import ShellState from '#/lib/services/state/shellState';
 
 export default () => {
     const barCfg = useSettings().bar;

@@ -1,6 +1,6 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 const BUS_NAME = 'net.hadess.PowerProfiles';
 const OBJECT_PATH = '/net/hadess/PowerProfiles';
@@ -9,7 +9,7 @@ const IFACE = 'net.hadess.PowerProfiles';
 type Profile = 'power-saver' | 'balanced' | 'performance';
 
 export default class PowerProfiles {
-    static instance: PowerProfiles;
+    static readonly instance: PowerProfiles;
     static get_default() {
         if (!this.instance) this.instance = new PowerProfiles();
         return this.instance;

@@ -1,4 +1,4 @@
-import {monitors} from '#/lib/monitors';
+import {monitors} from '#/lib/services/monitoring/monitors';
 import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import AstalAuth from 'gi://AstalAuth?version=0.1';
@@ -15,11 +15,11 @@ import {
     onCleanup,
     onMount,
 } from 'gnim';
-import WindowManager from '#/lib/windowManager';
-import ShellState from '#/lib/shellState';
-import logger from '#/lib/logger';
-import FingerprintAuth from '#/lib/fingerprint';
-import {Process} from '#/lib/process';
+import WindowManager from '#/lib/services/state/windowManager';
+import ShellState from '#/lib/services/state/shellState';
+import logger from '#/lib/core/logger';
+import FingerprintAuth from '#/lib/services/input/fingerprint';
+import {Process} from '#/lib/core/process';
 import {LockscreenNotifications} from './notifications';
 import {LockscreenWidgets} from './widgets';
 
@@ -149,9 +149,8 @@ function createFingerprintAuth(
 
 function saveBrightness(): string {
     try {
-        const resumeFile = Gio.File.new_for_path(
-            '/tmp/shade-brightness-resume'
-        );
+        // eslint-disable-next-line sonarjs/publicly-writable-directories
+        const resumeFile = Gio.File.new_for_path('/tmp/shade-brightness-resume');
         if (resumeFile.query_exists(null)) {
             const [, contents] = resumeFile.load_contents(null);
             const value = new TextDecoder().decode(contents).trim();

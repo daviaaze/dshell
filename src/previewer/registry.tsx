@@ -9,7 +9,7 @@
  */
 
 import Gtk from 'gi://Gtk?version=4.0';
-import {IconNames} from '#/lib/iconNames';
+import {IconNames} from '#/lib/core/iconNames';
 
 import {ActionButton} from '#/widget/common/actionButton';
 import {IconButton, IconMenuButton} from '#/widget/common/iconButton';

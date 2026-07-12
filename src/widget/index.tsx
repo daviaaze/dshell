@@ -12,23 +12,23 @@ import recordingBar from './recording-bar';
 import recordingBoundary from './recording-boundary';
 import {createSettingsWindow} from './settings';
 import {Wallpaper} from './wallpaper';
-import Weather from '#/lib/weather';
-import {ColorScheme} from '#/lib/colorScheme';
-import Inhibit from '#/lib/inhibit';
-import NightLight from '#/lib/nightLight';
-import Hypridle from '#/lib/hypridle';
-import Touchpad from '#/lib/touchpad';
-import Theming from '#/lib/theming';
-import {getNotifdSafe} from '#/lib/notifdGuard';
-import NotificationHistory from '#/lib/notificationHistory';
+import Weather from '#/lib/services/location/weather';
+import {ColorScheme} from '#/lib/services/display/colorScheme';
+import Inhibit from '#/lib/services/power/inhibit';
+import NightLight from '#/lib/services/display/nightLight';
+import Hypridle from '#/lib/services/power/hypridle';
+import Touchpad from '#/lib/services/input/touchpad';
+import PaletteGenerator from '#/style/palette';
+import {getNotifdSafe} from '#/lib/services/notifications/guard';
+import NotificationHistory from '#/lib/services/notifications/history';
 import TimerService from './quicksettings/timer/TimerService';
-import {initAutoSwitch} from '#/lib/audioAutoSwitch';
-import {initAppWatcher} from '#/lib/apps';
-import {initClipboardHistory} from '#/lib/clipboardHistory';
+import {initAutoSwitch} from '#/lib/services/audio/autoSwitch';
+import {initAppWatcher} from '#/lib/services/state/apps';
+import {initClipboardHistory} from '#/lib/services/clipboard/history';
 import {app} from '#/App';
 import {useSettings} from '#/lib/settings';
-import WindowManager from '#/lib/windowManager';
-import logger, {perf} from '#/lib/logger';
+import WindowManager from '#/lib/services/state/windowManager';
+import logger, {perf} from '#/lib/core/logger';
 
 // ── Settings window lifecycle ──
 
@@ -65,11 +65,7 @@ function getServiceDescriptors(
         },
         {
             name: 'ColorScheme',
-            init: () =>
-                ColorScheme.get_default().init(
-                    Weather.get_default(),
-                    s.general
-                ),
+            init: () => ColorScheme.get_default().init(s.general),
         },
         {
             name: 'Inhibit',
@@ -77,11 +73,7 @@ function getServiceDescriptors(
         },
         {
             name: 'NightLight',
-            init: () =>
-                NightLight.get_default().init(
-                    s.general,
-                    ColorScheme.get_default()
-                ),
+            init: () => NightLight.get_default().init(s.general),
         },
         {
             name: 'Hypridle',
@@ -102,8 +94,8 @@ function getServiceDescriptors(
             },
         },
         {
-            name: 'Theming',
-            init: () => Theming.get_default().init(s.general),
+            name: 'PaletteGenerator',
+            init: () => PaletteGenerator.get_default().init(s.general),
         },
         {
             name: 'Notifd (pre-init)',
@@ -184,9 +176,10 @@ export const widgets = () => {
         perf.start(`service-${name}`, 'mount');
         try {
             init();
+            const svcKey = `service-${name}`;
             logger.info(
                 'mount',
-                `service ${name} init in ${perf.stop(`service-${name}`, 'mount').toFixed(1)}ms`
+                `service ${name} init in ${perf.stop(svcKey, 'mount').toFixed(1)}ms`
             );
         } catch (e) {
             logger.error('mount', `Service ${name} init FAILED:`, e);
@@ -199,9 +192,10 @@ export const widgets = () => {
         perf.start(`widget-${name}`, 'mount');
         try {
             mount();
+            const wgtKey = `widget-${name}`;
             logger.info(
                 'mount',
-                `${name} mounted in ${perf.stop(`widget-${name}`, 'mount').toFixed(1)}ms`
+                `${name} mounted in ${perf.stop(wgtKey, 'mount').toFixed(1)}ms`
             );
         } catch (e) {
             logger.error('mount', `Widget ${name} FAILED to mount:`, e);

@@ -1,7 +1,7 @@
 import Apps from 'gi://AstalApps';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import WindowManager from '#/lib/windowManager';
+import WindowManager from '#/lib/services/state/windowManager';
 import GLib from 'gi://GLib?version=2.0';
 
 export default ({application}: {application: Apps.Application}) => {

@@ -6,10 +6,13 @@ import GLib from 'gi://GLib?version=2.0';
 import {createRoot} from 'gnim';
 import {register} from 'gnim/gobject';
 import {gettext} from 'gettext';
-import {SettingsProvider} from './lib/settings';
-import {registerActions, requestHandler} from './lib/requestHandler';
+import {SettingsProvider} from '#/lib/settings';
+import {requestHandler} from '#/lib/services/state/requestHandler';
+import ShellState from '#/lib/services/state/shellState';
+import Screenshot from '#/lib/services/capture/screenshot';
+import Touchpad from '#/lib/services/input/touchpad';
 import {widgets} from './widget';
-import logger, {perf} from './lib/logger';
+import logger, {perf} from '#/lib/core/logger';
 import css from './shade.css';
 
 @register()
@@ -22,7 +25,9 @@ export class ShadeShell extends Adw.Application {
         });
         GLib.set_prgname(import.meta.name);
         GLib.set_application_name(gettext('Shade Shell'));
-        registerActions(this);
+        ShellState.get_default().registerCommands(this);
+        Screenshot.get_default().registerCommands(this);
+        Touchpad.get_default().registerCommands(this);
     }
 
     private initCss() {

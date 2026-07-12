@@ -1,9 +1,13 @@
 import GObject, {getter, register, setter} from 'gnim/gobject';
-import logger from '#/lib/logger';
+import Gio from 'gi://Gio?version=2.0';
+import WindowManager from '#/lib/services/state/windowManager';
+import {openSettings} from '#/widget';
+import {toggleWindowSwitcher} from '#/widget/windowswitcher';
+import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'ShellState'})
 export default class ShellState extends GObject.Object {
-    static instance: ShellState;
+    static readonly instance: ShellState;
 
     static get_default() {
         if (!this.instance) this.instance = new ShellState();
@@ -90,5 +94,39 @@ export default class ShellState extends GObject.Object {
 
     toggleQuickSettings() {
         this.qsOpen = !this.#qsOpen;
+    }
+
+    toggleBar() {
+        const wm = WindowManager.get_default();
+        wm.bars.forEach(bar => (bar.visible = !bar.visible));
+    }
+
+    toggleWindowSwitcher() {
+        toggleWindowSwitcher();
+    }
+
+    toggleSettings() {
+        openSettings();
+    }
+
+    /** Register GAction commands for shell UI state. */
+    registerCommands(app: Gio.Application) {
+        const actions: Record<string, () => void> = {
+            'toggle-applauncher': () => this.toggleLauncher(),
+            'toggle-quicksettings': () => this.toggleQuickSettings(),
+            'toggle-bar': () => this.toggleBar(),
+            'toggle-windowswitcher': () => this.toggleWindowSwitcher(),
+            'toggle-settings': () => this.toggleSettings(),
+            'toggle-clipboard': () => this.toggleClipboard(),
+            'open-clipboard': () => this.openClipboard(),
+            lockscreen: () => {
+                this.screenlocked = true;
+            },
+        };
+        for (const [name, fn] of Object.entries(actions)) {
+            const action = Gio.SimpleAction.new(name, null);
+            action.connect('activate', fn);
+            app.add_action(action);
+        }
     }
 }

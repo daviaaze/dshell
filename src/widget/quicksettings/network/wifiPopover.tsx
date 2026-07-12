@@ -3,7 +3,7 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, Accessor} from 'gnim';
 import ApList from './apList';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 
 interface WifiPopoverProps {
     wifi: Network.Wifi;

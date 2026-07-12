@@ -5,7 +5,7 @@ import GLib from 'gi://GLib?version=2.0';
 import GLibUnix from 'gi://GLibUnix?version=2.0';
 import {exit, programArgs, programInvocationName} from 'system';
 import {app} from '#/App';
-import logger, {initLoggerFromSettings, perf} from '#/lib/logger';
+import logger, {initLoggerFromSettings, perf} from '#/lib/core/logger';
 
 // ── Graceful shutdown on signals ──
 

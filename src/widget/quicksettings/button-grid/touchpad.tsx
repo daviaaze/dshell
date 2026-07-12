@@ -1,4 +1,4 @@
-import Touchpad from '#/lib/touchpad';
+import Touchpad from '#/lib/services/input/touchpad';
 import {createBinding} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 

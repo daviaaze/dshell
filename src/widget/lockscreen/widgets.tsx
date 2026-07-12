@@ -9,7 +9,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Mpris from 'gi://AstalMpris';
 import {For, createState, onMount, onCleanup} from 'gnim';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 // ── Widget Interface ────────────────────────────────────────────
 

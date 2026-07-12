@@ -21,6 +21,7 @@ import {programArgs} from 'system';
 // ── Constants ────────────────────────────────────────────────────
 
 const GRIM_BIN = 'grim';
+// eslint-disable-next-line sonarjs/publicly-writable-directories
 const TEMP_DIR = '/tmp/dshell-picker';
 const POLL_INTERVAL_MS = 200; // stagger per monitor — each monitor captured every N×monitorCount ms
 
@@ -40,14 +41,6 @@ interface HyprMonitor {
     y: number;
     width: number;
     height: number;
-}
-
-interface HyprClient {
-    address: string;
-    at: [number, number];
-    size: [number, number];
-    mapped: boolean;
-    hidden: boolean;
 }
 
 /** Shared source state — referenced by picture widgets across tabs */
@@ -71,7 +64,6 @@ interface WindowState extends SourceState<XDPHWindow, 'window'> {
     geometry: { x: number; y: number; width: number; height: number } | null;
 }
 
-type Source = MonitorState | WindowState;
 
 // ── Sync command helpers ─────────────────────────────────────────
 
@@ -143,6 +135,7 @@ function getHyprMonitors(): HyprMonitor[] {
     if (!ok) return [];
     try {
         const raw = JSON.parse(out);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (raw as any[]).map(m => ({
             name: m.name ?? 'Unknown',
             description: m.description ?? m.name ?? '',
@@ -162,6 +155,7 @@ function getHyprClientMap(): Map<string, {at: [number, number]; size: [number, n
     try {
         const raw = JSON.parse(out);
         const result = new Map<string, {at: [number, number]; size: [number, number]}>();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         for (const c of raw as any[]) {
             if (c.mapped && !c.hidden && c.at && c.size) {
                 result.set(c.address, {at: c.at, size: c.size});
@@ -470,7 +464,6 @@ function main() {
         });
 
         const windowPics: Gtk.Picture[] = [];
-        const windowFlowChildren: Gtk.FlowBoxChild[] = [];
         if (windowStates.length === 0) {
             windowsFlow.append(new Gtk.FlowBoxChild({
                 child: new Gtk.Label({label: 'No windows available'}),

@@ -7,7 +7,7 @@
  * Run: gjs -m src/lib/__tests__/screenshot.test.ts
  */
 
-import Screenshot from '#/lib/screenshot';
+import Screenshot from '#/lib/services/capture/screenshot';
 import {describe, it, expect, run} from './test-runner';
 
 describe('Screenshot singleton', () => {

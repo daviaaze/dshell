@@ -14,7 +14,7 @@ export interface PreviewCardProps {
  * texture updates and the Button wrapper.
  */
 export function PreviewCard({
-    kind,
+    kind: _kind,
     name,
     subtitle,
     onClick,

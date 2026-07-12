@@ -1,6 +1,7 @@
 import GObject, {getter, register, setter, signal} from 'gnim/gobject';
-import {Process} from '#/lib/process';
-import logger from '#/lib/logger';
+import Gio from 'gi://Gio?version=2.0';
+import {Process} from '#/lib/core/process';
+import logger from '#/lib/core/logger';
 
 logger.info('touchpad', 'module loaded');
 
@@ -16,7 +17,7 @@ signal.pause()
 
 @register({GTypeName: 'Touchpad'})
 export default class Touchpad extends GObject.Object {
-    static instance: Touchpad;
+    static readonly instance: Touchpad;
     static get_default() {
         if (!this.instance) this.instance = new Touchpad();
         return this.instance;
@@ -167,6 +168,13 @@ export default class Touchpad extends GObject.Object {
             }
             this.#process = null;
         }
+    }
+
+    /** Register GAction command for touchpad toggle. */
+    registerCommands(app: Gio.Application) {
+        const action = Gio.SimpleAction.new('toggle-touchpad', null);
+        action.connect('activate', () => this.toggle());
+        app.add_action(action);
     }
 
     dispose() {

@@ -4,8 +4,8 @@ import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, createBinding} from 'gnim';
 import Adw from 'gi://Adw?version=1';
-import logger from '#/lib/logger';
-import {exactQuery} from '#/lib/apps';
+import logger from '#/lib/core/logger';
+import {exactQuery} from '#/lib/services/state/apps';
 
 function lengthStr(length: number) {
     const min = Math.floor(length / 60);

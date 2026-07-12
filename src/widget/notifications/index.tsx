@@ -13,12 +13,12 @@ import {
 } from 'gnim';
 import Notification from '#/widget/common/notification';
 import {app} from '#/App';
-import WindowManager from '#/lib/windowManager';
-import {getNotifdSafe} from '#/lib/notifdGuard';
+import WindowManager from '#/lib/services/state/windowManager';
+import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import {useSettings} from '#/lib/settings';
-import logger from '#/lib/logger';
-import ShellState from '#/lib/shellState';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import logger from '#/lib/core/logger';
+import ShellState from '#/lib/services/state/shellState';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 const NotificationContent = ({
     notifd,
@@ -42,16 +42,16 @@ const NotificationContent = ({
             setNotificationCount(next.length);
             return next;
         });
-        const expireMs =
-            n.expire_timeout > 0
-                ? n.expire_timeout
-                : notifd.default_timeout > 0
-                  ? notifd.default_timeout
-                  : 5000;
+        const expireMs = (() => {
+            if (n.expire_timeout > 0) return n.expire_timeout;
+            if (notifd.default_timeout > 0) return notifd.default_timeout;
+            return 5000;
+        })();
         timeouts.set(
             id,
             setTimeout(
                 () => {
+                    // eslint-disable-next-line sonarjs/no-nested-functions
                     setNotifications(prev => {
                         const next = prev.filter(x => x.id !== id);
                         setNotificationCount(next.length);
@@ -91,6 +91,7 @@ const NotificationContent = ({
         timeouts.set(
             id,
             setTimeout(() => {
+                // eslint-disable-next-line sonarjs/no-nested-functions
                 setNotifications(prev => {
                     const next = prev.filter(x => x.id !== id);
                     setNotificationCount(next.length);

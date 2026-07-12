@@ -2,7 +2,7 @@ import Batery from 'gi://AstalBattery';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {createState, onMount, onCleanup} from 'gnim';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
     const [visible, setVisible] = createState(false);

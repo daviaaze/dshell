@@ -9,7 +9,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib';
-import {IconNames, type IconName} from '#/lib/iconNames';
+import {IconNames, type IconName} from '#/lib/core/iconNames';
 
 function relativeTime(unix: number): string {
     const now = GLib.DateTime.new_now_local();

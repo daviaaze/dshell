@@ -1,16 +1,16 @@
 import Wireplumber from 'gi://AstalWp';
 import {createBinding, createComputed} from 'gnim';
-import Brightness from '#/lib/brightness';
+import Brightness from '#/lib/services/display/brightness';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
-import Touchpad from '#/lib/touchpad';
+import Touchpad from '#/lib/services/input/touchpad';
 import AstalHyprland from 'gi://AstalHyprland';
 import Popup from './popup';
 import GObject from 'gnim/gobject';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {app} from '#/App';
-import WindowManager from '#/lib/windowManager';
+import WindowManager from '#/lib/services/state/windowManager';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';

@@ -3,8 +3,8 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, onCleanup} from 'gnim';
 import {app} from '#/App';
-import WindowManager from '#/lib/windowManager';
-import {Gdk2HyprMonitor, monitors} from '#/lib/monitors';
+import WindowManager from '#/lib/services/state/windowManager';
+import {Gdk2HyprMonitor, monitors} from '#/lib/services/monitoring/monitors';
 import {useSettings} from '#/lib/settings';
 import SystemIndicators from './systemIndicators';
 import SystemUsage from './systemUsage';
@@ -43,15 +43,12 @@ export default () => {
                     gdkmonitor={monitor}
                     name={`bar-${monitor.get_description()}`}
                     exclusivity={Astal.Exclusivity.EXCLUSIVE}
-                    anchor={position.as(p =>
-                        p === TOP
-                            ? TOP | LEFT | RIGHT
-                            : p === LEFT
-                              ? TOP | LEFT | BOTTOM
-                              : p === BOTTOM
-                                ? RIGHT | LEFT | BOTTOM
-                                : TOP | RIGHT | BOTTOM
-                    )}
+                    anchor={position.as(p => {
+                        if (p === TOP) return TOP | LEFT | RIGHT;
+                        if (p === LEFT) return TOP | LEFT | BOTTOM;
+                        if (p === BOTTOM) return RIGHT | LEFT | BOTTOM;
+                        return TOP | RIGHT | BOTTOM;
+                    })}
                 >
                     <Gtk.CenterBox
                         cssClasses={['bar-centerbox']}

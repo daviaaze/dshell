@@ -7,7 +7,7 @@ export const isConservationEnabled = (): boolean => {
         const [ok, content] = GLib.file_get_contents(PATH);
         if (!ok) return false;
         return content.toString().trim() === '1';
-    } catch (e) {
+    } catch {
         return false;
     }
 };

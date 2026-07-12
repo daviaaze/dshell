@@ -2,7 +2,7 @@ import Wireplumber from 'gi://AstalWp';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, createBinding, createState, For, With} from 'gnim';
 import {Slider} from './slider';
-import {getVolumeIcon} from '#/lib/audio';
+import {getVolumeIcon} from '#/lib/services/audio/icons';
 import AppMixer from '#/widget/quicksettings/appMixer';
 
 export {getVolumeIcon};

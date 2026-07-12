@@ -2,8 +2,8 @@ import Wireplumber from 'gi://AstalWp';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {createState, onMount, onCleanup} from 'gnim';
-import AppMixer from '#/lib/appMixer';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import AppMixer from '#/lib/services/audio/mixer';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';

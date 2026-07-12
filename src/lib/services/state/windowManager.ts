@@ -25,7 +25,7 @@ function windowCollection<T extends Astal.Window>(
 
 @register({GTypeName: 'WindowManager'})
 export default class WindowManager extends GObject.Object {
-    static instance: WindowManager;
+    static readonly instance: WindowManager;
 
     static get_default() {
         if (!this.instance) this.instance = new WindowManager();

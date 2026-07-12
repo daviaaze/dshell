@@ -68,7 +68,7 @@ custom_target(
 )
 custom_target(
   input: configure_file(
-    input: 'src/lib/gschema.ts',
+    input: 'src/lib/settings/schema.ts',
     output: domain + '.gschema.ts',
     configuration: {
       'domain': domain,

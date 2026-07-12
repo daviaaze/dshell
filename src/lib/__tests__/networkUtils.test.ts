@@ -41,6 +41,7 @@ describe('securityLabelFromKeyMgmt', () => {
 });
 
 describe('wifiIconName', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const {DeviceState} = require('gi://AstalNetwork');
 
     it('returns offline icon when disabled', () => {

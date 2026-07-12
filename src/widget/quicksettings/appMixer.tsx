@@ -2,9 +2,9 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Wireplumber from 'gi://AstalWp';
 import GLib from 'gi://GLib?version=2.0';
 import {createBinding, createState, For, onMount, onCleanup} from 'gnim';
-import AppMixer from '#/lib/appMixer';
+import AppMixer from '#/lib/services/audio/mixer';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
-import {connectFor, cleanupNode} from '#/lib/connectFor';
+import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
     const mixer = AppMixer.get_default();
@@ -31,13 +31,16 @@ export default () => {
                 {stream => {
                     const id = stream.id;
 
+                    // eslint-disable-next-line sonarjs/no-nested-functions
                     const OutputSelector = () => {
                         let popoverRef: Gtk.Popover | null = null;
 
                         const label = streams.as(all => {
+                            // eslint-disable-next-line sonarjs/no-nested-functions
                             const s = all.find(s => s.id === id);
                             const targetId = s?.targetNode;
                             if (!targetId) return 'Default';
+                            // eslint-disable-next-line sonarjs/no-nested-functions
                             const spk = speakers().find(d => d.id === targetId);
                             return spk?.description ?? 'Default';
                         });
@@ -91,7 +94,8 @@ export default () => {
                                                             halign={
                                                                 Gtk.Align.FILL
                                                             }
-                                                            onClicked={() => {
+                                                            // eslint-disable-next-line sonarjs/no-nested-functions
+                                                    onClicked={() => {
                                                                 mixer.setTargetNode(
                                                                     id,
                                                                     speaker.id

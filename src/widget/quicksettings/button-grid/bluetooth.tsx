@@ -2,9 +2,9 @@ import AstalBluetooth from 'gi://AstalBluetooth';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed, createState, For} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import logger from '#/lib/logger';
+import logger from '#/lib/core/logger';
 import {LinkedBox} from '#/widget/common/linkedBox';
-import {toArray} from '#/lib/gjsUtils';
+import {toArray} from '#/lib/core/gjsUtils';
 
 export default () => {
     // ButtonGrid items only render when quicksettings opens — D-Bus
@@ -104,12 +104,10 @@ export default () => {
             visible={createBinding(bluetooth, 'adapters').as(a => a.length > 0)}
             icon={createComputed(
                 [isConnecting, createBinding(bluetooth, 'isPowered')],
-                (connecting, powered) =>
-                    connecting
-                        ? 'content-loading-symbolic'
-                        : powered
-                          ? 'bluetooth-symbolic'
-                          : 'bluetooth-disabled-symbolic'
+                (connecting, powered) => {
+                    if (connecting) return 'content-loading-symbolic';
+                    return powered ? 'bluetooth-symbolic' : 'bluetooth-disabled-symbolic';
+                }
             )}
             cssClasses={createComputed(
                 [
