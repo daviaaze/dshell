@@ -142,21 +142,19 @@ export default () => {
                     cssClasses={['caption']}
                     label="Clipboard History — type &gt; to search"
                 />
-                {mode.as(m =>
-                    m === 'apps' ? (
-                        <Gtk.Label
-                            visible={list.as(l => fm.hasData && l.length > 0)}
-                            halign={Gtk.Align.START}
-                            marginStart={4}
-                            cssClasses={['caption']}
-                            label={
-                                entryRef?.text
-                                    ? 'Search results (boosted by usage)'
-                                    : 'Most used apps'
-                            }
-                        />
-                    ) : null
-                )}
+                <Gtk.Label
+                    visible={mode.as(m => m === 'apps')}
+                    halign={Gtk.Align.START}
+                    marginStart={4}
+                    cssClasses={['caption']}
+                    label={list.as(l =>
+                        fm.hasData && l.length > 0
+                            ? entryRef?.text
+                                ? 'Search results (boosted by usage)'
+                                : 'Most used apps'
+                            : ''
+                    )}
+                />
                 <Gtk.ScrolledWindow
                     css={'padding-right:0px;'}
                     hscrollbarPolicy={Gtk.PolicyType.NEVER}

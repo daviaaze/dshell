@@ -40,9 +40,13 @@ export default () => {
                                 Number(self.activeName) as Astal.WindowAnchor
                             )
                         }
-                        activeName={bar.position.as(
-                            p => (p as number).toString() ?? ''
-                        )}
+                        $={self => {
+                            const v = (bar.position as any).peek();
+                            self.activeName = String(v ?? '');
+                            (bar.position as any).subscribe((v: number) => {
+                                self.activeName = String(v);
+                            });
+                        }}
                     >
                         <Adw.Toggle
                             name={TOP.toString()}

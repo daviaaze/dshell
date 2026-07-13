@@ -13,7 +13,12 @@ export const isConservationEnabled = (): boolean => {
     }
 };
 
-export const toggleConservation = () => {
-    // Assuming toggle-battery script is in the PATH
-    GLib.spawn_command_line_async('toggle-battery');
+export const toggleConservation = (): void => {
+    try {
+        const current = isConservationEnabled();
+        const value = current ? '0' : '1';
+        GLib.file_set_contents(PATH, new TextEncoder().encode(value));
+    } catch (err) {
+        console.error('Failed to toggle battery conservation:', err);
+    }
 };

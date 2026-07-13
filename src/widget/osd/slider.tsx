@@ -12,13 +12,15 @@ export default ({
         <Gtk.Image iconName={iconName} pixelSize={20} />
         <Gtk.LevelBar
             hexpand
-            $={self => self.set_value(value() ?? 0)}
-            value={value}
+            value={value.as(v => {
+                const n = Number(v);
+                return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
+            })}
         />
         <Gtk.Label
             cssClasses={['heading']}
-            label={value(v =>
-                Math.floor((v ?? 0) * 100)
+            label={value.as(v =>
+                Math.floor((Number.isFinite(Number(v)) ? Number(v) : 0) * 100)
                     .toString()
                     .concat('%')
             )}

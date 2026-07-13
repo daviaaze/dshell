@@ -2,8 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
-import GObject from 'gi://GObject';
-import {onCleanup} from 'gnim';
+import {createBinding, onCleanup} from 'gnim';
 import {app} from '#/App';
 import {monitors} from '#/lib/services/monitoring/monitors';
 import Screenshot, {BoundaryGeometry} from '#/lib/services/capture/screenshot';
@@ -116,58 +115,55 @@ export default () => {
     const captureSettings = getScreenCaptureSettings();
     const defaultColor = parseColor(captureSettings.recordingBoundaryColor());
     const BORDER_WIDTH = 3;
-    const monList = toArray<Gdk.Monitor>(monitors);
+    const monList = toArray<Gdk.Monitor>(monitors.peek());
 
     const windows: Astal.Window[] = [];
 
     for (const monitor of monList) {
-        const win = GObject.Object.new(Astal.Window, {
-            application: app,
-            gdkmonitor: monitor,
-            layer: Astal.Layer.OVERLAY,
-            anchor:
-                Astal.WindowAnchor.TOP |
-                Astal.WindowAnchor.RIGHT |
-                Astal.WindowAnchor.BOTTOM |
-                Astal.WindowAnchor.LEFT,
-            exclusivity: Astal.Exclusivity.IGNORE,
-        }) as Astal.Window;
+        const drawingArea = (
+            <Gtk.DrawingArea
+                hexpand
+                vexpand
+                $={self => {
+                    self.set_draw_func((_area, cr, _w, _h) => {
+                        if (!ss.boundaryGeometry) return;
+                        const geom = ss.boundaryGeometry as BoundaryGeometry;
+                        drawBoundaryForMonitor(
+                            cr,
+                            monitor,
+                            geom,
+                            defaultColor,
+                            BORDER_WIDTH
+                        );
+                    });
+                }}
+            />
+        );
 
-        const drawingArea = GObject.Object.new(Gtk.DrawingArea, {
-            hexpand: true,
-            vexpand: true,
-        }) as Gtk.DrawingArea;
-
-        drawingArea.set_draw_func((_area, cr, _w, _h) => {
-            if (!ss.boundaryGeometry) return;
-            const geom = ss.boundaryGeometry as BoundaryGeometry;
-            drawBoundaryForMonitor(
-                cr,
-                monitor,
-                geom,
-                defaultColor,
-                BORDER_WIDTH
-            );
-        });
-
-        win.set_child(drawingArea);
-
-        // Bind boundary-visible to window visible
-        ss.bind_property(
-            'boundary-visible',
-            win,
-            'visible',
-            GObject.BindingFlags.SYNC_CREATE
+        const win = (
+            <Astal.Window
+                application={app}
+                gdkmonitor={monitor}
+                layer={Astal.Layer.OVERLAY}
+                anchor={
+                    Astal.WindowAnchor.TOP |
+                    Astal.WindowAnchor.RIGHT |
+                    Astal.WindowAnchor.BOTTOM |
+                    Astal.WindowAnchor.LEFT
+                }
+                exclusivity={Astal.Exclusivity.IGNORE}
+                visible={createBinding(ss, 'boundary-visible')}
+            >
+                {drawingArea}
+            </Astal.Window>
         );
 
         windows.push(win);
-        win.show();
     }
 
     onCleanup(() => {
         for (const w of windows) w.destroy();
     });
 
-    // Dummy element to anchor cleanup lifecycle in gnim
     return null;
 };

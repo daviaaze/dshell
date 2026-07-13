@@ -25,8 +25,13 @@ export default () => {
                                 Number(self.activeName)
                             )
                         }
-                        activeName={settings.recorderBackend
-                            .as(v => String(v ?? 2))}
+                        $={self => {
+                            const v = settings.recorderBackend.peek();
+                            self.activeName = String(v ?? 2);
+                            settings.recorderBackend.subscribe((v: number) => {
+                                self.activeName = String(v);
+                            });
+                        }}
                     >
                         <Adw.Toggle
                             name={'0'}
@@ -56,8 +61,13 @@ export default () => {
                                 Number(self.activeName)
                             )
                         }
-                        activeName={settings.recordingFormat
-                            .as(v => String(v ?? 0))}
+                        $={self => {
+                            const v = settings.recordingFormat.peek();
+                            self.activeName = String(v ?? 0);
+                            settings.recordingFormat.subscribe((v: number) => {
+                                self.activeName = String(v);
+                            });
+                        }}
                     >
                         <Adw.Toggle
                             name={'0'}
@@ -82,8 +92,13 @@ export default () => {
                                 Number(self.activeName)
                             )
                         }
-                        activeName={settings.recordingQuality
-                            .as(v => String(v ?? 1))}
+                        $={self => {
+                            const v = settings.recordingQuality.peek();
+                            self.activeName = String(v ?? 1);
+                            settings.recordingQuality.subscribe((v: number) => {
+                                self.activeName = String(v);
+                            });
+                        }}
                     >
                         <Adw.Toggle name={'0'} label={'Low'} />
                         <Adw.Toggle name={'1'} label={'Medium'} />
@@ -115,8 +130,13 @@ export default () => {
                                 Number(self.activeName)
                             )
                         }
-                        activeName={settings.screenshotFormat
-                            .as(v => String(v ?? 0))}
+                        $={self => {
+                            const v = settings.screenshotFormat.peek();
+                            self.activeName = String(v ?? 0);
+                            settings.screenshotFormat.subscribe((v: number) => {
+                                self.activeName = String(v);
+                            });
+                        }}
                     >
                         <Adw.Toggle
                             name={'0'}

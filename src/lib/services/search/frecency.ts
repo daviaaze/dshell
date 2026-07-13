@@ -61,7 +61,7 @@ export class FrecencyManager extends GObject.Object {
      */
     recordLaunch(desktopId: string): void {
         this.#storage.record(desktopId);
-        this.notify('changed');
+        this.changed();
     }
 
     /**
@@ -114,7 +114,7 @@ export class FrecencyManager extends GObject.Object {
     /** Clear all frecency data. */
     clear(): void {
         this.#storage.clear();
-        this.notify('changed');
+        this.changed();
     }
 
     /** Emitted when frecency data changes. */

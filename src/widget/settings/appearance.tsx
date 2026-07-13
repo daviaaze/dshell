@@ -30,10 +30,13 @@ export default () => {
                             settings.setColorScheme(map[self.activeName ?? 'auto'] ?? 0);
                         }}
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        activeName={(settings.colorScheme as any).as(
-                            (v: number) =>
-                                ['auto', 'light', 'dark'][v] ?? 'auto'
-                        )}
+                        $={self => {
+                            const v = (settings.colorScheme as any).peek();
+                            self.activeName = ['auto', 'light', 'dark'][v] ?? 'auto';
+                            (settings.colorScheme as any).subscribe((v: number) => {
+                                self.activeName = ['auto', 'light', 'dark'][v] ?? 'auto';
+                            });
+                        }}
                     >
                         <Adw.Toggle
                             name={'auto'}
