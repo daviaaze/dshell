@@ -82,6 +82,7 @@
 
       wrapperPackages = with pkgs; [
         hyprland
+        greetd
         bash
         curl
         grim

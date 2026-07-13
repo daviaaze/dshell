@@ -272,6 +272,16 @@ export const generalSchema = new Schema({
         summary: 'Unix timestamp of next sunset (set by Weather service)',
     });
 
+// ── Launcher (Frecency) ─────────────────────────────────────────
+
+export const launcherSchema = new Schema({
+    id: id + '.launcher',
+    path: path + 'launcher/',
+}).key('frecency', 's', {
+    default: '{}',
+    summary: 'Frecency data for app launcher (JSON)',
+});
+
 // ── Screen Capture ───────────────────────────────────────────────
 
 export const screenCaptureSchema = new Schema({
@@ -333,5 +343,6 @@ export default defineSchemaList([
     generalSchema,
     weatherSchema,
     timerSchema,
+    launcherSchema,
     screenCaptureSchema,
 ]);

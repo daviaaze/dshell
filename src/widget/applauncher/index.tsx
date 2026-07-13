@@ -6,6 +6,7 @@ import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
 import {searchClipboard} from '#/lib/services/clipboard';
 import {getAppList, fuzzyQuery} from '#/lib/services/state/apps';
+import {FrecencyManager} from '#/lib/services/search/frecency';
 import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
 import PopupWindow from '#/widget/common/PopupWindow';
@@ -17,18 +18,31 @@ type LauncherMode = 'apps' | 'clipboard';
 type ListItem = Apps.Application | ClipboardItem;
 
 export default () => {
-    const [list, setList] = createState<ListItem[]>(getAppList());
+    const [list, setList] = createState<ListItem[]>(() =>
+        getTopFrecencyApps(FrecencyManager.get_default())
+    );
     const [mode, setMode] = createState<LauncherMode>('apps');
     let entryRef: Gtk.Entry | null = null;
 
     const updateSearch = (text: string) => {
+        const fm = FrecencyManager.get_default();
         if (text.startsWith('>')) {
             setMode('clipboard');
             const query = text.slice(1).trim();
             searchClipboard(query, results => setList(results));
+        } else if (text.trim() === '') {
+            setMode('apps');
+            setList(getTopFrecencyApps(fm));
         } else {
             setMode('apps');
-            setList(fuzzyQuery(text));
+            const fuzzyResults = fuzzyQuery(text);
+            // Re-rank by frecency boost
+            const scored = fuzzyResults.map(app => ({
+                app,
+                score: fm.getSearchBoost(app.entry ?? app.name ?? ''),
+            }));
+            scored.sort((a, b) => b.score - a.score);
+            setList(scored.map(s => s.app));
         }
     };
 
@@ -47,9 +61,9 @@ export default () => {
                     const query = ShellState.get_default().launcherQuery;
                     if (query && entryRef) entryRef.set_text(query);
                     entryRef?.grab_focus();
+                    updateSearch(query);
                 } else {
                     entryRef?.set_text('');
-                    setList(getAppList());
                     setMode('apps');
                     ShellState.get_default().launcherQuery = '';
                 }
@@ -80,10 +94,13 @@ export default () => {
                     }}
                     onNotifyText={self => updateSearch(self.text)}
                     onActivate={self => {
+                        const text = self.text;
                         close();
                         if (mode() === 'apps') {
-                            const results = fuzzyQuery(self.text);
-                            if (results.length > 0) results[0].launch();
+                            const results = fuzzyQuery(text);
+                            if (results.length > 0) {
+                                onAppLaunch(results[0]!);
+                            }
                         }
                     }}
                 >
@@ -106,6 +123,21 @@ export default () => {
                     cssClasses={['caption']}
                     label="Clipboard History — type &gt; to search"
                 />
+                {mode.as(m =>
+                    m === 'apps' ? (
+                        <Gtk.Label
+                            visible={list.as(l => frecency.hasData && l.length > 0)}
+                            halign={Gtk.Align.START}
+                            marginStart={4}
+                            cssClasses={['caption']}
+                            label={
+                                entryRef?.text
+                                    ? 'Search results (boosted by usage)'
+                                    : 'Most used apps'
+                            }
+                        />
+                    ) : null
+                )}
                 <Gtk.ScrolledWindow
                     css={'padding-right:0px;'}
                     hscrollbarPolicy={Gtk.PolicyType.NEVER}
@@ -145,6 +177,7 @@ export default () => {
                                 ) : (
                                     <AppButton
                                         application={item as Apps.Application}
+                                        onClicked={close}
                                     />
                                 )
                             }
@@ -155,3 +188,37 @@ export default () => {
         </PopupWindow>
     );
 };
+
+// ── Helpers ──
+
+function getTopFrecencyApps(frecency: FrecencyManager): Apps.Application[] {
+    const topIds = frecency.getTopApps(30);
+    const allApps = getAppList();
+    const appMap = new Map<string, Apps.Application>();
+    for (const app of allApps) {
+        const id = app.entry ?? app.name;
+        if (id) appMap.set(id, app);
+    }
+
+    // Return top frecency apps in score order, followed by all other apps
+    const top: Apps.Application[] = [];
+    const rest: Apps.Application[] = [];
+    const seen = new Set<string>();
+
+    for (const id of topIds) {
+        const app = appMap.get(id);
+        if (app) {
+            top.push(app);
+            seen.add(app.entry ?? app.name ?? '');
+        }
+    }
+
+    for (const app of allApps) {
+        const id = app.entry ?? app.name ?? '';
+        if (!seen.has(id)) {
+            rest.push(app);
+        }
+    }
+
+    return [...top, ...rest].slice(0, 50);
+}

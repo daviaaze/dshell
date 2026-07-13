@@ -12,6 +12,9 @@ import {ButtonGrid} from './button-grid';
 import {Expander} from './expander';
 import ShellState from '#/lib/services/state/shellState';
 
+const QUICKSETTINGS_WIDTH = 420;
+const QUICKSETTINGS_SPACING = 8;
+
 export default () => {
     const barCfg = useSettings().bar;
 
@@ -29,7 +32,7 @@ export default () => {
                     ShellState.get_default().launcherOpen = false;
                 ShellState.get_default().qsOpen = visible;
             }}
-            widthRequest={420}
+            widthRequest={QUICKSETTINGS_WIDTH}
             $={self => {
                 WindowManager.get_default().setQuicksettings(self);
                 self.connect('realize', () =>
@@ -45,7 +48,7 @@ export default () => {
                 vexpand
             >
                 <Gtk.Box
-                    spacing={8}
+                    spacing={QUICKSETTINGS_SPACING}
                     cssClasses={['popover-padded-lg']}
                     orientation={Gtk.Orientation.VERTICAL}
                 >

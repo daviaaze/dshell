@@ -38,6 +38,34 @@ sharePickerTarget = custom_target(
   install_dir: bindir,
 )
 
+greeterTarget = custom_target(
+  input: configure_file(
+    input: 'src/greet-main.ts',
+    output: 'greet-main.ts',
+    configuration: {
+      'gjs': find_program('gjs').full_path(),
+    },
+  ),
+  command: nodeWrapper + [
+    '@INPUT@',
+    '@OUTPUT@',
+    '--source-root', '@SOURCE_ROOT@',
+    '--external', 'gi://*',
+    '--external', 'resource://*',
+    '--external', 'system',
+    '--external', 'gettext',
+    '--format', 'esm',
+    '--define', 'import.meta.name', name + '-greet',
+    '--define', 'import.meta.version', version,
+    '--define', 'import.meta.domain', domain,
+    '--define', 'import.meta.datadir', datadir,
+    '--define', 'import.meta.bindir', bindir,
+  ],
+  output: name + '-greet',
+  install: true,
+  install_dir: bindir,
+)
+
 custom_target(
   input: configure_file(
     input: 'src/main.ts',

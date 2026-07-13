@@ -2,9 +2,16 @@ import Apps from 'gi://AstalApps';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import WindowManager from '#/lib/services/state/windowManager';
+import {FrecencyManager} from '#/lib/services/search/frecency';
 import GLib from 'gi://GLib?version=2.0';
 
-export default ({application}: {application: Apps.Application}) => {
+export default ({
+    application,
+    onClicked,
+}: {
+    application: Apps.Application;
+    onClicked?: () => void;
+}) => {
     // Create child content once per button instance to avoid
     // gtk_button_set_child assertion on re-render.
     let set = false;
@@ -53,6 +60,12 @@ export default ({application}: {application: Apps.Application}) => {
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             cssClasses={['app-button']}
             onClicked={() => {
+                // Record frecency before launching
+                const desktopId = application.entry ?? application.name;
+                if (desktopId) {
+                    FrecencyManager.get_default().recordLaunch(desktopId);
+                }
+                if (onClicked) onClicked();
                 WindowManager.get_default().applauncher!.visible = false;
                 application.frequency += 1;
                 GLib.spawn_command_line_async(

@@ -8,7 +8,6 @@
 import Quarrel from 'gi://Quarrel';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {programInvocationName, programArgs, exit} from 'system';
 import {bus} from '#/lib/core/eventBus';
 import logger, {perf} from '#/lib/core/logger';
 
@@ -210,9 +209,8 @@ export const requestHandler = (
 
     logger.debug('dbus', `requestHandler args=${args.slice(1).join(' ')}`);
 
-    // Parse: args[0] is usually the program name, args[1] is the subcommand
-    const argList = [programInvocationName, ...args.slice(1)];
-    const matched = cli.parse(argList);
+    // Parse using Quarrel
+    const matched = cli.parse(args);
 
     if (matched === cli && help.value) {
         print(Quarrel.help(cli));
@@ -233,7 +231,7 @@ export const requestHandler = (
             'dbus'
         );
     } else {
-        logger.warn('dbus', `no command matched, args=${argList.slice(1).join(' ')}`);
+        logger.warn('dbus', `no command matched, args=${args.slice(1).join(' ')}`);
         print(Quarrel.help(cli));
     }
 

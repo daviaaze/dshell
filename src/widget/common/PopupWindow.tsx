@@ -1,0 +1,185 @@
+/**
+ * PopupWindow — shared Astal.Window wrapper for all popup-style widgets.
+ *
+ * Eliminates duplicated boilerplate across applauncher, quicksettings,
+ * notifications, OSD, region-selector, and screenshot-ui.
+ *
+ * Usage:
+ * ```tsx
+ * <PopupWindow
+ *   name="quicksettings"
+ *   visible={qsBinding}
+ *   anchor={anchors}
+ *   onClose={() => {}}
+ * >
+ *   {content}
+ * </PopupWindow>
+ * ```
+ */
+import Astal from 'gi://Astal?version=4.0';
+import Gdk from 'gi://Gdk?version=4.0';
+import Gtk from 'gi://Gtk?version=4.0';
+import {Accessor, createBinding} from 'gnim';
+import {app} from '#/App';
+import {useSettings} from '#/lib/settings';
+import Hyprland from 'gi://AstalHyprland';
+
+// ── Types ──
+
+const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
+type Anchor = number; // bitmask of Astal.WindowAnchor
+
+export interface PopupWindowProps {
+    /** Unique window name, used as the Astal namespace. */
+    name: string;
+
+    /** Reactive visibility binding. */
+    visible: Accessor<boolean> | boolean;
+
+    /**
+     * Bar-position-derived anchor or explicit anchor bitmask.
+     * Auto-derived from `bar.position` GSetting by default.
+     */
+    anchor?: Accessor<Anchor> | Anchor;
+
+    /** Astal layer preference. Defaults to OVERLAY. */
+    layer?: Astal.Layer;
+
+    /** Margin from the window edges. Defaults to 12. */
+    margin?: number;
+
+    /**
+     * Callback when the popup closes (via ESC, or externally).
+     * Called ONCE after the close animation.
+     */
+    onClose?: () => void;
+
+    /** Called when visible changes externally. */
+    onVisibleChange?: (visible: boolean) => void;
+
+    /** Additional CSS classes. */
+    cssClasses?: string[];
+
+    /** Width constraint (e.g. 420 for quicksettings). */
+    widthRequest?: number;
+
+    /** Height constraint. */
+    heightRequest?: number;
+
+    /** Monitor index to show on. Defaults to focused Hyprland monitor. */
+    monitor?: Accessor<number> | number;
+
+    /**
+     * Widget lifecycle callback, passed through to the underlying Astal.Window.
+     * Use for WindowManager registration.
+     */
+    $?: (self: Astal.Window) => void;
+
+    children: JSX.Element | JSX.Element[];
+}
+
+export interface PopupHandle {
+    /** Element to render (pass as JSX child of PopupWindow). */
+    element: JSX.Element;
+}
+
+// ── Default anchor from bar position ──
+
+function defaultAnchor(position: number): Anchor {
+    if (position === 0) return TOP | LEFT | RIGHT; // TOP
+    if (position === 1) return RIGHT | TOP | BOTTOM; // RIGHT
+    if (position === 2) return BOTTOM | LEFT | RIGHT; // BOTTOM
+    if (position === 3) return LEFT | TOP | BOTTOM; // LEFT
+    return TOP | LEFT | RIGHT;
+}
+
+function anchorMargin(position: number): number {
+    // Offset margin so popup doesn't overlap the bar
+    if (position === 0) return 40; // bar at TOP
+    if (position === 1) return 8; // bar at RIGHT
+    if (position === 2) return 40; // bar at BOTTOM
+    if (position === 3) return 8; // bar at LEFT
+    return 12;
+}
+
+// ── Component ──
+
+export default (props: PopupWindowProps) => {
+    const {
+        name,
+        visible,
+        anchor: anchorProp,
+        layer = Astal.Layer.OVERLAY,
+        margin: marginProp,
+        onClose,
+        onVisibleChange,
+        cssClasses,
+        widthRequest,
+        heightRequest,
+        monitor: monitorProp,
+        $: widgetRef,
+        children,
+    } = props;
+
+    const barCfg = useSettings().bar;
+    const hyprland = Hyprland.get_default();
+    const defaultMon = createBinding(hyprland, 'focusedMonitor').as(m => m.id);
+
+    // Resolve anchor
+    let anchorValue: Accessor<Anchor> | Anchor;
+    if (anchorProp !== undefined) {
+        anchorValue = anchorProp;
+    } else {
+        anchorValue = barCfg.position.as(p => defaultAnchor(p));
+    }
+
+    // Resolve margin
+    const resolvedMargin =
+        marginProp ?? barCfg.position.as(p => anchorMargin(p));
+
+    // Resolve monitor
+    const resolvedMonitor = monitorProp ?? defaultMon;
+
+    // Resolve visible as accessor for the binding
+    const visibleAccessor: Accessor<boolean> =
+        typeof visible === 'function'
+            ? (visible as Accessor<boolean>)
+            : (() => visible as boolean) as Accessor<boolean>;
+
+    return (
+        <Astal.Window
+            name={name}
+            namespace={name}
+            visible={visibleAccessor}
+            visibleMode={Astal.VisibleMode.NORMAL}
+            application={app}
+            layer={layer}
+            keymode={Astal.Keymode.ON_DEMAND}
+            exclusivity={Astal.Exclusivity.EXCLUSIVE}
+            anchor={anchorValue}
+            margin={resolvedMargin}
+            monitor={resolvedMonitor}
+            widthRequest={widthRequest}
+            heightRequest={heightRequest}
+            cssClasses={['card', 'frame', 'background', ...(cssClasses ?? [])]}
+            onNotifyVisible={(self: Astal.Window) => {
+                if (onVisibleChange) onVisibleChange(self.visible);
+            }}
+            $={widgetRef}
+        >
+            <Gtk.EventControllerKey
+                $={self => {
+                    self.connect('key-pressed', (_ctrl, keyval, _keycode, _state) => {
+                        if (keyval === Gdk.KEY_Escape) {
+                            // Toggle visible off via the accessor mechanism
+                            if (onClose) onClose();
+                            return true;
+                        }
+                        return false;
+                    });
+                }}
+            />
+            {children}
+        </Astal.Window>
+    );
+};
