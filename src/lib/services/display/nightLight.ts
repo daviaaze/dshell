@@ -10,6 +10,8 @@ export const TEMP_MAX = 6500;
 
 @register({GTypeName: 'NightLight'})
 export default class NightLight extends GObject.Object {
+    static readonly POLL_INTERVAL_SECONDS = 5;
+
     static readonly instance: NightLight;
     static get_default() {
         if (!this.instance) this.instance = new NightLight();
@@ -195,7 +197,7 @@ export default class NightLight extends GObject.Object {
         if (this.#pollTimer) GLib.source_remove(this.#pollTimer);
         this.#pollTimer = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT,
-            5,
+            NightLight.POLL_INTERVAL_SECONDS,
             () => {
                 if (this.#autoSchedule) this.#checkSchedule();
                 return GLib.SOURCE_CONTINUE;

@@ -14,10 +14,13 @@ import {
     findLiveAp,
     isSaved,
     signalIconName,
-    escapeLabel,
     createNMConnection,
 } from './utils';
 import logger from '#/lib/core/logger';
+
+/** Icon sizes for AP list rows. */
+const AP_ICON_SIZE = 16;
+const AP_TRASH_ICON_SIZE = 14;
 
 interface ApListProps {
     wifi: Network.Wifi;
@@ -249,7 +252,7 @@ function ApRow({
                     }}
                 >
                     <Gtk.Box spacing={12}>
-                        <Gtk.Image iconName={prefixIcon} pixelSize={16} />
+                        <Gtk.Image iconName={prefixIcon} pixelSize={AP_ICON_SIZE} />
 
                         <Gtk.Box
                             hexpand
@@ -260,7 +263,7 @@ function ApRow({
                             <Gtk.Label
                                 hexpand
                                 halign={Gtk.Align.FILL}
-                                label={escapeLabel(apSsid)}
+                                label={apSsid}
                                 ellipsize={3}
                             />
                             <Gtk.Label
@@ -272,14 +275,14 @@ function ApRow({
 
                         <Gtk.Image
                             iconName={signalIconName(snap.strength)}
-                            pixelSize={16}
+                            pixelSize={AP_ICON_SIZE}
                             valign={Gtk.Align.CENTER}
                             visible={secure}
                             tooltipText={`${snap.strength}%`}
                         />
                         <Gtk.Image
                             iconName={signalIconName(snap.strength)}
-                            pixelSize={16}
+                            pixelSize={AP_ICON_SIZE}
                             valign={Gtk.Align.CENTER}
                             visible={notActive.as(na => na && !secure)}
                             tooltipText={`${snap.strength}%`}
@@ -287,7 +290,7 @@ function ApRow({
 
                         <Gtk.Image
                             iconName="emblem-ok-symbolic"
-                            pixelSize={16}
+                            pixelSize={AP_ICON_SIZE}
                             visible={isActive}
                         />
 
@@ -302,7 +305,7 @@ function ApRow({
                     tooltipText="Forget Network"
                     valign={Gtk.Align.CENTER}
                 >
-                    <Gtk.Image iconName="user-trash-symbolic" pixelSize={14} />
+                    <Gtk.Image iconName="user-trash-symbolic" pixelSize={AP_TRASH_ICON_SIZE} />
                 </Gtk.Button>
             </Gtk.Box>
 

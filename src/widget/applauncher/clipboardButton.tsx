@@ -5,13 +5,26 @@ import {
     formatClipboardPreview,
 } from '#/lib/services/clipboard';
 import WindowManager from '#/lib/services/state/windowManager';
+import {useStyle} from '#/style/useStyle';
 
 export default ({item}: {item: ClipboardItem}) => {
     const preview = formatClipboardPreview(item.text);
+    const appButtonStyle = useStyle({
+        padding: '6px',
+        'border-radius': '8px',
+        background: 'transparent',
+        '&:hover': {
+            background: 'var(--shade-hover-bg, rgba(128,128,128,0.15))',
+        },
+        '&:active': {
+            background: 'var(--shade-active-bg, rgba(128,128,128,0.25))',
+        },
+    });
 
     return (
         <Gtk.Button
-            cssClasses={['app-button']}
+            cssClasses={['app-button', appButtonStyle.class]}
+            $={appButtonStyle.$}
             onClicked={() => {
                 copyClipboardItem(item);
                 WindowManager.get_default().applauncher!.visible = false;

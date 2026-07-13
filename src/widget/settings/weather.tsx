@@ -62,11 +62,13 @@ export default () => {
                 activatable
                 onActivated={() => {
                     logger.info('weather', 'manual weather update triggered');
-                    (weather.location =
-                        GWeather.Location.get_world()?.find_nearest_city(
+                    const world = GWeather.Location.get_world();
+                    if (world) {
+                        weather.location = world.find_nearest_city(
                             settings.latitude(),
                             settings.longitude()
-                        ))
+                        );
+                    }
                 }}
             >
                 <Gtk.Image

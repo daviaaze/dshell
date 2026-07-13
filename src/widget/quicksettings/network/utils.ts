@@ -112,13 +112,6 @@ export function signalIconName(strength: number): string {
     return 'network-wireless-signal-none-symbolic';
 }
 
-export function escapeLabel(text: string): string {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-}
-
 // ── Security type detection ────────────────────────────────────────
 
 /**

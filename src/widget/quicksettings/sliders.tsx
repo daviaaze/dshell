@@ -8,6 +8,8 @@ import logger from '#/lib/core/logger';
 import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 const BRIGHTNESS_PRESETS = [0.25, 0.5, 0.75, 1.0];
+const BRIGHTNESS_PCT_MAX = 100;
+const BRIGHTNESS_PCT_MIN = 1;
 
 // ── Shared endpoint config factory (AudioConfig / MicConfig) ──
 
@@ -101,10 +103,10 @@ export const BrightnessSlider = () => {
         <Slider
             visible={createBinding(brightness, 'screen').as(v => v > 0)}
             icon={'display-brightness-symbolic'}
-            min={1}
-            max={100}
-            value={createBinding(brightness, 'screen').as(v => v * 100)}
-            setValue={value => brightness.set({screen: value / 100})}
+            min={BRIGHTNESS_PCT_MIN}
+            max={BRIGHTNESS_PCT_MAX}
+            value={createBinding(brightness, 'screen').as(v => v * BRIGHTNESS_PCT_MAX)}
+            setValue={value => brightness.set({screen: value / BRIGHTNESS_PCT_MAX})}
             onIconClick={cycleBrightness}
         />
     );

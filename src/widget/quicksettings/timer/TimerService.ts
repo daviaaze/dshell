@@ -33,11 +33,19 @@ export default class TimerService extends GObject.Object {
     /** Timer tick interval in milliseconds. */
     static readonly TICK_MS = 1000;
 
+    // ── Default durations (overridden by init()) ──
+    static readonly DEFAULT_WORK_MIN = 25;
+    static readonly DEFAULT_BREAK_MIN = 5;
+    static readonly DEFAULT_LONG_BREAK_MIN = 15;
+    static readonly DEFAULT_SESSIONS_BEFORE_LONG = 4;
+
+    static readonly MS_PER_MIN = 60 * 1000;
+
     // ── Pomodoro settings ──
-    #workDuration = 25 * 60 * 1000;
-    #breakDuration = 5 * 60 * 1000;
-    #longBreakDuration = 15 * 60 * 1000;
-    #sessionsBeforeLongBreak = 4;
+    #workDuration = TimerService.DEFAULT_WORK_MIN * TimerService.MS_PER_MIN;
+    #breakDuration = TimerService.DEFAULT_BREAK_MIN * TimerService.MS_PER_MIN;
+    #longBreakDuration = TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
+    #sessionsBeforeLongBreak = TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
 
     @getter(Number)
     get remaining() {
@@ -131,9 +139,9 @@ export default class TimerService extends GObject.Object {
         if (this.#initialized) return;
         this.#initialized = true;
         this.#app = app;
-        this.#workDuration = workMin * 60 * 1000;
-        this.#breakDuration = breakMin * 60 * 1000;
-        this.#longBreakDuration = longBreakMin * 60 * 1000;
+        this.#workDuration = workMin * TimerService.MS_PER_MIN;
+        this.#breakDuration = breakMin * TimerService.MS_PER_MIN;
+        this.#longBreakDuration = longBreakMin * TimerService.MS_PER_MIN;
         this.#sessionsBeforeLongBreak = sessionsBeforeLongBreak;
     }
 

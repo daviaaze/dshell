@@ -17,6 +17,7 @@ import logger from '#/lib/core/logger';
 
 const DIM_COLOR = {r: 0, g: 0, b: 0, a: 0.35};
 const MIN_SELECTION = 5;
+const OVERLAY_CLOSE_DELAY_MS = 150;
 
 interface Point {
     x: number;
@@ -435,7 +436,7 @@ export default () => {
             // The 150ms delay lets the overlay window unmap so
             // wf-recorder/wl-screenrec don't capture the overlay itself.
             ss.overlayOpen = false;
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 150, () => {
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, OVERLAY_CLOSE_DELAY_MS, () => {
                 if (target === 'fullscreen' && !geometry) {
                     ss.toggleRecording();
                 } else if (geometry) {

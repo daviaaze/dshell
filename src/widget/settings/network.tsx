@@ -15,6 +15,11 @@ import logger from '#/lib/core/logger';
 
 // ── Helpers ────────────────────────────────────────────────────────
 
+/** Pixel sizes for network settings icons. */
+const NET_ICON_PREFIX = 16;
+const NET_ICON_SUFFIX = 14;
+const NET_SIGNAL_BAR_WIDTH = 50;
+
 /** Get all known (saved) WiFi connections from NM.Client. */
 function getKnownNetworks(
     client: NM.Client
@@ -219,7 +224,7 @@ function showConnectionEditor(
                                                     ? 'eye-not-looking-symbolic'
                                                     : 'eye-open-negative-filled-symbolic'
                                             )}
-                                            pixelSize={16}
+                                            pixelSize={NET_ICON_PREFIX}
                                         />
                                     </Gtk.Button>
                                 </Adw.EntryRow>
@@ -407,13 +412,6 @@ function showHiddenNetworkDialog(parent: Gtk.Widget) {
 
 // ── Hotspot Controls ───────────────────────────────────────────────
 
-function escapeLabel(text: string): string {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-}
-
 // ── Main Settings Page ─────────────────────────────────────────────
 
 export default () => {
@@ -441,7 +439,7 @@ export default () => {
                                         subtitle={createBinding(w, 'ssid').as(
                                             ssid =>
                                                 ssid
-                                                    ? `Connected to ${escapeLabel(ssid)}`
+                                                    ? `Connected to ${ssid}`
                                                     : 'Not connected'
                                         )}
                                         active={createBinding(w, 'enabled')}
@@ -469,7 +467,7 @@ export default () => {
                                                 w,
                                                 'strength'
                                             ).as(s => strengthFraction(s))}
-                                            widthRequest={50}
+                                            widthRequest={NET_SIGNAL_BAR_WIDTH}
                                         />
                                     </Adw.ActionRow>
                                 ) : null
@@ -483,7 +481,7 @@ export default () => {
                             <Gtk.Image
                                 $type="prefix"
                                 iconName="network-wireless-symbolic"
-                                pixelSize={16}
+                                pixelSize={NET_ICON_PREFIX}
                             />
                         </Adw.ActionRow>
                     </Adw.PreferencesGroup>
@@ -502,7 +500,7 @@ export default () => {
                         connections: NM.RemoteConnection[];
                     }) => (
                         <Adw.ActionRow
-                            title={escapeLabel(net.ssid)}
+                            title={net.ssid}
                             subtitle={net.secLabel}
                             activatable
                             onActivated={self =>
@@ -521,7 +519,7 @@ export default () => {
                                         ? 'network-wireless-encrypted-symbolic'
                                         : 'network-wireless-signal-none-symbolic'
                                 }
-                                pixelSize={16}
+                                pixelSize={NET_ICON_PREFIX}
                             />
                             <Gtk.Button
                                 $type="suffix"
@@ -545,7 +543,7 @@ export default () => {
                             >
                                 <Gtk.Image
                                     iconName="user-trash-symbolic"
-                                    pixelSize={14}
+                                    pixelSize={NET_ICON_SUFFIX}
                                 />
                             </Gtk.Button>
                         </Adw.ActionRow>
@@ -572,7 +570,6 @@ export default () => {
                                 <Gtk.Image
                                     $type="suffix"
                                     iconName={createBinding(w, 'iconName')}
-                                    pixelSize={20}
                                 />
                             </Adw.ActionRow>
                         ) : null

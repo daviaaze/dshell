@@ -5,6 +5,10 @@ import {createState, onMount, onCleanup} from 'gnim';
 import Screenshot from '#/lib/services/capture/screenshot';
 import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
+const AUDIO_PICKER_SPACING = 8;
+const AUDIO_ICON_SIZE = 16;
+const SYSTEM_DEFAULT_ID = -1;
+
 export default () => {
     const ss = Screenshot.get_default();
     const [audio, setAudio] = createState<Wireplumber.Audio | null>(null);
@@ -22,10 +26,10 @@ export default () => {
     });
 
     return (
-        <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
+        <Gtk.Box spacing={AUDIO_PICKER_SPACING} valign={Gtk.Align.CENTER}>
             <Gtk.Image
                 iconName="audio-input-microphone-symbolic"
-                pixelSize={16}
+                pixelSize={AUDIO_ICON_SIZE}
             />
             <Gtk.DropDown
                 $={self => {
@@ -48,7 +52,7 @@ export default () => {
                         self.set_model(list);
                         // Set selection from screenshot state
                         const currentId = ss.selectedAudioInput;
-                        if (currentId === -1) {
+                        if (currentId === SYSTEM_DEFAULT_ID) {
                             self.set_selected(0);
                         } else {
                             const idx = mics.findIndex(m => m.id === currentId);

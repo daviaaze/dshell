@@ -2,8 +2,6 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {register, signal} from 'gnim/gobject';
 
-const encoder = new TextEncoder();
-
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Process {
     export interface SignalSignatures extends GObject.Object.SignalSignatures {
@@ -89,7 +87,7 @@ export class Process extends GObject.Object {
     write(str: string): Promise<[boolean, number]> {
         return new Promise((resolve, reject) => {
             this.#inStream.write_bytes_async(
-                encoder.encode(str),
+                this.#encoder.encode(str),
                 GLib.PRIORITY_DEFAULT,
                 null,
                 (_, res) => {

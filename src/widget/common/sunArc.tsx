@@ -3,6 +3,9 @@ import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, createComputed} from 'gnim';
 
+const SUN_ARC_HEIGHT = 100;
+const SUN_ARC_WIDTH = 280;
+
 interface SunArcProps {
     sunrise: Accessor<number>;
     sunset: Accessor<number>;
@@ -158,7 +161,7 @@ export const SunArc = ({sunrise, sunset, now, moonPhase}: SunArcProps) => {
     };
 
     const area = (
-        <Gtk.DrawingArea hexpand heightRequest={100} widthRequest={280} />
+        <Gtk.DrawingArea hexpand heightRequest={SUN_ARC_HEIGHT} widthRequest={SUN_ARC_WIDTH} />
     ) as Gtk.DrawingArea;
 
     area.set_draw_func(draw);

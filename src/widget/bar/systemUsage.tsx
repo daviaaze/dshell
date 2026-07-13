@@ -6,6 +6,7 @@ import {Process} from '#/lib/core/process';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Accessor, createState, onCleanup} from 'gnim';
+import {useStyle} from '#/style/useStyle';
 import logger from '#/lib/core/logger';
 
 /** Auto-discover the coretemp Package id 0 sensor path. */
@@ -133,40 +134,48 @@ export default ({
         unit: string;
         vertical: Accessor<boolean>;
         visible?: Accessor<boolean> | boolean;
-    }) => (
-        <Gtk.Box
-            visible={visible}
-            spacing={2}
-            orientation={Gtk.Orientation.VERTICAL}
-        >
+    }) => {
+        const numeralStyle = useStyle({
+            'font-feature-settings': "'tnum'",
+            'font-variant-numeric': 'tabular-nums',
+        });
+        return (
             <Gtk.Box
-                spacing={vertical.as(v => (v ? 0 : 4))}
-                orientation={vertical.as(v =>
-                    v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
-                )}
+                visible={visible}
+                spacing={2}
+                orientation={Gtk.Orientation.VERTICAL}
             >
-                <Gtk.Label
-                    label={label}
-                    cssClasses={['caption-heading', 'numeral']}
-                />
-                <Gtk.Label
-                    cssClasses={['caption', 'numeral']}
-                    label={value(v => (v * 100).toFixed(0).concat(unit))}
+                <Gtk.Box
+                    spacing={vertical.as(v => (v ? 0 : 4))}
+                    orientation={vertical.as(v =>
+                        v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
+                    )}
+                >
+                    <Gtk.Label
+                        label={label}
+                        cssClasses={['caption-heading', 'numeral', numeralStyle.class]}
+                        $={numeralStyle.$}
+                    />
+                    <Gtk.Label
+                        cssClasses={['caption', 'numeral', numeralStyle.class]}
+                        $={numeralStyle.$}
+                        label={value(v => (v * 100).toFixed(0).concat(unit))}
+                    />
+                </Gtk.Box>
+                <Gtk.LevelBar
+                    orientation={vertical.as(v =>
+                        v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
+                    )}
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                    inverted={vertical}
+                    value={value}
+                    widthRequest={vertical.as(v => (v ? -1 : LEVEL_BAR_SIZE))}
+                    heightRequest={vertical.as(v => (v ? LEVEL_BAR_SIZE : -1))}
                 />
             </Gtk.Box>
-            <Gtk.LevelBar
-                orientation={vertical.as(v =>
-                    v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
-                )}
-                halign={Gtk.Align.CENTER}
-                valign={Gtk.Align.CENTER}
-                inverted={vertical}
-                value={value}
-                widthRequest={vertical.as(v => (v ? -1 : LEVEL_BAR_SIZE))}
-                heightRequest={vertical.as(v => (v ? LEVEL_BAR_SIZE : -1))}
-            />
-        </Gtk.Box>
-    );
+        );
+    };
 
     return (
         <Gtk.Button

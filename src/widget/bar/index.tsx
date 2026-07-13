@@ -6,6 +6,7 @@ import {app} from '#/App';
 import WindowManager from '#/lib/services/state/windowManager';
 import {Gdk2HyprMonitor, monitors} from '#/lib/services/monitoring/monitors';
 import {useSettings} from '#/lib/settings';
+import {useStyle} from '#/style/useStyle';
 import SystemIndicators from './systemIndicators';
 import SystemUsage from './systemUsage';
 import Workspaces from './workspaces';
@@ -17,10 +18,15 @@ import {WeatherButton} from './weather';
 import WindowTitle from './windowTitle';
 
 export default () => {
+    const barCenterboxStyle = useStyle({
+        'min-height': '0',
+        padding: '0 4px',
+    });
     const bar = useSettings().bar;
     const {position} = bar;
     const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
     const vertical = position.as(p => p === LEFT || p === RIGHT);
+    const BAR_MARGIN = 4;
 
     return (
         <For each={monitors}>
@@ -35,10 +41,10 @@ export default () => {
                     }}
                     visible
                     cssClasses={['card', 'background']}
-                    marginTop={position.as(p => (p === BOTTOM ? 0 : 4))}
-                    marginLeft={position.as(p => (p === RIGHT ? 0 : 4))}
-                    marginBottom={position.as(p => (p === TOP ? 0 : 4))}
-                    marginRight={position.as(p => (p === LEFT ? 0 : 4))}
+                    marginTop={position.as(p => (p === BOTTOM ? 0 : BAR_MARGIN))}
+                    marginLeft={position.as(p => (p === RIGHT ? 0 : BAR_MARGIN))}
+                    marginBottom={position.as(p => (p === TOP ? 0 : BAR_MARGIN))}
+                    marginRight={position.as(p => (p === LEFT ? 0 : BAR_MARGIN))}
                     application={app}
                     gdkmonitor={monitor}
                     name={`bar-${monitor.get_description()}`}
@@ -51,7 +57,8 @@ export default () => {
                     })}
                 >
                     <Gtk.CenterBox
-                        cssClasses={['bar-centerbox']}
+                        cssClasses={['bar-centerbox', barCenterboxStyle.class]}
+                        $={barCenterboxStyle.$}
                         orientation={vertical.as(v =>
                             v
                                 ? Gtk.Orientation.VERTICAL

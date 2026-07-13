@@ -38,6 +38,21 @@ export default ({
     resumeDismiss?: () => void;
     showProgress?: boolean;
 }) => {
+    const dimmedStyle = useStyle({
+        opacity: '0.6',
+    });
+    const notifImageStyle = useStyle({
+        'border-radius': '8px',
+    });
+    const notifProgressStyle = useStyle({
+        'min-height': '4px',
+        'border-radius': '2px',
+    });
+    const notifActionsStyle = useStyle({
+        'flex-wrap': 'wrap',
+        gap: '4px',
+    });
+
     const expireMs =
         notification.expire_timeout > 0 ? notification.expire_timeout : 5000;
     const urgency = notification.urgency;
@@ -102,7 +117,8 @@ export default ({
                         </Gtk.Box>
                         {appName ? (
                             <Gtk.Label
-                                cssClasses={['caption', 'dimmed']}
+                                cssClasses={['caption', 'dimmed', dimmedStyle.class]}
+                                $={dimmedStyle.$}
                                 label={appName}
                                 xalign={0}
                             />
@@ -128,7 +144,8 @@ export default ({
                 <Gtk.Box spacing={8}>
                     {hasImage ? (
                         <Gtk.Image
-                            cssClasses={['notification-image']}
+                            cssClasses={['notification-image', notifImageStyle.class]}
+                            $={notifImageStyle.$}
                             file={notification.image}
                             pixelSize={64}
                             valign={Gtk.Align.START}
@@ -150,8 +167,9 @@ export default ({
                 <Gtk.ProgressBar
                     visible={showProgress}
                     fraction={1}
-                    cssClasses={['notification-progress']}
+                    cssClasses={['notification-progress', notifProgressStyle.class]}
                     $={self => {
+                        notifProgressStyle.$(self);
                         if (!showProgress) return;
                         let elapsed = 0;
                         const interval = 50;
@@ -180,7 +198,7 @@ export default ({
 
                 {/* Action buttons */}
                 {hasActions ? (
-                    <Gtk.Box cssClasses={['notification-actions']} spacing={4}>
+                    <Gtk.Box cssClasses={['notification-actions', notifActionsStyle.class]} spacing={4}>
                         <For
                             each={createBinding(notification, 'actions').as(
                                 actions =>

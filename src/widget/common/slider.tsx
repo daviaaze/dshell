@@ -13,6 +13,7 @@ type SliderProps = {
 };
 
 const DEBOUNCE_MS = 80;
+const SLIDER_SPACING = 4;
 
 export const Slider = (props: SliderProps) => {
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
@@ -44,7 +45,7 @@ export const Slider = (props: SliderProps) => {
     });
 
     return (
-        <Gtk.Box cssClasses={['slider']} spacing={4} visible={props.visible}>
+        <Gtk.Box cssClasses={['slider']} spacing={SLIDER_SPACING} visible={props.visible}>
             {props.onIconClick ? (
                 <Gtk.Button onClicked={props.onIconClick}>
                     <Gtk.Image iconName={props.icon} />

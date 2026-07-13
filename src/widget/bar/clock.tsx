@@ -11,9 +11,12 @@ import {
 } from 'gnim';
 import {useSettings} from '#/lib/settings';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
+import {useStyle} from '#/style/useStyle';
 import {fmtOffset, cityName, fmtDuration} from '#/lib/core/time';
 import TimerService from '#/widget/quicksettings/timer/TimerService';
 import {TimerSection} from '#/widget/quicksettings/timer/TimerSection';
+
+const TIMER_WIDTH = 230;
 
 function updateCalendar(calendar: Gtk.Calendar) {
     const now = GLib.DateTime.new_now_local();
@@ -29,6 +32,10 @@ export default ({
     vertical: Accessor<boolean>;
     visible?: boolean | Accessor<boolean>;
 }) => {
+    const timerActiveStyle = useStyle({
+        color: 'var(--shade-primary, #3584e4)',
+        'font-weight': 'bold',
+    });
     const {general} = useSettings();
     const [time, setTime] = createState(new GLib.DateTime());
     const clockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
@@ -164,7 +171,7 @@ export default ({
                                 label="Timer"
                                 halign={Gtk.Align.CENTER}
                             />
-                            <Gtk.Box widthRequest={230} halign={Gtk.Align.FILL}>
+                            <Gtk.Box widthRequest={TIMER_WIDTH} halign={Gtk.Align.FILL}>
                                 <TimerSection />
                             </Gtk.Box>
                         </Gtk.Box>

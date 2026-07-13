@@ -10,6 +10,7 @@ import {FrecencyManager} from '#/lib/services/search/frecency';
 import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
 import PopupWindow from '#/widget/common/PopupWindow';
+import {useStyle} from '#/style/useStyle';
 import logger from '#/lib/core/logger';
 import Apps from 'gi://AstalApps';
 import type {ClipboardItem} from '#/lib/services/clipboard';
@@ -18,6 +19,11 @@ type LauncherMode = 'apps' | 'clipboard';
 type ListItem = Apps.Application | ClipboardItem;
 
 export default () => {
+    const applauncherStyle = useStyle({
+        'min-width': '320px',
+        'max-height': '500px',
+        padding: '0 4px',
+    });
     const [list, setList] = createState<ListItem[]>(() =>
         getTopFrecencyApps(FrecencyManager.get_default())
     );
@@ -78,8 +84,9 @@ export default () => {
         >
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
-                cssClasses={['applauncher-body']}
+                cssClasses={['applauncher-body', applauncherStyle.class]}
                 spacing={8}
+                $={applauncherStyle.$}
             >
                 <Gtk.Entry
                     hexpand

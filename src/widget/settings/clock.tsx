@@ -28,6 +28,8 @@ export default () => {
         'Pacific/Auckland',
     ]);
 
+    const TZ_POPOVER_MAX_HEIGHT = 300;
+
     return (
         <Adw.PreferencesGroup title="Clock" description="World clock timezones">
             <Adw.ActionRow
@@ -41,7 +43,7 @@ export default () => {
                     />
                     <Gtk.Popover>
                         <Gtk.ScrolledWindow
-                            maxContentHeight={300}
+                            maxContentHeight={TZ_POPOVER_MAX_HEIGHT}
                             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                         >
                             <Gtk.Box

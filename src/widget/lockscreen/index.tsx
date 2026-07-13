@@ -248,15 +248,14 @@ const createLocks = (onUnlock: () => void) => {
                         <Gtk.Box
                             $type="start"
                             orientation={Gtk.Orientation.VERTICAL}
-                            marginBottom={12}
-                        >
+                            marginBottom={CLOCK_MARGIN_BOTTOM}>
                             <Gtk.Label
                                 cssClasses={['title-1', 'numeric']}
                                 label={time.as(t => t.format('%R')!)}
                                 css={'font-size: 4em;'}
                             />
                             <Gtk.Label
-                                marginBottom={12}
+                                marginBottom={CLOCK_MARGIN_BOTTOM}
                                 cssClasses={['title-3', 'numeric']}
                                 label={time.as(t => t.format('%A, %x')!)}
                             />
@@ -265,12 +264,12 @@ const createLocks = (onUnlock: () => void) => {
                             $type="center"
                             valign={Gtk.Align.CENTER}
                             halign={Gtk.Align.CENTER}
-                            spacing={4}
+                            spacing={LOCK_CARD_SPACING}
                             css={'padding:8px;'}
                             orientation={Gtk.Orientation.VERTICAL}
                             cssClasses={['card']}
                         >
-                            <Adw.Avatar size={64} />
+                            <Adw.Avatar size={AVATAR_SIZE} />
                             <Gtk.Label
                                 label={GLib.get_real_name()}
                                 cssClasses={['title-3']}
@@ -309,7 +308,7 @@ const createLocks = (onUnlock: () => void) => {
                             valign={Gtk.Align.END}
                             halign={Gtk.Align.CENTER}
                             orientation={Gtk.Orientation.VERTICAL}
-                            marginTop={12}
+                            marginTop={CLOCK_MARGIN_BOTTOM}
                         >
                             <LockscreenWidgets position="end" />
                             <LockscreenNotifications />

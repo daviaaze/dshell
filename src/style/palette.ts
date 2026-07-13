@@ -33,15 +33,6 @@ const M3_MAP: Record<string, string> = {
     shadow: 'shadow',
 };
 
-// Accept common alias keys
-const M3_ALIASES: Record<string, string> = {
-    primaryContainer: 'primary_container',
-    onPrimary: 'on_primary',
-    onError: 'on_error',
-    errorContainer: 'error_container',
-    primaryContainerLow: 'primary_container_low',
-};
-
 // ── Matugen JSON types ──
 
 interface MatugenJson {
@@ -196,11 +187,7 @@ export default class PaletteGenerator extends GObject.Object {
 
         // Map known keys
         for (const [m3Key, shadeKey] of Object.entries(M3_MAP)) {
-            const rawValue =
-                raw[m3Key] ??
-                raw[M3_ALIASES[m3Key] ?? ''] ??
-                raw[m3Key.replace(/_/g, '')] ??
-                raw[m3Key.replace(/([a-z])_([a-z])/g, (_, a, b) => a + b.toUpperCase())];
+            const rawValue = raw[m3Key];
             if (rawValue) {
                 out[shadeKey] = rawValue;
             }

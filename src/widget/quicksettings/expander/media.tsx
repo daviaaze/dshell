@@ -4,6 +4,7 @@ import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, createBinding} from 'gnim';
 import Adw from 'gi://Adw?version=1';
+import {useStyle} from '#/style/useStyle';
 import logger from '#/lib/core/logger';
 import {exactQuery} from '#/lib/services/state/apps';
 
@@ -31,21 +32,30 @@ const PlayerApp = ({player}: {player: Mpris.Player}) => (
     </Gtk.Box>
 );
 
-const CoverArt = ({player}: {player: Mpris.Player}) => (
-    <Gtk.Picture
+const CoverArt = ({player}: {player: Mpris.Player}) => {
+    const thumbnailStyle = useStyle({
+        'border-radius': '8px',
+    });
+    return (
+        <Gtk.Picture
         visible={createBinding(player, 'coverArt').as(c => !!c)}
         file={createBinding(player, 'coverArt').as(path =>
             Gio.File.new_for_path(path)
         )}
-        cssClasses={['media-thumbnail']}
+        cssClasses={['media-thumbnail', thumbnailStyle.class]}
+        $={thumbnailStyle.$}
         contentFit={Gtk.ContentFit.COVER}
         widthRequest={120}
         heightRequest={120}
     />
 );
 
-const TitleArtist = ({player}: {player: Mpris.Player}) => (
-    <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
+const TitleArtist = ({player}: {player: Mpris.Player}) => {
+    const dimmedStyle = useStyle({
+        opacity: '0.6',
+    });
+    return (
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
         <Gtk.Label
             wrap
             maxWidthChars={10}
@@ -53,7 +63,8 @@ const TitleArtist = ({player}: {player: Mpris.Player}) => (
             label={createBinding(player, 'title')}
         />
         <Gtk.Label
-            cssClasses={['caption', 'dimmed']}
+            cssClasses={['caption', 'dimmed', dimmedStyle.class]}
+            $={dimmedStyle.$}
             label={createBinding(player, 'artist')}
             maxWidthChars={10}
             ellipsize={3}
@@ -89,10 +100,16 @@ const PlaybackButtons = ({player}: {player: Mpris.Player}) => (
     </Gtk.Box>
 );
 
-const PlaybackStatus = ({player}: {player: Mpris.Player}) => (
-    <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
+const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
+    const positionStyle = useStyle({
+        'min-height': '8px',
+        'border-radius': '4px',
+    });
+    return (
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
         <Astal.Slider
-            cssClasses={['media-position']}
+            cssClasses={['media-position', positionStyle.class]}
+            $={positionStyle.$}
             drawValue={false}
             onNotifyValue={({value}) => (player.position = value)}
             min={0}

@@ -85,20 +85,23 @@ export interface PopupHandle {
 
 // ── Default anchor from bar position ──
 
+/** Bar height/width offset so popups don't overlap the bar. */
+const BAR_MARGIN_TOP_BOTTOM = 40;
+const BAR_MARGIN_SIDE = 8;
+
 function defaultAnchor(position: number): Anchor {
-    if (position === 0) return TOP | LEFT | RIGHT; // TOP
-    if (position === 1) return RIGHT | TOP | BOTTOM; // RIGHT
-    if (position === 2) return BOTTOM | LEFT | RIGHT; // BOTTOM
-    if (position === 3) return LEFT | TOP | BOTTOM; // LEFT
+    if (position === TOP) return TOP | LEFT | RIGHT;
+    if (position === RIGHT) return RIGHT | TOP | BOTTOM;
+    if (position === BOTTOM) return BOTTOM | LEFT | RIGHT;
+    if (position === LEFT) return LEFT | TOP | BOTTOM;
     return TOP | LEFT | RIGHT;
 }
 
 function anchorMargin(position: number): number {
-    // Offset margin so popup doesn't overlap the bar
-    if (position === 0) return 40; // bar at TOP
-    if (position === 1) return 8; // bar at RIGHT
-    if (position === 2) return 40; // bar at BOTTOM
-    if (position === 3) return 8; // bar at LEFT
+    if (position === TOP) return BAR_MARGIN_TOP_BOTTOM;
+    if (position === RIGHT) return BAR_MARGIN_SIDE;
+    if (position === BOTTOM) return BAR_MARGIN_TOP_BOTTOM;
+    if (position === LEFT) return BAR_MARGIN_SIDE;
     return 12;
 }
 

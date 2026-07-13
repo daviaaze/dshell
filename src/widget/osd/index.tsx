@@ -13,6 +13,9 @@ import Popup from './popup';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';
+const OSD_WIDTH = 250;
+const OSD_MARGIN = 24;
+const OSD_SPACING = 12;
 
 export default () => {
     const brightness = Brightness.get_default();
@@ -85,8 +88,8 @@ export default () => {
     return (
         <PopupWindow
             name="osd"
-            widthRequest={250}
-            margin={24}
+            widthRequest={OSD_WIDTH}
+            margin={OSD_MARGIN}
             anchor={Astal.WindowAnchor.BOTTOM}
             layer={Astal.Layer.OVERLAY}
             visible={createComputed(
@@ -102,7 +105,7 @@ export default () => {
                 css={'box-shadow: none; padding: 12px;'}
                 orientation={Gtk.Orientation.VERTICAL}
                 valign={Gtk.Align.END}
-                spacing={12}
+                spacing={OSD_SPACING}
             >
                 {popupList}
             </Gtk.Box>

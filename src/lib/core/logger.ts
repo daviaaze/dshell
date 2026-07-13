@@ -84,16 +84,12 @@ export function initLoggerFromSettings(): void {
         const settings = new Gio.Settings({schemaId: DEBUG_SCHEMA_ID});
 
         // Check for debug-enabled key
-        if ('debug-enabled' in settings) {
-            const debugEnabled = settings.get_boolean('debug-enabled');
-            if (debugEnabled) setLogLevel(LogLevel.DEBUG);
-        }
+        const debugEnabled = settings.get_boolean('debug-enabled');
+        if (debugEnabled) setLogLevel(LogLevel.DEBUG);
 
         // Check for debug-categories key
-        if ('debug-categories' in settings) {
-            const cats = settings.get_strv('debug-categories');
-            if (cats.length > 0) enableDebugCategories(cats);
-        }
+        const cats = settings.get_strv('debug-categories');
+        if (cats.length > 0) enableDebugCategories(cats);
 
         // Listen for runtime changes
         settings.connect('changed::debug-enabled', () => {
