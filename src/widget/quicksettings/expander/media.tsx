@@ -49,6 +49,7 @@ const CoverArt = ({player}: {player: Mpris.Player}) => {
         heightRequest={120}
     />
 );
+}
 
 const TitleArtist = ({player}: {player: Mpris.Player}) => {
     const dimmedStyle = useStyle({
@@ -71,6 +72,7 @@ const TitleArtist = ({player}: {player: Mpris.Player}) => {
         />
     </Gtk.Box>
 );
+}
 
 const PlaybackButtons = ({player}: {player: Mpris.Player}) => (
     <Gtk.Box>
@@ -130,6 +132,7 @@ const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
         </Gtk.CenterBox>
     </Gtk.Box>
 );
+}
 
 export const MediaIcon = () => {
     let mpris: Mpris.Mpris | null = null;
