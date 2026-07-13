@@ -392,17 +392,29 @@ function main() {
 
     /** Print selection and quit — XDPH reads stdout */
     function select(value: string): void {
-        print(value);
-        app.quit();
+        try {
+            print(value);
+        } catch (e) {
+            logError(e, `select: print failed for value=${value}`);
+        }
+        try {
+            app.quit();
+        } catch (e) {
+            logError(e, 'select: app.quit failed');
+        }
     }
 
     // ── Activate ──────────────────────────────────────────────
     app.connect('activate', () => {
         ensureTempDir();
 
+        // Debug log
+        log('share-picker: XDPH_WINDOW_SHARING_LIST=' + (GLib.getenv('XDPH_WINDOW_SHARING_LIST') || '(null)'));
+
         // Fetch Hyprland info
         const hyprMonitors = getHyprMonitors();
         const hyprClients = getHyprClients();
+        log(`share-picker: ${hyprMonitors.length} monitors, ${hyprClients.length} hyprctl clients, ${xdphWindows.length} XDPH windows`);
 
         // Build source states
         const monitorStates: MonitorState[] = hyprMonitors.map(m => ({
@@ -415,11 +427,13 @@ function main() {
 
         // Match XDPH windows to hyprctl client geometries
         const windowStates: WindowState[] = [];
+        let matchedCount = 0;
         for (const w of xdphWindows) {
             const matched = matchXDPHToHyprctl(w, hyprClients);
             let geometry: WindowState['geometry'] = null;
             let hyprAddress: string | null = null;
             if (matched) {
+                matchedCount++;
                 hyprAddress = matched.address;
                 geometry = {
                     x: matched.at[0],
@@ -427,6 +441,8 @@ function main() {
                     width: matched.size[0],
                     height: matched.size[1],
                 };
+            } else {
+                log(`share-picker: no match for XDPH window id=${w.id} class=${w.clazz} title=${w.title}`);
             }
             windowStates.push({
                 kind: 'window' as const,
@@ -438,22 +454,29 @@ function main() {
                 combinedIdx: -1,
             });
         }
+        log(`share-picker: matched ${matchedCount}/${xdphWindows.length} XDPH windows to hyprctl clients`);
 
         // ── Build UI ────────────────────────────────────────
-        // Popup CSS
-        const popupCssProvider = new Gtk.CssProvider();
-        popupCssProvider.load_from_string(`
-            window.picker-popup {
-                border-radius: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        // Popup CSS — wrap in try-catch so display issues don't break the whole picker
+        try {
+            const popupCssProvider = new Gtk.CssProvider();
+            popupCssProvider.load_from_string(`
+                window.picker-popup {
+                    border-radius: 12px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                }
+            `);
+            const display = Gdk.Display.get_default();
+            if (display) {
+                Gtk.StyleContext.add_provider_for_display(
+                    display,
+                    popupCssProvider,
+                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+                );
             }
-        `);
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(),
-            popupCssProvider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
+        } catch (e) {
+            logError(e, 'popup CSS provider');
+        }
 
         const win = new Gtk.Window({
             application: app,
