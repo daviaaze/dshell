@@ -32,6 +32,7 @@ export default ({
             $={self => {
                 if (set) return;
                 set = true;
+                appButtonStyle.$(self);
                 const icon = (
                     <Gtk.Image
                         iconName={application.iconName || ''}
@@ -71,7 +72,6 @@ export default ({
             }}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             cssClasses={['app-button', appButtonStyle.class]}
-            $={appButtonStyle.$}
             onClicked={() => {
                 // Record frecency before launching
                 const desktopId = application.entry ?? application.name;

@@ -216,7 +216,8 @@ export default ({
                     <Gtk.Label
                         visible={timerActive}
                         label={timerDisplay}
-                        cssClasses={['title-1', 'numeric', 'timer-active']}
+                        cssClasses={['title-1', 'numeric', 'timer-active', timerActiveStyle.class]}
+                        $={timerActiveStyle.$}
                     />
                 </Gtk.Box>
                 <Gtk.Box

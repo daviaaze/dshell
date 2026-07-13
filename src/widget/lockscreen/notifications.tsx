@@ -1,6 +1,7 @@
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, createState, onMount, onCleanup} from 'gnim';
+import {useStyle} from '#/style/useStyle';
 import Notification from '#/widget/common/notification';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import logger from '#/lib/core/logger';
@@ -20,6 +21,14 @@ import logger from '#/lib/core/logger';
 const MAX_NOTIFICATIONS = 20;
 
 export const LockscreenNotifications = () => {
+    const lockscreenStyle = useStyle({
+        padding: '8px',
+        background: 'var(--shade-bg, rgba(0,0,0,0.4))',
+        'border-radius': '12px',
+    });
+    const listStyle = useStyle({
+        spacing: '8px',
+    });
     const [notifications, setNotifications] = createState<
         Notifd.Notification[]
     >([]);
@@ -102,12 +111,14 @@ export const LockscreenNotifications = () => {
             hscrollbarPolicy={Gtk.PolicyType.NEVER}
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             css={'max-height: 300px;'}
-            cssClasses={['lockscreen-notifications']}
+            cssClasses={['lockscreen-notifications', lockscreenStyle.class]}
+            $={lockscreenStyle.$}
         >
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
-                cssClasses={['lockscreen-notifications-list']}
+                cssClasses={['lockscreen-notifications-list', listStyle.class]}
+                $={listStyle.$}
             >
                 <For each={notifications}>
                     {(n: Notifd.Notification) => (

@@ -1,6 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, createState} from 'gnim';
+import {useStyle} from '#/style/useStyle';
 
 type SliderProps = {
     icon: Accessor<string> | string;
@@ -16,6 +17,9 @@ const DEBOUNCE_MS = 80;
 const SLIDER_SPACING = 4;
 
 export const Slider = (props: SliderProps) => {
+    const sliderStyle = useStyle({
+        'min-width': '180px',
+    });
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
     const [displayValue, setDisplayValue] = createState(safe(props.value()));
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -45,7 +49,7 @@ export const Slider = (props: SliderProps) => {
     });
 
     return (
-        <Gtk.Box cssClasses={['slider']} spacing={SLIDER_SPACING} visible={props.visible}>
+        <Gtk.Box cssClasses={['slider', sliderStyle.class]} spacing={SLIDER_SPACING} visible={props.visible} $={sliderStyle.$}>
             {props.onIconClick ? (
                 <Gtk.Button onClicked={props.onIconClick}>
                     <Gtk.Image iconName={props.icon} />

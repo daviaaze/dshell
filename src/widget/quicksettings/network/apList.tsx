@@ -17,6 +17,7 @@ import {
     createNMConnection,
 } from './utils';
 import logger from '#/lib/core/logger';
+import {useStyle} from '#/style/useStyle';
 
 /** Icon sizes for AP list rows. */
 const AP_ICON_SIZE = 16;
@@ -376,6 +377,10 @@ function ApRow({
 }
 
 export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
+    const listStyle = useStyle({
+        'max-height': '300px',
+        'overflow-y': 'auto',
+    });
     const activeBssid = createBinding(wifi, 'activeAccessPoint').as(active => {
         if (!active) return null;
         return bssidOf(active);
@@ -395,7 +400,8 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
             orientation={Gtk.Orientation.VERTICAL}
             spacing={0}
             hexpand
-            cssClasses={['network-list']}
+            cssClasses={['network-list', listStyle.class]}
+            $={listStyle.$}
         >
             <For each={sortedAps} id={snap => snap.bssid ?? snap.ssid}>
                 {(snap: ApSnapshot) => {
