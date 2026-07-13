@@ -409,7 +409,9 @@ function captureWindow(
     });
 }
 
+// ── Main ─────────────────────────────────────────────────────────
 
+function main() {
     const windowListStr = GLib.getenv('XDPH_WINDOW_SHARING_LIST');
     const xdphWindows = parseWindowList(windowListStr);
 
