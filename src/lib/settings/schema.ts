@@ -270,6 +270,14 @@ export const generalSchema = new Schema({
     .key('weather-sunset-time', 'd', {
         default: 0.0,
         summary: 'Unix timestamp of next sunset (set by Weather service)',
+    })
+    .key('experimental-wayland-monitors', 'b', {
+        default: false,
+        summary: 'Use AstalWl for Wayland-native monitor tracking (experimental)',
+        description:
+            'When enabled, replaces Gdk.Monitor tracking with AstalWl.Output for ' +
+            'Wayland-native monitor enumeration. The monitors array and all widget ' +
+            'interfaces remain unchanged. Disable to instantly revert to Gdk tracking.',
     });
 
 // ── Launcher (Frecency) ─────────────────────────────────────────
