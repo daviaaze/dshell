@@ -108,9 +108,9 @@ export const LockscreenNotifications = () => {
         <Gtk.ScrolledWindow
             visible={notifications.as(n => n.length > 0)}
             propagateNaturalHeight
+            maxContentHeight={300}
             hscrollbarPolicy={Gtk.PolicyType.NEVER}
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-            css={'max-height: 300px;'}
             cssClasses={['lockscreen-notifications', lockscreenStyle.class]}
             $={lockscreenStyle.$}
         >

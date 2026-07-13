@@ -91,39 +91,47 @@ function onClipboardChanged(clipboard: Gdk.Clipboard) {
     });
 }
 
-async function readClipboardContent(clipboard: Gdk.Clipboard) {
-    try {
-        // Try text first — most common case
-        const text = await clipboard.read_text_async(null);
-        if (text !== null && text.trim().length > 0) {
-            addEntry({
-                type: 'text',
-                content: text,
-                mimeType: 'text/plain',
-            });
-            return;
-        }
-
-        // Try image
+function readClipboardContent(clipboard: Gdk.Clipboard) {
+    // GJS 1.88 requires callback-based API for Gdk.Clipboard async methods
+    clipboard.read_text_async(null, (_source, result) => {
         try {
-            const texture = await clipboard.read_texture_async(null);
-            if (texture !== null) {
-                const bytes = texture.save_to_png_bytes();
-                const filename = `clipboard-${Date.now()}.png`;
-                const filePath = `${CLIPBOARD_DIR}/${filename}`;
-                GLib.file_set_contents(filePath, bytes.toArray());
+            const text = clipboard.read_text_finish(result);
+            if (text !== null && text.trim().length > 0) {
                 addEntry({
-                    type: 'image',
-                    content: filename,
-                    mimeType: 'image/png',
+                    type: 'text',
+                    content: text,
+                    mimeType: 'text/plain',
                 });
+                return;
             }
-        } catch {
-            // Not an image — skip
+
+            // Try image
+            try {
+                clipboard.read_texture_async(null, (_source2, result2) => {
+                    try {
+                        const texture = clipboard.read_texture_finish(result2);
+                        if (texture !== null) {
+                            const bytes = texture.save_to_png_bytes();
+                            const filename = `clipboard-${Date.now()}.png`;
+                            const filePath = `${CLIPBOARD_DIR}/${filename}`;
+                            GLib.file_set_contents(filePath, bytes.toArray());
+                            addEntry({
+                                type: 'image',
+                                content: filename,
+                                mimeType: 'image/png',
+                            });
+                        }
+                    } catch {
+                        // Not an image — skip
+                    }
+                });
+            } catch {
+                // Not an image — skip
+            }
+        } catch (e) {
+            logger.warn('clipboard', 'failed to read clipboard content:', e);
         }
-    } catch (e) {
-        logger.warn('clipboard', 'failed to read clipboard content:', e);
-    }
+    });
 }
 
 function addEntry(data: {type: 'text' | 'image'; content: string; mimeType: string}) {

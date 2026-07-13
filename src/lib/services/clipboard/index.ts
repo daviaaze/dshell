@@ -13,6 +13,7 @@
  */
 
 import logger from '#/lib/core/logger';
+import Gdk from 'gi://Gdk?version=4.0';
 import {
     getHistory,
     searchHistory,
@@ -78,7 +79,7 @@ export async function copyClipboardItem(item: ClipboardItem) {
             // reconstruct from the ClipboardItem. For text, use the text field.
             // For images, we can't reconstruct without the file.
             logger.warn('clipboard', 'entry not found in history, creating from item');
-            const display = (await import('gi://Gdk?version=4.0')).Display.get_default();
+            const display = Gdk.Display.get_default();
             if (display) {
                 display.get_clipboard().set(item.text);
             }

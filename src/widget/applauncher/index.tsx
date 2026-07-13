@@ -21,10 +21,9 @@ type ListItem = Apps.Application | ClipboardItem;
 export default () => {
     const applauncherStyle = useStyle({
         'min-width': '320px',
-        'max-height': '500px',
         padding: '0 4px',
     });
-    const [list, setList] = createState<ListItem[]>(() =>
+    const [list, setList] = createState<ListItem[]>(
         getTopFrecencyApps(FrecencyManager.get_default())
     );
     const [mode, setMode] = createState<LauncherMode>('apps');

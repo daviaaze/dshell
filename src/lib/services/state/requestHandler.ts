@@ -41,66 +41,66 @@ function activateWithString(
 
 function buildCLI(app: Gio.Application): Quarrel.Command {
     // Subcommands
-    const toggle = new Quarrel.Command('toggle')
+    const toggle = new Quarrel.Command({name: 'toggle'})
         .about('Toggle a widget visibility')
         .arg('WIDGET', 'Widget to toggle: launcher, quicksettings, settings, bar, windowswitcher, touchpad')
         .opt(help);
 
-    const screenshot = new Quarrel.Command('screenshot')
+    const screenshot = new Quarrel.Command({name: 'screenshot'})
         .about('Take a fullscreen screenshot')
         .opt(help);
 
-    const screenshotArea = new Quarrel.Command('screenshot-area')
+    const screenshotArea = new Quarrel.Command({name: 'screenshot-area'})
         .about('Take a screensho of a selected area')
         .opt(help);
 
-    const screenshotOverlay = new Quarrel.Command('screenshot-overlay')
+    const screenshotOverlay = new Quarrel.Command({name: 'screenshot-overlay'})
         .about('Open the screenshot/recording overlay UI')
         .opt(help);
 
-    const record = new Quarrel.Command('record')
+    const record = new Quarrel.Command({name: 'record'})
         .about('Start recording fullscreen')
         .opt(help);
 
-    const recordArea = new Quarrel.Command('record-area')
+    const recordArea = new Quarrel.Command({name: 'record-area'})
         .about('Record a selected area')
         .opt(help);
 
-    const recordWindow = new Quarrel.Command('record-window')
+    const recordWindow = new Quarrel.Command({name: 'record-window'})
         .about('Record the focused window')
         .opt(help);
 
-    const recordWindowAddr = new Quarrel.Command('record-window-address')
+    const recordWindowAddr = new Quarrel.Command({name: 'record-window-address'})
         .about('Record a window by its Hyprland address')
         .arg('ADDRESS', 'Hyprland window address (e.g. 0x12345678)')
         .opt(help);
 
-    const recordOutput = new Quarrel.Command('record-output')
+    const recordOutput = new Quarrel.Command({name: 'record-output'})
         .about('Record the focused monitor output')
         .opt(help);
 
-    const lockscreen = new Quarrel.Command('lockscreen')
+    const lockscreen = new Quarrel.Command({name: 'lockscreen'})
         .about('Lock the screen')
         .opt(help);
 
-    const clipboard = new Quarrel.Command('clipboard')
+    const clipboard = new Quarrel.Command({name: 'clipboard'})
         .about('Open launcher in clipboard mode')
         .opt(help);
 
-    const openClipboard = new Quarrel.Command('open-clipboard')
+    const openClipboard = new Quarrel.Command({name: 'open-clipboard'})
         .about('Open clipboard history directly')
         .opt(help);
 
-    const toggleDnd = new Quarrel.Command('toggle-dnd')
+    const toggleDnd = new Quarrel.Command({name: 'toggle-dnd'})
         .about('Toggle Do Not Disturb mode')
         .opt(help);
 
-    const touchpad = new Quarrel.Command('touchpad')
+    const touchpad = new Quarrel.Command({name: 'touchpad'})
         .about('Toggle touchpad enable/disable')
         .opt(help);
 
     // Root CLI
-    const cli = new Quarrel.Command('shade-shell')
+    const cli = new Quarrel.Command({name: 'shade-shell'})
         .about('Shade Shell — Hyprland Adwaita Desktop Environment')
         .subcommand(toggle)
         .subcommand(screenshot)

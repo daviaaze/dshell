@@ -377,10 +377,7 @@ function ApRow({
 }
 
 export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
-    const listStyle = useStyle({
-        'max-height': '300px',
-        'overflow-y': 'auto',
-    });
+    const listStyle = useStyle({});
     const activeBssid = createBinding(wifi, 'activeAccessPoint').as(active => {
         if (!active) return null;
         return bssidOf(active);

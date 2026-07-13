@@ -6,7 +6,8 @@ export const isConservationEnabled = (): boolean => {
     try {
         const [ok, content] = GLib.file_get_contents(PATH);
         if (!ok) return false;
-        return content.toString().trim() === '1';
+        const decoder = new TextDecoder();
+        return decoder.decode(content).trim() === '1';
     } catch {
         return false;
     }

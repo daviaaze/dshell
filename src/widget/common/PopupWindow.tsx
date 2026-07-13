@@ -154,7 +154,6 @@ export default (props: PopupWindowProps) => {
             name={name}
             namespace={name}
             visible={visibleAccessor}
-            visibleMode={Astal.VisibleMode.NORMAL}
             application={app}
             layer={layer}
             keymode={Astal.Keymode.ON_DEMAND}

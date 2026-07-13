@@ -1,5 +1,6 @@
 import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
+import Gio from 'gi://Gio?version=2.0';
 import GObject, {getter, register, setter} from 'gnim/gobject';
 import Geolocation from './geolocation';
 import logger from '#/lib/core/logger';

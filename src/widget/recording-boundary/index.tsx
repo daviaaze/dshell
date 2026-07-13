@@ -121,7 +121,7 @@ export default () => {
     const windows: Astal.Window[] = [];
 
     for (const monitor of monList) {
-        const win = Astal.Window.new();
+        const win = new Astal.Window();
         win.application = app;
         win.gdkmonitor = monitor;
         win.layer = Astal.Layer.OVERLAY;
