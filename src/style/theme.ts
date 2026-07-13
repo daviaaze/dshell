@@ -21,7 +21,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import GObject, {getter} from 'gnim/gobject';
+import GObject, {getter, register} from 'gnim/gobject';
 
 // ── CSS custom property names ──
 
