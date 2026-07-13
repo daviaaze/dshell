@@ -7,7 +7,7 @@
  * Captures window snapshots via grim -g on tab switch.
  *
  * Protocol:
- *   Env: XDPH_WINDOW_SHARING_LIST = "ID[HC>]CLASS[HT>]TITLE[HE>]ADDR[HA>] ..."
+ *   Env: XDPH_WINDOW_SHARING_LIST = "ID[HC>]CLASS[HT>]TITLE[HE>]..."
  *   Args: --allow-token
  *   Stdout: [SELECTION][r]/screen:NAME  or  [SELECTION][r]/window:ID
  */
@@ -43,6 +43,16 @@ interface HyprMonitor {
     height: number;
 }
 
+interface HyprClient {
+    address: string;
+    class: string;
+    title: string;
+    at: [number, number];
+    size: [number, number];
+    mapped: boolean;
+    hidden: boolean;
+}
+
 /** Shared source state — referenced by picture widgets across tabs */
 interface SourceState<S, T> {
     info: S;
@@ -62,6 +72,8 @@ interface MonitorState extends SourceState<HyprMonitor, 'monitor'> {
 interface WindowState extends SourceState<XDPHWindow, 'window'> {
     kind: 'window';
     geometry: { x: number; y: number; width: number; height: number } | null;
+    /** Matched hyprctl client address (hex), null if unmatched */
+    hyprAddress: string | null;
 }
 
 
@@ -94,35 +106,42 @@ function runSync(cmd: string[]): { ok: boolean; out: string; err: string } {
 
 // ── XDPH env parsing ────────────────────────────────────────────
 
+/**
+ * Parse the XDPH_WINDOW_SHARING_LIST environment variable.
+ *
+ * Actual format: ID[HC>]CLASS[HT>]TITLE[HE>]ID[HC>]CLASS[HT>]TITLE[HE>]...
+ *   - [HE>] is the entry delimiter (Handle End)
+ *   - [HC>] separates ID from CLASS (Handle Class)
+ *   - [HT>] separates CLASS from TITLE (Handle Title)
+ *   - [HA>] (optional, newer XDPH) separates TITLE from ADDR (Handle Address)
+ *   - The XDPH "id" is a wayland object handle serial, NOT a Hyprland client address
+ */
 function parseWindowList(env: string | null): XDPHWindow[] {
     if (!env) return [];
     const result: XDPHWindow[] = [];
-    let remaining = env;
 
-    while (remaining.length > 0) {
-        const idSep = remaining.indexOf('[HC>]');
-        if (idSep === -1) break;
-        const id = remaining.substring(0, idSep);
+    const entries = env.split('[HE>]').filter(e => e.trim().length > 0);
 
-        const classSep = remaining.indexOf('[HT>]', idSep);
-        if (classSep === -1) break;
-        const clazz = remaining.substring(idSep + 5, classSep);
+    for (const entry of entries) {
+        const idSep = entry.indexOf('[HC>]');
+        if (idSep === -1) continue;
+        const id = entry.substring(0, idSep);
 
-        const titleSep = remaining.indexOf('[HE>]', classSep);
-        if (titleSep === -1) break;
-        const title = remaining.substring(classSep + 5, titleSep);
+        const classSep = entry.indexOf('[HT>]', idSep);
+        if (classSep === -1) continue;
+        const clazz = entry.substring(idSep + 5, classSep);
 
-        const addrSep = remaining.indexOf('[HA>]', titleSep);
-        const endSep = remaining.indexOf(' ', titleSep + 5);
-        const effectiveEnd = endSep === -1 ? remaining.length : endSep;
+        // Title goes from [HT>] to end of entry (or [HA>] if present)
+        const addrSep = entry.indexOf('[HA>]', classSep);
+        const titleEnd = addrSep !== -1 ? addrSep : entry.length;
+        const title = entry.substring(classSep + 5, titleEnd);
 
         let address = '';
-        if (addrSep !== -1 && addrSep < effectiveEnd) {
-            address = remaining.substring(addrSep + 5, effectiveEnd);
+        if (addrSep !== -1) {
+            address = entry.substring(addrSep + 5);
         }
 
         result.push({id, clazz, title, address});
-        remaining = remaining.substring(effectiveEnd + 1);
     }
 
     return result;
@@ -149,22 +168,63 @@ function getHyprMonitors(): HyprMonitor[] {
     }
 }
 
-function getHyprClientMap(): Map<string, {at: [number, number]; size: [number, number]}> {
+function getHyprClients(): HyprClient[] {
     const {ok, out} = runSync(['hyprctl', '-j', 'clients']);
-    if (!ok) return new Map();
+    if (!ok) return [];
     try {
         const raw = JSON.parse(out);
-        const result = new Map<string, {at: [number, number]; size: [number, number]}>();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const c of raw as any[]) {
-            if (c.mapped && !c.hidden && c.at && c.size) {
-                result.set(c.address, {at: c.at, size: c.size});
-            }
-        }
-        return result;
+        return (raw as any[]).map(c => ({
+            address: c.address ?? '',
+            class: c.class ?? c.initialClass ?? '',
+            title: c.title ?? '',
+            at: c.at ?? [0, 0],
+            size: c.size ?? [0, 0],
+            mapped: c.mapped ?? false,
+            hidden: c.hidden ?? false,
+        }));
     } catch {
-        return new Map();
+        return [];
     }
+}
+
+/**
+ * Match an XDPH window to a hyprctl client.
+ * Priority: 1) address match (if XDPH provides [HA>]), 2) class+title fuzzy match.
+ */
+function matchXDPHToHyprctl(xdphWin: XDPHWindow, clients: HyprClient[]): HyprClient | null {
+    // Direct address match (only works if XDPH provides [HA>])
+    if (xdphWin.address) {
+        const byAddr = clients.find(c => c.address === xdphWin.address);
+        if (byAddr) return byAddr;
+    }
+
+    // Fallback: match by class + title
+    if (!xdphWin.clazz) return null;
+
+    const candidates = clients.filter(c =>
+        c.mapped &&
+        !c.hidden &&
+        c.class.toLowerCase() === xdphWin.clazz.toLowerCase()
+    );
+
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+
+    // Multiple windows with same class — match by title
+    const xdphTitle = xdphWin.title.toLowerCase();
+    const byTitle = candidates.find(c => c.title.toLowerCase() === xdphTitle);
+    if (byTitle) return byTitle;
+
+    // Title prefix match
+    const byPrefix = candidates.find(c =>
+        c.title.toLowerCase().startsWith(xdphTitle) ||
+        xdphTitle.startsWith(c.title.toLowerCase())
+    );
+    if (byPrefix) return byPrefix;
+
+    // Return first mapped candidate as last resort
+    return candidates[0];
 }
 
 // ── Temp files ───────────────────────────────────────────────────
@@ -300,7 +360,8 @@ function captureWindow(
     if (!state.geometry || state.capturing) return;
     state.capturing = true;
     const g = state.geometry;
-    const path = winPath(state.xdph.address);
+    const addr = state.hyprAddress || state.info.address || state.info.id;
+    const path = winPath(addr);
     runCapture([GRIM_BIN, '-g', `${g.x},${g.y} ${g.width}x${g.height}`, path], ok => {
         state.capturing = false;
         if (ok) {
@@ -341,7 +402,7 @@ function main() {
 
         // Fetch Hyprland info
         const hyprMonitors = getHyprMonitors();
-        const clientGeoms = getHyprClientMap();
+        const hyprClients = getHyprClients();
 
         // Build source states
         const monitorStates: MonitorState[] = hyprMonitors.map(m => ({
@@ -354,25 +415,24 @@ function main() {
 
         // Match XDPH windows to hyprctl client geometries
         const windowStates: WindowState[] = [];
-        // Sort: unmapped / no-geometry last
-        const sortedXDPH = [...xdphWindows].sort((a, b) => {
-            const aGeom = a.address && clientGeoms.has(a.address);
-            const bGeom = b.address && clientGeoms.has(b.address);
-            if (aGeom && !bGeom) return -1;
-            if (!aGeom && bGeom) return 1;
-            return 0;
-        });
-        for (const w of sortedXDPH) {
+        for (const w of xdphWindows) {
+            const matched = matchXDPHToHyprctl(w, hyprClients);
             let geometry: WindowState['geometry'] = null;
-            if (w.address && clientGeoms.has(w.address)) {
-                const g = clientGeoms.get(w.address)!;
-                geometry = {x: g.at[0], y: g.at[1], width: g.size[0], height: g.size[1]};
+            let hyprAddress: string | null = null;
+            if (matched) {
+                hyprAddress = matched.address;
+                geometry = {
+                    x: matched.at[0],
+                    y: matched.at[1],
+                    width: matched.size[0],
+                    height: matched.size[1],
+                };
             }
             windowStates.push({
                 kind: 'window' as const,
                 info: w,
-                xdph: w,
                 geometry,
+                hyprAddress,
                 texture: null,
                 capturing: false,
                 combinedIdx: -1,
@@ -380,13 +440,30 @@ function main() {
         }
 
         // ── Build UI ────────────────────────────────────────
+        // Popup CSS
+        const popupCssProvider = new Gtk.CssProvider();
+        popupCssProvider.load_from_string(`
+            window.picker-popup {
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            }
+        `);
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            popupCssProvider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+
         const win = new Gtk.Window({
             application: app,
             title: 'Share Screen / Window',
             defaultWidth: 720,
             defaultHeight: 520,
             resizable: true,
+            decorated: false,
             hideOnClose: true,
+            cssClasses: ['picker-popup'],
         });
 
         const mainBox = new Gtk.Box({
@@ -475,12 +552,12 @@ function main() {
 
                 const btn = buildCard(
                     windowsFlow,
-                    state.xdph.clazz || state.xdph.title,
+                    state.info.clazz || state.info.title,
                     state.geometry
                         ? `${state.geometry.width}×${state.geometry.height}`
                         : 'No preview (hidden or off-screen)',
                     pic,
-                    () => select(`[SELECTION]${tokenRestore ? 'r' : ''}/window:${state.xdph.id}`),
+                    () => select(`[SELECTION]${tokenRestore ? 'r' : ''}/window:${state.info.id}`),
                 );
 
                 // Disable button if no geometry (can't capture)
@@ -543,10 +620,10 @@ function main() {
                 combinedWinPics.push(pic);
                 const btn = buildCard(
                     combinedWinFlow,
-                    state.xdph.clazz || state.xdph.title,
+                    state.info.clazz || state.info.title,
                     state.geometry ? `${state.geometry.width}×${state.geometry.height}` : 'No preview',
                     pic,
-                    () => select(`[SELECTION]${tokenRestore ? 'r' : ''}/window:${state.xdph.id}`),
+                    () => select(`[SELECTION]${tokenRestore ? 'r' : ''}/window:${state.info.id}`),
                 );
                 if (!state.geometry) btn.sensitive = false;
             }
@@ -621,7 +698,8 @@ function main() {
                     captureWindow(state, [windowPics[i]]);
                     // Also fill combined tab
                     if (combinedWinPics.length > i) {
-                        const path = winPath(state.xdph.address);
+                        const addr = state.hyprAddress || state.info.address || state.info.id;
+                        const path = winPath(addr);
                         loadTexture(path, combinedWinPics[i]);
                     }
                 }
@@ -650,7 +728,8 @@ function main() {
                 for (let i = 0; i < windowStates.length; i++) {
                     const state = windowStates[i];
                     if (state.geometry) {
-                        const path = winPath(state.xdph.address);
+                        const addr = state.hyprAddress || state.info.address || state.info.id;
+                        const path = winPath(addr);
                         runCapture(
                             [GRIM_BIN, '-g', `${state.geometry.x},${state.geometry.y} ${state.geometry.width}x${state.geometry.height}`, path],
                             (ok) => {
