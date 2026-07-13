@@ -183,16 +183,19 @@ export default () => {
                 <Adw.SpinRow
                     title={'Idle Timeout'}
                     subtitle={'Seconds of inactivity before locking'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={60}
-                                upper={1800}
-                                stepIncrement={30}
-                                value={settings.idleTimeout}
-                            />
-                        ) as Gtk.Adjustment
-                    }
+                    $={self => {
+                        // Enforce chain: dim-timeout must stay below idle-timeout
+                        const adj = self.adjustment!;
+                        settings.idleTimeout.subscribe(() => {
+                            self.value = settings.idleTimeout();
+                        });
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: 60,
+                            upper: 1800,
+                            stepIncrement: 30,
+                            value: settings.idleTimeout(),
+                        });
+                    }}
                     onNotifyValue={self => settings.setIdleTimeout(self.value)}
                 />
                 <Adw.SwitchRow
@@ -206,16 +209,20 @@ export default () => {
                 <Adw.SpinRow
                     title={'Dim Timeout'}
                     subtitle={'Seconds before lock to start dimming'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={30}
-                                upper={1740}
-                                stepIncrement={30}
-                                value={settings.screenDimTimeout}
-                            />
-                        ) as Gtk.Adjustment
-                    }
+                    $={self => {
+                        settings.screenDimTimeout.subscribe(() => {
+                            self.value = settings.screenDimTimeout();
+                        });
+                        settings.idleTimeout.subscribe(() => {
+                            self.adjustment!.upper = Math.max(30, settings.idleTimeout() - 10);
+                        });
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: 30,
+                            upper: settings.idleTimeout() - 10,
+                            stepIncrement: 30,
+                            value: settings.screenDimTimeout(),
+                        });
+                    }}
                     onNotifyValue={self =>
                         settings.setScreenDimTimeout(self.value)
                     }
@@ -231,16 +238,20 @@ export default () => {
                 <Adw.SpinRow
                     title={'Display Timeout'}
                     subtitle={'Seconds before turning off display'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={70}
-                                upper={3600}
-                                stepIncrement={30}
-                                value={settings.dpmsTimeout}
-                            />
-                        ) as Gtk.Adjustment
-                    }
+                    $={self => {
+                        settings.dpmsTimeout.subscribe(() => {
+                            self.value = settings.dpmsTimeout();
+                        });
+                        settings.idleTimeout.subscribe(() => {
+                            self.adjustment!.lower = settings.idleTimeout() + 10;
+                        });
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: settings.idleTimeout() + 10,
+                            upper: 3600,
+                            stepIncrement: 30,
+                            value: settings.dpmsTimeout(),
+                        });
+                    }}
                     onNotifyValue={self => settings.setDpmsTimeout(self.value)}
                 />
                 <Adw.SwitchRow
@@ -255,16 +266,20 @@ export default () => {
                     title={'Suspend Timeout'}
                     subtitle={'Seconds before suspending'}
                     sensitive={settings.suspendEnabled}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={80}
-                                upper={7200}
-                                stepIncrement={60}
-                                value={settings.suspendTimeout}
-                            />
-                        ) as Gtk.Adjustment
-                    }
+                    $={self => {
+                        settings.suspendTimeout.subscribe(() => {
+                            self.value = settings.suspendTimeout();
+                        });
+                        settings.dpmsTimeout.subscribe(() => {
+                            self.adjustment!.lower = settings.dpmsTimeout() + 10;
+                        });
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: settings.dpmsTimeout() + 10,
+                            upper: 7200,
+                            stepIncrement: 60,
+                            value: settings.suspendTimeout(),
+                        });
+                    }}
                     onNotifyValue={self =>
                         settings.setSuspendTimeout(self.value)
                     }

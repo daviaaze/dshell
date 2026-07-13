@@ -21,6 +21,8 @@ import Touchpad from '#/lib/services/input/touchpad';
 import PaletteGenerator from '#/style/palette';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import NotificationHistory from '#/lib/services/notifications/history';
+import DndService from '#/lib/services/notifications/dnd';
+import SoundAlertService from '#/lib/services/audio/soundAlerts';
 import TimerService from './quicksettings/timer/TimerService';
 import {initAutoSwitch} from '#/lib/services/audio/autoSwitch';
 import {initAppWatcher} from '#/lib/services/state/apps';
@@ -100,6 +102,14 @@ function getServiceDescriptors(
         {
             name: 'Notifd (pre-init)',
             init: () => getNotifdSafe(),
+        },
+        {
+            name: 'DndService',
+            init: () => DndService.get_default().init(),
+        },
+        {
+            name: 'SoundAlerts',
+            init: () => SoundAlertService.get_default().init(s.general),
         },
         {
             name: 'NotificationHistory',

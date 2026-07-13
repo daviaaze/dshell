@@ -24,7 +24,7 @@ export default () => {
                     settings.latitude(),
                     -90.0,
                     90.0,
-                    10.0,
+                    1.0,
                     0,
                     0
                 )}
@@ -37,7 +37,7 @@ export default () => {
                     settings.longitude(),
                     -180.0,
                     180.0,
-                    10.0,
+                    1.0,
                     0,
                     0
                 )}

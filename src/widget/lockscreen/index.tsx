@@ -4,7 +4,6 @@ import Astal from 'gi://Astal?version=4.0';
 import AstalAuth from 'gi://AstalAuth?version=0.1';
 import Gdk from 'gi://Gdk?version=4.0';
 import SessionLock from 'gi://Gtk4SessionLock';
-import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {
@@ -19,7 +18,7 @@ import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
 import logger from '#/lib/core/logger';
 import FingerprintAuth from '#/lib/services/input/fingerprint';
-import {Process} from '#/lib/core/process';
+import Brightness from '#/lib/services/display/brightness';
 import {LockscreenNotifications} from './notifications';
 import {LockscreenWidgets} from './widgets';
 
@@ -146,28 +145,21 @@ function createFingerprintAuth(
 }
 
 // ── Brightness save/restore ──
+// Uses AstalBrightness directly to avoid brightnessctl dependency.
 
-function saveBrightness(): string {
+function saveBrightness(): number {
     try {
-        // eslint-disable-next-line sonarjs/publicly-writable-directories
-        const resumeFile = Gio.File.new_for_path('/tmp/shade-brightness-resume');
-        if (resumeFile.query_exists(null)) {
-            const [, contents] = resumeFile.load_contents(null);
-            const value = new TextDecoder().decode(contents).trim();
-            resumeFile.delete(null);
-            return value;
-        }
-        return Process.exec('brightnessctl get');
+        return Brightness.get_default().screen;
     } catch (e) {
         logger.warn('lockscreen', 'could not save brightness:', e);
-        return '';
+        return -1;
     }
 }
 
-function restoreBrightness(value: string) {
-    if (!value) return;
+function restoreBrightness(value: number) {
+    if (value < 0) return;
     try {
-        Process.exec(`brightnessctl set ${value}`);
+        Brightness.get_default().screen = value;
     } catch (e) {
         logger.warn('lockscreen', 'failed to restore brightness:', e);
     }

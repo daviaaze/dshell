@@ -6,6 +6,7 @@ import Weather from './weather';
 import General from './general';
 import Clock from './clock';
 import Network from './network';
+import ScreenCapture from './screenCapture';
 import {app} from '#/App';
 
 export const createSettingsWindow = (): Adw.Window => {
@@ -34,6 +35,7 @@ export const createSettingsWindow = (): Adw.Window => {
                     <Bar />
                     <Clock />
                     <Network />
+                    <ScreenCapture />
                     <Weather />
                 </Adw.PreferencesPage>
             </Gtk.Box>

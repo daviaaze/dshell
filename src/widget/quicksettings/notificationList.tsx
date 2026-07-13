@@ -6,6 +6,7 @@ import GLib from 'gi://GLib?version=2.0';
 import {createBinding, createState, For, onMount} from 'gnim';
 import Notification from '#/widget/common/notification';
 import NotificationHistory from '#/lib/services/notifications/history';
+import DndService from '#/lib/services/notifications/dnd';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import type {HistoryEntry} from '#/lib/services/notifications/history';
 import {useSettings} from '#/lib/settings';
@@ -28,14 +29,16 @@ const NotificationListContent = ({
     setShowHistory: ReturnType<typeof createState<boolean>>[1];
     showProgress: boolean;
 }) => {
+    const dnd = DndService.get_default();
+
     const Header = () => {
         const DNDButton = () => (
             <Gtk.ToggleButton
-                onClicked={self => (notifd.dontDisturb = self.active)}
-                active={createBinding(notifd, 'dontDisturb')}
+                onClicked={self => (dnd.dnd = self.active)}
+                active={createBinding(dnd, 'dnd')}
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
                 iconName={'notifications-disabled-symbolic'}
-                cssClasses={createBinding(notifd, 'dontDisturb').as(d =>
+                cssClasses={createBinding(dnd, 'dnd').as(d =>
                     d ? ['suggested-action', 'warning'] : ['flat']
                 )}
             />
@@ -47,7 +50,13 @@ const NotificationListContent = ({
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
                 onClicked={() =>
                     // eslint-disable-next-line sonarjs/no-nested-functions
-                    notifd.get_notifications().forEach(n => n.dismiss())
+                    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                        const notifs = notifd.get_notifications();
+                        for (const n of notifs) {
+                            n.dismiss();
+                        }
+                        return GLib.SOURCE_REMOVE;
+                    })
                 }
             >
                 <Adw.ButtonContent
@@ -112,7 +121,14 @@ const NotificationListContent = ({
                     iconName={'edit-clear-all-symbolic'}
                     valign={Gtk.Align.END}
                     // eslint-disable-next-line sonarjs/no-nested-functions
-                    onClicked={() => notifications.forEach(n => n.dismiss())}
+                    onClicked={() => {
+                        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                            for (const n of notifications) {
+                                n.dismiss();
+                            }
+                            return GLib.SOURCE_REMOVE;
+                        });
+                    }}
                 />
             </Gtk.Box>
         );

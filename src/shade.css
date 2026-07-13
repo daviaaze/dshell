@@ -4,13 +4,15 @@
  * Leverages Libadwaita's built-in classes (card, frame, title-*, caption, etc.)
  * and GTK4 CSS extensions (@define-color, alpha(), mix()).
  *
- * Dynamic theming (matugen) overrides accent_color, accent_bg_color,
- * and destructive_color via a higher-priority CSS provider managed by Theming.
+ * Palette colors are injected by Theme manager via CSS custom properties.
+ * Widget-specific classes migrate to useStyle() per-component (see Phase 2).
  *
  * Token hierarchy:
  *   Layer 0 — GTK/Libadwaita defaults (built-in)
- *   Layer 1 — shade.css (this file, PRIORITY_USER)
- *   Layer 2 — Theming dynamic overrides (PRIORITY_USER + 1)
+ *   Layer 1 — reset.css (base resets, loaded separately)
+ *   Layer 2 — shade.css (this file, PRIORITY_USER)
+ *   Layer 3 — Theme manager (CSS custom properties, PRIORITY_USER)
+ *   Layer 4 — useStyle scoped classes (PRIORITY_USER + 10)
  */
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -23,22 +25,6 @@
     background: oklab(from var(--window-bg-color) l a b / 0.75);
 }
 
-/* Tooltip — our .background override bleeds into tooltips.
-   Reset to proper theme colors. */
-tooltip.background {
-    background: var(--window-bg-color);
-}
-
-tooltip.background label {
-    color: var(--window-fg-color);
-}
-
-/* Tray popover — remove heavy drop-shadow */
-popover.tray-menu.background,
-popover.tray-menu > contents.background.menu {
-    box-shadow: none;
-}
-
 /* Card — tighter padding than Libadwaita's default */
 .card {
     padding: 4px;
@@ -48,20 +34,11 @@ popover.tray-menu > contents.background.menu {
    SPACING UTILITIES
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.p-8 {
-    padding: 8px;
-}
-.p-12 {
-    padding: 12px;
-}
+.p-8 { padding: 8px; }
+.p-12 { padding: 12px; }
 
-/* Popover content margins */
-.popover-padded {
-    margin: 8px;
-}
-.popover-padded-lg {
-    margin: 12px;
-}
+.popover-padded { margin: 8px; }
+.popover-padded-lg { margin: 12px; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TYPOGRAPHY
@@ -70,263 +47,4 @@ popover.tray-menu > contents.background.menu {
 /* Monospaced digits for clocks, stats, counters */
 .numeric {
     font-feature-settings: 'tnum';
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   BAR (top/bottom panel)
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.bar {
-    min-height: 32px;
-}
-
-.bar-centerbox {
-    min-height: 30px;
-    padding: 0 8px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   QUICK SETTINGS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.quicksettings {
-    border-radius: 12px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   NOTIFICATIONS
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.notifications {
-    background: transparent;
-    box-shadow: none;
-}
-
-.notification-card {
-    border-left: 3px solid transparent;
-    transition: border-color 200ms ease;
-}
-
-.notification-critical {
-    border-left-color: var(--error_color);
-    background: alpha(var(--error_color), 0.06);
-}
-
-.notification-image {
-    border-radius: 6px;
-}
-
-.notification-progress {
-    min-height: 3px;
-}
-
-.notification-progress progress {
-    background: alpha(var(--accent_color), 0.3);
-    border-radius: 2px;
-    min-height: 3px;
-}
-
-.notification-progress trough {
-    background: alpha(var(--window-fg-color), 0.08);
-    min-height: 3px;
-    border-radius: 2px;
-}
-
-.notification-actions {
-    margin-top: 4px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   APP LAUNCHER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.applauncher-body {
-    padding: 12px;
-}
-
-.app-button {
-    padding: 4px 8px;
-    border-radius: 8px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   LOCKSCREEN
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.lockscreen-time {
-    font-size: 4em;
-}
-
-.lockscreen-date {
-    margin-bottom: 12px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   DOCK
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.dock {
-    border-radius: 12px;
-    padding: 4px;
-    background: alpha(var(--window-bg-color), 0.7);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   WINDOW SWITCHER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.windowswitcher {
-    border-radius: 16px;
-    padding: 12px 20px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SLIDER OVERRIDES
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Astal Slider minimum height */
-.slider {
-    min-height: 32px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   MEDIA PLAYER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.media-thumbnail {
-    border-radius: 8px;
-    min-width: 48px;
-    min-height: 48px;
-}
-
-.media-position {
-    min-height: 6px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   RECORDING INDICATOR
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.recording-duration {
-    font-weight: 700;
-    font-size: 0.85em;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TIMER
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.timer-active {
-    color: var(--accent-color);
-}
-
-.timer-display {
-    font-size: 2em;
-    font-weight: 700;
-}
-
-.timer-label {
-    opacity: 0.7;
-    font-size: 0.9em;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   WIFI NETWORK LIST
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.network-list {
-    background: alpha(var(--window-fg-color), 0.04);
-    border-radius: 8px;
-    padding: 0;
-}
-
-.network-list > box {
-    padding: 8px 12px;
-    border-bottom: 1px solid alpha(var(--window-fg-color), 0.08);
-}
-
-.network-list > box:last-child {
-    border-bottom: none;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   WEATHER WIDGET
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.weather-widget {
-    border-radius: 12px;
-    min-width: 280px;
-}
-
-.weather-temp {
-    font-size: 2em;
-    font-weight: 700;
-}
-
-.weather-temp-small {
-    font-size: 0.8em;
-}
-
-.weather-section {
-    border-top: 1px solid alpha(var(--window-fg-color), 0.1);
-}
-
-.weather-section-label {
-    margin-bottom: 4px;
-    opacity: 0.7;
-}
-
-.weather-hourly-item {
-    min-width: 36px;
-    padding: 2px 4px;
-    background: alpha(var(--window-fg-color), 0.05);
-    border-radius: 6px;
-}
-
-.weather-hourly-time {
-    font-size: 0.7em;
-    opacity: 0.6;
-}
-
-.weather-hourly-temp {
-    font-size: 0.8em;
-    font-weight: 600;
-}
-
-.weather-daily-item {
-    padding: 4px 8px;
-    background: alpha(var(--window-fg-color), 0.05);
-    border-radius: 8px;
-}
-
-.weather-detail-card {
-    padding: 8px;
-    background: alpha(var(--window-fg-color), 0.06);
-    border-radius: 8px;
-}
-
-.weather-detail-value {
-    font-weight: 600;
-    font-size: 1em;
-}
-
-.weather-refresh {
-    margin: 4px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ACCESSIBILITY
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-@media (prefers-reduced-motion: reduce) {
-    /* Disable all transitions and animations for accessibility */
-    * {
-        transition-property: none;
-        transition-duration: 0ms;
-    }
-
-    /* Keep revealer functional but instant */
-    GtkRevealer {
-        transition-duration: 0ms;
-    }
 }

@@ -62,7 +62,7 @@ export default class NightLight extends GObject.Object {
 
     @setter(Number)
     set temperature(v: number) {
-        v = Math.max(2000, Math.min(6500, v));
+        v = Math.max(TEMP_MIN, Math.min(TEMP_MAX, v));
         if (this.#temperature === v) return;
         this.#temperature = v;
         this.#settings?.setNightLightTemperature(v);

@@ -57,7 +57,10 @@ export default ({
     const [disk, setDisk] = createState(0);
     const [temp, setTemp] = createState(0);
     const [tempAvailable, setTempAvailable] = createState(false);
-    const INTERVAL = 1000;
+    const POLL_INTERVAL = 1000;
+    /** hwmon temp1_input is millidegrees. Divide by 1000 for °C, then 100 maps to LevelBar max (0..1). */
+    const TEMP_TO_LEVELBAR = 100000;
+    const LEVEL_BAR_SIZE = 50;
 
     // Resolve temp path: explicit config takes priority, but validate it exists.
     const userPath = settings.bar.tempPath();
@@ -81,7 +84,7 @@ export default ({
 
     let tempFailed = false;
 
-    const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, INTERVAL, () => {
+    const timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_INTERVAL, () => {
         const cpuTop = new GTop.glibtop_cpu();
         GTop.glibtop_get_cpu(cpuTop);
         const total = cpuTop.total - lastCpuTop().total;
@@ -105,7 +108,7 @@ export default ({
                 const [success, contents] = file.load_contents(null);
                 if (success) {
                     const value = parseInt(new TextDecoder().decode(contents));
-                    setTemp(value / 100000);
+                    setTemp(value / TEMP_TO_LEVELBAR);
                     setTempAvailable(true);
                 }
             } catch (e) {
@@ -159,8 +162,8 @@ export default ({
                 valign={Gtk.Align.CENTER}
                 inverted={vertical}
                 value={value}
-                widthRequest={vertical.as(v => (v ? -1 : 50))}
-                heightRequest={vertical.as(v => (v ? 50 : -1))}
+                widthRequest={vertical.as(v => (v ? -1 : LEVEL_BAR_SIZE))}
+                heightRequest={vertical.as(v => (v ? LEVEL_BAR_SIZE : -1))}
             />
         </Gtk.Box>
     );

@@ -1,6 +1,5 @@
 import Notifd from 'gi://AstalNotifd';
 import Hyprland from 'gi://AstalHyprland';
-import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {
@@ -12,12 +11,13 @@ import {
     onCleanup,
 } from 'gnim';
 import Notification from '#/widget/common/notification';
-import {app} from '#/App';
+import PopupWindow from '#/widget/common/PopupWindow';
 import WindowManager from '#/lib/services/state/windowManager';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import {useSettings} from '#/lib/settings';
 import logger from '#/lib/core/logger';
 import ShellState from '#/lib/services/state/shellState';
+import DndService from '#/lib/services/notifications/dnd';
 import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 const NotificationContent = ({
@@ -133,6 +133,7 @@ export default () => {
     const [notifd, setNotifd] = createState<Notifd.Notifd | null>(null);
     const [notificationCount, setNotificationCount] = createState(0);
     const [dontDisturb, setDontDisturb] = createState(false);
+    const dnd = DndService.get_default();
     const hyprland = Hyprland.get_default();
     const settings = useSettings().general;
     const showProgress = settings.notificationShowProgress();
@@ -152,9 +153,9 @@ export default () => {
             initialized = true;
             if (cached) {
                 setNotifd(cached);
-                setDontDisturb(cached.dontDisturb);
-                connectFor(_hn, cached, 'notify::dontDisturb', () => {
-                    setDontDisturb(cached.dontDisturb);
+                setDontDisturb(dnd.dnd);
+                connectFor(_hn, dnd, 'notify::dnd', () => {
+                    setDontDisturb(dnd.dnd);
                 });
             }
             onCleanup(() => cleanupNode(_hn));
@@ -169,9 +170,9 @@ export default () => {
                 return GLib.SOURCE_REMOVE;
             }
             setNotifd(n);
-            setDontDisturb(n.dontDisturb);
-            connectFor(_hn, n, 'notify::dontDisturb', () => {
-                setDontDisturb(n.dontDisturb);
+            setDontDisturb(dnd.dnd);
+            connectFor(_hn, dnd, 'notify::dnd', () => {
+                setDontDisturb(dnd.dnd);
             });
             return GLib.SOURCE_REMOVE;
         });
@@ -194,11 +195,9 @@ export default () => {
     );
 
     return (
-        <Astal.Window
-            $={self => WindowManager.get_default().setNotifications(self)}
-            name={'notifications'}
+        <PopupWindow
+            name="notifications"
             margin={12}
-            cssClasses={['notifications']}
             visible={createComputed(
                 () =>
                     notifd() !== null &&
@@ -206,13 +205,7 @@ export default () => {
                     !dontDisturb() &&
                     !screenlocked()
             )}
-            anchor={
-                Astal.WindowAnchor.RIGHT |
-                Astal.WindowAnchor.TOP |
-                Astal.WindowAnchor.BOTTOM
-            }
-            monitor={createBinding(hyprland, 'focusedMonitor').as(m => m.id)}
-            application={app}
+            $={self => WindowManager.get_default().setNotifications(self)}
         >
             <For each={notifd.as(n => (n ? [n] : ([] as Notifd.Notifd[])))}>
                 {(n: Notifd.Notifd) => (
@@ -223,6 +216,6 @@ export default () => {
                     />
                 )}
             </For>
-        </Astal.Window>
-    ) as Astal.Window;
+        </PopupWindow>
+    );
 };

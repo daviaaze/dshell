@@ -14,3 +14,14 @@ export function fmtOffset(local: GLib.TimeZone, remote: GLib.TimeZone): string {
 export function cityName(tzId: string): string {
     return tzId.split('/').pop()?.replaceAll('_', ' ') ?? tzId;
 }
+
+/** Format milliseconds as a human-readable duration (e.g. "1:05:30", "5:00"). */
+export function fmtDuration(ms: number): string {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0)
+        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}

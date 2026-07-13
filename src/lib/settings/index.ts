@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio';
 import {createSettings} from 'gnim-schemas';
 import {createContext} from 'gnim';
-import {barSchema, generalSchema, weatherSchema, timerSchema} from './schema';
+import {barSchema, generalSchema, weatherSchema, timerSchema, screenCaptureSchema} from './schema';
 
 // Constraint derived from gnim-schemas' own `createSettings` signature so we
 // preserve full schema type inference (accessors + setters) without leaking an
@@ -26,6 +26,7 @@ function createAppSettings() {
         general: createSettingsGroup(generalSchema),
         weather: createSettingsGroup(weatherSchema),
         timer: createSettingsGroup(timerSchema),
+        screenCapture: createSettingsGroup(screenCaptureSchema),
     };
 }
 

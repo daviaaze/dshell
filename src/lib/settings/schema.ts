@@ -69,6 +69,7 @@ export const barSchema = new Schema({
     .key('dock-icon-size', 'i', {
         default: 48,
         summary: 'Size of dock icons in pixels',
+        range: {min: 24, max: 64},
     })
     .key('dock-pinned-apps', 'as', {
         default: [
@@ -147,12 +148,35 @@ export const generalSchema = new Schema({
     .key('night-light-temperature', 'i', {
         default: 3500,
         summary: 'Night light color temperature in Kelvin (2000-6500)',
+        range: {min: 2000, max: 6500},
     })
     .key('night-light-auto-schedule', 'b', {
         default: false,
         summary:
             'Automatically enable night light at sunset and disable at sunrise',
     })
+    // ── Sound Alerts ────────────────────────────────────────────────────
+    .key('sound-alerts-enabled', 'b', {
+        default: true,
+        summary: 'Master toggle for all sound alerts',
+    })
+    .key('sound-alert-notification', 'b', {
+        default: true,
+        summary: 'Play sound on notification arrival',
+    })
+    .key('sound-alert-capture', 'b', {
+        default: true,
+        summary: 'Play sound on screenshot/recording events',
+    })
+    .key('sound-alert-battery', 'b', {
+        default: true,
+        summary: 'Play sound on low battery warning',
+    })
+    .key('sound-alert-system', 'b', {
+        default: true,
+        summary: 'Play sound on system events (lock/unlock, power, devices)',
+    })
+
     // ── Idle Management (Hypridle) ─────────────────────────────────────
     // These keys are consumed by Hypridle which generates a hypridle.conf.
     // The timeout chain must satisfy: dim < idle < dpms < suspend.
@@ -169,6 +193,7 @@ export const generalSchema = new Schema({
         description:
             'After this many seconds of inactivity, the screen locks. ' +
             'dim-timeout should be lower, dpms-timeout and suspend-timeout should be higher.',
+        range: {min: 60, max: 1800},
     })
     .key('screen-dim-enabled', 'b', {
         default: true,
@@ -181,6 +206,7 @@ export const generalSchema = new Schema({
         default: 240,
         summary:
             'Seconds of inactivity before dimming. Valid range: 30 to (idle-timeout - 10).',
+        range: {min: 30, max: 1790},
     })
     .key('dpms-enabled', 'b', {
         default: true,
@@ -190,6 +216,7 @@ export const generalSchema = new Schema({
         default: 600,
         summary:
             'Seconds of inactivity before DPMS off. Valid range: (idle-timeout + 10) to 3600.',
+        range: {min: 70, max: 3600},
     })
     .key('suspend-enabled', 'b', {
         default: false,
@@ -202,10 +229,12 @@ export const generalSchema = new Schema({
         default: 1800,
         summary:
             'Seconds of inactivity before system suspend. Valid range: (dpms-timeout + 10) to 7200.',
+        range: {min: 80, max: 7200},
     })
     .key('notification-history-limit', 'i', {
         default: 100,
         summary: 'Maximum number of notifications to keep in history',
+        range: {min: 20, max: 500},
     })
     .key('notification-show-progress', 'b', {
         default: true,

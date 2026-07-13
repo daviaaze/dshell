@@ -14,6 +14,7 @@ import Touchpad from '#/lib/services/input/touchpad';
 import {widgets} from './widget';
 import logger, {perf} from '#/lib/core/logger';
 import css from './shade.css';
+import resetCss from './style/reset.css';
 
 @register()
 export class ShadeShell extends Adw.Application {
@@ -37,16 +38,26 @@ export class ShadeShell extends Adw.Application {
             logger.warn('app', 'No display available. Cannot initialize CSS.');
             return;
         }
+
+        // Layer 1 — base resets (tooltips, popovers, accessibility)
+        const resetProvider = new Gtk.CssProvider();
+        resetProvider.load_from_data(resetCss, -1);
+        Gtk.StyleContext.add_provider_for_display(
+            display,
+            resetProvider,
+            Gtk.STYLE_PROVIDER_PRIORITY_USER - 1
+        );
+
+        // Layer 2 — shell design tokens and global utility classes
         const provider = new Gtk.CssProvider();
         provider.load_from_data(css, -1);
-
         Gtk.StyleContext.add_provider_for_display(
             display,
             provider,
             Gtk.STYLE_PROVIDER_PRIORITY_USER
         );
 
-        logger.debug('mount', 'CSS provider registered');
+        logger.debug('mount', 'CSS providers registered');
         perf.stop('initCss', 'mount');
     }
 

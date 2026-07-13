@@ -3,6 +3,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {getter, register} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
+import {fmtDuration} from '#/lib/core/time';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 
@@ -28,6 +29,9 @@ export default class TimerService extends GObject.Object {
     #app: Adw.Application | null = null;
     #initialized = false;
     #notificationId = 0;
+
+    /** Timer tick interval in milliseconds. */
+    static readonly TICK_MS = 1000;
 
     // ── Pomodoro settings ──
     #workDuration = 25 * 60 * 1000;
@@ -77,7 +81,7 @@ export default class TimerService extends GObject.Object {
         this.#remaining = ms;
         this.#total = ms;
         this.#mode = 'countdown';
-        this.#label = customLabel || this.#fmtDuration(ms);
+        this.#label = customLabel || fmtDuration(ms);
         this.#notifyAll();
         this.#startTick();
     }
@@ -139,8 +143,8 @@ export default class TimerService extends GObject.Object {
         this.#stopTick();
         this.#running = true;
         this.notify('running');
-        this.#tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-            this.#remaining -= 1000;
+        this.#tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TimerService.TICK_MS, () => {
+            this.#remaining -= TimerService.TICK_MS;
             if (this.#remaining <= 0) {
                 this.#remaining = 0;
                 this.notify('remaining');
@@ -226,16 +230,6 @@ export default class TimerService extends GObject.Object {
             logger.warn('timer', 'Failed to send notification:', e);
             print(`[Timer] ${title} — ${body}`);
         }
-    }
-
-    #fmtDuration(ms: number): string {
-        const totalSec = Math.floor(ms / 1000);
-        const h = Math.floor(totalSec / 3600);
-        const m = Math.floor((totalSec % 3600) / 60);
-        const s = totalSec % 60;
-        if (h > 0)
-            return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
     #notifyAll() {

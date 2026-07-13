@@ -4,13 +4,12 @@ import Brightness from '#/lib/services/display/brightness';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
 import Touchpad from '#/lib/services/input/touchpad';
-import AstalHyprland from 'gi://AstalHyprland';
-import Popup from './popup';
 import GObject from 'gnim/gobject';
-import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {app} from '#/App';
+import Astal from 'gi://Astal?version=4.0';
+import PopupWindow from '#/widget/common/PopupWindow';
 import WindowManager from '#/lib/services/state/windowManager';
+import Popup from './popup';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';
@@ -18,7 +17,6 @@ const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';
 export default () => {
     const brightness = Brightness.get_default();
     const audio = Wireplumber.get_default()!.audio;
-    const hyprland = AstalHyprland.get_default();
 
     const speakerIcon = createComputed(
         [
@@ -40,7 +38,7 @@ export default () => {
             mute || volume === 0 ? MUTED_MIC_ICON : volumeIcon
     );
 
-    const popupList: GObject.Object[] = [
+    const popupList: Gtk.Revealer[] = [
         <Popup
             connectable={audio.defaultSpeaker}
             signals={['notify::volume', 'notify::mute']}
@@ -85,22 +83,19 @@ export default () => {
     ];
 
     return (
-        <Astal.Window
-            $={self => WindowManager.get_default().setOsd(self)}
-            name={'osd'}
+        <PopupWindow
+            name="osd"
             widthRequest={250}
-            application={app}
             margin={24}
-            layer={Astal.Layer.OVERLAY}
-            monitor={createBinding(hyprland, 'focusedMonitor').as(m => m.id)}
-            cssClasses={[]}
             anchor={Astal.WindowAnchor.BOTTOM}
+            layer={Astal.Layer.OVERLAY}
             visible={createComputed(
                 (popupList as Gtk.Revealer[]).map(p =>
                     createBinding(p, 'revealChild')
                 ),
                 (...r: boolean[]) => r.reduce((a, b) => a || b)
             )}
+            $={self => WindowManager.get_default().setOsd(self)}
         >
             <Gtk.Box
                 cssClasses={['linked', 'card', 'background']}
@@ -111,6 +106,6 @@ export default () => {
             >
                 {popupList}
             </Gtk.Box>
-        </Astal.Window>
-    ) as Astal.Window;
+        </PopupWindow>
+    );
 };

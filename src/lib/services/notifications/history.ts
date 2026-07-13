@@ -27,19 +27,27 @@ function loadHistory(): HistoryEntry[] {
     }
 }
 
+let savePending = false;
+
 function saveHistory(history: HistoryEntry[]) {
-    try {
-        const dir = Gio.File.new_for_path(CACHE_DIR);
-        if (!dir.query_exists(null)) {
-            dir.make_directory_with_parents(null);
+    if (savePending) return;
+    savePending = true;
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        savePending = false;
+        try {
+            const dir = Gio.File.new_for_path(CACHE_DIR);
+            if (!dir.query_exists(null)) {
+                dir.make_directory_with_parents(null);
+            }
+            GLib.file_set_contents(
+                HISTORY_FILE,
+                new TextEncoder().encode(JSON.stringify(history))
+            );
+        } catch (e) {
+            logger.error('history', 'save failed:', e);
         }
-        GLib.file_set_contents(
-            HISTORY_FILE,
-            new TextEncoder().encode(JSON.stringify(history))
-        );
-    } catch (e) {
-        logger.error('history', 'save failed:', e);
-    }
+        return GLib.SOURCE_REMOVE;
+    });
 }
 
 @register({GTypeName: 'NotificationHistory'})

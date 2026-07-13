@@ -11,7 +11,7 @@ import {
 } from 'gnim';
 import {useSettings} from '#/lib/settings';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
-import {fmtOffset, cityName} from '#/lib/core/time';
+import {fmtOffset, cityName, fmtDuration} from '#/lib/core/time';
 import TimerService from '#/widget/quicksettings/timer/TimerService';
 import {TimerSection} from '#/widget/quicksettings/timer/TimerSection';
 
@@ -50,11 +50,7 @@ export default ({
     const timerActive = createComputed(() => timerRemaining() >= 0);
     const timerDisplay = createComputed(() => {
         const rem = timerRemaining();
-        if (rem < 0) return '';
-        const totalSec = Math.max(0, Math.ceil(rem / 1000));
-        const m = Math.floor(totalSec / 60);
-        const s = totalSec % 60;
-        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        return rem < 0 ? '' : fmtDuration(rem);
     });
 
     return (

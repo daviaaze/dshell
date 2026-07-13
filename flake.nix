@@ -29,6 +29,9 @@
         auth
         battery
         bluetooth
+        brightness
+        cava
+        greet
         astal.packages.${system}.hyprland
         mpris
         network
@@ -41,9 +44,11 @@
           '';
         }))
         powerprofiles
+        quarrel
         tray
         wireplumber
         astal4
+        wl
       ];
 
       nativeBuildInputs = with pkgs; [
@@ -77,7 +82,6 @@
 
       wrapperPackages = with pkgs; [
         hyprland
-        brightnessctl
         bash
         curl
         grim
