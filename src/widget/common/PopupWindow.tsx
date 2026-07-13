@@ -157,7 +157,6 @@ export default (props: PopupWindowProps) => {
             application={app}
             layer={layer}
             keymode={Astal.Keymode.ON_DEMAND}
-            exclusivity={Astal.Exclusivity.EXCLUSIVE}
             anchor={anchorValue}
             margin={resolvedMargin}
             monitor={resolvedMonitor}

@@ -23,14 +23,14 @@ export default () => {
         'min-width': '320px',
         padding: '0 4px',
     });
+    const fm = FrecencyManager.get_default();
     const [list, setList] = createState<ListItem[]>(
-        getTopFrecencyApps(FrecencyManager.get_default())
+        getTopFrecencyApps(fm)
     );
     const [mode, setMode] = createState<LauncherMode>('apps');
     let entryRef: Gtk.Entry | null = null;
 
     const updateSearch = (text: string) => {
-        const fm = FrecencyManager.get_default();
         if (text.startsWith('>')) {
             setMode('clipboard');
             const query = text.slice(1).trim();
@@ -105,7 +105,7 @@ export default () => {
                         if (mode() === 'apps') {
                             const results = fuzzyQuery(text);
                             if (results.length > 0) {
-                                onAppLaunch(results[0]!);
+                                results[0].launch();
                             }
                         }
                     }}
@@ -132,7 +132,7 @@ export default () => {
                 {mode.as(m =>
                     m === 'apps' ? (
                         <Gtk.Label
-                            visible={list.as(l => frecency.hasData && l.length > 0)}
+                            visible={list.as(l => fm.hasData && l.length > 0)}
                             halign={Gtk.Align.START}
                             marginStart={4}
                             cssClasses={['caption']}
