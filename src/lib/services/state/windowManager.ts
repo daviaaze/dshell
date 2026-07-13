@@ -44,8 +44,6 @@ export default class WindowManager extends GObject.Object {
     #notifications: Astal.Window | null = null;
     #settings: Adw.Window | null = null;
     #dock: Astal.Window | null = null;
-    #screenshotOverlay: Astal.Window | null = null;
-
     // ── Getters ──
 
     @getter(Array)
@@ -91,11 +89,6 @@ export default class WindowManager extends GObject.Object {
     @getter(Object)
     get dock() {
         return this.#dock;
-    }
-
-    @getter(Object)
-    get screenshotOverlay() {
-        return this.#screenshotOverlay;
     }
 
     // ── Multi-window registration (bars, wallpapers, lockscreens) ──
@@ -169,8 +162,7 @@ export default class WindowManager extends GObject.Object {
         }
     }
 
-    setOverlay(win: Astal.Window | null) {
-        this.#screenshotOverlay = win;
-        this.notify('screenshot-overlay');
+    setOverlay(_win: Astal.Window | null) {
+        // Reserved for overlay window tracking
     }
 }

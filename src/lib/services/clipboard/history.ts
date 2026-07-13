@@ -1,23 +1,31 @@
+/**
+ * Clipboard History — Encrypted SQLite-backed clipboard history.
+ *
+ * Public API remains unchanged. Internal storage replaced with
+ * EncryptedStore (AES-256-GCM encrypted SQLite database via Gda).
+ *
+ * @module clipboardHistory
+ */
+
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
+import {
+    initStore,
+    getAllEntries,
+    searchEntries,
+    addEntry as storeAddEntry,
+    deleteEntry as storeDeleteEntry,
+    togglePin as storeTogglePin,
+    clearHistory as storeClearHistory,
+    getEntry,
+    type ClipboardEntry,
+} from './encryptedStore';
 import logger from '#/lib/core/logger';
-
-export interface ClipboardEntry {
-    id: string;
-    type: 'text' | 'image';
-    /** For text: the full text content. For images: filename in the clipboard dir. */
-    content: string;
-    mimeType: string;
-    timestamp: number;
-    pinned: boolean;
-}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const MAX_HISTORY = 100;
 const DATA_DIR = `${GLib.get_user_data_dir()}/shade-shell`;
-const HISTORY_FILE = `${DATA_DIR}/clipboard-history.json`;
 const CLIPBOARD_DIR = `${DATA_DIR}/clipboard`;
 
 // Artificially shorten the debounce in tests — O(1) check, negligible overhead
@@ -25,7 +33,6 @@ const DEBOUNCE_MS = GLib.getenv('G_TEST_OPTIONS') ? 10 : 300;
 
 // ── State ────────────────────────────────────────────────────────────────────
 
-let history: ClipboardEntry[] = [];
 let debounceId: number | null = null;
 let skipNextChange = false;
 let initialized = false;
@@ -34,35 +41,6 @@ let initialized = false;
 
 function ensureDirs() {
     GLib.mkdir_with_parents(CLIPBOARD_DIR, 0o755);
-}
-
-function loadHistory(): void {
-    const file = Gio.File.new_for_path(HISTORY_FILE);
-    if (!file.query_exists(null)) {
-        history = [];
-        return;
-    }
-    try {
-        const [, contents] = file.load_contents(null);
-        if (contents) {
-            const decoder = new TextDecoder();
-            const parsed = JSON.parse(decoder.decode(contents));
-            history = (parsed.entries || []) as ClipboardEntry[];
-        }
-    } catch (e) {
-        logger.error('clipboard', 'failed to load history:', e);
-        history = [];
-    }
-}
-
-function saveHistory(): void {
-    try {
-        ensureDirs();
-        const data = JSON.stringify({entries: history}, null, 2);
-        GLib.file_set_contents(HISTORY_FILE, data);
-    } catch (e) {
-        logger.error('clipboard', 'failed to save history:', e);
-    }
 }
 
 function generateId(): string {
@@ -136,8 +114,9 @@ function readClipboardContent(clipboard: Gdk.Clipboard) {
 
 function addEntry(data: {type: 'text' | 'image'; content: string; mimeType: string}) {
     // Deduplicate: skip if the last entry is identical (same text content)
-    if (data.type === 'text' && history.length > 0) {
-        const last = history[0]!;
+    const entries = getAllEntries();
+    if (data.type === 'text' && entries.length > 0) {
+        const last = entries[0]!;
         if (last.type === 'text' && last.content === data.content) {
             return;
         }
@@ -152,29 +131,7 @@ function addEntry(data: {type: 'text' | 'image'; content: string; mimeType: stri
         pinned: false,
     };
 
-    // Insert at the front (most recent first)
-    history.unshift(entry);
-
-    // Evict oldest unpinned entries beyond the limit
-    if (history.length > MAX_HISTORY) {
-        const targetEvict = history.length - MAX_HISTORY;
-        if (targetEvict > 0) {
-            // Remove oldest unpinned entries
-            let evicted = 0;
-            for (let i = history.length - 1; i >= 0 && evicted < targetEvict; i--) {
-                if (!history[i]!.pinned) {
-                    // Delete image file if it's an image entry
-                    if (history[i]!.type === 'image') {
-                        deleteImageFile(history[i]!.content);
-                    }
-                    history.splice(i, 1);
-                    evicted++;
-                }
-            }
-        }
-    }
-
-    saveHistory();
+    storeAddEntry(entry);
 }
 
 function deleteImageFile(filename: string) {
@@ -198,7 +155,8 @@ export function initClipboardHistory() {
     if (initialized) return;
     initialized = true;
 
-    loadHistory();
+    // Initialize the encrypted store (decrypt file, open SQLite)
+    initStore();
 
     const display = Gdk.Display.get_default();
     if (!display) {
@@ -223,18 +181,14 @@ export function initClipboardHistory() {
  * Get all history entries, most recent first.
  */
 export function getHistory(): ClipboardEntry[] {
-    return [...history];
+    return getAllEntries();
 }
 
 /**
  * Search history entries by text content.
  */
 export function searchHistory(query: string): ClipboardEntry[] {
-    if (!query) return getHistory().slice(0, 20);
-    const lower = query.toLowerCase();
-    return history.filter(
-        e => e.type === 'text' && e.content.toLowerCase().includes(lower)
-    ).slice(0, 20);
+    return searchEntries(query);
 }
 
 /**
@@ -279,25 +233,19 @@ export async function copyEntryToClipboard(entry: ClipboardEntry): Promise<void>
  * Delete a history entry by ID.
  */
 export function deleteEntry(id: string): void {
-    const idx = history.findIndex(e => e.id === id);
-    if (idx === -1) return;
-
-    const entry = history[idx]!;
-    if (entry.type === 'image') {
+    // Delete image file if it's an image entry
+    const entry = getEntry(id);
+    if (entry && entry.type === 'image') {
         deleteImageFile(entry.content);
     }
-    history.splice(idx, 1);
-    saveHistory();
+    storeDeleteEntry(id);
 }
 
 /**
  * Toggle the pinned state of a history entry.
  */
 export function togglePin(id: string): void {
-    const entry = history.find(e => e.id === id);
-    if (!entry) return;
-    entry.pinned = !entry.pinned;
-    saveHistory();
+    storeTogglePin(id);
 }
 
 /**
@@ -305,11 +253,11 @@ export function togglePin(id: string): void {
  */
 export function clearHistory(): void {
     // Delete image files for unpinned entries
-    for (const entry of history) {
+    const entries = getAllEntries();
+    for (const entry of entries) {
         if (!entry.pinned && entry.type === 'image') {
             deleteImageFile(entry.content);
         }
     }
-    history = history.filter(e => e.pinned);
-    saveHistory();
+    storeClearHistory();
 }

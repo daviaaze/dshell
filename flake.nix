@@ -77,6 +77,8 @@
           gtk4
           gtk4-layer-shell
           gjs
+          libsecret
+          libgda6
         ]
         ++ astalPackages;
 
