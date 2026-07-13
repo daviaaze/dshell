@@ -412,6 +412,12 @@ function captureWindow(
 // ── Main ─────────────────────────────────────────────────────────
 
 function main() {
+    // Parse args
+    let allowTokenDefault = false;
+    for (const arg of programArgs) {
+        if (arg === '--allow-token') allowTokenDefault = true;
+    }
+
     const windowListStr = GLib.getenv('XDPH_WINDOW_SHARING_LIST');
     const xdphWindows = parseWindowList(windowListStr);
 
