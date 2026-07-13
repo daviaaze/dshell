@@ -85,8 +85,17 @@ function runCapture(cmd: string[], onDone: (ok: boolean) => void): void {
             cmd,
             Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_PIPE
         );
-        proc.wait_check_async(null, () => onDone(proc.get_successful()));
-    } catch {
+        proc.wait_check_async(null, (_proc, result) => {
+            try {
+                _proc.wait_check_finish(result);
+                onDone(true);
+            } catch (e) {
+                logError(e, `runCapture: ${cmd.join(' ')}`);
+                onDone(false);
+            }
+        });
+    } catch (e) {
+        logError(e, `runCapture new: ${cmd.join(' ')}`);
         onDone(false);
     }
 }
@@ -150,10 +159,15 @@ function parseWindowList(env: string | null): XDPHWindow[] {
 // ── hyprctl helpers ──────────────────────────────────────────────
 
 function getHyprMonitors(): HyprMonitor[] {
-    const {ok, out} = runSync(['hyprctl', '-j', 'monitors']);
+    const {ok, out, err} = runSync(['hyprctl', '-j', 'monitors']);
+    log(`share-picker: getHyprMonitors ok=${ok} outLen=${out.length} err=${err}`);
     if (!ok) return [];
     try {
         const raw = JSON.parse(out);
+        if (!Array.isArray(raw)) {
+            log(`share-picker: getHyprMonitors not an array: ${typeof raw}`);
+            return [];
+        }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (raw as any[]).map(m => ({
             name: m.name ?? 'Unknown',
@@ -163,16 +177,22 @@ function getHyprMonitors(): HyprMonitor[] {
             width: m.width ?? 0,
             height: m.height ?? 0,
         }));
-    } catch {
+    } catch (e) {
+        logError(e, `getHyprMonitors: JSON parse failed. out=${out.substring(0, 200)}`);
         return [];
     }
 }
 
 function getHyprClients(): HyprClient[] {
-    const {ok, out} = runSync(['hyprctl', '-j', 'clients']);
+    const {ok, out, err} = runSync(['hyprctl', '-j', 'clients']);
+    log(`share-picker: getHyprClients ok=${ok} outLen=${out.length} err=${err}`);
     if (!ok) return [];
     try {
         const raw = JSON.parse(out);
+        if (!Array.isArray(raw)) {
+            log(`share-picker: getHyprClients not an array: ${typeof raw}`);
+            return [];
+        }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (raw as any[]).map(c => ({
             address: c.address ?? '',
@@ -183,7 +203,8 @@ function getHyprClients(): HyprClient[] {
             mapped: c.mapped ?? false,
             hidden: c.hidden ?? false,
         }));
-    } catch {
+    } catch (e) {
+        logError(e, `getHyprClients: JSON parse failed. out=${out.substring(0, 200)}`);
         return [];
     }
 }
@@ -311,26 +332,30 @@ function buildSectionLabel(text: string): Gtk.Label {
 // ── Texture loading ──────────────────────────────────────────────
 
 function loadTexture(path: string, picture: Gtk.Picture): void {
-    if (GLib.file_test(path, GLib.FileTest.EXISTS)) {
+    const exists = GLib.file_test(path, GLib.FileTest.EXISTS);
+    log(`share-picker: loadTexture ${path} exists=${exists}`);
+    if (exists) {
         try {
             const tex = Gdk.Texture.new_from_filename(path);
             picture.set_paintable(tex);
-        } catch {
-            // ignore corrupt files
+        } catch (e) {
+            logError(e, `loadTexture: ${path}`);
         }
     }
 }
 
 function loadTextureAll(path: string, pictures: Gtk.Picture[]): void {
     if (pictures.length === 0) return;
-    if (GLib.file_test(path, GLib.FileTest.EXISTS)) {
+    const exists = GLib.file_test(path, GLib.FileTest.EXISTS);
+    log(`share-picker: loadTextureAll ${path} exists=${exists} count=${pictures.length}`);
+    if (exists) {
         try {
             const tex = Gdk.Texture.new_from_filename(path);
             for (const pic of pictures) {
                 pic.set_paintable(tex);
             }
-        } catch {
-            // ignore
+        } catch (e) {
+            logError(e, `loadTextureAll: ${path}`);
         }
     }
 }
@@ -344,10 +369,16 @@ function captureMonitor(
     if (state.capturing) return;
     state.capturing = true;
     const path = monPath(state.info.name);
+    log(`share-picker: captureMonitor ${state.info.name} -> ${path}`);
     runCapture([GRIM_BIN, '-s', '0.25', '-l', '0', '-o', state.info.name, path], ok => {
         state.capturing = false;
+        log(`share-picker: captureMonitor ${state.info.name} ok=${ok}`);
         if (ok) {
-            state.texture = Gdk.Texture.new_from_filename(path);
+            try {
+                state.texture = Gdk.Texture.new_from_filename(path);
+            } catch (e) {
+                logError(e, `captureMonitor: Gdk.Texture.new_from_filename ${path}`);
+            }
             loadTextureAll(path, pictures);
         }
     });
@@ -362,23 +393,22 @@ function captureWindow(
     const g = state.geometry;
     const addr = state.hyprAddress || state.info.address || state.info.id;
     const path = winPath(addr);
-    runCapture([GRIM_BIN, '-s', '0.25', '-l', '0', '-g', `${g.x},${g.y} ${g.width}x${g.height}`, path], ok => {
+    const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
+    log(`share-picker: captureWindow addr=${addr} geometry=${geometry} -> ${path}`);
+    runCapture([GRIM_BIN, '-s', '0.25', '-l', '0', '-g', geometry, path], ok => {
         state.capturing = false;
+        log(`share-picker: captureWindow ${addr} ok=${ok}`);
         if (ok) {
-            state.texture = Gdk.Texture.new_from_filename(path);
+            try {
+                state.texture = Gdk.Texture.new_from_filename(path);
+            } catch (e) {
+                logError(e, `captureWindow: Gdk.Texture.new_from_filename ${path}`);
+            }
             loadTextureAll(path, pictures);
         }
     });
 }
 
-// ── Main ─────────────────────────────────────────────────────────
-
-function main() {
-    // Parse args
-    let allowTokenDefault = false;
-    for (const arg of programArgs) {
-        if (arg === '--allow-token') allowTokenDefault = true;
-    }
 
     const windowListStr = GLib.getenv('XDPH_WINDOW_SHARING_LIST');
     const xdphWindows = parseWindowList(windowListStr);
