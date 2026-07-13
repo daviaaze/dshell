@@ -89,8 +89,7 @@ export default () => {
                 description={'Quick timer presets in minutes'}
             >
                 <Adw.EntryRow
-                    title={'Add Preset'}
-                    subtitle={'Enter duration in minutes (e.g. 1, 5, 10)'}
+                    title={'Add Preset (Enter duration in minutes, e.g. 1, 5, 10)'}
                     showApplyButton
                     onApply={self => {
                         const value = parseInt(self.text.trim(), 10);

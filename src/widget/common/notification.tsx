@@ -2,6 +2,7 @@ import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {For, createBinding} from 'gnim';
+import {useStyle} from '#/style/useStyle';
 import Adw from 'gi://Adw?version=1';
 
 function relativeTime(unix: number): string {
@@ -48,10 +49,7 @@ export default ({
         'min-height': '4px',
         'border-radius': '2px',
     });
-    const notifActionsStyle = useStyle({
-        'flex-wrap': 'wrap',
-        gap: '4px',
-    });
+    const notifActionsStyle = useStyle({});
 
     const expireMs =
         notification.expire_timeout > 0 ? notification.expire_timeout : 5000;

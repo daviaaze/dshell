@@ -21,10 +21,7 @@ export default () => {
                     }
                 />
                 <Adw.EntryRow
-                    title={'Add Category'}
-                    subtitle={
-                        'mount, state, theme, dbus, exec, perf, memory'
-                    }
+                    title={'Add Category (mount, state, theme, dbus, exec, perf, memory)'}
                     showApplyButton
                     onApply={self => {
                         const cats = self.text

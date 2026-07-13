@@ -1,9 +1,10 @@
+import Hyprland from 'gi://AstalHyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
+import {app} from '#/App';
 import WindowManager from '#/lib/services/state/windowManager';
 import {useSettings} from '#/lib/settings';
-import PopupWindow from '#/widget/common/PopupWindow';
 import logger from '#/lib/core/logger';
 import {NotificationList} from './notificationList';
 import {TrayBox} from './tray';
@@ -17,22 +18,11 @@ const QUICKSETTINGS_SPACING = 8;
 
 export default () => {
     const barCfg = useSettings().bar;
+    const hyprland = Hyprland.get_default();
+    const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
     return (
-        <PopupWindow
-            name="quicksettings"
-            visible={createBinding(ShellState.get_default(), 'qsOpen')}
-            onVisibleChange={visible => {
-                logger.log(`quicksettings visible -> ${visible}`);
-                if (
-                    (barCfg.position() === Astal.WindowAnchor.LEFT || barCfg.position() === Astal.WindowAnchor.RIGHT) &&
-                    visible &&
-                    ShellState.get_default().launcherOpen
-                )
-                    ShellState.get_default().launcherOpen = false;
-                ShellState.get_default().qsOpen = visible;
-            }}
-            widthRequest={QUICKSETTINGS_WIDTH}
+        <Astal.Window
             $={self => {
                 WindowManager.get_default().setQuicksettings(self);
                 self.connect('realize', () =>
@@ -40,6 +30,27 @@ export default () => {
                 );
                 self.connect('map', () => logger.log('quicksettings mapped'));
             }}
+            margin={12}
+            application={app}
+            name={'quicksettings'}
+            visible={createBinding(ShellState.get_default(), 'qsOpen')}
+            onNotifyVisible={self => {
+                logger.log(`quicksettings visible -> ${self.visible}`);
+                if (
+                    (barCfg.position() === LEFT ||
+                        barCfg.position() === RIGHT) &&
+                    self.visible &&
+                    ShellState.get_default().launcherOpen
+                )
+                    ShellState.get_default().launcherOpen = false;
+                ShellState.get_default().qsOpen = self.visible;
+            }}
+            cssClasses={['card', 'frame', 'background']}
+            anchor={barCfg.position.as(
+                p => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM
+            )}
+            widthRequest={QUICKSETTINGS_WIDTH}
+            monitor={createBinding(hyprland, 'focusedMonitor').as(m => m.id)}
         >
             <Gtk.ScrolledWindow
                 propagateNaturalHeight
@@ -61,6 +72,6 @@ export default () => {
                     <NotificationList />
                 </Gtk.Box>
             </Gtk.ScrolledWindow>
-        </PopupWindow>
+        </Astal.Window>
     );
 };

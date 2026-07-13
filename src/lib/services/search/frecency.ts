@@ -10,7 +10,7 @@
  *   frecencyScore = log2(count + 1) * recencyScore
  *   finalSearchScore = fuzzyScore * (1 + boost * frecencyScore)
  */
-import GObject, {getter, register} from 'gnim/gobject';
+import GObject, {getter, register, signal} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
 import logger from '#/lib/core/logger';
 import {FrecencyStorage, type FrecencyEntry} from './storage';
@@ -116,6 +116,10 @@ export class FrecencyManager extends GObject.Object {
         this.#storage.clear();
         this.notify('changed');
     }
+
+    /** Emitted when frecency data changes. */
+    @signal([])
+    changed(): void {}
 
     /**
      * Check if frecency is available (has any entries).

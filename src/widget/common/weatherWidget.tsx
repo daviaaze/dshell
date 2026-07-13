@@ -123,10 +123,10 @@ export const WeatherWidget = () => {
     const tempSmallStyle = useStyle({ 'font-size': '12px', 'font-weight': '600' });
     const sectionStyle = useStyle({ 'margin-top': '8px' });
     const sectionLabelStyle = useStyle({ 'font-size': '11px', 'font-weight': '600', 'text-transform': 'uppercase', opacity: '0.7' });
-    const hourlyItemStyle = useStyle({ 'align-items': 'center', 'min-width': '48px', padding: '4px 0' });
+    const hourlyItemStyle = useStyle({ 'min-width': '48px', padding: '4px 0' });
     const hourlyTimeStyle = useStyle({ 'font-size': '11px', opacity: '0.7' });
     const hourlyTempStyle = useStyle({ 'font-size': '13px', 'font-weight': '600' });
-    const dailyItemStyle = useStyle({ 'align-items': 'center', padding: '4px', 'border-radius': '8px' });
+    const dailyItemStyle = useStyle({ padding: '4px', 'border-radius': '8px' });
     const detailCardStyle = useStyle({ padding: '8px', 'border-radius': '8px', background: 'rgba(128,128,128,0.1)' });
     const detailValueStyle = useStyle({ 'font-size': '18px', 'font-weight': 'bold' });
     const refreshStyle = useStyle({ padding: '4px', 'border-radius': '8px', 'margin-top': '8px' });

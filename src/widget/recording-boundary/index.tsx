@@ -121,20 +121,22 @@ export default () => {
     const windows: Astal.Window[] = [];
 
     for (const monitor of monList) {
-        const win = new Astal.Window();
-        win.application = app;
-        win.gdkmonitor = monitor;
-        win.layer = Astal.Layer.OVERLAY;
-        win.anchor =
-            Astal.WindowAnchor.TOP |
-            Astal.WindowAnchor.RIGHT |
-            Astal.WindowAnchor.BOTTOM |
-            Astal.WindowAnchor.LEFT;
-        win.exclusivity = Astal.Exclusivity.IGNORE;
+        const win = GObject.Object.new(Astal.Window, {
+            application: app,
+            gdkmonitor: monitor,
+            layer: Astal.Layer.OVERLAY,
+            anchor:
+                Astal.WindowAnchor.TOP |
+                Astal.WindowAnchor.RIGHT |
+                Astal.WindowAnchor.BOTTOM |
+                Astal.WindowAnchor.LEFT,
+            exclusivity: Astal.Exclusivity.IGNORE,
+        }) as Astal.Window;
 
-        const drawingArea = new Gtk.DrawingArea();
-        drawingArea.hexpand = true;
-        drawingArea.vexpand = true;
+        const drawingArea = GObject.Object.new(Gtk.DrawingArea, {
+            hexpand: true,
+            vexpand: true,
+        }) as Gtk.DrawingArea;
 
         drawingArea.set_draw_func((_area, cr, _w, _h) => {
             if (!ss.boundaryGeometry) return;

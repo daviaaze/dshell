@@ -112,7 +112,7 @@ export default (props: PopupWindowProps) => {
         name,
         visible,
         anchor: anchorProp,
-        layer = Astal.Layer.OVERLAY,
+        layer,
         margin: marginProp,
         onClose,
         onVisibleChange,
