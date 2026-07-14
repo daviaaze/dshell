@@ -18,7 +18,7 @@ in
     enable = lib.mkEnableOption "Shade shell";
     package = lib.mkOption {
       type = lib.types.package;
-      default = inputs.self.packages.${pkgs.system}.default;
+      default = inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.default;
       description = "The shade-shell package to use";
     };
 
