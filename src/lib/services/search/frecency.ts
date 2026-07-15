@@ -11,7 +11,6 @@
  *   finalSearchScore = fuzzyScore * (1 + boost * frecencyScore)
  */
 import GObject, {getter, register, signal} from 'gnim/gobject';
-import Gio from 'gi://Gio?version=2.0';
 import logger from '#/lib/core/logger';
 import {FrecencyStorage, type FrecencyEntry} from './storage';
 
@@ -111,6 +110,35 @@ export class FrecencyManager extends GObject.Object {
         return 1 + SEARCH_BOOST * score;
     }
 
+    /**
+     * Rank items by frecency score (highest first).
+     * Items with frecency data appear first in score order, followed by
+     * unscored items in their original order.
+     *
+     * @param items - Items to rank.
+     * @param getId - Extracts a desktop ID from each item.
+     * @returns Items sorted by frecency (scored first, then unscored).
+     */
+    rankByFrecency<T>(items: T[], getId: (item: T) => string): T[] {
+        const scores = this.getAllScores();
+        const scored: {item: T; score: number}[] = [];
+        const unscored: T[] = [];
+
+        for (const item of items) {
+            const id = getId(item);
+            const score = scores.get(id) ?? 0;
+            if (score > 0) {
+                scored.push({item, score});
+            } else {
+                unscored.push(item);
+            }
+        }
+
+        scored.sort((a, b) => b.score - a.score);
+
+        return [...scored.map(s => s.item), ...unscored];
+    }
+
     /** Clear all frecency data. */
     clear(): void {
         this.#storage.clear();
@@ -118,7 +146,7 @@ export class FrecencyManager extends GObject.Object {
     }
 
     /** Emitted when frecency data changes. */
-    @signal([])
+    @signal()
     changed(): void {}
 
     /**

@@ -27,7 +27,7 @@ export default () => {
     const hyprland = Hyprland.get_default();
     const fm = FrecencyManager.get_default();
     const [list, setList] = createState<ListItem[]>(
-        getTopFrecencyApps(fm)
+        fm.rankByFrecency(getAppList(), app => app.entry ?? app.name ?? '')
     );
     const [mode, setMode] = createState<LauncherMode>('apps');
     let entryRef: Gtk.Entry | null = null;
@@ -39,7 +39,7 @@ export default () => {
             searchClipboard(query, results => setList(results));
         } else if (text.trim() === '') {
             setMode('apps');
-            setList(getTopFrecencyApps(fm));
+            setList(fm.rankByFrecency(getAppList(), app => app.entry ?? app.name ?? ''));
         } else {
             setMode('apps');
             const fuzzyResults = fuzzyQuery(text);
@@ -119,7 +119,7 @@ export default () => {
                         WindowManager.get_default().applauncher!.visible = false;
                         if (mode() === 'apps') {
                             const results = fuzzyQuery(self.text);
-                            if (results.length > 0) results[0].launch();
+                            if (results.length > 0) results?.[0]?.launch();
                         }
                     }}
                 >
@@ -203,36 +203,4 @@ export default () => {
     );
 };
 
-// ── Helpers ──
 
-function getTopFrecencyApps(frecency: FrecencyManager): Apps.Application[] {
-    const topIds = frecency.getTopApps(30);
-    const allApps = getAppList();
-    const appMap = new Map<string, Apps.Application>();
-    for (const app of allApps) {
-        const id = app.entry ?? app.name;
-        if (id) appMap.set(id, app);
-    }
-
-    // Return top frecency apps in score order, followed by all other apps
-    const top: Apps.Application[] = [];
-    const rest: Apps.Application[] = [];
-    const seen = new Set<string>();
-
-    for (const id of topIds) {
-        const app = appMap.get(id);
-        if (app) {
-            top.push(app);
-            seen.add(app.entry ?? app.name ?? '');
-        }
-    }
-
-    for (const app of allApps) {
-        const id = app.entry ?? app.name ?? '';
-        if (!seen.has(id)) {
-            rest.push(app);
-        }
-    }
-
-    return [...top, ...rest].slice(0, 50);
-}
