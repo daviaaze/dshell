@@ -134,7 +134,7 @@ in
 
         animations = {
           enabled = true;
-          workspace_wraparound = true;
+          workspace_wraparound = false;
         };
 
         animation = [
