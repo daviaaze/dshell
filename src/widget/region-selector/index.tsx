@@ -7,6 +7,7 @@ import {createBinding, createState} from 'gnim';
 import {app} from '#/App';
 import {Process} from '#/lib/core/process';
 import Screenshot from '#/lib/services/capture/screenshot';
+import {gdkMonitorFromHyprland} from '#/lib/utils/monitors';
 import logger from '#/lib/core/logger';
 
 interface WindowGeometry {
@@ -333,7 +334,9 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={createBinding(hyprland, 'focusedMonitor').as(m => m.id)}
+            gdkmonitor={createBinding(hyprland, 'focusedMonitor').as(
+                gdkMonitorFromHyprland
+            )}
             css={'background-color: transparent;'}
         >
             <Gtk.Overlay>

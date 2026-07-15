@@ -35,6 +35,7 @@ sharePickerTarget = custom_target(
   ],
   output: name + '-share-picker',
   install: true,
+  install_mode: 'rwxr-xr-x',
   install_dir: bindir,
 )
 
@@ -63,6 +64,7 @@ greeterTarget = custom_target(
   ],
   output: name + '-greet',
   install: true,
+  install_mode: 'rwxr-xr-x',
   install_dir: bindir,
 )
 
@@ -92,6 +94,7 @@ custom_target(
   ],
   output: name,
   install: true,
+  install_mode: 'rwxr-xr-x',
   install_dir: bindir,
 )
 custom_target(

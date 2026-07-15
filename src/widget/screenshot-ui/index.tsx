@@ -11,6 +11,7 @@ import Screenshot from '#/lib/services/capture/screenshot';
 import WindowManager from '#/lib/services/state/windowManager';
 import {LinkedBox} from '#/widget/common/linkedBox';
 import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
+import {gdkMonitorFromHyprland} from '#/lib/utils/monitors';
 import logger from '#/lib/core/logger';
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -531,8 +532,8 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={createBinding(hyprland, 'focusedMonitor').as(
-                m => m?.id ?? 0
+            gdkmonitor={createBinding(hyprland, 'focusedMonitor').as(
+                gdkMonitorFromHyprland
             )}
             css={'background-color: transparent;'}
         >

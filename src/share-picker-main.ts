@@ -20,7 +20,8 @@ import {programArgs} from 'system';
 
 // ── Constants ────────────────────────────────────────────────────
 
-const GRIM_BIN = 'grim';
+const GRIM_BIN = GLib.find_program_in_path('grim') || 'grim';
+const HYPRCTL_BIN = GLib.find_program_in_path('hyprctl') || 'hyprctl';
 // eslint-disable-next-line sonarjs/publicly-writable-directories
 const TEMP_DIR = '/tmp/dshell-picker';
 const POLL_INTERVAL_MS = 200; // stagger per monitor — each monitor captured every N×monitorCount ms
@@ -159,7 +160,7 @@ function parseWindowList(env: string | null): XDPHWindow[] {
 // ── hyprctl helpers ──────────────────────────────────────────────
 
 function getHyprMonitors(): HyprMonitor[] {
-    const {ok, out, err} = runSync(['hyprctl', '-j', 'monitors']);
+    const {ok, out, err} = runSync([HYPRCTL_BIN, '-j', 'monitors']);
     log(`share-picker: getHyprMonitors ok=${ok} outLen=${out.length} err=${err}`);
     if (!ok) return [];
     try {
@@ -184,7 +185,7 @@ function getHyprMonitors(): HyprMonitor[] {
 }
 
 function getHyprClients(): HyprClient[] {
-    const {ok, out, err} = runSync(['hyprctl', '-j', 'clients']);
+    const {ok, out, err} = runSync([HYPRCTL_BIN, '-j', 'clients']);
     log(`share-picker: getHyprClients ok=${ok} outLen=${out.length} err=${err}`);
     if (!ok) return [];
     try {
@@ -448,6 +449,9 @@ function main() {
 
         // Debug log
         log('share-picker: XDPH_WINDOW_SHARING_LIST=' + (GLib.getenv('XDPH_WINDOW_SHARING_LIST') || '(null)'));
+        log(`share-picker: GRIM_BIN=${GRIM_BIN}, HYPRCTL_BIN=${HYPRCTL_BIN}`);
+        if (!GRIM_BIN.includes('/')) log('share-picker: grim not found in PATH, previews will be blank');
+        if (!HYPRCTL_BIN.includes('/')) log('share-picker: hyprctl not found in PATH, monitors/windows will be empty');
 
         // Fetch Hyprland info
         const hyprMonitors = getHyprMonitors();
@@ -620,11 +624,6 @@ function main() {
                     pic,
                     () => select(`[SELECTION]${tokenRestore ? 'r' : ''}/window:${state.info.id}`),
                 );
-
-                // Disable button if no geometry (can't capture)
-                if (!state.geometry) {
-                    btn.sensitive = false;
-                }
             }
         }
         notebook.append_page(windowsScroll, new Gtk.Label({label: 'Windows'}));
@@ -686,7 +685,6 @@ function main() {
                     pic,
                     () => select(`[SELECTION]${tokenRestore ? 'r' : ''}/window:${state.info.id}`),
                 );
-                if (!state.geometry) btn.sensitive = false;
             }
         }
         combinedBox.append(combinedWinFlow);
