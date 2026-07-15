@@ -4,7 +4,7 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {createBinding} from 'gnim';
 import {app} from '#/App';
 import Screenshot from '#/lib/services/capture/screenshot';
-import {gdkMonitorFromHyprland} from '#/lib/utils/monitors';
+import {monitorIndexFromHyprland} from '#/lib/utils/monitors';
 
 function formatDuration(seconds: number): string {
     const m = Math.floor(seconds / 60);
@@ -31,8 +31,8 @@ export default () => {
             layer={Astal.Layer.OVERLAY}
             margin={12}
             anchor={Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.RIGHT}
-            gdkmonitor={createBinding(hyprland, 'focusedMonitor').as(
-                gdkMonitorFromHyprland
+            monitor={createBinding(hyprland, 'focusedMonitor').as(
+                monitorIndexFromHyprland
             )}
             visible={createBinding(ss, 'recording')}
             css={'background-color: transparent;'}
