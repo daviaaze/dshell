@@ -371,7 +371,7 @@ function captureMonitor(
     state.capturing = true;
     const path = monPath(state.info.name);
     log(`share-picker: captureMonitor ${state.info.name} -> ${path}`);
-    runCapture([GRIM_BIN, '-s', '0.25', '-l', '0', '-o', state.info.name, path], ok => {
+    runCapture([GRIM_BIN, '-s', '0.25', '-o', state.info.name, path], ok => {
         state.capturing = false;
         log(`share-picker: captureMonitor ${state.info.name} ok=${ok}`);
         if (ok) {
@@ -396,7 +396,7 @@ function captureWindow(
     const path = winPath(addr);
     const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
     log(`share-picker: captureWindow addr=${addr} geometry=${geometry} -> ${path}`);
-    runCapture([GRIM_BIN, '-s', '0.25', '-l', '0', '-g', geometry, path], ok => {
+    runCapture([GRIM_BIN, '-s', '0.25', '-g', geometry, path], ok => {
         state.capturing = false;
         log(`share-picker: captureWindow ${addr} ok=${ok}`);
         if (ok) {
@@ -779,7 +779,7 @@ function main() {
                 // Monitors: single capture for each
                 for (let i = 0; i < monitorStates.length; i++) {
                     const path = monPath(monitorStates[i].info.name);
-                    runCapture([GRIM_BIN, '-s', '0.25', '-l', '0', '-o', monitorStates[i].info.name, path], (ok) => {
+                    runCapture([GRIM_BIN, '-s', '0.25', '-o', monitorStates[i].info.name, path], (ok) => {
                         if (ok) loadTexture(path, combinedMonPics[i]);
                     });
                 }
@@ -790,7 +790,7 @@ function main() {
                         const addr = state.hyprAddress || state.info.address || state.info.id;
                         const path = winPath(addr);
                         runCapture(
-                            [GRIM_BIN, '-s', '0.25', '-l', '0', '-g', `${state.geometry.x},${state.geometry.y} ${state.geometry.width}x${state.geometry.height}`, path],
+                            [GRIM_BIN, '-s', '0.25', '-g', `${state.geometry.x},${state.geometry.y} ${state.geometry.width}x${state.geometry.height}`, path],
                             (ok) => {
                                 if (ok) loadTexture(path, combinedWinPics[i]);
                             },

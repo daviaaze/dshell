@@ -179,8 +179,7 @@ export default class Screenshot extends GObject.Object {
         if (v) {
             this.#captureStageSync();
             if (!this.#stagePixPath) {
-                logger.error('screenshot', 'stage capture failed, aborting overlay');
-                return;
+                logger.warn('screenshot', 'stage capture failed, overlay will show live screen');
             }
         }
 

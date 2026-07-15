@@ -39,6 +39,11 @@ in
       "SUPER,TAB,exec,${shade-action "toggle-windowswitcher"}"
       "SUPER,comma,exec,${shade-action "toggle-settings"}"
 
+      ",Print,exec,${shade-action "screenshot-overlay"}"
+      "SUPERSHIFT,S,exec,${shade-action "screenshot"}"
+      "SUPERSHIFT,R,exec,${shade-action "record"}"
+      "SUPERSHIFT,P,exec,${shade-action "record-area"}"
+
       ",XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
       ",XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"
       ",XF86AudioStop,exec,${pkgs.playerctl}/bin/playerctl stop"
