@@ -202,5 +202,3 @@ export default () => {
         </Astal.Window>
     );
 };
-
-
