@@ -165,9 +165,10 @@ export function notify(
     body: string,
     icon: string = 'dialog-information-symbolic'
 ) {
-    Process.execAsync(
-        `notify-send -a shade-shell -i ${icon} "${title}" "${body}"`
-    ).catch(e => logger.warn('screenshot', 'notify-send failed:', e));
+    // Use execAsyncv to avoid GLib.shell_parse_argv quoting issues
+    // when title or body contain special characters.
+    Process.execAsyncv(['notify-send', '-a', 'shade-shell', '-i', icon, title, body])
+        .catch(e => logger.warn('screenshot', 'notify-send failed:', e));
 }
 
 // ── Image clipboard copy ─────────────────────────────────────────
@@ -175,18 +176,33 @@ export function notify(
 /**
  * Copy an image file to the system clipboard using wl-copy (Wayland).
  * Falls back to a Gdk-based approach if wl-copy is unavailable.
+ *
+ * Uses Gio.Subprocess with stdin pipe instead of shell redirect
+ * because GLib.shell_parse_argv does not handle shell operators like <.
  */
 export function copyImageToClipboard(filename: string): void {
     try {
-        // Prefer wl-copy for Wayland-native clipboard
         const wlCopy = Process.findBinary('wl-copy');
         if (wlCopy !== 'wl-copy') {
-            Process.exec(`${wlCopy} --type image/png < "${filename}"`);
+            const file = Gio.File.new_for_path(filename);
+            const [ok, contents] = file.load_contents(null);
+            if (ok && contents) {
+                const proc = Gio.Subprocess.new(
+                    [wlCopy, '--type', 'image/png'],
+                    Gio.SubprocessFlags.STDIN_PIPE
+                );
+                const stdin = proc.get_stdin_pipe();
+                if (stdin) {
+                    stdin.write_all(contents, null);
+                    stdin.close(null);
+                }
+                proc.wait(null);
+            }
             logger.debug('screenshot', `copied to clipboard via wl-copy: ${filename}`);
             return;
         }
-    } catch {
-        // wl-copy not available or failed
+    } catch (e) {
+        logger.warn('screenshot', `wl-copy clipboard failed: ${(e as Error).message}`);
     }
 
     try {
@@ -197,7 +213,7 @@ export function copyImageToClipboard(filename: string): void {
             return;
         }
         const texture = Gdk.Texture.new_from_filename(filename);
-        display.get_clipboard().set(texture);
+        display.get_clipboard().set_texture(texture);
         logger.debug('screenshot', `copied to clipboard via Gdk: ${filename}`);
     } catch (e) {
         logger.warn('screenshot', `clipboard copy failed: ${(e as Error).message}`);

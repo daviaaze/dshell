@@ -23,6 +23,11 @@ import {
 export {RecorderBackend, RecordingFormat} from './types';
 export type {VirtualMonitor, BoundaryGeometry} from './types';
 
+// ── Constants ─────────────────────────────────────────────────────
+
+const ICON_ERROR = 'dialog-error-symbolic';
+const MSG_RECORDING_FAILED = 'Recording failed';
+
 @register({GTypeName: 'Screenshot'})
 export default class Screenshot extends GObject.Object {
     static readonly instance: Screenshot;
@@ -252,6 +257,9 @@ export default class Screenshot extends GObject.Object {
 
     /** Called by region-selector when user confirms a selection */
     captureArea(geometry: string) {
+        // geometry is in grim format: "x,y WxH" (global coords).
+        // screenshotGeometry uses grim -g which expects this format.
+        // captureFromStage uses magick -crop which expects "WxH+X+Y" (local coords).
         this.pendingCaptureGeometry = geometry;
         this.#freezeCapturePending = true;
         this.regionSelectorOpen = false;
@@ -260,7 +268,16 @@ export default class Screenshot extends GObject.Object {
             this.#freezeCapturePending = false;
             if (this.#selectedMode === 'screenshot') {
                 if (this.#stagePixPath) {
-                    this.captureFromStage(geometry);
+                    // Convert grim format to magick format and global→local coords
+                    const [pos, size] = geometry.split(' ');
+                    const [gx, gy] = pos!.split(',').map(Number);
+                    const [gw, gh] = size!.split('x').map(Number);
+                    const hyprland = AstalHyprland.get_default();
+                    const mon = hyprland.focused_monitor;
+                    const ox = mon?.x ?? 0;
+                    const oy = mon?.y ?? 0;
+                    const magickGeom = `${gw}x${gh}+${gx! - ox}+${gy! - oy}`;
+                    this.captureFromStage(magickGeom);
                 } else {
                     this.screenshotGeometry(geometry);
                 }

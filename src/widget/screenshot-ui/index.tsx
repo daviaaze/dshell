@@ -391,20 +391,22 @@ export default () => {
             const sel = normalizeRect(dragStart()!, dragEnd()!);
             if (sel.width < MIN_SELECTION || sel.height < MIN_SELECTION)
                 return null;
-            const origin = monOrigin();
-            return `${sel.width}x${sel.height}+${sel.x + origin.x}+${sel.y + origin.y}`;
+            // Drag coords are monitor-local (DrawingArea fills the monitor).
+            // Stage pixmap is also monitor-local, so use directly.
+            return `${sel.width}x${sel.height}+${sel.x}+${sel.y}`;
         }
 
         if (target === 'window') {
             const sWin = selectedWindow();
             if (!sWin) return null;
-            return `${sWin.width}x${sWin.height}+${sWin.x}+${sWin.y}`;
+            // Window coords from hyprland are global; stage is monitor-local.
+            const origin = monOrigin();
+            return `${sWin.width}x${sWin.height}+${sWin.x - origin.x}+${sWin.y - origin.y}`;
         }
 
         if (target === 'monitor') {
-            const m = hyprland.focused_monitor;
-            if (!m) return null;
-            return `${m.width}x${m.height}+${m.x}+${m.y}`;
+            // Stage pixmap IS the focused monitor — no crop needed.
+            return null;
         }
 
         return null;
