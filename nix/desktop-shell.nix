@@ -38,6 +38,45 @@ let
         );
     src = ../.;
   };
+
+  # pkexec helper script for battery conservation (polkit privilege escalation)
+  conservationToggle = pkgs.writeShellScript "shade-conservation-toggle" ''
+    PATH="${pkgs.coreutils}/bin:/bin:/usr/bin"
+    if [ -z "$1" ] || [ "$1" != "0" ] && [ "$1" != "1" ]; then
+      echo "Usage: $0 <0|1>" >&2
+      exit 1
+    fi
+    SYSFS="/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode"
+    if [ ! -f "$SYSFS" ]; then
+      echo "conservation mode sysfs file not found: $SYSFS" >&2
+      exit 1
+    fi
+    printf '%s' "$1" > "$SYSFS"
+    echo "$1"
+  '';
+
+  # Polkit action definition for battery conservation
+  # @helperPath@ is substituted during postInstall
+  polkitAction = pkgs.writeText "org.shade-shell.policy" ''
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE policyconfig PUBLIC
+     "-//freedesktop//DTD PolicyKit Policy Configuration 1//EN"
+     "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+    <policyconfig>
+      <vendor>Shade Shell</vendor>
+      <vendor_url>https://github.com/caioasmuniz/shade</vendor_url>
+      <action id="org.shade-shell.battery-conservation">
+        <_description>Toggle battery conservation mode</_description>
+        <_message>Authentication is required to toggle battery conservation mode (write to sysfs).</_message>
+        <defaults>
+          <allow_any>auth_admin</allow_any>
+          <allow_inactive>auth_admin</allow_inactive>
+          <allow_active>auth_admin</allow_active>
+        </defaults>
+        <annotate key="org.freedesktop.policykit.exec.path">@helperPath@</annotate>
+      </action>
+    </policyconfig>
+  '';
 in
 pkgs.stdenv.mkDerivation {
   inherit
@@ -67,6 +106,17 @@ pkgs.stdenv.mkDerivation {
       cp -r . $out
     '';
   };
+
+  postInstall = ''
+    # Install pkexec helper script for battery conservation
+    install -Dm755 ${conservationToggle} $out/bin/shade-conservation-toggle
+
+    # Install polkit action definition with correct helper path
+    mkdir -p $out/share/polkit-1/actions
+    cp ${polkitAction} $out/share/polkit-1/actions/org.shade-shell.policy
+    substituteInPlace $out/share/polkit-1/actions/org.shade-shell.policy \
+      --subst-var-by helperPath $out/bin/shade-conservation-toggle
+  '';
 
   preFixup = ''
     gappsWrapperArgs+=(

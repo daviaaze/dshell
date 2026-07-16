@@ -42,6 +42,12 @@ function parseAudioStreams(
     predicate: (mediaClass: string) => boolean,
     errorLabel: string
 ): AudioStream[] {
+    if (!pwDump.trim()) {
+        // Empty output — PipeWire may not be running.
+        // Log at debug to avoid spamming every 2s.
+        logger.debug('audio', `${errorLabel}: pw-dump returned empty (PipeWire not running?)`);
+        return [];
+    }
     try {
         const data = JSON.parse(pwDump);
         const streams: AudioStream[] = [];
@@ -143,8 +149,10 @@ export default class AppMixer extends GObject.Object {
 
     #fetchAndUpdate() {
         try {
-            const pwDump = Process.exec('pw-dump');
-            const pwMetadata = Process.exec('pw-metadata -n default');
+            // Redirect stderr to null: pw-dump writes harmless diagnostics
+            // (e.g. "Spa:Enum:ParamId:IO failed") to stderr that clutter logs.
+            const pwDump = Process.exec('pw-dump 2>/dev/null');
+            const pwMetadata = Process.exec('pw-metadata -n default 2>/dev/null');
             this.#update(pwDump, pwMetadata);
         } catch (e) {
             logger.error('audio', 'pw-dump or pw-metadata failed:', e);

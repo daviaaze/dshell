@@ -260,6 +260,27 @@ export class Process extends GObject.Object {
             return name;
         }
     }
+
+    /**
+     * Execute a command via pkexec (polkit privilege escalation).
+     * The command must have a matching polkit action defined.
+     *
+     * @throws stderr if pkexec fails or auth is denied
+     * @return stdout of the subprocess
+     */
+    static pkexec(cmd: string): string {
+        return Process.exec(`pkexec ${cmd}`);
+    }
+
+    /**
+     * Execute a command asynchronously via pkexec.
+     *
+     * @throws stderr if pkexec fails or auth is denied
+     * @return stdout of the subprocess
+     */
+    static pkexecAsync(cmd: string): Promise<string> {
+        return Process.execAsync(`pkexec ${cmd}`);
+    }
 }
 
 type Args = {

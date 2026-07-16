@@ -1,5 +1,5 @@
 import {createState, onMount, onCleanup} from 'gnim';
-import {isConservationEnabled, toggleConservation} from '#/lib/services/power/batteryConservation';
+import {isConservationEnabled, toggleConservation, toggleConservationAsync} from '#/lib/services/power/batteryConservation';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import GLib from 'gi://GLib?version=2.0';
 
@@ -23,12 +23,19 @@ export default () => {
             label={enabled() ? 'Conservation' : 'Full Power'}
             active={enabled()}
             onClick={() => {
-                toggleConservation();
-                // Update slightly faster to feel responsive
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-                    setEnabled(isConservationEnabled());
-                    return GLib.SOURCE_REMOVE;
-                });
+                const ok = toggleConservation();
+                if (ok) {
+                    // Direct write succeeded — optimistic update
+                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+                        setEnabled(isConservationEnabled());
+                        return GLib.SOURCE_REMOVE;
+                    });
+                } else {
+                    // Not writable — try pkexec (polkit auth dialog)
+                    toggleConservationAsync().then(() => {
+                        setEnabled(isConservationEnabled());
+                    });
+                }
             }}
         />
     );

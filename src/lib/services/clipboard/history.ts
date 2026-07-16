@@ -107,7 +107,10 @@ function readClipboardContent(clipboard: Gdk.Clipboard) {
                 // Not an image — skip
             }
         } catch (e) {
-            logger.warn('clipboard', 'failed to read clipboard content:', e);
+            // read_text_finish throws when clipboard has no text (image, etc.)
+            // This is expected — we fall through to try reading as image below.
+            // Only log at debug since the fallback is handled.
+            logger.debug('clipboard', 'no text on clipboard, trying image:', e);
         }
     });
 }

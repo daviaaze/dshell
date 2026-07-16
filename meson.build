@@ -129,6 +129,8 @@ configure_file(
 
 install_data(['data/wp-day.jpg', 'data/wp-night.jpg'], install_dir : datadir / 'shade-shell')
 
+
+
 # Install systemd user service for non-NixOS users (NixOS module uses its own)
 configure_file(
   input: 'data/shade-shell.service.in',

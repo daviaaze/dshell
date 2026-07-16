@@ -1,7 +1,7 @@
 import Hyprland from 'gi://AstalHyprland';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, For, Accessor, With} from 'gnim';
+import {createBinding, createComputed, For, Accessor, With} from 'gnim';
 import {toArray} from '#/lib/core/gjsUtils';
 import {getAppIcon} from '#/lib/services/state/apps';
 
@@ -31,7 +31,13 @@ export default ({
                         .sort((a, b) => a.id - b.id)
                 )}
             >
-                {(ws: Hyprland.Workspace) => (
+                {(ws: Hyprland.Workspace) => {
+                    // Guard against race condition: only set activeName if the
+                    // client toggle actually exists in this workspace's group.
+                    const focusedClient = createBinding(hyprland, 'focusedClient');
+                    const wsClients = createBinding(ws, 'clients');
+
+                    return (
                     <Adw.ToggleGroup
                         orientation={vertical.as(v =>
                             v
@@ -39,12 +45,15 @@ export default ({
                                 : Gtk.Orientation.HORIZONTAL
                         )}
                         cssClasses={[ws.id < 0 ? 'success' : '']}
-                        activeName={createBinding(hyprland, 'focusedClient').as(
-                            client =>
-                                client && client.workspace === ws
-                                    ? client.address
-                                    : (null as unknown as string)
-                        )}
+                        activeName={createComputed(() => {
+                            const client = focusedClient();
+                            if (!client || client.workspace !== ws)
+                                return null as unknown as string;
+                            const clients = toArray<Hyprland.Client>(wsClients());
+                            return clients.some(c => c.address === client.address)
+                                ? client.address
+                                : (null as unknown as string);
+                        })}
                     >
                         <For
                             each={createBinding(ws, 'clients').as(clients =>
@@ -83,7 +92,8 @@ export default ({
                             }
                         </With>
                     </Adw.ToggleGroup>
-                )}
+                    );
+                }}
             </For>
         </Gtk.Box>
     ) as Gtk.Box;
