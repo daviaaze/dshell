@@ -129,7 +129,17 @@ configure_file(
 
 install_data(['data/wp-day.jpg', 'data/wp-night.jpg'], install_dir : datadir / 'shade-shell')
 
-
+# pkexec helper + polkit action for battery conservation (root sysfs write)
+install_data('data/shade-conservation-toggle',
+  install_dir: bindir,
+  install_mode: 'rwxr-xr-x',
+)
+configure_file(
+  input: 'data/org.shade-shell.policy.in',
+  output: 'org.shade-shell.policy',
+  configuration: {'bindir': bindir},
+  install_dir: datadir / 'polkit-1' / 'actions',
+)
 
 # Install systemd user service for non-NixOS users (NixOS module uses its own)
 configure_file(

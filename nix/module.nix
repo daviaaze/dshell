@@ -78,17 +78,9 @@ in
         ];
         security.pam.services.astal-auth = {};
 
-        # Polkit action for battery conservation (pkexec)
+        # Polkit is required for the battery-conservation pkexec action
+        # (shipped in the package's share/polkit-1/actions).
         security.polkit.enable = true;
-        security.polkit.extraConfig = ''
-          // Allow shade-shell to toggle battery conservation via pkexec
-          polkit.addRule(function(action, subject) {
-            if (action.id == "org.shade-shell.battery-conservation" &&
-                subject.isInGroup("wheel")) {
-              return polkit.Result.AUTH_ADMIN;
-            }
-          });
-        '';
         # Start shade-shell as a systemd user service with auto-restart on failure
         systemd.user.services.shade-shell = {
           description = "Shade — Hyprland Adwaita Desktop Environment";

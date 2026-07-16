@@ -8,42 +8,42 @@ interface QuickToggleButtonProps {
     label: Accessor<string> | string;
     cssClasses?: Accessor<string[]> | string[];
     onClick?: () => void;
-    popover?: Accessor<Gtk.Popover>;
+    popover?: Accessor<Gtk.Popover> | Gtk.Popover;
     hexpand?: boolean;
     visible?: Accessor<boolean> | boolean;
     active?: Accessor<boolean> | boolean;
 }
 
 export const QuickToggleButton = (props: QuickToggleButtonProps) => {
+    // Neither Gtk.Button nor Adw.SplitButton expose an `active` state that
+    // fits a toggle — reflect `active` through the 'active' css class.
+    // Narrow via local consts so instanceof narrowing holds inside the closure.
+    const css = props.cssClasses;
+    const act = props.active;
+
+    const mergedCss =
+        css instanceof Accessor || act instanceof Accessor
+            ? createComputed(() => {
+                  const base = css instanceof Accessor ? css() : (css ?? ['raised']);
+                  const isActive = act instanceof Accessor ? act() : act;
+                  return isActive ? [...base, 'active'] : base;
+              })
+            : [...(css ?? ['raised']), ...(act ? ['active'] : [])];
+
     if (props.popover) {
         return (
             <Adw.SplitButton
                 visible={props.visible ?? true}
-                cssClasses={props.cssClasses ?? ['raised']}
+                cssClasses={mergedCss}
                 hexpand={props.hexpand ?? true}
                 $={usePopoverCleanup}
                 onClicked={props.onClick}
                 popover={props.popover}
-                active={props.active}
             >
                 <Adw.ButtonContent iconName={props.icon} label={props.label} />
             </Adw.SplitButton>
         );
     }
-    // Gtk.Button has no built-in `active` property (Adw.SplitButton does).
-    // Compose cssClasses so the 'active' class is added when active is true.
-    const isActiveAccessor = props.active instanceof Accessor;
-    const isCssAccessor = props.cssClasses instanceof Accessor;
-
-    const mergedCss = isActiveAccessor || isCssAccessor
-        ? createComputed(() => [
-              ...(isCssAccessor ? props.cssClasses?.() ?? ['raised'] : props.cssClasses ?? ['raised']),
-              ...(isActiveAccessor ? props.active() ? ['active'] : [] : props.active ? ['active'] : []),
-          ])
-        : [
-              ...(props.cssClasses ?? ['raised']),
-              ...(props.active ? ['active'] : []),
-          ];
 
     return (
         <Gtk.Button

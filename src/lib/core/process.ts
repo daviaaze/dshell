@@ -179,20 +179,26 @@ export class Process extends GObject.Object {
      * The first element of the vector is executed with the remaining
      * elements as the argument list.
      *
-     * @throws stderr
+     * @param silenceStderr Discard stderr instead of piping it
+     *   (for commands that spam harmless diagnostics, e.g. pw-dump).
+     *   Do NOT use shell redirection like `2>/dev/null`: exec is not
+     *   run through a shell, so it would be passed as a literal argument.
+     * @throws stderr, or the exit status if stderr was silenced
      * @return stdout of the subprocess
      */
-    static execv(cmd: string[]) {
+    static execv(cmd: string[], silenceStderr = false) {
         const process = Gio.Subprocess.new(
             cmd,
-            Gio.SubprocessFlags.STDERR_PIPE | Gio.SubprocessFlags.STDOUT_PIPE
+            (silenceStderr
+                ? Gio.SubprocessFlags.STDERR_SILENCE
+                : Gio.SubprocessFlags.STDERR_PIPE) | Gio.SubprocessFlags.STDOUT_PIPE
         );
 
         const [, out, err] = process.communicate_utf8(null, null);
         if (process.get_successful()) {
             return out.trim();
         } else {
-            throw new Error(err);
+            throw new Error(err ?? `exited with status ${process.get_exit_status()}`);
         }
     }
 
@@ -203,9 +209,9 @@ export class Process extends GObject.Object {
      * @throws stderr
      * @return stdout of the subprocess
      */
-    static exec(cmd: string) {
+    static exec(cmd: string, opts: {silenceStderr?: boolean} = {}) {
         const [, argv] = GLib.shell_parse_argv(cmd);
-        return Process.execv(argv!);
+        return Process.execv(argv!, opts.silenceStderr);
     }
 
     /**
@@ -216,10 +222,12 @@ export class Process extends GObject.Object {
      * @throws stderr
      * @return stdout of the subprocess
      */
-    static execAsyncv(cmd: string[]): Promise<string> {
+    static execAsyncv(cmd: string[], silenceStderr = false): Promise<string> {
         const process = Gio.Subprocess.new(
             cmd,
-            Gio.SubprocessFlags.STDERR_PIPE | Gio.SubprocessFlags.STDOUT_PIPE
+            (silenceStderr
+                ? Gio.SubprocessFlags.STDERR_SILENCE
+                : Gio.SubprocessFlags.STDERR_PIPE) | Gio.SubprocessFlags.STDOUT_PIPE
         );
 
         return new Promise((resolve, reject) => {
@@ -229,7 +237,12 @@ export class Process extends GObject.Object {
                     if (process.get_successful()) {
                         resolve(out.trim());
                     } else {
-                        reject(new Error(err.trim()));
+                        reject(
+                            new Error(
+                                err?.trim() ??
+                                    `exited with status ${process.get_exit_status()}`
+                            )
+                        );
                     }
                 } catch (error) {
                     reject(error);
@@ -245,9 +258,9 @@ export class Process extends GObject.Object {
      * @throws stderr
      * @return stdout of the subprocess
      */
-    static execAsync(cmd: string) {
+    static execAsync(cmd: string, opts: {silenceStderr?: boolean} = {}) {
         const [, argv] = GLib.shell_parse_argv(cmd);
-        return Process.execAsyncv(argv!);
+        return Process.execAsyncv(argv!, opts.silenceStderr);
     }
 
     /**

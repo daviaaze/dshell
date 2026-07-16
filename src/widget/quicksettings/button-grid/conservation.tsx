@@ -5,6 +5,9 @@ import GLib from 'gi://GLib?version=2.0';
 
 export default () => {
     const [enabled, setEnabled] = createState(isConservationEnabled());
+    // Guards against stacking multiple pkexec auth dialogs while one
+    // elevation attempt is still in flight.
+    let pending = false;
 
     onMount(() => {
         const sourceId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
@@ -19,10 +22,13 @@ export default () => {
 
     return (
         <QuickToggleButton
-            icon={enabled() ? 'battery-caution-symbolic' : 'battery-good-symbolic'}
-            label={enabled() ? 'Conservation' : 'Full Power'}
-            active={enabled()}
+            icon={enabled.as(e =>
+                e ? 'battery-caution-symbolic' : 'battery-good-symbolic'
+            )}
+            label={enabled.as(e => (e ? 'Conservation' : 'Full Power'))}
+            active={enabled}
             onClick={() => {
+                if (pending) return;
                 const ok = toggleConservation();
                 if (ok) {
                     // Direct write succeeded — optimistic update
@@ -32,9 +38,13 @@ export default () => {
                     });
                 } else {
                     // Not writable — try pkexec (polkit auth dialog)
-                    toggleConservationAsync().then(() => {
-                        setEnabled(isConservationEnabled());
-                    });
+                    pending = true;
+                    toggleConservationAsync()
+                        .catch(() => {})
+                        .finally(() => {
+                            pending = false;
+                            setEnabled(isConservationEnabled());
+                        });
                 }
             }}
         />

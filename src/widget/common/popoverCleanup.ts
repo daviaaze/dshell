@@ -7,7 +7,7 @@ import Gtk from 'gi://Gtk?version=4.0';
  * Usage: `<Adw.SplitButton $={usePopoverCleanup} ... />`
  */
 export function usePopoverCleanup(
-    self: (Gtk.Widget & {popover?: Gtk.Popover}) | Gtk.MenuButton
+    self: (Gtk.Widget & {popover?: Gtk.Popover | null}) | Gtk.MenuButton
 ) {
     self.connect('destroy', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

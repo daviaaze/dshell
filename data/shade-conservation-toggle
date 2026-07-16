@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+# Shade Shell — battery conservation toggle helper
+# Called by pkexec to write to the ideapad sysfs file.
+# Usage: shade-conservation-toggle <0|1>
+# Only POSIX builtins are used; PATH is set defensively for pkexec's
+# sanitized environment.
+
+PATH="/run/current-system/sw/bin:/usr/bin:/bin:${PATH}"
+
+case "${1:-}" in
+    0 | 1) ;;
+    *)
+        echo "Usage: $0 <0|1>" >&2
+        exit 1
+        ;;
+esac
+
+SYSFS="/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode"
+
+if [ ! -f "$SYSFS" ]; then
+    echo "conservation mode sysfs file not found: $SYSFS" >&2
+    exit 1
+fi
+
+printf '%s' "$1" > "$SYSFS"
+echo "$1"

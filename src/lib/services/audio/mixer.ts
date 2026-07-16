@@ -149,10 +149,14 @@ export default class AppMixer extends GObject.Object {
 
     #fetchAndUpdate() {
         try {
-            // Redirect stderr to null: pw-dump writes harmless diagnostics
+            // Silence stderr: pw-dump writes harmless diagnostics
             // (e.g. "Spa:Enum:ParamId:IO failed") to stderr that clutter logs.
-            const pwDump = Process.exec('pw-dump 2>/dev/null');
-            const pwMetadata = Process.exec('pw-metadata -n default 2>/dev/null');
+            // NB: shell redirection (2>/dev/null) does NOT work here —
+            // Process.exec is not run through a shell.
+            const pwDump = Process.exec('pw-dump', {silenceStderr: true});
+            const pwMetadata = Process.exec('pw-metadata -n default', {
+                silenceStderr: true,
+            });
             this.#update(pwDump, pwMetadata);
         } catch (e) {
             logger.error('audio', 'pw-dump or pw-metadata failed:', e);

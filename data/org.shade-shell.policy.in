@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+
+  <vendor>Shade Shell</vendor>
+  <vendor_url>https://github.com/caioasmuniz/shade</vendor_url>
+
+  <action id="org.shade-shell.battery-conservation">
+    <_description>Toggle battery conservation mode</_description>
+    <_message>Authentication is required to toggle battery conservation mode (write to sysfs).</_message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">@bindir@/shade-conservation-toggle</annotate>
+  </action>
+
+</policyconfig>
