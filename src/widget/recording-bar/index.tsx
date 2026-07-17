@@ -2,7 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {createBinding} from 'gnim';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 import Screenshot from '#/lib/services/capture/screenshot';
 import {monitorIndexFromHyprland} from '#/lib/utils/monitors';
 

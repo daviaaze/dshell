@@ -13,6 +13,7 @@
  *   --external <pattern>  Mark a module as external
  *   --loader <ext=type>   Set a loader for a file extension
  *   --format <format>     Output format (esm, cjs, iife)
+ *   --banner <text>       Prepend a banner line (e.g. a shebang)
  *   --target <target>     Target environment
  *   --platform <platform> Platform (browser, node, neutral)
  */
@@ -52,6 +53,8 @@ for (let i = 0; i < args.length; i++) {
             if (!options.loader) options.loader = {};
             options.loader[loader.slice(0, eqIdx)] = loader.slice(eqIdx + 1);
         }
+    } else if (arg === '--banner' && i + 1 <= args.length) {
+        options.banner = {js: args[++i]};
     } else if (arg === '--format' && i + 1 <= args.length) {
         options.format = args[++i];
     } else if (arg === '--target' && i + 1 <= args.length) {

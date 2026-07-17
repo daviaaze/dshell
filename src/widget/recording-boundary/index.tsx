@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
 import {createBinding, onCleanup} from 'gnim';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 import {monitors} from '#/lib/services/monitoring/monitors';
 import Screenshot, {BoundaryGeometry} from '#/lib/services/capture/screenshot';
 import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';

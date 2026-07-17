@@ -4,7 +4,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {createBinding, createState, For, onCleanup} from 'gnim';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 import {toArray} from '#/lib/core/gjsUtils';
 import SwitcherItem from './item';
 import logger from '#/lib/core/logger';

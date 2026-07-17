@@ -28,7 +28,7 @@ import {FrecencyManager} from '#/lib/services/search/frecency';
 import {initAutoSwitch} from '#/lib/services/audio/autoSwitch';
 import {initAppWatcher} from '#/lib/services/state/apps';
 import {initClipboardHistory} from '#/lib/services/clipboard/history';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 import {useSettings} from '#/lib/settings';
 import WindowManager from '#/lib/services/state/windowManager';
 import logger, {perf} from '#/lib/core/logger';

@@ -2,7 +2,7 @@ import Hyprland from 'gi://AstalHyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 import WindowManager from '#/lib/services/state/windowManager';
 import {useSettings} from '#/lib/settings';
 import logger from '#/lib/core/logger';

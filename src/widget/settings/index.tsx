@@ -11,7 +11,7 @@ import Network from './network';
 import ScreenCapture from './screenCapture';
 import Timer from './timer';
 import Debug from './debug';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 
 export const createSettingsWindow = (): Adw.Window => {
     return (

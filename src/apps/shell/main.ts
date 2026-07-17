@@ -1,17 +1,15 @@
-#!@gjs@ -m
-
 import Gettext from 'gettext';
 import GLib from 'gi://GLib?version=2.0';
 import GLibUnix from 'gi://GLibUnix?version=2.0';
 import {exit, programArgs, programInvocationName} from 'system';
-import {app} from '#/App';
+import {app} from './App';
 import logger, {initLoggerFromSettings, perf} from '#/lib/core/logger';
 
 // ── Graceful shutdown on signals ──
 
 function setupSignalHandlers() {
     let quitting = false;
-    const handleSignal = (sig: number): true => {
+    const handleSignal = (sig: number): boolean => {
         if (quitting) {
             logger.log(`received signal ${sig} again, forcing exit`);
             exit(1);

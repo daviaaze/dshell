@@ -1,5 +1,3 @@
-#!@gjs@ -m
-
 /**
  * Greeter entry point — launched by greetd at login time.
  *
@@ -13,12 +11,11 @@
  * ```
  */
 import GLib from 'gi://GLib?version=2.0';
-import Gtk from 'gi://Gtk?version=4.0';
-import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import {programArgs, programInvocationName, exit} from 'system';
 import {createRoot} from 'gnim';
 import {Greeter} from '#/widget/greeter';
+import logger from '#/lib/core/logger';
 
 // ── Minimal Gtk application ──
 
@@ -32,6 +29,7 @@ const app = new Gio.Application({
 GLib.set_prgname('shade-shell-greet');
 
 app.connect('activate', () => {
+    logger.info('greeter', 'activating greeter UI');
     // Create the greeter UI which handles its own Astal.Window
     createRoot(dispose => {
         app.connect('shutdown', dispose);

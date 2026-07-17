@@ -10,7 +10,7 @@ import {searchClipboard} from '#/lib/services/clipboard';
 import {getAppList, fuzzyQuery} from '#/lib/services/state/apps';
 import {FrecencyManager} from '#/lib/services/search/frecency';
 import {useSettings} from '#/lib/settings';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
 import logger from '#/lib/core/logger';

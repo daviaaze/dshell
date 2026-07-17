@@ -11,10 +11,10 @@ import {requestHandler} from '#/lib/services/state/requestHandler';
 import ShellState from '#/lib/services/state/shellState';
 import Screenshot from '#/lib/services/capture/screenshot';
 import Touchpad from '#/lib/services/input/touchpad';
-import {widgets} from './widget';
+import {widgets} from '#/widget';
 import logger, {perf} from '#/lib/core/logger';
 import css from './shade.css';
-import resetCss from './style/reset.css';
+import resetCss from '#/style/reset.css';
 
 @register()
 export class ShadeShell extends Adw.Application {

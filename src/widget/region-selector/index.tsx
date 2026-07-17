@@ -4,7 +4,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Cairo from 'gi://cairo?version=1.0';
 import {createBinding, createState} from 'gnim';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 import {Process} from '#/lib/core/process';
 import Screenshot from '#/lib/services/capture/screenshot';
 import {monitorIndexFromHyprland} from '#/lib/utils/monitors';

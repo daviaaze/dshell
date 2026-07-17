@@ -54,12 +54,8 @@
       nativeBuildInputs = with pkgs; [
         wrapGAppsHook4
         gobject-introspection
-        meson
-        pkg-config
-        ninja
-        desktop-file-utils
-        libxml2
-        esbuild
+        esbuild # gnim-schemas cli bundles schema.ts with it
+        libxml2 # xmllint, validates the generated gschema
         nodejs
       ];
 
@@ -125,13 +121,6 @@
           ;
       };
       nixosConfigurations.vm = nixpkgs.lib.nixosSystem {
-        inherit system;
-        modules = [
-          self.nixosModules.default
-        ];
-      };
-
-      nixosConfigurations.vm-vnc = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
           self.nixosModules.default

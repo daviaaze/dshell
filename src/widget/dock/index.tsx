@@ -4,7 +4,7 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {createBinding, For, createComputed, onCleanup} from 'gnim';
 import WindowManager from '#/lib/services/state/windowManager';
 import {useSettings} from '#/lib/settings';
-import {app} from '#/App';
+import {app} from '#/apps/shell/App';
 import DockItem from './item';
 import {toArray} from '#/lib/core/gjsUtils';
 import {getDesktopFileForClient} from '#/lib/services/state/apps';
