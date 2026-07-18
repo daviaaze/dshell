@@ -33,7 +33,7 @@ export default ({
     visible?: boolean | Accessor<boolean>;
 }) => {
     const timerActiveStyle = useStyle({
-        color: 'var(--shade-primary, #3584e4)',
+        color: 'var(--shade-primary)',
         'font-weight': 'bold',
     });
     const {general} = useSettings();

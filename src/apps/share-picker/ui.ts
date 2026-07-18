@@ -18,7 +18,7 @@ export function applyPopupCss(): void {
         provider.load_from_string(`
             window.picker-popup {
                 border-radius: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.08);
+                border: 1px solid alpha(@window_bg_color, 0.08);
             }
         `);
         const display = Gdk.Display.get_default();

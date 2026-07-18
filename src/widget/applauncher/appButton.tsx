@@ -18,10 +18,10 @@ export default ({
         'border-radius': '8px',
         background: 'transparent',
         '&:hover': {
-            background: 'var(--shade-hover-bg, rgba(128,128,128,0.15))',
+            background: 'var(--shade-hover-bg)',
         },
         '&:active': {
-            background: 'var(--shade-active-bg, rgba(128,128,128,0.25))',
+            background: 'var(--shade-active-bg)',
         },
     });
     // Create child content once per button instance to avoid

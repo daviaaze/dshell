@@ -45,14 +45,14 @@ export default () => {
                 {/* Red recording dot */}
                 <Gtk.Image
                     iconName="media-record-symbolic"
-                    css={'color: #FF0000;'}
+                    css={'color: @error_color;'}
                     pixelSize={16}
                 />
 
                 {/* "REC" label */}
                 <Gtk.Label
                     label="REC"
-                    css={'color: #FF0000; font-weight: bold; font-size: 13px;'}
+                    css={'color: @error_color; font-weight: bold; font-size: 13px;'}
                 />
 
                 {/* Separator */}

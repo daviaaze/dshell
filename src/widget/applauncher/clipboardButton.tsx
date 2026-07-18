@@ -14,10 +14,10 @@ export default ({item}: {item: ClipboardItem}) => {
         'border-radius': '8px',
         background: 'transparent',
         '&:hover': {
-            background: 'var(--shade-hover-bg, rgba(128,128,128,0.15))',
+            background: 'var(--shade-hover-bg)',
         },
         '&:active': {
-            background: 'var(--shade-active-bg, rgba(128,128,128,0.25))',
+            background: 'var(--shade-active-bg)',
         },
     });
 

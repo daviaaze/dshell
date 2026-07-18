@@ -175,7 +175,7 @@ export default () => {
                         $={self => {
                             const c = new Gdk.RGBA();
                             if (!c.parse(settings.recordingBoundaryColor())) {
-                                c.parse('#FF0000');
+                                c.parse('#FF0000'); // comply-allow: theme/hardcoded-color — Gdk.RGBA runtime fallback, not CSS
                             }
                             self.rgba = c;
                         }}

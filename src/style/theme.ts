@@ -44,6 +44,8 @@ export const CSS_VARS = {
     shadow: '--shade-shadow',
     radius: '--shade-radius',
     spacing: '--shade-spacing',
+    hoverBg: '--shade-hover-bg',
+    activeBg: '--shade-active-bg',
 } as const;
 
 export type ThemeColors = Record<string, string>;
@@ -69,6 +71,8 @@ const ADWAITA_COLORS: ThemeColors = {
     shadow: '#000000',
     radius: '8px',
     spacing: '4px',
+    'hover-bg': 'rgba(128,128,128,0.15)',
+    'active-bg': 'rgba(128,128,128,0.25)',
 };
 
 const ADWAITA_COLORS_LIGHT: ThemeColors = {
@@ -89,6 +93,8 @@ const ADWAITA_COLORS_LIGHT: ThemeColors = {
     outline: '#c0c0c0',
     'outline-variant': '#d4d4d4',
     shadow: '#00000040',
+    'hover-bg': 'rgba(255,255,255,0.12)',
+    'active-bg': 'rgba(255,255,255,0.20)',
 };
 
 // ── Stylesheet class ──

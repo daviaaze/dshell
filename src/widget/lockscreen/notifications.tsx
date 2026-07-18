@@ -23,7 +23,7 @@ const MAX_NOTIFICATIONS = 20;
 export const LockscreenNotifications = () => {
     const lockscreenStyle = useStyle({
         padding: '8px',
-        background: 'var(--shade-bg, rgba(0,0,0,0.4))',
+        background: 'var(--shade-bg)',
         'border-radius': '12px',
     });
     const listStyle = useStyle({

@@ -35,8 +35,8 @@ function deviceIcon(icon: string): string {
 function applyColorCss(widget: Gtk.Widget, level: number | null) {
     let css: string;
     if (level === null) return;
-    if (level < 20) css = '* { color: #e03e3e; }';
-    else if (level < 50) css = '* { color: #f5c211; }';
+    if (level < 20) css = '* { color: @error_color; }';
+    else if (level < 50) css = '* { color: @warning_color; }';
     else return;
 
     const provider = new Gtk.CssProvider();

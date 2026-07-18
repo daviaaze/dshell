@@ -51,13 +51,13 @@ function useWeatherData(
     });
 
     const [gradient, setGradient] = createState(
-        'linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)'
+        'linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)' // comply-allow: theme/hardcoded-color — weather gradient fallback (content imagery)
     );
     info.subscribe(w => {
         setGradient(
             w?.is_valid()
                 ? weatherGradient(w.get_icon_name() ?? '')
-                : 'linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)'
+                : 'linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)' // comply-allow: theme/hardcoded-color — weather gradient fallback (content imagery)
         );
     });
 
@@ -127,7 +127,7 @@ export const WeatherWidget = () => {
     const hourlyTimeStyle = useStyle({ 'font-size': '11px', opacity: '0.7' });
     const hourlyTempStyle = useStyle({ 'font-size': '13px', 'font-weight': '600' });
     const dailyItemStyle = useStyle({ padding: '4px', 'border-radius': '8px' });
-    const detailCardStyle = useStyle({ padding: '8px', 'border-radius': '8px', background: 'rgba(128,128,128,0.1)' });
+    const detailCardStyle = useStyle({ padding: '8px', 'border-radius': '8px', background: 'var(--shade-surface-dim)' });
     const detailValueStyle = useStyle({ 'font-size': '18px', 'font-weight': 'bold' });
     const refreshStyle = useStyle({ padding: '4px', 'border-radius': '8px', 'margin-top': '8px' });
 
