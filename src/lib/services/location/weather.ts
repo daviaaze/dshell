@@ -9,7 +9,7 @@ import {toArray} from '#/lib/core/gjsUtils';
 
 @register({GTypeName: 'Weather'})
 export default class Weather extends GObject.Object {
-    static readonly instance: Weather;
+    static instance: Weather;
 
     static get_default() {
         if (!this.instance) this.instance = new Weather();

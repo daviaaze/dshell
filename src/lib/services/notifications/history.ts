@@ -52,7 +52,7 @@ function saveHistory(history: HistoryEntry[]) {
 
 @register({GTypeName: 'NotificationHistory'})
 export default class NotificationHistory extends GObject.Object {
-    static readonly instance: NotificationHistory;
+    static instance: NotificationHistory;
     static get_default() {
         if (!this.instance) this.instance = new NotificationHistory();
         return this.instance;

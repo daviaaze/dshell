@@ -21,6 +21,9 @@ importers:
       '@girs/adw-1':
         specifier: ^1.10.0-4.0.4
         version: 1.10.0-4.0.4
+      '@girs/gweather-4.0':
+        specifier: ^4.1.0
+        version: 4.1.0
       esbuild:
         specifier: ^0.28.0
         version: 0.28.0
@@ -240,6 +243,9 @@ packages:
   '@girs/cairo-1.0@1.0.0-4.0.4':
     resolution: {integrity: sha512-aGZmZyZgTxcOzb+v9LQhV8XuxQFjv8NGXl36xO62qb74pxBJy2IEpYf8U7HpGeiynI9sInbompE5r0gGzG3xOQ==}
 
+  '@girs/cairo-1.0@4.1.0':
+    resolution: {integrity: sha512-iCdRmpCPpQn+skaJfLsDUvSSidKgQLAsFeah5Ac5I5dRmpdwCvDTsox6wreZssfhERWcUAldtWj7wXmSzPBLKg==}
+
   '@girs/freetype2-2.0@2.0.0-4.0.4':
     resolution: {integrity: sha512-FKOxBYsfMW2KPTG2zML8No6Me5yM3cNatAt/Hr7Kjw8iPTZgGCV8TqtOHPTz9jvMajMDa/ETC+Y49GustIHi6g==}
 
@@ -252,17 +258,32 @@ packages:
   '@girs/gio-2.0@2.88.0-4.0.4':
     resolution: {integrity: sha512-RcEUDQm45rYqbcQzbGgBkKlU5+W5UJX2JKdCPGVF66rZXwNkG1bHiTVR14oYg6GB4jwmGue15ZSwX2u0n/X/FA==}
 
+  '@girs/gio-2.0@4.1.0':
+    resolution: {integrity: sha512-irRUpGEOHknlk4TNoOlAaBCg/jCGZKZv8Ulr23mmqf+MTI6ygDcbJY6bdHAf5dZfbgkOXjhXRl753j8F850W9Q==}
+
   '@girs/gjs@4.0.4':
     resolution: {integrity: sha512-Tgp5Jt3wenLcevB5n+DdH/jWmrRAgnL9ERvqRpiz3hup+NHdHDLp4HrlhyUqoEr37qknA3+El210bQdxbm5FuA==}
+
+  '@girs/gjs@4.1.0':
+    resolution: {integrity: sha512-fF6beHhI/DW/4WF2JVDRVpjnWuae93euyr4NXOOTNXwaatDxbMB21jte+b0+Qc7eUEqjIUhV10Hq6ztl4hKWQg==}
 
   '@girs/glib-2.0@2.88.0-4.0.4':
     resolution: {integrity: sha512-xJL43uQFKnULX6R+Jc/2IR2GjPHQL/jhj0KJvpPsX1zNzOFrudqYvrjeM/Yg8ByPxzZoW2R25ELmRzNXxeNjWQ==}
 
+  '@girs/glib-2.0@4.1.0':
+    resolution: {integrity: sha512-1OeIRobL8UEPP5HXD+lwEgM3643aof+mJ6GJD6TMtzuI9ZbuVyS9MJjQopHW+YrRSLAZwfSQXm2WipA3p3EZmg==}
+
   '@girs/gmodule-2.0@2.0.0-4.0.4':
     resolution: {integrity: sha512-teRoTE8RlYk1aSpaYzxyV2Xgz4hn+qcU1UX+GmF+LK/F2sT1tKbYk6L7O7peWh1EK6+bCqx97ciIiylT7j97gQ==}
 
+  '@girs/gmodule-2.0@4.1.0':
+    resolution: {integrity: sha512-yOFTdnvD61ohMDk12T2Rhcve6vP4/vZpwb/0iQYLu4ZOTD6cazMEdpM+ncZSj8beffbRqTfd7H81HNAriVVm5Q==}
+
   '@girs/gobject-2.0@2.88.0-4.0.4':
     resolution: {integrity: sha512-Cp6+TTANdOlUv0oy/WaLtoUWW0hu9vXgxDu0MDQczzg0GFV7HlVMVyjBp1L9Faz7WWYXjDB6LqPwNGnOxoXkQg==}
+
+  '@girs/gobject-2.0@4.1.0':
+    resolution: {integrity: sha512-5hPKlUOe8WdFQ6/uMS/0FEKC60ZNNJryIv9Qd4QB1jJkTHiah9TSQH4QVZNF14lQDxxYjAIgY8mcchGL2+bteA==}
 
   '@girs/graphene-1.0@1.0.0-4.0.4':
     resolution: {integrity: sha512-CeM4su4CzuYvPXXBa0pg3CIihiC5Vw7At3Xe+4G5/GCzssl4xtoJmdQLHCRWVJInXelcfyENSK+XN2LOttvY/Q==}
@@ -272,6 +293,9 @@ packages:
 
   '@girs/gtk-4.0@4.23.0-4.0.4':
     resolution: {integrity: sha512-voE7gQtNSOci4yc+r5Fon9kBLFfDY7E4+Ft9d8cEUz///9p64DwvVaUp9w/1hTfEqKQcA9ORcIgXCteQ6PSQuQ==}
+
+  '@girs/gweather-4.0@4.1.0':
+    resolution: {integrity: sha512-/F5eUifz/BvB+EUp4NQWH7ZfTjUxm330Rs85BdDos9CxUUcPumTJwtKgGPjPzUJ81ETpzrqIw22Nx1jOmKJ0xg==}
 
   '@girs/harfbuzz-0.0@13.2.1-4.0.4':
     resolution: {integrity: sha512-gj7dqsJ8vRYowHI5jd8/0Otb1HfIRVwVNH/F63TnqFCLbAFiuCavjNRBfTFZ1d9eIvmuGK34IsYm0hI802Uogg==}
@@ -831,6 +855,12 @@ snapshots:
       '@girs/glib-2.0': 2.88.0-4.0.4
       '@girs/gobject-2.0': 2.88.0-4.0.4
 
+  '@girs/cairo-1.0@4.1.0':
+    dependencies:
+      '@girs/gjs': 4.1.0
+      '@girs/glib-2.0': 4.1.0
+      '@girs/gobject-2.0': 4.1.0
+
   '@girs/freetype2-2.0@2.0.0-4.0.4':
     dependencies:
       '@girs/gjs': 4.0.4
@@ -865,6 +895,13 @@ snapshots:
       '@girs/gmodule-2.0': 2.0.0-4.0.4
       '@girs/gobject-2.0': 2.88.0-4.0.4
 
+  '@girs/gio-2.0@4.1.0':
+    dependencies:
+      '@girs/gjs': 4.1.0
+      '@girs/glib-2.0': 4.1.0
+      '@girs/gmodule-2.0': 4.1.0
+      '@girs/gobject-2.0': 4.1.0
+
   '@girs/gjs@4.0.4':
     dependencies:
       '@girs/cairo-1.0': 1.0.0-4.0.4
@@ -872,10 +909,22 @@ snapshots:
       '@girs/glib-2.0': 2.88.0-4.0.4
       '@girs/gobject-2.0': 2.88.0-4.0.4
 
+  '@girs/gjs@4.1.0':
+    dependencies:
+      '@girs/cairo-1.0': 4.1.0
+      '@girs/gio-2.0': 4.1.0
+      '@girs/glib-2.0': 4.1.0
+      '@girs/gobject-2.0': 4.1.0
+
   '@girs/glib-2.0@2.88.0-4.0.4':
     dependencies:
       '@girs/gjs': 4.0.4
       '@girs/gobject-2.0': 2.88.0-4.0.4
+
+  '@girs/glib-2.0@4.1.0':
+    dependencies:
+      '@girs/gjs': 4.1.0
+      '@girs/gobject-2.0': 4.1.0
 
   '@girs/gmodule-2.0@2.0.0-4.0.4':
     dependencies:
@@ -883,10 +932,21 @@ snapshots:
       '@girs/glib-2.0': 2.88.0-4.0.4
       '@girs/gobject-2.0': 2.88.0-4.0.4
 
+  '@girs/gmodule-2.0@4.1.0':
+    dependencies:
+      '@girs/gjs': 4.1.0
+      '@girs/glib-2.0': 4.1.0
+      '@girs/gobject-2.0': 4.1.0
+
   '@girs/gobject-2.0@2.88.0-4.0.4':
     dependencies:
       '@girs/gjs': 4.0.4
       '@girs/glib-2.0': 2.88.0-4.0.4
+
+  '@girs/gobject-2.0@4.1.0':
+    dependencies:
+      '@girs/gjs': 4.1.0
+      '@girs/glib-2.0': 4.1.0
 
   '@girs/graphene-1.0@1.0.0-4.0.4':
     dependencies:
@@ -926,6 +986,14 @@ snapshots:
       '@girs/harfbuzz-0.0': 13.2.1-4.0.4
       '@girs/pango-1.0': 1.57.1-4.0.4
       '@girs/pangocairo-1.0': 1.0.0-4.0.4
+
+  '@girs/gweather-4.0@4.1.0':
+    dependencies:
+      '@girs/gio-2.0': 4.1.0
+      '@girs/gjs': 4.1.0
+      '@girs/glib-2.0': 4.1.0
+      '@girs/gmodule-2.0': 4.1.0
+      '@girs/gobject-2.0': 4.1.0
 
   '@girs/harfbuzz-0.0@13.2.1-4.0.4':
     dependencies:

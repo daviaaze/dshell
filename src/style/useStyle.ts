@@ -23,7 +23,9 @@ import {onCleanup} from 'gnim';
 // ── Types ──
 
 type CSSValue = string | number;
-type StyleObject = Record<string, CSSValue | StyleObject>;
+interface StyleObject {
+    [key: string]: CSSValue | StyleObject;
+}
 
 interface StyleEntry {
     class: string;

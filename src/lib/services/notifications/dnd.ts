@@ -25,7 +25,7 @@ import logger from '#/lib/core/logger';
  */
 @register({GTypeName: 'DndService'})
 export default class DndService extends GObject.Object {
-    static readonly instance: DndService;
+    static instance: DndService;
 
     static get_default() {
         if (!this.instance) this.instance = new DndService();

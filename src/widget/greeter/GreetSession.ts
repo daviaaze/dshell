@@ -20,7 +20,7 @@ export type GreetState =
 
 @register({GTypeName: 'GreetSession'})
 export class GreetSession extends GObject.Object {
-    static readonly instance: GreetSession;
+    static instance: GreetSession;
 
     static get_default() {
         if (!this.instance) this.instance = new GreetSession();

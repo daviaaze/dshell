@@ -85,7 +85,7 @@ export class Process extends GObject.Object {
      * @param str String to be written to stdin
      */
     write(str: string): Promise<[boolean, number]> {
-        return new Promise((resolve, reject) => {
+        return new Promise<[boolean, number]>((resolve, reject) => {
             this.#inStream.write_bytes_async(
                 this.#encoder.encode(str),
                 GLib.PRIORITY_DEFAULT,
@@ -107,14 +107,15 @@ export class Process extends GObject.Object {
      * @param str String to be written to stdin
      */
     async writeAsync(str: string): Promise<void> {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             this.#inStream.write_all_async(
                 this.#encoder.encode(str),
                 GLib.PRIORITY_DEFAULT,
                 null,
                 (_, res) => {
                     try {
-                        resolve(this.#inStream.write_all_finish(res));
+                        this.#inStream.write_all_finish(res);
+                        resolve();
                     } catch (error) {
                         reject(error);
                     }

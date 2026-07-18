@@ -1,5 +1,8 @@
 import GLib from 'gi://GLib?version=2.0';
 
+// comply-allow-file: theme/hardcoded-color — weather-condition gradients are
+// content imagery (like icons), not theme chrome; they must not follow --shade-*
+
 // ── Condition → CSS gradient background ──────────────────────────────────
 // Uses GWeather icon names (non-localized, consistent):
 //   weather-clear, weather-few-clouds, weather-scattered-clouds,

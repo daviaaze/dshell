@@ -1,4 +1,5 @@
-import GObject, {getter, register, signal} from 'gnim/gobject';
+import GObject, {register, signal} from 'gnim/gobject';
+import {getter} from '#/lib/decorators';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import logger from '#/lib/core/logger';
@@ -11,7 +12,7 @@ type FingerprintState = 'idle' | 'initializing' | 'verifying' | 'error';
 
 @register({GTypeName: 'FingerprintAuth'})
 export default class FingerprintAuth extends GObject.Object {
-    static readonly instance: FingerprintAuth;
+    static instance: FingerprintAuth;
 
     static get_default() {
         if (!this.instance) this.instance = new FingerprintAuth();
@@ -58,13 +59,13 @@ export default class FingerprintAuth extends GObject.Object {
     }
 
     @signal()
-    verified() {}
+    verified(): undefined { return undefined; }
 
     @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
-    failed(_reason: string) {}
+    failed(_reason: string): undefined { return undefined; }
 
     @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
-    statusChanged(_status: string) {}
+    statusChanged(_status: string): undefined { return undefined; }
 
     #setState(state: FingerprintState) {
         if (this.#state === state) return;

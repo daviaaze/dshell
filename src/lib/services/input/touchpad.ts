@@ -17,7 +17,7 @@ signal.pause()
 
 @register({GTypeName: 'Touchpad'})
 export default class Touchpad extends GObject.Object {
-    static readonly instance: Touchpad;
+    static instance: Touchpad;
     static get_default() {
         if (!this.instance) this.instance = new Touchpad();
         return this.instance;
@@ -50,7 +50,7 @@ export default class Touchpad extends GObject.Object {
     }
 
     @signal([GObject.TYPE_BOOLEAN], GObject.TYPE_NONE)
-    toggled(_enabled: boolean) {}
+    toggled(_enabled: boolean): undefined { return undefined; }
 
     toggle() {
         logger.info(

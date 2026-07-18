@@ -9,7 +9,7 @@ const IFACE = 'net.hadess.PowerProfiles';
 type Profile = 'power-saver' | 'balanced' | 'performance';
 
 export default class PowerProfiles {
-    static readonly instance: PowerProfiles;
+    static instance: PowerProfiles;
     static get_default() {
         if (!this.instance) this.instance = new PowerProfiles();
         return this.instance;

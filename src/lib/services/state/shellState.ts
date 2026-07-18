@@ -7,7 +7,7 @@ import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'ShellState'})
 export default class ShellState extends GObject.Object {
-    static readonly instance: ShellState;
+    static instance: ShellState;
 
     static get_default() {
         if (!this.instance) this.instance = new ShellState();

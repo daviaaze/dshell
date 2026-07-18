@@ -22,7 +22,7 @@ function parseLayoutName(fullName: string): string {
 
 @register({GTypeName: 'KeyboardLayout'})
 export default class KeyboardLayout extends GObject.Object {
-    static readonly instance: KeyboardLayout;
+    static instance: KeyboardLayout;
 
     static get_default() {
         if (!this.instance) this.instance = new KeyboardLayout();

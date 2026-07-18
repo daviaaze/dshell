@@ -107,7 +107,7 @@ function parseTargets(pwMetadata: string): Map<number, number> {
 
 @register({GTypeName: 'AppMixer'})
 export default class AppMixer extends GObject.Object {
-    static readonly instance: AppMixer;
+    static instance: AppMixer;
     static get_default() {
         if (!this.instance) this.instance = new AppMixer();
         return this.instance;

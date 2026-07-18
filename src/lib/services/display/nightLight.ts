@@ -12,7 +12,7 @@ export const TEMP_MAX = 6500;
 export default class NightLight extends GObject.Object {
     static readonly POLL_INTERVAL_SECONDS = 5;
 
-    static readonly instance: NightLight;
+    static instance: NightLight;
     static get_default() {
         if (!this.instance) this.instance = new NightLight();
         return this.instance;

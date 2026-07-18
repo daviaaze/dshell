@@ -46,7 +46,7 @@ interface MatugenJson {
 
 @register({GTypeName: 'PaletteGenerator'})
 export default class PaletteGenerator extends GObject.Object {
-    static readonly instance: PaletteGenerator;
+    static instance: PaletteGenerator;
 
     static get_default() {
         if (!this.instance) this.instance = new PaletteGenerator();

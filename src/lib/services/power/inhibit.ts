@@ -6,7 +6,7 @@ import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'IdleInhibit'})
 export default class Inhibit extends GObject.Object {
-    static readonly instance: Inhibit;
+    static instance: Inhibit;
     static get_default() {
         if (!this.instance) this.instance = new Inhibit();
         return this.instance;

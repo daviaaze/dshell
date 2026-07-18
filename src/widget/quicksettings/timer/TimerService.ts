@@ -9,7 +9,7 @@ export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 
 @register({GTypeName: 'TimerService'})
 export default class TimerService extends GObject.Object {
-    static readonly instance: TimerService;
+    static instance: TimerService;
     static get_default() {
         if (!this.instance) this.instance = new TimerService();
         return this.instance;

@@ -2,6 +2,8 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import logger from '#/lib/core/logger';
 
+const monitorFiles = new Set<Gio.FileMonitor>();
+
 export function readFile(file: string | Gio.File) {
     const f = typeof file === 'string' ? Gio.File.new_for_path(file) : file;
 

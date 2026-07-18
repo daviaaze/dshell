@@ -3,7 +3,8 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import AstalWp from 'gi://AstalWp?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import GObject, {register} from 'gnim/gobject';
+import {getter, setter} from '#/lib/decorators';
 import logger from '#/lib/core/logger';
 import {Process} from '#/lib/core/process';
 import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
@@ -30,7 +31,7 @@ const MSG_RECORDING_FAILED = 'Recording failed';
 
 @register({GTypeName: 'Screenshot'})
 export default class Screenshot extends GObject.Object {
-    static readonly instance: Screenshot;
+    static instance: Screenshot;
 
     static get_default() {
         if (!this.instance) this.instance = new Screenshot();
@@ -238,7 +239,7 @@ export default class Screenshot extends GObject.Object {
     }
 
     @getter(String)
-    get pendingCaptureGeometry() {
+    get pendingCaptureGeometry(): string {
         return this.#pendingCaptureGeometry || '';
     }
 
@@ -376,7 +377,7 @@ export default class Screenshot extends GObject.Object {
 
     @getter(GObject.Object)
     get stageTexture(): Gdk.Texture | null {
-        return this.#stageTexture;
+        return this.#stageTexture ?? null;
     }
 
     screenshotGeometry(geometry: string) {

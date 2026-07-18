@@ -13,7 +13,7 @@ export enum DarkModes {
 
 @register({GTypeName: 'ColorScheme'})
 export class ColorScheme extends Object {
-    static readonly instance: ColorScheme;
+    static instance: ColorScheme;
     static get_default() {
         if (!this.instance) this.instance = new ColorScheme();
         return this.instance;

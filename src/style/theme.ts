@@ -138,7 +138,7 @@ export class Stylesheet {
 
 @register({GTypeName: 'ShadeTheme'})
 export class Theme extends GObject.Object {
-    static readonly instance: Theme;
+    static instance: Theme;
 
     static get_default(): Theme {
         if (!this.instance) this.instance = new Theme();

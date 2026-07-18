@@ -8,7 +8,7 @@ import {writeHypridleConfig, deleteHypridleConfig, type HypridleConfig} from './
 
 @register({GTypeName: 'Hypridle'})
 export default class Hypridle extends GObject.Object {
-    static readonly instance: Hypridle;
+    static instance: Hypridle;
     static get_default() {
         if (!this.instance) this.instance = new Hypridle();
         return this.instance;

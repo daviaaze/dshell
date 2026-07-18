@@ -6,7 +6,7 @@ import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'Geolocation'})
 export default class Geolocation extends GObject.Object {
-    static readonly instance: Geolocation;
+    static instance: Geolocation;
 
     static get_default() {
         if (!this.instance) this.instance = new Geolocation();
@@ -34,7 +34,7 @@ export default class Geolocation extends GObject.Object {
     }
 
     @signal([GObject.TYPE_DOUBLE, GObject.TYPE_DOUBLE], GObject.TYPE_NONE)
-    locationChanged(_lat: number, _lon: number) {}
+    locationChanged(_lat: number, _lon: number): undefined { return undefined; }
 
     detect() {
         if (this.#detecting) return;

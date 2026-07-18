@@ -30,7 +30,7 @@ type SoundCategory = 'notification' | 'capture' | 'battery' | 'system';
  */
 @register({GTypeName: 'SoundAlertService'})
 export default class SoundAlertService extends GObject.Object {
-    static readonly instance: SoundAlertService;
+    static instance: SoundAlertService;
 
     static get_default() {
         if (!this.instance) this.instance = new SoundAlertService();

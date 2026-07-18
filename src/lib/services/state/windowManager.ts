@@ -1,6 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import GObject, {getter, register} from 'gnim/gobject';
+import GObject, {register} from 'gnim/gobject';
+import {getter} from '#/lib/decorators';
 
 // ── Generic window collection for multi-window types (bars, wallpapers, lockscreens) ──
 function windowCollection<T extends Astal.Window>(
@@ -25,7 +26,7 @@ function windowCollection<T extends Astal.Window>(
 
 @register({GTypeName: 'WindowManager'})
 export default class WindowManager extends GObject.Object {
-    static readonly instance: WindowManager;
+    static instance: WindowManager;
 
     static get_default() {
         if (!this.instance) this.instance = new WindowManager();

@@ -9,7 +9,7 @@ import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'Brightness'})
 export default class Brightness extends GObject.Object {
-    static readonly instance: Brightness;
+    static instance: Brightness;
 
     static get_default() {
         if (!this.instance) this.instance = new Brightness();

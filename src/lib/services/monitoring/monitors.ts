@@ -83,7 +83,7 @@ function allGdkMonitors(): Gdk.Monitor[] {
 
 @register({GTypeName: 'MonitorService'})
 class MonitorService extends GObject.Object {
-    static readonly instance: MonitorService;
+    static instance: MonitorService;
 
     static get_default() {
         if (!this.instance) this.instance = new MonitorService();
