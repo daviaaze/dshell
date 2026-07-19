@@ -1,4 +1,4 @@
-// @ts-nocheck — GObject dynamic widget creation patterns not expressible in TS types
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';

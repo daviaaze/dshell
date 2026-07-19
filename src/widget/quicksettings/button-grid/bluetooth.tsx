@@ -1,4 +1,4 @@
-// @ts-nocheck — GI type gaps in Astal RFkill / Bluetooth bindings
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import AstalBluetooth from 'gi://AstalBluetooth';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed, createState, For} from 'gnim';

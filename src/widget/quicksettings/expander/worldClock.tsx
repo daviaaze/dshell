@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {For} from 'gnim';
@@ -39,7 +38,7 @@ export const WorldClock = () => {
                                 halign={Gtk.Align.END}
                                 cssClasses={['numeric', 'title-4']}
                                 label={tzTime.as(
-                                    t => t.format('%H:%M') ?? '--:--'
+                                    t => t?.format('%H:%M') ?? '--:--'
                                 )}
                             />
                             <Gtk.Label

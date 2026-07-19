@@ -1,4 +1,4 @@
-// @ts-nocheck — GLib.Source vs number confusion in GI types
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';

@@ -1,4 +1,4 @@
-// @ts-nocheck — Screenshot GObject binding produces wide Accessor unions; recordingQuality moved to prefs
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import Screenshot from '#/lib/services/capture/screenshot';
@@ -15,7 +15,7 @@ export default () => {
         label: string;
         value: number;
     }) => {
-        const active = createBinding(ss, 'recording-quality').as(
+        const active = createBinding(ss.prefs, 'recording-quality').as(
             q => q === value
         );
         return (
@@ -23,7 +23,7 @@ export default () => {
                 active={active}
                 onToggled={btn => {
                     if (btn.active) {
-                        ss.recordingQuality = value;
+                        ss.prefs.recordingQuality = value;
                         captureSettings.setRecordingQuality(value);
                     }
                 }}

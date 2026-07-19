@@ -30,4 +30,14 @@ declare module 'gnim/gobject' {
         set: (this: GObject.Object, value: any) => void,
         ctx: SetterContext,
     ) => (this: GObject.Object, value: any) => void;
+
+    type SignalContext<M extends (...args: any[]) => any> = ClassFieldDecoratorContext<
+        GObject.Object,
+        M
+    >;
+
+    export function signal(): (
+        method: (this: GObject.Object, ...args: any[]) => void,
+        ctx: SignalContext<(...args: any[]) => void>,
+    ) => void;
 }

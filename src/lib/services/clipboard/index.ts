@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * @deprecated Use `#/lib/services/clipboard/history` directly instead.
  *

@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * Typed synchronous event bus for cross-service communication.
  *
@@ -45,7 +44,7 @@ export interface EventMap {
 type Unsubscribe = () => void;
 
 class EventBus {
-    #listeners = new Map<string, Set<(payload: unknown) => void>>();
+    #listeners = new Map<string, Set<Function>>();
 
     on<K extends keyof EventMap>(
         event: K,
@@ -55,7 +54,7 @@ class EventBus {
         if (!this.#listeners.has(key)) {
             this.#listeners.set(key, new Set());
         }
-        this.#listeners.get(key)!.add(fn);
+        (this.#listeners.get(key) as Set<Function>).add(fn);
         return () => {
             this.#listeners.get(key)?.delete(fn);
         };
@@ -66,7 +65,7 @@ class EventBus {
         const fns = this.#listeners.get(key);
         if (!fns) return;
         for (const fn of fns) {
-            fn(payload);
+            (fn as (payload: EventMap[K]) => void)(payload);
         }
     }
 

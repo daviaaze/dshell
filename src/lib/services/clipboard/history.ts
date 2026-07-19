@@ -21,6 +21,7 @@ import {
     getEntry,
     type ClipboardEntry,
 } from './encryptedStore';
+export type { ClipboardEntry };
 import logger from '#/lib/core/logger';
 
 // ── Constants ────────────────────────────────────────────────────────────────

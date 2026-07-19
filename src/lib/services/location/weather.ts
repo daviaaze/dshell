@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
@@ -203,6 +202,7 @@ export default class Weather extends GObject.Object {
 
         // Sort days chronologically and skip today
         const today = GLib.DateTime.new_now_local().format('%Y-%m-%d');
+        if (!today) return [];
         const sortedDays = Array.from(dayMap.entries()).sort(([a], [b]) =>
             a.localeCompare(b)
         );

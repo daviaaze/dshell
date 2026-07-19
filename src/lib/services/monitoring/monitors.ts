@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * Monitor Service — Wayland-native monitor tracking via AstalWl.
  *
@@ -95,7 +94,6 @@ class MonitorService extends GObject.Object {
     #wlDisplay: AstalWl.WlDisplay | null = null;
     #wlSignalIds: number[] = [];
     #pendingSync = false;
-    #trackingMode: 'gdk' | 'astal-wl' = 'gdk';
 
     @getter(Array)
     get monitors() {
@@ -139,7 +137,6 @@ class MonitorService extends GObject.Object {
     // ── Gdk path (fallback, default) ──────────────────────────────────────
 
     #initGdk(display: Gdk.Display): void {
-        this.#trackingMode = 'gdk';
         const monitorList = display.get_monitors();
         this.#updateMonitors(allGdkMonitors());
 
@@ -162,7 +159,6 @@ class MonitorService extends GObject.Object {
     // ── AstalWl path (experimental) ───────────────────────────────────────
 
     #initAstalWl(): void {
-        this.#trackingMode = 'astal-wl';
         const display = Gdk.Display.get_default();
         if (!display) return;
 

@@ -1,4 +1,4 @@
-// @ts-nocheck — GWeather GI types are unavailable in TS, property access is validated at runtime
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import GWeather from 'gi://GWeather?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createState, For} from 'gnim';

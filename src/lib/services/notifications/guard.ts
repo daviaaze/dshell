@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
 import Notifd from 'gi://AstalNotifd';
@@ -38,7 +37,7 @@ function checkNotifdDaemon(): boolean {
         );
 
         if (!ownerResult) return true;
-        const [hasOwner] = ownerResult.deepUnpack();
+        const [hasOwner] = ownerResult.deepUnpack() as [boolean];
         if (!hasOwner) return true;
 
         try {
@@ -55,7 +54,8 @@ function checkNotifdDaemon(): boolean {
             );
 
             if (infoResult) {
-                const [name, vendor] = infoResult.deepUnpack();
+                const unpacked = infoResult.deepUnpack() as [string, string, string, string];
+                const [name, vendor] = unpacked;
                 if (vendor === 'astal') return true;
                 logger.warn(
                     'notifd',

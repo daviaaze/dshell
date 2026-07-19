@@ -1,4 +1,4 @@
-// @ts-nocheck — GI type gaps in AstalGreet, Gtk.Application, and Accessor union overloads
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * Greeter Login Screen — greetd login UI built with AstalGreet.
  *

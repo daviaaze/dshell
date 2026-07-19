@@ -1,4 +1,4 @@
-// @ts-nocheck — Screenshot GObject binding produces wide Accessor unions; selectedAudioInput moved to prefs
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Wireplumber from 'gi://AstalWp';

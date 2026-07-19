@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import {createState, onMount, onCleanup} from 'gnim';
 import PowerProfiles from '#/lib/services/power/powerProfiles';

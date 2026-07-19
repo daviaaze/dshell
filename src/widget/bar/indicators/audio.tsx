@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Wireplumber from 'gi://AstalWp';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
@@ -30,7 +29,7 @@ export const SpeakerIndicator = () => {
             const audio = Wireplumber.get_default()!.audio;
             const mixer = AppMixer.get_default();
             const update = () => {
-                setVisible(mixer.speaker_in_use);
+                setVisible((mixer as any).speaker_in_use);
                 const speaker = audio.default_speaker;
                 setIconName(volumeIcon(speaker, MUTED_SPEAKER_ICON));
                 setTooltip(volumeTooltip(speaker.volume));
@@ -72,7 +71,7 @@ export const MicrophoneIndicator = () => {
             const audio = Wireplumber.get_default()!.audio;
             const mixer = AppMixer.get_default();
             const update = () => {
-                setVisible(mixer.microphone_in_use);
+                setVisible(mixer.microphoneInUse);
                 const mic = audio.default_microphone;
                 setIconName(volumeIcon(mic, MUTED_MIC_ICON));
                 setTooltip(volumeTooltip(mic.volume));

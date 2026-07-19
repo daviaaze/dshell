@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
@@ -24,8 +23,8 @@ export default () => {
         >
             <Adw.ButtonContent
                 iconName="media-record-symbolic"
-                label={createBinding(screenshot, 'recording-elapsed').as(sec =>
-                    formatDuration(sec ?? 0)
+                label={createBinding(screenshot as any, 'recording-elapsed').as(sec =>
+                    formatDuration((sec as number) ?? 0)
                 )}
             />
         </Gtk.Button>

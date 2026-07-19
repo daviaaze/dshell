@@ -1,4 +1,4 @@
-// @ts-nocheck — GObject dynamic revealer patterns not expressible in TS
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Wireplumber from 'gi://AstalWp';
 import {createBinding, createComputed} from 'gnim';
 import Brightness from '#/lib/services/display/brightness';

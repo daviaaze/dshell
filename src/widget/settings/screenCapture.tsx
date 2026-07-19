@@ -1,4 +1,4 @@
-// @ts-nocheck — Screenshot GObject binding produces wide Accessor unions
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Adw from 'gi://Adw?version=1';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';

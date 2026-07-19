@@ -36,7 +36,7 @@ function ghashMul(x: Uint8Array, y: Uint8Array): Uint8Array {
 export function ghash(h: Uint8Array, data: Uint8Array): Uint8Array {
     let y = new Uint8Array(16);
     for (let i = 0; i < data.length; i += 16) {
-        y = ghashMul(xor(y, data.subarray(i, i + 16)), h);
+        y = ghashMul(xor(y, data.subarray(i, i + 16)), h) as Uint8Array;
     }
     return y;
 }

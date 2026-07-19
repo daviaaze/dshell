@@ -206,7 +206,7 @@ function ApRow({
                     cssClasses={['flat']}
                     onClicked={() => {
                         if (isActive()) {
-                            wifi.deactivate_connection(null).catch((e: Error) =>
+                            (wifi.deactivate_connection(null) as Promise<void>).catch((e: Error) =>
                                 logger.error('network', 'deactivate failed:', e.message)
                             );
                             return;
