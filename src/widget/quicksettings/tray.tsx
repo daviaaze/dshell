@@ -1,7 +1,8 @@
-import {useSettings} from '#/lib/settings';
-import Tray from 'gi://AstalTray';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, For} from 'gnim';
+import {useSettings} from '#/lib/settings';
+import TrayService from '#/lib/services/desktop/trayService';
+import type {TrayItem} from '#/lib/services/desktop/trayService';
 import ShellState from '#/lib/services/state/shellState';
 import {PowerMenu} from '#/widget/common/powerMenu';
 import {IconButton, IconMenuButton} from '#/widget/common/iconButton';
@@ -9,7 +10,7 @@ import {openSettings} from '#/widget';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
 
 export const TrayBox = () => {
-    const tray = Tray.get_default();
+    const tray = TrayService.get_default();
 
     const LockButton = () => (
         <IconButton
@@ -57,7 +58,7 @@ export const TrayBox = () => {
     return (
         <Gtk.Box spacing={4} homogeneous halign={Gtk.Align.CENTER}>
             <For each={createBinding(tray, 'items')}>
-                {(item: Tray.TrayItem) => (
+                {(item: TrayItem) => (
                     <Gtk.MenuButton
                         cssClasses={['circular']}
                         $={self => {

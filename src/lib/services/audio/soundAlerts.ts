@@ -2,9 +2,8 @@ import GObject, {getter, register, setter} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import AstalBattery from 'gi://AstalBattery';
 import {bus} from '#/lib/core/eventBus';
-import DndService from '#/lib/services/notifications/dnd';
+import ServiceRegistry from '#/lib/core/serviceRegistry';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import ShellState from '#/lib/services/state/shellState';
 import {Process} from '#/lib/core/process';
 import logger from '#/lib/core/logger';
 import type {Accessor} from 'gnim';
@@ -50,6 +49,23 @@ export default class SoundAlertService extends GObject.Object {
     #upowerInstance: AstalBattery.UPower | null = null;
     #lastBatteryPercentage = 1.0;
     #initialized = false;
+    #shellState?: import('#/lib/services/state/shellState').default;
+    #dndService?: import('#/lib/services/notifications/dnd').default;
+
+    /** Resolve a dependency from the service registry. */
+    /** Resolve a dependency from the service registry (lazy). */
+    #getDep<T>(name: string, cache: {v?: T}): T {
+        if (!cache.v) cache.v = ServiceRegistry.get_default().resolve<T>(name);
+        return cache.v;
+    }
+
+    get #shell(): import('#/lib/services/state/shellState').default {
+        return this.#getDep('ShellState', this);
+    }
+
+    get #dnd(): import('#/lib/services/notifications/dnd').default {
+        return this.#getDep('DndService', this);
+    }
 
     @getter(Boolean)
     get enabled() {
@@ -130,11 +146,10 @@ export default class SoundAlertService extends GObject.Object {
 
         // ── Screen unlock — listen to ShellState ──
 
-        const shell = ShellState.get_default();
-        this.#shellStateHandlerId = shell.connect(
+        this.#shellStateHandlerId = this.#shell.connect(
             'notify::screenlocked',
             () => {
-                if (!shell.screenlocked) {
+                if (!this.#shell.screenlocked) {
                     this.play('screen-unlock');
                 }
             }
@@ -251,7 +266,7 @@ export default class SoundAlertService extends GObject.Object {
         if (category === 'system' && !this.#systemEnabled) return;
 
         // Check DND
-        if (DndService.get_default().dnd) return;
+        if (this.#dnd.dnd) return;
 
         try {
             Process.exec(`canberra-gtk-play --id=${soundId}`);
@@ -291,9 +306,7 @@ export default class SoundAlertService extends GObject.Object {
 
         if (this.#shellStateHandlerId !== 0) {
             try {
-                ShellState.get_default().disconnect(
-                    this.#shellStateHandlerId
-                );
+                this.#shell.disconnect(this.#shellStateHandlerId);
             } catch { /* ignore */ }
             this.#shellStateHandlerId = 0;
         }

@@ -11,6 +11,190 @@ export default tseslint.config(
     ...tseslint.configs.recommended,
     sonarjs.configs.recommended,
 
+    // ── Widget/service boundary guard — no Process or raw GI services ──
+    {
+        files: ['src/widget/**'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: '#/lib/core/process',
+                            message:
+                                'Widgets must not call Process.exec directly. ' +
+                                'Encapsulate shell commands behind a service method.',
+                        },
+                    ],
+                    patterns: [
+                        {
+                            group: ['gi://AstalAuth*'],
+                            message:
+                                'Widgets must not import AstalAuth directly. ' +
+                                'Use the AuthSession service instead.',
+                        },
+                        {
+                            group: ['gi://Gtk4SessionLock*'],
+                            message:
+                                'Widgets must not import Gtk4SessionLock directly. ' +
+                                'Use the AuthSession service instead.',
+                        },
+                        {
+                            group: ['gi://GWeather*'],
+                            message:
+                                'Widgets must not import GWeather directly. ' +
+                                'Use the Weather service getters instead.',
+                        },
+                        {
+                            group: ['gi://cairo*'],
+                            message:
+                                'Widgets must not import Cairo directly. ' +
+                                'Encapsulate drawing logic behind a service method.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    // ── Exemptions: widget files that legitimately use these imports ──
+    {
+        files: [
+            'src/widget/common/sunArc.tsx',
+            'src/widget/recording-boundary/**',
+            'src/widget/region-selector/**',
+            'src/widget/screenshot-ui/**',
+        ],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: '#/lib/core/process',
+                            message:
+                                'Widgets must not call Process.exec directly. ' +
+                                'Encapsulate shell commands behind a service method.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ['src/widget/bar/weather.tsx'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: '#/lib/core/process',
+                            message:
+                                'Widgets must not call Process.exec directly. ' +
+                                'Encapsulate shell commands behind a service method.',
+                        },
+                    ],
+                    patterns: [
+                        {
+                            group: ['gi://AstalAuth*'],
+                            message:
+                                'Widgets must not import AstalAuth directly. ' +
+                                'Use the AuthSession service instead.',
+                        },
+                        {
+                            group: ['gi://Gtk4SessionLock*'],
+                            message:
+                                'Widgets must not import Gtk4SessionLock directly. ' +
+                                'Use the AuthSession service instead.',
+                        },
+                        {
+                            group: ['gi://cairo*'],
+                            message:
+                                'Widgets must not import Cairo directly. ' +
+                                'Encapsulate drawing logic behind a service method.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ['src/widget/settings/weather.tsx'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: '#/lib/core/process',
+                            message:
+                                'Widgets must not call Process.exec directly. ' +
+                                'Encapsulate shell commands behind a service method.',
+                        },
+                    ],
+                    patterns: [
+                        {
+                            group: ['gi://AstalAuth*'],
+                            message:
+                                'Widgets must not import AstalAuth directly. ' +
+                                'Use the AuthSession service instead.',
+                        },
+                        {
+                            group: ['gi://Gtk4SessionLock*'],
+                            message:
+                                'Widgets must not import Gtk4SessionLock directly. ' +
+                                'Use the AuthSession service instead.',
+                        },
+                        {
+                            group: ['gi://cairo*'],
+                            message:
+                                'Widgets must not import Cairo directly. ' +
+                                'Encapsulate drawing logic behind a service method.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
+        files: ['src/widget/lockscreen/index.tsx'],
+        rules: {
+            'no-restricted-imports': [
+                'error',
+                {
+                    paths: [
+                        {
+                            name: '#/lib/core/process',
+                            message:
+                                'Widgets must not call Process.exec directly. ' +
+                                'Encapsulate shell commands behind a service method.',
+                        },
+                    ],
+                    patterns: [
+                        {
+                            group: ['gi://AstalAuth*'],
+                            message:
+                                'Widgets must not import AstalAuth directly. ' +
+                                'Use the AuthSession service instead.',
+                        },
+                        {
+                            group: ['gi://GWeather*'],
+                            message:
+                                'Widgets must not import GWeather directly. ' +
+                                'Use the Weather service getters instead.',
+                        },
+                        {
+                            group: ['gi://cairo*'],
+                            message:
+                                'Widgets must not import Cairo directly. ' +
+                                'Encapsulate drawing logic behind a service method.',
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+
     // ── Project-specific rules ─────────────────────────────────────────
     {
         rules: {

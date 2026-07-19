@@ -1,39 +1,17 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
-import {createState, onMount, onCleanup} from 'gnim';
+import {createBinding} from 'gnim';
 import KeyboardLayout from '#/lib/services/input/keyboard';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
-    const [layout, setLayout] = createState('');
-    const [available, setAvailable] = createState(false);
-
-    onMount(() => {
-        const _hn = {};
-        // Defer KeyboardLayout D-Bus proxy to avoid blocking the main loop
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            const keyboard = KeyboardLayout.get_default();
-            setLayout(keyboard.layout);
-            setAvailable(keyboard.available);
-            connectFor(_hn, keyboard, 'notify::layout', () =>
-                setLayout(keyboard.layout)
-            );
-            connectFor(_hn, keyboard, 'notify::available', () =>
-                setAvailable(keyboard.available)
-            );
-            return GLib.SOURCE_REMOVE;
-        });
-        onCleanup(() => cleanupNode(_hn));
-    });
-
     const keyboard = KeyboardLayout.get_default();
+
     return (
         <Gtk.Button
-            visible={available}
+            visible={createBinding(keyboard, 'available')}
             cssClasses={['flat']}
-            label={layout}
+            label={createBinding(keyboard, 'layout')}
             onClicked={() => keyboard.cycle()}
-            tooltipMarkup={layout.as(
+            tooltipMarkup={createBinding(keyboard, 'layout').as(
                 l => `Keyboard layout: ${l}\nClick to cycle`
             )}
         />

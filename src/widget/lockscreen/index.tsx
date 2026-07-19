@@ -1,165 +1,27 @@
 // @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import {monitors} from '#/lib/services/monitoring/monitors';
-import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
-import AstalAuth from 'gi://AstalAuth?version=0.1';
 import Gdk from 'gi://Gdk?version=4.0';
 import SessionLock from 'gi://Gtk4SessionLock';
-import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {
     createBinding,
     createRoot,
-    createState,
     For,
     onCleanup,
-    onMount,
 } from 'gnim';
 import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
-import logger from '#/lib/core/logger';
-import FingerprintAuth from '#/lib/services/input/fingerprint';
 import Clock from '#/lib/services/time/clock';
-import {Timeout} from '#/lib/core/timeout';
-import Brightness from '#/lib/services/display/brightness';
+import FingerprintAuth from '#/lib/services/input/fingerprint';
+import AuthSession from '#/lib/services/session/authSession';
 import {LockscreenNotifications} from './notifications';
 import {LockscreenWidgets} from './widgets';
+import {LockscreenAuthPanel} from './authPanel';
 
 // ── Layout constants ──────────────────────────────────────────────
 
 const CLOCK_MARGIN_BOTTOM = 8;
-const LOCK_CARD_SPACING = 12;
-const AVATAR_SIZE = 80;
-
-const PAM_TIMEOUT_MS = 10000;
-
-// ── Auth helpers (extracted from createLocks to reduce CC) ──
-
-interface PamAuthState {
-    pendingPassword: string;
-    pamActive: boolean;
-}
-
-function createPamAuth(
-    pam: AstalAuth.Pam,
-    setAuthStatus: (s: string) => void,
-    onSuccess: () => void
-) {
-    const state: PamAuthState = {
-        pendingPassword: '',
-        pamActive: false,
-    };
-
-    const pamTimeout = new Timeout();
-    const cancelPamTimeout = () => pamTimeout.cancel();
-
-    const cleanup = () => {
-        cancelPamTimeout();
-    };
-
-    const promptId = pam.connect('auth-prompt-hidden', () => {
-        pam.supply_secret(state.pendingPassword);
-    });
-
-    const successId = pam.connect('success', () => {
-        if (!state.pamActive) return;
-        state.pamActive = false;
-        cancelPamTimeout();
-        onSuccess();
-    });
-
-    const failId = pam.connect('fail', (_pam: AstalAuth.Pam, msg: string) => {
-        if (!state.pamActive) return;
-        state.pamActive = false;
-        cancelPamTimeout();
-        logger.debug('lockscreen', 'PAM auth failed:', msg);
-        setAuthStatus('Authentication failed');
-    });
-
-    const errorId = pam.connect(
-        'auth-error',
-        (_pam: AstalAuth.Pam, msg: string) => {
-            if (!state.pamActive) return;
-            state.pamActive = false;
-            cancelPamTimeout();
-            logger.debug('lockscreen', 'PAM auth error:', msg);
-            setAuthStatus(msg || 'Authentication error');
-            pam.supply_secret(null);
-        }
-    );
-
-    const signalIds = [promptId, successId, failId, errorId];
-
-    const unlock = (self: Gtk.PasswordEntry) => {
-        if (state.pamActive) return;
-        state.pendingPassword = self.get_text();
-        self.set_text('');
-        setAuthStatus('Authenticating...');
-        state.pamActive = true;
-        pam.start_authenticate();
-
-        pamTimeout.start(PAM_TIMEOUT_MS, () => {
-            state.pamActive = false;
-            setAuthStatus('Authentication timed out');
-        });
-    };
-
-    return {unlock, cleanup, signalIds};
-}
-
-function createFingerprintAuth(
-    fingerprint: FingerprintAuth,
-    setAuthStatus: (s: string) => void,
-    onVerified: () => void
-) {
-    fingerprint.init().then(() => {
-        if (fingerprint.available) {
-            fingerprint.start();
-        }
-    });
-
-    const verifiedId = fingerprint.connect('verified', () => onVerified());
-
-    const statusId = fingerprint.connect('status-changed', (_, status) => {
-        if (status === 'verify-no-match') {
-            setAuthStatus('Fingerprint did not match, retrying...');
-        } else if (
-            status === 'verify-retry' ||
-            status === 'verify-swipe-too-short'
-        ) {
-            setAuthStatus('Try again...');
-        }
-    });
-
-    const cleanup = () => {
-        fingerprint.stop();
-        fingerprint.disconnect(verifiedId);
-        fingerprint.disconnect(statusId);
-    };
-
-    return {signalIds: [verifiedId, statusId], cleanup};
-}
-
-// ── Brightness save/restore ──
-// Uses AstalBrightness directly to avoid brightnessctl dependency.
-
-function saveBrightness(): number {
-    try {
-        return Brightness.get_default().screen;
-    } catch (e) {
-        logger.warn('lockscreen', 'could not save brightness:', e);
-        return -1;
-    }
-}
-
-function restoreBrightness(value: number) {
-    if (value < 0) return;
-    try {
-        Brightness.get_default().screen = value;
-    } catch (e) {
-        logger.warn('lockscreen', 'failed to restore brightness:', e);
-    }
-}
 
 // ── Main lockscreen creation ──
 
@@ -167,32 +29,27 @@ const createLocks = (onUnlock: () => void) => {
     const {LEFT, RIGHT, TOP, BOTTOM} = Astal.WindowAnchor;
     const lock = SessionLock.Instance.new();
     const time = Clock.get_default().time;
-    const [authStatus, setAuthStatus] = createState('');
     const fingerprint = FingerprintAuth.get_default();
-    const savedBrightness = saveBrightness();
+    const authSession = new AuthSession();
+    authSession.start();
 
     let sharedCleanedUp = false;
 
     const cleanupAll = () => {
         if (sharedCleanedUp) return;
         sharedCleanedUp = true;
-        pamAuth.cleanup();
-        fpAuth.cleanup();
+        authSession.cancel();
     };
 
     const doUnlock = () => {
         cleanupAll();
         lock.unlock();
         WindowManager.get_default().lockscreens.forEach(w => w.destroy());
-        ShellState.get_default().screenlocked = false;
+        ShellState.get_default().unlock();
         onUnlock();
-        restoreBrightness(savedBrightness);
     };
 
-    const pam = new AstalAuth.Pam();
-    const pamAuth = createPamAuth(pam, setAuthStatus, doUnlock);
-
-    const fpAuth = createFingerprintAuth(fingerprint, setAuthStatus, doUnlock);
+    authSession.connect('success', () => doUnlock());
 
     const fpStateBinding = createBinding(fingerprint, 'state');
     const fpErrorBinding = createBinding(fingerprint, 'error-message');
@@ -250,49 +107,12 @@ const createLocks = (onUnlock: () => void) => {
                                 label={time.as(t => t.format('%A, %x')!)}
                             />
                         </Gtk.Box>
-                        <Gtk.Box
-                            $type="center"
-                            valign={Gtk.Align.CENTER}
-                            halign={Gtk.Align.CENTER}
-                            spacing={LOCK_CARD_SPACING}
-                            css={'padding:8px;'}
-                            orientation={Gtk.Orientation.VERTICAL}
-                            cssClasses={['card']}
-                        >
-                            <Adw.Avatar size={AVATAR_SIZE} />
-                            <Gtk.Label
-                                label={GLib.get_real_name()}
-                                cssClasses={['title-3']}
-                            />
-                            <Gtk.PasswordEntry
-                                $={self => onMount(() => self.grab_focus())}
-                                placeholderText={'password'}
-                                showPeekIcon
-                                onActivate={pamAuth.unlock}
-                            />
-                            <Gtk.Label
-                                visible={authStatus.as(s => s.length > 0)}
-                                cssClasses={['caption']}
-                                label={authStatus}
-                            />
-                            <Gtk.Spinner
-                                visible={fpStateBinding.as(
-                                    s =>
-                                        s === 'verifying' ||
-                                        s === 'initializing'
-                                )}
-                                spinning
-                            />
-                            <Gtk.Button
-                                visible={fpStateBinding.as(s => s === 'error')}
-                                label={fpErrorBinding.as(
-                                    msg => msg || 'Retry fingerprint'
-                                )}
-                                cssClasses={['flat']}
-                                onClicked={() => fingerprint.retry()}
-                            />
-                            <LockscreenWidgets position="center" />
-                        </Gtk.Box>
+                        <LockscreenAuthPanel
+                            authSession={authSession}
+                            fingerprint={fingerprint}
+                            fpStateBinding={fpStateBinding}
+                            fpErrorBinding={fpErrorBinding}
+                        />
                         <Gtk.Box
                             $type="end"
                             valign={Gtk.Align.END}

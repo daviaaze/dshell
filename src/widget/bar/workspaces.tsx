@@ -47,11 +47,11 @@ export default ({
                         cssClasses={[ws.id < 0 ? 'success' : '']}
                         activeName={createComputed(() => {
                             const client = focusedClient();
-                            if (!client || client.workspace !== ws) return '';
+                            if (!client || client.workspace !== ws) return null;
                             const clients = toArray<Hyprland.Client>(wsClients());
                             return clients.some(c => c.address === client.address)
                                 ? client.address
-                                : '';
+                                : null;
                         })}
                     >
                         <For
@@ -79,7 +79,7 @@ export default ({
                                 />
                             )}
                         </For>
-                        {/* create toggle when ws is empty */}
+                        {/* show empty dot when ws is empty */}
                         <With
                             value={createBinding(ws, 'clients').as(
                                 clients =>
@@ -87,7 +87,18 @@ export default ({
                             )}
                         >
                             {(isEmpty: boolean) =>
-                                isEmpty ? <Adw.Toggle /> : null
+                                isEmpty ? (
+                                    <Adw.Toggle
+                                        child={
+                                            (
+                                                <Gtk.Image
+                                                    iconName="window-minimize-symbolic"
+                                                    pixelSize={8}
+                                                />
+                                            ) as Gtk.Widget
+                                        }
+                                    />
+                                ) : null
                             }
                         </With>
                     </Adw.ToggleGroup>

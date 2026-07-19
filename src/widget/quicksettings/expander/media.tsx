@@ -5,7 +5,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {For, createBinding} from 'gnim';
 import Adw from 'gi://Adw?version=1';
 import {useStyle} from '#/style/useStyle';
-import logger from '#/lib/core/logger';
+import MediaController from '#/lib/services/session/mediaController';
 import {exactQuery} from '#/lib/services/state/apps';
 
 function lengthStr(length: number) {
@@ -74,35 +74,35 @@ const TitleArtist = ({player}: {player: Mpris.Player}) => {
 );
 }
 
-const PlaybackButtons = ({player}: {player: Mpris.Player}) => (
-    <Gtk.Box>
-        <Gtk.Button
-            iconName={'media-skip-backward-symbolic'}
-            onClicked={() => player.previous()}
-            visible={createBinding(player, 'canGoPrevious')}
-        />
+const PlaybackButtons = ({player}: {player: Mpris.Player}) => {
+    const mc = MediaController.get_default();
+    return (
+        <Gtk.Box>
+            <Gtk.Button
+                iconName={'media-skip-backward-symbolic'}
+                onClicked={() => { mc.setActivePlayer(player); mc.previous(); }}
+                visible={createBinding(player, 'canGoPrevious')}
+            />
 
-        <Gtk.Button
-            iconName={createBinding(player, 'playbackStatus').as(s =>
-                s === Mpris.PlaybackStatus.PLAYING
-                    ? 'media-playback-pause-symbolic'
-                    : 'media-playback-start-symbolic'
-            )}
-            onClicked={() =>
-                player.playbackStatus === Mpris.PlaybackStatus.PAUSED
-                    ? player.play()
-                    : player.pause()
-            }
-        />
-        <Gtk.Button
-            iconName={'media-skip-forward-symbolic'}
-            onClicked={() => player.next()}
-            visible={createBinding(player, 'canGoNext')}
-        />
-    </Gtk.Box>
-);
+            <Gtk.Button
+                iconName={createBinding(player, 'playbackStatus').as(s =>
+                    s === Mpris.PlaybackStatus.PLAYING
+                        ? 'media-playback-pause-symbolic'
+                        : 'media-playback-start-symbolic'
+                )}
+                onClicked={() => mc.playPause()}
+            />
+            <Gtk.Button
+                iconName={'media-skip-forward-symbolic'}
+                onClicked={() => { mc.setActivePlayer(player); mc.next(); }}
+                visible={createBinding(player, 'canGoNext')}
+            />
+        </Gtk.Box>
+    );
+};
 
 const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
+    const mc = MediaController.get_default();
     const positionStyle = useStyle({
         'min-height': '8px',
         'border-radius': '4px',
@@ -113,7 +113,7 @@ const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
             cssClasses={['media-position', positionStyle.class]}
             $={positionStyle.$}
             drawValue={false}
-            onNotifyValue={({value}) => (player.position = value)}
+            onNotifyValue={({value}) => mc.seek(value)}
             min={0}
             max={createBinding(player, 'length')}
             visible={createBinding(player, 'canSeek')}
@@ -135,33 +135,23 @@ const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
 }
 
 export const MediaIcon = () => {
-    let mpris: Mpris.Mpris | null = null;
-    try {
-        mpris = Mpris.get_default();
-    } catch (e) {
-        logger.warn('media', 'Failed to initialize Mpris:', e);
-    }
-
-    if (!mpris) {
-        return <Gtk.Box visible={false} />;
-    }
+    const mc = MediaController.get_default();
+    const hasPlayers = createBinding(mc, 'players').as(p => p.length > 0);
 
     return (
         <Gtk.Box
             spacing={4}
             cssClasses={['popover-padded']}
-            visible={createBinding(mpris, 'players').as(p => p.length > 0)}
+            visible={hasPlayers}
         >
             <Gtk.Image
                 iconName="media-playback-start-symbolic"
                 pixelSize={20}
             />
             <Adw.WindowTitle
-                title={createBinding(mpris, 'players').as(p =>
-                    p[0] ? p[0].title : ''
-                )}
-                subtitle={createBinding(mpris, 'players').as(p =>
-                    p[0] ? p[0].identity : ''
+                title={createBinding(mc, 'activeTitle')}
+                subtitle={createBinding(mc, 'activePlayer').as(
+                    p => p?.identity ?? ''
                 )}
             />
         </Gtk.Box>
@@ -169,24 +159,15 @@ export const MediaIcon = () => {
 };
 
 export const Media = () => {
-    let mpris: Mpris.Mpris | null = null;
-    try {
-        mpris = Mpris.get_default();
-    } catch (e) {
-        logger.warn('media', 'Failed to initialize Mpris:', e);
-    }
-
-    if (!mpris) {
-        return <Gtk.Box visible={false} />;
-    }
+    const mc = MediaController.get_default();
 
     return (
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
             spacing={4}
-            visible={createBinding(mpris, 'players').as(p => p.length > 0)}
+            visible={createBinding(mc, 'players').as(p => p.length > 0)}
         >
-            <For each={createBinding(mpris, 'players')}>
+            <For each={createBinding(mc, 'players')}>
                 {(player: Mpris.Player) => (
                     <Gtk.Box
                         cssClasses={['card', 'p-12']}

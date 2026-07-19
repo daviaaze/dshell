@@ -29,7 +29,7 @@ const M3_MAP: Record<string, string> = {
     error: 'error',
     on_error: 'on-error',
     outline: 'outline',
-    outlne_variant: 'outline-variant',
+    outline_variant: 'outline-variant',
     shadow: 'shadow',
 };
 

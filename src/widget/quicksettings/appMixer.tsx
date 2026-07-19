@@ -1,29 +1,15 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import Wireplumber from 'gi://AstalWp';
-import GLib from 'gi://GLib?version=2.0';
-import {createBinding, createState, For, onMount, onCleanup} from 'gnim';
+import {createBinding, For} from 'gnim';
+import AudioController from '#/lib/services/audio/audioController';
 import AppMixer from '#/lib/services/audio/mixer';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 export default () => {
     const mixer = AppMixer.get_default();
+    const audioCtrl = AudioController.get_default();
 
     const streams = createBinding(mixer, 'streams');
-    const [speakers, setSpeakers] = createState<Wireplumber.Endpoint[]>([]);
-
-    onMount(() => {
-        const _hn = {};
-        // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            const audio = Wireplumber.get_default()!.audio;
-            const update = () => setSpeakers([...(audio.speakers ?? [])]);
-            update();
-            connectFor(_hn, audio, 'notify::speakers', update);
-            return GLib.SOURCE_REMOVE;
-        });
-        onCleanup(() => cleanupNode(_hn));
-    });
+    const speakers = createBinding(audioCtrl, 'speakers');
 
     return (
         <Gtk.Box spacing={12} orientation={Gtk.Orientation.VERTICAL}>

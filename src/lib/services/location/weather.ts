@@ -6,6 +6,11 @@ import Geolocation from './geolocation';
 import logger from '#/lib/core/logger';
 import {Accessor} from 'gnim';
 import {toArray} from '#/lib/core/gjsUtils';
+import {
+    weatherGradient,
+    formatTemp,
+    windDirectionLabel,
+} from './weatherUtils';
 
 @register({GTypeName: 'Weather'})
 export default class Weather extends GObject.Object {
@@ -27,6 +32,137 @@ export default class Weather extends GObject.Object {
     @getter(GWeather.Info)
     get info() {
         return this.#weather;
+    }
+
+    // ── Computed detail getters (updated on info change) ──
+
+    #tempSummary = '--°';
+
+    @getter(String)
+    get tempSummary() {
+        return this.#tempSummary;
+    }
+
+    #feelsLike = '';
+
+    @getter(String)
+    get feelsLike() {
+        return this.#feelsLike;
+    }
+
+    #skyDesc = '';
+
+    @getter(String)
+    get skyDesc() {
+        return this.#skyDesc;
+    }
+
+    #locationName = '—';
+
+    @getter(String)
+    get locationName() {
+        return this.#locationName;
+    }
+
+    #weatherIcon = 'weather-none-available-symbolic';
+
+    @getter(String)
+    get weatherIcon() {
+        return this.#weatherIcon;
+    }
+
+    #windSpeed = 0;
+
+    @getter(Number)
+    get windSpeed() {
+        return this.#windSpeed;
+    }
+
+    #windDirection = 0;
+
+    @getter(Number)
+    get windDirection() {
+        return this.#windDirection;
+    }
+
+    #humidity = 0;
+
+    @getter(Number)
+    get humidity() {
+        return this.#humidity;
+    }
+
+    #pressure = 0;
+
+    @getter(Number)
+    get pressure() {
+        return this.#pressure;
+    }
+
+    #sunrise = 0;
+
+    @getter(Number)
+    get sunrise() {
+        return this.#sunrise;
+    }
+
+    #sunset = 0;
+
+    @getter(Number)
+    get sunset() {
+        return this.#sunset;
+    }
+
+    #gradient =
+        'linear-gradient(135deg, var(--shade-surface-dim), var(--shade-surface-container))';
+
+    @getter(String)
+    get gradient() {
+        return this.#gradient;
+    }
+
+    #updateComputed() {
+        const w = this.#weather;
+        const valid = w.is_valid();
+
+        this.#tempSummary = valid
+            ? formatTemp(w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1])
+            : '--°';
+        this.#feelsLike = valid ? `Feels like ${w.get_apparent()}` : '';
+        this.#skyDesc = valid ? w.get_sky() : '';
+        this.#locationName = w.get_location_name() || '—';
+        this.#weatherIcon = w.get_icon_name() || 'weather-none-available-symbolic';
+
+        if (valid) {
+            const [, speed, dir] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
+            this.#windSpeed = speed;
+            this.#windDirection = dir;
+            const humStr = w.get_humidity();
+            this.#humidity = humStr ? parseFloat(humStr) : 0;
+            const [, pressure] = w.get_value_pressure(GWeather.PressureUnit.HPA);
+            this.#pressure = pressure;
+            const [, sunrise] = w.get_value_sunrise();
+            this.#sunrise = sunrise;
+            const [, sunset] = w.get_value_sunset();
+            this.#sunset = sunset;
+        }
+
+        this.#gradient = valid
+            ? weatherGradient(w.get_icon_name() ?? '')
+            : 'linear-gradient(135deg, var(--shade-surface-dim), var(--shade-surface-container))';
+
+        this.notify('temp-summary');
+        this.notify('feels-like');
+        this.notify('sky-desc');
+        this.notify('location-name');
+        this.notify('weather-icon');
+        this.notify('wind-speed');
+        this.notify('wind-direction');
+        this.notify('humidity');
+        this.notify('pressure');
+        this.notify('sunrise');
+        this.notify('sunset');
+        this.notify('gradient');
     }
 
     @setter(GWeather.Location)
@@ -242,6 +378,11 @@ export default class Weather extends GObject.Object {
     }
 
     /** Sunrise unix timestamp */
+    /** Trigger a network refresh. Widgets call this instead of `weather.info.update()`. */
+    refresh() {
+        this.#weather.update();
+    }
+
     getSunriseTime(): number {
         const [, ts] = this.#weather.get_value_sunrise();
         return ts;
@@ -323,6 +464,7 @@ export default class Weather extends GObject.Object {
                     ` sky=${this.#weather.get_sky() || 'null'}` +
                     ` loc=${this.#weather.get_location_name() || 'null'}`
             );
+            this.#updateComputed();
             this.notify('info');
 
             // Persist daytime/sunrise/sunset for other services

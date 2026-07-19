@@ -1,10 +1,8 @@
 // @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
-import Wireplumber from 'gi://AstalWp';
-import {createState, onMount, onCleanup} from 'gnim';
+import {createBinding} from 'gnim';
+import AudioController from '#/lib/services/audio/audioController';
 import Screenshot from '#/lib/services/capture/screenshot';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
 const AUDIO_PICKER_SPACING = 8;
 const AUDIO_ICON_SIZE = 16;
@@ -12,19 +10,8 @@ const SYSTEM_DEFAULT_ID = -1;
 
 export default () => {
     const ss = Screenshot.get_default();
-    const [audio, setAudio] = createState<Wireplumber.Audio | null>(null);
-
-    onMount(() => {
-        const _hn = {};
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            const wp = Wireplumber.get_default();
-            if (wp) {
-                setAudio(wp.audio);
-            }
-            return GLib.SOURCE_REMOVE;
-        });
-        onCleanup(() => cleanupNode(_hn));
-    });
+    const audioCtrl = AudioController.get_default();
+    const mics = createBinding(audioCtrl, 'microphones');
 
     return (
         <Gtk.Box spacing={AUDIO_PICKER_SPACING} valign={Gtk.Align.CENTER}>
@@ -34,51 +21,34 @@ export default () => {
             />
             <Gtk.DropDown
                 $={self => {
-                    const _hn = {};
-
-                    // Build a StringList model from microphones
                     const updateModel = () => {
-                        const a = audio();
-                        const mics = a?.microphones || [];
+                        const list = mics();
                         const strings = [
                             'System Default',
-                            ...mics.map(
+                            ...list.map(
                                 mic =>
                                     mic.description ||
                                     mic.name ||
                                     `Input ${mic.id}`
                             ),
                         ];
-                        const list = Gtk.StringList.new(strings);
-                        self.set_model(list);
-                        // Set selection from screenshot state
+                        self.set_model(Gtk.StringList.new(strings));
+
                         const currentId = ss.selectedAudioInput;
                         if (currentId === SYSTEM_DEFAULT_ID) {
                             self.set_selected(0);
                         } else {
-                            const idx = mics.findIndex(m => m.id === currentId);
+                            const idx = list.findIndex(
+                                m => m.id === currentId
+                            );
                             self.set_selected(idx >= 0 ? idx + 1 : 0);
                         }
                     };
 
                     updateModel();
 
-                    // Listen for microphone changes
-                    const a = audio();
-                    if (a) {
-                        connectFor(
-                            _hn,
-                            a,
-                            'microphone-added',
-                            updateModel
-                        );
-                        connectFor(
-                            _hn,
-                            a,
-                            'microphone-removed',
-                            updateModel
-                        );
-                    }
+                    // Rebuild model when microphone list changes
+                    mics.subscribe(updateModel);
 
                     // Listen for selection changes
                     self.connect('notify::selected', () => {
@@ -86,9 +56,8 @@ export default () => {
                         if (idx <= 0) {
                             ss.selectedAudioInput = -1;
                         } else {
-                            const a = audio();
-                            const mics = a?.microphones || [];
-                            const mic = mics[idx - 1];
+                            const list = mics();
+                            const mic = list[idx - 1];
                             if (mic) {
                                 ss.selectedAudioInput = mic.id;
                             }

@@ -1,5 +1,6 @@
 import GLib from 'gi://GLib?version=2.0';
 import logger from '#/lib/core/logger';
+import {bus} from '#/lib/core/eventBus';
 import {Process} from '#/lib/core/process';
 import {
     ensureScreenshotDir,
@@ -34,6 +35,7 @@ export function screenshot(ss: Screenshot, fullscreen: boolean) {
         .then(() => {
             copyImageToClipboard(filename);
             notify('Screenshot saved', filename, 'camera-photo-symbolic');
+            bus.emit('capture:screenshot', true);
         })
         .catch(e => logger.error('screenshot', 'grim failed:', e))
         .finally(() => ss.stopFreeze());
@@ -42,7 +44,10 @@ export function screenshot(ss: Screenshot, fullscreen: boolean) {
 /** Live grim capture of a "x,y WxH" geometry, then unfreeze. */
 export function captureGeometry(ss: Screenshot, geometry: string) {
     screenshotGeometry(geometry)
-        .then(() => ss.stopFreeze())
+        .then(() => {
+            ss.stopFreeze();
+            bus.emit('capture:screenshot:area');
+        })
         .catch(e => {
             logger.error('screenshot', 'grim failed:', e);
             ss.stopFreeze();
@@ -73,12 +78,14 @@ export function captureArea(ss: Screenshot, geometry: string) {
         if (ss.selectedMode === 'screenshot') {
             if (ss.stageHasFrame) {
                 ss.captureFromStage(grimToMagickGeometry(geometry));
+                bus.emit('capture:screenshot:area');
             } else {
                 captureGeometry(ss, geometry);
             }
         } else {
             ss.startRecording({geometry});
             ss.stopFreeze();
+            bus.emit('capture:record:area');
         }
         return GLib.SOURCE_REMOVE;
     });
@@ -97,9 +104,11 @@ export function startRecordingAfterOverlayClose(
     GLib.timeout_add(GLib.PRIORITY_DEFAULT, OVERLAY_CLOSE_DELAY_MS, () => {
         if (target === 'fullscreen' && !geometry) {
             ss.toggleRecording();
+            bus.emit('capture:record');
         } else if (geometry) {
             ss.startRecording({geometry});
             ss.stopFreeze();
+            bus.emit('capture:record:area');
         }
         return GLib.SOURCE_REMOVE;
     });

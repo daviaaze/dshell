@@ -75,10 +75,25 @@ export class ShadeShell extends Adw.Application {
     private bootstrapUi() {
         perf.start('widgets-mount', 'mount');
         createRoot(dispose => {
-            this.connect('shutdown', dispose);
+            this.#rootDispose = dispose;
+            this.connect('shutdown', () => this.#teardown());
             this.initCss();
             SettingsProvider(() => widgets());
         });
+    }
+
+    #rootDispose: (() => void) | null = null;
+
+    #teardown(): void {
+        if (!this.#rootDispose) return;
+        const dispose = this.#rootDispose;
+        this.#rootDispose = null;
+        dispose();
+    }
+
+    shutdown(): void {
+        this.#teardown();
+        this.quit();
     }
 }
 

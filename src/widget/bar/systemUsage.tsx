@@ -1,10 +1,8 @@
-import {useSettings} from '#/lib/settings';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import {Process} from '#/lib/core/process';
 import {Accessor} from 'gnim';
 import {useStyle} from '#/style/useStyle';
-import logger from '#/lib/core/logger';
+import {useSettings} from '#/lib/settings';
 import SystemUsage from '#/lib/services/monitoring/systemUsage';
 
 const LEVEL_BAR_SIZE = 50;
@@ -73,23 +71,15 @@ export default ({
 }) => {
     const settings = useSettings();
     const usage = SystemUsage.get_default();
-    usage.start(settings.bar.tempPath());
 
     return (
         <Gtk.Button
             visible={visible}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            onClicked={() =>
-                settings.bar.systemMonitor()
-                    ? Process.execAsync(settings.bar.systemMonitor()).catch(e =>
-                          logger.error(
-                              'systemUsage',
-                              'failed to launch monitor:',
-                              e
-                          )
-                      )
-                    : null
-            }
+            onClicked={() => {
+                const monitor = settings.bar.systemMonitor();
+                if (monitor) usage.launchMonitor(monitor);
+            }}
         >
             <Gtk.Box
                 orientation={vertical.as(v =>

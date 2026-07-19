@@ -1,7 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import ShellState from '#/lib/services/state/shellState';
-import logger from '#/lib/core/logger';
-import {Process} from '#/lib/core/process';
+import SessionControl from '#/lib/services/power/sessionControl';
 import {ActionButton} from './actionButton';
 
 export const PowerMenu = () => {
@@ -16,7 +15,7 @@ export const PowerMenu = () => {
                     iconName="system-lock-screen-symbolic"
                     label="Lock"
                     onClicked={() => {
-                        ShellState.get_default().screenlocked = true;
+                        ShellState.get_default().lock();
                         popover.popdown();
                     }}
                 />
@@ -24,11 +23,7 @@ export const PowerMenu = () => {
                     iconName="system-log-out-symbolic"
                     label="Log Out"
                     onClicked={() => {
-                        try {
-                            Process.exec('loginctl terminate-session');
-                        } catch (e) {
-                            logger.error('power', 'loginctl failed:', e);
-                        }
+                        SessionControl.get_default().logout();
                         popover.popdown();
                     }}
                 />
@@ -36,15 +31,7 @@ export const PowerMenu = () => {
                     iconName="media-playback-pause-symbolic"
                     label="Suspend"
                     onClicked={() => {
-                        try {
-                            Process.exec('systemctl suspend');
-                        } catch (e) {
-                            logger.error(
-                                'power',
-                                'systemctl suspend failed:',
-                                e
-                            );
-                        }
+                        SessionControl.get_default().suspend();
                         popover.popdown();
                     }}
                 />
@@ -52,15 +39,7 @@ export const PowerMenu = () => {
                     iconName="system-reboot-symbolic"
                     label="Reboot"
                     onClicked={() => {
-                        try {
-                            Process.exec('systemctl reboot');
-                        } catch (e) {
-                            logger.error(
-                                'power',
-                                'systemctl reboot failed:',
-                                e
-                            );
-                        }
+                        SessionControl.get_default().reboot();
                         popover.popdown();
                     }}
                 />
@@ -69,15 +48,7 @@ export const PowerMenu = () => {
                     label="Power Off"
                     destructive
                     onClicked={() => {
-                        try {
-                            Process.exec('systemctl poweroff');
-                        } catch (e) {
-                            logger.error(
-                                'power',
-                                'systemctl poweroff failed:',
-                                e
-                            );
-                        }
+                        SessionControl.get_default().powerOff();
                         popover.popdown();
                     }}
                 />

@@ -1,18 +1,19 @@
 // @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
-import GWeather from 'gi://GWeather?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createState, For} from 'gnim';
+import {createBinding} from 'gnim';
+import WeatherLib from '#/lib/services/location/weather';
 import Clock from '#/lib/services/time/clock';
 import {useStyle} from '#/style/useStyle';
-import WeatherLib from '#/lib/services/location/weather';
-import {
-    weatherGradient,
-    formatTemp,
-    formatTime,
-    windDirectionLabel,
-} from '#/lib/services/location/weatherUtils';
 import {SunArc} from '#/widget/common/sunArc';
+import {WeatherDetails} from '#/widget/common/weatherDetails';
+import {
+    HourlyForecastSection,
+    DailyForecastSection,
+} from '#/widget/common/weatherForecast';
 
+/**
+ * Weather icon + temp summary, suitable for a compact indicator.
+ */
 export const WeatherIcon = () => {
     const weather = WeatherLib.get_default();
     return (
@@ -32,94 +33,53 @@ export const WeatherIcon = () => {
     );
 };
 
-// ── Data layer: all reactive bindings extracted from WeatherWidget ──
-
-function useWeatherData(
-    weather: typeof WeatherLib.get_default,
-    info: ReturnType<typeof createBinding>
-) {
-    const now = Clock.get_default().time.as(t => t.to_unix());
-
-    const [gradient, setGradient] = createState(
-        'linear-gradient(135deg, var(--shade-surface-dim), var(--shade-surface-container))' // TODO(compliance): revisit — weather gradient fallback, use theme tokens
-    );
-    info.subscribe((w: any) => {
-        setGradient(
-            w?.is_valid()
-                ? weatherGradient(w.get_icon_name() ?? '')
-                : 'linear-gradient(135deg, var(--shade-surface-dim), var(--shade-surface-container))' // TODO(compliance): revisit — weather gradient fallback, use theme tokens
-        );
-    });
-
-    return {
-        now,
-        gradient,
-        locationName: info.as(w => w?.get_location_name() ?? '\u2014'),
-        temp: info.as(w =>
-            w?.is_valid()
-                ? formatTemp(
-                      w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1]
-                  )
-                : '--\u00b0'
-        ),
-        feelsLike: info.as(w =>
-            w?.is_valid() ? `Feels like ${w.get_apparent()}` : ''
-        ),
-        skyDesc: info.as(w => w?.get_sky() ?? ''),
-        iconName: info.as(
-            w => w?.get_icon_name() ?? 'weather-none-available-symbolic'
-        ),
-        sunrise: info.as(w => (w?.is_valid() ? w.get_value_sunrise()[1] : 0)),
-        sunset: info.as(w => (w?.is_valid() ? w.get_value_sunset()[1] : 0)),
-        windSpeed: info.as(w => {
-            if (!w?.is_valid()) return 0;
-            const [, s] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
-            return s;
-        }),
-        windDir: info.as(w => {
-            if (!w?.is_valid()) return 0;
-            const [, , d] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
-            return d;
-        }),
-        humidity: info.as(w => {
-            if (!w?.is_valid()) return 0;
-            const h = w.get_humidity();
-            return h ? parseFloat(h) : 0;
-        }),
-        pressure: info.as(w => {
-            if (!w?.is_valid()) return 0;
-            const [, p] = w.get_value_pressure(GWeather.PressureUnit.HPA);
-            return p;
-        }),
-        hourlyForecast: info.as(w =>
-            w?.is_valid() ? weather.getHourlyForecast(8) : []
-        ),
-        dailyForecast: info.as(w =>
-            w?.is_valid() ? weather.getDailyForecast(5) : []
-        ),
-        moonPhase: info.as(w =>
-            w?.is_valid() ? weather.getMoonPhase() : null
-        ),
-    };
-}
-
+/**
+ * Full weather widget with current conditions, forecast, and details.
+ */
 export const WeatherWidget = () => {
     const weather = WeatherLib.get_default();
-    const info = createBinding(weather, 'info');
-    const data = useWeatherData(weather, info);
+    const now = Clock.get_default().time.as(t => t.to_unix());
 
-    const widgetStyle = useStyle({ 'min-width': '280px' });
-    const tempStyle = useStyle({ 'font-size': '24px', 'font-weight': 'bold' });
-    const tempSmallStyle = useStyle({ 'font-size': '12px', 'font-weight': '600' });
-    const sectionStyle = useStyle({ 'margin-top': '8px' });
-    const sectionLabelStyle = useStyle({ 'font-size': '11px', 'font-weight': '600', 'text-transform': 'uppercase', opacity: '0.7' });
-    const hourlyItemStyle = useStyle({ 'min-width': '48px', padding: '4px 0' });
-    const hourlyTimeStyle = useStyle({ 'font-size': '11px', opacity: '0.7' });
-    const hourlyTempStyle = useStyle({ 'font-size': '13px', 'font-weight': '600' });
-    const dailyItemStyle = useStyle({ padding: '4px', 'border-radius': '8px' });
-    const detailCardStyle = useStyle({ padding: '8px', 'border-radius': '8px', background: 'var(--shade-surface-dim)' });
-    const detailValueStyle = useStyle({ 'font-size': '18px', 'font-weight': 'bold' });
-    const refreshStyle = useStyle({ padding: '4px', 'border-radius': '8px', 'margin-top': '8px' });
+    const locationName = createBinding(weather, 'location-name');
+    const tempSummary = createBinding(weather, 'temp-summary');
+    const feelsLike = createBinding(weather, 'feels-like');
+    const skyDesc = createBinding(weather, 'sky-desc');
+    const iconName = createBinding(weather, 'weather-icon');
+    const sunrise = createBinding(weather, 'sunrise');
+    const sunset = createBinding(weather, 'sunset');
+    const windSpeed = createBinding(weather, 'wind-speed');
+    const windDirection = createBinding(weather, 'wind-direction');
+    const humidity = createBinding(weather, 'humidity');
+    const pressure = createBinding(weather, 'pressure');
+    const gradient = createBinding(weather, 'gradient');
+
+    const hourlyForecast = createBinding(weather, 'info').as(_w =>
+        weather.getHourlyForecast(8)
+    );
+    const dailyForecast = createBinding(weather, 'info').as(_w =>
+        weather.getDailyForecast(5)
+    );
+    const moonPhase = createBinding(weather, 'info').as(_w =>
+        weather.getMoonPhase()
+    );
+
+    const widgetStyle = useStyle({'min-width': '280px'});
+    const tempStyle = useStyle({
+        'font-size': '24px',
+        'font-weight': 'bold',
+    });
+    const sectionStyle = useStyle({'margin-top': '8px'});
+    const sectionLabelStyle = useStyle({
+        'font-size': '11px',
+        'font-weight': '600',
+        'text-transform': 'uppercase',
+        opacity: '0.7',
+    });
+    const refreshStyle = useStyle({
+        padding: '4px',
+        'border-radius': '8px',
+        'margin-top': '8px',
+    });
 
     return (
         <Gtk.Box
@@ -128,124 +88,53 @@ export const WeatherWidget = () => {
             $={(self: Gtk.Box) => {
                 const cssProvider = new Gtk.CssProvider();
                 cssProvider.load_from_string(
-                    `* { background: ${data.gradient()}; border-radius: var(--shade-radius); }`
+                    `* { background: ${gradient()}; border-radius: var(--shade-radius); }`
                 );
                 self.get_style_context().add_provider(
                     cssProvider,
                     Gtk.STYLE_PROVIDER_PRIORITY_USER
                 );
-                data.gradient.subscribe((g: string) => {
+                gradient.subscribe(() => {
                     cssProvider.load_from_string(
-                        `* { background: ${g}; border-radius: var(--shade-radius); }`
+                        `* { background: ${gradient()}; border-radius: var(--shade-radius); }`
                     );
                 });
             }}
         >
             {/* ── Header: Icon + Location ── */}
             <Gtk.Box spacing={12} cssClasses={['p-12']}>
-                <Gtk.Image iconName={data.iconName} pixelSize={48} />
+                <Gtk.Image iconName={iconName} pixelSize={48} />
                 <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                     <Gtk.Label
                         cssClasses={['title-3']}
-                        label={data.locationName}
+                        label={locationName}
                         halign={Gtk.Align.START}
                     />
                     <Gtk.Label
                         cssClasses={['weather-temp', tempStyle.class]}
-                        label={data.temp}
+                        label={tempSummary}
                         halign={Gtk.Align.START}
                     />
-                    <Gtk.Label
-                        label={data.feelsLike}
-                        halign={Gtk.Align.START}
-                    />
-                    <Gtk.Label label={data.skyDesc} halign={Gtk.Align.START} />
+                    <Gtk.Label label={feelsLike} halign={Gtk.Align.START} />
+                    <Gtk.Label label={skyDesc} halign={Gtk.Align.START} />
                 </Gtk.Box>
             </Gtk.Box>
 
-            {/* ── Sunrise/Sunset Arc (updates every 30s via timeout) ── */}
+            {/* ── Sunrise/Sunset Arc ── */}
             <Gtk.Box cssClasses={['p-8']}>
                 <SunArc
-                    sunrise={data.sunrise}
-                    sunset={data.sunset}
-                    now={data.now}
-                    moonPhase={data.moonPhase}
+                    sunrise={sunrise}
+                    sunset={sunset}
+                    now={now}
+                    moonPhase={moonPhase}
                 />
             </Gtk.Box>
 
             {/* ── Hourly Forecast ── */}
-            <Gtk.Box
-                orientation={Gtk.Orientation.VERTICAL}
-                cssClasses={['p-8', 'weather-section', sectionStyle.class]}
-            >
-                <Gtk.Label
-                    cssClasses={['caption', 'weather-section-label', sectionLabelStyle.class]}
-                    label="Hourly"
-                    halign={Gtk.Align.START}
-                />
-                <Gtk.ScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                    <Gtk.Box spacing={4}>
-                        <For each={data.hourlyForecast}>
-                            {f => (
-                                <Gtk.Box
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    cssClasses={['weather-hourly-item', hourlyItemStyle.class]}
-                                    spacing={0}
-                                >
-                                    <Gtk.Label
-                                        cssClasses={['weather-hourly-time', hourlyTimeStyle.class]}
-                                        label={formatTime(f.time)}
-                                    />
-                                    <Gtk.Image
-                                        iconName={f.iconName}
-                                        pixelSize={16}
-                                    />
-                                    <Gtk.Label
-                                        cssClasses={['weather-hourly-temp', hourlyTempStyle.class]}
-                                        label={formatTemp(f.temp)}
-                                    />
-                                </Gtk.Box>
-                            )}
-                        </For>
-                    </Gtk.Box>
-                </Gtk.ScrolledWindow>
-            </Gtk.Box>
+            <HourlyForecastSection hourlyForecast={hourlyForecast} />
 
             {/* ── Daily Forecast ── */}
-            <Gtk.Box
-                orientation={Gtk.Orientation.VERTICAL}
-                cssClasses={['p-8', 'weather-section', sectionStyle.class]}
-            >
-                <Gtk.Label
-                    cssClasses={['caption', 'weather-section-label', sectionLabelStyle.class]}
-                    label="5-Day Forecast"
-                    halign={Gtk.Align.START}
-                />
-                <Gtk.Box spacing={8} hexpand homogeneous>
-                    <For each={data.dailyForecast}>
-                        {d => (
-                            <Gtk.Box
-                                orientation={Gtk.Orientation.VERTICAL}
-                                cssClasses={['weather-daily-item', dailyItemStyle.class]}
-                                spacing={2}
-                            >
-                                <Gtk.Label
-                                    cssClasses={['caption']}
-                                    label={d.dayName}
-                                />
-                                <Gtk.Image
-                                    iconName={d.iconName}
-                                    pixelSize={18}
-                                />
-                                <Gtk.Label
-                                    label={`${formatTemp(d.tempMax)} / ${formatTemp(d.tempMin)}`}
-                                    cssClasses={['weather-temp-small', tempSmallStyle.class]}
-                                />
-                            </Gtk.Box>
-                        )}
-                    </For>
-                </Gtk.Box>
-            </Gtk.Box>
+            <DailyForecastSection dailyForecast={dailyForecast} />
 
             {/* ── Detail Cards ── */}
             <Gtk.Box
@@ -253,58 +142,25 @@ export const WeatherWidget = () => {
                 cssClasses={['p-8', 'weather-section', sectionStyle.class]}
             >
                 <Gtk.Label
-                    cssClasses={['caption', 'weather-section-label', sectionLabelStyle.class]}
+                    cssClasses={[
+                        'caption',
+                        'weather-section-label',
+                        sectionLabelStyle.class,
+                    ]}
                     label="Details"
                     halign={Gtk.Align.START}
                 />
-                <Gtk.Box spacing={6} hexpand>
-                    {/* Wind */}
-                    <Gtk.Box
-                        orientation={Gtk.Orientation.VERTICAL}
-                        cssClasses={['weather-detail-card', detailCardStyle.class]}
-                        hexpand
-                    >
-                        <Gtk.Label
-                            label={data.windSpeed.as(
-                                s => `${s.toFixed(0)} km/h`
-                            )}
-                            cssClasses={['weather-detail-value', detailValueStyle.class]}
-                        />
-                        <Gtk.Label
-                            label={data.windDir.as(d => windDirectionLabel(d))}
-                            cssClasses={['caption']}
-                        />
-                    </Gtk.Box>
-                    {/* Humidity */}
-                    <Gtk.Box
-                        orientation={Gtk.Orientation.VERTICAL}
-                        cssClasses={['weather-detail-card', detailCardStyle.class]}
-                        hexpand
-                    >
-                        <Gtk.Label
-                            label={data.humidity.as(h => `${h.toFixed(0)}%`)}
-                            cssClasses={['weather-detail-value', detailValueStyle.class]}
-                        />
-                        <Gtk.Label label="Humidity" cssClasses={['caption']} />
-                    </Gtk.Box>
-                    {/* Pressure */}
-                    <Gtk.Box
-                        orientation={Gtk.Orientation.VERTICAL}
-                        cssClasses={['weather-detail-card', detailCardStyle.class]}
-                        hexpand
-                    >
-                        <Gtk.Label
-                            label={data.pressure.as(p => `${p.toFixed(0)} hPa`)}
-                            cssClasses={['weather-detail-value', detailValueStyle.class]}
-                        />
-                        <Gtk.Label label="Pressure" cssClasses={['caption']} />
-                    </Gtk.Box>
-                </Gtk.Box>
+                <WeatherDetails
+                    windSpeed={windSpeed}
+                    windDirection={windDirection}
+                    humidity={humidity}
+                    pressure={pressure}
+                />
             </Gtk.Box>
 
             {/* ── Refresh Button ── */}
             <Gtk.Button
-                onClicked={() => weather.info.update()}
+                onClicked={() => weather.refresh()}
                 iconName="view-refresh-symbolic"
                 cssClasses={['flat', 'weather-refresh', refreshStyle.class]}
             />

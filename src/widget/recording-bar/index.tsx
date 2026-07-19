@@ -67,7 +67,7 @@ export default () => {
 
                 {/* Audio indicator */}
                 <Gtk.Image
-                    visible={createBinding(ss, 'audio')}
+                    visible={createBinding(ss.prefs, 'audio')}
                     iconName="audio-input-microphone-symbolic"
                     pixelSize={14}
                 />

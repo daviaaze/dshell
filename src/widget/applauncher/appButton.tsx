@@ -3,8 +3,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import WindowManager from '#/lib/services/state/windowManager';
 import {FrecencyManager} from '#/lib/services/search/frecency';
+import {launchApp} from '#/lib/services/state/apps';
 import {useStyle} from '#/style/useStyle';
-import GLib from 'gi://GLib?version=2.0';
 
 export default ({
     application,
@@ -81,9 +81,7 @@ export default ({
                 if (onClicked) onClicked();
                 WindowManager.get_default().applauncher!.visible = false;
                 application.frequency += 1;
-                GLib.spawn_command_line_async(
-                    `uwsm-app -t service -- ${application.entry}`
-                );
+                launchApp(application);
             }}
         />
     );

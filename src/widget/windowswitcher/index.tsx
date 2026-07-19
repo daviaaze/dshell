@@ -53,8 +53,8 @@ export default () => {
     const clientsBinding = createBinding(hyprland, 'clients');
     const clientsList = clientsBinding.as(c => getSortedClients(c, mru));
 
-    const clampUnsubscribe = clientsList.subscribe((list: any) => {
-        const len = list?.length ?? 0;
+    const clampUnsubscribe = clientsList.subscribe(() => {
+        const len = (clientsList() as any)?.length ?? 0;
         if (selectedIndex() >= len) {
             setSelectedIndex(Math.max(0, len - 1));
         }

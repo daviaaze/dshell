@@ -10,27 +10,36 @@ import screenshotUi from './screenshot-ui';
 import regionSelector from './region-selector';
 import recordingBar from './recording-bar';
 import recordingBoundary from './recording-boundary';
+import {toggleWindowSwitcher} from './windowswitcher';
 import {createSettingsWindow} from './settings';
 import {Wallpaper} from './wallpaper';
 import Weather from '#/lib/services/location/weather';
+import MediaController from '#/lib/services/session/mediaController';
 import {ColorScheme} from '#/lib/services/display/colorScheme';
 import Inhibit from '#/lib/services/power/inhibit';
 import NightLight from '#/lib/services/display/nightLight';
 import Hypridle from '#/lib/services/power/hypridle';
+import AudioController from '#/lib/services/audio/audioController';
 import Touchpad from '#/lib/services/input/touchpad';
 import PaletteGenerator from '#/style/palette';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import NotificationHistory from '#/lib/services/notifications/history';
 import DndService from '#/lib/services/notifications/dnd';
 import SoundAlertService from '#/lib/services/audio/soundAlerts';
+import SystemUsage from '#/lib/services/monitoring/systemUsage';
 import TimerService from '#/lib/services/time/timerService';
 import {FrecencyManager} from '#/lib/services/search/frecency';
+import TrayService from '#/lib/services/desktop/trayService';
+import NetworkService from '#/lib/services/network/networkService';
+import BluetoothService from '#/lib/services/bluetooth/bluetoothService';
 import {initAutoSwitch} from '#/lib/services/audio/autoSwitch';
 import {initAppWatcher} from '#/lib/services/state/apps';
 import {initClipboardHistory} from '#/lib/services/clipboard/history';
 import {app} from '#/apps/shell/App';
+import ShellState from '#/lib/services/state/shellState';
 import {useSettings} from '#/lib/settings';
 import WindowManager from '#/lib/services/state/windowManager';
+import ServiceRegistry from '#/lib/core/serviceRegistry';
 import logger, {perf} from '#/lib/core/logger';
 
 // ── Settings window lifecycle ──
@@ -51,99 +60,126 @@ export const openSettings = () => {
     win.present();
 };
 
-// ── Service initialization descriptors ──
 
-interface ServiceDescriptor {
-    name: string;
-    init: () => void;
-}
+// ── Register services with lifecycle manager ──
 
-function getServiceDescriptors(
-    s: ReturnType<typeof useSettings>
-): ServiceDescriptor[] {
-    return [
+function registerServices(s: ReturnType<typeof useSettings>) {
+    const reg = ServiceRegistry.get_default();
+    reg.register(
+        {
+            name: 'AudioController',
+            service: AudioController.get_default(),
+        },
+        {
+            name: 'MediaController',
+            service: MediaController.get_default(),
+        },
         {
             name: 'Weather',
-            init: () => Weather.get_default().init(s.weather),
+            service: Weather.get_default(),
+            initArgs: [s.weather],
         },
         {
             name: 'ColorScheme',
-            init: () => ColorScheme.get_default().init(s.general),
+            service: ColorScheme.get_default(),
+            initArgs: [s.general],
         },
         {
             name: 'Inhibit',
-            init: () => Inhibit.get_default().init(app),
+            service: Inhibit.get_default(),
+            initArgs: [app],
         },
         {
             name: 'NightLight',
-            init: () => NightLight.get_default().init(s.general),
+            service: NightLight.get_default(),
+            initArgs: [s.general],
         },
         {
             name: 'Hypridle',
-            init: () => Hypridle.get_default().init(s.general),
+            service: Hypridle.get_default(),
+            initArgs: [s.general],
+        },
+        {
+            name: 'ShellState',
+            service: ShellState.get_default(),
+        },
+        {
+            name: 'WindowManager',
+            service: WindowManager.get_default(),
+        },
+        {
+            name: 'NetworkService',
+            service: NetworkService.get_default(),
+        },
+        {
+            name: 'BluetoothService',
+            service: BluetoothService.get_default(),
+        },
+        {
+            name: 'SystemUsage',
+            service: SystemUsage.get_default(),
+            initArgs: [s.bar.tempPath()],
         },
         {
             name: 'Touchpad',
-            init: () => {
-                try {
-                    Touchpad.get_default().init();
-                } catch (e) {
-                    logger.warn(
-                        'mount',
-                        'Touchpad init skipped (no touchpad?):',
-                        e
-                    );
-                }
-            },
+            service: Touchpad.get_default(),
+            critical: false,
         },
         {
             name: 'PaletteGenerator',
-            init: () => PaletteGenerator.get_default().init(s.general),
+            service: PaletteGenerator.get_default(),
+            initArgs: [s.general],
         },
         {
             name: 'Notifd (pre-init)',
-            init: () => getNotifdSafe(),
+            service: {init: () => getNotifdSafe()},
         },
         {
             name: 'DndService',
-            init: () => DndService.get_default().init(),
+            service: DndService.get_default(),
+        },
+        {
+            name: 'TrayService',
+            service: TrayService.get_default(),
         },
         {
             name: 'SoundAlerts',
-            init: () => SoundAlertService.get_default().init(s.general),
+            service: SoundAlertService.get_default(),
+            initArgs: [s.general],
         },
         {
             name: 'NotificationHistory',
-            init: () => NotificationHistory.get_default().init(s.general),
+            service: NotificationHistory.get_default(),
+            initArgs: [s.general],
         },
         {
             name: 'AudioAutoSwitch',
-            init: () => initAutoSwitch(),
+            service: {init: () => initAutoSwitch()},
         },
         {
             name: 'TimerService',
-            init: () =>
-                TimerService.get_default().init(
-                    app,
-                    s.timer.pomodoroWorkDuration(),
-                    s.timer.pomodoroBreakDuration(),
-                    s.timer.pomodoroLongBreakDuration(),
-                    s.timer.pomodoroSessionsBeforeLongBreak()
-                ),
+            service: TimerService.get_default(),
+            initArgs: [
+                app,
+                s.timer.pomodoroWorkDuration(),
+                s.timer.pomodoroBreakDuration(),
+                s.timer.pomodoroLongBreakDuration(),
+                s.timer.pomodoroSessionsBeforeLongBreak(),
+            ],
         },
         {
             name: 'AppWatcher',
-            init: () => initAppWatcher(),
+            service: {init: () => initAppWatcher()},
         },
         {
             name: 'ClipboardHistory',
-            init: () => initClipboardHistory(),
+            service: {init: () => initClipboardHistory()},
         },
         {
             name: 'FrecencyManager',
-            init: () => FrecencyManager.get_default().init(),
-        },
-    ];
+            service: FrecencyManager.get_default(),
+        }
+    );
 }
 
 // ── Widget mount descriptors ──
@@ -169,15 +205,16 @@ function getWidgetDescriptors(): WidgetDescriptor[] {
         {name: 'recording-bar', mount: recordingBar},
         {name: 'recording-boundary', mount: recordingBoundary},
         {name: 'notifications', mount: notifications},
-        {
-            name: 'settings',
-            mount: () => {
-                const win = createSettingsWindow();
-                wm.setSettings(win);
-            },
-        },
+        {name: 'settings', mount: () => {}}, // created lazily by openSettings()
     ];
 }
+
+// ── Wire ShellState callbacks (invert reverse dependency) ──
+
+ShellState.get_default().registerWidgetActions({
+    onToggleSettings: () => openSettings(),
+    onToggleWindowSwitcher: () => toggleWindowSwitcher(),
+});
 
 // ── Main widget bootstrap ──
 
@@ -186,19 +223,11 @@ export const widgets = () => {
     logger.log('widgets() starting...');
     const s = useSettings();
 
-    // Initialize services in order
-    for (const {name, init} of getServiceDescriptors(s)) {
-        perf.start(`service-${name}`, 'mount');
-        try {
-            init();
-            const svcKey = `service-${name}`;
-            logger.info(
-                'mount',
-                `service ${name} init in ${perf.stop(svcKey, 'mount').toFixed(1)}ms`
-            );
-        } catch (e) {
-            logger.error('mount', `Service ${name} init FAILED:`, e);
-        }
+    // Register and initialize services via lifecycle manager
+    registerServices(s);
+    const ok = ServiceRegistry.get_default().initAll();
+    if (!ok) {
+        logger.error('mount', 'Some services failed to init — continuing');
     }
     perf.stop('services-init', 'mount');
 

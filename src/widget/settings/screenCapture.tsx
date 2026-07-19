@@ -29,8 +29,8 @@ export default () => {
                         $={self => {
                             const v = settings.recorderBackend.peek();
                             self.activeName = String(v ?? 2);
-                            settings.recorderBackend.subscribe((v: number) => {
-                                self.activeName = String(v);
+                            settings.recorderBackend.subscribe(() => {
+                                self.activeName = String(settings.recorderBackend.peek());
                             });
                         }}
                     >
@@ -65,8 +65,8 @@ export default () => {
                         $={self => {
                             const v = settings.recordingFormat.peek();
                             self.activeName = String(v ?? 0);
-                            settings.recordingFormat.subscribe((v: number) => {
-                                self.activeName = String(v);
+                            settings.recordingFormat.subscribe(() => {
+                                self.activeName = String(settings.recordingFormat.peek());
                             });
                         }}
                     >
@@ -96,8 +96,8 @@ export default () => {
                         $={self => {
                             const v = settings.recordingQuality.peek();
                             self.activeName = String(v ?? 1);
-                            settings.recordingQuality.subscribe((v: number) => {
-                                self.activeName = String(v);
+                            settings.recordingQuality.subscribe(() => {
+                                self.activeName = String(settings.recordingQuality.peek());
                             });
                         }}
                     >
@@ -134,8 +134,8 @@ export default () => {
                         $={self => {
                             const v = settings.screenshotFormat.peek();
                             self.activeName = String(v ?? 0);
-                            settings.screenshotFormat.subscribe((v: number) => {
-                                self.activeName = String(v);
+                            settings.screenshotFormat.subscribe(() => {
+                                self.activeName = String(settings.screenshotFormat.peek());
                             });
                         }}
                     >

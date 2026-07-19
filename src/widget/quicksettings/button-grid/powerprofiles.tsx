@@ -1,6 +1,5 @@
 import {createState, onMount, onCleanup} from 'gnim';
 import Adw from 'gi://Adw?version=1';
-import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import PowerProfiles, {profileLabel, nextProfile} from '#/lib/services/power/powerProfiles';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
@@ -25,11 +24,8 @@ export default () => {
             setIconName(pp.iconName);
             setLabel(profileLabel(p));
         };
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            connectFor(_hn, pp, 'notify::activeProfile', update);
-            update();
-            return GLib.SOURCE_REMOVE;
-        });
+        connectFor(_hn, pp, 'notify::activeProfile', update);
+        update();
         onCleanup(() => cleanupNode(_hn));
     });
 

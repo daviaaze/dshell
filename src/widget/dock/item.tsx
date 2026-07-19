@@ -107,8 +107,8 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 if (!self.get_first_child()) {
                     const icon = <Gtk.Image iconName={iconName} />;
                     // Bind icon size reactively
-                    bar.dockIconSize.subscribe((size: number) =>
-                        icon.set_pixel_size(size)
+                    bar.dockIconSize.subscribe(() =>
+                        icon.set_pixel_size(bar.dockIconSize.get())
                     );
                     icon.set_pixel_size(bar.dockIconSize.get());
 

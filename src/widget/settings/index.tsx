@@ -21,7 +21,7 @@ export const createSettingsWindow = (): Adw.Window => {
             name={'settings'}
             cssClasses={['background']}
             title={'Shade Settings'}
-            searchEnabled
+            searchEnabled={false}
         >
             <Adw.PreferencesPage
                 title={'Appearance'}

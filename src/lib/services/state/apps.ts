@@ -169,6 +169,20 @@ export function reloadApps() {
 }
 
 /**
+ * Launch an application via uwsm-app.
+ * Encapsulates the shell command so widgets don't import GLib.spawn.
+ */
+export function launchApp(application: Apps.Application) {
+    try {
+        GLib.spawn_command_line_async(
+            `uwsm-app -t service -- ${application.entry}`
+        );
+    } catch (e) {
+        logger.error('apps', `Failed to launch ${application.entry}:`, e);
+    }
+}
+
+/**
  * Start watching desktop file directories for changes and auto-reload.
  * Call once during app initialization.
  */

@@ -1,5 +1,6 @@
 import GObject, {getter, register, setter, signal} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
+import {bus} from '#/lib/core/eventBus';
 import {Process} from '#/lib/core/process';
 import logger from '#/lib/core/logger';
 
@@ -59,6 +60,7 @@ export default class Touchpad extends GObject.Object {
         );
         this.enabled = !this.#enabled;
         logger.info('touchpad', `toggle() done, new enabled=${this.#enabled}`);
+        bus.emit('input:touchpad:toggle');
     }
 
     init() {

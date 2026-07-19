@@ -1,8 +1,7 @@
 import GObject, {getter, register, setter} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
-import WindowManager from '#/lib/services/state/windowManager';
-import {openSettings} from '#/widget';
-import {toggleWindowSwitcher} from '#/widget/windowswitcher';
+import {bus} from '#/lib/core/eventBus';
+import ServiceRegistry from '#/lib/core/serviceRegistry';
 import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'ShellState'})
@@ -70,11 +69,13 @@ export default class ShellState extends GObject.Object {
         );
         this.#screenlocked = v;
         this.notify('screenlocked');
+        if (v) bus.emit('shell:lockscreen');
     }
 
     toggleLauncher() {
         this.launcherQuery = '';
         this.launcherOpen = !this.#launcherOpen;
+        bus.emit('shell:launcher:toggle');
     }
 
     openClipboard() {
@@ -92,21 +93,54 @@ export default class ShellState extends GObject.Object {
         }
     }
 
+    /** Lock the session (show lockscreen). */
+    lock() {
+        this.screenlocked = true;
+    }
+
+    /** Unlock the session (hide lockscreen). */
+    unlock() {
+        this.screenlocked = false;
+    }
+
+    /** Close the quick settings panel. */
+    closeQuickSettings() {
+        this.qsOpen = false;
+    }
+
     toggleQuickSettings() {
         this.qsOpen = !this.#qsOpen;
+        bus.emit('shell:qs:toggle');
     }
 
     toggleBar() {
-        const wm = WindowManager.get_default();
+        const wm = ServiceRegistry.get_default().resolve<import('#/lib/services/state/windowManager').default>('WindowManager');
         wm.bars.forEach(bar => (bar.visible = !bar.visible));
     }
 
     toggleWindowSwitcher() {
-        toggleWindowSwitcher();
+        this.#onToggleWindowSwitcher?.();
+        bus.emit('shell:windowswitcher:toggle');
+    }
+
+    #onToggleSettings: (() => void) | null = null;
+    #onToggleWindowSwitcher: (() => void) | null = null;
+
+    /**
+     * Register widget-level action callbacks.
+     * This inverts the dependency: instead of ShellState importing
+     * widget code, widgets register their callbacks here.
+     */
+    registerWidgetActions(opts: {
+        onToggleSettings?: () => void;
+        onToggleWindowSwitcher?: () => void;
+    }) {
+        if (opts.onToggleSettings) this.#onToggleSettings = opts.onToggleSettings;
+        if (opts.onToggleWindowSwitcher) this.#onToggleWindowSwitcher = opts.onToggleWindowSwitcher;
     }
 
     toggleSettings() {
-        openSettings();
+        this.#onToggleSettings?.();
     }
 
     /** Register GAction commands for shell UI state. */
@@ -119,9 +153,7 @@ export default class ShellState extends GObject.Object {
             'toggle-settings': () => this.toggleSettings(),
             'toggle-clipboard': () => this.toggleClipboard(),
             'open-clipboard': () => this.openClipboard(),
-            lockscreen: () => {
-                this.screenlocked = true;
-            },
+            lockscreen: () => this.lock(),
         };
         for (const [name, fn] of Object.entries(actions)) {
             const action = Gio.SimpleAction.new(name, null);

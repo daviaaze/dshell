@@ -49,8 +49,8 @@ export const Greeter = ({application}: {application: Gio.Application}) => {
 
     // Handle authentication success
     onCleanup(
-        stateBinding.subscribe((state: string) => {
-            if (state === 'authenticated') {
+        stateBinding.subscribe(() => {
+            if (stateBinding() === 'authenticated') {
                 // Start Hyprland session
                 const sessionCmd = ['Hyprland'];
                 greeter.startSession(sessionCmd);

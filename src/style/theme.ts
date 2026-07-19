@@ -21,6 +21,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
+import logger from '#/lib/core/logger';
 import GObject, {getter, register} from 'gnim/gobject';
 
 // ── CSS custom property names ──
@@ -264,6 +265,10 @@ export class Theme extends GObject.Object {
     #applyTheme(colors: ThemeColors): void {
         const rules: string[] = [];
         for (const [key, value] of Object.entries(colors)) {
+            if (value === undefined || value === null || value === 'undefined') {
+                logger.warn('theme', `skipping undefined color: --shade-${key}`);
+                continue;
+            }
             const varName = `--shade-${key}`;
             rules.push(`  ${varName}: ${value};`);
         }
@@ -274,6 +279,9 @@ export class Theme extends GObject.Object {
         if (this.#isDark) {
             const darkRules: string[] = [];
             for (const [key, value] of Object.entries(colors)) {
+                if (value === undefined || value === null || value === 'undefined') {
+                    continue;
+                }
                 const varName = `--shade-${key}`;
                 darkRules.push(`  ${varName}: ${value};`);
             }

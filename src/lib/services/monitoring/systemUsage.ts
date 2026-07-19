@@ -3,6 +3,7 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Accessor, createState} from 'gnim';
 import logger from '#/lib/core/logger';
+import {Process} from '#/lib/core/process';
 
 const POLL_INTERVAL = 1000;
 /** hwmon temp1_input is millidegrees. Divide by 1000 for °C, then 100 maps to 0..1. */
@@ -85,6 +86,24 @@ export default class SystemUsage {
     get disk(): Accessor<number> { return this.#disk; }
     get temp(): Accessor<number> { return this.#temp; }
     get tempAvailable(): Accessor<boolean> { return this.#tempAvailable; }
+
+    /**
+     * Launch a system monitor command asynchronously.
+     * Widgets call this instead of Process.execAsync directly.
+     */
+    launchMonitor(cmd: string): void {
+        Process.execAsync(cmd).catch(e =>
+            logger.error('systemUsage', 'failed to launch monitor:', e)
+        );
+    }
+
+    /**
+     * Service lifecycle init — delegates to start().
+     * This allows SystemUsage to be managed by ServiceRegistry.
+     */
+    init(userTempPath?: string): void {
+        this.start(userTempPath);
+    }
 
     /**
      * Start sampling. `userTempPath` (from settings) takes priority over

@@ -1,9 +1,8 @@
-import Wireplumber from 'gi://AstalWp';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
-import {Accessor, createBinding, createState, onMount} from 'gnim';
+import {Accessor, createBinding} from 'gnim';
 import ShellState from '#/lib/services/state/shellState';
+import AudioController from '#/lib/services/audio/audioController';
 import KeepAwakeIndicator from './indicators/keepAwake';
 import PowerIndicator from './indicators/power';
 import BluetoothIndicator from './indicators/bluetooth';
@@ -19,17 +18,8 @@ export default ({
     vertical: Accessor<boolean>;
     visible?: boolean | Accessor<boolean>;
 }) => {
-    const [audio, setAudio] = createState<Wireplumber.Audio | null>(null);
-
-    onMount(() => {
-        // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            setAudio(Wireplumber.get_default()!.audio);
-            return GLib.SOURCE_REMOVE;
-        });
-    });
-
     const shellState = ShellState.get_default();
+    const audioCtrl = AudioController.get_default();
     return (
         <Gtk.ToggleButton
             visible={visible}
@@ -42,10 +32,7 @@ export default ({
                         <Gtk.EventControllerScroll
                             flags={Gtk.EventControllerScrollFlags.VERTICAL}
                             onScroll={(self, dx, dy) => {
-                                const a = audio();
-                                if (!a) return;
-                                if (dy > 0) a.default_speaker.volume -= 0.025;
-                                else a.default_speaker.volume += 0.025;
+                                audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
                             }}
                         />
                     ) as Gtk.EventController

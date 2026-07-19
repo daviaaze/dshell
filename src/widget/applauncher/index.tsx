@@ -6,52 +6,30 @@ import Adw from 'gi://Adw?version=1';
 import {createBinding, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
-import {searchClipboard} from '#/lib/services/clipboard';
-import {getAppList, fuzzyQuery} from '#/lib/services/state/apps';
-import {FrecencyManager} from '#/lib/services/search/frecency';
 import {useSettings} from '#/lib/settings';
 import {app} from '#/apps/shell/App';
 import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
 import logger from '#/lib/core/logger';
-import Apps from 'gi://AstalApps';
-import type {ClipboardItem} from '#/lib/services/clipboard';
+import {launcherSearch} from '#/lib/services/search/launcher';
+import type {LauncherMode, ListItem} from '#/lib/services/search/launcher';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
-
-type LauncherMode = 'apps' | 'clipboard';
-type ListItem = Apps.Application | ClipboardItem;
 
 export default () => {
     const barCfg = useSettings().bar;
     const hyprland = Hyprland.get_default();
     const shellState = ShellState.get_default();
-    const fm = FrecencyManager.get_default();
-    const [list, setList] = createState<ListItem[]>(
-        fm.rankByFrecency(getAppList(), app => app.entry ?? app.name ?? '')
-    );
+    const [list, setList] = createState<ListItem[]>([]);
     const [mode, setMode] = createState<LauncherMode>('apps');
+    const [frecencyHasData, setFrecencyHasData] = createState(false);
     let entryRef: Gtk.Entry | null = null;
 
     const updateSearch = (text: string) => {
-        if (text.startsWith('>')) {
-            setMode('clipboard');
-            const query = text.slice(1).trim();
-            searchClipboard(query, results => setList(results));
-        } else if (text.trim() === '') {
-            setMode('apps');
-            setList(fm.rankByFrecency(getAppList(), app => app.entry ?? app.name ?? ''));
-        } else {
-            setMode('apps');
-            const fuzzyResults = fuzzyQuery(text);
-            // Re-rank by frecency boost
-            const scored = fuzzyResults.map(app => ({
-                app,
-                score: fm.getSearchBoost(app.entry ?? app.name ?? ''),
-            }));
-            scored.sort((a, b) => b.score - a.score);
-            setList(scored.map(s => s.app));
-        }
+        const result = launcherSearch(text);
+        setMode(result.mode);
+        setList(result.items);
+        setFrecencyHasData(result.frecencyHasData);
     };
 
     return (
@@ -76,7 +54,7 @@ export default () => {
                     self.visible &&
                     ShellState.get_default().qsOpen
                 )
-                    ShellState.get_default().qsOpen = false;
+                    ShellState.get_default().closeQuickSettings();
                 if (self.visible) {
                     const query = ShellState.get_default().launcherQuery;
                     if (query && entryRef) {
@@ -149,7 +127,7 @@ export default () => {
                     marginStart={4}
                     cssClasses={['caption']}
                     label={list.as(l =>
-                        fm.hasData && l.length > 0
+                        frecencyHasData() && l.length > 0
                             ? entryRef?.text
                                 ? 'Search results (boosted by usage)'
                                 : 'Most used apps'

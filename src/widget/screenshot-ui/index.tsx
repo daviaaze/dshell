@@ -11,16 +11,16 @@ import {monitorIndexFromHyprland} from '#/lib/utils/monitors';
 import logger from '#/lib/core/logger';
 import {draw} from './drawing';
 import {ControlPanel} from './controlPanel';
-
-interface Point {x: number; y: number}
-interface WinInfo {
-    address: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    title: string;
-}
+import {
+    normalizeRect,
+    isScreenshotMode,
+    buildGeometry,
+    loadWindows,
+    getMonitorOrigin,
+    type Point,
+    type WinInfo,
+    type SelectionState,
+} from './selection';
 
 // ── Widget ────────────────────────────────────────────────────────
 
@@ -37,6 +37,17 @@ export default () => {
 
     let daRef: Gtk.DrawingArea | null = null;
 
+    function getSelectionState(): SelectionState {
+        return {
+            dragStart: dragStart(),
+            dragEnd: dragEnd(),
+            selActive: selActive(),
+            selectedWindow: selectedWindow(),
+            windows: windows(),
+            monOrigin: monOrigin(),
+        };
+    }
+
     function resetSelection() {
         setDragStart(null);
         setDragEnd(null);
@@ -44,32 +55,12 @@ export default () => {
         setSelectedWindow(null);
     }
 
-    function loadWindows() {
-        const clients = hyprland.get_clients();
-        const list: WinInfo[] = [];
-        for (let i = 0; i < clients.length; i++) {
-            const c = clients[i];
-            if (c.width > 0 && c.height > 0) {
-                list.push({
-                    address: c.address,
-                    x: c.x,
-                    y: c.y,
-                    width: c.width,
-                    height: c.height,
-                    title: c.title,
-                });
-            }
-        }
-        setWindows(list);
+    function refreshWindows() {
+        setWindows(loadWindows(hyprland.get_clients()));
     }
 
-    function updateMonOrigin() {
-        const m = hyprland.focused_monitor;
-        if (m) setMonOrigin({x: m.x, y: m.y});
-    }
-
-    function isScreenshotMode(): boolean {
-        return ss.selectedMode === 'screenshot';
+    function refreshMonOrigin() {
+        setMonOrigin(getMonitorOrigin(hyprland.focused_monitor));
     }
 
     // ── Event handlers ────────────────────────────────────────────
@@ -99,14 +90,23 @@ export default () => {
         daRef?.queue_draw();
     };
 
-    const onClickPressed = (_g: Gtk.GestureClick, _n: number, cx: number, cy: number) => {
+    const onClickPressed = (
+        _g: Gtk.GestureClick,
+        _n: number,
+        cx: number,
+        cy: number
+    ) => {
         if (ss.selectedTarget !== 'window') return;
         const origin = monOrigin();
-        const winL = windows();
-        for (let i = winL.length - 1; i >= 0; i--) {
-            const w = winL[i];
-            if (cx + origin.x >= w.x && cx + origin.x <= w.x + w.width &&
-                cy + origin.y >= w.y && cy + origin.y <= w.y + w.height) {
+        const winList = windows();
+        for (let i = winList.length - 1; i >= 0; i--) {
+            const w = winList[i]!;
+            if (
+                cx + origin.x >= w.x &&
+                cx + origin.x <= w.x + w.width &&
+                cy + origin.y >= w.y &&
+                cy + origin.y <= w.y + w.height
+            ) {
                 setSelectedWindow(w);
                 daRef?.queue_draw();
                 return;
@@ -114,8 +114,14 @@ export default () => {
         }
     };
 
-    const handleKey = (_ctrl: Gtk.EventControllerKey, keyval: number): boolean => {
-        if (keyval === Gdk.KEY_Escape) { ss.overlayOpen = false; return true; }
+    const handleKey = (
+        _ctrl: Gtk.EventControllerKey,
+        keyval: number
+    ): boolean => {
+        if (keyval === Gdk.KEY_Escape) {
+            ss.overlayOpen = false;
+            return true;
+        }
         if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
             executeCapture();
             return true;
@@ -125,33 +131,21 @@ export default () => {
 
     // ── Capture / Recording ───────────────────────────────────────
 
-    function buildGeometry(): string | null {
-        const target = ss.selectedTarget;
-        if (target === 'fullscreen' || target === 'monitor') return null;
-        if (target === 'area') {
-            if (!selActive()) return null;
-            const sel = normalizeRect(dragStart()!, dragEnd()!);
-            if (sel.width < 5 || sel.height < 5) return null;
-            return `${sel.width}x${sel.height}+${sel.x}+${sel.y}`;
-        }
-        if (target === 'window') {
-            const sWin = selectedWindow();
-            if (!sWin) return null;
-            const origin = monOrigin();
-            return `${sWin.width}x${sWin.height}+${sWin.x - origin.x}+${sWin.y - origin.y}`;
-        }
-        return null;
-    }
-
     function executeCapture() {
         const mode = ss.selectedMode;
         const target = ss.selectedTarget;
-        const geometry = buildGeometry();
+        const geometry = buildGeometry(target, getSelectionState());
 
-        if ((target === 'area' && !selActive()) ||
-            (target === 'window' && !selectedWindow())) return;
+        if (
+            (target === 'area' && !selActive()) ||
+            (target === 'window' && !selectedWindow())
+        )
+            return;
 
-        logger.info('screenshot-ui', `capture: mode=${mode}, target=${target}, geom=${geometry ?? 'full'}`);
+        logger.info(
+            'screenshot-ui',
+            `capture: mode=${mode}, target=${target}, geom=${geometry ?? 'full'}`
+        );
 
         if (mode === 'screenshot') {
             ss.captureFromStage(geometry);
@@ -161,7 +155,7 @@ export default () => {
     }
 
     function handleTargetChange(_value: string) {
-        if (_value === 'window') loadWindows();
+        if (_value === 'window') refreshWindows();
         daRef?.queue_draw();
     }
 
@@ -177,24 +171,31 @@ export default () => {
             visible={createBinding(ss, 'overlay-open')}
             onNotifyVisible={self => {
                 if (self.visible) {
-                    updateMonOrigin();
-                    loadWindows();
+                    refreshMonOrigin();
+                    refreshWindows();
                     resetSelection();
                 } else {
                     resetSelection();
                 }
             }}
-            anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.BOTTOM |
-                Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT}
-            monitor={createBinding(hyprland, 'focusedMonitor').as(monitorIndexFromHyprland)}
+            anchor={
+                Astal.WindowAnchor.TOP |
+                Astal.WindowAnchor.BOTTOM |
+                Astal.WindowAnchor.LEFT |
+                Astal.WindowAnchor.RIGHT
+            }
+            monitor={createBinding(hyprland, 'focusedMonitor').as(
+                monitorIndexFromHyprland
+            )}
             css={'background-color: transparent;'}
         >
             <Gtk.Overlay>
                 {/* Frozen background OR transparent box in recording mode */}
-                {isScreenshotMode() && ss.stageTexture ? (
+                {isScreenshotMode(ss.selectedMode) && ss.stageTexture ? (
                     <Gtk.Picture
                         paintable={ss.stageTexture}
-                        hexpand vexpand
+                        hexpand
+                        vexpand
                         canShrink={false}
                         contentFit={Gtk.ContentFit.FILL}
                     />
@@ -218,7 +219,8 @@ export default () => {
                             })
                         );
                     }}
-                    hexpand vexpand
+                    hexpand
+                    vexpand
                     css={'background: transparent;'}
                 >
                     <Gtk.GestureDrag
@@ -252,14 +254,3 @@ export default () => {
         </Astal.Window>
     );
 };
-
-// ── Helpers (kept local — only used here) ─────────────────────────
-
-function normalizeRect(a: Point, b: Point): {x: number; y: number; width: number; height: number} {
-    return {
-        x: Math.min(a.x, b.x),
-        y: Math.min(a.y, b.y),
-        width: Math.abs(b.x - a.x),
-        height: Math.abs(b.y - a.y),
-    };
-}

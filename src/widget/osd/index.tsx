@@ -1,5 +1,4 @@
 // @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
-import Wireplumber from 'gi://AstalWp';
 import {createBinding, createComputed} from 'gnim';
 import Brightness from '#/lib/services/display/brightness';
 import Slider from './slider';
@@ -9,6 +8,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Astal from 'gi://Astal?version=4.0';
 import PopupWindow from '#/widget/common/PopupWindow';
 import WindowManager from '#/lib/services/state/windowManager';
+import AudioController from '#/lib/services/audio/audioController';
 import Popup from './popup';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
@@ -18,15 +18,15 @@ const OSD_MARGIN = 24;
 const OSD_SPACING = 12;
 
 export default () => {
+    const audioCtrl = AudioController.get_default();
     const brightness = Brightness.get_default();
-    const audio = Wireplumber.get_default()!.audio;
     const touchpad = Touchpad.get_default();
 
     const speakerIcon = createComputed(
         [
-            createBinding(audio.defaultSpeaker, 'volume'),
-            createBinding(audio.defaultSpeaker, 'mute'),
-            createBinding(audio.defaultSpeaker, 'volumeIcon'),
+            createBinding(audioCtrl.defaultSpeaker, 'volume'),
+            createBinding(audioCtrl.defaultSpeaker, 'mute'),
+            createBinding(audioCtrl.defaultSpeaker, 'volumeIcon'),
         ],
         (volume, mute, volumeIcon) =>
             mute || volume === 0 ? MUTED_SPEAKER_ICON : volumeIcon
@@ -34,9 +34,9 @@ export default () => {
 
     const micIcon = createComputed(
         [
-            createBinding(audio.defaultMicrophone, 'volume'),
-            createBinding(audio.defaultMicrophone, 'mute'),
-            createBinding(audio.defaultMicrophone, 'volumeIcon'),
+            createBinding(audioCtrl.defaultMicrophone, 'volume'),
+            createBinding(audioCtrl.defaultMicrophone, 'mute'),
+            createBinding(audioCtrl.defaultMicrophone, 'volumeIcon'),
         ],
         (volume, mute, volumeIcon) =>
             mute || volume === 0 ? MUTED_MIC_ICON : volumeIcon
@@ -44,11 +44,11 @@ export default () => {
 
     const popupList: Gtk.Revealer[] = [
         <Popup
-            connectable={audio.defaultSpeaker}
+            connectable={audioCtrl.defaultSpeaker}
             signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: speakerIcon,
-                value: createBinding(audio.defaultSpeaker, 'volume'),
+                value: createBinding(audioCtrl.defaultSpeaker, 'volume'),
             })}
         />,
 
@@ -71,11 +71,11 @@ export default () => {
         />,
 
         <Popup
-            connectable={audio.defaultMicrophone}
+            connectable={audioCtrl.defaultMicrophone}
             signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: micIcon,
-                value: createBinding(audio.defaultMicrophone, 'volume'),
+                value: createBinding(audioCtrl.defaultMicrophone, 'volume'),
             })}
         />,
 

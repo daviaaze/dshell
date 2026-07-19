@@ -1,0 +1,169 @@
+import Gtk from 'gi://Gtk?version=4.0';
+import {Accessor, For} from 'gnim';
+import {useStyle} from '#/style/useStyle';
+import {formatTemp} from '#/lib/services/location/weatherUtils';
+
+interface HourlyItem {
+    time: number;
+    temp: number;
+    iconName: string;
+}
+
+interface DailyItem {
+    dayName: string;
+    tempMax: number;
+    tempMin: number;
+    iconName: string;
+}
+
+function formatTime(unixTs: number): string {
+    const dt = new Date(unixTs * 1000);
+    return dt.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+}
+
+export const HourlyForecastSection = ({
+    hourlyForecast,
+}: {
+    hourlyForecast: Accessor<HourlyItem[]>;
+}) => {
+    const sectionStyle = useStyle({'margin-top': '8px'});
+    const sectionLabelStyle = useStyle({
+        'font-size': '11px',
+        'font-weight': '600',
+        'text-transform': 'uppercase',
+        opacity: '0.7',
+    });
+    const hourlyItemStyle = useStyle({
+        'min-width': '48px',
+        padding: '4px 0',
+    });
+    const hourlyTimeStyle = useStyle({
+        'font-size': '11px',
+        opacity: '0.7',
+    });
+    const hourlyTempStyle = useStyle({
+        'font-size': '13px',
+        'font-weight': '600',
+    });
+
+    return (
+        <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            cssClasses={['p-8', 'weather-section', sectionStyle.class]}
+        >
+            <Gtk.Label
+                cssClasses={[
+                    'caption',
+                    'weather-section-label',
+                    sectionLabelStyle.class,
+                ]}
+                label="Hourly"
+                halign={Gtk.Align.START}
+            />
+            <Gtk.ScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
+                <Gtk.Box spacing={4}>
+                    <For each={hourlyForecast}>
+                        {f => (
+                            <Gtk.Box
+                                orientation={Gtk.Orientation.VERTICAL}
+                                cssClasses={[
+                                    'weather-hourly-item',
+                                    hourlyItemStyle.class,
+                                ]}
+                                spacing={0}
+                            >
+                                <Gtk.Label
+                                    cssClasses={[
+                                        'weather-hourly-time',
+                                        hourlyTimeStyle.class,
+                                    ]}
+                                    label={formatTime(f.time)}
+                                />
+                                <Gtk.Image
+                                    iconName={f.iconName}
+                                    pixelSize={16}
+                                />
+                                <Gtk.Label
+                                    cssClasses={[
+                                        'weather-hourly-temp',
+                                        hourlyTempStyle.class,
+                                    ]}
+                                    label={formatTemp(f.temp)}
+                                />
+                            </Gtk.Box>
+                        )}
+                    </For>
+                </Gtk.Box>
+            </Gtk.ScrolledWindow>
+        </Gtk.Box>
+    );
+};
+
+export const DailyForecastSection = ({
+    dailyForecast,
+}: {
+    dailyForecast: Accessor<DailyItem[]>;
+}) => {
+    const sectionStyle = useStyle({'margin-top': '8px'});
+    const sectionLabelStyle = useStyle({
+        'font-size': '11px',
+        'font-weight': '600',
+        'text-transform': 'uppercase',
+        opacity: '0.7',
+    });
+    const dailyItemStyle = useStyle({
+        padding: '4px',
+        'border-radius': '8px',
+    });
+    const tempSmallStyle = useStyle({
+        'font-size': '12px',
+        'font-weight': '600',
+    });
+
+    return (
+        <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            cssClasses={['p-8', 'weather-section', sectionStyle.class]}
+        >
+            <Gtk.Label
+                cssClasses={[
+                    'caption',
+                    'weather-section-label',
+                    sectionLabelStyle.class,
+                ]}
+                label="5-Day Forecast"
+                halign={Gtk.Align.START}
+            />
+            <Gtk.Box spacing={8} hexpand homogeneous>
+                <For each={dailyForecast}>
+                    {d => (
+                        <Gtk.Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            cssClasses={[
+                                'weather-daily-item',
+                                dailyItemStyle.class,
+                            ]}
+                            spacing={2}
+                        >
+                            <Gtk.Label
+                                cssClasses={['caption']}
+                                label={d.dayName}
+                            />
+                            <Gtk.Image
+                                iconName={d.iconName}
+                                pixelSize={18}
+                            />
+                            <Gtk.Label
+                                label={`${formatTemp(d.tempMax)} / ${formatTemp(d.tempMin)}`}
+                                cssClasses={[
+                                    'weather-temp-small',
+                                    tempSmallStyle.class,
+                                ]}
+                            />
+                        </Gtk.Box>
+                    )}
+                </For>
+            </Gtk.Box>
+        </Gtk.Box>
+    );
+};

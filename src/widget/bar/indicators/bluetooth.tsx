@@ -1,62 +1,17 @@
-import Bluetooth from 'gi://AstalBluetooth';
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
-import {createState, onMount, onCleanup} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
+import {createBinding} from 'gnim';
+import BluetoothService from '#/lib/services/bluetooth/bluetoothService';
 
 export default () => {
-    const [iconName, setIconName] = createState(
-        'bluetooth-disconnected-symbolic'
-    );
-    const [visible, setVisible] = createState(false);
-    const [tooltip, setTooltip] = createState('');
-
-    onMount(() => {
-        const _hn = {};
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            const bt = Bluetooth.get_default();
-            const update = () => {
-                const powered = bt.isPowered;
-                setVisible(powered);
-                if (!powered) {
-                    setIconName('bluetooth-disconnected-symbolic');
-                    setTooltip('Bluetooth');
-                    return;
-                }
-                const connected = bt.is_connected;
-                setIconName(
-                    connected
-                        ? 'bluetooth-active-symbolic'
-                        : 'bluetooth-disconnected-symbolic'
-                );
-                const list = bt.devices;
-                if (list) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any, sonarjs/no-nested-functions
-                    const names = toArray<any>(list)
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any, sonarjs/no-nested-functions
-                        .filter((d: any) => d.connected)
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any, sonarjs/no-nested-functions
-                        .map((d: any) => d.name);
-                    setTooltip(
-                        names.length > 0 ? names.join(', ') : 'Bluetooth'
-                    );
-                }
-            };
-            update();
-            connectFor(_hn, bt, 'notify::is-powered', update);
-            connectFor(_hn, bt, 'notify::is-connected', update);
-            connectFor(_hn, bt, 'notify::devices', update);
-            return GLib.SOURCE_REMOVE;
-        });
-        onCleanup(() => cleanupNode(_hn));
-    });
+    const bt = BluetoothService.get_default();
 
     return (
         <Gtk.Image
-            iconName={iconName}
-            visible={visible}
-            tooltipMarkup={tooltip}
+            iconName={createBinding(bt, 'icon-name')}
+            visible={createBinding(bt, 'is-powered')}
+            tooltipMarkup={createBinding(bt, 'connected-device-names').as(
+                names => names || 'Bluetooth'
+            )}
             pixelSize={18}
         />
     );

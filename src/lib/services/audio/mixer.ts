@@ -134,6 +134,11 @@ export default class AppMixer extends GObject.Object {
         return this.#captureStreams.length > 0;
     }
 
+    @getter(Boolean)
+    get speakerInUse() {
+        return this.#streams.length > 0;
+    }
+
     constructor() {
         super();
         // Initial fetch on next idle cycle to avoid blocking constructor

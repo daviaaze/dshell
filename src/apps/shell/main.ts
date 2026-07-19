@@ -15,8 +15,8 @@ function setupSignalHandlers() {
             exit(1);
         } else {
             quitting = true;
-            logger.log(`received signal ${sig}, shutting down gracefully...`);
-            app.quit();
+            logger.log(`received signal ${sig}, force exiting...`);
+            exit(0);
         }
         return GLib.SOURCE_REMOVE;
     };

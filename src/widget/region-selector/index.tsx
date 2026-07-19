@@ -6,19 +6,10 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Cairo from 'gi://cairo?version=1.0';
 import {createBinding, createState} from 'gnim';
 import {app} from '#/apps/shell/App';
-import {Process} from '#/lib/core/process';
 import Screenshot from '#/lib/services/capture/screenshot';
+import {getWindowGeometries} from '#/lib/services/monitoring/windows';
+import type {WindowGeometry} from '#/lib/services/monitoring/windows';
 import {monitorIndexFromHyprland} from '#/lib/utils/monitors';
-import logger from '#/lib/core/logger';
-
-interface WindowGeometry {
-    address: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    title: string;
-}
 
 // ── Constants ───────────────────────────────────────────────────
 
@@ -85,26 +76,7 @@ export default () => {
     // ── Window discovery ─────────────────────────────────────────
 
     const loadWindows = () => {
-        try {
-            const json = Process.exec('hyprctl clients -j');
-            const clients = JSON.parse(json);
-            const wins: WindowGeometry[] = [];
-            for (const c of clients) {
-                if (c.mapped && c.monitor >= 0 && c.at && c.size) {
-                    wins.push({
-                        address: c.address,
-                        x: c.at[0],
-                        y: c.at[1],
-                        width: c.size[0],
-                        height: c.size[1],
-                        title: c.title || '(untitled)',
-                    });
-                }
-            }
-            setWindows(wins);
-        } catch (e) {
-            logger.warn('region-selector', 'failed to load windows:', e);
-        }
+        setWindows(getWindowGeometries());
     };
 
     // ── Drawing ──────────────────────────────────────────────────
