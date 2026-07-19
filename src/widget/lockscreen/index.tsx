@@ -18,6 +18,8 @@ import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
 import logger from '#/lib/core/logger';
 import FingerprintAuth from '#/lib/services/input/fingerprint';
+import Clock from '#/lib/services/time/clock';
+import {Timeout} from '#/lib/core/timeout';
 import Brightness from '#/lib/services/display/brightness';
 import {LockscreenNotifications} from './notifications';
 import {LockscreenWidgets} from './widgets';
@@ -28,7 +30,6 @@ const PAM_TIMEOUT_MS = 10000;
 
 interface PamAuthState {
     pendingPassword: string;
-    pamTimeoutId: number;
     pamActive: boolean;
 }
 
@@ -39,16 +40,11 @@ function createPamAuth(
 ) {
     const state: PamAuthState = {
         pendingPassword: '',
-        pamTimeoutId: 0,
         pamActive: false,
     };
 
-    const cancelPamTimeout = () => {
-        if (state.pamTimeoutId) {
-            GLib.source_remove(state.pamTimeoutId);
-            state.pamTimeoutId = 0;
-        }
-    };
+    const pamTimeout = new Timeout();
+    const cancelPamTimeout = () => pamTimeout.cancel();
 
     const cleanup = () => {
         cancelPamTimeout();
@@ -95,17 +91,10 @@ function createPamAuth(
         state.pamActive = true;
         pam.start_authenticate();
 
-        cancelPamTimeout();
-        state.pamTimeoutId = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            PAM_TIMEOUT_MS,
-            () => {
-                state.pamTimeoutId = 0;
-                state.pamActive = false;
-                setAuthStatus('Authentication timed out');
-                return GLib.SOURCE_REMOVE;
-            }
-        );
+        pamTimeout.start(PAM_TIMEOUT_MS, () => {
+            state.pamActive = false;
+            setAuthStatus('Authentication timed out');
+        });
     };
 
     return {unlock, cleanup, signalIds};
@@ -170,15 +159,10 @@ function restoreBrightness(value: number) {
 const createLocks = (onUnlock: () => void) => {
     const {LEFT, RIGHT, TOP, BOTTOM} = Astal.WindowAnchor;
     const lock = SessionLock.Instance.new();
-    const [time, setTime] = createState(GLib.DateTime.new_now_local());
+    const time = Clock.get_default().time;
     const [authStatus, setAuthStatus] = createState('');
     const fingerprint = FingerprintAuth.get_default();
     const savedBrightness = saveBrightness();
-
-    const lockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-        setTime(GLib.DateTime.new_now_local());
-        return GLib.SOURCE_CONTINUE;
-    });
 
     let sharedCleanedUp = false;
 
@@ -187,7 +171,6 @@ const createLocks = (onUnlock: () => void) => {
         sharedCleanedUp = true;
         pamAuth.cleanup();
         fpAuth.cleanup();
-        if (lockTimeout) GLib.source_remove(lockTimeout);
     };
 
     const doUnlock = () => {

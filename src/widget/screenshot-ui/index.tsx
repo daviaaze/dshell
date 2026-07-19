@@ -1,37 +1,18 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
-import Cairo from 'gi://cairo?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createBinding, createState} from 'gnim';
+import {createState} from 'gnim';
 import {app} from '#/apps/shell/App';
 import Screenshot from '#/lib/services/capture/screenshot';
 import WindowManager from '#/lib/services/state/windowManager';
-import {LinkedBox} from '#/widget/common/linkedBox';
-import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
 import {monitorIndexFromHyprland} from '#/lib/utils/monitors';
 import logger from '#/lib/core/logger';
+import {draw} from './drawing';
+import {ControlPanel} from './controlPanel';
 
-// ── Constants ─────────────────────────────────────────────────────
-
-const DIM_COLOR = {r: 0, g: 0, b: 0, a: 0.35};
-const MIN_SELECTION = 5;
-const OVERLAY_CLOSE_DELAY_MS = 150;
-
-interface Point {
-    x: number;
-    y: number;
-}
-
-interface Geom {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
+interface Point {x: number; y: number}
 interface WinInfo {
     address: string;
     x: number;
@@ -41,37 +22,20 @@ interface WinInfo {
     title: string;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
-
-function normalizeRect(a: Point, b: Point): Geom {
-    const x = Math.min(a.x, b.x);
-    const y = Math.min(a.y, b.y);
-    const width = Math.abs(b.x - a.x);
-    const height = Math.abs(b.y - a.y);
-    return {x, y, width, height};
-}
-
 // ── Widget ────────────────────────────────────────────────────────
 
 export default () => {
     const ss = Screenshot.get_default();
     const hyprland = AstalHyprland.get_default();
-    const captureSettings = getScreenCaptureSettings();
 
-    // Local reactive state
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
     const [selActive, setSelActive] = createState(false);
-    const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(
-        null
-    );
+    const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(null);
     const [windows, setWindows] = createState<WinInfo[]>([]);
     const [monOrigin, setMonOrigin] = createState<Point>({x: 0, y: 0});
 
-    // DrawingArea reference for queue_draw
     let daRef: Gtk.DrawingArea | null = null;
-
-    // ── State helpers ─────────────────────────────────────────────
 
     function resetSelection() {
         setDragStart(null);
@@ -85,16 +49,13 @@ export default () => {
         const list: WinInfo[] = [];
         for (let i = 0; i < clients.length; i++) {
             const c = clients[i];
-            const addr = c.address;
-            const w = c.width;
-            const h = c.height;
-            if (w > 0 && h > 0) {
+            if (c.width > 0 && c.height > 0) {
                 list.push({
-                    address: addr,
+                    address: c.address,
                     x: c.x,
                     y: c.y,
-                    width: w,
-                    height: h,
+                    width: c.width,
+                    height: c.height,
                     title: c.title,
                 });
             }
@@ -104,201 +65,11 @@ export default () => {
 
     function updateMonOrigin() {
         const m = hyprland.focused_monitor;
-        if (m) {
-            setMonOrigin({x: m.x, y: m.y});
-        }
+        if (m) setMonOrigin({x: m.x, y: m.y});
     }
 
     function isScreenshotMode(): boolean {
         return ss.selectedMode === 'screenshot';
-    }
-
-    // ── Drawing ───────────────────────────────────────────────────
-
-    function drawDimRect(
-        cr: Cairo.Context,
-        x: number,
-        y: number,
-        w: number,
-        h: number
-    ) {
-        if (w <= 0 || h <= 0) return;
-        cr.rectangle(x, y, w, h);
-    }
-
-    function draw(
-        _da: Gtk.DrawingArea,
-        cr: Cairo.Context,
-        width: number,
-        height: number
-    ) {
-        const target = ss.selectedTarget;
-        const sel = selActive() ? normalizeRect(dragStart()!, dragEnd()!) : null;
-        const sWin = selectedWindow();
-        const winL = windows();
-
-        // ── Dim overlay ──────────────────────────────────────────
-        // Draw dim rectangles around the active selection/window.
-        // In screenshot mode the frozen bg is already displayed below,
-        // so this dims the frozen frame around the capture area.
-        // In recording mode the live screen shows through, so this
-        // dims the live area to highlight the selection.
-        cr.setSourceRGBA(
-            DIM_COLOR.r,
-            DIM_COLOR.g,
-            DIM_COLOR.b,
-            DIM_COLOR.a
-        );
-
-        if (target === 'area' && sel && sel.width >= MIN_SELECTION) {
-            // Four dim rectangles around the selection
-            drawDimRect(cr, 0, 0, width, sel.y);
-            drawDimRect(
-                cr,
-                0,
-                sel.y + sel.height,
-                width,
-                height - sel.y - sel.height
-            );
-            drawDimRect(cr, 0, sel.y, sel.x, sel.height);
-            drawDimRect(
-                cr,
-                sel.x + sel.width,
-                sel.y,
-                width - sel.x - sel.width,
-                sel.height
-            );
-        } else if (target === 'window' && sWin) {
-            const origin = monOrigin();
-            const lx = sWin.x - origin.x;
-            const ly = sWin.y - origin.y;
-            // Dim around the window
-            drawDimRect(cr, 0, 0, width, ly);
-            drawDimRect(
-                cr,
-                0,
-                ly + sWin.height,
-                width,
-                height - ly - sWin.height
-            );
-            drawDimRect(cr, 0, ly, lx, sWin.height);
-            drawDimRect(
-                cr,
-                lx + sWin.width,
-                ly,
-                width - lx - sWin.width,
-                sWin.height
-            );
-        } else if (target === 'monitor') {
-            const m = hyprland.focused_monitor;
-            if (m) {
-                const origin = monOrigin();
-                const lx = m.x - origin.x;
-                const ly = m.y - origin.y;
-                drawDimRect(cr, 0, 0, width, ly);
-                drawDimRect(
-                    cr,
-                    0,
-                    ly + m.height,
-                    width,
-                    height - ly - m.height
-                );
-                drawDimRect(cr, 0, ly, lx, m.height);
-                drawDimRect(
-                    cr,
-                    lx + m.width,
-                    ly,
-                    width - lx - m.width,
-                    m.height
-                );
-            }
-        } else if (target !== 'fullscreen') {
-            // No selection yet — full dim
-            cr.rectangle(0, 0, width, height);
-        }
-        cr.fill();
-
-        // ── Window outlines ──────────────────────────────────────
-        if (target === 'window') {
-            const origin = monOrigin();
-            cr.setLineWidth(2);
-            cr.setSourceRGBA(1, 1, 1, 0.4);
-
-            for (const w of winL) {
-                const lx = w.x - origin.x;
-                const ly = w.y - origin.y;
-                cr.rectangle(lx, ly, w.width, w.height);
-            }
-            cr.stroke();
-
-            // Highlight selected window
-            if (sWin) {
-                const lx = sWin.x - origin.x;
-                const ly = sWin.y - origin.y;
-                cr.setLineWidth(4);
-                cr.setSourceRGBA(0.3, 0.6, 1, 0.9);
-                cr.rectangle(lx, ly, sWin.width, sWin.height);
-                cr.stroke();
-
-                // Title
-                cr.setSourceRGBA(0, 0, 0, 0.7);
-                cr.rectangle(lx, ly - 24, sWin.width, 24);
-                cr.fill();
-                cr.setSourceRGBA(1, 1, 1, 1);
-                cr.setFontSize(12);
-                cr.moveTo(lx + 4, ly - 6);
-                cr.showText(sWin.title.substring(0, 40));
-            }
-        }
-
-        // ── Selection rectangle ──────────────────────────────────
-        if (target === 'area' && sel && sel.width >= MIN_SELECTION) {
-            // Selection border
-            cr.setLineWidth(2);
-            cr.setSourceRGBA(0.3, 0.6, 1, 0.9);
-            cr.rectangle(sel.x, sel.y, sel.width, sel.height);
-            cr.stroke();
-
-            // Dimension label
-            const label = `${sel.width}×${sel.height}`;
-            const labelX = sel.x + 4;
-            const labelY = sel.y - 6;
-
-            // Label background
-            const textLen = label.length * 7 + 8;
-            cr.setSourceRGBA(0, 0, 0, 0.7);
-            cr.rectangle(labelX, labelY - 14, textLen, 20);
-            cr.fill();
-
-            cr.setSourceRGBA(1, 1, 1, 1);
-            cr.setFontSize(12);
-            cr.moveTo(labelX + 4, labelY);
-            cr.showText(label);
-        }
-
-        // ── Hint text ────────────────────────────────────────────
-        if (!selActive() && target === 'area') {
-            const text = 'Drag to select an area';
-            cr.setSourceRGBA(1, 1, 1, 0.7);
-            cr.setFontSize(14);
-            const ext = cr.textExtents(text);
-            cr.moveTo(
-                (width - ext.width) / 2,
-                height / 2 - ext.y_bearing
-            );
-            cr.showText(text);
-        }
-        if (!sWin && target === 'window') {
-            const text = 'Click a window to select it';
-            cr.setSourceRGBA(1, 1, 1, 0.7);
-            cr.setFontSize(14);
-            const ext = cr.textExtents(text);
-            cr.moveTo(
-                (width - ext.width) / 2,
-                height / 2 - ext.y_bearing
-            );
-            cr.showText(text);
-        }
     }
 
     // ── Event handlers ────────────────────────────────────────────
@@ -312,11 +83,7 @@ export default () => {
         daRef?.queue_draw();
     };
 
-    const onDragUpdate = (
-        _g: Gtk.GestureDrag,
-        ox: number,
-        oy: number
-    ) => {
+    const onDragUpdate = (_g: Gtk.GestureDrag, ox: number, oy: number) => {
         if (!selActive()) return;
         const s = dragStart();
         if (s) {
@@ -327,36 +94,19 @@ export default () => {
 
     const onDragEnd = (_g: Gtk.GestureDrag, _ox: number, _oy: number) => {
         if (!selActive()) return;
-        // Final validation — if too small, reset
-        const sel = normalizeRect(dragStart()!, dragEnd()!);
-        if (sel.width < MIN_SELECTION || sel.height < MIN_SELECTION) {
-            resetSelection();
-        }
+        const s = normalizeRect(dragStart()!, dragEnd()!);
+        if (s.width < 5 || s.height < 5) resetSelection();
         daRef?.queue_draw();
     };
 
-    const onClickPressed = (
-        _g: Gtk.GestureClick,
-        _nPress: number,
-        clickX: number,
-        clickY: number
-    ) => {
+    const onClickPressed = (_g: Gtk.GestureClick, _n: number, cx: number, cy: number) => {
         if (ss.selectedTarget !== 'window') return;
         const origin = monOrigin();
-        const globalX = clickX + origin.x;
-        const globalY = clickY + origin.y;
-
-        // Hit-test windows (front-to-back would need z-order, but
-        // Hyprland window stacking is close-enough to list order)
         const winL = windows();
         for (let i = winL.length - 1; i >= 0; i--) {
             const w = winL[i];
-            if (
-                globalX >= w.x &&
-                globalX <= w.x + w.width &&
-                globalY >= w.y &&
-                globalY <= w.y + w.height
-            ) {
+            if (cx + origin.x >= w.x && cx + origin.x <= w.x + w.width &&
+                cy + origin.y >= w.y && cy + origin.y <= w.y + w.height) {
                 setSelectedWindow(w);
                 daRef?.queue_draw();
                 return;
@@ -364,14 +114,8 @@ export default () => {
         }
     };
 
-    const handleKey = (
-        _ctrl: Gtk.EventControllerKey,
-        keyval: number
-    ): boolean => {
-        if (keyval === Gdk.KEY_Escape) {
-            ss.overlayOpen = false;
-            return true;
-        }
+    const handleKey = (_ctrl: Gtk.EventControllerKey, keyval: number): boolean => {
+        if (keyval === Gdk.KEY_Escape) { ss.overlayOpen = false; return true; }
         if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
             executeCapture();
             return true;
@@ -383,32 +127,19 @@ export default () => {
 
     function buildGeometry(): string | null {
         const target = ss.selectedTarget;
-
-        if (target === 'fullscreen') return null;
-
+        if (target === 'fullscreen' || target === 'monitor') return null;
         if (target === 'area') {
             if (!selActive()) return null;
             const sel = normalizeRect(dragStart()!, dragEnd()!);
-            if (sel.width < MIN_SELECTION || sel.height < MIN_SELECTION)
-                return null;
-            // Drag coords are monitor-local (DrawingArea fills the monitor).
-            // Stage pixmap is also monitor-local, so use directly.
+            if (sel.width < 5 || sel.height < 5) return null;
             return `${sel.width}x${sel.height}+${sel.x}+${sel.y}`;
         }
-
         if (target === 'window') {
             const sWin = selectedWindow();
             if (!sWin) return null;
-            // Window coords from hyprland are global; stage is monitor-local.
             const origin = monOrigin();
             return `${sWin.width}x${sWin.height}+${sWin.x - origin.x}+${sWin.y - origin.y}`;
         }
-
-        if (target === 'monitor') {
-            // Stage pixmap IS the focused monitor — no crop needed.
-            return null;
-        }
-
         return null;
     }
 
@@ -417,101 +148,28 @@ export default () => {
         const target = ss.selectedTarget;
         const geometry = buildGeometry();
 
-        logger.info(
-            'screenshot-ui',
-            `capture: mode=${mode}, target=${target}, geom=${geometry ?? 'full'}`
-        );
+        if ((target === 'area' && !selActive()) ||
+            (target === 'window' && !selectedWindow())) return;
 
-        if (target === 'area' && !selActive()) {
-            // No selection drawn yet — ignore capture
-            return;
-        }
-        if (target === 'window' && !selectedWindow()) {
-            // No window selected
-            return;
-        }
+        logger.info('screenshot-ui', `capture: mode=${mode}, target=${target}, geom=${geometry ?? 'full'}`);
 
         if (mode === 'screenshot') {
-            // Screenshot: crop from frozen stage (no overlay close delay needed)
             ss.captureFromStage(geometry);
         } else {
-            // Recording: close overlay first, then start recording.
-            // The 150ms delay lets the overlay window unmap so
-            // wf-recorder/wl-screenrec don't capture the overlay itself.
-            ss.overlayOpen = false;
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, OVERLAY_CLOSE_DELAY_MS, () => {
-                if (target === 'fullscreen' && !geometry) {
-                    ss.toggleRecording();
-                } else if (geometry) {
-                    ss.startRecording({geometry});
-                    ss.stopFreeze();
-                }
-                return GLib.SOURCE_REMOVE;
-            });
+            ss.startRecordingAfterOverlayClose(target, geometry);
         }
     }
 
-    // ── Mode / Target button helpers ──────────────────────────────
-
-    const ModeTab = ({
-        label,
-        value,
-        icon,
-    }: {
-        label: string;
-        value: 'screenshot' | 'recording';
-        icon: string;
-    }) => (
-        <Gtk.ToggleButton
-            active={createBinding(ss, 'selected-mode').as(
-                m => m === value
-            )}
-            onToggled={btn => {
-                if (btn.active) {
-                    resetSelection();
-                    ss.selectedMode = value;
-                }
-            }}
-            hexpand
-        >
-            <Adw.ButtonContent iconName={icon} label={label} />
-        </Gtk.ToggleButton>
-    );
-
-    const TargetButton = ({
-        label,
-        value,
-        icon,
-    }: {
-        label: string;
-        value: 'fullscreen' | 'area' | 'window' | 'monitor';
-        icon: string;
-    }) => (
-        <Gtk.ToggleButton
-            active={createBinding(ss, 'selected-target').as(
-                t => t === value
-            )}
-            onToggled={btn => {
-                if (btn.active) {
-                    resetSelection();
-                    ss.selectedTarget = value;
-                    if (value === 'window') loadWindows();
-                    daRef?.queue_draw();
-                }
-            }}
-            hexpand
-        >
-            <Adw.ButtonContent iconName={icon} label={label} />
-        </Gtk.ToggleButton>
-    );
+    function handleTargetChange(_value: string) {
+        if (_value === 'window') loadWindows();
+        daRef?.queue_draw();
+    }
 
     // ── Render ────────────────────────────────────────────────────
 
     return (
         <Astal.Window
-            $={self => {
-                WindowManager.get_default().setOverlay(self);
-            }}
+            $={self => WindowManager.get_default().setOverlay(self)}
             name={'screenshot-ui'}
             application={app}
             layer={Astal.Layer.TOP}
@@ -519,50 +177,48 @@ export default () => {
             visible={createBinding(ss, 'overlay-open')}
             onNotifyVisible={self => {
                 if (self.visible) {
-                    // Update state when overlay opens
                     updateMonOrigin();
                     loadWindows();
                     resetSelection();
-                    logger.info('screenshot-ui', 'overlay opened');
                 } else {
                     resetSelection();
                 }
             }}
-            anchor={
-                Astal.WindowAnchor.TOP |
-                Astal.WindowAnchor.BOTTOM |
-                Astal.WindowAnchor.LEFT |
-                Astal.WindowAnchor.RIGHT
-            }
-            monitor={createBinding(hyprland, 'focusedMonitor').as(
-                monitorIndexFromHyprland
-            )}
+            anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.BOTTOM |
+                Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT}
+            monitor={createBinding(hyprland, 'focusedMonitor').as(monitorIndexFromHyprland)}
             css={'background-color: transparent;'}
         >
             <Gtk.Overlay>
-                {/* ── Main child: frozen background OR empty ───── */}
+                {/* Frozen background OR transparent box in recording mode */}
                 {isScreenshotMode() && ss.stageTexture ? (
                     <Gtk.Picture
                         paintable={ss.stageTexture}
-                        hexpand
-                        vexpand
+                        hexpand vexpand
                         canShrink={false}
                         contentFit={Gtk.ContentFit.FILL}
                     />
                 ) : (
-                    /* Recording mode: transparent box — live screen
-                     * shows through the dim Cairo overlay */
                     <Gtk.Box hexpand vexpand />
                 )}
 
-                {/* ── Selection DrawingArea overlay ────────────── */}
+                {/* Selection DrawingArea overlay */}
                 <Gtk.DrawingArea
                     $={self => {
                         daRef = self;
-                        self.set_draw_func(draw);
+                        self.set_draw_func((_da, cr, w, h) =>
+                            draw(_da, cr, w, h, {
+                                ss,
+                                selActive: selActive(),
+                                dragStart: dragStart(),
+                                dragEnd: dragEnd(),
+                                selectedWindow: selectedWindow(),
+                                windows: windows(),
+                                monOrigin: monOrigin(),
+                            })
+                        );
                     }}
-                    hexpand
-                    vexpand
+                    hexpand vexpand
                     css={'background: transparent;'}
                 >
                     <Gtk.GestureDrag
@@ -580,138 +236,30 @@ export default () => {
                     />
                 </Gtk.DrawingArea>
 
-                {/* ── Control panel overlay (top center) ──────── */}
-                <Gtk.Box
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.START}
-                    hexpand={false}
-                    vexpand={false}
-                    css={'margin-top: 24px;'}
-                >
-                    <Gtk.Box
-                        cssClasses={['card', 'frame', 'background']}
-                        orientation={Gtk.Orientation.VERTICAL}
-                        spacing={8}
-                        css={'padding: 12px;'}
-                    >
-                        {/* Mode toggle */}
-                        <Gtk.Box
-                            spacing={4}
-                            homogeneous
-                            cssClasses={['linked']}
-                        >
-                            <ModeTab
-                                label="Screenshot"
-                                value="screenshot"
-                                icon="camera-photo-symbolic"
-                            />
-                            <ModeTab
-                                label="Record"
-                                value="recording"
-                                icon="camera-video-symbolic"
-                            />
-                        </Gtk.Box>
+                {/* Control panel */}
+                <ControlPanel
+                    ss={ss}
+                    onCapture={executeCapture}
+                    onReset={resetSelection}
+                    onTargetChange={handleTargetChange}
+                />
 
-                        <Gtk.Separator />
-
-                        {/* Target picker */}
-                        <LinkedBox>
-                            <TargetButton
-                                label="Fullscreen"
-                                value="fullscreen"
-                                icon="video-display-symbolic"
-                            />
-                            <TargetButton
-                                label="Area"
-                                value="area"
-                                icon="selection-mode-symbolic"
-                            />
-                            <TargetButton
-                                label="Window"
-                                value="window"
-                                icon="focus-windows-symbolic"
-                            />
-                            <TargetButton
-                                label="Monitor"
-                                value="monitor"
-                                icon="video-display-symbolic"
-                            />
-                        </LinkedBox>
-
-                        <Gtk.Separator />
-
-                        {/* Audio + Boundary options (recording) */}
-                        {ss.selectedMode === 'recording' && (
-                            <Gtk.Box spacing={12}>
-                                <Gtk.CheckButton
-                                    active={createBinding(ss, 'audio')}
-                                    onNotifyActive={({active}) => {
-                                        ss.audio = active;
-                                    }}
-                                >
-                                    <Gtk.Label label="Audio" />
-                                </Gtk.CheckButton>
-                                <Gtk.CheckButton
-                                    active={createBinding(
-                                        captureSettings.settings,
-                                        'show-recording-boundary'
-                                    )}
-                                    onNotifyActive={({active}) => {
-                                        captureSettings.setShowRecordingBoundary(
-                                            active
-                                        );
-                                    }}
-                                >
-                                    <Gtk.Label label="Boundary" />
-                                </Gtk.CheckButton>
-                            </Gtk.Box>
-                        )}
-
-                        <Gtk.Separator />
-
-                        {/* Capture button */}
-                        <Gtk.Button
-                            onClicked={executeCapture}
-                            cssClasses={['suggested-action']}
-                            hexpand
-                        >
-                            <Adw.ButtonContent
-                                iconName={createBinding(
-                                    ss,
-                                    'selected-mode'
-                                ).as(m =>
-                                    m === 'screenshot'
-                                        ? 'camera-photo-symbolic'
-                                        : 'camera-video-symbolic'
-                                )}
-                                label={createBinding(
-                                    ss,
-                                    'selected-mode'
-                                ).as(m =>
-                                    m === 'screenshot'
-                                        ? 'Take Screenshot'
-                                        : 'Start Recording'
-                                )}
-                            />
-                        </Gtk.Button>
-
-                        {/* Keyboard hint */}
-                        <Gtk.Label
-                            label="Esc to cancel  ·  Enter to capture"
-                            halign={Gtk.Align.CENTER}
-                            cssClasses={['caption']}
-                            css={'opacity: 0.6;'}
-                        />
-                    </Gtk.Box>
-                </Gtk.Box>
-
-                {/* ── Keyboard handler ─────────────────────────── */}
+                {/* Keyboard handler */}
                 <Gtk.EventControllerKey
-                    $={self => {
-                        self.connect('key-pressed', handleKey);
-                    }}
+                    $={self => self.connect('key-pressed', handleKey)}
                 />
             </Gtk.Overlay>
         </Astal.Window>
     );
 };
+
+// ── Helpers (kept local — only used here) ─────────────────────────
+
+function normalizeRect(a: Point, b: Point): {x: number; y: number; width: number; height: number} {
+    return {
+        x: Math.min(a.x, b.x),
+        y: Math.min(a.y, b.y),
+        width: Math.abs(b.x - a.x),
+        height: Math.abs(b.y - a.y),
+    };
+}

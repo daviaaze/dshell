@@ -20,6 +20,7 @@ const OSD_SPACING = 12;
 export default () => {
     const brightness = Brightness.get_default();
     const audio = Wireplumber.get_default()!.audio;
+    const touchpad = Touchpad.get_default();
 
     const speakerIcon = createComputed(
         [
@@ -79,7 +80,7 @@ export default () => {
         />,
 
         <Popup
-            connectable={Touchpad.get_default()}
+            connectable={touchpad}
             signals={['toggled']}
             widget={<TouchpadOsd />}
         />,

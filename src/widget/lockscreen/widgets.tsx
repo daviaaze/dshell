@@ -10,6 +10,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Mpris from 'gi://AstalMpris';
 import {For, createState, onMount, onCleanup} from 'gnim';
 import {connectFor, cleanupNode} from '#/lib/core/connectFor';
+import logger from '#/lib/core/logger';
 
 // ── Widget Interface ────────────────────────────────────────────
 
@@ -26,8 +27,9 @@ const registry = new Map<string, LockscreenWidgetDef>();
 
 export function registerLockscreenWidget(def: LockscreenWidgetDef): void {
     if (registry.has(def.id)) {
-        console.warn(
-            `[Lockscreen] Widget "${def.id}" already registered — skipping`
+        logger.warn(
+            'lockscreen',
+            `Widget "${def.id}" already registered — skipping`
         );
         return;
     }
@@ -137,7 +139,7 @@ const MediaPlayerWidget = () => {
         >
             <Gtk.Image
                 visible={artUrl.as(u => u.length > 0)}
-                css={'min-width: 32px; min-height: 32px; border-radius: 4px;'}
+                css={'min-width: 32px; min-height: 32px; border-radius: calc(var(--shade-radius) / 2);'}
                 file={artUrl}
             />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={2}>

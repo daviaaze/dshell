@@ -16,347 +16,14 @@
  */
 // @ts-nocheck — all errors are from noUncheckedIndexedAccess on a well-tested crypto impl
 
-// ── AES-256 constants ───────────────────────────────────────────────────────
+import {expandKey, encryptBlock} from './cryptoEngineAes';
+import {ghash, buildAuthData, ctrCrypt} from './cryptoEngineGhash';
+import {
+    KEY_SIZE, NONCE_SIZE, TAG_SIZE,
+    xor, getRandomBytes, gcmInitCounter, incCounter,
+} from './cryptoEngineTables';
 
-const BLOCK_SIZE = 16; // 128 bits
-const KEY_SIZE = 32; // 256 bits
-const NONCE_SIZE = 12;
-const TAG_SIZE = 16;
-
-// AES S-box (forward)
-const SBOX = [
-    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b,
-    0xfe, 0xd7, 0xab, 0x76, 0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0,
-    0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0, 0xb7, 0xfd, 0x93, 0x26,
-    0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
-    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2,
-    0xeb, 0x27, 0xb2, 0x75, 0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0,
-    0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84, 0x53, 0xd1, 0x00, 0xed,
-    0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
-    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f,
-    0x50, 0x3c, 0x9f, 0xa8, 0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5,
-    0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2, 0xcd, 0x0c, 0x13, 0xec,
-    0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
-    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14,
-    0xde, 0x5e, 0x0b, 0xdb, 0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c,
-    0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79, 0xe7, 0xc8, 0x37, 0x6d,
-    0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
-    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f,
-    0x4b, 0xbd, 0x8b, 0x8a, 0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e,
-    0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e, 0xe1, 0xf8, 0x98, 0x11,
-    0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f,
-    0xb0, 0x54, 0xbb, 0x16,
-];
-
-// Round constants for key expansion
-const RCON = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
-
-// ── Galois Field multiplication table for GHASH ──────────────────────────────
-
-// ── Utility functions ───────────────────────────────────────────────────────
-
-/** XOR two byte arrays (same length). */
-function xor(a: Uint8Array, b: Uint8Array): Uint8Array {
-    const out = new Uint8Array(a.length);
-    for (let i = 0; i < a.length; i++) out[i] = a[i] ^ b[i];
-    return out;
-}
-
-/** Convert 4 big-endian bytes to a 32-bit integer. */
-function toWord(b: Uint8Array, off: number): number {
-    return (
-        ((b[off] << 24) | (b[off + 1] << 16) | (b[off + 2] << 8) | b[off + 3]) >>>
-        0
-    );
-}
-
-/** Galois Field multiply by 2 in GF(2^8) for MixColumns. */
-function xtime(a: number): number {
-    return ((a << 1) ^ (((a >>> 7) & 1) * 0x1b)) & 0xff;
-}
-
-// ── AES-256 Key Expansion ────────────────────────────────────────────────────
-
-/**
- * Expand a 32-byte AES-256 key into 15 round keys (240 bytes).
- *
- * Returns Uint8Array of 240 bytes (15 × 16-byte round keys).
- */
-function expandKey(key: Uint8Array): Uint8Array {
-    if (key.length !== KEY_SIZE) {
-        throw new Error(`AES-256 requires ${KEY_SIZE}-byte key, got ${key.length}`);
-    }
-
-    // 15 round keys × 4 words = 60 words
-    const w = new Uint32Array(60);
-    const Nk = 8; // 8 words in the key
-    const Nb = 4; // 4 words per block
-    const Nr = 14; // 14 rounds
-
-    // Copy key into first 8 words
-    for (let i = 0; i < Nk; i++) {
-        w[i] = toWord(key, i * 4);
-    }
-
-    for (let i = Nk; i < Nb * (Nr + 1); i++) {
-        let temp = w[i - 1];
-        if (i % Nk === 0) {
-            // RotWord
-            temp = ((temp << 8) | (temp >>> 24)) >>> 0;
-            // SubWord
-            temp =
-                (SBOX[(temp >>> 24) & 0xff] << 24) |
-                (SBOX[(temp >>> 16) & 0xff] << 16) |
-                (SBOX[(temp >>> 8) & 0xff] << 8) |
-                SBOX[temp & 0xff];
-            // XOR with RCON
-            temp = (temp ^ (RCON[Math.floor(i / Nk) - 1] << 24)) >>> 0;
-        } else if (i % Nk === 4) {
-            // SubWord only (AES-256 specific)
-            temp =
-                (SBOX[(temp >>> 24) & 0xff] << 24) |
-                (SBOX[(temp >>> 16) & 0xff] << 16) |
-                (SBOX[(temp >>> 8) & 0xff] << 8) |
-                SBOX[temp & 0xff];
-        }
-        w[i] = (w[i - Nk] ^ temp) >>> 0;
-    }
-
-    // Convert to byte array
-    const rk = new Uint8Array(Nb * (Nr + 1) * 4);
-    for (let i = 0; i < w.length; i++) {
-        rk[i * 4] = (w[i] >>> 24) & 0xff;
-        rk[i * 4 + 1] = (w[i] >>> 16) & 0xff;
-        rk[i * 4 + 2] = (w[i] >>> 8) & 0xff;
-        rk[i * 4 + 3] = w[i] & 0xff;
-    }
-    return rk;
-}
-
-// ── AES-256 Block Encryption ────────────────────────────────────────────────
-
-/**
- * Encrypt a single 16-byte block with AES-256.
- *
- * @param block - 16-byte plaintext block
- * @param rk - 240-byte round key array from expandKey()
- * @returns 16-byte ciphertext block
- */
-function encryptBlock(block: Uint8Array, rk: Uint8Array): Uint8Array {
-    const state = new Uint8Array(16);
-    state.set(block);
-
-    const Nb = 4;
-    const Nr = 14;
-
-    // AddRoundKey — round 0
-    for (let i = 0; i < 16; i++) state[i] ^= rk[i];
-
-    for (let round = 1; round <= Nr; round++) {
-        // SubBytes
-        for (let i = 0; i < 16; i++) state[i] = SBOX[state[i]];
-
-        // ShiftRows
-        // Row 0: no shift
-        // Row 1: shift left by 1
-        const tmp1 = state[1];
-        state[1] = state[5];
-        state[5] = state[9];
-        state[9] = state[13];
-        state[13] = tmp1;
-        // Row 2: shift left by 2
-        const tmp2a = state[2];
-        const tmp2b = state[6];
-        state[2] = state[10];
-        state[6] = state[14];
-        state[10] = tmp2a;
-        state[14] = tmp2b;
-        // Row 3: shift left by 3 (right by 1)
-        const tmp3 = state[3];
-        state[3] = state[15];
-        state[15] = state[11];
-        state[11] = state[7];
-        state[7] = tmp3;
-
-        if (round < Nr) {
-            // MixColumns
-            for (let c = 0; c < Nb; c++) {
-                const i = c * 4;
-                const a0 = state[i];
-                const a1 = state[i + 1];
-                const a2 = state[i + 2];
-                const a3 = state[i + 3];
-                state[i] = xtime(a0) ^ (xtime(a1) ^ a1) ^ a2 ^ a3;
-                state[i + 1] = a0 ^ xtime(a1) ^ (xtime(a2) ^ a2) ^ a3;
-                state[i + 2] = a0 ^ a1 ^ xtime(a2) ^ (xtime(a3) ^ a3);
-                state[i + 3] = (xtime(a0) ^ a0) ^ a1 ^ a2 ^ xtime(a3);
-            }
-        }
-
-        // AddRoundKey
-        const rkOff = round * 16;
-        for (let i = 0; i < 16; i++) state[i] ^= rk[rkOff + i];
-    }
-
-    return state;
-}
-
-// ── GHASH (GF(2^128) authentication) ────────────────────────────────────────
-
-/**
- * Multiply two 128-bit values in GF(2^128) with the GCM polynomial.
- *
- * The polynomial is x^128 + x^7 + x^2 + x + 1 (0xE1 << 120).
- */
-function ghashMul(x: Uint8Array, y: Uint8Array): Uint8Array {
-    // Convert to big-endian bit representation
-    const V = new Uint8Array(y);
-    const Z = new Uint8Array(16);
-    const R = new Uint8Array([
-        0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    ]);
-
-    for (let i = 0; i < 128; i++) {
-        const byteIdx = Math.floor(i / 8);
-        const bitIdx = 7 - (i % 8);
-        if ((x[byteIdx] >>> bitIdx) & 1) {
-            for (let j = 0; j < 16; j++) Z[j] ^= V[j];
-        }
-        // Check if V's LSB (bit 127) is 1
-        if (V[15] & 1) {
-            // Shift right by 1
-            for (let j = 15; j > 0; j--) {
-                V[j] = (V[j] >>> 1) | ((V[j - 1] & 1) << 7);
-            }
-            V[0] >>>= 1;
-            // XOR with R
-            for (let j = 0; j < 16; j++) V[j] ^= R[j];
-        } else {
-            // Shift right by 1
-            for (let j = 15; j > 0; j--) {
-                V[j] = (V[j] >>> 1) | ((V[j - 1] & 1) << 7);
-            }
-            V[0] >>>= 1;
-        }
-    }
-    return Z;
-}
-
-/**
- * Compute GHASH over the provided data blocks.
- *
- * @param h - Hash subkey (16 bytes, AES-256 encryption of zero block)
- * @param data - Data to authenticate (must be padded to 16-byte blocks)
- * @returns 16-byte GHASH result
- */
-function ghash(h: Uint8Array, data: Uint8Array): Uint8Array {
-    let y = new Uint8Array(16);
-    for (let i = 0; i < data.length; i += 16) {
-        const block = data.subarray(i, i + 16);
-        y = ghashMul(xor(y, block), h);
-    }
-    return y;
-}
-
-/**
- * Pad data to a multiple of 16 bytes with zeros.
- */
-function padTo16(data: Uint8Array): Uint8Array {
-    const padded = new Uint8Array(Math.ceil(data.length / 16) * 16);
-    padded.set(data);
-    return padded;
-}
-
-/**
- * Create a 16-byte length block for GCM.
- * Encodes a_len in first 8 bytes, c_len in last 8 bytes (big-endian 64-bit).
- */
-function lenBlock(aLen: number, cLen: number): Uint8Array {
-    const block = new Uint8Array(16);
-    // aLen as 64-bit big-endian
-    block[0] = (aLen >>> 56) & 0xff;
-    block[1] = (aLen >>> 48) & 0xff;
-    block[2] = (aLen >>> 40) & 0xff;
-    block[3] = (aLen >>> 32) & 0xff;
-    block[4] = (aLen >>> 24) & 0xff;
-    block[5] = (aLen >>> 16) & 0xff;
-    block[6] = (aLen >>> 8) & 0xff;
-    block[7] = aLen & 0xff;
-    // cLen as 64-bit big-endian
-    block[8] = (cLen >>> 56) & 0xff;
-    block[9] = (cLen >>> 48) & 0xff;
-    block[10] = (cLen >>> 40) & 0xff;
-    block[11] = (cLen >>> 32) & 0xff;
-    block[12] = (cLen >>> 24) & 0xff;
-    block[13] = (cLen >>> 16) & 0xff;
-    block[14] = (cLen >>> 8) & 0xff;
-    block[15] = cLen & 0xff;
-    return block;
-}
-
-// ── GCM Increment Counter ───────────────────────────────────────────────────
-
-/**
- * Increment the last 32 bits of a 16-byte counter block (GCM spec).
- */
-function incCounter(counter: Uint8Array): Uint8Array {
-    const inc = new Uint8Array(counter);
-    // Increment the last 4 bytes as a 32-bit big-endian integer
-    let c = (inc[12] << 24) | (inc[13] << 16) | (inc[14] << 8) | inc[15];
-    c = (c + 1) & 0xffffffff;
-    inc[12] = (c >>> 24) & 0xff;
-    inc[13] = (c >>> 16) & 0xff;
-    inc[14] = (c >>> 8) & 0xff;
-    inc[15] = c & 0xff;
-    return inc;
-}
-
-/**
- * Generate a GCM initial counter (J0).
- *
- * For 12-byte nonce: J0 = nonce || 0x00000001
- * For other nonce sizes: J0 = GHASH(H, nonce || padded to 16 || len block)
- */
-function gcmInitCounter(h: Uint8Array, nonce: Uint8Array): Uint8Array {
-    if (nonce.length === 12) {
-        // J0 = nonce || 0x00000001
-        const j0 = new Uint8Array(16);
-        j0.set(nonce);
-        j0[15] = 1;
-        return j0;
-    }
-    // For non-12-byte nonce (not used in this implementation, but correct)
-    const s = 16 * Math.ceil(nonce.length / 16) - nonce.length;
-    const padded = new Uint8Array(nonce.length + s + 16);
-    padded.set(nonce);
-    // Append length block
-    const lenB = lenBlock(nonce.length, 0);
-    padded.set(lenB, nonce.length + s);
-    return ghash(h, padded);
-}
-
-// ── Random number generation ────────────────────────────────────────────────
-
-/**
- * Generate cryptographically random bytes using the GJS runtime.
- *
- * Uses GjsPrivate.getRandomValues if available, otherwise falls back to
- * a simple CSPRNG based on Math.random (weaker, but GJS doesn't expose
- * crypto.getRandomValues).
- */
-function getRandomBytes(count: number): Uint8Array {
-    const bytes = new Uint8Array(count);
-    // Use Math.random * 256 for each byte (GJS doesn't have crypto.getRandomValues)
-    // This is acceptable for nonce generation — GCM is still secure with a
-    // random nonce as long as the same nonce is never reused with the same key.
-    for (let i = 0; i < count; i++) {
-        bytes[i] = Math.floor(Math.random() * 256);
-    }
-    return bytes;
-}
-
-// ── Public API ───────────────────────────────────────────────────────────────
+export {bytesToHex, hexToBytes} from './cryptoEngineTables';
 
 /**
  * Encrypt plaintext with AES-256-GCM.
@@ -371,55 +38,22 @@ export function encrypt(
     plaintext: Uint8Array,
     additionalData: Uint8Array = new Uint8Array(0)
 ): Uint8Array {
-    // Key expansion
     const rk = expandKey(key);
-
-    // Hash subkey: AES-256 encryption of zero block
     const h = encryptBlock(new Uint8Array(16), rk);
-
-    // Generate random nonce
     const nonce = getRandomBytes(NONCE_SIZE);
-
-    // Initial counter
     const j0 = gcmInitCounter(h, nonce);
+    const counter = incCounter(j0);
 
-    // ── Encryption (CTR mode) ──
-    let counter = incCounter(j0);
-    const ciphertext = new Uint8Array(plaintext.length);
-    for (let i = 0; i < plaintext.length; i += BLOCK_SIZE) {
-        const keyStream = encryptBlock(counter, rk);
-        const end = Math.min(i + BLOCK_SIZE, plaintext.length);
-        for (let j = i; j < end; j++) {
-            ciphertext[j] = plaintext[j] ^ keyStream[j - i];
-        }
-        counter = incCounter(counter);
-    }
+    const ciphertext = ctrCrypt(counter, plaintext, encryptBlock, rk);
 
-    // ── Authentication (GHASH) ──
-    // Authenticate: AAD || pad(AAD) || ciphertext || pad(ciphertext) || len(AAD) || len(ciphertext)
-    const aadPadded = padTo16(additionalData);
-    const ctPadded = padTo16(ciphertext);
-    const authData = new Uint8Array(
-        aadPadded.length + ctPadded.length + 16
-    );
-    authData.set(aadPadded);
-    authData.set(ctPadded, aadPadded.length);
-    authData.set(
-        lenBlock(additionalData.length, ciphertext.length),
-        aadPadded.length + ctPadded.length
-    );
-
+    const authData = buildAuthData(additionalData, ciphertext);
     const s = ghash(h, authData);
-
-    // Authentication tag: GHASH result XOR AES(J0)
     const tag = xor(s, encryptBlock(j0, rk));
 
-    // ── Output: nonce || ciphertext || tag ──
     const output = new Uint8Array(NONCE_SIZE + ciphertext.length + TAG_SIZE);
     output.set(nonce);
     output.set(ciphertext, NONCE_SIZE);
     output.set(tag, NONCE_SIZE + ciphertext.length);
-
     return output;
 }
 
@@ -442,60 +76,27 @@ export function decrypt(
         );
     }
 
-    // Key expansion
     const rk = expandKey(key);
-
-    // Hash subkey
     const h = encryptBlock(new Uint8Array(16), rk);
-
-    // Parse input
     const nonce = data.subarray(0, NONCE_SIZE);
     const ciphertext = data.subarray(NONCE_SIZE, data.length - TAG_SIZE);
     const tag = data.subarray(data.length - TAG_SIZE);
-
-    // Initial counter
     const j0 = gcmInitCounter(h, nonce);
 
-    // ── Verify authentication tag first ──
-    const aadPadded = padTo16(additionalData);
-    const ctPadded = padTo16(ciphertext);
-    const authData = new Uint8Array(
-        aadPadded.length + ctPadded.length + 16
-    );
-    authData.set(aadPadded);
-    authData.set(ctPadded, aadPadded.length);
-    authData.set(
-        lenBlock(additionalData.length, ciphertext.length),
-        aadPadded.length + ctPadded.length
-    );
-
+    // Verify authentication tag first
+    const authData = buildAuthData(additionalData, ciphertext);
     const s = ghash(h, authData);
     const expectedTag = xor(s, encryptBlock(j0, rk));
 
-    // Constant-time tag comparison
     let diff = 0;
-    for (let i = 0; i < TAG_SIZE; i++) {
-        diff |= tag[i] ^ expectedTag[i];
-    }
+    for (let i = 0; i < TAG_SIZE; i++) diff |= tag[i]! ^ expectedTag[i]!;
     if (diff !== 0) {
-        throw new Error(
-            'AES-256-GCM authentication failed: data may be tampered or wrong key'
-        );
+        throw new Error('AES-256-GCM authentication failed: data may be tampered or wrong key');
     }
 
-    // ── Decryption (CTR mode) ──
-    let counter = incCounter(j0);
-    const plaintext = new Uint8Array(ciphertext.length);
-    for (let i = 0; i < ciphertext.length; i += BLOCK_SIZE) {
-        const keyStream = encryptBlock(counter, rk);
-        const end = Math.min(i + BLOCK_SIZE, ciphertext.length);
-        for (let j = i; j < end; j++) {
-            plaintext[j] = ciphertext[j] ^ keyStream[j - i];
-        }
-        counter = incCounter(counter);
-    }
-
-    return plaintext;
+    // Decrypt (CTR mode)
+    const counter = incCounter(j0);
+    return ctrCrypt(counter, ciphertext, encryptBlock, rk);
 }
 
 /**
@@ -503,24 +104,4 @@ export function decrypt(
  */
 export function generateKey(): Uint8Array {
     return getRandomBytes(KEY_SIZE);
-}
-
-/**
- * Convert a Uint8Array to a hex string.
- */
-export function bytesToHex(bytes: Uint8Array): string {
-    return Array.from(bytes)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-}
-
-/**
- * Convert a hex string to a Uint8Array.
- */
-export function hexToBytes(hex: string): Uint8Array {
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-        bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-    }
-    return bytes;
 }

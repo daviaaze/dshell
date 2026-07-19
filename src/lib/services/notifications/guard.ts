@@ -99,3 +99,19 @@ const notifdSingleton = new DeferredSingleton<Notifd.Notifd>(
 export function getNotifdSafe(): Notifd.Notifd | null {
     return notifdSingleton.get();
 }
+
+/**
+ * One-shot watchdog: warns if notifd init hasn't completed within 15s.
+ * Lives here (not the widget layer) so widgets stay event-driven.
+ */
+export function watchNotifdInit(isDone: () => boolean): void {
+    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 15, () => {
+        if (!isDone()) {
+            logger.warn(
+                'notifd',
+                'Notifd.get_default() has not completed after 15s — D-Bus handshake may be hung. Notifications widget will not show.'
+            );
+        }
+        return GLib.SOURCE_REMOVE;
+    });
+}

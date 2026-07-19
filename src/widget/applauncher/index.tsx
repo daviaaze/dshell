@@ -25,6 +25,7 @@ type ListItem = Apps.Application | ClipboardItem;
 export default () => {
     const barCfg = useSettings().bar;
     const hyprland = Hyprland.get_default();
+    const shellState = ShellState.get_default();
     const fm = FrecencyManager.get_default();
     const [list, setList] = createState<ListItem[]>(
         fm.rankByFrecency(getAppList(), app => app.entry ?? app.name ?? '')
@@ -66,7 +67,7 @@ export default () => {
             name={'applauncher'}
             margin={12}
             application={app}
-            visible={createBinding(ShellState.get_default(), 'launcherOpen')}
+            visible={createBinding(shellState, 'launcherOpen')}
             onNotifyVisible={self => {
                 logger.log(`applauncher visible -> ${self.visible}`);
                 if (

@@ -10,6 +10,7 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {bus} from '#/lib/core/eventBus';
 import logger, {perf} from '#/lib/core/logger';
+import printOut from '#/lib/core/stdout';
 
 // ── Help flag (shared) ──
 
@@ -213,7 +214,7 @@ export const requestHandler = (
     const matched = cli.parse(args);
 
     if (matched === cli && help.value) {
-        print(Quarrel.help(cli));
+        printOut(Quarrel.help(cli));
         cmd.done();
         return;
     }
@@ -225,14 +226,14 @@ export const requestHandler = (
             () => {
                 const ok = dispatch(matched, app);
                 if (!ok) {
-                    print(Quarrel.help(matched));
+                    printOut(Quarrel.help(matched));
                 }
             },
             'dbus'
         );
     } else {
         logger.warn('dbus', `no command matched, args=${args.slice(1).join(' ')}`);
-        print(Quarrel.help(cli));
+        printOut(Quarrel.help(cli));
     }
 
     logger.debug('dbus', 'requestHandler done');

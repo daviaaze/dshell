@@ -19,6 +19,7 @@ const QUICKSETTINGS_SPACING = 8;
 export default () => {
     const barCfg = useSettings().bar;
     const hyprland = Hyprland.get_default();
+    const shellState = ShellState.get_default();
     const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
     return (
@@ -33,7 +34,7 @@ export default () => {
             margin={12}
             application={app}
             name={'quicksettings'}
-            visible={createBinding(ShellState.get_default(), 'qsOpen')}
+            visible={createBinding(shellState, 'qsOpen')}
             onNotifyVisible={self => {
                 logger.log(`quicksettings visible -> ${self.visible}`);
                 if (

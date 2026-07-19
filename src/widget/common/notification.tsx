@@ -3,6 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {For, createBinding} from 'gnim';
 import {useStyle} from '#/style/useStyle';
+import {tickWhileAttached} from '#/lib/core/widgetTimer';
 import Adw from 'gi://Adw?version=1';
 
 function relativeTime(unix: number): string {
@@ -171,25 +172,14 @@ export default ({
                         if (!showProgress) return;
                         let elapsed = 0;
                         const interval = 50;
-                        const total = expireMs;
-                        const timer = GLib.timeout_add(
-                            GLib.PRIORITY_DEFAULT,
-                            interval,
-                            () => {
-                                if (!self.get_parent())
-                                    return GLib.SOURCE_REMOVE;
-                                elapsed += interval;
-                                const remaining = Math.max(
-                                    0,
-                                    (total - elapsed) / total
-                                );
-                                self.set_fraction(remaining);
-                                if (remaining <= 0) return GLib.SOURCE_REMOVE;
-                                return GLib.SOURCE_CONTINUE;
-                            }
-                        );
-                        self.connect('destroy', () => {
-                            GLib.source_remove(timer);
+                        tickWhileAttached(self, interval, () => {
+                            elapsed += interval;
+                            const remaining = Math.max(
+                                0,
+                                (expireMs - elapsed) / expireMs
+                            );
+                            self.set_fraction(remaining);
+                            return remaining > 0;
                         });
                     }}
                 />

@@ -17,7 +17,7 @@ export function applyPopupCss(): void {
         const provider = new Gtk.CssProvider();
         provider.load_from_string(`
             window.picker-popup {
-                border-radius: 12px;
+                border-radius: var(--shade-radius);
                 border: 1px solid alpha(@window_bg_color, 0.08);
             }
         `);

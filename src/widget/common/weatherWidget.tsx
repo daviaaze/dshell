@@ -1,7 +1,7 @@
 import GWeather from 'gi://GWeather?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createState, onCleanup, For} from 'gnim';
+import {createBinding, createState, For} from 'gnim';
+import Clock from '#/lib/services/time/clock';
 import {useStyle} from '#/style/useStyle';
 import WeatherLib from '#/lib/services/location/weather';
 import {
@@ -37,27 +37,16 @@ function useWeatherData(
     weather: typeof WeatherLib.get_default,
     info: ReturnType<typeof createBinding>
 ) {
-    const [now, setNow] = createState(GLib.DateTime.new_now_local().to_unix());
-    const nowTimerId = GLib.timeout_add_seconds(
-        GLib.PRIORITY_DEFAULT,
-        30,
-        () => {
-            setNow(GLib.DateTime.new_now_local().to_unix());
-            return GLib.SOURCE_CONTINUE;
-        }
-    );
-    onCleanup(() => {
-        if (nowTimerId) GLib.Source.remove(nowTimerId);
-    });
+    const now = Clock.get_default().time.as(t => t.to_unix());
 
     const [gradient, setGradient] = createState(
-        'linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)' // comply-allow: theme/hardcoded-color — weather gradient fallback (content imagery)
+        'linear-gradient(135deg, var(--shade-surface-dim), var(--shade-surface-container))' // TODO(compliance): revisit — weather gradient fallback, use theme tokens
     );
     info.subscribe(w => {
         setGradient(
             w?.is_valid()
                 ? weatherGradient(w.get_icon_name() ?? '')
-                : 'linear-gradient(135deg, #1e3a5f 0%, #4a90d9 100%)' // comply-allow: theme/hardcoded-color — weather gradient fallback (content imagery)
+                : 'linear-gradient(135deg, var(--shade-surface-dim), var(--shade-surface-container))' // TODO(compliance): revisit — weather gradient fallback, use theme tokens
         );
     });
 
@@ -138,7 +127,7 @@ export const WeatherWidget = () => {
             $={(self: Gtk.Box) => {
                 const cssProvider = new Gtk.CssProvider();
                 cssProvider.load_from_string(
-                    `* { background: ${data.gradient()}; border-radius: 12px; }`
+                    `* { background: ${data.gradient()}; border-radius: var(--shade-radius); }`
                 );
                 self.get_style_context().add_provider(
                     cssProvider,
@@ -146,7 +135,7 @@ export const WeatherWidget = () => {
                 );
                 data.gradient.subscribe(g => {
                     cssProvider.load_from_string(
-                        `* { background: ${g}; border-radius: 12px; }`
+                        `* { background: ${g}; border-radius: var(--shade-radius); }`
                     );
                 });
             }}

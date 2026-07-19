@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
 import {useSettings} from '#/lib/settings';
+import {tickWhileAttached} from '#/lib/core/widgetTimer';
 
 try {
     imports.gi.versions.AstalCava = '0.1';
@@ -54,29 +54,21 @@ export default () => {
                     bars.push(bar);
                 }
 
-                const timer = GLib.timeout_add(
-                    GLib.PRIORITY_DEFAULT,
-                    1000 / cava.framerate,
-                    () => {
-                        if (!self.get_parent()) return GLib.SOURCE_REMOVE;
-                        const values = cava.get_values();
-                        if (!values || !values.length)
-                            return GLib.SOURCE_CONTINUE;
-                        for (
-                            let i = 0;
-                            i < Math.min(bars.length, values.length);
-                            i++
-                        ) {
-                            bars[i].set_value(
-                                Math.min(1, Math.max(0, values[i]))
-                            );
-                        }
-                        return GLib.SOURCE_CONTINUE;
+                tickWhileAttached(self, 1000 / cava.framerate, () => {
+                    const values = cava.get_values();
+                    if (!values || !values.length) return;
+                    for (
+                        let i = 0;
+                        i < Math.min(bars.length, values.length);
+                        i++
+                    ) {
+                        bars[i].set_value(
+                            Math.min(1, Math.max(0, values[i]))
+                        );
                     }
-                );
+                });
 
                 self.connect('destroy', () => {
-                    GLib.source_remove(timer);
                     cava.active = false;
                 });
             }}

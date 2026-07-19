@@ -82,7 +82,7 @@ export default () => {
                 valign={Gtk.Align.END}
                 spacing={8}
                 cssClasses={['linked', 'card', 'background']}
-                css={'padding: 8px; border-radius: 24px;'}
+                css={'padding: 8px; border-radius: calc(var(--shade-radius) * 3);'}
             >
                 <For each={dockItems}>
                     {item => (

@@ -223,7 +223,7 @@ export default class TimerService extends GObject.Object {
 
     #sendNotification(title: string, body: string) {
         if (!this.#app) {
-            print(`[Timer] ${title} — ${body}`);
+            logger.log(`[Timer] ${title} — ${body}`);
             return;
         }
         try {
@@ -236,7 +236,7 @@ export default class TimerService extends GObject.Object {
             this.#app.send_notification(id, n);
         } catch (e) {
             logger.warn('timer', 'Failed to send notification:', e);
-            print(`[Timer] ${title} — ${body}`);
+            logger.log(`[Timer] ${title} — ${body}`);
         }
     }
 

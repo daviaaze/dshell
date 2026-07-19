@@ -5,15 +5,14 @@ import {
     Accessor,
     createBinding,
     createComputed,
-    createState,
     For,
-    onCleanup,
 } from 'gnim';
+import Clock from '#/lib/services/time/clock';
 import {useSettings} from '#/lib/settings';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
 import {useStyle} from '#/style/useStyle';
 import {fmtOffset, cityName, fmtDuration} from '#/lib/core/time';
-import TimerService from '#/widget/quicksettings/timer/TimerService';
+import TimerService from '#/lib/services/time/timerService';
 import {TimerSection} from '#/widget/quicksettings/timer/TimerSection';
 
 const TIMER_WIDTH = 230;
@@ -37,12 +36,7 @@ export default ({
         'font-weight': 'bold',
     });
     const {general} = useSettings();
-    const [time, setTime] = createState(new GLib.DateTime());
-    const clockTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-        setTime(GLib.DateTime.new_now_local());
-        return GLib.SOURCE_CONTINUE;
-    });
-    onCleanup(() => GLib.source_remove(clockTimeout));
+    const time = Clock.get_default().time;
 
     const day = time.as(t => t.get_day_of_month().toString());
     const month = time.as(t => t.format('%b')!);

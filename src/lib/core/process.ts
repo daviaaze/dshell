@@ -1,6 +1,7 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject, {register, signal} from 'gnim/gobject';
+import logger from '#/lib/core/logger';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Process {
@@ -50,7 +51,7 @@ export class Process extends GObject.Object {
                     this.#readStream(stream);
                 }
             } catch (error) {
-                console.error(error);
+                logger.error('process', error);
             }
         });
     }

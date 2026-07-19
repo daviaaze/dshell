@@ -23,7 +23,7 @@ import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import NotificationHistory from '#/lib/services/notifications/history';
 import DndService from '#/lib/services/notifications/dnd';
 import SoundAlertService from '#/lib/services/audio/soundAlerts';
-import TimerService from './quicksettings/timer/TimerService';
+import TimerService from '#/lib/services/time/timerService';
 import {FrecencyManager} from '#/lib/services/search/frecency';
 import {initAutoSwitch} from '#/lib/services/audio/autoSwitch';
 import {initAppWatcher} from '#/lib/services/state/apps';

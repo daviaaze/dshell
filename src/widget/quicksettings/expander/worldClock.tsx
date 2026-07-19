@@ -1,22 +1,13 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
-import {createState, For, onCleanup} from 'gnim';
+import {For} from 'gnim';
 import {useSettings} from '#/lib/settings';
 import {fmtOffset, cityName} from '#/lib/core/time';
+import Clock from '#/lib/services/time/clock';
 
 export const WorldClock = () => {
     const {general} = useSettings();
-    const [time, setTime] = createState(GLib.DateTime.new_now_local());
-
-    const worldClockTimeout = GLib.timeout_add(
-        GLib.PRIORITY_DEFAULT,
-        1000,
-        () => {
-            setTime(GLib.DateTime.new_now_local());
-            return GLib.SOURCE_CONTINUE;
-        }
-    );
-    onCleanup(() => GLib.source_remove(worldClockTimeout));
+    const time = Clock.get_default().time;
 
     const localTz = GLib.TimeZone.new_local();
 

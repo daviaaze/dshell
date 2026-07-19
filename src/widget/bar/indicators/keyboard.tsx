@@ -26,12 +26,13 @@ export default () => {
         onCleanup(() => cleanupNode(_hn));
     });
 
+    const keyboard = KeyboardLayout.get_default();
     return (
         <Gtk.Button
             visible={available}
             cssClasses={['flat']}
             label={layout}
-            onClicked={() => KeyboardLayout.get_default().cycle()}
+            onClicked={() => keyboard.cycle()}
             tooltipMarkup={layout.as(
                 l => `Keyboard layout: ${l}\nClick to cycle`
             )}

@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed} from 'gnim';
-import TimerService from './TimerService';
+import TimerService from '#/lib/services/time/timerService';
 import {TimerSection} from './TimerSection';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 

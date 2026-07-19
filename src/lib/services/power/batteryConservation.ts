@@ -1,7 +1,9 @@
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import logger from '#/lib/core/logger';
+import {readFile} from '#/lib/core/file';
 import {Process} from '#/lib/core/process';
+import {Accessor, createState} from 'gnim';
 
 const PATH = '/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode';
 
@@ -33,10 +35,8 @@ function isWritable(): boolean {
 
 export const isConservationEnabled = (): boolean => {
     try {
-        const [ok, content] = GLib.file_get_contents(PATH);
-        if (!ok) return false;
-        const decoder = new TextDecoder();
-        return decoder.decode(content).trim() === '1';
+        const content = readFile(PATH);
+        return content.trim() === '1';
     } catch {
         return false;
     }
@@ -89,3 +89,29 @@ export const toggleConservationAsync = async (): Promise<boolean> => {
         return false;
     }
 };
+
+// ── Bindable state ──
+// sysfs doesn't emit Gio.FileMonitor events, so a slow poll is the only way
+// to observe external changes (e.g. Legion tools, other shells). The poll
+// lives here in the service; widgets bind to `conservationEnabled`.
+
+const [enabledState, setEnabledState] = createState(isConservationEnabled());
+let monitorStarted = false;
+
+/** Reactive conservation-mode state. Call startConservationMonitor() once. */
+export const conservationEnabled: Accessor<boolean> = enabledState;
+
+/** Start the 5s sysfs poll that keeps `conservationEnabled` fresh. Idempotent. */
+export function startConservationMonitor(): void {
+    if (monitorStarted) return;
+    monitorStarted = true;
+    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
+        setEnabledState(isConservationEnabled());
+        return GLib.SOURCE_CONTINUE;
+    });
+}
+
+/** Re-read sysfs now (call after a toggle attempt). */
+export function refreshConservation(): void {
+    setEnabledState(isConservationEnabled());
+}

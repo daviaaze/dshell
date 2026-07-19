@@ -15,6 +15,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {programArgs} from 'system';
 import logger from '#/lib/core/logger';
+import printOut from '#/lib/core/stdout';
 import type {SelectFn} from './types';
 import {HYPRCTL_BIN, parseWindowList} from './protocol';
 import {buildSources} from './sources';
@@ -47,7 +48,7 @@ function main() {
     /** Print selection and quit — XDPH reads stdout */
     const select: SelectFn = (kind, id) => {
         try {
-            print(`[SELECTION]${tokenRestore ? 'r' : ''}/${kind}:${id}`);
+            printOut(`[SELECTION]${tokenRestore ? 'r' : ''}/${kind}:${id}`);
         } catch (e) {
             logger.error(CAT, `select: print failed for ${kind}:${id}`, e);
         }

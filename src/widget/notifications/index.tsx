@@ -13,9 +13,8 @@ import {
 import Notification from '#/widget/common/notification';
 import PopupWindow from '#/widget/common/PopupWindow';
 import WindowManager from '#/lib/services/state/windowManager';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
+import {getNotifdSafe, watchNotifdInit} from '#/lib/services/notifications/guard';
 import {useSettings} from '#/lib/settings';
-import logger from '#/lib/core/logger';
 import ShellState from '#/lib/services/state/shellState';
 import DndService from '#/lib/services/notifications/dnd';
 import {connectFor, cleanupNode} from '#/lib/core/connectFor';
@@ -177,15 +176,7 @@ export default () => {
             return GLib.SOURCE_REMOVE;
         });
 
-        GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 15, () => {
-            if (!initialized) {
-                logger.warn(
-                    'notifications',
-                    'Notifd.get_default() has not completed after 15s — D-Bus handshake may be hung. Notifications widget will not show.'
-                );
-            }
-            return GLib.SOURCE_REMOVE;
-        });
+        watchNotifdInit(() => initialized);
         onCleanup(() => cleanupNode(_hn));
     });
 

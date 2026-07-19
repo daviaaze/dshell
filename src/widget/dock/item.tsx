@@ -119,14 +119,14 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                             ? `
                 min-width: 16px;
                 min-height: 3px;
-                border-radius: 2px;
+                border-radius: calc(var(--shade-radius) / 4);
                 background-color: @accent_color;
               `
                             : running
                               ? `
                   min-width: 4px;
                   min-height: 4px;
-                  border-radius: 2px;
+                  border-radius: calc(var(--shade-radius) / 4);
                   background-color: @accent_color;
                 `
                               : '';

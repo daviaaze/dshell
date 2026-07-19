@@ -29,12 +29,13 @@ export default ({
         });
     });
 
+    const shellState = ShellState.get_default();
     return (
         <Gtk.ToggleButton
             visible={visible}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            active={createBinding(ShellState.get_default(), 'qsOpen')}
-            onClicked={() => ShellState.get_default().toggleQuickSettings()}
+            active={createBinding(shellState, 'qsOpen')}
+            onClicked={() => shellState.toggleQuickSettings()}
             $={self =>
                 self.add_controller(
                     (

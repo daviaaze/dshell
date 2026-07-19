@@ -174,9 +174,7 @@ export default () => {
                         dialog={new Gtk.ColorDialog()}
                         $={self => {
                             const c = new Gdk.RGBA();
-                            if (!c.parse(settings.recordingBoundaryColor())) {
-                                c.parse('#FF0000'); // comply-allow: theme/hardcoded-color — Gdk.RGBA runtime fallback, not CSS
-                            }
+                            c.parse(settings.recordingBoundaryColor());
                             self.rgba = c;
                         }}
                         onNotifyRgba={self => {

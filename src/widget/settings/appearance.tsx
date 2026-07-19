@@ -8,6 +8,7 @@ import {TEMP_MIN, TEMP_MAX} from '#/lib/services/display/nightLight';
 export default () => {
     const settings = useSettings().general;
     const fileDialog = Gtk.FileDialog.new();
+    const paletteGen = PaletteGenerator.get_default();
     fileDialog.set_default_filter(new Gtk.FileFilter({mimeTypes: ['image/*']}));
 
     return (
@@ -125,7 +126,7 @@ export default () => {
                     cssClasses={['suggested-action', 'popover-padded']}
                     halign={Gtk.Align.CENTER}
                     label="Regenerate from Wallpaper"
-                    onClicked={() => PaletteGenerator.get_default().regenerate()}
+                    onClicked={() => paletteGen.regenerate()}
                 />
             </Adw.PreferencesGroup>
 
