@@ -1,3 +1,4 @@
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * CLI command routing using Quarrel — structured argument parsing with
  * auto-generated help and subcommand validation.

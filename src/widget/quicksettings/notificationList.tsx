@@ -244,14 +244,14 @@ const NotificationListContent = ({
                     each={createBinding(notifd, 'notifications').as(n =>
                         n
                             .sort((a, b) => b.time - a.time)
-                            .reduce((res, notif) => {
+                            .reduce<Notifd.Notification[][]>((res, notif) => {
                                 const i = res.findIndex(
                                     n => n[0]!.appName === notif.appName
                                 );
                                 if (i === -1) res.push([notif]);
                                 else res[i]!.push(notif);
                                 return res;
-                            }, [] as Notifd.Notification[][])
+                            }, [])
                     )}
                 >
                     {(n: Notifd.Notification[]) =>

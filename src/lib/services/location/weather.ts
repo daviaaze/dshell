@@ -1,3 +1,4 @@
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';

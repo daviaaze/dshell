@@ -47,12 +47,11 @@ export default ({
                         cssClasses={[ws.id < 0 ? 'success' : '']}
                         activeName={createComputed(() => {
                             const client = focusedClient();
-                            if (!client || client.workspace !== ws)
-                                return null as unknown as string;
+                            if (!client || client.workspace !== ws) return '';
                             const clients = toArray<Hyprland.Client>(wsClients());
                             return clients.some(c => c.address === client.address)
                                 ? client.address
-                                : (null as unknown as string);
+                                : '';
                         })}
                     >
                         <For

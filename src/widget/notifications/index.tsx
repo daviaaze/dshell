@@ -1,5 +1,4 @@
 import Notifd from 'gi://AstalNotifd';
-import Hyprland from 'gi://AstalHyprland';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {
@@ -133,7 +132,6 @@ export default () => {
     const [notificationCount, setNotificationCount] = createState(0);
     const [dontDisturb, setDontDisturb] = createState(false);
     const dnd = DndService.get_default();
-    const hyprland = Hyprland.get_default();
     const settings = useSettings().general;
     const showProgress = settings.notificationShowProgress();
 

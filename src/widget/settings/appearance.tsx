@@ -30,12 +30,12 @@ export default () => {
                             };
                             settings.setColorScheme(map[self.activeName ?? 'auto'] ?? 0);
                         }}
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         $={self => {
-                            const v = (settings.colorScheme as any).peek();
+                            const v = settings.colorScheme.peek();
                             self.activeName = ['auto', 'light', 'dark'][v] ?? 'auto';
-                            (settings.colorScheme as any).subscribe((v: number) => {
-                                self.activeName = ['auto', 'light', 'dark'][v] ?? 'auto';
+                            settings.colorScheme.subscribe(() => {
+                                const cur = settings.colorScheme();
+                                self.activeName = ['auto', 'light', 'dark'][cur] ?? 'auto';
                             });
                         }}
                     >

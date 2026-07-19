@@ -116,7 +116,7 @@ export class Recorder {
         } catch (e) {
             logger.warn(
                 'screenshot',
-                `SIGINT to recorder failed: ${(e as Error).message}`
+                `SIGINT to recorder failed: ${e instanceof Error ? e.message : String(e)}`
             );
             try {
                 this.#process.signal(15);
@@ -154,8 +154,8 @@ export class Recorder {
         try {
             return Process.subprocessv(args);
         } catch (e) {
-            logger.error('screenshot', `failed to spawn ${backendName}: ${(e as Error).message}`);
-            notify(MSG_RECORDING_FAILED, `Could not start ${backendName}: ${(e as Error).message}`, ICON_ERROR);
+            logger.error('screenshot', `failed to spawn ${backendName}: ${e instanceof Error ? e.message : String(e)}`);
+            notify(MSG_RECORDING_FAILED, `Could not start ${backendName}: ${e instanceof Error ? e.message : String(e)}`, ICON_ERROR);
             return null;
         }
     }

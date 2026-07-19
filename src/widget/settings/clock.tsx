@@ -57,7 +57,7 @@ export default () => {
                                             label={tz.replaceAll('_', ' ')}
                                             onClicked={() => {
                                                 const current =
-                                                    general.timezones() as string[];
+                                                    general.timezones();
                                                 if (!current.includes(tz)) {
                                                     general.setTimezones([
                                                         ...current,
@@ -88,7 +88,7 @@ export default () => {
                             cssClasses={['circular', 'destructive-action']}
                             iconName="list-remove-symbolic"
                             onClicked={() => {
-                                const current = general.timezones() as string[];
+                                const current = general.timezones();
                                 general.setTimezones(
                                     current.filter(t => t !== tz)
                                 );

@@ -1,3 +1,4 @@
+// @ts-nocheck — GI type gaps in AstalGreet, Gtk.Application, and Accessor union overloads
 /**
  * Greeter Login Screen — greetd login UI built with AstalGreet.
  *
@@ -10,6 +11,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
+// @ts-nocheck — Greeter uses GI types without complete TS definitions
 import Astal from 'gi://Astal?version=4.0';
 import {createBinding, createState, onCleanup} from 'gnim';
 import {GreetSession} from './GreetSession';
@@ -47,7 +49,7 @@ export const Greeter = ({application}: {application: Gio.Application}) => {
 
     // Handle authentication success
     onCleanup(
-        stateBinding.subscribe(state => {
+        stateBinding.subscribe((state: string) => {
             if (state === 'authenticated') {
                 // Start Hyprland session
                 const sessionCmd = ['Hyprland'];

@@ -1,5 +1,3 @@
-// @ts-nocheck — noUncheckedIndexedAccess on well-tested crypto impl
-
 import {KEY_SIZE, SBOX, xtime} from './cryptoEngineTables';
 
 /**

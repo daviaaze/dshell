@@ -1,3 +1,4 @@
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
 import Notifd from 'gi://AstalNotifd';

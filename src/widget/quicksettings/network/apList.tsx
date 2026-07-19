@@ -7,7 +7,6 @@ import {
     bssidEquals,
     ApSnapshot,
     snapshotAp,
-    signalIconName,
 } from './utils';
 import {useStyle} from '#/style/useStyle';
 import ApRow from './apRow';

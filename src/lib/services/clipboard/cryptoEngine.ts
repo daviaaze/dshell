@@ -14,7 +14,6 @@
  *
  * @module cryptoEngine
  */
-// @ts-nocheck — all errors are from noUncheckedIndexedAccess on a well-tested crypto impl
 
 import {expandKey, encryptBlock} from './cryptoEngineAes';
 import {ghash, buildAuthData, ctrCrypt} from './cryptoEngineGhash';

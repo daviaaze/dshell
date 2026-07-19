@@ -15,43 +15,27 @@ import {describe, it, expect, run} from './test-runner';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * Build a gnim-compatible Accessor<T> (callable function + .subscribe).
+ * Pass `override` to return a custom value; subscribe is a no-op.
+ */
+function mockAccessor<T>(override?: T): import('gnim').Accessor<T> {
+    const fn = (() => override) as import('gnim').Accessor<T>;
+    fn.subscribe = () => () => {};
+    return fn;
+}
+
 /** Minimal mock settings object for init() */
 function mockSettings(overrides: Record<string, unknown> = {}) {
-    const defaults: Record<string, () => unknown> = {
-        autoLockEnabled: () => overrides.autoLockEnabled ?? true,
-        idleTimeout: () => overrides.idleTimeout ?? 300,
-        screenDimEnabled: () => overrides.screenDimEnabled ?? true,
-        screenDimTimeout: () => overrides.screenDimTimeout ?? 240,
-        dpmsEnabled: () => overrides.dpmsEnabled ?? true,
-        dpmsTimeout: () => overrides.dpmsTimeout ?? 600,
-        suspendEnabled: () => overrides.suspendEnabled ?? false,
-        suspendTimeout: () => overrides.suspendTimeout ?? 1800,
-    };
-
     return {
-        autoLockEnabled: {
-            get: defaults.autoLockEnabled,
-            subscribe: () => () => {},
-        },
-        idleTimeout: {get: defaults.idleTimeout, subscribe: () => () => {}},
-        screenDimEnabled: {
-            get: defaults.screenDimEnabled,
-            subscribe: () => () => {},
-        },
-        screenDimTimeout: {
-            get: defaults.screenDimTimeout,
-            subscribe: () => () => {},
-        },
-        dpmsEnabled: {get: defaults.dpmsEnabled, subscribe: () => () => {}},
-        dpmsTimeout: {get: defaults.dpmsTimeout, subscribe: () => () => {}},
-        suspendEnabled: {
-            get: defaults.suspendEnabled,
-            subscribe: () => () => {},
-        },
-        suspendTimeout: {
-            get: defaults.suspendTimeout,
-            subscribe: () => () => {},
-        },
+        autoLockEnabled: mockAccessor(overrides.autoLockEnabled as boolean ?? true),
+        idleTimeout: mockAccessor(overrides.idleTimeout as number ?? 300),
+        screenDimEnabled: mockAccessor(overrides.screenDimEnabled as boolean ?? true),
+        screenDimTimeout: mockAccessor(overrides.screenDimTimeout as number ?? 240),
+        dpmsEnabled: mockAccessor(overrides.dpmsEnabled as boolean ?? true),
+        dpmsTimeout: mockAccessor(overrides.dpmsTimeout as number ?? 600),
+        suspendEnabled: mockAccessor(overrides.suspendEnabled as boolean ?? false),
+        suspendTimeout: mockAccessor(overrides.suspendTimeout as number ?? 1800),
         setAutoLockEnabled: () => {},
         setIdleTimeout: () => {},
         setScreenDimEnabled: () => {},

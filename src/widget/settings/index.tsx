@@ -1,5 +1,4 @@
 import Adw from 'gi://Adw?version=1';
-import Gtk from 'gi://Gtk?version=4.0';
 import Bar from './bar';
 import WindowManager from '#/lib/services/state/windowManager';
 import Weather from './weather';

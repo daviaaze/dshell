@@ -1,31 +1,33 @@
 /**
  * Type overrides for gnim decorators to work with TypeScript 6's stricter
  * decorator context types. The gnim library (v1.9.1) was written for TS 5.x.
+ *
+ * Key insight: the GObject property type (used to create the ParamSpec) and
+ * the getter's TypeScript return type are separate concerns. `T` describes the
+ * ParamSpec; the decorator context accepts any return type via `any`.
  */
 import type GObject from 'gi://GObject';
 
 declare module 'gnim/gobject' {
-    // ── Relax getter/setter to accept nullable return/value types ──
-
     type PropertyTypeDeclaration<T> =
         | ((name: string, flags: GObject.ParamFlags) => GObject.ParamSpec<T>)
         | GObject.ParamSpec<T>
         | { $gtype: GObject.GType<T> };
 
-    type GetterContext<T> = ClassGetterDecoratorContext<GObject.Object, T>;
-    type SetterContext<T> = ClassSetterDecoratorContext<GObject.Object, T>;
+    type GetterContext = ClassGetterDecoratorContext<GObject.Object, any>;
+    type SetterContext = ClassSetterDecoratorContext<GObject.Object, any>;
 
     export function getter<T>(
-        typeDeclaration: PropertyTypeDeclaration<T>
+        typeDeclaration: PropertyTypeDeclaration<T>,
     ): (
         get: (this: GObject.Object) => any,
-        ctx: GetterContext<T>
+        ctx: GetterContext,
     ) => (this: GObject.Object) => any;
 
     export function setter<T>(
-        typeDeclaration: PropertyTypeDeclaration<T>
+        typeDeclaration: PropertyTypeDeclaration<T>,
     ): (
         set: (this: GObject.Object, value: any) => void,
-        ctx: SetterContext<T>
+        ctx: SetterContext,
     ) => (this: GObject.Object, value: any) => void;
 }

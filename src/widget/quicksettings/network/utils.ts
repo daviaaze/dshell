@@ -1,4 +1,6 @@
 import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
+import NM from 'gi://NM?version=1.0';
 import Network from 'gi://AstalNetwork';
 import {toArray} from '#/lib/core/gjsUtils';
 import logger from '#/lib/core/logger';
@@ -292,8 +294,7 @@ export function createNMConnection(
     connection.add_setting(sCon);
 
     const sWifi = new NM.SettingWireless();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sWifi.ssid = new GLib.Bytes(new TextEncoder().encode(ssid)) as any;
+    sWifi.ssid = new GLib.Bytes(new TextEncoder().encode(ssid));
     sWifi.mode = 'infrastructure';
     sWifi.hidden = hidden;
     connection.add_setting(sWifi);

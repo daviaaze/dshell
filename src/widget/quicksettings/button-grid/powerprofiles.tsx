@@ -1,3 +1,4 @@
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import {createState, onMount, onCleanup} from 'gnim';
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';

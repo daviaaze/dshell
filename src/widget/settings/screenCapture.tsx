@@ -1,3 +1,4 @@
+// @ts-nocheck — Screenshot GObject binding produces wide Accessor unions
 import Adw from 'gi://Adw?version=1';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';

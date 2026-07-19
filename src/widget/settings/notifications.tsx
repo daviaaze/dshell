@@ -45,7 +45,7 @@ export default () => {
                         const name = self.text.trim();
                         if (!name) return;
                         const current =
-                            settings.notificationIgnoredApps() as string[];
+                            settings.notificationIgnoredApps();
                         if (!current.includes(name)) {
                             logger.info('settings', `ignore app added: ${name}`);
                             settings.setNotificationIgnoredApps([
@@ -65,7 +65,7 @@ export default () => {
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
                                     const current =
-                                        settings.notificationIgnoredApps() as string[];
+                                        settings.notificationIgnoredApps();
                                     logger.info('settings', `ignore app removed: ${app}`);
                                     settings.setNotificationIgnoredApps(
                                         current.filter(a => a !== app)

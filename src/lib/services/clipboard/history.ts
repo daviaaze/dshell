@@ -39,10 +39,6 @@ let initialized = false;
 
 // ── File helpers ─────────────────────────────────────────────────────────────
 
-function ensureDirs() {
-    GLib.mkdir_with_parents(CLIPBOARD_DIR, 0o755);
-}
-
 function generateId(): string {
     // eslint-disable-next-line sonarjs/pseudo-random
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);

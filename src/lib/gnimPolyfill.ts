@@ -6,12 +6,25 @@
  */
 import {Accessor} from 'gnim';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(Accessor.prototype as any).as = function as<T, R>(
+type Callback = () => void;
+type DisposeFn = () => void;
+
+// gnim's Accessor extends Function, making the constructor signature opaque.
+// This is the cleanest polyfill pattern — augment the interface + construct via new.
+declare module 'gnim' {
+    interface Accessor<T> {
+        as<R>(fn: (value: T) => R): Accessor<R>;
+    }
+}
+
+(Accessor.prototype as Accessor<unknown>).as = function as<T, R>(
     this: Accessor<T>,
-    fn: (value: T) => R
+    fn: (value: T) => R,
 ): Accessor<R> {
     const self = this;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new (Accessor as any)(() => fn(self()), () => self as unknown as () => void) as Accessor<R>;
+    const Ctor = Accessor as unknown as new (
+        get: () => R,
+        subscribe: (cb: Callback) => DisposeFn,
+    ) => Accessor<R>;
+    return new Ctor(() => fn(self()), () => self as unknown as () => void);
 };

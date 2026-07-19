@@ -19,7 +19,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding} from 'gnim';
+import {Accessor, createBinding, createState} from 'gnim';
 import {app} from '#/apps/shell/App';
 import {useSettings} from '#/lib/settings';
 import Hyprland from 'gi://AstalHyprland';
@@ -146,8 +146,8 @@ export default (props: PopupWindowProps) => {
     // Resolve visible as accessor for the binding
     const visibleAccessor: Accessor<boolean> =
         typeof visible === 'function'
-            ? (visible as Accessor<boolean>)
-            : (() => visible as boolean) as Accessor<boolean>;
+            ? visible
+            : createState(visible)[0];
 
     return (
         <Astal.Window

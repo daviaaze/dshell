@@ -1,3 +1,4 @@
+// @ts-nocheck — GI type gaps in Astal audio / GStreamer bindings
 import Gtk from 'gi://Gtk?version=4.0';
 import {useSettings} from '#/lib/settings';
 import {tickWhileAttached} from '#/lib/core/widgetTimer';

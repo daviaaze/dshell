@@ -93,11 +93,11 @@ export class ColorScheme extends Object {
         }
 
         const msUntil = (unixTime: number) =>
-            Math.abs(
+            Math.abs(Number(
                 GLib.DateTime.new_from_unix_local(unixTime)
                     .difference(GLib.DateTime.new_now_local())
-                    .valueOf() as number
-            );
+                    .valueOf()
+            ));
 
         const sunrise = this.#generalSettings.get_double('weather-sunrise-time');
         const sunset = this.#generalSettings.get_double('weather-sunset-time');

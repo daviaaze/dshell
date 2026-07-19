@@ -3,7 +3,7 @@ import Gio from 'gi://Gio?version=2.0';
 import GObject, {register} from 'gnim/gobject';
 import {getter, setter} from '#/lib/decorators';
 import logger from '#/lib/core/logger';
-import {RecorderBackend, RecordingFormat, type VirtualMonitor, type BoundaryGeometry} from './types';
+import {RecorderBackend, type VirtualMonitor, type BoundaryGeometry} from './types';
 import {Recorder} from './recorder';
 import RecordingPrefs from './prefs';
 import {Freeze} from './freeze';

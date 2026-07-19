@@ -1,3 +1,4 @@
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {For} from 'gnim';

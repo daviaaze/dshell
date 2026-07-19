@@ -64,11 +64,11 @@ export async function createVirtualMonitor(
     } catch (e) {
         logger.error(
             'screenshot',
-            `failed to create virtual monitor: ${(e as Error).message}`
+            `failed to create virtual monitor: ${e instanceof Error ? e.message : String(e)}`
         );
         notify(
             'Virtual monitor',
-            `Could not create virtual monitor: ${(e as Error).message}`,
+            `Could not create virtual monitor: ${e instanceof Error ? e.message : String(e)}`,
             ICON_ERROR
         );
         return null;
@@ -83,7 +83,7 @@ export function removeVirtualMonitors(monitors: VirtualMonitor[]): void {
         } catch (e) {
             logger.warn(
                 'screenshot',
-                `failed to remove ${vm.name}: ${(e as Error).message}`
+                `failed to remove ${vm.name}: ${e instanceof Error ? e.message : String(e)}`
             );
         }
     }

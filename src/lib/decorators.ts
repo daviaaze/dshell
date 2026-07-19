@@ -1,16 +1,12 @@
 /**
- * Decorator wrappers for gnim that handle nullable types with TS6.
+ * Thin re-export of gnim's GObject property decorators.
  *
- * gnim's `@getter` and `@setter` decorators are typed for TS5.x decorator
- * contexts. In TS6, `ClassGetterDecoratorContext<This, ReturnType>` is stricter
- * about matching the declared return type, causing errors when a getter returns
- * `Type | null` but the decorator is declared as `@getter(Type)`.
+ * The real type fix lives in `src/types/gnim-overrides.d.ts`, which
+ * overrides gnim's TS5-era decorator types with TS6-compatible ones
+ * (decoupling the GObject ParamSpec type from the getter's return type).
  *
- * These wrappers use looser internal types while preserving the public API.
+ * This barrel exists so internal code imports from `#/lib/decorators`
+ * instead of reaching into `gnim/gobject` directly, providing a single
+ * seam for future decorator-related changes.
  */
-import {getter as _getter, setter as _setter} from 'gnim/gobject';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const getter = _getter as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const setter = _setter as any;
+export {getter, setter} from 'gnim/gobject';

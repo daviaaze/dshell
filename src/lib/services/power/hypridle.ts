@@ -5,6 +5,44 @@ import logger from '#/lib/core/logger';
 import {Accessor} from 'gnim';
 import {writeHypridleConfig, deleteHypridleConfig, type HypridleConfig} from './hypridleConfig';
 
+type PropKey = keyof HypridleConfig | 'enabled';
+
+/**
+ * Descriptor for a single hypridle property: its GObject notify name,
+ * clamp range, settings accessor key, and how changing it may bump
+ * dependent values to maintain dim < idle < dpms < suspend ordering.
+ */
+interface PropDef {
+    notify: string;
+    settingsKey: string;
+    /** Compute clamped value from raw input + current props. Return raw value if no change needed. */
+    clamp?: (raw: number, current: Record<PropKey, number>) => number;
+    /** Called after the value is set; return overrides for dependent props. */
+    cascade?: (val: number, current: Record<PropKey, number>) => Partial<Record<PropKey, number>>;
+}
+
+const PROPS: Record<string, PropDef> = {
+    enabled:           {notify: 'enabled',           settingsKey: 'autoLockEnabled'},
+    idleTimeout:       {notify: 'idle-timeout',      settingsKey: 'idleTimeout',
+        clamp: (v, _cur) => Math.max(60, Math.min(v, 1800)),
+        cascade: (v, cur) => {
+            const r: Partial<Record<PropKey, number>> = {};
+            if (cur.dimTimeout >= v)  r.dimTimeout = Math.max(30, v - 10);
+            if (cur.dpmsTimeout <= v) r.dpmsTimeout = v + 10;
+            return r;
+        }},
+    dimTimeout:        {notify: 'dim-timeout',       settingsKey: 'screenDimTimeout',
+        clamp: (v, cur) => Math.max(30, Math.min(v, cur.idleTimeout - 10)),
+        cascade: (v, cur) => v >= cur.idleTimeout ? {idleTimeout: v + 10} : {}},
+    dimEnabled:        {notify: 'dim-enabled',       settingsKey: 'screenDimEnabled'},
+    dpmsTimeout:       {notify: 'dpms-timeout',      settingsKey: 'dpmsTimeout',
+        clamp: (v, cur) => Math.max(cur.idleTimeout + 10, Math.min(v, 3600)),
+        cascade: (v, cur) => cur.suspendTimeout <= v ? {suspendTimeout: v + 10} : {}},
+    dpmsEnabled:       {notify: 'dpms-enabled',      settingsKey: 'dpmsEnabled'},
+    suspendTimeout:    {notify: 'suspend-timeout',   settingsKey: 'suspendTimeout',
+        clamp: (v, cur) => Math.max(cur.dpmsTimeout + 10, Math.min(v, 7200))},
+    suspendEnabled:    {notify: 'suspend-enabled',   settingsKey: 'suspendEnabled'},
+};
 
 @register({GTypeName: 'Hypridle'})
 export default class Hypridle extends GObject.Object {
@@ -14,182 +52,87 @@ export default class Hypridle extends GObject.Object {
         return this.instance;
     }
 
-    #enabled = true;
-    #idleTimeout = 300;
-    #dimTimeout = 240;
-    #dimEnabled = true;
-    #dpmsEnabled = true;
-    #dpmsTimeout = 600;
-    #suspendEnabled = false;
-    #suspendTimeout = 1800;
+    #values: Record<PropKey, any> = {
+        enabled: true,
+        idleTimeout: 300,
+        dimTimeout: 240,
+        dimEnabled: true,
+        dpmsTimeout: 600,
+        dpmsEnabled: true,
+        suspendTimeout: 1800,
+        suspendEnabled: false,
+    };
+
+    #settings: Record<string, (v: any) => void> | null = null;
     #process: Process | null = null;
-    #settings: {
-        autoLockEnabled: Accessor<boolean>;
-        idleTimeout: Accessor<number>;
-        screenDimEnabled: Accessor<boolean>;
-        screenDimTimeout: Accessor<number>;
-        dpmsEnabled: Accessor<boolean>;
-        dpmsTimeout: Accessor<number>;
-        suspendEnabled: Accessor<boolean>;
-        suspendTimeout: Accessor<number>;
-        setAutoLockEnabled: (v: boolean) => void;
-        setIdleTimeout: (v: number) => void;
-        setScreenDimEnabled: (v: boolean) => void;
-        setScreenDimTimeout: (v: number) => void;
-        setDpmsEnabled: (v: boolean) => void;
-        setDpmsTimeout: (v: number) => void;
-        setSuspendEnabled: (v: boolean) => void;
-        setSuspendTimeout: (v: number) => void;
-    } | null = null;
+
+    // ── GObject property accessors ────────────────────────────────────
+
+    @getter(Boolean) get enabled()         { return this.#values.enabled; }
+    @setter(Boolean) set enabled(v)        { this.#set('enabled', v); }
+
+    @getter(Number)  get idleTimeout()     { return this.#values.idleTimeout; }
+    @setter(Number)  set idleTimeout(v)    { this.#set('idleTimeout', v); }
+
+    @getter(Number)  get dimTimeout()      { return this.#values.dimTimeout; }
+    @setter(Number)  set dimTimeout(v)     { this.#set('dimTimeout', v); }
+
+    @getter(Boolean) get dimEnabled()      { return this.#values.dimEnabled; }
+    @setter(Boolean) set dimEnabled(v)     { this.#set('dimEnabled', v); }
+
+    @getter(Number)  get dpmsTimeout()     { return this.#values.dpmsTimeout; }
+    @setter(Number)  set dpmsTimeout(v)    { this.#set('dpmsTimeout', v); }
+
+    @getter(Boolean) get dpmsEnabled()     { return this.#values.dpmsEnabled; }
+    @setter(Boolean) set dpmsEnabled(v)    { this.#set('dpmsEnabled', v); }
+
+    @getter(Number)  get suspendTimeout()  { return this.#values.suspendTimeout; }
+    @setter(Number)  set suspendTimeout(v) { this.#set('suspendTimeout', v); }
+
+    @getter(Boolean) get suspendEnabled()  { return this.#values.suspendEnabled; }
+    @setter(Boolean) set suspendEnabled(v) { this.#set('suspendEnabled', v); }
 
     @getter(Boolean)
-    get enabled() {
-        return this.#enabled;
-    }
+    get available() { return GLib.find_program_in_path('hypridle') !== null; }
 
-    @setter(Boolean)
-    set enabled(v: boolean) {
-        if (this.#enabled === v) return;
-        this.#enabled = v;
-        this.#settings?.setAutoLockEnabled(v);
-        this.#apply();
-        this.notify('enabled');
-    }
+    // ── Centralised property write ────────────────────────────────────
 
-    @getter(Number)
-    get idleTimeout() {
-        return this.#idleTimeout;
-    }
+    #set(key: PropKey, value: any) {
+        const def = PROPS[key];
+        if (!def) return;
 
-    @setter(Number)
-    set idleTimeout(v: number) {
-        v = Math.max(60, Math.min(1800, v));
-        if (this.#idleTimeout === v) return;
-        this.#idleTimeout = v;
-        // Cross-validate: keep dim < idle < dpms < suspend
-        if (this.#dimTimeout >= v) {
-            this.#dimTimeout = Math.max(30, v - 10);
-            this.notify('dim-timeout');
+        // Clamp (may reference other current values for dynamic bounds)
+        if (def.clamp && typeof value === 'number') {
+            const cur = this.#values as Record<PropKey, number>;
+            value = def.clamp(value, cur);
         }
-        if (this.#dpmsTimeout <= v) {
-            this.#dpmsTimeout = v + 10;
-            this.notify('dpms-timeout');
+
+        if (this.#values[key] === value) return;
+        this.#values[key] = value;
+
+        // Cascade — adjust dependent values to maintain ordering invariants
+        if (def.cascade && typeof value === 'number') {
+            const cur = this.#values as Record<PropKey, number>;
+            const overrides = def.cascade(value, cur);
+            for (const [depKey, depVal] of Object.entries(overrides)) {
+                const k = depKey as PropKey;
+                if (depVal !== undefined && this.#values[k] !== depVal) {
+                    this.#values[k] = depVal;
+                    const depDef = PROPS[k];
+                    if (depDef) this.notify(depDef.notify);
+                }
+            }
         }
-        if (this.#suspendTimeout <= this.#dpmsTimeout) {
-            this.#suspendTimeout = this.#dpmsTimeout + 10;
-            this.notify('suspend-timeout');
-        }
-        this.#settings?.setIdleTimeout(v);
+
+        // Sync to GSettings accessor
+        const acc = this.#settings?.[def.settingsKey];
+        if (acc && typeof acc === 'function') acc(value);
+
+        this.notify(def.notify);
         this.#apply();
-        this.notify('idle-timeout');
     }
 
-    @getter(Number)
-    get dimTimeout() {
-        return this.#dimTimeout;
-    }
-
-    @setter(Number)
-    set dimTimeout(v: number) {
-        v = Math.max(30, Math.min(this.#idleTimeout - 10, v));
-        if (this.#dimTimeout === v) return;
-        this.#dimTimeout = v;
-        this.#settings?.setScreenDimTimeout(v);
-        this.#apply();
-        this.notify('dim-timeout');
-    }
-
-    @getter(Boolean)
-    get dimEnabled() {
-        return this.#dimEnabled;
-    }
-
-    @setter(Boolean)
-    set dimEnabled(v: boolean) {
-        if (this.#dimEnabled === v) return;
-        this.#dimEnabled = v;
-        this.#settings?.setScreenDimEnabled(v);
-        this.#apply();
-        this.notify('dim-enabled');
-    }
-
-    @getter(Boolean)
-    get dpmsEnabled() {
-        return this.#dpmsEnabled;
-    }
-
-    @setter(Boolean)
-    set dpmsEnabled(v: boolean) {
-        if (this.#dpmsEnabled === v) return;
-        this.#dpmsEnabled = v;
-        this.#settings?.setDpmsEnabled(v);
-        this.#apply();
-        this.notify('dpms-enabled');
-    }
-
-    @getter(Number)
-    get dpmsTimeout() {
-        return this.#dpmsTimeout;
-    }
-
-    @setter(Number)
-    set dpmsTimeout(v: number) {
-        v = Math.max(this.#idleTimeout + 10, Math.min(3600, v));
-        if (this.#dpmsTimeout === v) return;
-        this.#dpmsTimeout = v;
-        // Cross-validate: keep dpms < suspend
-        if (this.#suspendTimeout <= v) {
-            this.#suspendTimeout = v + 10;
-            this.notify('suspend-timeout');
-        }
-        this.#settings?.setDpmsTimeout(v);
-        this.#apply();
-        this.notify('dpms-timeout');
-    }
-
-    @getter(Boolean)
-    get suspendEnabled() {
-        return this.#suspendEnabled;
-    }
-
-    @setter(Boolean)
-    set suspendEnabled(v: boolean) {
-        if (this.#suspendEnabled === v) return;
-        this.#suspendEnabled = v;
-        this.#settings?.setSuspendEnabled(v);
-        this.#apply();
-        this.notify('suspend-enabled');
-    }
-
-    @getter(Number)
-    get suspendTimeout() {
-        return this.#suspendTimeout;
-    }
-
-    @setter(Number)
-    set suspendTimeout(v: number) {
-        v = Math.max(this.#dpmsTimeout + 10, Math.min(7200, v));
-        if (this.#suspendTimeout === v) return;
-        this.#suspendTimeout = v;
-        this.#settings?.setSuspendTimeout(v);
-        this.#apply();
-        this.notify('suspend-timeout');
-    }
-
-    @getter(Boolean)
-    get available() {
-        return GLib.find_program_in_path('hypridle') !== null;
-    }
-
-    #subscribeSetting<T>(
-        accessor: Accessor<T>,
-        onChange: (value: T) => void,
-    ) {
-        accessor.subscribe(() => {
-            const v = accessor();
-            onChange(v);
-        });
-    }
+    // ── Initialisation ────────────────────────────────────────────────
 
     init(settings: {
         autoLockEnabled: Accessor<boolean>;
@@ -213,91 +156,46 @@ export default class Hypridle extends GObject.Object {
             logger.warn('hypridle', 'init() called but already initialized — skipping');
             return;
         }
-        this.#settings = settings;
-        this.#enabled = settings.autoLockEnabled();
-        this.#idleTimeout = settings.idleTimeout();
-        this.#dimEnabled = settings.screenDimEnabled();
-        this.#dimTimeout = settings.screenDimTimeout();
-        this.#dpmsEnabled = settings.dpmsEnabled();
-        this.#dpmsTimeout = settings.dpmsTimeout();
-        this.#suspendEnabled = settings.suspendEnabled();
-        this.#suspendTimeout = settings.suspendTimeout();
 
-        this.#subscribeSetting(settings.autoLockEnabled, v => {
-            if (this.#enabled === v) return;
-            this.#enabled = v;
-            this.notify('enabled');
-            this.#apply();
-        });
+        this.#settings = {};
+        const s = this.#settings; // local ref — always non-null after guard above
 
-        this.#subscribeSetting(settings.idleTimeout, v => {
-            if (this.#idleTimeout === v) return;
-            this.#idleTimeout = v;
-            this.notify('idle-timeout');
-            if (this.#dpmsTimeout < v + 10) {
-                this.#dpmsTimeout = v + 10;
-                this.notify('dpms-timeout');
-            }
-            if (this.#suspendTimeout < this.#dpmsTimeout + 10) {
-                this.#suspendTimeout = this.#dpmsTimeout + 10;
-                this.notify('suspend-timeout');
-            }
-            this.#apply();
-        });
+        // Wire each GSettings accessor → this.#set() on change
+        const link = <T>(acc: Accessor<T>, setterFn: (v: T) => void, key: PropKey) => {
+            const def = PROPS[key];
+            s[def.settingsKey] = setterFn;
+            acc.subscribe(() => {
+                const v = acc();
+                if (this.#values[key] !== v) this.#set(key, v);
+            });
+        };
 
-        this.#subscribeSetting(settings.screenDimEnabled, v => {
-            if (this.#dimEnabled === v) return;
-            this.#dimEnabled = v;
-            this.notify('dim-enabled');
-            this.#apply();
-        });
+        link(settings.autoLockEnabled,   settings.setAutoLockEnabled,   'enabled');
+        link(settings.idleTimeout,       settings.setIdleTimeout,       'idleTimeout');
+        link(settings.screenDimEnabled,  settings.setScreenDimEnabled,  'dimEnabled');
+        link(settings.screenDimTimeout,  settings.setScreenDimTimeout,  'dimTimeout');
+        link(settings.dpmsEnabled,       settings.setDpmsEnabled,       'dpmsEnabled');
+        link(settings.dpmsTimeout,       settings.setDpmsTimeout,       'dpmsTimeout');
+        link(settings.suspendEnabled,    settings.setSuspendEnabled,    'suspendEnabled');
+        link(settings.suspendTimeout,    settings.setSuspendTimeout,    'suspendTimeout');
 
-        this.#subscribeSetting(settings.screenDimTimeout, v => {
-            if (this.#dimTimeout === v) return;
-            this.#dimTimeout = v;
-            this.notify('dim-timeout');
-            this.#apply();
-        });
-
-        this.#subscribeSetting(settings.dpmsEnabled, v => {
-            if (this.#dpmsEnabled === v) return;
-            this.#dpmsEnabled = v;
-            this.notify('dpms-enabled');
-            this.#apply();
-        });
-
-        this.#subscribeSetting(settings.dpmsTimeout, v => {
-            if (this.#dpmsTimeout === v) return;
-            this.#dpmsTimeout = v;
-            this.notify('dpms-timeout');
-            if (this.#suspendTimeout < v + 10) {
-                this.#suspendTimeout = v + 10;
-                this.notify('suspend-timeout');
-            }
-            this.#apply();
-        });
-
-        this.#subscribeSetting(settings.suspendEnabled, v => {
-            if (this.#suspendEnabled === v) return;
-            this.#suspendEnabled = v;
-            this.notify('suspend-enabled');
-            this.#apply();
-        });
-
-        this.#subscribeSetting(settings.suspendTimeout, v => {
-            if (this.#suspendTimeout === v) return;
-            this.#suspendTimeout = v;
-            this.notify('suspend-timeout');
-            this.#apply();
-        });
-
-        this.#apply();
+        // Load initial values
+        this.#set('enabled', settings.autoLockEnabled());
+        this.#set('idleTimeout', settings.idleTimeout());
+        this.#set('dimTimeout', settings.screenDimTimeout());
+        this.#set('dimEnabled', settings.screenDimEnabled());
+        this.#set('dpmsTimeout', settings.dpmsTimeout());
+        this.#set('dpmsEnabled', settings.dpmsEnabled());
+        this.#set('suspendTimeout', settings.suspendTimeout());
+        this.#set('suspendEnabled', settings.suspendEnabled());
     }
+
+    // ── Process lifecycle ─────────────────────────────────────────────
 
     #apply() {
         try {
             if (!this.available) return;
-            if (this.#enabled) {
+            if (this.#values.enabled) {
                 this.#writeConfig();
                 this.#restart();
             } else {
@@ -309,65 +207,42 @@ export default class Hypridle extends GObject.Object {
     }
 
     #writeConfig() {
-        const cfg: HypridleConfig = {
-            dimEnabled: this.#dimEnabled,
-            dimTimeout: this.#dimTimeout,
-            idleTimeout: this.#idleTimeout,
-            dpmsEnabled: this.#dpmsEnabled,
-            dpmsTimeout: this.#dpmsTimeout,
-            suspendEnabled: this.#suspendEnabled,
-            suspendTimeout: this.#suspendTimeout,
-        };
-        writeHypridleConfig(cfg);
+        writeHypridleConfig({
+            dimEnabled: this.#values.dimEnabled,
+            dimTimeout: this.#values.dimTimeout,
+            idleTimeout: this.#values.idleTimeout,
+            dpmsEnabled: this.#values.dpmsEnabled,
+            dpmsTimeout: this.#values.dpmsTimeout,
+            suspendEnabled: this.#values.suspendEnabled,
+            suspendTimeout: this.#values.suspendTimeout,
+        });
     }
 
     #restart() {
-        // Kill any existing hypridle process (don't call #stop() which
-        // would delete the config we just wrote)
         if (this.#process) {
-            try {
-                this.#process.kill();
-            } catch (e) {
+            try { this.#process.kill(); } catch (e) {
                 logger.warn('hypridle', 'failed to kill old process:', e);
             }
             this.#process = null;
         }
-        try {
-            Process.exec('pkill -x hypridle');
-        } catch (e) {
-            logger.debug(
-                'hypridle',
-                'pkill skipped (hypridle not running):',
-                e
-            );
+        try { Process.exec('pkill -x hypridle'); } catch (e) {
+            logger.debug('hypridle', 'pkill skipped (hypridle not running):', e);
         }
-        try {
-            this.#process = Process.subprocessv(['hypridle']);
-        } catch (e) {
+        try { this.#process = Process.subprocessv(['hypridle']); } catch (e) {
             logger.error('hypridle', 'failed to start:', e);
         }
     }
 
     #stop() {
         if (this.#process) {
-            try {
-                this.#process.kill();
-            } catch (e) {
+            try { this.#process.kill(); } catch (e) {
                 logger.warn('hypridle', 'failed to kill process:', e);
             }
             this.#process = null;
         }
-        try {
-            Process.exec('pkill -x hypridle');
-        } catch {
-            // pkill may fail if hypridle is not running — that's normal
-        }
-        // Remove the config file so external hypridle instances
-        // (e.g. systemd services) don't pick up the lock listener
+        try { Process.exec('pkill -x hypridle'); } catch { /* ok */ }
         deleteHypridleConfig();
     }
 
-    dispose() {
-        this.#stop();
-    }
+    dispose() { this.#stop(); }
 }

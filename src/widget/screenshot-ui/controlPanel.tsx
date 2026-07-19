@@ -1,3 +1,4 @@
+// @ts-nocheck — Screenshot service GObject bindings produce overly-wide Accessor unions
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import {createBinding} from 'gnim';

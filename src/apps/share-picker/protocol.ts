@@ -78,15 +78,16 @@ export function getHyprMonitors(): HyprMonitor[] {
             logger.warn(CAT, `getHyprMonitors not an array: ${typeof raw}`);
             return [];
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (raw as any[]).map(m => ({
+        type RawJson = Record<string, unknown>;
+        const entries = raw as RawJson[];
+        return entries.map(m => ({
             name: m.name ?? 'Unknown',
             description: m.description ?? m.name ?? '',
             x: m.x ?? 0,
             y: m.y ?? 0,
             width: m.width ?? 0,
             height: m.height ?? 0,
-        }));
+        })) as HyprMonitor[];
     } catch (e) {
         logger.error(CAT, `getHyprMonitors: JSON parse failed. out=${out.substring(0, 200)}`, e);
         return [];
@@ -103,8 +104,9 @@ export function getHyprClients(): HyprClient[] {
             logger.warn(CAT, `getHyprClients not an array: ${typeof raw}`);
             return [];
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (raw as any[]).map(c => ({
+        type RawJson = Record<string, unknown>;
+        const clients = raw as RawJson[];
+        return clients.map(c => ({
             address: c.address ?? '',
             class: c.class ?? c.initialClass ?? '',
             title: c.title ?? '',
@@ -112,7 +114,7 @@ export function getHyprClients(): HyprClient[] {
             size: c.size ?? [0, 0],
             mapped: c.mapped ?? false,
             hidden: c.hidden ?? false,
-        }));
+        })) as HyprClient[];
     } catch (e) {
         logger.error(CAT, `getHyprClients: JSON parse failed. out=${out.substring(0, 200)}`, e);
         return [];

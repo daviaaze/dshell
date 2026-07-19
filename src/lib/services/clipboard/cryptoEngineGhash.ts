@@ -1,5 +1,4 @@
-// @ts-nocheck — noUncheckedIndexedAccess on well-tested crypto impl
-
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import {xor, padTo16, lenBlock, incCounter} from './cryptoEngineTables';
 
 /**

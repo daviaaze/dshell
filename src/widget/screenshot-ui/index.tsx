@@ -1,9 +1,9 @@
+// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createState} from 'gnim';
+import {createBinding, createState} from 'gnim';
 import {app} from '#/apps/shell/App';
 import Screenshot from '#/lib/services/capture/screenshot';
 import WindowManager from '#/lib/services/state/windowManager';

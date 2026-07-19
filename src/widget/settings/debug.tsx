@@ -30,7 +30,7 @@ export default () => {
                             .filter(Boolean);
                         if (cats.length === 0) return;
                         const current =
-                            settings.debugCategories() as string[];
+                            settings.debugCategories();
                         for (const cat of cats) {
                             if (!current.includes(cat)) {
                                 current.push(cat);
@@ -58,7 +58,7 @@ export default () => {
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
                                     const current =
-                                        settings.debugCategories() as string[];
+                                        settings.debugCategories();
                                     settings.setDebugCategories(
                                         current.filter(c => c !== cat)
                                     );

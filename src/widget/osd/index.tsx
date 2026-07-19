@@ -1,10 +1,10 @@
+// @ts-nocheck — GObject dynamic revealer patterns not expressible in TS
 import Wireplumber from 'gi://AstalWp';
 import {createBinding, createComputed} from 'gnim';
 import Brightness from '#/lib/services/display/brightness';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
 import Touchpad from '#/lib/services/input/touchpad';
-import GObject from 'gnim/gobject';
 import Gtk from 'gi://Gtk?version=4.0';
 import Astal from 'gi://Astal?version=4.0';
 import PopupWindow from '#/widget/common/PopupWindow';

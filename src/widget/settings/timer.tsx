@@ -94,7 +94,7 @@ export default () => {
                     onApply={self => {
                         const value = parseInt(self.text.trim(), 10);
                         if (isNaN(value) || value <= 0) return;
-                        const current = settings.countdownPresets() as number[];
+                        const current = settings.countdownPresets();
                         if (!current.includes(value)) {
                             settings.setCountdownPresets(
                                 [...current, value].sort((a, b) => a - b)
@@ -105,7 +105,7 @@ export default () => {
                 />
                 <Adw.ActionRow
                     title={'Presets'}
-                    subtitle={(settings.countdownPresets() as number[])
+                    subtitle={(settings.countdownPresets())
                         .map(m => `${m}m`)
                         .join(', ')}
                 >

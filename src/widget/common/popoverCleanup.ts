@@ -10,8 +10,7 @@ export function usePopoverCleanup(
     self: (Gtk.Widget & {popover?: Gtk.Popover | null}) | Gtk.MenuButton
 ) {
     self.connect('destroy', () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const popover = self.popover ?? (self as any).get_popover?.();
+        const popover = self.popover ?? ('get_popover' in self ? (self as Gtk.MenuButton).get_popover() : undefined);
         if (popover) {
             try {
                 popover.popdown();

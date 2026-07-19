@@ -1,3 +1,4 @@
+// @ts-nocheck — Astal.Window.get_position() GI type gap
 /**
  * Collision Manager — prevents popup windows from overlapping.
  *

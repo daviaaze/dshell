@@ -41,10 +41,10 @@ export default () => {
                             )
                         }
                         $={self => {
-                            const v = (bar.position as any).peek();
+                            const v = bar.position.peek();
                             self.activeName = String(v ?? '');
-                            (bar.position as any).subscribe((v: number) => {
-                                self.activeName = String(v);
+                            bar.position.subscribe(() => {
+                                self.activeName = String(bar.position());
                             });
                         }}
                     >
@@ -79,14 +79,14 @@ export default () => {
                 <Adw.EntryRow
                     title={'Temperature Path'}
                     showApplyButton
-                    text={(bar.tempPath() as string) ?? ''}
+                    text={bar.tempPath() ?? ''}
                     onEntryActivated={self => bar.setTempPath(self.text)}
                     onApply={self => bar.setTempPath(self.text)}
                 />
                 <Adw.EntryRow
                     title={'System Monitor'}
                     showApplyButton
-                    text={(bar.systemMonitor() as string) ?? ''}
+                    text={bar.systemMonitor() ?? ''}
                     onEntryActivated={self => bar.setSystemMonitor(self.text)}
                     onApply={self => bar.setSystemMonitor(self.text)}
                 />
@@ -132,7 +132,7 @@ export default () => {
                     onApply={self => {
                         const id = self.text.trim();
                         if (!id) return;
-                        const current = bar.dockPinnedApps() as string[];
+                        const current = bar.dockPinnedApps();
                         if (!current.includes(id)) {
                             bar.setDockPinnedApps([...current, id]);
                         }
@@ -148,7 +148,7 @@ export default () => {
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
                                     const current =
-                                        bar.dockPinnedApps() as string[];
+                                        bar.dockPinnedApps();
                                     bar.setDockPinnedApps(
                                         current.filter(a => a !== appId)
                                     );

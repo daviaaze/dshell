@@ -35,7 +35,7 @@ function findCoretempPath(): string | null {
             }
         }
     } catch (e) {
-        logger.error('systemUsage', 'hwmon enumeration failed:', (e as Error).message);
+        logger.error('systemUsage', 'hwmon enumeration failed:', e instanceof Error ? e.message : String(e));
     } finally {
         iter?.close(null);
     }

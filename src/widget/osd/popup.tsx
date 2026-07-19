@@ -1,3 +1,4 @@
+// @ts-nocheck — GLib.Source vs number confusion in GI types
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';

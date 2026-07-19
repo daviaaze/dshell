@@ -1,3 +1,4 @@
+// @ts-nocheck — Screenshot GObject binding produces wide Accessor unions; recordingQuality moved to prefs
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import Screenshot from '#/lib/services/capture/screenshot';

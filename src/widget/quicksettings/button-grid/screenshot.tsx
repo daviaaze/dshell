@@ -95,9 +95,9 @@ export default () => {
                     marginStart={4}
                 >
                     <Gtk.CheckButton
-                        active={createBinding(screenshot, 'audio')}
+                        active={createBinding(screenshot.prefs, 'audio')}
                         onNotifyActive={({active}) => {
-                            screenshot.audio = active;
+                            screenshot.prefs.audio = active;
                         }}
                     />
                     <Gtk.Label label="Record Audio" />
