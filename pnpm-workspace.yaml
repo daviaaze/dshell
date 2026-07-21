@@ -1,2 +1,5 @@
 allowBuilds:
   esbuild: true
+
+patchedDependencies:
+  gnim@1.9.1: patches/gnim@1.9.1.patch

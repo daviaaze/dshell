@@ -4,13 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  gnim@1.9.1:
+    hash: 3945e2ce6886bdf3ea76baf9745e5115fa30c658ce940b4011978031f577a032
+    path: patches/gnim@1.9.1.patch
+
 importers:
 
   .:
     dependencies:
       gnim:
         specifier: 1.9.1
-        version: 1.9.1
+        version: 1.9.1(patch_hash=3945e2ce6886bdf3ea76baf9745e5115fa30c658ce940b4011978031f577a032)
       gnim-schemas:
         specifier: ^0.3.0
         version: 0.3.0
@@ -1321,9 +1326,9 @@ snapshots:
 
   gnim-schemas@0.3.0:
     dependencies:
-      gnim: 1.9.1
+      gnim: 1.9.1(patch_hash=3945e2ce6886bdf3ea76baf9745e5115fa30c658ce940b4011978031f577a032)
 
-  gnim@1.9.1: {}
+  gnim@1.9.1(patch_hash=3945e2ce6886bdf3ea76baf9745e5115fa30c658ce940b4011978031f577a032): {}
 
   ignore@5.3.2: {}
 
