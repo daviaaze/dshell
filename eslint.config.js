@@ -11,7 +11,7 @@ export default tseslint.config(
     ...tseslint.configs.recommended,
     sonarjs.configs.recommended,
 
-    // ── Widget/service boundary guard — no Process or raw GI services ──
+    // ── Widget/service boundary guard — no Process, spawns, or raw GI services ──
     {
         files: ['src/widget/**'],
         rules: {
@@ -54,6 +54,30 @@ export default tseslint.config(
                     ],
                 },
             ],
+            'no-restricted-properties': [
+                'error',
+                {
+                    object: 'GLib',
+                    property: 'spawn_command_line_async',
+                    message:
+                        'Widgets must not execute shell commands directly. ' +
+                        'Call a service method instead.',
+                },
+                {
+                    object: 'GLib',
+                    property: 'spawn_async',
+                    message:
+                        'Widgets must not execute shell commands directly. ' +
+                        'Call a service method instead.',
+                },
+                {
+                    object: 'GLib',
+                    property: 'spawn_command_line',
+                    message:
+                        'Widgets must not execute shell commands directly. ' +
+                        'Call a service method instead.',
+                },
+            ],
         },
     },
     // ── Exemptions: widget files that legitimately use these imports ──
@@ -80,120 +104,9 @@ export default tseslint.config(
             ],
         },
     },
-    {
-        files: ['src/widget/bar/weather.tsx'],
-        rules: {
-            'no-restricted-imports': [
-                'error',
-                {
-                    paths: [
-                        {
-                            name: '#/lib/core/process',
-                            message:
-                                'Widgets must not call Process.exec directly. ' +
-                                'Encapsulate shell commands behind a service method.',
-                        },
-                    ],
-                    patterns: [
-                        {
-                            group: ['gi://AstalAuth*'],
-                            message:
-                                'Widgets must not import AstalAuth directly. ' +
-                                'Use the AuthSession service instead.',
-                        },
-                        {
-                            group: ['gi://Gtk4SessionLock*'],
-                            message:
-                                'Widgets must not import Gtk4SessionLock directly. ' +
-                                'Use the AuthSession service instead.',
-                        },
-                        {
-                            group: ['gi://cairo*'],
-                            message:
-                                'Widgets must not import Cairo directly. ' +
-                                'Encapsulate drawing logic behind a service method.',
-                        },
-                    ],
-                },
-            ],
-        },
-    },
-    {
-        files: ['src/widget/settings/weather.tsx'],
-        rules: {
-            'no-restricted-imports': [
-                'error',
-                {
-                    paths: [
-                        {
-                            name: '#/lib/core/process',
-                            message:
-                                'Widgets must not call Process.exec directly. ' +
-                                'Encapsulate shell commands behind a service method.',
-                        },
-                    ],
-                    patterns: [
-                        {
-                            group: ['gi://AstalAuth*'],
-                            message:
-                                'Widgets must not import AstalAuth directly. ' +
-                                'Use the AuthSession service instead.',
-                        },
-                        {
-                            group: ['gi://Gtk4SessionLock*'],
-                            message:
-                                'Widgets must not import Gtk4SessionLock directly. ' +
-                                'Use the AuthSession service instead.',
-                        },
-                        {
-                            group: ['gi://cairo*'],
-                            message:
-                                'Widgets must not import Cairo directly. ' +
-                                'Encapsulate drawing logic behind a service method.',
-                        },
-                    ],
-                },
-            ],
-        },
-    },
-    {
-        files: ['src/widget/lockscreen/index.tsx'],
-        rules: {
-            'no-restricted-imports': [
-                'error',
-                {
-                    paths: [
-                        {
-                            name: '#/lib/core/process',
-                            message:
-                                'Widgets must not call Process.exec directly. ' +
-                                'Encapsulate shell commands behind a service method.',
-                        },
-                    ],
-                    patterns: [
-                        {
-                            group: ['gi://AstalAuth*'],
-                            message:
-                                'Widgets must not import AstalAuth directly. ' +
-                                'Use the AuthSession service instead.',
-                        },
-                        {
-                            group: ['gi://GWeather*'],
-                            message:
-                                'Widgets must not import GWeather directly. ' +
-                                'Use the Weather service getters instead.',
-                        },
-                        {
-                            group: ['gi://cairo*'],
-                            message:
-                                'Widgets must not import Cairo directly. ' +
-                                'Encapsulate drawing logic behind a service method.',
-                        },
-                    ],
-                },
-            ],
-        },
-    },
+
+
+
 
     // ── Project-specific rules ─────────────────────────────────────────
     {

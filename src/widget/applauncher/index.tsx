@@ -68,9 +68,8 @@ export default () => {
                 } else {
                     entryRef?.set_text('');
                     setMode('apps');
-                    ShellState.get_default().launcherQuery = '';
+                    shellState.closeLauncher();
                 }
-                ShellState.get_default().launcherOpen = self.visible;
             }}
             cssClasses={['card', 'frame', 'background']}
             css={'padding-right:0px;'}

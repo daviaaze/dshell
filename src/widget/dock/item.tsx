@@ -1,10 +1,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import GLib from 'gi://GLib?version=2.0';
 import {onCleanup} from 'gnim';
 import {useSettings} from '#/lib/settings';
-import {getAppList, exactQuery} from '#/lib/services/state/apps';
+import {getAppList, exactQuery, launchDesktopFile} from '#/lib/services/state/apps';
 import {ActionButton} from '#/widget/common/actionButton';
 import logger from '#/lib/core/logger';
 
@@ -31,7 +30,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
             clients[0].focus();
         } else if (pinned) {
             logger.debug('dock', `launch: ${desktopFile}`);
-            GLib.spawn_command_line_async(`gtk-launch ${desktopFile}`);
+            launchDesktopFile(desktopFile);
         }
     };
 
@@ -112,7 +111,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     const status = (<Gtk.Box />) as Gtk.Box & { css: string };
                     // Update status indicator reactively
                     const updateStatus = () => {
-                        // eslint-disable-next-line sonarjs/no-nested-conditional
+                         
                         status.css = active
                             ? `
                 min-width: 16px;

@@ -183,6 +183,27 @@ export function launchApp(application: Apps.Application) {
 }
 
 /**
+ * Launch a desktop file by entry name, regardless of whether it's in
+ * the AstalApps database. Prefers uwsm-app but falls back to gtk-launch
+ * for entries not found in the scanned desktop file index.
+ * Encapsulates all shell commands so widgets stay clean.
+ */
+export function launchDesktopFile(entry: string) {
+    // Try AstalApps lookup first
+    const app = exactQuery(entry.replace('.desktop', ''))?.[0];
+    if (app) {
+        launchApp(app);
+        return;
+    }
+    // Fallback for entries not in the scanned database
+    try {
+        GLib.spawn_command_line_async(`gtk-launch ${entry}`);
+    } catch (e) {
+        logger.error('apps', `Failed to launch ${entry}:`, e);
+    }
+}
+
+/**
  * Start watching desktop file directories for changes and auto-reload.
  * Call once during app initialization.
  */

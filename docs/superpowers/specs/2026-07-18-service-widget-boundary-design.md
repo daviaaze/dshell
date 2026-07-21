@@ -1,7 +1,8 @@
 # Service–Widget Boundary Refactor
 
 **Date:** 2026-07-18
-**Status:** Draft
+**Last updated:** 2026-07-18 (Phase 1–5 complete)
+**Status:** Implemented
 **Author:** AI pair programming session
 
 ## Problem
@@ -47,84 +48,96 @@ Services are GObject singletons with:
 
 ## Phases
 
-### Phase 1 — Shell Commands (priority: critical)
+### Phase 1 — Shell Commands (priority: critical) ✅
 
-| Location | What leaks | Fix |
-|---|---|---|
-| `powerMenu.tsx` | `Process.exec('systemctl reboot')` etc. | New `SessionControl` service: `lock()`, `logout()`, `suspend()`, `reboot()`, `powerOff()` |
-| `systemUsage.tsx` | `Process.execAsync(settings.bar.systemMonitor())` | Method `SystemUsage.launchMonitor()` or callback passed at init |
-| `appButton.tsx` | `GLib.spawn_command_line_async('uwsm-app ...')` | Add `AppsService.launch(application)` in `src/lib/services/state/apps.ts` |
-| `region-selector/index.tsx` | `Process.exec('hyprctl clients -j')` | Move to `HyprlandService` helper or existing window service |
+| Location | What leaks | Fix | Status |
+|---|---|---|---|
+| `powerMenu.tsx` | `Process.exec('systemctl reboot')` etc. | New `SessionControl` service: `lock()`, `logout()`, `suspend()`, `reboot()`, `powerOff()` | ✅ done |
+| `systemUsage.tsx` | `Process.execAsync(settings.bar.systemMonitor())` | Method `SystemUsage.launchMonitor()` or callback passed at init | ✅ done |
+| `appButton.tsx` | `GLib.spawn_command_line_async('uwsm-app ...')` | Add `AppsService.launch(application)` in `src/lib/services/state/apps.ts` | ✅ done — `launchApp()` added |
+| `region-selector/index.tsx` | `Process.exec('hyprctl clients -j')` | Move to `HyprlandService` helper or existing window service | ✅ done |
+| `dock/item.tsx` | `GLib.spawn_command_line_async('gtk-launch ...')` | `launchDesktopFile(entry)` in `apps.ts` + ESLint `no-restricted-properties` for `GLib.spawn*` | ✅ done (2026-07-18) |
 
-### Phase 2 — Lifecycle (priority: high)
+### Phase 2 — Lifecycle (priority: high) ✅
 
-| Location | What leaks | Fix |
-|---|---|---|
-| `lockscreen/index.tsx` | PAM auth (`pam.supply_secret()`, `pam.start_authenticate()`), fingerprint lifecycle, brightness save/restore | New `AuthSession` service encapsulating PAM + fingerprint + timeout. Widget receives `onUnlock` callback only |
+| Location | What leaks | Fix | Status |
+|---|---|---|---|
+| `lockscreen/index.tsx` | PAM auth (`pam.supply_secret()`, `pam.start_authenticate()`), fingerprint lifecycle, brightness save/restore | New `AuthSession` service encapsulating PAM + fingerprint + timeout. Widget receives `onUnlock` callback only | ✅ done — `authSession.ts` |
+| `lockscreen/index.tsx` | `Gtk4SessionLock` import (lock lifecycle: `Instance.new`, `lock()`, `unlock()`, `assign_window_to_monitor()`) | New `SessionLockService` in `src/lib/services/session/sessionLockService.ts` | ✅ done (2026-07-18) |
 
-AuthSession service:
+AuthSession service (`src/lib/services/session/authSession.ts`):
 - `start()` — inits PAM + fingerprint
 - `submitPassword(pw: string)` — delegates to PAM
 - `cancel()` — cleanup
 - Signals: `success`, `fail(message)`, `auth-status-changed(status)`
 - Internal timeout, brightness save/restore lifecycle
 
-### Phase 3 — State Mutations (priority: medium)
+SessionLockService (`src/lib/services/session/sessionLockService.ts`):
+- Wraps `Gtk4SessionLock.Instance`
+- `lock()` / `unlock()` — delegates to SessionLock
+- `assignWindow(window, monitor)` — assigns GTK windows to locked session monitors
 
-| Location | What leaks | Fix |
-|---|---|---|
-| `powerMenu.tsx` | `ShellState.get_default().screenlocked = true` | Method `shellState.lock()` |
-| `applauncher/index.tsx` | `ShellState.get_default().qsOpen = false` | Method `shellState.closeQuickSettings()` |
-| `lockscreen/index.tsx` | `ShellState.get_default().screenlocked = false` | Consume existing setter or add `unlock()` method |
+### Phase 3 — State Mutations (priority: medium) ✅
 
-### Phase 4 — Data Logic (priority: low)
+| Location | What leaks | Fix | Status |
+|---|---|---|---|
+| `powerMenu.tsx` | `ShellState.get_default().screenlocked = true` | Method `shellState.lock()` | ✅ done |
+| `applauncher/index.tsx` | `ShellState.get_default().qsOpen = false` | Method `shellState.closeQuickSettings()` | ✅ done |
+| `lockscreen/index.tsx` | `ShellState.get_default().screenlocked = false` | Method `shellState.unlock()` | ✅ done (`unlock()` already existed) |
+| `quicksettings/index.tsx` | `ShellState.get_default().launcherOpen = false` | Method `shellState.closeLauncher()` | ✅ done (2026-07-18) — added `closeLauncher()` to `shellState.ts` |
+| `quicksettings/tray.tsx` | `ShellState.get_default().screenlocked = true` / `qsOpen = false` | `shellState.lock()` / `shellState.closeQuickSettings()` | ✅ done (2026-07-18) |
+| `applauncher/index.tsx` | `ShellState.get_default().launcherQuery = ''` / `launcherOpen = self.visible` in `onNotifyVisible` | `shellState.closeLauncher()` | ✅ done (2026-07-18) |
 
-| Location | What leaks | Fix |
-|---|---|---|
-| `weatherWidget.tsx` | `useWeatherData()` extracting GWeather info | Compute properties on `Weather` service (`tempSummary`, `windSummary`, `forecasts`, etc.) |
-| `applauncher/index.tsx` | Search routing (apps vs clipboard) + frecency re-rank | Move to `LauncherSearch` helper or extend `apps.ts` |
+### Phase 4 — Data Logic (priority: low) ✅ (partial)
 
-### Phase 5 — Reverse Boundary (priority: medium)
+| Location | What leaks | Fix | Status |
+|---|---|---|---|
+| `weatherWidget.tsx` | `useWeatherData()` extracting GWeather info | Compute properties on `Weather` service | ✅ done — `Weather` service has rich getters (`tempSummary`, `feelsLike`, `skyDesc`, `weatherIcon`, `windSpeed`, `windDirection`, `humidity`, `pressure`, `sunrise`, `sunset`, `moonPhase`, `gradient`, forecast methods) |
+| `bar/weather.tsx` | `GWeather.TemperatureUnit.CENTIGRADE` enum for temp formatting — raw `info` binding + manual `.toFixed() + '°C'` | Use `weatherIcon` + `tempSummary` reactive getters | ✅ done (2026-07-18) — ESLint exemption removed |
+| `settings/weather.tsx` | `GWeather.Location.get_world()` inline location search | Use `Weather.updateFromCoords(lat, lon)` | ✅ done (2026-07-18) — ESLint exemption removed |
+| `applauncher/index.tsx` | Search routing (apps vs clipboard) + frecency re-rank | Move to `LauncherSearch` helper or extend `apps.ts` | ⏳ not started |
 
-| Location | What leaks | Fix |
-|---|---|---|
-| `shellState.ts` | Imports `openSettings` from `#/widget` | Invert: widget calls `shellState.openSettings()`, service emits signal, widget listens in App.tsx wiring |
+### Phase 5 — Reverse Boundary (priority: medium) ✅
 
-## Guardrails
+| Location | What leaks | Fix | Status |
+|---|---|---|---|
+| `shellState.ts` | Imports `openSettings` from `#/widget` | Invert: widget calls `shellState.openSettings()`, service emits signal, widget listens in App.tsx wiring | ✅ done |
 
-### ESLint rule — no-restricted-imports
+## Guardrails ✅
 
-Block these imports in `src/widget/**`:
+### ESLint rules — `src/widget/**`
 
-```js
-// eslint.config.js
-{
-  files: ['src/widget/**'],
-  rules: {
-    'no-restricted-imports': ['error', {
-      paths: [
-        '#/lib/core/process',
-      ],
-      patterns: [
-        'gi://AstalAuth*',
-        'gi://Gtk4SessionLock*',
-        'gi://GWeather*',
-        'gi://cairo*',
-      ],
-    }],
-  },
-}
-```
+**`no-restricted-imports`** (active for all `src/widget/**`):
+- `#/lib/core/process` — shell execution
+- `gi://AstalAuth*`, `gi://Gtk4SessionLock*`, `gi://GWeather*`, `gi://cairo*` — raw GI services
 
-### Documented convention
+**`no-restricted-properties`** (active for all `src/widget/**`):
+- `GLib.spawn_command_line_async`, `GLib.spawn_async`, `GLib.spawn_command_line`
 
-- `src/widget/README.md` or `AGENTS.md` entry: "Widget files must not import Process, AstalAuth, GWeather, Cairo, or Gtk4SessionLock. All business logic belongs in services under `src/lib/services/`."
+### Exemptions (files with drawing-specific cairo use)
 
-## Testing
+- `src/widget/common/sunArc.tsx`
+- `src/widget/recording-boundary/**`
+- `src/widget/region-selector/**`
+- `src/widget/screenshot-ui/**`
 
-- Each new/modified service method gets a test in `src/lib/__tests__/`
-- Validation: `pnpm run check:all` (lint + typecheck + compliance)
-- Visual/functional: manual shell session test
+These files are exempt from the cairo, AstalAuth, Gtk4SessionLock, GWeather, and GLib.spawn restrictions. They still cannot import `#/lib/core/process`.
+
+### Documented convention ✅
+
+- `src/widget/README.md` covers the full boundary rules with a table of blocked imports and their service replacements.
+
+## Testing ✅
+
+- `shellState.test.ts` — tests `closeLauncher()` (state mutation + idempotency)
+- `sessionLockService.test.ts` — tests singleton contract and constructor
+- Validation: `pnpm run check:all` (lint + typecheck + compliance) — all clean
+
+## Remaining work
+
+- **Phase 4 remaining:** `applauncher/index.tsx` search routing + frecency re-rank still in widget (low priority)
+- **Cairo exemptions:** sunArc, recording-boundary, region-selector, screenshot-ui — deemed legitimate UI-drawing, kept as documented exemptions
+- **GLib.spawn guard:** uses `no-restricted-properties` (catches `GLib.spawn_*` property access) — works for `GLib.` prefixed calls, won't catch destructured `spawn_command_line_async` (no widgets use that pattern)
 
 ## Future Considerations (out of scope)
 

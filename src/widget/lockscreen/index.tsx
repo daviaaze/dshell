@@ -1,7 +1,7 @@
 import {monitors} from '#/lib/services/monitoring/monitors';
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import SessionLock from 'gi://Gtk4SessionLock';
+import SessionLockService from '#/lib/services/session/sessionLockService';
 import Gtk from 'gi://Gtk?version=4.0';
 import {
     createBinding,
@@ -26,7 +26,7 @@ const CLOCK_MARGIN_BOTTOM = 8;
 
 const createLocks = (onUnlock: () => void) => {
     const {LEFT, RIGHT, TOP, BOTTOM} = Astal.WindowAnchor;
-    const lock = SessionLock.Instance.new();
+    const lockService = SessionLockService.get_default();
     const time = Clock.get_default().time;
     const fingerprint = FingerprintAuth.get_default();
     const authSession = new AuthSession();
@@ -42,7 +42,7 @@ const createLocks = (onUnlock: () => void) => {
 
     const doUnlock = () => {
         cleanupAll();
-        lock.unlock();
+        lockService.unlock();
         WindowManager.get_default().lockscreens.forEach(w => w.destroy());
         ShellState.get_default().unlock();
         onUnlock();
@@ -71,10 +71,10 @@ const createLocks = (onUnlock: () => void) => {
                             .lockscreens) {
                             if (!window.get_realized()) return;
                         }
-                        lock.lock();
+                        lockService.lock();
                         for (const window of WindowManager.get_default()
                             .lockscreens) {
-                            lock.assign_window_to_monitor(
+                            lockService.assignWindow(
                                 window,
                                 window.get_current_monitor()
                             );

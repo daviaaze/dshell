@@ -4,7 +4,6 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, createBinding} from 'gnim';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
 import {WeatherWidget} from '#/widget/common/weatherWidget';
-import GWeather from 'gi://GWeather?version=4.0';
 
 export const WeatherButton = ({
     vertical,
@@ -13,7 +12,9 @@ export const WeatherButton = ({
     vertical: Accessor<boolean>;
     visible?: boolean | Accessor<boolean>;
 }) => {
-    const weather = createBinding(Weather.get_default(), 'info');
+    const svc = Weather.get_default();
+    const iconName = createBinding(svc, 'weather-icon');
+    const tempLabel = createBinding(svc, 'temp-summary');
 
     return (
         <Gtk.MenuButton
@@ -47,19 +48,11 @@ export const WeatherButton = ({
             >
                 <Gtk.Image
                     pixelSize={22}
-                    iconName={weather.as(w => w?.get_icon_name() ?? '')}
+                    iconName={iconName}
                 />
                 <Gtk.Label
                     cssClasses={['heading']}
-                    label={weather.as(w =>
-                        w
-                            ? w
-                                  .get_value_temp(
-                                      GWeather.TemperatureUnit.CENTIGRADE
-                                  )[1]
-                                  .toFixed() + '°C'
-                            : ''
-                    )}
+                    label={tempLabel}
                 />
             </Gtk.Box>
         </Gtk.MenuButton>

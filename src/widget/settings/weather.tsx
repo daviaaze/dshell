@@ -2,7 +2,6 @@ import {useSettings} from '#/lib/settings';
 import Weather from '#/lib/services/location/weather';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import GWeather from 'gi://GWeather?version=4.0';
 import logger from '#/lib/core/logger';
 
 export default () => {
@@ -62,13 +61,10 @@ export default () => {
                 activatable
                 onActivated={() => {
                     logger.info('weather', 'manual weather update triggered');
-                    const world = GWeather.Location.get_world();
-                    if (world) {
-                        weather.location = world.find_nearest_city(
-                            settings.latitude(),
-                            settings.longitude()
-                        );
-                    }
+                    weather.updateFromCoords(
+                        settings.latitude(),
+                        settings.longitude()
+                    );
                 }}
             >
                 <Gtk.Image

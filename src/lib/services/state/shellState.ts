@@ -103,6 +103,14 @@ export default class ShellState extends GObject.Object {
         this.screenlocked = false;
     }
 
+    /** Close the launcher and clear the search query. */
+    closeLauncher() {
+        this.#launcherQuery = '';
+        this.#launcherOpen = false;
+        this.notify('launcher-query');
+        this.notify('launcher-open');
+    }
+
     /** Close the quick settings panel. */
     closeQuickSettings() {
         this.qsOpen = false;

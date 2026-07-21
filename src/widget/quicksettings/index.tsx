@@ -43,8 +43,8 @@ export default () => {
                     self.visible &&
                     ShellState.get_default().launcherOpen
                 )
-                    ShellState.get_default().launcherOpen = false;
-                ShellState.get_default().qsOpen = self.visible;
+                    shellState.closeLauncher();
+                shellState.qsOpen = self.visible;
             }}
             cssClasses={['card', 'frame', 'background']}
             anchor={barCfg.position.as(

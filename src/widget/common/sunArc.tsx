@@ -1,7 +1,7 @@
 import Cairo from 'gi://cairo?version=1.0';
-import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createComputed} from 'gnim';
+import {Accessor, createEffect} from 'gnim';
+import {formatTime} from '#/lib/services/location/weatherUtils';
 
 const SUN_ARC_HEIGHT = 100;
 const SUN_ARC_WIDTH = 280;
@@ -87,7 +87,7 @@ export const SunArc = ({sunrise, sunset, now, moonPhase}: SunArcProps) => {
         }
 
         // ── Sunrise time label (left of arc) ──
-        const sunriseLabel = formatTimeShort(sr);
+        const sunriseLabel = formatTime(sr);
         cr.selectFontFace(
             'sans-serif',
             Cairo.FontSlant.NORMAL,
@@ -105,7 +105,7 @@ export const SunArc = ({sunrise, sunset, now, moonPhase}: SunArcProps) => {
         cr.fill();
 
         // ── Sunset time label (right of arc) ──
-        const sunsetLabel = formatTimeShort(ss);
+        const sunsetLabel = formatTime(ss);
         const extents = cr.textExtents(sunsetLabel);
         cr.setSourceRGBA(1, 1, 1, 0.7);
         cr.moveTo(cx + r - 2 - extents.x_advance, cy + 12);
@@ -131,7 +131,7 @@ export const SunArc = ({sunrise, sunset, now, moonPhase}: SunArcProps) => {
             }
         } else {
             // Night: show moon info (if available) + sunrise countdown
-            const nextSunrise = sr + 86400; // approx same time tomorrow
+            const nextSunrise = n < sr ? sr : sr + 86400; // today's if still upcoming, else approx tomorrow
             const secsUntilSunrise = Math.max(0, nextSunrise - n);
             const hrs = Math.floor(secsUntilSunrise / 3600);
             const mins = Math.floor((secsUntilSunrise % 3600) / 60);
@@ -140,8 +140,8 @@ export const SunArc = ({sunrise, sunset, now, moonPhase}: SunArcProps) => {
             cr.setFontSize(10);
             cr.setSourceRGBA(1, 1, 1, 0.6);
             const moonLabel = moon
-                ? `${moon.phaseEmoji} ${moon.phaseName}`
-                : '🌙 Night';
+                ? moon.phaseName
+                : 'Night';
             const ext3 = cr.textExtents(moonLabel);
             cr.moveTo(cx - ext3.x_advance / 2, h - 14);
             cr.showText(moonLabel);
@@ -167,17 +167,14 @@ export const SunArc = ({sunrise, sunset, now, moonPhase}: SunArcProps) => {
     area.set_draw_func(draw);
 
     // Queue redraw when dependencies change
-    createComputed(() => {
+    createEffect(() => {
         sunrise();
         sunset();
         now();
+        moonPhase?.();
         area.queue_draw();
     });
 
     return area;
 };
 
-function formatTimeShort(unixTs: number): string {
-    const dt = GLib.DateTime.new_from_unix_local(unixTs);
-    return dt.format('%H:%M') ?? '--:--';
-}

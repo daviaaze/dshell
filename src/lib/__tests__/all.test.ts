@@ -13,3 +13,5 @@ import './networkUtils.test';
 import './requestHandler.test';
 import './connectFor.test';
 import './deferredSingleton.test';
+import './shellState.test';
+import './sessionLockService.test';

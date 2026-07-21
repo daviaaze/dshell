@@ -16,7 +16,7 @@ export const TrayBox = () => {
         <IconButton
             icon="system-lock-screen-symbolic"
             onClicked={() => {
-                ShellState.get_default().screenlocked = true;
+                ShellState.get_default().lock();
             }}
         />
     );
@@ -50,7 +50,7 @@ export const TrayBox = () => {
             icon="preferences-system-symbolic"
             onClicked={() => {
                 openSettings();
-                ShellState.get_default().qsOpen = false;
+                ShellState.get_default().closeQuickSettings();
             }}
         />
     );
