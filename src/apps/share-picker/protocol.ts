@@ -38,10 +38,14 @@ function runSync(cmd: string[]): {ok: boolean; out: string; err: string} {
  *   - The XDPH "id" is a wayland object handle serial, NOT a Hyprland client address
  */
 export function parseWindowList(env: string | null): XDPHWindow[] {
-    if (!env) return [];
+    if (!env) {
+        logger.info(CAT, 'XDPH_WINDOW_SHARING_LIST not set — no portal windows available');
+        return [];
+    }
     const result: XDPHWindow[] = [];
 
     const entries = env.split('[HE>]').filter(e => e.trim().length > 0);
+    logger.info(CAT, `parsing XDPH_WINDOW_SHARING_LIST: ${entries.length} entries`);
 
     for (const entry of entries) {
         const idSep = entry.indexOf('[HC>]');
@@ -63,15 +67,21 @@ export function parseWindowList(env: string | null): XDPHWindow[] {
         }
 
         result.push({id, clazz, title, address});
+        logger.debug(CAT, `  parsed XDPH window: id=${id} class=${clazz} title="${title.substring(0, 60)}" addr=${address || 'none'}`);
     }
 
+    logger.info(CAT, `parsed ${result.length} XDPH windows from env`);
     return result;
 }
 
 export function getHyprMonitors(): HyprMonitor[] {
     const {ok, out, err} = runSync([HYPRCTL_BIN, '-j', 'monitors']);
-    logger.debug(CAT, `getHyprMonitors ok=${ok} outLen=${out.length} err=${err}`);
-    if (!ok) return [];
+    logger.info(CAT, `hyprctl -j monitors ok=${ok} outLen=${out.length}`);
+    if (err) logger.warn(CAT, `hyprctl monitors stderr: ${err.substring(0, 200)}`);
+    if (!ok) {
+        logger.warn(CAT, 'hyprctl monitors failed — are you running on Hyprland?');
+        return [];
+    }
     try {
         const raw: unknown = JSON.parse(out);
         if (!Array.isArray(raw)) {
@@ -96,8 +106,12 @@ export function getHyprMonitors(): HyprMonitor[] {
 
 export function getHyprClients(): HyprClient[] {
     const {ok, out, err} = runSync([HYPRCTL_BIN, '-j', 'clients']);
-    logger.debug(CAT, `getHyprClients ok=${ok} outLen=${out.length} err=${err}`);
-    if (!ok) return [];
+    logger.info(CAT, `hyprctl -j clients ok=${ok} outLen=${out.length}`);
+    if (err) logger.warn(CAT, `hyprctl clients stderr: ${err.substring(0, 200)}`);
+    if (!ok) {
+        logger.warn(CAT, 'hyprctl clients failed — window list will be empty');
+        return [];
+    }
     try {
         const raw: unknown = JSON.parse(out);
         if (!Array.isArray(raw)) {
@@ -129,7 +143,10 @@ export function matchXDPHToHyprctl(xdphWin: XDPHWindow, clients: HyprClient[]): 
     // Direct address match (only works if XDPH provides [HA>])
     if (xdphWin.address) {
         const byAddr = clients.find(c => c.address === xdphWin.address);
-        if (byAddr) return byAddr;
+        if (byAddr) {
+            logger.debug(CAT, `matched XDPH window ${xdphWin.id} by address ${xdphWin.address}`);
+            return byAddr;
+        }
     }
 
     // Fallback: match by class + title

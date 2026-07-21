@@ -48,6 +48,25 @@ export function cleanTempDir(): void {
 
 // ── Capture helpers ──────────────────────────────────────────────
 
+/** Synchronous version — blocks until grim finishes. Use for initial captures. */
+export function runCaptureSync(cmd: string[]): boolean {
+    try {
+        const proc = Gio.Subprocess.new(
+            cmd,
+            Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_PIPE
+        );
+        const [, , err] = proc.communicate_utf8(null, null);
+        if (!proc.get_successful()) {
+            logger.error(CAT, `runCaptureSync: ${cmd.join(' ')}`, err?.trim() || '(no stderr)');
+            return false;
+        }
+        return true;
+    } catch (e) {
+        logger.error(CAT, `runCaptureSync new: ${cmd.join(' ')}`, e);
+        return false;
+    }
+}
+
 export function runCapture(cmd: string[], onDone: (ok: boolean) => void): void {
     try {
         const proc = Gio.Subprocess.new(
@@ -101,6 +120,62 @@ function loadTextureAll(path: string, pictures: Gtk.Picture[]): void {
 }
 
 // ── Capture functions ────────────────────────────────────────────
+
+/** Synchronous monitor capture — blocks until done. For initial renders. */
+export function captureMonitorSync(
+    state: MonitorState,
+    pictures: Gtk.Picture[],
+): boolean {
+    const path = monPath(state.info.name);
+    logger.debug(CAT, `captureMonitorSync ${state.info.name} -> ${path}`);
+    const ok = runCaptureSync([GRIM_BIN, '-s', '0.25', '-o', state.info.name, path]);
+    logger.debug(CAT, `captureMonitorSync ${state.info.name} ok=${ok}`);
+    if (ok) {
+        try {
+            state.texture = Gdk.Texture.new_from_filename(path);
+        } catch (e) {
+            logger.error(CAT, `captureMonitorSync: Gdk.Texture.new_from_filename ${path}`, e);
+        }
+        for (const pic of pictures) {
+            try {
+                pic.set_paintable(Gdk.Texture.new_from_filename(path));
+            } catch (e) {
+                logger.error(CAT, `captureMonitorSync: pic.set_paintable ${path}`, e);
+            }
+        }
+    }
+    return ok;
+}
+
+/** Synchronous window capture — blocks until done. For initial renders. */
+export function captureWindowSync(
+    state: WindowState,
+    pictures: Gtk.Picture[],
+): boolean {
+    if (!state.geometry) return false;
+    const g = state.geometry;
+    const addr = windowAddr(state);
+    const path = winPath(addr);
+    const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
+    logger.debug(CAT, `captureWindowSync addr=${addr} geometry=${geometry} -> ${path}`);
+    const ok = runCaptureSync([GRIM_BIN, '-s', '0.25', '-g', geometry, path]);
+    logger.debug(CAT, `captureWindowSync ${addr} ok=${ok}`);
+    if (ok) {
+        try {
+            state.texture = Gdk.Texture.new_from_filename(path);
+        } catch (e) {
+            logger.error(CAT, `captureWindowSync: Gdk.Texture.new_from_filename ${path}`, e);
+        }
+        for (const pic of pictures) {
+            try {
+                pic.set_paintable(Gdk.Texture.new_from_filename(path));
+            } catch (e) {
+                logger.error(CAT, `captureWindowSync: pic.set_paintable ${path}`, e);
+            }
+        }
+    }
+    return ok;
+}
 
 export function captureMonitor(
     state: MonitorState,

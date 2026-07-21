@@ -29,6 +29,7 @@ import {
     runCapture,
     loadTexture,
     captureMonitor,
+    captureMonitorSync,
     captureWindow,
 } from './capture';
 import {MonitorPoller} from './poller';
@@ -69,6 +70,14 @@ function main() {
 
         const {monitors, windows} = buildSources(xdphWindows);
 
+        logger.info(CAT, `${monitors.length} monitors loaded, ${windows.length} windows loaded`);
+        for (const m of monitors) {
+            logger.info(CAT, `  monitor: ${m.info.name} ${m.info.width}x${m.info.height} @ (${m.info.x},${m.info.y})`);
+        }
+        for (const w of windows) {
+            logger.info(CAT, `  window: ${w.info.clazz} geo=${w.geometry ? `${w.geometry.width}x${w.geometry.height}` : 'none'}`);
+        }
+
         applyPopupCss();
 
         // ── Window ──────────────────────────────────────────
@@ -79,7 +88,7 @@ function main() {
             defaultHeight: 520,
             resizable: true,
             decorated: false,
-            hideOnClose: true,
+            hideOnClose: false,
             cssClasses: ['picker-popup'],
         });
 
@@ -189,9 +198,9 @@ function main() {
             }
         });
 
-        // ── Initial capture — fire once so previews aren't blank ─
+        // ── Initial capture — synchronous so previews render immediately ─
         for (const state of monitors) {
-            captureMonitor(state, screensTab.pics);
+            captureMonitorSync(state, screensTab.pics);
         }
         poller.start();
     });

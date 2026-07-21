@@ -113,7 +113,7 @@ function monitorCard(flow: Gtk.FlowBox, state: MonitorState, select: SelectFn, s
     const res = `${state.info.width}×${state.info.height}`;
     buildCard(
         flow,
-        state.info.description || state.info.name,
+        truncate(state.info.description || state.info.name, MAX_DESC_LEN),
         subRes ? `${res} — ${state.info.name}` : res,
         pic,
         () => select('screen', state.info.name),

@@ -61,19 +61,19 @@
 
 | Element | Token / style class | Notes |
 |---------|--------------------|-------|
-| Window | `picker-popup` class - no decorations | Custom CSS class; CSS inline: `border-radius: 12px; border: 1px solid rgba(255,255,255,0.08)` |
+| Window | `picker-popup` class - no decorations | Custom CSS class; CSS inline: `border-radius: var(--shade-radius, 12px); border: 1px solid alpha(@window_bg_color, 0.12)` |
 | Title | `title-2` | Adw style class |
 | Notebook tabs | `Gtk.Notebook` | Standard GTK |
 | Thumbnails | `Gtk.Picture`, 240×135 | `CONTENT_SCALE_DOWN` |
 
 ### Adwaita checklist
 
-- [ ] Uses inline CSS for window rounding and border — **violation**: hardcoded `rgba(255,255,255,0.08)` border
+- [x] Uses inline CSS for window rounding — `var(--shade-radius, 12px)` with `alpha(@window_bg_color, 0.12)` theme-aware border
 - [x] `title-2` for labels
 - [x] Icons are symbolic where used
 
 ## Test plan
 
-- **Unit**: test `parseWindowList` parsing, `formatDuration` in timer? Not used here; test `runSync` Gio.Subprocess helper
-- **Compliance linter**: hardcoded color violation in `ui.ts` (rgba border)
+- **Unit**: test `parseWindowList` parsing; test `runSync` Gio.Subprocess helper
+- **Compliance linter**: ~~hardcoded color violation in `ui.ts` (rgba border)~~ ✅ fixed — now uses `alpha(@window_bg_color, 0.12)`
 - **Visual/manual**: launch via XDPH, test each tab, verify `[SELECTION]` output, test cancel, test restore-token checkbox
