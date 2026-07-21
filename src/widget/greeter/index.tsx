@@ -15,7 +15,7 @@ import {GreetSession} from './GreetSession';
 
 export const Greeter = ({application}: {application: Gtk.Application}) => {
     const greeter = GreetSession.get_default();
-    const [username, setUsername] = createState(GLib.get_user_name());
+    const [username, setUsername] = createState('');
     const [showPassword, setShowPassword] = createState(false);
     let passwordEntry: Gtk.PasswordEntry | null = null;
 
@@ -24,23 +24,24 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     const errorBinding = createBinding(greeter, 'errorMessage');
 
     const handleLogin = () => {
-        const pw = passwordEntry?.get_text() ?? '';
-        if (!pw) return;
-
         if (
-            greeter.state === 'idle' ||
-            greeter.state === 'error' ||
-            greeter.state === 'awaiting-input'
-        ) {
-            if (!showPassword()) {
-                // First step: create session with username
-                greeter.start(username());
-                setShowPassword(true);
-            } else {
-                // Submit password
-                greeter.postAuth(pw);
-                passwordEntry?.set_text('');
-            }
+            greeter.state !== 'idle' &&
+            greeter.state !== 'error' &&
+            greeter.state !== 'awaiting-input'
+        ) return;
+
+        if (!showPassword()) {
+            // First step: create session with username
+            if (!username().trim()) return;
+            greeter.start(username());
+            setShowPassword(true);
+            passwordEntry?.grab_focus();
+        } else {
+            // Submit password
+            const pw = passwordEntry?.get_text() ?? '';
+            if (!pw) return;
+            greeter.postAuth(pw);
+            passwordEntry?.set_text('');
         }
     };
 
@@ -48,9 +49,11 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     onCleanup(
         stateBinding.subscribe(() => {
             if (stateBinding() === 'authenticated') {
-                // Start Hyprland session
-                const sessionCmd = ['Hyprland'];
+                // Start session from env var (set by cage wrapper), fallback Hyprland
+                const sessionCmd = (GLib.getenv('SHADE_SESSION_COMMAND') ?? 'Hyprland').split(' ');
                 greeter.startSession(sessionCmd);
+                // Quit after session starts (async callback in GreetSession)
+                greeter.onSessionStarted = () => application.quit();
             }
         })
     );
@@ -86,6 +89,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                     <Adw.Avatar
                         size={96}
                         showInitials
+                        text={username}
                     />
                     <Gtk.Label
                         cssClasses={['title-1']}

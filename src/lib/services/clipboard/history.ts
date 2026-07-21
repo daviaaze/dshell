@@ -1,14 +1,21 @@
 /**
- * Clipboard History — Encrypted SQLite-backed clipboard history.
+ * Clipboard History — Entry-point for clipboard history service.
  *
- * Public API remains unchanged. Internal storage replaced with
- * EncryptedStore (AES-256-GCM encrypted SQLite database via Gda).
+ * Starts the wl-paste --watch watcher (replaces the old Gdk.Clipboard
+ * 'changed' signal which was focus-gated on Wayland).
+ *
+ * Gdk.Clipboard is kept only for _setting_ content when the user copies
+ * an entry back from history. An echo-hash prevents those sets from
+ * being re-captured by the watcher.
+ *
+ * Images are stored as base64 inside the encrypted blob (not as separate
+ * PNG files). Migration from the legacy file-based format happens
+ * automatically in EncryptedStore.init().
  *
  * @module clipboardHistory
  */
 
 import Gdk from 'gi://Gdk?version=4.0';
-import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {
     initStore,
@@ -18,130 +25,75 @@ import {
     deleteEntry as storeDeleteEntry,
     togglePin as storeTogglePin,
     clearHistory as storeClearHistory,
-    getEntry,
     type ClipboardEntry,
 } from './encryptedStore';
-export type { ClipboardEntry };
+export type {ClipboardEntry};
+import {startClipboardWatcher, stopClipboardWatcher} from './clipboardWatcher';
 import logger from '#/lib/core/logger';
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const DATA_DIR = `${GLib.get_user_data_dir()}/shade-shell`;
-const CLIPBOARD_DIR = `${DATA_DIR}/clipboard`;
-
-// Artificially shorten the debounce in tests — O(1) check, negligible overhead
-const DEBOUNCE_MS = GLib.getenv('G_TEST_OPTIONS') ? 10 : 300;
 
 // ── State ────────────────────────────────────────────────────────────────────
 
-let debounceId: number | null = null;
-let skipNextChange = false;
 let initialized = false;
+let echoHash: string | null = null;
 
-// ── File helpers ─────────────────────────────────────────────────────────────
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+/**
+ * Compute a quick content hash for echo suppression.
+ * Hashes the base64 of the data to avoid null-byte truncation.
+ */
+function contentHash(data: Uint8Array): string {
+    const b64 = GLib.base64_encode(data);
+    // GLib.ChecksumType.SHA1 is a numeric enum
+    return GLib.compute_checksum_for_string(
+        GLib.ChecksumType.SHA1 as number,
+        b64,
+        -1
+    ) as string;
+}
 
 function generateId(): string {
     // eslint-disable-next-line sonarjs/pseudo-random
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-// ── Clipboard monitoring ─────────────────────────────────────────────────────
+// ── Watcher callback ─────────────────────────────────────────────────────────
 
-function onClipboardChanged(clipboard: Gdk.Clipboard) {
-    // If we just set the clipboard from history, skip storing it
-    if (skipNextChange) {
-        skipNextChange = false;
+function onClipboardData(type: 'text' | 'image', rawBytes: Uint8Array) {
+    // Echo-hash: skip if this content matches what we last set via copyEntryToClipboard
+    const hash = contentHash(rawBytes);
+    if (echoHash !== null && hash === echoHash) {
+        echoHash = null;
+        logger.debug('clipboard', 'echo-hash hit — suppressing self-capture');
         return;
     }
 
-    // Debounce: multiple rapid changes (e.g., selecting text while copying)
-    // should only trigger one history entry.
-    if (debounceId !== null) {
-        GLib.source_remove(debounceId);
-    }
-    debounceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, DEBOUNCE_MS, () => {
-        debounceId = null;
-        readClipboardContent(clipboard);
-        return GLib.SOURCE_REMOVE;
-    });
-}
-
-function readClipboardContent(clipboard: Gdk.Clipboard) {
-    // GJS 1.88 requires callback-based API for Gdk.Clipboard async methods
-    clipboard.read_text_async(null, (_source, result) => {
-        try {
-            const text = clipboard.read_text_finish(result);
-            if (text !== null && text.trim().length > 0) {
-                addEntry({
-                    type: 'text',
-                    content: text,
-                    mimeType: 'text/plain',
-                });
-                return;
-            }
-
-            // Try image
-            try {
-                clipboard.read_texture_async(null, (_source2, result2) => {
-                    try {
-                        const texture = clipboard.read_texture_finish(result2);
-                        if (texture !== null) {
-                            const bytes = texture.save_to_png_bytes();
-                            const filename = `clipboard-${Date.now()}.png`;
-                            const filePath = `${CLIPBOARD_DIR}/${filename}`;
-                            GLib.file_set_contents(filePath, bytes.toArray());
-                            addEntry({
-                                type: 'image',
-                                content: filename,
-                                mimeType: 'image/png',
-                            });
-                        }
-                    } catch {
-                        // Not an image — skip
-                    }
-                });
-            } catch {
-                // Not an image — skip
-            }
-        } catch (e) {
-            // read_text_finish throws when clipboard has no text (image, etc.)
-            // This is expected — we fall through to try reading as image below.
-            // Only log at debug since the fallback is handled.
-            logger.debug('clipboard', 'no text on clipboard, trying image:', e);
-        }
-    });
-}
-
-function addEntry(data: {type: 'text' | 'image'; content: string; mimeType: string}) {
-    // Deduplicate: skip if the last entry is identical (same text content)
-    const entries = getAllEntries();
-    if (data.type === 'text' && entries.length > 0) {
-        const last = entries[0]!;
-        if (last.type === 'text' && last.content === data.content) {
+    if (type === 'text') {
+        const text = decoder.decode(rawBytes);
+        if (text.trim().length === 0) {
+            logger.debug('clipboard', 'empty text, skipping');
             return;
         }
-    }
-
-    const entry: ClipboardEntry = {
-        id: generateId(),
-        type: data.type,
-        content: data.content,
-        mimeType: data.mimeType,
-        timestamp: Date.now(),
-        pinned: false,
-    };
-
-    storeAddEntry(entry);
-}
-
-function deleteImageFile(filename: string) {
-    try {
-        const file = Gio.File.new_for_path(`${CLIPBOARD_DIR}/${filename}`);
-        if (file.query_exists(null)) {
-            file.delete(null);
-        }
-    } catch (e) {
-        logger.warn('clipboard', 'failed to delete image file:', e);
+        storeAddEntry({
+            id: generateId(),
+            type: 'text',
+            content: text,
+            mimeType: 'text/plain',
+            timestamp: Date.now(),
+            pinned: false,
+        });
+    } else {
+        // Image — store as base64 string inside the encrypted blob
+        const base64 = GLib.base64_encode(rawBytes);
+        storeAddEntry({
+            id: generateId(),
+            type: 'image',
+            content: base64,
+            mimeType: 'image/png',
+            timestamp: Date.now(),
+            pinned: false,
+        });
     }
 }
 
@@ -149,32 +101,28 @@ function deleteImageFile(filename: string) {
 
 /**
  * Start monitoring the clipboard for changes.
- * Call once during app initialization.
+ * Call once during app initialisation.
  */
 export function initClipboardHistory() {
     if (initialized) return;
     initialized = true;
 
-    // Initialize the encrypted store (decrypt file, open SQLite)
+    // Initialise the encrypted store
     initStore();
 
-    const display = Gdk.Display.get_default();
-    if (!display) {
-        logger.warn('clipboard', 'no display available, clipboard history disabled');
-        return;
-    }
-
-    const clipboard = display.get_clipboard();
-    clipboard.connect('changed', () => onClipboardChanged(clipboard));
-
-    // Also try to read the current clipboard content on startup
-    // (in case something was copied before the app started)
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-        readClipboardContent(clipboard);
-        return GLib.SOURCE_REMOVE;
-    });
+    // Start the wl-paste watchers (replaces Gdk.Clipboard 'changed')
+    startClipboardWatcher(onClipboardData);
 
     logger.info('clipboard', 'clipboard history monitoring started');
+}
+
+/**
+ * Stop monitoring the clipboard.
+ */
+export function stopClipboardHistory() {
+    stopClipboardWatcher();
+    initialized = false;
+    logger.info('clipboard', 'clipboard history monitoring stopped');
 }
 
 /**
@@ -192,7 +140,11 @@ export function searchHistory(query: string): ClipboardEntry[] {
 }
 
 /**
- * Copy a history entry back to the clipboard.
+ * Copy a history entry back to the system clipboard.
+ *
+ * Uses Gdk.Clipboard.set (or set_content for images).
+ * Sets the echo-hash so the next watcher event for this content is
+ * suppressed.
  */
 export async function copyEntryToClipboard(entry: ClipboardEntry): Promise<void> {
     const display = Gdk.Display.get_default();
@@ -202,30 +154,25 @@ export async function copyEntryToClipboard(entry: ClipboardEntry): Promise<void>
     }
 
     const clipboard = display.get_clipboard();
-    skipNextChange = true;
 
     try {
         if (entry.type === 'text') {
+            const bytes = encoder.encode(entry.content);
+            echoHash = contentHash(bytes);
             clipboard.set(entry.content);
-        } else if (entry.type === 'image') {
-            const filePath = `${CLIPBOARD_DIR}/${entry.content}`;
-            const file = Gio.File.new_for_path(filePath);
-            if (!file.query_exists(null)) {
-                logger.warn('clipboard', 'image file not found:', filePath);
-                return;
-            }
-            const [, contents] = file.load_contents(null);
-            if (contents) {
-                const provider = Gdk.ContentProvider.new_for_bytes(
-                    entry.mimeType,
-                    contents
-                );
-                clipboard.set_content(provider);
-            }
+        } else {
+            // Image — decode from base64 and create a content provider
+            const raw = new Uint8Array(GLib.base64_decode(entry.content));
+            echoHash = contentHash(raw);
+            const provider = Gdk.ContentProvider.new_for_bytes(
+                entry.mimeType,
+                raw
+            );
+            clipboard.set_content(provider);
         }
     } catch (e) {
         logger.error('clipboard', 'failed to copy entry to clipboard:', e);
-        skipNextChange = false;
+        echoHash = null;
     }
 }
 
@@ -233,11 +180,6 @@ export async function copyEntryToClipboard(entry: ClipboardEntry): Promise<void>
  * Delete a history entry by ID.
  */
 export function deleteEntry(id: string): void {
-    // Delete image file if it's an image entry
-    const entry = getEntry(id);
-    if (entry && entry.type === 'image') {
-        deleteImageFile(entry.content);
-    }
     storeDeleteEntry(id);
 }
 
@@ -252,12 +194,5 @@ export function togglePin(id: string): void {
  * Clear all unpinned history entries.
  */
 export function clearHistory(): void {
-    // Delete image files for unpinned entries
-    const entries = getAllEntries();
-    for (const entry of entries) {
-        if (!entry.pinned && entry.type === 'image') {
-            deleteImageFile(entry.content);
-        }
-    }
     storeClearHistory();
 }

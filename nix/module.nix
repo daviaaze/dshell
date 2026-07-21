@@ -61,6 +61,21 @@ in
         description = "Nix package providing the terminal emulator. Must match defaultTerminal.";
       };
     };
+
+    greeter = {
+      enable = lib.mkEnableOption "Shade greetd greeter (replaces other display managers)";
+      package = lib.mkOption {
+        type = lib.types.package;
+        default = cfg.package;
+        defaultText = lib.literalExpression "config.programs.shade.package";
+        description = "The shade-shell package providing the greeter binary";
+      };
+      sessionCommand = lib.mkOption {
+        type = lib.types.str;
+        default = "Hyprland";
+        description = "Command greetd runs as the user after successful authentication";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable (
@@ -105,6 +120,20 @@ in
           "blur on, match:namespace gtk4-layer-shell"
           "ignore_alpha 0, match:namespace gtk4-layer-shell"
         ];
+      })
+      (lib.mkIf cfg.greeter.enable {
+        services.greetd = {
+          enable = true;
+          settings.default_session = let
+            greeterSession = pkgs.writeShellScript "shade-greeter-session" ''
+              export SHADE_SESSION_COMMAND=${lib.escapeShellArg cfg.greeter.sessionCommand}
+              exec ${pkgs.cage}/bin/cage -s -- ${cfg.greeter.package}/bin/shade-shell-greet
+            '';
+          in {
+            command = "${greeterSession}";
+            user = "greeter";
+          };
+        };
       })
     ]
   );

@@ -11,18 +11,101 @@ import {
     GRIM_BIN,
     MAGICK_BIN,
 } from './utils';
+import type {BoundaryGeometry} from './types';
 
 const ICON_ERROR = 'dialog-error-symbolic';
 
-/** Convert grim "x,y WxH" (global coords) to magick "WxH+X+Y" (monitor-local). */
+// ── Typed Geometry ───────────────────────────────────────────────────────────
+
+export type {BoundaryGeometry};
+
+/**
+ * Parse a grim-format geometry string "x,y WxH" into a typed struct.
+ * Returns null on parse failure.
+ */
+export function parseGrimGeometry(s: string): BoundaryGeometry | null {
+    const parts = s.split(' ');
+    if (parts.length !== 2) return null;
+    const [pos, size] = parts;
+    if (!pos || !size) return null;
+    const [sx, sy] = pos.split(',');
+    const [sw, sh] = size.split('x');
+    if (!sx || !sy || !sw || !sh) return null;
+    const x = Number(sx), y = Number(sy), w = Number(sw), h = Number(sh);
+    if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) return null;
+    if (w <= 0 || h <= 0) return null;
+    return {x, y, width: w, height: h};
+}
+
+/**
+ * Format a boundary geometry as grim "x,y WxH".
+ */
+export function toGrimGeometry(g: BoundaryGeometry): string {
+    return `${g.x},${g.y} ${g.width}x${g.height}`;
+}
+
+/**
+ * Format a boundary geometry as magick "WxH+X+Y" (monitor-local coords).
+ */
+export function toMagickGeometry(g: BoundaryGeometry): string {
+    return `${g.width}x${g.height}+${g.x}+${g.y}`;
+}
+
+/**
+ * Find the AstalHyprland monitor whose region contains the given point.
+ * Falls back to the focused monitor if no match is found.
+ */
+function monitorForPoint(x: number, y: number) {
+    const monitors = AstalHyprland.get_default().monitors;
+    // Look through the monitor list for one that contains (x, y)
+    for (let i = 0; i < monitors.length; i++) {
+        const m = monitors[i];
+        if (
+            x >= m.x &&
+            x < m.x + m.width &&
+            y >= m.y &&
+            y < m.y + m.height
+        ) {
+            return m;
+        }
+    }
+    // Fallback: focused monitor
+    return AstalHyprland.get_default().focused_monitor;
+}
+
+/**
+ * Convert a grim "x,y WxH" global geometry to magick "WxH+X+Y" in the
+ * coordinate space of the monitor that contains the selection.
+ *
+ * Uses the AstalHyprland monitor list (not just focused_monitor) so
+ * multi-monitor selections work correctly.
+ */
 export function grimToMagickGeometry(geometry: string): string {
-    const [pos, size] = geometry.split(' ');
-    const [gx, gy] = pos!.split(',').map(Number);
-    const [gw, gh] = size!.split('x').map(Number);
-    const mon = AstalHyprland.get_default().focused_monitor;
-    const ox = mon?.x ?? 0;
-    const oy = mon?.y ?? 0;
-    return `${gw}x${gh}+${gx! - ox}+${gy! - oy}`;
+    const g = parseGrimGeometry(geometry);
+    if (!g) {
+        logger.warn('screenshot', 'cannot parse grim geometry:', geometry);
+        // Best-effort fallback: use the full geometry as-is
+        const [, size] = geometry.split(' ');
+        const [gw, gh] = size!.split('x').map(Number);
+        return `${gw}x${gh}+0+0`;
+    }
+    const mon = monitorForPoint(g.x, g.y);
+    if (!mon) return toMagickGeometry(g);
+    return toMagickGeometry({
+        x: g.x - mon.x,
+        y: g.y - mon.y,
+        width: g.width,
+        height: g.height,
+    });
+}
+
+/**
+ * Get the AstalHyprland monitor that a grim-format geometry falls within.
+ */
+export function monitorForGeometry(geometry: string) {
+    const g = parseGrimGeometry(geometry);
+    if (!g) return AstalHyprland.get_default().focused_monitor;
+    return monitorForPoint(g.x, g.y);
 }
 
 /**
@@ -50,20 +133,21 @@ export class Stage {
         return this.#texture;
     }
 
-    /** Synchronously capture the focused monitor into the stage. */
+    /**
+     * Synchronously capture the full desktop into the stage.
+     *
+     * Uses grim without -o so the resulting image covers the entire
+     * global coordinate space (all monitors composited), matching the
+     * mouse-selection coordinate system.
+     */
     captureSync(): void {
         this.cleanup();
 
-        const monitor = AstalHyprland.get_default().focused_monitor;
-        const monitorName = monitor?.name || '';
         const stagePix = `${GLib.get_tmp_dir()}/dshell-stage-${Date.now()}.png`;
 
         try {
-            if (monitorName) {
-                Process.exec(`${GRIM_BIN} -o "${monitorName}" "${stagePix}"`);
-            } else {
-                Process.exec(`${GRIM_BIN} "${stagePix}"`);
-            }
+            // No -o flag: captures all outputs as one combined image
+            Process.exec(`${GRIM_BIN} "${stagePix}"`);
         } catch (e) {
             logger.error('screenshot', `stage capture failed: ${e}`);
             return;

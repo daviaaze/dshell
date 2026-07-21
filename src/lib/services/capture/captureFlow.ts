@@ -11,12 +11,14 @@ import {
 import {grimToMagickGeometry, screenshotGeometry} from './stage';
 import type Screenshot from './screenshot';
 
-const OVERLAY_CLOSE_DELAY_MS = 150;
-
 /**
  * Capture flows — fullscreen/area screenshot entry points and the
  * region-selector confirm path. Extracted from the Screenshot service;
  * each function drives the service's public API.
+ *
+ * Instead of a fixed delay for overlay close (which causes races on
+ * slow hardware), capture uses `GLib.idle_add` which runs after all
+ * pending GTK events (including widget unmap) are processed.
  */
 
 export function screenshot(ss: Screenshot, fullscreen: boolean) {
@@ -64,7 +66,12 @@ export function openRegionSelectorForCapture(
     ss.regionSelectorOpen = true;
 }
 
-/** Called by region-selector when the user confirms a selection. */
+/**
+ * Called by region-selector when the user confirms a selection.
+ *
+ * Closes the overlay, then waits for an idle callback (after all
+ * pending GTK events including the overlay unmap) before capturing.
+ */
 export function captureArea(ss: Screenshot, geometry: string) {
     // geometry is in grim format: "x,y WxH" (global coords).
     // captureGeometry uses grim -g which expects this format.
@@ -73,7 +80,7 @@ export function captureArea(ss: Screenshot, geometry: string) {
     ss.setFreezeCapturePending(true);
     ss.regionSelectorOpen = false;
 
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, OVERLAY_CLOSE_DELAY_MS, () => {
+    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
         ss.setFreezeCapturePending(false);
         if (ss.selectedMode === 'screenshot') {
             if (ss.stageHasFrame) {
@@ -92,8 +99,8 @@ export function captureArea(ss: Screenshot, geometry: string) {
 }
 
 /**
- * Close the overlay, wait for it to unmap (so wf-recorder/wl-screenrec
- * don't capture the overlay itself), then start recording.
+ * Close the overlay, wait for an idle callback (after widget unmap),
+ * then start recording.
  */
 export function startRecordingAfterOverlayClose(
     ss: Screenshot,
@@ -101,7 +108,7 @@ export function startRecordingAfterOverlayClose(
     geometry?: string | null
 ) {
     ss.overlayOpen = false;
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, OVERLAY_CLOSE_DELAY_MS, () => {
+    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
         if (target === 'fullscreen' && !geometry) {
             ss.toggleRecording();
             bus.emit('capture:record');

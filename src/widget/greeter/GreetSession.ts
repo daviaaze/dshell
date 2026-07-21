@@ -33,6 +33,15 @@ export class GreetSession extends GObject.Object {
     #errorMessage: string = '';
     #infoMessage: string = '';
     #signalIds: number[] = [];
+    #onSessionStarted: (() => void) | null = null;
+
+    /**
+     * Callback invoked after the user session starts successfully.
+     * The caller (e.g. main.ts via index.tsx) should quit the app here.
+     */
+    set onSessionStarted(cb: (() => void) | null) {
+        this.#onSessionStarted = cb;
+    }
 
     @getter(String)
     get state() {
@@ -90,7 +99,14 @@ export class GreetSession extends GObject.Object {
             this.#disconnectAll();
         }
 
-        this.#greeter = new Greet.Greeter();
+        try {
+            this.#greeter = new Greet.Greeter();
+        } catch (e) {
+            this.#errorMessage = `Failed to connect to greetd: ${e}`;
+            this.notify('error-message');
+            this.state = 'error';
+            return;
+        }
 
         // Connect all signals
         this.#signalIds = [
@@ -130,7 +146,13 @@ export class GreetSession extends GObject.Object {
             }),
         ];
 
-        this.#greeter.create_session(username);
+        try {
+            this.#greeter.create_session(username);
+        } catch (e) {
+            this.#errorMessage = `Failed to create session: ${e}`;
+            this.notify('error-message');
+            this.state = 'error';
+        }
     }
 
     /**
@@ -156,6 +178,7 @@ export class GreetSession extends GObject.Object {
                 // If start_session returns, the session is running.
                 // The greeter process (this app) should terminate.
                 logger.info('greeter', 'session started successfully');
+                this.#onSessionStarted?.();
             } catch (e) {
                 this.#errorMessage = `Failed to start session: ${e}`;
                 this.notify('error-message');
