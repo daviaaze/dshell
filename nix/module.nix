@@ -72,8 +72,15 @@ in
       };
       sessionCommand = lib.mkOption {
         type = lib.types.str;
-        default = "Hyprland";
-        description = "Command greetd runs as the user after successful authentication";
+        default = "${lib.getExe pkgs.uwsm} start hyprland";
+        defaultText = lib.literalExpression ''"${lib.getExe pkgs.uwsm} start hyprland"'';
+        description = ''
+          Command greetd runs as the user after successful authentication.
+          Defaults to "uwsm start hyprland" so Hyprland is launched via
+          UWSM, which handles environment setup, XDG autostart, and
+          systemd user services (including shade-shell).
+          Set to just "Hyprland" if not using UWSM.
+        '';
       };
     };
   };
