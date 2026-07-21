@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
-import {createBinding, createState, onMount} from 'gnim';
+import {Accessor, createBinding, createState, onMount} from 'gnim';
 import AuthSession from '#/lib/services/session/authSession';
 import FingerprintAuth from '#/lib/services/input/fingerprint';
 import {LockscreenWidgets} from './widgets';
@@ -9,8 +9,8 @@ import {LockscreenWidgets} from './widgets';
 interface AuthPanelProps {
     authSession: AuthSession;
     fingerprint: FingerprintAuth;
-    fpStateBinding: ReturnType<typeof createBinding>;
-    fpErrorBinding: ReturnType<typeof createBinding>;
+    fpStateBinding: Accessor<string>;
+    fpErrorBinding: Accessor<string | null>;
 }
 
 const CARD_SPACING = 12;
@@ -48,11 +48,11 @@ export const LockscreenAuthPanel = ({
                 }}
             />
             <Gtk.Label
-                visible={createBinding(authSession, 'auth-status').as(
+                visible={createBinding(authSession, 'authStatus').as(
                     s => s.length > 0
                 )}
                 cssClasses={['caption']}
-                label={createBinding(authSession, 'auth-status')}
+                label={createBinding(authSession, 'authStatus')}
             />
             <Gtk.Spinner
                 visible={fpStateBinding.as(
@@ -62,7 +62,7 @@ export const LockscreenAuthPanel = ({
             />
             <Gtk.Button
                 visible={fpStateBinding.as(s => s === 'error')}
-                label={fpErrorBinding.as(msg => msg || 'Retry fingerprint')}
+                label={fpErrorBinding.as(msg => msg ?? 'Retry fingerprint')}
                 cssClasses={['flat']}
                 onClicked={() => fingerprint.retry()}
             />

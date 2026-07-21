@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import {createBinding, createComputed} from 'gnim';
 import Brightness from '#/lib/services/display/brightness';
 import Slider from './slider';
@@ -23,23 +22,17 @@ export default () => {
     const touchpad = Touchpad.get_default();
 
     const speakerIcon = createComputed(
-        [
-            createBinding(audioCtrl.defaultSpeaker, 'volume'),
-            createBinding(audioCtrl.defaultSpeaker, 'mute'),
-            createBinding(audioCtrl.defaultSpeaker, 'volumeIcon'),
-        ],
-        (volume, mute, volumeIcon) =>
-            mute || volume === 0 ? MUTED_SPEAKER_ICON : volumeIcon
+        () =>
+            audioCtrl.defaultSpeaker?.mute || audioCtrl.defaultSpeaker?.volume === 0
+                ? MUTED_SPEAKER_ICON
+                : audioCtrl.defaultSpeaker?.volumeIcon ?? 'audio-volume-high-symbolic'
     );
 
     const micIcon = createComputed(
-        [
-            createBinding(audioCtrl.defaultMicrophone, 'volume'),
-            createBinding(audioCtrl.defaultMicrophone, 'mute'),
-            createBinding(audioCtrl.defaultMicrophone, 'volumeIcon'),
-        ],
-        (volume, mute, volumeIcon) =>
-            mute || volume === 0 ? MUTED_MIC_ICON : volumeIcon
+        () =>
+            audioCtrl.defaultMicrophone?.mute || audioCtrl.defaultMicrophone?.volume === 0
+                ? MUTED_MIC_ICON
+                : audioCtrl.defaultMicrophone?.volumeIcon ?? 'audio-input-microphone-symbolic'
     );
 
     const popupList: Gtk.Revealer[] = [
@@ -48,10 +41,9 @@ export default () => {
             signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: speakerIcon,
-                value: createBinding(audioCtrl.defaultSpeaker, 'volume'),
+                value: createComputed(() => audioCtrl.defaultSpeaker?.volume ?? 0),
             })}
-        />,
-
+        /> as Gtk.Revealer,
         <Popup
             connectable={brightness}
             signals={['notify::screen']}
@@ -59,31 +51,28 @@ export default () => {
                 iconName: 'display-brightness-symbolic',
                 value: createBinding(brightness, 'screen'),
             })}
-        />,
-
+        /> as Gtk.Revealer,
         <Popup
             connectable={brightness}
             signals={['notify::kbd']}
             widget={Slider({
                 iconName: 'keyboard-brightness-symbolic',
-                value: createBinding(brightness, 'kbd'),
+                value: createComputed(() => brightness.kbd),
             })}
-        />,
-
+        /> as Gtk.Revealer,
         <Popup
             connectable={audioCtrl.defaultMicrophone}
             signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: micIcon,
-                value: createBinding(audioCtrl.defaultMicrophone, 'volume'),
+                value: createComputed(() => audioCtrl.defaultMicrophone?.volume ?? 0),
             })}
-        />,
-
+        /> as Gtk.Revealer,
         <Popup
             connectable={touchpad}
             signals={['toggled']}
             widget={<TouchpadOsd />}
-        />,
+        /> as Gtk.Revealer,
     ];
 
     return (
@@ -94,10 +83,8 @@ export default () => {
             anchor={Astal.WindowAnchor.BOTTOM}
             layer={Astal.Layer.OVERLAY}
             visible={createComputed(
-                (popupList as Gtk.Revealer[]).map(p =>
-                    createBinding(p, 'revealChild')
-                ),
-                (...r: boolean[]) => r.reduce((a, b) => a || b)
+                () => (popupList).map(p =>
+                    p.revealChild).reduce((a, b) => a || b)
             )}
             $={self => WindowManager.get_default().setOsd(self)}
         >

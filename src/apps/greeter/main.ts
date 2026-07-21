@@ -12,6 +12,7 @@
  */
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import {programArgs, programInvocationName, exit} from 'system';
 import {createRoot} from 'gnim';
 import {Greeter} from '#/widget/greeter';
@@ -21,7 +22,7 @@ import logger from '#/lib/core/logger';
 
 const appId = 'com.caioasmuniz.shade_shell.greeter';
 
-const app = new Gio.Application({
+const app = new Gtk.Application({
     applicationId: appId,
     flags: Gio.ApplicationFlags.DEFAULT_FLAGS,
 });

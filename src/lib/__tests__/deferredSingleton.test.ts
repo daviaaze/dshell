@@ -25,7 +25,7 @@ describe('DeferredSingleton', () => {
     });
 
     it('returns null while initializing (re-entrancy guard)', () => {
-        const s = new DeferredSingleton(() => {
+        const s: DeferredSingleton<unknown> = new DeferredSingleton(() => {
             // During init, concurrent callers should get null
             return s.get(); // recursive call
         });
@@ -56,7 +56,7 @@ describe('DeferredSingleton', () => {
             }
         );
         s.get();
-        expect(errorCaught).not.toBe(null);
+        expect(errorCaught).toBeDefined();
     });
 
     it('reports initialized state correctly', () => {

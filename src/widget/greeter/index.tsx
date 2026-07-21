@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * Greeter Login Screen — greetd login UI built with AstalGreet.
  *
@@ -9,14 +8,12 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-// @ts-nocheck — Greeter uses GI types without complete TS definitions
 import Astal from 'gi://Astal?version=4.0';
 import {createBinding, createState, onCleanup} from 'gnim';
 import {GreetSession} from './GreetSession';
 
-export const Greeter = ({application}: {application: Gio.Application}) => {
+export const Greeter = ({application}: {application: Gtk.Application}) => {
     const greeter = GreetSession.get_default();
     const [username, setUsername] = createState(GLib.get_user_name());
     const [showPassword, setShowPassword] = createState(false);
@@ -24,7 +21,7 @@ export const Greeter = ({application}: {application: Gio.Application}) => {
 
     // State bindings
     const stateBinding = createBinding(greeter, 'state');
-    const errorBinding = createBinding(greeter, 'error-message');
+    const errorBinding = createBinding(greeter, 'errorMessage');
 
     const handleLogin = () => {
         const pw = passwordEntry?.get_text() ?? '';
@@ -149,7 +146,6 @@ export const Greeter = ({application}: {application: Gio.Application}) => {
                         visible={stateBinding.as(
                             s => s === 'authenticating' || s === 'creating-session'
                         )}
-                        spinning
                     />
 
                     {/* Login button */}

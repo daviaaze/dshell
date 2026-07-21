@@ -190,7 +190,6 @@ interface WidgetDescriptor {
 }
 
 function getWidgetDescriptors(): WidgetDescriptor[] {
-    const wm = WindowManager.get_default();
     return [
         {name: 'wallpaper', mount: Wallpaper},
         {name: 'bar', mount: bar},

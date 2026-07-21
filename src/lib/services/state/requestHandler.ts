@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * CLI command routing using Quarrel — structured argument parsing with
  * auto-generated help and subcommand validation.
@@ -133,7 +132,7 @@ function dispatch(
 
     switch (name) {
         case 'toggle':
-            if (help.value || command.get_args().length === 0) {
+            if (help.description || command.get_args().length === 0) {
                 return false; // caller will print help
             }
             activate(app, `toggle-${command.get_args()[0]}`);
@@ -214,7 +213,7 @@ export const requestHandler = (
     // Parse using Quarrel
     const matched = cli.parse(args);
 
-    if (matched === cli && help.value) {
+    if (matched === cli && help.description) {
         printOut(Quarrel.help(cli));
         cmd.done();
         return;

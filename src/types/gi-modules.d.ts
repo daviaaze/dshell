@@ -33,6 +33,11 @@ declare module 'gi://Secret?version=1' {
             password: string,
             cancellable: unknown,
         ): boolean;
+        function password_clear_sync(
+            schema: Schema,
+            attributes: Record<string, string>,
+            cancellable: unknown,
+        ): boolean;
     }
     // eslint-disable-next-line import/no-default-export
     export default Secret;
@@ -45,8 +50,8 @@ declare module 'gi://AstalBrightness' {
     namespace AstalBrightness {
         class Brightness extends GObject.Object {
             static get_default(): Brightness;
-            readonly screen: number;
-            readonly kbd: number;
+            screen: number;
+            kbd: number;
         }
     }
     // eslint-disable-next-line import/no-default-export
@@ -70,6 +75,9 @@ declare module 'gi://AstalGreet' {
                 env: string[],
                 callback: (g: Greeter, res: unknown) => void,
             ): void;
+            create_session(username: string): void;
+            post_auth(response: string): void;
+            start_session_finish(res: unknown): void;
         }
     }
     // eslint-disable-next-line import/no-default-export
@@ -111,4 +119,20 @@ declare module 'gi://AstalWl' {
     }
     // eslint-disable-next-line import/no-default-export
     export default AstalWl;
+}
+
+// ── AstalCava (Audio Visualizer) ───────────────────────────────
+
+declare module 'gi://AstalCava' {
+    import type GObject from 'gi://GObject';
+    namespace AstalCava {
+        class Cava extends GObject.Object {
+            bars: number;
+            framerate: number;
+            active: boolean;
+            get_values(): number[];
+        }
+    }
+    // eslint-disable-next-line import/no-default-export
+    export default AstalCava;
 }

@@ -258,6 +258,22 @@ export const generalSchema = new Schema({
             'Debug categories to enable (empty = all). Categories: mount, state, theme, dbus, exec, perf, memory',
     })
 
+    // ── Audio Visualizer (Cava) ──────────────────────────────────────
+    .key('cava-enabled', 'b', {
+        default: false,
+        summary: 'Show audio visualizer in quick settings',
+    })
+    .key('cava-bars', 'i', {
+        default: 16,
+        summary: 'Number of bars in the audio visualizer',
+        range: {min: 4, max: 64},
+    })
+    .key('cava-framerate', 'i', {
+        default: 60,
+        summary: 'Frame rate of the audio visualizer',
+        range: {min: 15, max: 120},
+    })
+
     // ── Weather-derived state (set by Weather service, consumed by ColorScheme, NightLight) ──
     .key('weather-is-daytime', 'b', {
         default: true,

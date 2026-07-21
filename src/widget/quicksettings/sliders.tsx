@@ -13,7 +13,7 @@ const BRIGHTNESS_PCT_MIN = 1;
 
 interface EndpointConfig {
     devicesProp: 'speakers' | 'microphones';
-    defaultProp: 'default-speaker' | 'default-microphone';
+    defaultProp: 'defaultSpeaker' | 'defaultMicrophone';
     mutedIcon: string;
     label: string;
     showAppMixer?: boolean;
@@ -40,7 +40,7 @@ function createEndpointConfig(cfg: EndpointConfig) {
 
 export const AudioConfig = createEndpointConfig({
     devicesProp: 'speakers',
-    defaultProp: 'default-speaker',
+    defaultProp: 'defaultSpeaker',
     mutedIcon: 'audio-volume-muted-symbolic',
     label: 'AudioConfig',
     showAppMixer: true,
@@ -48,7 +48,7 @@ export const AudioConfig = createEndpointConfig({
 
 export const MicConfig = createEndpointConfig({
     devicesProp: 'microphones',
-    defaultProp: 'default-microphone',
+    defaultProp: 'defaultMicrophone',
     mutedIcon: 'microphone-sensitivity-muted-symbolic',
     label: 'MicConfig',
 });

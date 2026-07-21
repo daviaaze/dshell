@@ -4,6 +4,7 @@
  * Run: gjs -m src/lib/__tests__/networkUtils.test.ts
  */
 import {describe, it, expect, run} from './test-runner';
+import AstalNetwork from 'gi://AstalNetwork';
 import {
     securityLabelFromKeyMgmt,
     wifiIconName,
@@ -41,49 +42,46 @@ describe('securityLabelFromKeyMgmt', () => {
 });
 
 describe('wifiIconName', () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const {DeviceState} = require('gi://AstalNetwork');
-
     it('returns offline icon when disabled', () => {
-        const name = wifiIconName(100, false, DeviceState.ACTIVATED);
+        const name = wifiIconName(100, false, AstalNetwork.DeviceState.ACTIVATED);
         expect(name).toBe('network-wireless-offline-symbolic');
     });
 
     it('returns acquiring icon for config/need-auth states', () => {
-        expect(wifiIconName(100, true, DeviceState.CONFIG)).toBe(
+        expect(wifiIconName(100, true, AstalNetwork.DeviceState.CONFIG)).toBe(
             'network-wireless-acquiring-symbolic'
         );
-        expect(wifiIconName(100, true, DeviceState.NEED_AUTH)).toBe(
+        expect(wifiIconName(100, true, AstalNetwork.DeviceState.NEED_AUTH)).toBe(
             'network-wireless-acquiring-symbolic'
         );
     });
 
     it('returns excellent icon for strength >= 75 when activated', () => {
-        expect(wifiIconName(75, true, DeviceState.ACTIVATED)).toBe(
+        expect(wifiIconName(75, true, AstalNetwork.DeviceState.ACTIVATED)).toBe(
             'network-wireless-signal-excellent-symbolic'
         );
     });
 
     it('returns good icon for strength >= 50', () => {
-        expect(wifiIconName(50, true, DeviceState.ACTIVATED)).toBe(
+        expect(wifiIconName(50, true, AstalNetwork.DeviceState.ACTIVATED)).toBe(
             'network-wireless-signal-good-symbolic'
         );
     });
 
     it('returns ok icon for strength >= 25', () => {
-        expect(wifiIconName(25, true, DeviceState.ACTIVATED)).toBe(
+        expect(wifiIconName(25, true, AstalNetwork.DeviceState.ACTIVATED)).toBe(
             'network-wireless-signal-ok-symbolic'
         );
     });
 
     it('returns weak icon for strength > 0 but < 25', () => {
-        expect(wifiIconName(10, true, DeviceState.ACTIVATED)).toBe(
+        expect(wifiIconName(10, true, AstalNetwork.DeviceState.ACTIVATED)).toBe(
             'network-wireless-signal-weak-symbolic'
         );
     });
 
     it('returns none icon for other states', () => {
-        expect(wifiIconName(100, true, DeviceState.DISCONNECTED)).toBe(
+        expect(wifiIconName(100, true, AstalNetwork.DeviceState.DISCONNECTED)).toBe(
             'network-wireless-signal-none-symbolic'
         );
     });

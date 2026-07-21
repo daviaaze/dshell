@@ -8,8 +8,9 @@ import logger, {perf} from '#/lib/core/logger';
  * these methods alongside their GObject pattern.
  */
 export interface Service {
-    init(...args: unknown[]): void;
+    init?(...args: unknown[]): void;
     dispose?(): void;
+    [key: string]: unknown;
 }
 
 export interface ServiceRegistration {

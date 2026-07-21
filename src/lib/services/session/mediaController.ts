@@ -3,8 +3,6 @@ import Mpris from 'gi://AstalMpris';
 import logger from '#/lib/core/logger';
 import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
-export type {MprisPlayer} from 'gi://AstalMpris';
-
 /**
  * MediaController — semantic command layer over AstalMpris.
  *

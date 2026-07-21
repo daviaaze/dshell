@@ -6,10 +6,7 @@ let instance: ReturnType<typeof createScreenCaptureSettings> | null = null;
 
 function createScreenCaptureSettings() {
     const settings = new Gio.Settings({schemaId: screenCaptureSchema.id});
-    return {
-        settings,
-        ...createSettings(settings, screenCaptureSchema),
-    };
+    return createSettings(settings, screenCaptureSchema)
 }
 
 export function getScreenCaptureSettings() {

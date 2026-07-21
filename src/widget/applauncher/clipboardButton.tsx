@@ -1,14 +1,14 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {
-    ClipboardItem,
-    copyClipboardItem,
     formatClipboardPreview,
+    copyClipboardItem,
 } from '#/lib/services/clipboard';
 import WindowManager from '#/lib/services/state/windowManager';
 import {useStyle} from '#/style/useStyle';
+import { ClipboardEntry,  } from '#/lib/services/clipboard/encryptedStore';
 
-export default ({item}: {item: ClipboardItem}) => {
-    const preview = formatClipboardPreview(item.text);
+export default ({item}: {item: ClipboardEntry}) => {
+    const preview = formatClipboardPreview(item.content);
     const appButtonStyle = useStyle({
         padding: '6px',
         'border-radius': '8px',
@@ -33,7 +33,7 @@ export default ({item}: {item: ClipboardItem}) => {
             <Gtk.Box spacing={12} valign={Gtk.Align.CENTER}>
                 <Gtk.Image
                     iconName={
-                        item.text.startsWith('[')
+                        item.type === 'image'
                             ? 'image-x-generic-symbolic'
                             : 'edit-paste-symbolic'
                     }

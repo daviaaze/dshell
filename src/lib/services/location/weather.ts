@@ -9,7 +9,6 @@ import {toArray} from '#/lib/core/gjsUtils';
 import {
     weatherGradient,
     formatTemp,
-    windDirectionLabel,
 } from './weatherUtils';
 
 @register({GTypeName: 'Weather'})

@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
@@ -27,7 +26,7 @@ import {
 export default () => {
     const ss = Screenshot.get_default();
     const hyprland = AstalHyprland.get_default();
-
+    const isVisible = createBinding(ss, 'overlayOpen');
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
     const [selActive, setSelActive] = createState(false);
@@ -168,7 +167,7 @@ export default () => {
             application={app}
             layer={Astal.Layer.TOP}
             keymode={Astal.Keymode.EXCLUSIVE}
-            visible={createBinding(ss, 'overlay-open')}
+            visible={isVisible()}
             onNotifyVisible={self => {
                 if (self.visible) {
                     refreshMonOrigin();

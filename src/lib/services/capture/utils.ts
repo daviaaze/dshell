@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import AstalWp from 'gi://AstalWp?version=0.1';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
@@ -63,7 +62,7 @@ function resolveAudioInputName(audioInputId: number): string | undefined {
     if (audioInputId === -1) return undefined;
     const wp = AstalWp.get_default();
     const mic = wp?.audio.get_microphone(audioInputId);
-    return mic?.name;
+    return mic?.name ?? undefined;
 }
 
 function buildWlScreenrecArgs(
@@ -214,7 +213,7 @@ export function copyImageToClipboard(filename: string): void {
             return;
         }
         const texture = Gdk.Texture.new_from_filename(filename);
-        display.get_clipboard().set_texture(texture);
+        display.get_clipboard().set_property('texture', texture)
         logger.debug('screenshot', `copied to clipboard via Gdk: ${filename}`);
     } catch (e) {
         logger.warn('screenshot', `clipboard copy failed: ${e instanceof Error ? e.message : String(e)}`);

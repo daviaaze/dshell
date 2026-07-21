@@ -1,7 +1,6 @@
 import Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed, For} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
 import {
     bssidOf,
     bssidEquals,
@@ -33,14 +32,10 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
         if (!active) return null;
         return bssidOf(active);
     });
+    const aps = createBinding(wifi, 'accessPoints');
 
     const sortedAps = createComputed(
-        [createBinding(wifi, 'accessPoints'), activeBssid],
-        (points, active) => {
-            const list = toArray<Network.AccessPoint>(points);
-            const snaps = list.map(snapshotAp);
-            return sortAps(snaps, active);
-        }
+        () => sortAps(aps().map(snapshotAp), activeBssid())
     );
 
     return (

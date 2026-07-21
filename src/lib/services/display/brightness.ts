@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * Brightness service — wraps AstalBrightness (gi://AstalBrightness).
  *
@@ -53,13 +52,14 @@ export default class Brightness extends GObject.Object {
         super();
 
         try {
-            this.#service = AstalBrightness.get_default();
+            const svc = AstalBrightness.Brightness.get_default();
+            this.#service = svc;
 
             // Forward property notifications from the Astal service
-            this.#service.connect('notify::screen', () => {
+            svc.connect('notify::screen', () => {
                 this.notify('screen');
             });
-            this.#service.connect('notify::kbd', () => {
+            svc.connect('notify::kbd', () => {
                 this.notify('kbd');
             });
 

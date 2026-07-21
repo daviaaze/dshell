@@ -9,6 +9,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, createBinding, createState} from 'gnim';
 import MediaController from '#/lib/services/session/mediaController';
+import logger from '#/lib/core/logger';
 
 // ── Widget Interface ────────────────────────────────────────────
 

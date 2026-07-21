@@ -9,7 +9,7 @@ import NotificationHistory from '#/lib/services/notifications/history';
 import DndService from '#/lib/services/notifications/dnd';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import type {HistoryEntry} from '#/lib/services/notifications/history';
-import {useSettings} from '#/lib/settings';
+import { useSettings } from '#/lib/settings';
 
 /**
  * Inner content component — only mounted once Notifd is initialized.
@@ -31,6 +31,18 @@ const NotificationListContent = ({
 }) => {
     const dnd = DndService.get_default();
 
+
+    const clearNotifications = () => {
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            const notifs = notifd.get_notifications();
+            for (const n of notifs) {
+                n.dismiss();
+            }
+            return GLib.SOURCE_REMOVE;
+        })
+    };
+
+
     const Header = () => {
         const DNDButton = () => (
             <Gtk.ToggleButton
@@ -48,16 +60,7 @@ const NotificationListContent = ({
             <Gtk.Button
                 halign={Gtk.Align.END}
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
-                onClicked={() =>
-                    // eslint-disable-next-line sonarjs/no-nested-functions
-                    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-                        const notifs = notifd.get_notifications();
-                        for (const n of notifs) {
-                            n.dismiss();
-                        }
-                        return GLib.SOURCE_REMOVE;
-                    })
-                }
+                onClicked={clearNotifications}
             >
                 <Adw.ButtonContent
                     iconName={'edit-clear-all-symbolic'}
@@ -120,15 +123,7 @@ const NotificationListContent = ({
                 <Gtk.Button
                     iconName={'edit-clear-all-symbolic'}
                     valign={Gtk.Align.END}
-                    // eslint-disable-next-line sonarjs/no-nested-functions
-                    onClicked={() => {
-                        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-                            for (const n of notifications) {
-                                n.dismiss();
-                            }
-                            return GLib.SOURCE_REMOVE;
-                        });
-                    }}
+                    onClicked={clearNotifications}
                 />
             </Gtk.Box>
         );

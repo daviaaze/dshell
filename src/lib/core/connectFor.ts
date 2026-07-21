@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * Helper for safe GObject signal connections that auto-disconnect on widget cleanup.
  *
@@ -19,10 +18,8 @@
  * `connect()` and manage the handler ID manually in `dispose()`.
  */
 
-import type GObject from 'gi://GObject?version=2.0';
-
 interface Connectable {
-    connect(signal: string, callback: (...args: any[]) => void): number;
+    connect(signal: string, callback: (...args: unknown[]) => void): number;
     disconnect(handlerId: number): void;
 }
 

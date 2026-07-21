@@ -49,8 +49,8 @@ export default class SoundAlertService extends GObject.Object {
     #upowerInstance: AstalBattery.UPower | null = null;
     #lastBatteryPercentage = 1.0;
     #initialized = false;
-    #shellState?: import('#/lib/services/state/shellState').default;
-    #dndService?: import('#/lib/services/notifications/dnd').default;
+    #shellState: {v?: import('#/lib/services/state/shellState').default} = {};
+    #dndService: {v?: import('#/lib/services/notifications/dnd').default} = {};
 
     /** Resolve a dependency from the service registry. */
     /** Resolve a dependency from the service registry (lazy). */
@@ -60,11 +60,11 @@ export default class SoundAlertService extends GObject.Object {
     }
 
     get #shell(): import('#/lib/services/state/shellState').default {
-        return this.#getDep('ShellState', this);
+        return this.#getDep('ShellState', this.#shellState);
     }
 
     get #dnd(): import('#/lib/services/notifications/dnd').default {
-        return this.#getDep('DndService', this);
+        return this.#getDep('DndService', this.#dndService);
     }
 
     @getter(Boolean)

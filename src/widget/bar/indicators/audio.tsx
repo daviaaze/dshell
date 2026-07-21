@@ -13,11 +13,11 @@ function volumeTooltip(vol: number): string {
 export const SpeakerIndicator = () => {
     const audioCtrl = AudioController.get_default();
     const mixer = AppMixer.get_default();
-    const speaker = createBinding(audioCtrl, 'default-speaker');
+    const speaker = createBinding(audioCtrl, 'defaultSpeaker');
 
     return (
         <Gtk.Image
-            visible={createBinding(mixer, 'speaker-in-use')}
+            visible={createBinding(mixer, 'speakerInUse')}
             iconName={speaker.as(s => {
                 if (!s || s.mute || s.volume === 0) return MUTED_SPEAKER_ICON;
                 return s.volumeIcon;
@@ -33,11 +33,11 @@ export const SpeakerIndicator = () => {
 export const MicrophoneIndicator = () => {
     const audioCtrl = AudioController.get_default();
     const mixer = AppMixer.get_default();
-    const mic = createBinding(audioCtrl, 'default-microphone');
+    const mic = createBinding(audioCtrl, 'defaultMicrophone');
 
     return (
         <Gtk.Image
-            visible={createBinding(mixer, 'microphone-in-use')}
+            visible={createBinding(mixer, 'microphoneInUse')}
             iconName={mic.as(m => {
                 if (!m || m.mute || m.volume === 0) return MUTED_MIC_ICON;
                 return m.volumeIcon;

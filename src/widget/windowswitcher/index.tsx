@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
@@ -46,15 +45,17 @@ export default () => {
         mru.unshift(client.address);
     };
 
-    const mruUnsubscribe = createBinding(hyprland, 'focusedClient').subscribe(
-        (client: any) => updateMru(client)
-    );
+    const focusedClient = createBinding(hyprland, 'focusedClient');
+
+    const focusedClientUnsubscribe = focusedClient.subscribe(() => {
+        updateMru(focusedClient());
+    });
 
     const clientsBinding = createBinding(hyprland, 'clients');
     const clientsList = clientsBinding.as(c => getSortedClients(c, mru));
 
     const clampUnsubscribe = clientsList.subscribe(() => {
-        const len = (clientsList() as any)?.length ?? 0;
+        const len = (clientsList())?.length ?? 0;
         if (selectedIndex() >= len) {
             setSelectedIndex(Math.max(0, len - 1));
         }
@@ -183,7 +184,7 @@ export default () => {
                 switcherWindow = self;
                 onCleanup(() => {
                     switcherWindow = null;
-                    mruUnsubscribe();
+                    focusedClientUnsubscribe();
                     clampUnsubscribe();
                 });
             }}

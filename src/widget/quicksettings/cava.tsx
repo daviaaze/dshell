@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import {useSettings} from '#/lib/settings';
 import {tickWhileAttached} from '#/lib/core/widgetTimer';
@@ -11,7 +10,8 @@ try {
 
 const AstalCava = (() => {
     try {
-        return imports.gi.AstalCava;
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        return (imports.gi as any).AstalCava;
     } catch {
         return null;
     }
@@ -26,7 +26,7 @@ export default () => {
 
     return (
         <Gtk.Box
-            visible={settings.cavaEnabled}
+            visible={settings.cavaEnabled()}
             orientation={Gtk.Orientation.HORIZONTAL}
             spacing={2}
             halign={Gtk.Align.CENTER}

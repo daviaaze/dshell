@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Network from 'gi://AstalNetwork';
 import NM from 'gi://NM?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
@@ -206,7 +205,7 @@ function ApRow({
                     cssClasses={['flat']}
                     onClicked={() => {
                         if (isActive()) {
-                            (wifi.deactivate_connection(null) as Promise<void>).catch((e: Error) =>
+                            (wifi.deactivate_connection()).catch((e: Error) =>
                                 logger.error('network', 'deactivate failed:', e.message)
                             );
                             return;

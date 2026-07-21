@@ -60,12 +60,12 @@ class EventBus {
         };
     }
 
-    emit<K extends keyof EventMap>(event: K, payload: EventMap[K]): void {
+    emit<K extends keyof EventMap>(event: K, ...args: EventMap[K] extends void ? [] : [payload: EventMap[K]]): void {
         const key = event;
         const fns = this.#listeners.get(key);
         if (!fns) return;
         for (const fn of fns) {
-            (fn as (payload: EventMap[K]) => void)(payload);
+            (fn as (...args: any[]) => void)(...args);
         }
     }
 

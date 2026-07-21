@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import WeatherLib from '#/lib/services/location/weather';
@@ -40,15 +39,15 @@ export const WeatherWidget = () => {
     const weather = WeatherLib.get_default();
     const now = Clock.get_default().time.as(t => t.to_unix());
 
-    const locationName = createBinding(weather, 'location-name');
-    const tempSummary = createBinding(weather, 'temp-summary');
-    const feelsLike = createBinding(weather, 'feels-like');
-    const skyDesc = createBinding(weather, 'sky-desc');
-    const iconName = createBinding(weather, 'weather-icon');
+    const locationName = createBinding(weather, 'locationName');
+    const tempSummary = createBinding(weather, 'tempSummary');
+    const feelsLike = createBinding(weather, 'feelsLike');
+    const skyDesc = createBinding(weather, 'skyDesc');
+    const iconName = createBinding(weather, 'weatherIcon');
     const sunrise = createBinding(weather, 'sunrise');
     const sunset = createBinding(weather, 'sunset');
-    const windSpeed = createBinding(weather, 'wind-speed');
-    const windDirection = createBinding(weather, 'wind-direction');
+    const windSpeed = createBinding(weather, 'windSpeed');
+    const windDirection = createBinding(weather, 'windDirection');
     const humidity = createBinding(weather, 'humidity');
     const pressure = createBinding(weather, 'pressure');
     const gradient = createBinding(weather, 'gradient');

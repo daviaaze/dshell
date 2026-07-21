@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import {monitors} from '#/lib/services/monitoring/monitors';
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
@@ -52,7 +51,7 @@ const createLocks = (onUnlock: () => void) => {
     authSession.connect('success', () => doUnlock());
 
     const fpStateBinding = createBinding(fingerprint, 'state');
-    const fpErrorBinding = createBinding(fingerprint, 'error-message');
+    const fpErrorBinding = createBinding(fingerprint, 'errorMessage');
 
     return (
         <For each={monitors}>

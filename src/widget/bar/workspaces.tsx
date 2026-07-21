@@ -37,6 +37,17 @@ export default ({
                     const focusedClient = createBinding(hyprland, 'focusedClient');
                     const wsClients = createBinding(ws, 'clients');
 
+                    const activeName = createComputed(() => {
+                        const client = focusedClient();
+
+                        if (!client || client.workspace !== ws) return null;
+
+                        const clients = toArray<Hyprland.Client>(wsClients());
+                        return clients.some(c => c.address === client.address)
+                            ? client.address
+                            : null;
+                    });
+
                     return (
                     <Adw.ToggleGroup
                         orientation={vertical.as(v =>
@@ -45,14 +56,7 @@ export default ({
                                 : Gtk.Orientation.HORIZONTAL
                         )}
                         cssClasses={[ws.id < 0 ? 'success' : '']}
-                        activeName={createComputed(() => {
-                            const client = focusedClient();
-                            if (!client || client.workspace !== ws) return null;
-                            const clients = toArray<Hyprland.Client>(wsClients());
-                            return clients.some(c => c.address === client.address)
-                                ? client.address
-                                : null;
-                        })}
+                        activeName={activeName()}
                     >
                         <For
                             each={createBinding(ws, 'clients').as(clients =>

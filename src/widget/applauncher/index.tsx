@@ -13,6 +13,9 @@ import ShellState from '#/lib/services/state/shellState';
 import logger from '#/lib/core/logger';
 import {launcherSearch} from '#/lib/services/search/launcher';
 import type {LauncherMode, ListItem} from '#/lib/services/search/launcher';
+import { fuzzyQuery } from '#/lib/services/state/apps';
+import { ClipboardEntry } from '#/lib/services/clipboard/encryptedStore';
+import AstalApps from 'gi://AstalApps?version=0.1';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
@@ -148,11 +151,11 @@ export default () => {
                             {(item: ListItem) =>
                                 mode() === 'clipboard' ? (
                                     <ClipboardButton
-                                        item={item as ClipboardItem}
+                                        item={item as ClipboardEntry}
                                     />
                                 ) : (
                                     <AppButton
-                                        application={item as Apps.Application}
+                                        application={item as AstalApps.Application}
                                     />
                                 )
                             }

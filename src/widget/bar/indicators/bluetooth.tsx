@@ -7,9 +7,9 @@ export default () => {
 
     return (
         <Gtk.Image
-            iconName={createBinding(bt, 'icon-name')}
-            visible={createBinding(bt, 'is-powered')}
-            tooltipMarkup={createBinding(bt, 'connected-device-names').as(
+            iconName={createBinding(bt, 'iconName')}
+            visible={createBinding(bt, 'isPowered')}
+            tooltipMarkup={createBinding(bt, 'connectedDeviceNames').as(
                 names => names || 'Bluetooth'
             )}
             pixelSize={18}

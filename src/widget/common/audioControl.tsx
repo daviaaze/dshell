@@ -4,6 +4,7 @@ import {Accessor, createBinding, createState, For, With} from 'gnim';
 import {Slider} from './slider';
 import {getVolumeIcon} from '#/lib/services/audio/icons';
 import AppMixer from '#/widget/quicksettings/appMixer';
+import AudioController from '#/lib/services/audio/audioController';
 
 export {getVolumeIcon};
 

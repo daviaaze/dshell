@@ -45,7 +45,7 @@ export type {VirtualMonitor, BoundaryGeometry} from './types';
  */
 @register({GTypeName: 'Screenshot'})
 export default class Screenshot extends GObject.Object {
-    static instance: Screenshot;
+    static instance: Screenshot | undefined;
 
     static get_default() {
         if (!this.instance) this.instance = new Screenshot();

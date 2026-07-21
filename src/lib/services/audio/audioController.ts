@@ -2,8 +2,6 @@ import GObject, {getter, register} from 'gnim/gobject';
 import Wireplumber from 'gi://AstalWp';
 import logger from '#/lib/core/logger';
 
-export type {Endpoint} from 'gi://AstalWp';
-
 /**
  * AudioController — semantic command layer over AstalWp.
  *

@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
@@ -21,7 +20,7 @@ export default () => {
     const ss = Screenshot.get_default();
     const hyprland = AstalHyprland.get_default();
 
-    const elapsedLabel = createBinding(ss, 'recording-elapsed').as(sec =>
+    const elapsedLabel = createBinding(ss, 'recordingElapsed').as(sec =>
         formatDuration(sec ?? 0)
     );
 

@@ -67,7 +67,7 @@ export async function searchClipboard(
     }
 }
 
-export async function copyClipboardItem(item: ClipboardItem) {
+export async function copyClipboardItem(item: ClipboardEntry) {
     try {
         // Find the actual entry in our history to get the full record
         const entries = getHistory();
@@ -81,7 +81,7 @@ export async function copyClipboardItem(item: ClipboardItem) {
             logger.warn('clipboard', 'entry not found in history, creating from item');
             const display = Gdk.Display.get_default();
             if (display) {
-                display.get_clipboard().set(item.text);
+                display.get_clipboard().set(item.content);
             }
         }
     } catch (e) {

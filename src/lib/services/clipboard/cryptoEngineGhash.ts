@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import {xor, padTo16, lenBlock, incCounter} from './cryptoEngineTables';
 
 /**
@@ -34,9 +33,9 @@ function ghashMul(x: Uint8Array, y: Uint8Array): Uint8Array {
  * @param data - Data to authenticate (padded to 16-byte blocks)
  */
 export function ghash(h: Uint8Array, data: Uint8Array): Uint8Array {
-    let y = new Uint8Array(16);
+    let y: Uint8Array = new Uint8Array(16);
     for (let i = 0; i < data.length; i += 16) {
-        y = ghashMul(xor(y, data.subarray(i, i + 16)), h) as Uint8Array;
+        y = ghashMul(xor(y, data.subarray(i, i + 16)), h);
     }
     return y;
 }

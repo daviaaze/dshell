@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import AstalBluetooth from 'gi://AstalBluetooth';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed, createState, For} from 'gnim';
@@ -16,6 +15,15 @@ export default () => {
     >(null);
 
     const isConnecting = connectingAddress.as(addr => addr !== null);
+    const isVisible = createBinding(bluetooth, 'adapters').as(a => a.length > 0);
+    const isConnected = createBinding(bluetooth, 'isConnected');
+    const isPowered = createBinding(bluetooth, 'isPowered');
+    const icon = createComputed(
+        () => {
+            if (isConnecting()) return 'content-loading-symbolic';
+            return isPowered() ? 'bluetooth-symbolic' : 'bluetooth-disabled-symbolic';
+        }
+    )
 
     const popover = (
         <Gtk.Popover cssClasses={[]}>
@@ -102,32 +110,17 @@ export default () => {
 
     return (
         <QuickToggleButton
-            visible={createBinding(bluetooth, 'adapters').as(a => a.length > 0)}
-            icon={createComputed(
-                [isConnecting, createBinding(bluetooth, 'isPowered')],
-                (connecting, powered) => {
-                    if (connecting) return 'content-loading-symbolic';
-                    return powered ? 'bluetooth-symbolic' : 'bluetooth-disabled-symbolic';
-                }
-            )}
+            visible={isVisible}
+            icon={icon}
             cssClasses={createComputed(
-                [
-                    createBinding(bluetooth, 'isPowered'),
-                    createBinding(bluetooth, 'is-connected'),
-                ],
-                (powered, connected) =>
-                    powered && connected
+                () =>
+                    isPowered() && isConnected()
                         ? ['raised', 'suggested-action']
                         : ['raised']
             )}
             label={createComputed(
-                [
-                    createBinding(bluetooth, 'isPowered'),
-                    createBinding(bluetooth, 'is-connected'),
-                    createBinding(bluetooth, 'devices'),
-                ],
-                (powered, _connected) => {
-                    if (!powered) return 'Bluetooth Off';
+                () => {
+                    if (!isPowered()) return 'Bluetooth Off';
                     const connectedDevices = toArray<AstalBluetooth.Device>(
                         bluetooth.devices
                     ).filter((d: AstalBluetooth.Device) => d.connected);
@@ -138,6 +131,7 @@ export default () => {
                 }
             )}
             onClick={() => {
+                if(!bluetooth?.adapter) return;
                 bluetooth.adapter.powered = !bluetooth.adapter.powered;
             }}
             popover={popover}

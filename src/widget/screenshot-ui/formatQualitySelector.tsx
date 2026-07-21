@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import Screenshot from '#/lib/services/capture/screenshot';
@@ -15,7 +14,7 @@ export default () => {
         label: string;
         value: number;
     }) => {
-        const active = createBinding(ss.prefs, 'recording-quality').as(
+        const active = createBinding(ss.prefs, 'recordingQuality').as(
             q => q === value
         );
         return (
@@ -40,10 +39,7 @@ export default () => {
                 <Gtk.Label label="Format:" />
                 <Gtk.Box spacing={0} cssClasses={['linked']}>
                     <Gtk.ToggleButton
-                        active={createBinding(
-                            captureSettings.settings,
-                            'recording-format'
-                        ).as(f => f === 0)}
+                        active={captureSettings.recordingFormat() === 0}
                         onToggled={btn => {
                             if (btn.active)
                                 captureSettings.setRecordingFormat(0);
@@ -52,10 +48,7 @@ export default () => {
                         <Gtk.Label label="MP4" />
                     </Gtk.ToggleButton>
                     <Gtk.ToggleButton
-                        active={createBinding(
-                            captureSettings.settings,
-                            'recording-format'
-                        ).as(f => f === 1)}
+                        active={captureSettings.recordingFormat() === 1}
                         onToggled={btn => {
                             if (btn.active)
                                 captureSettings.setRecordingFormat(1);

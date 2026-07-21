@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import AstalAuth from 'gi://AstalAuth?version=0.1';
 import GObject, {getter, register, setter, signal} from 'gnim/gobject';
 import {Timeout} from '#/lib/core/timeout';

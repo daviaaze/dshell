@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
@@ -141,7 +140,7 @@ export default () => {
             />
         );
 
-        const win = (
+        const win: Astal.Window =
             <Astal.Window
                 application={app}
                 gdkmonitor={monitor}
@@ -153,11 +152,10 @@ export default () => {
                     Astal.WindowAnchor.LEFT
                 }
                 exclusivity={Astal.Exclusivity.IGNORE}
-                visible={createBinding(ss, 'boundary-visible')}
+                visible={createBinding(ss, 'boundaryVisible')}
             >
                 {drawingArea}
-            </Astal.Window>
-        );
+            </Astal.Window> as Astal.Window;
 
         windows.push(win);
     }

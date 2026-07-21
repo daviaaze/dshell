@@ -2,8 +2,6 @@ import GObject, {getter, register} from 'gnim/gobject';
 import Tray from 'gi://AstalTray';
 import logger from '#/lib/core/logger';
 
-export type {TrayItem} from 'gi://AstalTray';
-
 /**
  * TrayService — reactive wrapper around AstalTray D-Bus proxy.
  *

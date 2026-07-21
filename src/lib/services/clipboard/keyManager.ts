@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 /**
  * KeyManager — Manage the AES-256 encryption key via libsecret (Secret Service).
  *
@@ -96,7 +95,7 @@ function storeKey(key: Uint8Array): void {
         const stored = Secret.password_store_sync(
             schema,
             {[ATTRIBUTE_KEY]: ATTRIBUTE_VALUE},
-            null,
+            '',
             LABEL,
             keyHex,
             null

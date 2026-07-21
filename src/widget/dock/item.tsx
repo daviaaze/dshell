@@ -1,14 +1,11 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 import {onCleanup} from 'gnim';
 import {useSettings} from '#/lib/settings';
-import {toArray} from '#/lib/core/gjsUtils';
 import {getAppList, exactQuery} from '#/lib/services/state/apps';
 import {ActionButton} from '#/widget/common/actionButton';
-import AstalApps from 'gi://AstalApps?version=0.1';
 import logger from '#/lib/core/logger';
 
 interface DockItemProps {
@@ -22,7 +19,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
     const {bar} = useSettings();
 
     const app =
-        toArray(getAppList()).find((a: AstalApps.Application) => a.entry === desktopFile) ||
+        getAppList().find((a) => a.entry === desktopFile) ||
         exactQuery(desktopFile.replace('.desktop', ''))?.[0];
 
     const iconName = app?.iconName || 'application-x-executable-symbolic';
@@ -49,9 +46,9 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
         logger.info('dock', `${pinned ? 'unpin' : 'pin'}: ${desktopFile}`);
         const current = bar.dockPinnedApps();
         if (pinned) {
-            bar.dockPinnedApps.set(current.filter(d => d !== desktopFile));
+            bar.setDockPinnedApps(current.filter(d => d !== desktopFile));
         } else {
-            bar.dockPinnedApps.set([...current, desktopFile]);
+            bar.setDockPinnedApps([...current, desktopFile]);
         }
     };
 
@@ -105,14 +102,14 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 // Create child content once to avoid gtk_button_set_child assertion
                 // when Gnim re-renders this component (e.g. on focus change).
                 if (!self.get_first_child()) {
-                    const icon = <Gtk.Image iconName={iconName} />;
+                    const icon = (<Gtk.Image iconName={iconName} />) as Gtk.Image;
                     // Bind icon size reactively
                     bar.dockIconSize.subscribe(() =>
                         icon.set_pixel_size(bar.dockIconSize.get())
                     );
                     icon.set_pixel_size(bar.dockIconSize.get());
 
-                    const status = <Gtk.Box />;
+                    const status = (<Gtk.Box />) as Gtk.Box;
                     // Update status indicator reactively
                     const updateStatus = () => {
                         // eslint-disable-next-line sonarjs/no-nested-conditional
@@ -148,7 +145,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                             {status}
                         </Gtk.Box>
                     );
-                    self.child = box;
+                    self.child = box as Gtk.Widget;
                 }
             }}
             cssClasses={['flat', 'circular']}

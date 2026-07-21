@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import {createBinding} from 'gnim';
@@ -32,7 +31,7 @@ interface ControlPanelProps {
 
 const ModeTab = ({label, value, icon, ss, onReset}: ModeTabProps) => (
     <Gtk.ToggleButton
-        active={createBinding(ss, 'selected-mode').as(
+        active={createBinding(ss, 'selectedMode').as(
             m => m === value
         )}
         onToggled={btn => {
@@ -56,7 +55,7 @@ const TargetButton = ({
     onTargetChange,
 }: TargetButtonProps) => (
     <Gtk.ToggleButton
-        active={createBinding(ss, 'selected-target').as(
+        active={createBinding(ss, 'selectedTarget').as(
             t => t === value
         )}
         onToggled={btn => {
@@ -156,18 +155,12 @@ export const ControlPanel = ({
                 {ss.selectedMode === 'recording' && (
                     <Gtk.Box spacing={12}>
                         <Gtk.CheckButton
-                            active={createBinding(ss, 'audio')}
-                            onNotifyActive={({active}) => {
-                                ss.audio = active;
-                            }}
+                            active={createBinding(ss, 'overlayOpen')}
                         >
                             <Gtk.Label label="Audio" />
                         </Gtk.CheckButton>
                         <Gtk.CheckButton
-                            active={createBinding(
-                                captureSettings.settings,
-                                'show-recording-boundary'
-                            )}
+                            active={captureSettings.showRecordingBoundary}
                             onNotifyActive={({active}) => {
                                 captureSettings.setShowRecordingBoundary(active);
                             }}
@@ -186,12 +179,12 @@ export const ControlPanel = ({
                     hexpand
                 >
                     <Adw.ButtonContent
-                        iconName={createBinding(ss, 'selected-mode').as(m =>
+                        iconName={createBinding(ss, 'selectedMode').as(m =>
                             m === 'screenshot'
                                 ? 'camera-photo-symbolic'
                                 : 'camera-video-symbolic'
                         )}
-                        label={createBinding(ss, 'selected-mode').as(m =>
+                        label={createBinding(ss, 'selectedMode').as(m =>
                             m === 'screenshot'
                                 ? 'Take Screenshot'
                                 : 'Start Recording'

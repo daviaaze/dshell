@@ -5,7 +5,7 @@ import {createBinding} from 'gnim';
 export default () => {
     const b = Batery.get_default();
 
-    const warningStyles = createBinding(b, 'warning-level').as(level => {
+    const warningStyles = createBinding(b, 'warningLevel').as(level => {
         if (
             level === Batery.WarningLevel.CRITICIAL ||
             level === Batery.WarningLevel.ACTION
@@ -21,8 +21,8 @@ export default () => {
 
     return (
         <Gtk.Image
-            visible={createBinding(b, 'is-present')}
-            iconName={createBinding(b, 'battery-icon-name')}
+            visible={createBinding(b, 'isPresent')}
+            iconName={createBinding(b, 'batteryIconName')}
             tooltipMarkup={createBinding(b, 'percentage').as(
                 p => `${(p * 100).toFixed(0)}%`
             )}

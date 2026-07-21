@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
 import AudioController from '#/lib/services/audio/audioController';
@@ -34,7 +33,7 @@ export default () => {
                         ];
                         self.set_model(Gtk.StringList.new(strings));
 
-                        const currentId = ss.selectedAudioInput;
+                        const currentId = ss.prefs.selectedAudioInput;
                         if (currentId === SYSTEM_DEFAULT_ID) {
                             self.set_selected(0);
                         } else {
@@ -54,12 +53,12 @@ export default () => {
                     self.connect('notify::selected', () => {
                         const idx = self.selected;
                         if (idx <= 0) {
-                            ss.selectedAudioInput = -1;
+                            ss.prefs.selectedAudioInput = -1;
                         } else {
                             const list = mics();
                             const mic = list[idx - 1];
                             if (mic) {
-                                ss.selectedAudioInput = mic.id;
+                                ss.prefs.selectedAudioInput = mic.id;
                             }
                         }
                     });

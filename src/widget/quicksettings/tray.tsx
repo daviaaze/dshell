@@ -1,8 +1,8 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, For} from 'gnim';
 import {useSettings} from '#/lib/settings';
+import Tray from 'gi://AstalTray';
 import TrayService from '#/lib/services/desktop/trayService';
-import type {TrayItem} from '#/lib/services/desktop/trayService';
 import ShellState from '#/lib/services/state/shellState';
 import {PowerMenu} from '#/widget/common/powerMenu';
 import {IconButton, IconMenuButton} from '#/widget/common/iconButton';
@@ -58,7 +58,7 @@ export const TrayBox = () => {
     return (
         <Gtk.Box spacing={4} homogeneous halign={Gtk.Align.CENTER}>
             <For each={createBinding(tray, 'items')}>
-                {(item: TrayItem) => (
+                {(item: Tray.TrayItem) => (
                     <Gtk.MenuButton
                         cssClasses={['circular']}
                         $={self => {

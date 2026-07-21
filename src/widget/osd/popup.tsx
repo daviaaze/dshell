@@ -1,4 +1,3 @@
-// @ts-nocheck — pre-existing GI type gaps; see tsconfig.json for strict mode settings
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
@@ -12,7 +11,7 @@ export default ({
     signals,
 }: {
     widget: GObject.Object;
-    connectable: GObject.Object;
+    connectable: GObject.Object | null;
     signals: string[];
 }) => (
     <Gtk.Revealer
@@ -21,18 +20,21 @@ export default ({
         visible={false}
         transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
         $={self => {
-            let timeoutId: number | null = null;
-            let visibilityTimeoutId: number | null = null;
+            let timeout: GLib.Source | null = null;
+            let visibilityTimeout: GLib.Source | null = null;
+            const hide = () => {
+                self.visible = false;
+            };
+
             const showPopup = () => {
-                if (timeoutId) clearTimeout(timeoutId);
-                if (visibilityTimeoutId) clearTimeout(visibilityTimeoutId);
+                if (timeout) clearTimeout(timeout);
+                if (visibilityTimeout) clearTimeout(visibilityTimeout);
                 self.visible = true;
                 self.revealChild = true;
-                timeoutId = setTimeout(() => {
+                timeout = setTimeout(() => {
                     self.revealChild = false;
-                    // eslint-disable-next-line sonarjs/no-nested-functions
-                    visibilityTimeoutId = setTimeout(
-                        () => (self.visible = false),
+                    visibilityTimeout = setTimeout(
+                        hide,
                         200
                     );
                 }, TIMEOUT_MS);
@@ -40,6 +42,7 @@ export default ({
             // Defer signal connections so OSD widget creation doesn't block
             // the main thread with Wireplumber/Brightness singleton init.
             GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                if (!connectable) return GLib.SOURCE_REMOVE;
                 for (const signal of signals) {
                     connectFor(self, connectable, signal, showPopup);
                 }

@@ -5,6 +5,7 @@ import {LinkedBox} from '#/widget/common/linkedBox';
 import WifiPopover from './wifiPopover';
 import {wifiIconName} from './utils';
 import NetworkService from '#/lib/services/network/networkService';
+import AstalNetwork from 'gi://AstalNetwork?version=0.1';
 
 const WifiQuicksettingsButton = () => {
     const net = NetworkService.get_default();
@@ -32,8 +33,8 @@ const WifiQuicksettingsButton = () => {
         return ['raised'];
     });
 
-    const wifiSsid = createBinding(net, 'wifi-ssid');
-    const wifiEnabled = createBinding(net, 'wifi-enabled');
+    const wifiSsid = createBinding(net, 'wifiSsid');
+    const wifiEnabled = createBinding(net, 'wifiEnabled');
 
     const label = createComputed(() => {
         const ssid = wifiSsid();
@@ -48,7 +49,7 @@ const WifiQuicksettingsButton = () => {
         <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT}>
             <LinkedBox>
                 <With value={createBinding(net, 'wifi')}>
-                    {(w: import('gi://AstalNetwork').Wifi | null) =>
+                    {(w: AstalNetwork.Wifi | null) =>
                         w ? (
                             <WifiPopover
                                 wifi={w}
@@ -74,7 +75,7 @@ const WifiQuicksettingsButton = () => {
     return (
         <QuickToggleButton
             icon={icon}
-            visible={createBinding(net, 'wifi-ready')}
+            visible={createBinding(net, 'wifiReady')}
             cssClasses={wifiCssClasses}
             label={label}
             onClick={() => {

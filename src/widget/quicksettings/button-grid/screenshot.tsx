@@ -104,10 +104,7 @@ export default () => {
 
                     {/* WebM (VP9). Unchecked = MP4 (H.264), the default. */}
                     <Gtk.CheckButton
-                        active={createBinding(
-                            captureSettings.settings,
-                            'recording-format'
-                        ).as(v => v === 1)}
+                        active={captureSettings.recordingFormat() === 1}
                         onNotifyActive={({active}) => {
                             captureSettings.setRecordingFormat(active ? 1 : 0);
                         }}
