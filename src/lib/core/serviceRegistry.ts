@@ -7,7 +7,7 @@ import logger, {perf} from '#/lib/core/logger';
  * No abstract class dependency — GObject-based services implement
  * these methods alongside their GObject pattern.
  */
-export type Service = Record<string, unknown> & {
+export type Service = object & {
     init?(...args: unknown[]): void;
     dispose?(): void;
 };
