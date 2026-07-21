@@ -109,7 +109,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     );
                     icon.set_pixel_size(bar.dockIconSize.get());
 
-                    const status = (<Gtk.Box />) as Gtk.Box;
+                    const status = (<Gtk.Box />) as Gtk.Box & { css: string };
                     // Update status indicator reactively
                     const updateStatus = () => {
                         // eslint-disable-next-line sonarjs/no-nested-conditional
