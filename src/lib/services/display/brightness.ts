@@ -1,7 +1,11 @@
 /**
  * Brightness service — wraps AstalBrightness (gi://AstalBrightness).
  *
- * Replaces manual brightnessctl/sysfs file monitoring.
+ * AstalBrightness.Brightness.screen and .kbd are DeviceProxy objects,
+ * not plain numbers. Each DeviceProxy has:
+ *   - .brightness: number (current raw value)
+ *   - .max_brightness: number
+ *   - notify::brightness fires on raw value changes
  */
 import AstalBrightness from 'gi://AstalBrightness';
 import GObject, {getter, register, setter} from 'gnim/gobject';
@@ -16,7 +20,8 @@ export default class Brightness extends GObject.Object {
         return this.instance;
     }
 
-    #service: AstalBrightness.Brightness | null = null;
+    #screenDev: AstalBrightness.DeviceProxy | null = null;
+    #kbdDev: AstalBrightness.DeviceProxy | null = null;
     #ready = false;
 
     @getter(Boolean)
@@ -24,28 +29,36 @@ export default class Brightness extends GObject.Object {
         return this.#ready;
     }
 
+    /** Normalized screen brightness [0–1] */
     @getter(Number)
-    get kbd() {
-        return this.#service?.kbd ?? 0;
-    }
-
-    @setter(Number)
-    set kbd(value: number) {
-        if (this.#service) {
-            this.#service.kbd = Math.max(0, Math.min(1, value));
-        }
-    }
-
-    @getter(Number)
-    get screen() {
-        return this.#service?.screen ?? 0;
+    get screen(): number {
+        const dev = this.#screenDev;
+        if (!dev || dev.max_brightness === 0) return 0;
+        return dev.brightness / dev.max_brightness;
     }
 
     @setter(Number)
     set screen(value: number) {
-        if (this.#service) {
-            this.#service.screen = Math.max(0, Math.min(1, value));
-        }
+        const dev = this.#screenDev;
+        if (!dev) return;
+        const clamped = Math.max(0, Math.min(1, value));
+        dev.brightness = Math.round(clamped * dev.max_brightness);
+    }
+
+    /** Normalized keyboard brightness [0–1] */
+    @getter(Number)
+    get kbd(): number {
+        const dev = this.#kbdDev;
+        if (!dev || dev.max_brightness === 0) return 0;
+        return dev.brightness / dev.max_brightness;
+    }
+
+    @setter(Number)
+    set kbd(value: number) {
+        const dev = this.#kbdDev;
+        if (!dev) return;
+        const clamped = Math.max(0, Math.min(1, value));
+        dev.brightness = Math.round(clamped * dev.max_brightness);
     }
 
     constructor() {
@@ -53,26 +66,38 @@ export default class Brightness extends GObject.Object {
 
         try {
             const svc = AstalBrightness.Brightness.get_default();
-            this.#service = svc;
+            const screenDev = svc.screen as AstalBrightness.DeviceProxy | null;
+            const kbdDev = svc.kbd as AstalBrightness.DeviceProxy | null;
+            this.#screenDev = screenDev;
+            this.#kbdDev = kbdDev;
 
-            logger.info('brightness', `Astal service initialized, screen=${svc.screen} kbd=${svc.kbd}`);
+            logger.info(
+                'brightness',
+                `Astal service initialized, screen=${screenDev?.brightness ?? '?'}/${screenDev?.max_brightness ?? '?'} kbd=${kbdDev?.brightness ?? '?'}/${kbdDev?.max_brightness ?? '?'}`
+            );
 
-            // Forward property notifications from the Astal service
+            // DeviceProxy fires notify::brightness when the raw value changes
+            screenDev?.connect('notify::brightness', () => {
+                logger.info('brightness', `notify::brightness on screen, raw=${screenDev.brightness}/${screenDev.max_brightness}`);
+                this.notify('screen');
+            });
+            kbdDev?.connect('notify::brightness', () => {
+                logger.info('brightness', `notify::brightness on kbd, raw=${kbdDev.brightness}/${kbdDev.max_brightness}`);
+                this.notify('kbd');
+            });
+
+            // Also forward service-level notify::screen/kbd (if the service emits them)
             svc.connect('notify::screen', () => {
-                const v = svc.screen;
-                logger.info('brightness', `notify::screen forwarded, value=${v}`);
                 this.notify('screen');
             });
             svc.connect('notify::kbd', () => {
-                const v = svc.kbd;
-                logger.info('brightness', `notify::kbd forwarded, value=${v}`);
                 this.notify('kbd');
             });
 
             this.#ready = true;
             logger.info('brightness', 'AstalBrightness wrapper ready');
 
-            // Force initial sync — Astal may have already notified before our connect
+            // Force initial sync so bindings pick up the real value
             this.notify('screen');
             this.notify('kbd');
         } catch (e) {
