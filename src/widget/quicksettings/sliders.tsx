@@ -68,7 +68,7 @@ export const BrightnessSlider = () => {
     logger.debug('brightness', 'BrightnessSlider: done');
     return (
         <Slider
-            visible={createBinding(brightness, 'screen').as(v => v > 0)}
+            visible={true}
             icon={'display-brightness-symbolic'}
             min={BRIGHTNESS_PCT_MIN}
             max={BRIGHTNESS_PCT_MAX}

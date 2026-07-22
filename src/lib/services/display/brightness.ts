@@ -71,6 +71,10 @@ export default class Brightness extends GObject.Object {
 
             this.#ready = true;
             logger.info('brightness', 'AstalBrightness wrapper ready');
+
+            // Force initial sync — Astal may have already notified before our connect
+            this.notify('screen');
+            this.notify('kbd');
         } catch (e) {
             logger.error('brightness', 'failed to initialize AstalBrightness:', e);
         }
