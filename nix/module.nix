@@ -92,6 +92,7 @@ in
 
         environment.systemPackages = [
           cfg.package
+          inputs.astal.packages.${pkgs.stdenv.hostPlatform.system}.brightness
           pkgs.adwaita-icon-theme
           pkgs.brightnessctl
           pkgs.hyprshot

@@ -82,8 +82,8 @@ in
     ];
 
     bindl = [
-      ",XF86MonBrightnessUp,exec,${lib.getExe pkgs.brightnessctl} set +5%"
-      ",XF86MonBrightnessDown,exec,${lib.getExe pkgs.brightnessctl} set 5%-"
+      ",XF86MonBrightnessUp,exec,astal-brightness set +5%"
+      ",XF86MonBrightnessDown,exec,astal-brightness set 5%-"
     ];
 
     bindle = [
