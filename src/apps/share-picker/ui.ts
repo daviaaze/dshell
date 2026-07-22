@@ -10,6 +10,11 @@ const CAT = 'share-picker';
 
 const PICTURE_W = 240;
 const PICTURE_H = 135;
+const MAX_DESC_LEN = 60;
+
+function truncate(s: string, max: number): string {
+    return s.length <= max ? s : `${s.substring(0, max - 1)}…`;
+}
 
 /** Popup window rounding — non-fatal if the display isn't ready */
 export function applyPopupCss(): void {
