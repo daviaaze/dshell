@@ -1,6 +1,6 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createState} from 'gnim';
+import {Accessor} from 'gnim';
 import {useStyle} from '#/style/useStyle';
 
 type SliderProps = {
@@ -13,77 +13,20 @@ type SliderProps = {
     onIconClick?: () => void;
 };
 
-const DEBOUNCE_MS = 80;
-const PENDING_TIMEOUT_MS = 500;
-const SYNC_TOLERANCE = 1;
 const SLIDER_SPACING = 4;
 
+/**
+ * Follows the Astal/AstalWp contract: value is bound reactively (services
+ * only notify confirmed state changes) and user input is written back
+ * immediately via change-value. No debounce or manual sync — delaying the
+ * write leaves the service reporting the old value, and any read in that
+ * window snaps the handle back (flicker).
+ */
 export const Slider = (props: SliderProps) => {
     const sliderStyle = useStyle({
         'min-width': '180px',
     });
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
-    const [displayValue, setDisplayValue] = createState(safe(props.value()));
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
-    let sliderRef: Astal.Slider | null = null;
-    let programmaticSet = false;
-
-    // Target of the latest user-initiated change. While set, external
-    // values that don't match it are stale echoes of the old value
-    // (service round-trip latency) and are ignored to avoid flicker.
-    // Cleared ONLY by timeout — the service can emit several stale echoes
-    // interleaved with confirmations (old→new→old→new), so a matching
-    // value must not end the window early.
-    let pendingValue: number | null = null;
-
-    const clearPending = () => {
-        pendingValue = null;
-        if (pendingTimer !== null) {
-            clearTimeout(pendingTimer);
-            pendingTimer = null;
-        }
-    };
-
-    const markPending = (value: number) => {
-        pendingValue = value;
-        if (pendingTimer !== null) clearTimeout(pendingTimer);
-        // Safety net: if no confirmation ever arrives, resume normal sync
-        pendingTimer = setTimeout(clearPending, PENDING_TIMEOUT_MS);
-    };
-
-    const debouncedSetValue = (value: number) => {
-        // Ignore onChangeValue triggered by programmatic set_value()
-        if (programmaticSet) return;
-        setDisplayValue(value);
-        markPending(value);
-        if (debounceTimer !== null) clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-            props.setValue(value);
-            debounceTimer = null;
-        }, DEBOUNCE_MS);
-    };
-
-    // Sync external value changes to the slider imperatively (not via reactive binding)
-    props.value.subscribe(() => {
-        const v = safe(props.value());
-        // While a user change is in flight, drop values that don't match
-        // the pending target — they're stale echoes of the old value.
-        if (pendingValue !== null && Math.abs(v - pendingValue) > SYNC_TOLERANCE) {
-            return;
-        }
-        setDisplayValue(v);
-        if (sliderRef && debounceTimer === null) {
-            const current = sliderRef.get_value();
-            // Only move the handle for perceptible differences, avoiding
-            // micro-jumps from service-side value quantization
-            if (Math.abs(v - current) > SYNC_TOLERANCE) {
-                programmaticSet = true;
-                sliderRef.set_value(v);
-                programmaticSet = false;
-            }
-        }
-    });
 
     return (
         <Gtk.Box cssClasses={['slider', sliderStyle.class]} spacing={SLIDER_SPACING} visible={props.visible} $={sliderStyle.$}>
@@ -98,17 +41,12 @@ export const Slider = (props: SliderProps) => {
                 hexpand
                 min={props.min}
                 max={props.max}
-                $={self => {
-                    sliderRef = self;
-                    self.set_value(safe(displayValue()));
-                }}
-                onChangeValue={({value}) => debouncedSetValue(safe(value))}
+                value={props.value.as(safe)}
+                onChangeValue={({value}) => props.setValue(safe(value))}
             />
             <Gtk.Label
                 cssClasses={['heading']}
-                label={displayValue(v =>
-                    (v ?? 0).toFixed(0).toString().concat('%')
-                )}
+                label={props.value(v => safe(v).toFixed(0).concat('%'))}
             />
         </Gtk.Box>
     );
