@@ -32,7 +32,7 @@
  * | `Notification` | `notification.tsx` | Toast notification widget with image, actions, auto-dismiss. |
  * | `PowerMenu` | `powerMenu.tsx` | Power actions (lock, suspend, restart, shutdown). |
  * | `WeatherIcon` | `weatherWidget.tsx` | Weather condition icon. |
- * | `WeatherWidget` | `weatherWidget.tsx` | Full weather popover widget with gradient, sun arc, forecast, details. |
+ * | `WeatherWidget` | `weatherWidget.tsx` | Full weather widget with current conditions, sun/moon info, forecast, details. |
  *
  * ### Utilities
  * | Utility | File | Description |

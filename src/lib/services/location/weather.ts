@@ -6,10 +6,7 @@ import Geolocation from './geolocation';
 import logger from '#/lib/core/logger';
 import {Accessor} from 'gnim';
 import {toArray} from '#/lib/core/gjsUtils';
-import {
-    weatherGradient,
-    formatTemp,
-} from './weatherUtils';
+import {formatTemp} from './weatherUtils';
 
 @register({GTypeName: 'Weather'})
 export default class Weather extends GObject.Object {
@@ -112,13 +109,7 @@ export default class Weather extends GObject.Object {
         return this.#sunset;
     }
 
-    #gradient =
-        'linear-gradient(135deg, var(--shade-surface-dim), var(--shade-surface-container))';
 
-    @getter(String)
-    get gradient() {
-        return this.#gradient;
-    }
 
     #updateComputed() {
         const w = this.#weather;
@@ -146,10 +137,6 @@ export default class Weather extends GObject.Object {
             this.#sunset = sunset;
         }
 
-        this.#gradient = valid
-            ? weatherGradient(w.get_icon_name() ?? '')
-            : 'linear-gradient(135deg, var(--shade-surface-dim), var(--shade-surface-container))';
-
         this.notify('temp-summary');
         this.notify('feels-like');
         this.notify('sky-desc');
@@ -161,7 +148,6 @@ export default class Weather extends GObject.Object {
         this.notify('pressure');
         this.notify('sunrise');
         this.notify('sunset');
-        this.notify('gradient');
     }
 
     @setter(GWeather.Location)
@@ -398,25 +384,28 @@ export default class Weather extends GObject.Object {
         phase: number;
         phaseName: string;
         phaseEmoji: string;
+        iconName: string;
     } | null {
-        const result = this.#weather.get_value_moonphase();
-        const valid = result[0];
-        const phase = result[1];
-        logger.info('weather', `getMoonPhase: valid=${valid} phase=${phase}`);
+        const [valid, phase] = this.#weather.get_value_moonphase();
         if (!valid) return null;
         const d = ((phase % 360) + 360) % 360;
         const idx = Math.round(d / 45) % 8;
         const PHASES = [
-            {name: 'New Moon', emoji: '🌑'},
-            {name: 'Waxing Crescent', emoji: '🌒'},
-            {name: 'First Quarter', emoji: '🌓'},
-            {name: 'Waxing Gibbous', emoji: '🌔'},
-            {name: 'Full Moon', emoji: '🌕'},
-            {name: 'Waning Gibbous', emoji: '🌖'},
-            {name: 'Last Quarter', emoji: '🌗'},
-            {name: 'Waning Crescent', emoji: '🌘'},
+            {name: 'New Moon', emoji: '🌑', icon: 'moon-new-symbolic'},
+            {name: 'Waxing Crescent', emoji: '🌒', icon: 'moon-waxing-crescent-symbolic'},
+            {name: 'First Quarter', emoji: '🌓', icon: 'moon-first-quarter-symbolic'},
+            {name: 'Waxing Gibbous', emoji: '🌔', icon: 'moon-waxing-gibbous-symbolic'},
+            {name: 'Full Moon', emoji: '🌕', icon: 'moon-full-symbolic'},
+            {name: 'Waning Gibbous', emoji: '🌖', icon: 'moon-waning-gibbous-symbolic'},
+            {name: 'Last Quarter', emoji: '🌗', icon: 'moon-last-quarter-symbolic'},
+            {name: 'Waning Crescent', emoji: '🌘', icon: 'moon-waning-crescent-symbolic'},
         ];
-        return {phase, phaseName: PHASES[idx]!.name, phaseEmoji: PHASES[idx]!.emoji};
+        return {
+            phase,
+            phaseName: PHASES[idx]!.name,
+            phaseEmoji: PHASES[idx]!.emoji,
+            iconName: PHASES[idx]!.icon,
+        };
     }
 
     /** Current conditions detail data */

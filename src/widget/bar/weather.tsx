@@ -13,8 +13,8 @@ export const WeatherButton = ({
     visible?: boolean | Accessor<boolean>;
 }) => {
     const svc = Weather.get_default();
-    const iconName = createBinding(svc, 'weather-icon');
-    const tempLabel = createBinding(svc, 'temp-summary');
+    const iconName = createBinding(svc, 'weatherIcon');
+    const tempLabel = createBinding(svc, 'tempSummary');
 
     return (
         <Gtk.MenuButton

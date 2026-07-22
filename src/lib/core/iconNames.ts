@@ -173,6 +173,16 @@ export const IconNames = {
     weatherStorm: 'weather-storm-symbolic',
     weatherTornado: 'weather-tornado-symbolic',
     weatherWindy: 'weather-windy-symbolic',
+
+    // ── Moon phases (custom) ─────────────────────────────────
+    moonNew: 'moon-new-symbolic',
+    moonWaxingCrescent: 'moon-waxing-crescent-symbolic',
+    moonFirstQuarter: 'moon-first-quarter-symbolic',
+    moonWaxingGibbous: 'moon-waxing-gibbous-symbolic',
+    moonFull: 'moon-full-symbolic',
+    moonWaningGibbous: 'moon-waning-gibbous-symbolic',
+    moonLastQuarter: 'moon-last-quarter-symbolic',
+    moonWaningCrescent: 'moon-waning-crescent-symbolic',
 } as const;
 
 /** Union of every valid icon name string. */

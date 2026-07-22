@@ -31,6 +31,23 @@ export class ShadeShell extends Adw.Application {
         Touchpad.get_default().registerCommands(this);
     }
 
+    private initIcons() {
+        const display = Gdk.Display.get_default();
+        if (!display) return;
+        const iconTheme = Gtk.IconTheme.get_for_display(display);
+        const iconDir = GLib.build_filenamev([
+            import.meta.datadir,
+            'shade-shell',
+            'icons',
+        ]);
+        if (GLib.file_test(iconDir, GLib.FileTest.IS_DIR)) {
+            iconTheme.add_search_path(iconDir);
+            logger.debug('app', `icon search path added: ${iconDir}`);
+        } else {
+            logger.warn('app', `icon directory not found: ${iconDir}`);
+        }
+    }
+
     private initCss() {
         perf.start('initCss', 'mount');
         const display = Gdk.Display.get_default();
@@ -77,6 +94,7 @@ export class ShadeShell extends Adw.Application {
         createRoot(dispose => {
             this.#rootDispose = dispose;
             this.connect('shutdown', () => this.#teardown());
+            this.initIcons();
             this.initCss();
             SettingsProvider(() => widgets());
         });

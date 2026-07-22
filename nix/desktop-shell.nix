@@ -138,6 +138,10 @@ pkgs.stdenv.mkDerivation {
     install -Dm644 data/wp-day.jpg data/wp-night.jpg \
       -t $out/share/shade-shell
 
+    # Custom icons (moon phases, etc.)
+    mkdir -p $out/share/shade-shell/icons
+    install -Dm644 assets/icons/*.svg -t $out/share/shade-shell/icons
+
     # systemd user service for non-NixOS users (NixOS module uses its own)
     substitute data/shade-shell.service.in $out/share/systemd/user/shade-shell.service \
       --replace-fail '@wrapper_bin@' "$out/bin"
