@@ -55,18 +55,24 @@ export default class Brightness extends GObject.Object {
             const svc = AstalBrightness.Brightness.get_default();
             this.#service = svc;
 
+            logger.info('brightness', `Astal service initialized, screen=${svc.screen} kbd=${svc.kbd}`);
+
             // Forward property notifications from the Astal service
             svc.connect('notify::screen', () => {
+                const v = svc.screen;
+                logger.info('brightness', `notify::screen forwarded, value=${v}`);
                 this.notify('screen');
             });
             svc.connect('notify::kbd', () => {
+                const v = svc.kbd;
+                logger.info('brightness', `notify::kbd forwarded, value=${v}`);
                 this.notify('kbd');
             });
 
             this.#ready = true;
-            logger.debug('hw', 'AstalBrightness initialized');
+            logger.info('brightness', 'AstalBrightness wrapper ready');
         } catch (e) {
-            logger.error('hw', 'failed to initialize AstalBrightness:', e);
+            logger.error('brightness', 'failed to initialize AstalBrightness:', e);
         }
     }
 
