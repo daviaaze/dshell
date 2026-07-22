@@ -1,11 +1,18 @@
 /**
  * Brightness service — wraps AstalBrightness (gi://AstalBrightness).
  *
- * AstalBrightness.Brightness.screen and .kbd are DeviceProxy objects,
- * not plain numbers. Each DeviceProxy has:
- *   - .brightness: number (current raw value)
- *   - .max_brightness: number
- *   - notify::brightness fires on raw value changes
+ * AstalBrightness.Brightness exposes:
+ *   - .screen → Device (interface, not a number)
+ *   - .keyboard → Device (not `.kbd`!)
+ *
+ * Each Device has:
+ *   - .brightness: number (0–1 percentage, writable)
+ *   - .name: string
+ *   - .get_max_brightness(): number (raw max)
+ *   - .get_real_brightness(): number (raw value)
+ *   - notify::brightness fires when the percentage changes
+ *
+ * The service also emits `brightness-changed(device)` on any change.
  */
 import AstalBrightness from 'gi://AstalBrightness';
 import GObject, {getter, register, setter} from 'gnim/gobject';
@@ -20,8 +27,8 @@ export default class Brightness extends GObject.Object {
         return this.instance;
     }
 
-    #screenDev: AstalBrightness.DeviceProxy | null = null;
-    #kbdDev: AstalBrightness.DeviceProxy | null = null;
+    #screenDev: AstalBrightness.Device | null = null;
+    #kbdDev: AstalBrightness.Device | null = null;
     #ready = false;
 
     @getter(Boolean)
@@ -29,36 +36,28 @@ export default class Brightness extends GObject.Object {
         return this.#ready;
     }
 
-    /** Normalized screen brightness [0–1] */
+    /** Screen brightness [0–1] */
     @getter(Number)
     get screen(): number {
-        const dev = this.#screenDev;
-        if (!dev || dev.max_brightness === 0) return 0;
-        return dev.brightness / dev.max_brightness;
+        return this.#screenDev?.brightness ?? 0;
     }
 
     @setter(Number)
     set screen(value: number) {
         const dev = this.#screenDev;
-        if (!dev) return;
-        const clamped = Math.max(0, Math.min(1, value));
-        dev.brightness = Math.round(clamped * dev.max_brightness);
+        if (dev) dev.brightness = Math.max(0, Math.min(1, value));
     }
 
-    /** Normalized keyboard brightness [0–1] */
+    /** Keyboard brightness [0–1] */
     @getter(Number)
     get kbd(): number {
-        const dev = this.#kbdDev;
-        if (!dev || dev.max_brightness === 0) return 0;
-        return dev.brightness / dev.max_brightness;
+        return this.#kbdDev?.brightness ?? 0;
     }
 
     @setter(Number)
     set kbd(value: number) {
         const dev = this.#kbdDev;
-        if (!dev) return;
-        const clamped = Math.max(0, Math.min(1, value));
-        dev.brightness = Math.round(clamped * dev.max_brightness);
+        if (dev) dev.brightness = Math.max(0, Math.min(1, value));
     }
 
     constructor() {
@@ -66,31 +65,35 @@ export default class Brightness extends GObject.Object {
 
         try {
             const svc = AstalBrightness.Brightness.get_default();
-            const screenDev = svc.screen as AstalBrightness.DeviceProxy | null;
-            const kbdDev = svc.kbd as AstalBrightness.DeviceProxy | null;
+
+            // Note: the GIR property is `keyboard`, NOT `kbd`
+            const screenDev: AstalBrightness.Device | null = svc.screen;
+            const kbdDev: AstalBrightness.Device | null = svc.keyboard;
             this.#screenDev = screenDev;
             this.#kbdDev = kbdDev;
 
             logger.info(
                 'brightness',
-                `Astal service initialized, screen=${screenDev?.brightness ?? '?'}/${screenDev?.max_brightness ?? '?'} kbd=${kbdDev?.brightness ?? '?'}/${kbdDev?.max_brightness ?? '?'}`
+                `Astal service initialized, screen=${screenDev?.brightness?.toFixed(3) ?? 'none'} (max=${screenDev?.get_max_brightness() ?? '?'}) kbd=${kbdDev?.brightness?.toFixed(3) ?? 'none'}`
             );
 
-            // DeviceProxy fires notify::brightness when the raw value changes
+            // Forward property notifications from the Device objects.
+            // Device.brightness fires notify::brightness when the percentage changes.
             screenDev?.connect('notify::brightness', () => {
-                logger.info('brightness', `notify::brightness on screen, raw=${screenDev.brightness}/${screenDev.max_brightness}`);
+                logger.info('brightness', `notify::brightness on screen → ${screenDev.brightness.toFixed(3)}`);
                 this.notify('screen');
             });
             kbdDev?.connect('notify::brightness', () => {
-                logger.info('brightness', `notify::brightness on kbd, raw=${kbdDev.brightness}/${kbdDev.max_brightness}`);
+                logger.info('brightness', `notify::brightness on keyboard → ${kbdDev.brightness.toFixed(3)}`);
                 this.notify('kbd');
             });
 
-            // Also forward service-level notify::screen/kbd (if the service emits them)
-            svc.connect('notify::screen', () => {
+            // Also listen to the service-level convenience signal
+            svc.connect('brightness-changed', (_device: unknown) => {
+                logger.info('brightness', 'brightness-changed signal');
+                // Re-notify both — the device param tells us which one,
+                // but re-notifying both is simpler and harmless.
                 this.notify('screen');
-            });
-            svc.connect('notify::kbd', () => {
                 this.notify('kbd');
             });
 

@@ -127,17 +127,27 @@ declare module 'gi://AstalBluetooth' {
 declare module 'gi://AstalBrightness' {
     import type GObject from 'gi://GObject';
     namespace AstalBrightness {
-        /** A brightness device proxy (backlight or leds subsystem). */
-        class DeviceProxy extends GObject.Object {
+        enum Subsystem {
+            BACKLIGHT,
+            LEDS,
+        }
+        /** A brightness device — backlight or leds subsystem. */
+        interface Device extends GObject.Object {
             brightness: number;
-            max_brightness: number;
-            name: string;
-            subsystem: string;
+            readonly name: string;
+            readonly subsystem: Subsystem;
+            get_brightness(): number;
+            set_brightness(value: number): void;
+            get_real_brightness(): number;
+            set_real_brightness(value: number): void;
+            get_max_brightness(): number;
         }
         class Brightness extends GObject.Object {
             static get_default(): Brightness;
-            screen: DeviceProxy;
-            kbd: DeviceProxy;
+            readonly screen: Device;
+            readonly keyboard: Device;
+            get_screen(): Device;
+            get_keyboard(): Device;
         }
     }
     // eslint-disable-next-line import/no-default-export
