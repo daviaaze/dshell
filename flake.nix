@@ -35,14 +35,7 @@
         astal.packages.${system}.hyprland
         mpris
         network
-        (notifd.overrideAttrs (old: {
-          postPatch = (old.postPatch or "") + ''
-            sed -i 's/, -1,/, 1000,/' src/proxy.vala
-            sed -i '/proxy = Bus.get_proxy_sync/,/);/{
-              /);/a\        proxy.g_default_timeout = 1000;
-            }' src/proxy.vala
-          '';
-        }))
+        notifd
         powerprofiles
         quarrel
         tray
