@@ -42,9 +42,14 @@ export const Slider = (props: SliderProps) => {
         const v = safe(props.value());
         setDisplayValue(v);
         if (sliderRef && debounceTimer === null) {
-            programmaticSet = true;
-            sliderRef.set_value(v);
-            programmaticSet = false;
+            const current = sliderRef.get_value();
+            // Only update slider position if difference is perceptible (>1%)
+            // to avoid flicker from Wireplumber quantization round-trips
+            if (Math.abs(v - current) > 1) {
+                programmaticSet = true;
+                sliderRef.set_value(v);
+                programmaticSet = false;
+            }
         }
     });
 
