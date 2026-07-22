@@ -14,6 +14,8 @@ type SliderProps = {
 };
 
 const DEBOUNCE_MS = 80;
+const PENDING_TIMEOUT_MS = 500;
+const SYNC_TOLERANCE = 1;
 const SLIDER_SPACING = 4;
 
 export const Slider = (props: SliderProps) => {
@@ -23,13 +25,35 @@ export const Slider = (props: SliderProps) => {
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
     const [displayValue, setDisplayValue] = createState(safe(props.value()));
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
     let sliderRef: Astal.Slider | null = null;
     let programmaticSet = false;
+
+    // Target of the latest user-initiated change. While set, external
+    // values that don't match it are stale echoes of the old value
+    // (service round-trip latency) and are ignored to avoid flicker.
+    let pendingValue: number | null = null;
+
+    const clearPending = () => {
+        pendingValue = null;
+        if (pendingTimer !== null) {
+            clearTimeout(pendingTimer);
+            pendingTimer = null;
+        }
+    };
+
+    const markPending = (value: number) => {
+        pendingValue = value;
+        if (pendingTimer !== null) clearTimeout(pendingTimer);
+        // Safety net: if no confirmation ever arrives, resume normal sync
+        pendingTimer = setTimeout(clearPending, PENDING_TIMEOUT_MS);
+    };
 
     const debouncedSetValue = (value: number) => {
         // Ignore onChangeValue triggered by programmatic set_value()
         if (programmaticSet) return;
         setDisplayValue(value);
+        markPending(value);
         if (debounceTimer !== null) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             props.setValue(value);
@@ -40,12 +64,21 @@ export const Slider = (props: SliderProps) => {
     // Sync external value changes to the slider imperatively (not via reactive binding)
     props.value.subscribe(() => {
         const v = safe(props.value());
+        if (pendingValue !== null) {
+            if (Math.abs(v - pendingValue) <= SYNC_TOLERANCE) {
+                // Confirmation of our own change — resume normal sync
+                clearPending();
+            } else {
+                // Stale echo of the previous value — ignore
+                return;
+            }
+        }
         setDisplayValue(v);
         if (sliderRef && debounceTimer === null) {
             const current = sliderRef.get_value();
-            // Only update slider position if difference is perceptible (>1%)
-            // to avoid flicker from Wireplumber quantization round-trips
-            if (Math.abs(v - current) > 1) {
+            // Only move the handle for perceptible differences, avoiding
+            // micro-jumps from service-side value quantization
+            if (Math.abs(v - current) > SYNC_TOLERANCE) {
                 programmaticSet = true;
                 sliderRef.set_value(v);
                 programmaticSet = false;
