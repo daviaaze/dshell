@@ -32,6 +32,9 @@ export const Slider = (props: SliderProps) => {
     // Target of the latest user-initiated change. While set, external
     // values that don't match it are stale echoes of the old value
     // (service round-trip latency) and are ignored to avoid flicker.
+    // Cleared ONLY by timeout — the service can emit several stale echoes
+    // interleaved with confirmations (old→new→old→new), so a matching
+    // value must not end the window early.
     let pendingValue: number | null = null;
 
     const clearPending = () => {
@@ -64,14 +67,10 @@ export const Slider = (props: SliderProps) => {
     // Sync external value changes to the slider imperatively (not via reactive binding)
     props.value.subscribe(() => {
         const v = safe(props.value());
-        if (pendingValue !== null) {
-            if (Math.abs(v - pendingValue) <= SYNC_TOLERANCE) {
-                // Confirmation of our own change — resume normal sync
-                clearPending();
-            } else {
-                // Stale echo of the previous value — ignore
-                return;
-            }
+        // While a user change is in flight, drop values that don't match
+        // the pending target — they're stale echoes of the old value.
+        if (pendingValue !== null && Math.abs(v - pendingValue) > SYNC_TOLERANCE) {
+            return;
         }
         setDisplayValue(v);
         if (sliderRef && debounceTimer === null) {
