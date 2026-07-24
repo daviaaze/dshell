@@ -34,7 +34,7 @@ export default class Geolocation extends Object {
     }
 
     @signal([Double, Double], VoidType)
-    locationChanged(_lat: number, _lon: number): undefined { return undefined; }
+    locationChanged(_lat: number, _lon: number): void {}
 
     detect() {
         if (this.#detecting) return;

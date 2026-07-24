@@ -48,10 +48,10 @@ export default class AuthSession extends Object {
     // ── Signals ──
 
     @signal()
-    success(): undefined { return undefined; }
+    success(): void {}
 
     @signal([String])
-    fail(_reason: string): undefined { return undefined; }
+    fail(_reason: string): void {}
 
     /** Called when authentication process fully completes (success or fatal). */
     #complete() {
