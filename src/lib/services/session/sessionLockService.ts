@@ -31,15 +31,11 @@ export default class SessionLockService extends Object {
 
     /** Emitted when the session lock is acquired. */
     @signal()
-    locked(): undefined {
-        return undefined;
-    }
+    locked(): void {}
 
     /** Emitted when the session lock is released. */
     @signal()
-    unlocked(): undefined {
-        return undefined;
-    }
+    unlocked(): void {}
 
     // ── Public API ──
 

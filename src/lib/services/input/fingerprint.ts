@@ -59,13 +59,13 @@ export default class FingerprintAuth extends Object {
     }
 
     @signal()
-    verified(): undefined { return undefined; }
+    verified(): void {}
 
     @signal([String], VoidType)
-    failed(_reason: string): undefined { return undefined; }
+    failed(_reason: string): void {}
 
     @signal([String], VoidType)
-    statusChanged(_status: string): undefined { return undefined; }
+    statusChanged(_status: string): void {}
 
     #setState(state: FingerprintState) {
         if (this.#state === state) return;
@@ -173,7 +173,7 @@ export default class FingerprintAuth extends Object {
         // already ended verification. Just release and restart.
         this.#setState('idle');
         this.#release();
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
         this.start();
     }
 

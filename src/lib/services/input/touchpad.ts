@@ -51,7 +51,7 @@ export default class Touchpad extends Object {
     }
 
     @signal([Boolean], VoidType)
-    toggled(_enabled: boolean): undefined { return undefined; }
+    toggled(_enabled: boolean): void {}
 
     toggle() {
         logger.info(
