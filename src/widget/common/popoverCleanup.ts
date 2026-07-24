@@ -6,11 +6,9 @@ import Gtk from 'gi://Gtk?version=4.0';
  * Prevents GTK warnings about popovers with stale parent references.
  * Usage: `<Adw.SplitButton ref={usePopoverCleanup} ... />`
  */
-export function usePopoverCleanup(
-    self: (Gtk.Widget & {popover?: Gtk.Popover | null}) | Gtk.MenuButton
-) {
+export function usePopoverCleanup<T extends Gtk.Widget>(self: T) {
     self.connect('destroy', () => {
-        const popover = self.popover ?? ('get_popover' in self ? (self as Gtk.MenuButton).get_popover() : undefined);
+        const popover = ('popover' in self ? (self as Gtk.Widget & {popover?: Gtk.Popover | null}).popover : null) ?? ('get_popover' in self ? (self as Gtk.MenuButton).get_popover() : undefined);
         if (popover) {
             try {
                 popover.popdown();
