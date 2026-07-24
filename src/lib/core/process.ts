@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
-import {Object, register, signal} from 'gnim/gobject';
+import {Object, register, signal, ConstructorProps as GObjectConstructorProps} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -11,7 +11,7 @@ export namespace Process {
         stderr: Process['stderr'];
         exit: Process['exit'];
     }
-    export interface ConstructorProps extends Object.ConstructorProps {
+    export interface ConstructorProps extends GObjectConstructorProps<Process> {
         argv: string[];
     }
 }
@@ -57,11 +57,12 @@ export class Process extends Object {
         });
     }
 
+
     connect<S extends keyof Process.SignalSignatures>(
         signal: S,
         callback: GObject.SignalCallback<this, Process.SignalSignatures[S]>
     ): number {
-        return super.connect(signal, callback);
+        return super.connect(signal as any, callback as any);
     }
 
     /**
@@ -199,7 +200,7 @@ export class Process extends Object {
 
         const [, out, err] = process.communicate_utf8(null, null);
         if (process.get_successful()) {
-            return out.trim();
+            return (out ?? '').trim();
         } else {
             throw new Error(err ?? `exited with status ${process.get_exit_status()}`);
         }
@@ -238,7 +239,7 @@ export class Process extends Object {
                 try {
                     const [, out, err] = process.communicate_utf8_finish(res);
                     if (process.get_successful()) {
-                        resolve(out.trim());
+                        resolve((out ?? '').trim());
                     } else {
                         reject(
                             new Error(
