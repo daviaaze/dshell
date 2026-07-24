@@ -7,8 +7,8 @@ import {tickWhileAttached} from '#/lib/core/widgetTimer';
 import Adw from 'gi://Adw?version=1';
 
 function relativeTime(unix: number): string {
-    const now = GLib.DateTime.new_now_local();
-    const then = GLib.DateTime.new_from_unix_local(unix);
+    const now = GLib.DateTime.new_now_local()!;
+    const then = GLib.DateTime.new_from_unix_local(unix)!;
     const diff = now.difference(then);
     const seconds = Number(diff.valueOf()) / 1_000_000;
 
@@ -23,7 +23,7 @@ function relativeTime(unix: number): string {
 
 function fullTimestamp(unix: number): string {
     return (
-        GLib.DateTime.new_from_unix_local(unix).format('%H:%M:%S') || 'ERROR'
+        GLib.DateTime.new_from_unix_local(unix)!.format('%H:%M:%S') || 'ERROR'
     );
 }
 

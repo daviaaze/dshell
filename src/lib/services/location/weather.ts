@@ -251,7 +251,7 @@ export default class Weather extends Object {
         const list = this.#weather.get_forecast_list();
         if (!list) return [];
         const forecasts = toArray<GWeather.Info>(list);
-        const now = GLib.DateTime.new_now_local().to_unix();
+        const now = GLib.DateTime.new_now_local()!.to_unix();
 
         logger.debug(
             'weather',
@@ -309,7 +309,7 @@ export default class Weather extends Object {
         for (const f of forecasts) {
             const [valid, ts] = f.get_value_update();
             if (!valid) continue;
-            const dt = GLib.DateTime.new_from_unix_local(ts);
+            const dt = GLib.DateTime.new_from_unix_local(ts)!;
             const dayKey = dt.format('%Y-%m-%d');
             if (!dayKey) continue;
             if (!dayMap.has(dayKey)) dayMap.set(dayKey, []);
@@ -322,7 +322,7 @@ export default class Weather extends Object {
         );
 
         // Sort days chronologically and skip today
-        const today = GLib.DateTime.new_now_local().format('%Y-%m-%d');
+        const today = GLib.DateTime.new_now_local()!.format('%Y-%m-%d');
         if (!today) return [];
         const sortedDays = Array.from(dayMap.entries()).sort(([a], [b]) =>
             a.localeCompare(b)
@@ -338,7 +338,7 @@ export default class Weather extends Object {
             let tempMax = -Infinity;
             let tempMin = Infinity;
             const [, ts] = fs[0].get_value_update();
-            const dt = GLib.DateTime.new_from_unix_local(ts);
+            const dt = GLib.DateTime.new_from_unix_local(ts)!;
             const midIcon = fs[Math.floor(fs.length / 2)].get_icon_name();
 
             for (const f of fs) {

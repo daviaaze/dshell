@@ -18,7 +18,7 @@ import {TimerSection} from '#/widget/quicksettings/timer/TimerSection';
 const TIMER_WIDTH = 230;
 
 function updateCalendar(calendar: Gtk.Calendar) {
-    const now = GLib.DateTime.new_now_local();
+    const now = GLib.DateTime.new_now_local()!;
     calendar.year = now.get_year();
     calendar.month = now.get_month() - 1;
     calendar.day = now.get_day_of_month();
