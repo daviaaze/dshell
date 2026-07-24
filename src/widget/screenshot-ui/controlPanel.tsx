@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import type Screenshot from '#/lib/services/capture/screenshot';
 import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
 import {LinkedBox} from '#/widget/common/linkedBox';
@@ -31,7 +31,7 @@ interface ControlPanelProps {
 
 const ModeTab = ({label, value, icon, ss, onReset}: ModeTabProps) => (
     <Gtk.ToggleButton
-        active={createBinding(ss, 'selectedMode').as(
+        active={bind(ss, 'selectedMode').as(
             m => m === value
         )}
         onToggled={btn => {
@@ -55,7 +55,7 @@ const TargetButton = ({
     onTargetChange,
 }: TargetButtonProps) => (
     <Gtk.ToggleButton
-        active={createBinding(ss, 'selectedTarget').as(
+        active={bind(ss, 'selectedTarget').as(
             t => t === value
         )}
         onToggled={btn => {
@@ -155,7 +155,7 @@ export const ControlPanel = ({
                 {ss.selectedMode === 'recording' && (
                     <Gtk.Box spacing={12}>
                         <Gtk.CheckButton
-                            active={createBinding(ss, 'overlayOpen')}
+                            active={bind(ss, 'overlayOpen')}
                         >
                             <Gtk.Label label="Audio" />
                         </Gtk.CheckButton>
@@ -179,12 +179,12 @@ export const ControlPanel = ({
                     hexpand
                 >
                     <Adw.ButtonContent
-                        iconName={createBinding(ss, 'selectedMode').as(m =>
+                        iconName={bind(ss, 'selectedMode').as(m =>
                             m === 'screenshot'
                                 ? 'camera-photo-symbolic'
                                 : 'camera-video-symbolic'
                         )}
-                        label={createBinding(ss, 'selectedMode').as(m =>
+                        label={bind(ss, 'selectedMode').as(m =>
                             m === 'screenshot'
                                 ? 'Take Screenshot'
                                 : 'Start Recording'

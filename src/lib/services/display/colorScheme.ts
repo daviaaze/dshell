@@ -1,7 +1,7 @@
-import {register, Object, getter, setter} from 'gnim/gobject';
+import {register, Object, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import {createSettings, Schema} from 'gnim-schemas';
+import {createSettings, Schema} from 'gnim/schema';
 import {Accessor, Setter} from 'gnim';
 import logger from '#/lib/core/logger';
 
@@ -34,17 +34,17 @@ export class ColorScheme extends Object {
     };
     #generalSettings: Gio.Settings;
 
-    @getter(Number)
+    @property
     get colorScheme() {
         return this.#colorScheme;
     }
 
-    @getter(Boolean)
+    @property
     get daytime() {
         return this.#daytime;
     }
 
-    @getter(String)
+    @property
     get colorSchemeName() {
         switch (this.#colorScheme) {
             case DarkModes.AUTO:
@@ -58,7 +58,7 @@ export class ColorScheme extends Object {
         }
     }
 
-    @setter(Number)
+    
     set colorScheme(c: DarkModes) {
         this.#colorScheme = c;
         if (c === DarkModes.AUTO)
@@ -76,7 +76,7 @@ export class ColorScheme extends Object {
         this.#shadeSettings?.setColorScheme(this.#colorScheme);
     }
 
-    @getter(String)
+    @property
     get iconName() {
         if (this.#colorScheme === DarkModes.AUTO)
             if (this.#daytime) return 'weather-clear-symbolic';

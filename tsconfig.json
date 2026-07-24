@@ -14,7 +14,9 @@
     "skipLibCheck": true,
     "paths": { "#/*": ["./src/*"] },
     "jsx": "react-jsx",
-    "jsxImportSource": "@gnim-js/gtk4",
+    "jsxImportSource": "gnim",
+    "experimentalDecorators": true,
   },
   "exclude": ["build"],
+  "include": ["src", ".gnim/types/gi", "node_modules/@gnim-js/gtk4/dist/renderer.d.ts"]
 }

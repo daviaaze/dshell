@@ -7,7 +7,7 @@
  *   → start_session (on success)
  */
 import Greet from 'gi://AstalGreet';
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 export type GreetState =
@@ -19,7 +19,7 @@ export type GreetState =
     | 'error';
 
 @register({GTypeName: 'GreetSession'})
-export class GreetSession extends GObject.Object {
+export class GreetSession extends Object {
     static instance: GreetSession;
 
     static get_default() {
@@ -43,40 +43,40 @@ export class GreetSession extends GObject.Object {
         this.#onSessionStarted = cb;
     }
 
-    @getter(String)
+    @property
     get state() {
         return this.#state;
     }
 
-    @setter(String)
+    
     set state(v: GreetState) {
         this.#state = v;
         this.notify('state');
     }
 
-    @getter(String)
+    @property
     get errorMessage() {
         return this.#errorMessage;
     }
 
-    @setter(String)
+    
     set errorMessage(v: string) {
         this.#errorMessage = v;
         this.notify('error-message');
     }
 
-    @getter(String)
+    @property
     get infoMessage() {
         return this.#infoMessage;
     }
 
-    @setter(String)
+    
     set infoMessage(v: string) {
         this.#infoMessage = v;
         this.notify('info-message');
     }
 
-    @getter(Boolean)
+    @property
     get available(): boolean {
         try {
             // Quick availability check

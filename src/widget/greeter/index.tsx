@@ -10,7 +10,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
 import Astal from 'gi://Astal?version=4.0';
-import {createBinding, createState, onCleanup} from 'gnim';
+import {bind, createState, onCleanup} from 'gnim';
 import {GreetSession} from './GreetSession';
 
 export const Greeter = ({application}: {application: Gtk.Application}) => {
@@ -20,8 +20,8 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     let passwordEntry: Gtk.PasswordEntry | null = null;
 
     // State bindings
-    const stateBinding = createBinding(greeter, 'state');
-    const errorBinding = createBinding(greeter, 'errorMessage');
+    const stateBinding = bind(greeter, 'state');
+    const errorBinding = bind(greeter, 'errorMessage');
 
     const handleLogin = () => {
         if (
@@ -81,7 +81,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
             >
                 {/* User info section */}
                 <Gtk.Box
-                    $type="start"
+                    slot="start"
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={16}
                     marginBottom={32}
@@ -99,7 +99,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
 
                 {/* Login form */}
                 <Gtk.Box
-                    $type="center"
+                    slot="center"
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={8}
                     cssClasses={['card']}
@@ -119,13 +119,13 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                         visible={showPassword}
                         placeholderText="Password"
                         showPeekIcon
-                        $={self => {
+                        ref={self => {
                             passwordEntry = self;
                         }}
                         onActivate={() => handleLogin()}
                     >
                         <Gtk.EventControllerKey
-                            $={self => {
+                            ref={self => {
                                 self.connect('key-pressed', (_, keyval) => {
                                     if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
                                         handleLogin();

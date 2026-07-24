@@ -3,8 +3,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {
     Accessor,
-    createBinding,
-    createComputed,
+    bind,
+    computed,
     For,
 } from 'gnim';
 import Clock from '#/lib/services/time/clock';
@@ -47,9 +47,9 @@ export default ({
     let calendarRef: Gtk.Calendar | null = null;
 
     const timer = TimerService.get_default();
-    const timerRemaining = createBinding(timer, 'remaining');
-    const timerActive = createComputed(() => timerRemaining() >= 0);
-    const timerDisplay = createComputed(() => {
+    const timerRemaining = bind(timer, 'remaining');
+    const timerActive = computed(() => timerRemaining() >= 0);
+    const timerDisplay = computed(() => {
         const rem = timerRemaining();
         return rem < 0 ? '' : fmtDuration(rem);
     });
@@ -61,7 +61,7 @@ export default ({
             )}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             visible={visible}
-            $={usePopoverCleanup}
+            ref={usePopoverCleanup}
             popover={
                 (
                     <Gtk.Popover
@@ -69,7 +69,7 @@ export default ({
                         halign={Gtk.Align.CENTER}
                         cssClasses={[]}
                         hasArrow={false}
-                        $={self =>
+                        ref={self =>
                             self.connect('show', () => {
                                 if (calendarRef) updateCalendar(calendarRef);
                             })
@@ -95,7 +95,7 @@ export default ({
                                 />
                             </Gtk.Box>
                             <Gtk.Calendar
-                                $={self => {
+                                ref={self => {
                                     calendarRef = self;
                                     updateCalendar(self);
                                 }}
@@ -170,7 +170,7 @@ export default ({
                             </Gtk.Box>
                         </Gtk.Box>
                     </Gtk.Popover>
-                ) as Gtk.Popover
+                ) as unknown as Gtk.Popover
             }
         >
             <Gtk.Box
@@ -211,7 +211,7 @@ export default ({
                         visible={timerActive}
                         label={timerDisplay}
                         cssClasses={['title-1', 'numeric', 'timer-active', timerActiveStyle.class]}
-                        $={timerActiveStyle.$}
+                        ref={timerActiveStyle.$}
                     />
                 </Gtk.Box>
                 <Gtk.Box

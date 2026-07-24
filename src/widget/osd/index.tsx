@@ -1,4 +1,4 @@
-import {createBinding, createComputed} from 'gnim';
+import {bind, computed} from 'gnim';
 import Brightness from '#/lib/services/display/brightness';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
@@ -21,14 +21,14 @@ export default () => {
     const brightness = Brightness.get_default();
     const touchpad = Touchpad.get_default();
 
-    const speakerIcon = createComputed(
+    const speakerIcon = computed(
         () =>
             audioCtrl.defaultSpeaker?.mute || audioCtrl.defaultSpeaker?.volume === 0
                 ? MUTED_SPEAKER_ICON
                 : audioCtrl.defaultSpeaker?.volumeIcon ?? 'audio-volume-high-symbolic'
     );
 
-    const micIcon = createComputed(
+    const micIcon = computed(
         () =>
             audioCtrl.defaultMicrophone?.mute || audioCtrl.defaultMicrophone?.volume === 0
                 ? MUTED_MIC_ICON
@@ -41,7 +41,7 @@ export default () => {
             signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: speakerIcon,
-                value: createComputed(() => audioCtrl.defaultSpeaker?.volume ?? 0),
+                value: computed(() => audioCtrl.defaultSpeaker?.volume ?? 0),
             })}
         /> as Gtk.Revealer,
         <Popup
@@ -49,7 +49,7 @@ export default () => {
             signals={['notify::screen']}
             widget={Slider({
                 iconName: 'display-brightness-symbolic',
-                value: createBinding(brightness, 'screen'),
+                value: bind(brightness, 'screen'),
             })}
         /> as Gtk.Revealer,
         <Popup
@@ -57,7 +57,7 @@ export default () => {
             signals={['notify::kbd']}
             widget={Slider({
                 iconName: 'keyboard-brightness-symbolic',
-                value: createComputed(() => brightness.kbd),
+                value: computed(() => brightness.kbd),
             })}
         /> as Gtk.Revealer,
         <Popup
@@ -65,7 +65,7 @@ export default () => {
             signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: micIcon,
-                value: createComputed(() => audioCtrl.defaultMicrophone?.volume ?? 0),
+                value: computed(() => audioCtrl.defaultMicrophone?.volume ?? 0),
             })}
         /> as Gtk.Revealer,
         <Popup
@@ -82,11 +82,11 @@ export default () => {
             margin={OSD_MARGIN}
             anchor={Astal.WindowAnchor.BOTTOM}
             layer={Astal.Layer.OVERLAY}
-            visible={createComputed(
+            visible={computed(
                 () => (popupList).map(p =>
                     p.revealChild).reduce((a, b) => a || b)
             )}
-            $={self => WindowManager.get_default().setOsd(self)}
+            ref={self => WindowManager.get_default().setOsd(self)}
         >
             <Gtk.Box
                 cssClasses={['linked', 'card', 'background']}

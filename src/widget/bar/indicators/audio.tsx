@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import AudioController from '#/lib/services/audio/audioController';
 import AppMixer from '#/lib/services/audio/mixer';
 
@@ -13,11 +13,11 @@ function volumeTooltip(vol: number): string {
 export const SpeakerIndicator = () => {
     const audioCtrl = AudioController.get_default();
     const mixer = AppMixer.get_default();
-    const speaker = createBinding(audioCtrl, 'defaultSpeaker');
+    const speaker = bind(audioCtrl, 'defaultSpeaker');
 
     return (
         <Gtk.Image
-            visible={createBinding(mixer, 'speakerInUse')}
+            visible={bind(mixer, 'speakerInUse')}
             iconName={speaker.as(s => {
                 if (!s || s.mute || s.volume === 0) return MUTED_SPEAKER_ICON;
                 return s.volumeIcon;
@@ -33,11 +33,11 @@ export const SpeakerIndicator = () => {
 export const MicrophoneIndicator = () => {
     const audioCtrl = AudioController.get_default();
     const mixer = AppMixer.get_default();
-    const mic = createBinding(audioCtrl, 'defaultMicrophone');
+    const mic = bind(audioCtrl, 'defaultMicrophone');
 
     return (
         <Gtk.Image
-            visible={createBinding(mixer, 'microphoneInUse')}
+            visible={bind(mixer, 'microphoneInUse')}
             iconName={mic.as(m => {
                 if (!m || m.mute || m.volume === 0) return MUTED_MIC_ICON;
                 return m.volumeIcon;

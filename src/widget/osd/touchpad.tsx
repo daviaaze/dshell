@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import Touchpad from '#/lib/services/input/touchpad';
 
 export default () => {
@@ -8,7 +8,7 @@ export default () => {
     return (
         <Gtk.Box spacing={8}>
             <Gtk.Image
-                iconName={createBinding(touchpad, 'enabled').as(enabled =>
+                iconName={bind(touchpad, 'enabled').as(enabled =>
                     enabled
                         ? 'input-touchpad-symbolic'
                         : 'touchpad-disabled-symbolic'
@@ -18,7 +18,7 @@ export default () => {
             <Gtk.Label
                 hexpand
                 cssClasses={['heading']}
-                label={createBinding(touchpad, 'enabled').as(enabled =>
+                label={bind(touchpad, 'enabled').as(enabled =>
                     enabled ? 'Touchpad On' : 'Touchpad Off'
                 )}
             />

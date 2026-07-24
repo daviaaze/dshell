@@ -1,4 +1,4 @@
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
@@ -9,7 +9,7 @@ export const TEMP_MIN = 2000;
 export const TEMP_MAX = 6500;
 
 @register({GTypeName: 'NightLight'})
-export default class NightLight extends GObject.Object {
+export default class NightLight extends Object {
     static readonly POLL_INTERVAL_SECONDS = 5;
 
     static instance: NightLight;
@@ -43,12 +43,12 @@ export default class NightLight extends GObject.Object {
         setNightLightAutoSchedule: (v: boolean) => void;
     } | null = null;
 
-    @getter(Boolean)
+    @property
     get enabled() {
         return this.#enabled;
     }
 
-    @setter(Boolean)
+    
     set enabled(v: boolean) {
         if (this.#enabled === v) return;
         this.#enabled = v;
@@ -57,12 +57,12 @@ export default class NightLight extends GObject.Object {
         this.notify('enabled');
     }
 
-    @getter(Number)
+    @property
     get temperature() {
         return this.#temperature;
     }
 
-    @setter(Number)
+    
     set temperature(v: number) {
         v = Math.max(TEMP_MIN, Math.min(TEMP_MAX, v));
         if (this.#temperature === v) return;
@@ -72,12 +72,12 @@ export default class NightLight extends GObject.Object {
         this.notify('temperature');
     }
 
-    @getter(Boolean)
+    @property
     get autoSchedule() {
         return this.#autoSchedule;
     }
 
-    @setter(Boolean)
+    
     set autoSchedule(v: boolean) {
         if (this.#autoSchedule === v) return;
         this.#autoSchedule = v;
@@ -86,7 +86,7 @@ export default class NightLight extends GObject.Object {
         this.notify('auto-schedule');
     }
 
-    @getter(Boolean)
+    @property
     get available() {
         return GLib.find_program_in_path('hyprsunset') !== null;
     }

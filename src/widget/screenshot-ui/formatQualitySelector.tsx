@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import Screenshot from '#/lib/services/capture/screenshot';
 import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
 
@@ -14,7 +14,7 @@ export default () => {
         label: string;
         value: number;
     }) => {
-        const active = createBinding(ss.prefs, 'recordingQuality').as(
+        const active = bind(ss.prefs, 'recordingQuality').as(
             q => q === value
         );
         return (

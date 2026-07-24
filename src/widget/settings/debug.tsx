@@ -53,7 +53,7 @@ export default () => {
                     {(cat: string) => (
                         <Adw.ActionRow title={cat}>
                             <Gtk.Button
-                                $type="suffix"
+                                slot="suffix"
                                 cssClasses={['circular', 'destructive-action']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {

@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import KeyboardLayout from '#/lib/services/input/keyboard';
 
 export default () => {
@@ -7,11 +7,11 @@ export default () => {
 
     return (
         <Gtk.Button
-            visible={createBinding(keyboard, 'available')}
+            visible={bind(keyboard, 'available')}
             cssClasses={['flat']}
-            label={createBinding(keyboard, 'layout')}
+            label={bind(keyboard, 'layout')}
             onClicked={() => keyboard.cycle()}
-            tooltipMarkup={createBinding(keyboard, 'layout').as(
+            tooltipMarkup={bind(keyboard, 'layout').as(
                 l => `Keyboard layout: ${l}\nClick to cycle`
             )}
         />

@@ -1,4 +1,4 @@
-import {createMemo} from 'gnim';
+import {computed} from 'gnim';
 import Powerprofiles from './powerprofiles';
 import Conservation from './conservation';
 import ColorScheme from './colorScheme';
@@ -12,7 +12,7 @@ import Touchpad from './touchpad';
 import {ReactiveGrid} from './reactiveGrid';
 
 export const ButtonGrid = ({cols = 2}: {cols?: number}) => {
-    const items = createMemo(() => [
+    const items = computed(() => [
         Powerprofiles(),
         Conservation(),
         ColorScheme(),

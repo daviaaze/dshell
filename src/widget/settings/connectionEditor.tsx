@@ -21,7 +21,7 @@ export function showConnectionEditor(
     const isSecureConn = settingSecurity !== null;
 
     const dialog = new Adw.Window({
-        transientFor: parent.get_root() as Gtk.Window,
+        transientFor: parent.get_root() as unknown as Gtk.Window,
         modal: true,
         title: ssid,
         defaultWidth: 400,
@@ -72,7 +72,7 @@ export function showConnectionEditor(
         (
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                 <Adw.HeaderBar
-                    titleWidget={(<Adw.WindowTitle title={ssid} cssClasses={['title-3']} />) as Gtk.Widget}
+                    titleWidget={(<Adw.WindowTitle title={ssid} cssClasses={['title-3']} />) as unknown as Gtk.Widget}
                     showEndTitleButtons={false}
                 />
                 <Gtk.ScrolledWindow propagateNaturalHeight vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
@@ -93,13 +93,13 @@ export function showConnectionEditor(
                                 <Adw.EntryRow title="Password">
                                     <Gtk.Entry
                                         placeholderText="WiFi password"
-                                        $={entry => {
+                                        ref={entry => {
                                             entry.visibility = !showPassword();
                                             showPassword.subscribe(() => { entry.visibility = !showPassword(); });
                                             entry.connect('notify::text', () => setPassword(entry.get_text()));
                                         }}
                                     />
-                                    <Gtk.Button $type="suffix" cssClasses={['flat']}
+                                    <Gtk.Button slot="suffix" cssClasses={['flat']}
                                         onClicked={() => setShowPassword(!showPassword())}
                                     >
                                         <Gtk.Image
@@ -133,7 +133,7 @@ export function showConnectionEditor(
                     </Adw.PreferencesPage>
                 </Gtk.ScrolledWindow>
             </Gtk.Box>
-        ) as Gtk.Widget
+        ) as unknown as Gtk.Widget
     );
 
     dialog.present();

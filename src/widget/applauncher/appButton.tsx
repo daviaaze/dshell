@@ -29,7 +29,7 @@ export default ({
     let set = false;
     return (
         <Gtk.Button
-            $={self => {
+            ref={self => {
                 if (set) return;
                 set = true;
                 appButtonStyle.$(self);

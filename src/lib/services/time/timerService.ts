@@ -1,14 +1,14 @@
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 import {fmtDuration} from '#/lib/core/time';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 
 @register({GTypeName: 'TimerService'})
-export default class TimerService extends GObject.Object {
+export default class TimerService extends Object {
     static instance: TimerService;
     static get_default() {
         if (!this.instance) this.instance = new TimerService();
@@ -47,37 +47,37 @@ export default class TimerService extends GObject.Object {
     #longBreakDuration = TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
     #sessionsBeforeLongBreak = TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
 
-    @getter(Number)
+    @property
     get remaining() {
         return this.#remaining;
     }
 
-    @getter(Number)
+    @property
     get total() {
         return this.#total;
     }
 
-    @getter(Boolean)
+    @property
     get running() {
         return this.#running;
     }
 
-    @getter(String)
+    @property
     get mode() {
         return this.#mode;
     }
 
-    @getter(String)
+    @property
     get label() {
         return this.#label;
     }
 
-    @getter(Number)
+    @property
     get pomodoroSession() {
         return this.#pomodoroSession;
     }
 
-    @getter(Boolean)
+    @property
     get pomodoroIsBreak() {
         return this.#pomodoroIsBreak;
     }

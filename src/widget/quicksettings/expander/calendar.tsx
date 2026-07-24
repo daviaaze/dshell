@@ -12,7 +12,7 @@ function updateCalendar(calendar: Gtk.Calendar) {
 export const Calendar = () => (
     <Gtk.Calendar
         cssClasses={['card', 'p-12']}
-        $={self => updateCalendar(self)}
+        ref={self => updateCalendar(self)}
     />
 );
 

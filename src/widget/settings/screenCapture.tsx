@@ -17,7 +17,7 @@ export default () => {
             >
                 <Adw.ActionRow title={'Backend'}>
                     <Adw.ToggleGroup
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -25,7 +25,7 @@ export default () => {
                                 Number(self.activeName)
                             )
                         }
-                        $={self => {
+                        ref={self => {
                             const v = settings.recorderBackend.peek();
                             self.activeName = String(v ?? 2);
                             settings.recorderBackend.subscribe(() => {
@@ -53,7 +53,7 @@ export default () => {
 
                 <Adw.ActionRow title={'Container Format'}>
                     <Adw.ToggleGroup
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -61,7 +61,7 @@ export default () => {
                                 Number(self.activeName)
                             )
                         }
-                        $={self => {
+                        ref={self => {
                             const v = settings.recordingFormat.peek();
                             self.activeName = String(v ?? 0);
                             settings.recordingFormat.subscribe(() => {
@@ -84,7 +84,7 @@ export default () => {
 
                 <Adw.ActionRow title={'Quality'}>
                     <Adw.ToggleGroup
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -92,7 +92,7 @@ export default () => {
                                 Number(self.activeName)
                             )
                         }
-                        $={self => {
+                        ref={self => {
                             const v = settings.recordingQuality.peek();
                             self.activeName = String(v ?? 1);
                             settings.recordingQuality.subscribe(() => {
@@ -122,7 +122,7 @@ export default () => {
             >
                 <Adw.ActionRow title={'Image Format'}>
                     <Adw.ToggleGroup
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -130,7 +130,7 @@ export default () => {
                                 Number(self.activeName)
                             )
                         }
-                        $={self => {
+                        ref={self => {
                             const v = settings.screenshotFormat.peek();
                             self.activeName = String(v ?? 0);
                             settings.screenshotFormat.subscribe(() => {
@@ -169,10 +169,10 @@ export default () => {
                     subtitle={settings.recordingBoundaryColor}
                 >
                     <Gtk.ColorDialogButton
-                        $type="suffix"
+                        slot="suffix"
                         valign={Gtk.Align.CENTER}
                         dialog={new Gtk.ColorDialog()}
-                        $={self => {
+                        ref={self => {
                             const c = new Gdk.RGBA();
                             c.parse(settings.recordingBoundaryColor());
                             self.rgba = c;
@@ -231,7 +231,7 @@ export default () => {
                                 stepIncrement={1}
                                 value={settings.virtualMonitorFps}
                             />
-                        ) as Gtk.Adjustment
+                        ) as unknown as Gtk.Adjustment
                     }
                     onNotifyValue={self =>
                         settings.setVirtualMonitorFps(self.value)

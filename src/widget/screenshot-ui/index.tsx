@@ -2,7 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createBinding, createState} from 'gnim';
+import {bind, createState} from 'gnim';
 import {app} from '#/apps/shell/App';
 import Screenshot from '#/lib/services/capture/screenshot';
 import WindowManager from '#/lib/services/state/windowManager';
@@ -26,7 +26,7 @@ import {
 export default () => {
     const ss = Screenshot.get_default();
     const hyprland = AstalHyprland.get_default();
-    const isVisible = createBinding(ss, 'overlayOpen');
+    const isVisible = bind(ss, 'overlayOpen');
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
     const [selActive, setSelActive] = createState(false);
@@ -162,7 +162,7 @@ export default () => {
 
     return (
         <Astal.Window
-            $={self => WindowManager.get_default().setOverlay(self)}
+            ref={self => WindowManager.get_default().setOverlay(self)}
             name={'screenshot-ui'}
             application={app}
             layer={Astal.Layer.TOP}
@@ -183,7 +183,7 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={createBinding(hyprland, 'focusedMonitor').as(
+            monitor={bind(hyprland, 'focusedMonitor').as(
                 monitorIndexFromHyprland
             )}
             css={'background-color: transparent;'}
@@ -204,7 +204,7 @@ export default () => {
 
                 {/* Selection DrawingArea overlay */}
                 <Gtk.DrawingArea
-                    $={self => {
+                    ref={self => {
                         daRef = self;
                         self.set_draw_func((_da, cr, w, h) =>
                             draw(_da, cr, w, h, {
@@ -223,14 +223,14 @@ export default () => {
                     css={'background: transparent;'}
                 >
                     <Gtk.GestureDrag
-                        $={self => {
+                        ref={self => {
                             self.connect('drag-begin', onDragBegin);
                             self.connect('drag-update', onDragUpdate);
                             self.connect('drag-end', onDragEnd);
                         }}
                     />
                     <Gtk.GestureClick
-                        $={self => {
+                        ref={self => {
                             self.set_button(1);
                             self.connect('pressed', onClickPressed);
                         }}
@@ -247,7 +247,7 @@ export default () => {
 
                 {/* Keyboard handler */}
                 <Gtk.EventControllerKey
-                    $={self => self.connect('key-pressed', handleKey)}
+                    ref={self => self.connect('key-pressed', handleKey)}
                 />
             </Gtk.Overlay>
         </Astal.Window>

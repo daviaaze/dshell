@@ -17,7 +17,7 @@
  * @module encryptedStore
  */
 
-import GObject, {register, signal} from 'gnim/gobject';
+import {Object, register, signal} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import {encrypt, decrypt} from './cryptoEngine';
@@ -51,7 +51,7 @@ const LEGACY_PNG_RE = /^clipboard-\d+\.png$/;
 // ── Singleton service ────────────────────────────────────────────────────────
 
 @register({GTypeName: 'EncryptedStore'})
-export class EncryptedStore extends GObject.Object {
+export class EncryptedStore extends Object {
     static instance: EncryptedStore;
 
     static get_default() {

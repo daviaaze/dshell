@@ -1,4 +1,4 @@
-import {defineSchemaList, Schema} from 'gnim-schemas';
+import {defineSchemaList, Schema} from 'gnim/schema';
 
 const id = import.meta.domain || '@domain@';
 const datadir = import.meta.datadir || '@datadir@';

@@ -51,7 +51,7 @@ export default () => {
                 }}
             >
                 <Gtk.Image
-                    $type="prefix"
+                    slot="prefix"
                     iconName="find-location-symbolic"
                     pixelSize={16}
                 />
@@ -68,7 +68,7 @@ export default () => {
                 }}
             >
                 <Gtk.Image
-                    $type="prefix"
+                    slot="prefix"
                     iconName="view-refresh-symbolic"
                     pixelSize={16}
                 />

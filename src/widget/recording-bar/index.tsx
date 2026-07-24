@@ -1,7 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import {app} from '#/apps/shell/App';
 import Screenshot from '#/lib/services/capture/screenshot';
 import {monitorIndexFromHyprland} from '#/lib/utils/monitors';
@@ -20,7 +20,7 @@ export default () => {
     const ss = Screenshot.get_default();
     const hyprland = AstalHyprland.get_default();
 
-    const elapsedLabel = createBinding(ss, 'recordingElapsed').as(sec =>
+    const elapsedLabel = bind(ss, 'recordingElapsed').as(sec =>
         formatDuration(sec ?? 0)
     );
 
@@ -31,10 +31,10 @@ export default () => {
             layer={Astal.Layer.OVERLAY}
             margin={12}
             anchor={Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.RIGHT}
-            monitor={createBinding(hyprland, 'focusedMonitor').as(
+            monitor={bind(hyprland, 'focusedMonitor').as(
                 monitorIndexFromHyprland
             )}
-            visible={createBinding(ss, 'recording')}
+            visible={bind(ss, 'recording')}
             css={'background-color: transparent;'}
         >
             <Gtk.Box
@@ -66,7 +66,7 @@ export default () => {
 
                 {/* Audio indicator */}
                 <Gtk.Image
-                    visible={createBinding(ss.prefs, 'audio')}
+                    visible={bind(ss.prefs, 'audio')}
                     iconName="audio-input-microphone-symbolic"
                     pixelSize={14}
                 />

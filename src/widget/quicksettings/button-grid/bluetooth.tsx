@@ -1,6 +1,6 @@
 import AstalBluetooth from 'gi://AstalBluetooth';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed, createState, For} from 'gnim';
+import {bind, computed, createState, For} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import logger from '#/lib/core/logger';
@@ -16,10 +16,10 @@ export default (): QuickButton => {
     >(null);
 
     const isConnecting = connectingAddress.as(addr => addr !== null);
-    const isVisible = createBinding(bluetooth, 'adapters').as(a => a.length > 0);
-    const isConnected = createBinding(bluetooth, 'isConnected');
-    const isPowered = createBinding(bluetooth, 'isPowered');
-    const icon = createComputed(
+    const isVisible = bind(bluetooth, 'adapters').as(a => a.length > 0);
+    const isConnected = bind(bluetooth, 'isConnected');
+    const isPowered = bind(bluetooth, 'isPowered');
+    const icon = computed(
         () => {
             if (isConnecting()) return 'content-loading-symbolic';
             return isPowered() ? 'bluetooth-symbolic' : 'bluetooth-disabled-symbolic';
@@ -30,7 +30,7 @@ export default (): QuickButton => {
         <Gtk.Popover cssClasses={[]}>
             <LinkedBox>
                 <For
-                    each={createBinding(bluetooth, 'devices').as(d =>
+                    each={bind(bluetooth, 'devices').as(d =>
                         toArray<AstalBluetooth.Device>(d)
                     )}
                 >
@@ -93,7 +93,7 @@ export default (): QuickButton => {
                                         marginEnd={4}
                                     />
                                     <Gtk.Image
-                                        visible={createBinding(
+                                        visible={bind(
                                             device,
                                             'connected'
                                         )}
@@ -107,19 +107,19 @@ export default (): QuickButton => {
                 </For>
             </LinkedBox>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return {
         widget: (
             <QuickToggleButton
                 icon={icon}
-                cssClasses={createComputed(
+                cssClasses={computed(
                     () =>
                         isPowered() && isConnected()
                             ? ['raised', 'suggested-action']
                             : ['raised']
                 )}
-                label={createComputed(
+                label={computed(
                     () => {
                         if (!isPowered()) return 'Bluetooth Off';
                         const connectedDevices = toArray<AstalBluetooth.Device>(
@@ -137,7 +137,7 @@ export default (): QuickButton => {
                 }}
                 popover={popover}
             />
-        ) as Gtk.Widget,
+        ) as unknown as Gtk.Widget,
         visible: isVisible,
     };
 };

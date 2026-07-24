@@ -7,7 +7,7 @@ import logger from '#/lib/core/logger';
 
 export function showHiddenNetworkDialog(parent: Gtk.Widget) {
     const dialog = new Adw.Window({
-        transientFor: parent.get_root() as Gtk.Window,
+        transientFor: parent.get_root() as unknown as Gtk.Window,
         modal: true,
         title: 'Connect to Hidden Network',
         defaultWidth: 400,
@@ -50,19 +50,19 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
         (
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                 <Adw.HeaderBar
-                    titleWidget={(<Adw.WindowTitle title="Hidden Network" cssClasses={['title-3']} />) as Gtk.Widget}
+                    titleWidget={(<Adw.WindowTitle title="Hidden Network" cssClasses={['title-3']} />) as unknown as Gtk.Widget}
                     showEndTitleButtons={false}
                 />
                 <Adw.PreferencesPage>
                     <Adw.PreferencesGroup title="Network Details">
                         <Adw.EntryRow title="Network Name">
                             <Gtk.Entry placeholderText="SSID"
-                                $={entry => entry.connect('notify::text', () => setSsid(entry.get_text()))}
+                                ref={entry => entry.connect('notify::text', () => setSsid(entry.get_text()))}
                             />
                         </Adw.EntryRow>
                         <Adw.EntryRow title="Password">
                             <Gtk.Entry placeholderText="Password (optional)" visibility={false}
-                                $={entry => entry.connect('notify::text', () => setPassword(entry.get_text()))}
+                                ref={entry => entry.connect('notify::text', () => setPassword(entry.get_text()))}
                             />
                         </Adw.EntryRow>
                     </Adw.PreferencesGroup>
@@ -85,7 +85,7 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
                     />
                 </Adw.PreferencesPage>
             </Gtk.Box>
-        ) as Gtk.Widget
+        ) as unknown as Gtk.Widget
     );
 
     dialog.present();

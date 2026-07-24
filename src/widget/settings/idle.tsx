@@ -22,7 +22,7 @@ export default () => {
                 <Adw.SpinRow
                     title={'Idle Timeout'}
                     subtitle={'Seconds of inactivity before locking'}
-                    $={self => {
+                    ref={self => {
                         settings.idleTimeout.subscribe(() => {
                             self.value = settings.idleTimeout();
                         });
@@ -46,7 +46,7 @@ export default () => {
                 <Adw.SpinRow
                     title={'Dim Timeout'}
                     subtitle={'Seconds before lock to start dimming'}
-                    $={self => {
+                    ref={self => {
                         settings.screenDimTimeout.subscribe(() => {
                             self.value = settings.screenDimTimeout();
                         });
@@ -75,7 +75,7 @@ export default () => {
                 <Adw.SpinRow
                     title={'Display Timeout'}
                     subtitle={'Seconds before turning off display'}
-                    $={self => {
+                    ref={self => {
                         settings.dpmsTimeout.subscribe(() => {
                             self.value = settings.dpmsTimeout();
                         });
@@ -103,7 +103,7 @@ export default () => {
                     title={'Suspend Timeout'}
                     subtitle={'Seconds before suspending'}
                     sensitive={settings.suspendEnabled}
-                    $={self => {
+                    ref={self => {
                         settings.suspendTimeout.subscribe(() => {
                             self.value = settings.suspendTimeout();
                         });

@@ -1,4 +1,4 @@
-import GObject, {getter, register, setter, signal} from 'gnim/gobject';
+import {Object, register, signal, property, Boolean, VoidType} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
 import {bus} from '#/lib/core/eventBus';
 import {Process} from '#/lib/core/process';
@@ -17,7 +17,7 @@ signal.pause()
 `;
 
 @register({GTypeName: 'Touchpad'})
-export default class Touchpad extends GObject.Object {
+export default class Touchpad extends Object {
     static instance: Touchpad;
     static get_default() {
         if (!this.instance) this.instance = new Touchpad();
@@ -31,12 +31,12 @@ export default class Touchpad extends GObject.Object {
     #process: Process | null = null;
     #initialized = false;
 
-    @getter(Boolean)
+    @property
     get enabled() {
         return this.#enabled;
     }
 
-    @setter(Boolean)
+    
     set enabled(v: boolean) {
         if (this.#enabled === v) return;
         this.#enabled = v;
@@ -45,12 +45,12 @@ export default class Touchpad extends GObject.Object {
         this.toggled(v);
     }
 
-    @getter(Boolean)
+    @property
     get available() {
         return this.#available;
     }
 
-    @signal([GObject.TYPE_BOOLEAN], GObject.TYPE_NONE)
+    @signal([Boolean], VoidType)
     toggled(_enabled: boolean): undefined { return undefined; }
 
     toggle() {

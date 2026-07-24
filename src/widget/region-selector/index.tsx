@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Cairo from 'gi://cairo?version=1.0';
-import {createBinding, createState} from 'gnim';
+import {bind, createState} from 'gnim';
 import {app} from '#/apps/shell/App';
 import Screenshot from '#/lib/services/capture/screenshot';
 import {getWindowGeometries} from '#/lib/services/monitoring/windows';
@@ -288,7 +288,7 @@ export default () => {
             application={app}
             layer={Astal.Layer.TOP}
             keymode={Astal.Keymode.EXCLUSIVE}
-            visible={createBinding(ss, 'regionSelectorOpen')}
+            visible={bind(ss, 'regionSelectorOpen')}
             onNotifyVisible={self => {
                 if (self.visible) {
                     const mon = hyprland.focused_monitor;
@@ -306,26 +306,26 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={createBinding(hyprland, 'focusedMonitor').as(
+            monitor={bind(hyprland, 'focusedMonitor').as(
                 monitorIndexFromHyprland
             )}
             css={'background-color: transparent;'}
         >
             <Gtk.Overlay>
                 <Gtk.DrawingArea
-                    $={self => self.set_draw_func(draw)}
+                    ref={self => self.set_draw_func(draw)}
                     hexpand
                     vexpand
                 >
                     <Gtk.GestureDrag
-                        $={self => {
+                        ref={self => {
                             self.connect('drag-begin', onDragBegin);
                             self.connect('drag-update', onDragUpdate);
                             self.connect('drag-end', onDragEnd);
                         }}
                     />
                     <Gtk.GestureClick
-                        $={self => {
+                        ref={self => {
                             self.set_button(1);
                             self.connect('pressed', onClickPressed);
                         }}
@@ -333,7 +333,7 @@ export default () => {
                 </Gtk.DrawingArea>
 
                 <Gtk.EventControllerKey
-                    $={self => self.connect('key-pressed', handleKey)}
+                    ref={self => self.connect('key-pressed', handleKey)}
                 />
             </Gtk.Overlay>
         </Astal.Window>

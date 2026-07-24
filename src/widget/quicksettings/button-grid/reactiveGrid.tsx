@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createComputed, createEffect} from 'gnim';
+import {computed, effect} from 'gnim';
 import type {QuickButton} from './quickButton';
 
 function removeAllChildren(grid: Gtk.Grid) {
@@ -21,7 +21,7 @@ export interface ReactiveGridProps {
  * tightly in row-major order.
  */
 export const ReactiveGrid = ({cols = 2, items}: ReactiveGridProps) => {
-    const visibleItems = createComputed(() =>
+    const visibleItems = computed(() =>
         items
             .filter(item => item.visible?.() !== false)
             .map(item => item.widget)
@@ -33,8 +33,8 @@ export const ReactiveGrid = ({cols = 2, items}: ReactiveGridProps) => {
             columnSpacing={4}
             columnHomogeneous
             hexpand
-            $={self =>
-                createEffect(() => {
+            ref={self =>
+                effect(() => {
                     removeAllChildren(self);
                     visibleItems().forEach((widget, index) => {
                         self.attach(

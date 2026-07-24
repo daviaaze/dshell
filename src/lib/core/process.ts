@@ -1,33 +1,34 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {register, signal} from 'gnim/gobject';
+import GObject from 'gi://GObject?version=2.0';
+import {Object, register, signal} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Process {
-    export interface SignalSignatures extends GObject.Object.SignalSignatures {
+    export interface SignalSignatures extends Object.SignalSignatures {
         stdout: Process['stdout'];
         stderr: Process['stderr'];
         exit: Process['exit'];
     }
-    export interface ConstructorProps extends GObject.Object.ConstructorProps {
+    export interface ConstructorProps extends Object.ConstructorProps {
         argv: string[];
     }
 }
 
 @register()
-export class Process extends GObject.Object {
-    @signal(String)
+export class Process extends Object {
+    @signal([String])
     protected stdout(_out: string) {
         // signal parameter intentionally unused
     }
 
-    @signal(String)
+    @signal([String])
     protected stderr(_err: string) {
         // signal parameter intentionally unused
     }
 
-    @signal(Number, Boolean)
+    @signal([Number], Boolean)
     protected exit(_code: number, _signaled: boolean) {
         // signal parameters intentionally unused
     }

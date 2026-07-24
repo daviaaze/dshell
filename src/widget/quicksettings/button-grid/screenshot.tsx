@@ -1,7 +1,7 @@
 import Screenshot from '#/lib/services/capture/screenshot';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
@@ -96,7 +96,7 @@ export default (): QuickButton => {
                     marginStart={4}
                 >
                     <Gtk.CheckButton
-                        active={createBinding(screenshot.prefs, 'audio')}
+                        active={bind(screenshot.prefs, 'audio')}
                         onNotifyActive={({active}) => {
                             screenshot.prefs.audio = active;
                         }}
@@ -131,7 +131,7 @@ export default (): QuickButton => {
                     }}
                 >
                     <Adw.ButtonContent
-                        iconName={createBinding(
+                        iconName={bind(
                             screenshot,
                             'virtualMonitorActive'
                         ).as(active =>
@@ -139,7 +139,7 @@ export default (): QuickButton => {
                                 ? 'user-trash-symbolic'
                                 : 'video-display-symbolic'
                         )}
-                        label={createBinding(
+                        label={bind(
                             screenshot,
                             'virtualMonitorActive'
                         ).as(active => (active ? 'Remove VM' : 'Add VM'))}
@@ -147,20 +147,20 @@ export default (): QuickButton => {
                 </Gtk.Button>
             </Gtk.Box>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return {
         widget: (
             <QuickToggleButton
-                icon={createBinding(screenshot, 'recording').as(rec =>
+                icon={bind(screenshot, 'recording').as(rec =>
                     rec ? 'media-playback-stop-symbolic' : 'camera-video-symbolic'
                 )}
-                label={createBinding(screenshot, 'recording').as(rec =>
+                label={bind(screenshot, 'recording').as(rec =>
                     rec ? 'Stop' : 'Record'
                 )}
                 onClick={() => screenshot.toggleRecording()}
                 popover={popover}
             />
-        ) as Gtk.Widget,
+        ) as unknown as Gtk.Widget,
     };
 };

@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import {createBinding, createComputed, createState} from 'gnim';
+import {bind, computed, createState} from 'gnim';
 import TimerService from '#/lib/services/time/timerService';
 
 function fmtRemaining(ms: number): string {
@@ -21,14 +21,14 @@ const PRESETS = [
 
 export const TimerSection = () => {
     const timer = TimerService.get_default();
-    const remaining = createBinding(timer, 'remaining');
-    const total = createBinding(timer, 'total');
-    const running = createBinding(timer, 'running');
-    const mode = createBinding(timer, 'mode');
-    const label = createBinding(timer, 'label');
+    const remaining = bind(timer, 'remaining');
+    const total = bind(timer, 'total');
+    const running = bind(timer, 'running');
+    const mode = bind(timer, 'mode');
+    const label = bind(timer, 'label');
 
-    const isActive = createComputed(() => mode() !== 'none');
-    const fraction = createComputed(() => {
+    const isActive = computed(() => mode() !== 'none');
+    const fraction = computed(() => {
         const rem = remaining();
         const tot = total();
         return rem >= 0 && tot > 0 ? 1 - rem / tot : 0;
@@ -143,7 +143,7 @@ export const TimerSection = () => {
                         rowSpacing={4}
                         columnHomogeneous
                         hexpand
-                        $={self => {
+                        ref={self => {
                             const flat = PRESETS.flat();
                             flat.forEach((min, i) => {
                                 const btn = (

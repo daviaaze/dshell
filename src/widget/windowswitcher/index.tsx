@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createBinding, createState, For, onCleanup} from 'gnim';
+import {bind, createState, For, onCleanup} from 'gnim';
 import {app} from '#/apps/shell/App';
 import {toArray} from '#/lib/core/gjsUtils';
 import SwitcherItem from './item';
@@ -45,13 +45,13 @@ export default () => {
         mru.unshift(client.address);
     };
 
-    const focusedClient = createBinding(hyprland, 'focusedClient');
+    const focusedClient = bind(hyprland, 'focusedClient');
 
     const focusedClientUnsubscribe = focusedClient.subscribe(() => {
         updateMru(focusedClient());
     });
 
-    const clientsBinding = createBinding(hyprland, 'clients');
+    const clientsBinding = bind(hyprland, 'clients');
     const clientsList = clientsBinding.as(c => getSortedClients(c, mru));
 
     const clampUnsubscribe = clientsList.subscribe(() => {
@@ -180,7 +180,7 @@ export default () => {
 
     return (
         <Astal.Window
-            $={self => {
+            ref={self => {
                 switcherWindow = self;
                 onCleanup(() => {
                     switcherWindow = null;
@@ -202,11 +202,11 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={createBinding(hyprland, 'focusedMonitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focusedMonitor').as(m => m.id)}
             css={'background-color: transparent;'}
         >
             <Gtk.Box
-                $={self => {
+                ref={self => {
                     boxRef = self;
                 }}
                 focusable
@@ -217,7 +217,7 @@ export default () => {
                 widthRequest={500}
             >
                 <Gtk.EventControllerKey
-                    $={self => {
+                    ref={self => {
                         self.connect('key-pressed', handleKeyPressed);
                         self.connect('key-released', handleKeyReleased);
                     }}

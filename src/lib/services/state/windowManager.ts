@@ -1,7 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import GObject, {register} from 'gnim/gobject';
-import {getter} from '#/lib/decorators';
+import {Object, register} from 'gnim/gobject';
+import {property} from '#/lib/decorators';
 
 // ── Generic window collection for multi-window types (bars, wallpapers, lockscreens) ──
 function windowCollection<T extends Astal.Window>(
@@ -25,7 +25,7 @@ function windowCollection<T extends Astal.Window>(
 }
 
 @register({GTypeName: 'WindowManager'})
-export default class WindowManager extends GObject.Object {
+export default class WindowManager extends Object {
     static instance: WindowManager;
 
     static get_default() {
@@ -47,47 +47,47 @@ export default class WindowManager extends GObject.Object {
     #dock: Astal.Window | null = null;
     // ── Getters ──
 
-    @getter(Array)
+    @property
     get bars() {
         return this.#bars.getAll();
     }
 
-    @getter(Array)
+    @property
     get wallpapers() {
         return this.#wallpapers.getAll();
     }
 
-    @getter(Array)
+    @property
     get lockscreens() {
         return this.#lockscreens.getAll();
     }
 
-    @getter(Object)
+    @property
     get quicksettings() {
         return this.#quicksettings;
     }
 
-    @getter(Object)
+    @property
     get osd() {
         return this.#osd;
     }
 
-    @getter(Object)
+    @property
     get applauncher() {
         return this.#applauncher;
     }
 
-    @getter(Object)
+    @property
     get notifications() {
         return this.#notifications;
     }
 
-    @getter(Object)
+    @property
     get settings() {
         return this.#settings;
     }
 
-    @getter(Object)
+    @property
     get dock() {
         return this.#dock;
     }

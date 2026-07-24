@@ -15,7 +15,7 @@ import {app} from '#/apps/shell/App';
 export const createSettingsWindow = (): Adw.Window => {
     return (
         <Adw.PreferencesWindow
-            $={self => WindowManager.get_default().setSettings(self)}
+            ref={self => WindowManager.get_default().setSettings(self)}
             hideOnClose={false}
             application={app}
             name={'settings'}

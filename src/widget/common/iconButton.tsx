@@ -30,7 +30,7 @@ export const IconMenuButton = (props: IconMenuButtonProps) => (
         popover={props.popover}
         tooltipText={props.tooltipText}
         cursor={props.cursor}
-        $={usePopoverCleanup}
+        ref={usePopoverCleanup}
     >
         <Gtk.Image iconName={props.icon} />
     </Gtk.MenuButton>

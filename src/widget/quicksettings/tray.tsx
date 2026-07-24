@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, For} from 'gnim';
+import {bind, For} from 'gnim';
 import {useSettings} from '#/lib/settings';
 import Tray from 'gi://AstalTray';
 import TrayService from '#/lib/services/desktop/trayService';
@@ -57,11 +57,11 @@ export const TrayBox = () => {
 
     return (
         <Gtk.Box spacing={4} homogeneous halign={Gtk.Align.CENTER}>
-            <For each={createBinding(tray, 'items')}>
+            <For each={bind(tray, 'items')}>
                 {(item: Tray.TrayItem) => (
                     <Gtk.MenuButton
                         cssClasses={['circular']}
-                        $={self => {
+                        ref={self => {
                             self.insert_action_group(
                                 'dbusmenu',
                                 item.actionGroup
@@ -74,9 +74,9 @@ export const TrayBox = () => {
                                     cssClasses={['menu']}
                                     menuModel={item.menuModel}
                                 />
-                            ) as Gtk.Popover
+                            ) as unknown as Gtk.Popover
                         }
-                        tooltip_markup={createBinding(item, 'tooltip_markup')}
+                        tooltip_markup={bind(item, 'tooltip_markup')}
                     >
                         <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />
                     </Gtk.MenuButton>

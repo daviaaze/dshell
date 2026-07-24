@@ -3,7 +3,7 @@
  *
  * Handles lazy D-Bus initialization so widgets only bind to reactive properties.
  */
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Bluetooth from 'gi://AstalBluetooth';
 import {toArray} from '#/lib/core/gjsUtils';
 import logger from '#/lib/core/logger';
@@ -11,7 +11,7 @@ import logger from '#/lib/core/logger';
 let _instance: BluetoothService | null = null;
 
 @register({GTypeName: 'BluetoothService'})
-export default class BluetoothService extends GObject.Object {
+export default class BluetoothService extends Object {
     #bt: Bluetooth.Bluetooth | null = null;
     #initialized = false;
 
@@ -20,23 +20,23 @@ export default class BluetoothService extends GObject.Object {
         return _instance;
     }
 
-    @getter(Boolean)
+    @property
     get isPowered(): boolean {
         return this.#bt?.isPowered ?? false;
     }
 
-    @getter(Boolean)
+    @property
     get isConnected(): boolean {
         return this.#bt?.is_connected ?? false;
     }
 
-    @getter(Array)
+    @property
     get devices(): Bluetooth.Device[] {
         if (!this.#bt?.devices) return [];
         return toArray<Bluetooth.Device>(this.#bt.devices);
     }
 
-    @getter(String)
+    @property
     get connectedDeviceNames(): string {
         return this.devices
             .filter(d => d.connected)
@@ -44,7 +44,7 @@ export default class BluetoothService extends GObject.Object {
             .join(', ');
     }
 
-    @getter(String)
+    @property
     get iconName(): string {
         if (!this.isPowered) return 'bluetooth-disconnected-symbolic';
         return this.isConnected

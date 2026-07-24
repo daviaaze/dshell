@@ -1,4 +1,4 @@
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Tray from 'gi://AstalTray';
 import logger from '#/lib/core/logger';
 
@@ -8,7 +8,7 @@ import logger from '#/lib/core/logger';
  * Widgets bind to `items` instead of importing `gi://AstalTray` directly.
  */
 @register({GTypeName: 'TrayService'})
-export default class TrayService extends GObject.Object {
+export default class TrayService extends Object {
     static instance: TrayService;
 
     static get_default(): TrayService {
@@ -19,7 +19,7 @@ export default class TrayService extends GObject.Object {
     #tray: Tray.Tray | null = null;
     #initialized = false;
 
-    @getter(Array)
+    @property
     get items(): Tray.TrayItem[] {
         return this.#tray?.items ?? [];
     }

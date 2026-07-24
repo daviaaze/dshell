@@ -1,4 +1,4 @@
-import {createBinding, createState} from 'gnim';
+import {bind, createState} from 'gnim';
 import Brightness from '#/lib/services/display/brightness';
 import AudioController from '#/lib/services/audio/audioController';
 import {AudioEndpointControl} from '#/widget/common/audioControl';
@@ -26,11 +26,11 @@ function createEndpointConfig(cfg: EndpointConfig) {
 
         return (
             <AudioEndpointControl
-                visible={createBinding(audioCtrl, cfg.devicesProp).as(
+                visible={bind(audioCtrl, cfg.devicesProp).as(
                     s => s.length > 0
                 )}
-                defaultDevice={createBinding(audioCtrl, cfg.defaultProp)}
-                devices={createBinding(audioCtrl, cfg.devicesProp)}
+                defaultDevice={bind(audioCtrl, cfg.defaultProp)}
+                devices={bind(audioCtrl, cfg.devicesProp)}
                 mutedIcon={cfg.mutedIcon}
                 showAppMixer={cfg.showAppMixer}
             />
@@ -68,11 +68,11 @@ export const BrightnessSlider = () => {
     logger.debug('brightness', 'BrightnessSlider: done');
     return (
         <Slider
-            visible={createBinding(brightness, 'screen').as(v => v > 0)}
+            visible={bind(brightness, 'screen').as(v => v > 0)}
             icon={'display-brightness-symbolic'}
             min={BRIGHTNESS_PCT_MIN}
             max={BRIGHTNESS_PCT_MAX}
-            value={createBinding(brightness, 'screen').as(
+            value={bind(brightness, 'screen').as(
                 v => v * BRIGHTNESS_PCT_MAX
             )}
             setValue={value =>

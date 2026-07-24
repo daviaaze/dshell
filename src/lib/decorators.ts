@@ -9,4 +9,4 @@
  * instead of reaching into `gnim/gobject` directly, providing a single
  * seam for future decorator-related changes.
  */
-export {getter, setter} from 'gnim/gobject';
+export {property} from 'gnim/gobject';

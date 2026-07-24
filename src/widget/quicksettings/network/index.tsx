@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed, createState, With} from 'gnim';
+import {bind, computed, createState, With} from 'gnim';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
@@ -12,7 +12,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
     const net = NetworkService.get_default();
     const [connectingAp, setConnectingAp] = createState<string | null>(null);
 
-    const wifiIconName_ = createComputed(() => {
+    const wifiIconName_ = computed(() => {
         const enabled = net.wifiEnabled;
         const strength = net.wifiStrength;
         const state = net.wifiState;
@@ -20,12 +20,12 @@ const WifiQuicksettingsButton = (): QuickButton => {
         return wifiIconName(strength, enabled, state);
     });
 
-    const icon = createComputed(() => {
+    const icon = computed(() => {
         const isConnecting = connectingAp();
         return isConnecting ? 'content-loading-symbolic' : wifiIconName_();
     });
 
-    const wifiCssClasses = createComputed(() => {
+    const wifiCssClasses = computed(() => {
         const state = net.wifiState;
         // Network.DeviceState.ACTIVATED = 100
         if (state === 100) {
@@ -34,10 +34,10 @@ const WifiQuicksettingsButton = (): QuickButton => {
         return ['raised'];
     });
 
-    const wifiSsid = createBinding(net, 'wifiSsid');
-    const wifiEnabled = createBinding(net, 'wifiEnabled');
+    const wifiSsid = bind(net, 'wifiSsid');
+    const wifiEnabled = bind(net, 'wifiEnabled');
 
-    const label = createComputed(() => {
+    const label = computed(() => {
         const ssid = wifiSsid();
         const enabled = wifiEnabled();
 
@@ -49,7 +49,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
     const popover = (
         <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT}>
             <LinkedBox>
-                <With value={createBinding(net, 'wifi')}>
+                <With value={bind(net, 'wifi')}>
                     {(w: AstalNetwork.Wifi | null) =>
                         w ? (
                             <WifiPopover
@@ -71,7 +71,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
                 </With>
             </LinkedBox>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return {
         widget: (
@@ -85,8 +85,8 @@ const WifiQuicksettingsButton = (): QuickButton => {
                 }}
                 popover={popover}
             />
-        ) as Gtk.Widget,
-        visible: createBinding(net, 'wifiReady'),
+        ) as unknown as Gtk.Widget,
+        visible: bind(net, 'wifiReady'),
     };
 };
 

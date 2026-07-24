@@ -1,4 +1,4 @@
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Wireplumber from 'gi://AstalWp';
 import logger from '#/lib/core/logger';
 
@@ -10,7 +10,7 @@ import logger from '#/lib/core/logger';
  * Endpoint.set_volume() / .set_mute() directly.
  */
 @register({GTypeName: 'AudioController'})
-export default class AudioController extends GObject.Object {
+export default class AudioController extends Object {
     static instance: AudioController;
 
     static get_default(): AudioController {
@@ -21,27 +21,27 @@ export default class AudioController extends GObject.Object {
     #audio: Wireplumber.Audio | null = null;
     #initialized = false;
 
-    @getter(Object)
+    @property
     get audio(): Wireplumber.Audio | null {
         return this.#audio;
     }
 
-    @getter(Object)
+    @property
     get defaultSpeaker(): Wireplumber.Endpoint | null {
         return this.#audio?.default_speaker ?? null;
     }
 
-    @getter(Object)
+    @property
     get defaultMicrophone(): Wireplumber.Endpoint | null {
         return this.#audio?.default_microphone ?? null;
     }
 
-    @getter(Array)
+    @property
     get speakers(): Wireplumber.Endpoint[] {
         return this.#audio?.speakers ?? [];
     }
 
-    @getter(Array)
+    @property
     get microphones(): Wireplumber.Endpoint[] {
         return this.#audio?.microphones ?? [];
     }

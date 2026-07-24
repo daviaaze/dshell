@@ -25,7 +25,7 @@ export default () => {
                                 stepIncrement={5}
                                 value={settings.pomodoroWorkDuration}
                             />
-                        ) as Gtk.Adjustment
+                        ) as unknown as Gtk.Adjustment
                     }
                     onNotifyValue={self =>
                         settings.setPomodoroWorkDuration(self.value)
@@ -42,7 +42,7 @@ export default () => {
                                 stepIncrement={1}
                                 value={settings.pomodoroBreakDuration}
                             />
-                        ) as Gtk.Adjustment
+                        ) as unknown as Gtk.Adjustment
                     }
                     onNotifyValue={self =>
                         settings.setPomodoroBreakDuration(self.value)
@@ -59,7 +59,7 @@ export default () => {
                                 stepIncrement={5}
                                 value={settings.pomodoroLongBreakDuration}
                             />
-                        ) as Gtk.Adjustment
+                        ) as unknown as Gtk.Adjustment
                     }
                     onNotifyValue={self =>
                         settings.setPomodoroLongBreakDuration(self.value)
@@ -76,7 +76,7 @@ export default () => {
                                 stepIncrement={1}
                                 value={settings.pomodoroSessionsBeforeLongBreak}
                             />
-                        ) as Gtk.Adjustment
+                        ) as unknown as Gtk.Adjustment
                     }
                     onNotifyValue={self =>
                         settings.setPomodoroSessionsBeforeLongBreak(self.value)
@@ -110,7 +110,7 @@ export default () => {
                         .join(', ')}
                 >
                     <Gtk.Button
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['circular', 'destructive-action']}
                         iconName="edit-clear-all-symbolic"
                         tooltipText="Reset to defaults"

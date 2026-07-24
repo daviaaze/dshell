@@ -22,7 +22,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import logger from '#/lib/core/logger';
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 
 // ── CSS custom property names ──
 
@@ -146,7 +146,7 @@ export class Stylesheet {
 // ── Theme Manager ──
 
 @register({GTypeName: 'ShadeTheme'})
-export class Theme extends GObject.Object {
+export class Theme extends Object {
     static instance: Theme;
 
     static get_default(): Theme {
@@ -162,7 +162,7 @@ export class Theme extends GObject.Object {
     #isDark = false;
 
     /** Whether dark mode is active. */
-    @getter(Boolean)
+    @property
     get dark(): boolean {
         return this.#isDark;
     }

@@ -1,6 +1,6 @@
 import AstalBattery from 'gi://AstalBattery';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed} from 'gnim';
+import {bind, computed} from 'gnim';
 import {IconInfoRow} from '#/widget/common/iconInfoRow';
 
 function fmtDuration(seconds: number): string {
@@ -21,11 +21,11 @@ function fmtDurationHMS(seconds: number): string {
 
 export const BatteryIcon = () => {
     const battery = AstalBattery.get_default();
-    const timeTo = createComputed(
+    const timeTo = computed(
         [
-            createBinding(battery, 'charging'),
-            createBinding(battery, 'timeToEmpty'),
-            createBinding(battery, 'timeToFull'),
+            bind(battery, 'charging'),
+            bind(battery, 'timeToEmpty'),
+            bind(battery, 'timeToFull'),
         ],
         (charging, timeToEmpty, timeToFull) =>
             charging ? timeToFull : timeToEmpty
@@ -33,9 +33,9 @@ export const BatteryIcon = () => {
 
     return (
         <IconInfoRow
-            visible={createBinding(battery, 'isPresent')}
-            icon={createBinding(battery, 'iconName')}
-            primary={createBinding(battery, 'percentage').as(
+            visible={bind(battery, 'isPresent')}
+            icon={bind(battery, 'iconName')}
+            primary={bind(battery, 'percentage').as(
                 p => (p * 100).toFixed(0) + '%'
             )}
             secondary={timeTo(timeTo => {
@@ -49,21 +49,21 @@ export const BatteryIcon = () => {
 
 export const Battery = () => {
     const battery = AstalBattery.get_default();
-    const timeTo = createComputed(
+    const timeTo = computed(
         [
-            createBinding(battery, 'charging'),
-            createBinding(battery, 'timeToEmpty'),
-            createBinding(battery, 'timeToFull'),
+            bind(battery, 'charging'),
+            bind(battery, 'timeToEmpty'),
+            bind(battery, 'timeToFull'),
         ],
         (charging, timeToEmpty, timeToFull) =>
             charging ? timeToFull : timeToEmpty
     );
 
-    const chargingLabel = createBinding(battery, 'charging').as(c =>
+    const chargingLabel = bind(battery, 'charging').as(c =>
         c ? 'Charged in:' : 'Discharged in:'
     );
 
-    const rateLabel = createBinding(battery, 'charging').as(c =>
+    const rateLabel = bind(battery, 'charging').as(c =>
         c ? 'Rate of Charge:' : 'Rate of discharge:'
     );
 
@@ -72,7 +72,7 @@ export const Battery = () => {
             orientation={Gtk.Orientation.VERTICAL}
             cssClasses={['card', 'p-12']}
             spacing={4}
-            visible={createBinding(battery, 'isPresent')}
+            visible={bind(battery, 'isPresent')}
         >
             <Gtk.Label
                 cssClasses={['title-3']}
@@ -86,7 +86,7 @@ export const Battery = () => {
             <Gtk.Box spacing={8} halign={Gtk.Align.START}>
                 <Gtk.Label cssClasses={['heading']} label={rateLabel} />
                 <Gtk.Label
-                    label={createBinding(battery, 'energyRate').as(
+                    label={bind(battery, 'energyRate').as(
                         r => `${r.toFixed(2)}W`
                     )}
                 />
@@ -94,19 +94,19 @@ export const Battery = () => {
             <Gtk.Box spacing={8} halign={Gtk.Align.START}>
                 <Gtk.Label cssClasses={['heading']} label={'Energy:'} />
                 <Gtk.Label
-                    label={createBinding(battery, 'energy').as(
+                    label={bind(battery, 'energy').as(
                         e =>
                             `${e.toFixed(2)}/${battery.energyFull.toFixed(0)}Wh`
                     )}
                 />
             </Gtk.Box>
             <Gtk.LevelBar
-                value={createBinding(battery, 'percentage')}
+                value={bind(battery, 'percentage')}
                 widthRequest={100}
                 heightRequest={50}
             >
                 <Gtk.Label
-                    label={createBinding(battery, 'percentage').as(
+                    label={bind(battery, 'percentage').as(
                         p => `${(p * 100).toFixed(0)}%`
                     )}
                 />

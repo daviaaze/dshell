@@ -3,10 +3,10 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {
     For,
-    createBinding,
+    bind,
     createState,
-    createComputed,
-    onMount,
+    computed,
+    effect,
     onCleanup,
 } from 'gnim';
 import Notification from '#/widget/common/notification';
@@ -104,7 +104,7 @@ const NotificationContent = ({
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
             spacing={4}
-            $={() => {
+            ref={() => {
                 const _hn = {};
                 connectFor(_hn, notifd, 'notified', (_, id) =>
                     addNotification(id)
@@ -139,7 +139,7 @@ export default () => {
     // notification daemon (dunst, mako) is already registered.
     // Also add a timeout guard: if the D-Bus handshake hangs, log a warning
     // after 15 seconds so we know the widget silently never initialized.
-    onMount(() => {
+    effect(() => {
         const _hn = {};
         let initialized = false;
 
@@ -178,7 +178,7 @@ export default () => {
         onCleanup(() => cleanupNode(_hn));
     });
 
-    const screenlocked = createBinding(
+    const screenlocked = bind(
         ShellState.get_default(),
         'screenlocked'
     );
@@ -187,14 +187,14 @@ export default () => {
         <PopupWindow
             name="notifications"
             margin={12}
-            visible={createComputed(
+            visible={computed(
                 () =>
                     notifd() !== null &&
                     notificationCount() > 0 &&
                     !dontDisturb() &&
                     !screenlocked()
             )}
-            $={self => WindowManager.get_default().setNotifications(self)}
+            ref={self => WindowManager.get_default().setNotifications(self)}
         >
             <For each={notifd.as(n => (n ? [n] : ([] as Notifd.Notifd[])))}>
                 {(n: Notifd.Notifd) => (
