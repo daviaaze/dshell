@@ -53,9 +53,9 @@ export default ({
     const notifActionsStyle = useStyle({});
 
     const expireMs =
-        notification.expire_timeout > 0 ? notification.expire_timeout : 5000;
+        notification.expireTimeout > 0 ? notification.expireTimeout : 5000;
     const urgency = notification.urgency;
-    const appName = notification.app_name || notification.appName || '';
+    const appName = notification.appName || notification.appName || '';
     const hasImage = !!notification.image;
     const bodyText = notification.body || '';
     const hasActions = notification.actions.length > 0;
@@ -92,8 +92,8 @@ export default ({
                 <Gtk.Box spacing={8}>
                     <Gtk.Image
                         pixelSize={24}
-                        visible={!!notification.app_icon}
-                        iconName={notification.app_icon}
+                        visible={!!notification.appIcon}
+                        iconName={notification.appIcon}
                     />
                     <Gtk.Box
                         orientation={Gtk.Orientation.VERTICAL}

@@ -301,7 +301,7 @@ export function createNMConnection(
 
     if (password) {
         const sSec = new NM.SettingWirelessSecurity();
-        sSec.key_mgmt = 'wpa-psk';
+        sSec.keyMgmt = 'wpa-psk';
         sSec.psk = password;
         connection.add_setting(sSec);
     }

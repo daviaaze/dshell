@@ -291,7 +291,7 @@ export default () => {
             visible={bind(ss, 'regionSelectorOpen')}
             onNotifyVisible={self => {
                 if (self.visible) {
-                    const mon = hyprland.focused_monitor;
+                    const mon = hyprland.focusedMonitor;
                     if (mon) {
                         setMonOrigin({x: mon.x, y: mon.y});
                     }

@@ -42,7 +42,7 @@ export function applyPopupCss(): void {
 function makePicture(): Gtk.Picture {
     const pic = new Gtk.Picture();
     pic.set_size_request(PICTURE_W, PICTURE_H);
-    pic.content_fit = Gtk.ContentFit.SCALE_DOWN;
+    pic.contentFit = Gtk.ContentFit.SCALE_DOWN;
     pic.add_css_class('picker-preview');
     return pic;
 }

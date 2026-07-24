@@ -41,8 +41,8 @@ const NotificationContent = ({
             return next;
         });
         const expireMs = (() => {
-            if (n.expire_timeout > 0) return n.expire_timeout;
-            if (notifd.default_timeout > 0) return notifd.default_timeout;
+            if (n.expireTimeout > 0) return n.expireTimeout;
+            if (notifd.defaultTimeout > 0) return notifd.defaultTimeout;
             return 5000;
         })();
         timeouts.set(

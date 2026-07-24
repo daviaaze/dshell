@@ -25,7 +25,7 @@ export function PreviewCard({
 } {
     const picture = new Gtk.Picture();
     picture.set_size_request(200, 120);
-    picture.content_fit = Gtk.ContentFit.SCALE_DOWN;
+    picture.contentFit = Gtk.ContentFit.SCALE_DOWN;
     picture.add_css_class('picker-preview');
 
     const label = new Gtk.Label({
