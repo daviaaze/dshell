@@ -15,6 +15,15 @@ declare module 'gnim' {
 }
 
 declare module 'gnim/gobject' {
+    // Variadic signal overload: @signal([Types], ReturnType). gnim v2's
+    // published overloads don't cover the two-type-arg pattern
+    // (@signal([Number], Boolean)).
+    export function signal<const Params extends TypeParameter[], const Return extends TypeParameter>(
+        paramtypes: Params,
+        returntype?: Return,
+        options?: SignalOptions,
+    ): (proto: Object, name: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => any>) => void;
+
     // Bare @signal() decorator (no args). gnim v2 ships @signal (no parens)
     // and @signal([Types], Return), but not the bare @signal() call form.
     export function signal(): (
