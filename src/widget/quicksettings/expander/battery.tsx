@@ -21,27 +21,22 @@ function fmtDurationHMS(seconds: number): string {
 
 export const BatteryIcon = () => {
     const battery = AstalBattery.get_default();
-    const timeTo = computed(
-        [
-            bind(battery, 'charging'),
-            bind(battery, 'timeToEmpty'),
-            bind(battery, 'timeToFull'),
-        ],
-        (charging, timeToEmpty, timeToFull) =>
-            charging ? timeToFull : timeToEmpty
-    );
+    const charging = bind(battery, 'charging');
+    const timeToEmpty = bind(battery, 'timeToEmpty');
+    const timeToFull = bind(battery, 'timeToFull');
+    const timeTo = computed(() => charging() ? timeToFull() : timeToEmpty());
 
     return (
         <IconInfoRow
             visible={bind(battery, 'isPresent')}
             icon={bind(battery, 'iconName')}
             primary={bind(battery, 'percentage').as(
-                p => (p * 100).toFixed(0) + '%'
+                (p: number) => (p * 100).toFixed(0) + '%'
             )}
-            secondary={timeTo(timeTo => {
-                if (timeTo === 0) return 'Full';
+            secondary={timeTo.as(t => {
+                if (t === 0) return 'Full';
                 const suffix = battery.get_charging() ? ' to full' : ' to empty';
-                return fmtDuration(timeTo) + suffix;
+                return fmtDuration(t) + suffix;
             })}
         />
     );
@@ -49,21 +44,16 @@ export const BatteryIcon = () => {
 
 export const Battery = () => {
     const battery = AstalBattery.get_default();
-    const timeTo = computed(
-        [
-            bind(battery, 'charging'),
-            bind(battery, 'timeToEmpty'),
-            bind(battery, 'timeToFull'),
-        ],
-        (charging, timeToEmpty, timeToFull) =>
-            charging ? timeToFull : timeToEmpty
-    );
+    const charging = bind(battery, 'charging');
+    const timeToEmpty = bind(battery, 'timeToEmpty');
+    const timeToFull = bind(battery, 'timeToFull');
+    const timeTo = computed(() => charging() ? timeToFull() : timeToEmpty());
 
-    const chargingLabel = bind(battery, 'charging').as(c =>
+    const chargingLabel = charging.as((c: boolean) =>
         c ? 'Charged in:' : 'Discharged in:'
     );
 
-    const rateLabel = bind(battery, 'charging').as(c =>
+    const rateLabel = charging.as((c: boolean) =>
         c ? 'Rate of Charge:' : 'Rate of discharge:'
     );
 
