@@ -14,7 +14,7 @@
     "skipLibCheck": true,
     "paths": { "#/*": ["./src/*"] },
     "jsx": "react-jsx",
-    "jsxImportSource": "gnim/gtk4",
+    "jsxImportSource": "@gnim-js/gtk4",
   },
   "exclude": ["build"],
 }

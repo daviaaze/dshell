@@ -4,21 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  gnim@1.9.1:
-    hash: 3945e2ce6886bdf3ea76baf9745e5115fa30c658ce940b4011978031f577a032
-    path: patches/gnim@1.9.1.patch
-
 importers:
 
   .:
     dependencies:
+      '@gnim-js/gtk4':
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
       gnim:
-        specifier: 1.9.1
-        version: 1.9.1(patch_hash=3945e2ce6886bdf3ea76baf9745e5115fa30c658ce940b4011978031f577a032)
-      gnim-schemas:
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -311,6 +306,15 @@ packages:
   '@girs/pangocairo-1.0@1.0.0-4.0.4':
     resolution: {integrity: sha512-baIguxy7m7G5TcAKF6ZWU6cow+3Gr/AZJBEZFmTYWmxEc3AE8s+ik9+ujEcHZP1DuGS9fVQskjJWFhd+LYNF8A==}
 
+  '@gnim-js/gtk4@2.0.0-beta.7':
+    resolution: {integrity: sha512-/TB9z6O+qqWmQ6Mu0yKh9WvjNAbLgtixw+p+XCDCidHE+TB91JHe7Bhrz1EpEKRaSJbopq6NHkXU3jQypxXBxg==}
+    engines: {gjs: '>=1.83.0'}
+
+  '@gnim-js/linux-x64@2.0.0-beta.7':
+    resolution: {integrity: sha512-VeaXUGmxcjYedUZhcMBStMbiZ0R3dD4inGFrU6Mw2YCwQgB46e+uTGR4kmZs9FMbB2QL6m2wstw/ijreqKNDVQ==}
+    cpu: [x64]
+    os: [linux]
+
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
     engines: {node: '>=18.18.0'}
@@ -544,14 +548,10 @@ packages:
     resolution: {integrity: sha512-Czmyns5dUsq4seFBR/Kdydhmo8y9kC79hiSkPn0YcGtNnYWnrgt0vjrSjx9tspoDGWm2CMarffRuLjM4xUz8xg==}
     engines: {node: '>=18'}
 
-  gnim-schemas@0.3.0:
-    resolution: {integrity: sha512-ctQ8/iTpl8ZkA54BOj0iDbPlAT7GuEVLJz+xDSkY0ZaYyUIdLGBx5KMuut0Yk+WOwrhwEvcHqICgE5dav8gEIA==}
-    engines: {gjs: '>=1.79.0'}
+  gnim@2.0.0-beta.7:
+    resolution: {integrity: sha512-9KQSwm6TMLQcpLngvQsiIYj/vETIYlQKehRXpsnnIo2/WxHE0qbkjt/4iLsmBlFzXpQSRLegjYliH65Mlmfi/Q==}
+    engines: {gjs: '>=1.83.0'}
     hasBin: true
-
-  gnim@1.9.1:
-    resolution: {integrity: sha512-WttkzzZg17qrJKGk87HlE1zHKUdYoimSqjmsULt4C6DNq3JfYSPhYNjwUjBMHFpzZMbyUVHgpTTW6IIehme9tQ==}
-    engines: {gjs: '>=1.79.0'}
 
   ignore@5.3.2:
     resolution: {integrity: sha512-hsBTNUqQTDwkWtcdYI2i06Y/nUBEsNEDJKjWdigLvegy8kDuJAS8uRlpkkcQpyEXL0Z/pjDy5HBmMjRCJ2gq+g==}
@@ -1030,6 +1030,13 @@ snapshots:
       '@girs/harfbuzz-0.0': 13.2.1-4.0.4
       '@girs/pango-1.0': 1.57.1-4.0.4
 
+  '@gnim-js/gtk4@2.0.0-beta.7':
+    dependencies:
+      gnim: 2.0.0-beta.7
+
+  '@gnim-js/linux-x64@2.0.0-beta.7':
+    optional: true
+
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -1324,11 +1331,9 @@ snapshots:
 
   globals@17.7.0: {}
 
-  gnim-schemas@0.3.0:
-    dependencies:
-      gnim: 1.9.1(patch_hash=3945e2ce6886bdf3ea76baf9745e5115fa30c658ce940b4011978031f577a032)
-
-  gnim@1.9.1(patch_hash=3945e2ce6886bdf3ea76baf9745e5115fa30c658ce940b4011978031f577a032): {}
+  gnim@2.0.0-beta.7:
+    optionalDependencies:
+      '@gnim-js/linux-x64': 2.0.0-beta.7
 
   ignore@5.3.2: {}
 

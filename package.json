@@ -27,8 +27,8 @@
         "typescript-eslint": "^8.60.0"
     },
     "dependencies": {
-        "gnim": "1.9.1",
-        "gnim-schemas": "^0.3.0"
+        "gnim": "2.0.0-beta.7",
+        "@gnim-js/gtk4": "2.0.0-beta.7"
     },
     "prettier": {
         "semi": true,
