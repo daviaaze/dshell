@@ -1,5 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed, createState, With} from 'gnim';
+import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
 import WifiPopover from './wifiPopover';
@@ -7,7 +8,7 @@ import {wifiIconName} from './utils';
 import NetworkService from '#/lib/services/network/networkService';
 import AstalNetwork from 'gi://AstalNetwork?version=0.1';
 
-const WifiQuicksettingsButton = () => {
+const WifiQuicksettingsButton = (): QuickButton => {
     const net = NetworkService.get_default();
     const [connectingAp, setConnectingAp] = createState<string | null>(null);
 
@@ -72,19 +73,21 @@ const WifiQuicksettingsButton = () => {
         </Gtk.Popover>
     ) as Gtk.Popover;
 
-    return (
-        <QuickToggleButton
-            icon={icon}
-            visible={createBinding(net, 'wifiReady')}
-            cssClasses={wifiCssClasses}
-            label={label}
-            onClick={() => {
-                net.toggleWifi();
-                return true;
-            }}
-            popover={popover}
-        />
-    );
+    return {
+        widget: (
+            <QuickToggleButton
+                icon={icon}
+                cssClasses={wifiCssClasses}
+                label={label}
+                onClick={() => {
+                    net.toggleWifi();
+                    return true;
+                }}
+                popover={popover}
+            />
+        ) as Gtk.Widget,
+        visible: createBinding(net, 'wifiReady'),
+    };
 };
 
 export default WifiQuicksettingsButton;

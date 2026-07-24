@@ -2,6 +2,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed} from 'gnim';
 import TimerService from '#/lib/services/time/timerService';
 import {TimerSection} from './TimerSection';
+import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 
 function fmtShort(ms: number): string {
@@ -12,7 +13,7 @@ function fmtShort(ms: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export const QuickTimerButton = () => {
+export const QuickTimerButton = (): QuickButton => {
     const timer = TimerService.get_default();
     const remaining = createBinding(timer, 'remaining');
     const running = createBinding(timer, 'running');
@@ -42,15 +43,17 @@ export const QuickTimerButton = () => {
         </Gtk.Popover>
     ) as Gtk.Popover;
 
-    return (
-        <QuickToggleButton
-            cssClasses={cssClasses}
-            icon={icon}
-            label={label}
-            popover={popover}
-            onClick={() => {
-                if (timer.remaining >= 0) timer.cancel();
-            }}
-        />
-    );
+    return {
+        widget: (
+            <QuickToggleButton
+                cssClasses={cssClasses}
+                icon={icon}
+                label={label}
+                popover={popover}
+                onClick={() => {
+                    if (timer.remaining >= 0) timer.cancel();
+                }}
+            />
+        ) as Gtk.Widget,
+    };
 };

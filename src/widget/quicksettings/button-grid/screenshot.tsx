@@ -2,11 +2,12 @@ import Screenshot from '#/lib/services/capture/screenshot';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
+import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
 import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
 
-export default () => {
+export default (): QuickButton => {
     const screenshot = Screenshot.get_default();
     const captureSettings = getScreenCaptureSettings();
 
@@ -148,16 +149,18 @@ export default () => {
         </Gtk.Popover>
     ) as Gtk.Popover;
 
-    return (
-        <QuickToggleButton
-            icon={createBinding(screenshot, 'recording').as(rec =>
-                rec ? 'media-playback-stop-symbolic' : 'camera-video-symbolic'
-            )}
-            label={createBinding(screenshot, 'recording').as(rec =>
-                rec ? 'Stop' : 'Record'
-            )}
-            onClick={() => screenshot.toggleRecording()}
-            popover={popover}
-        />
-    );
+    return {
+        widget: (
+            <QuickToggleButton
+                icon={createBinding(screenshot, 'recording').as(rec =>
+                    rec ? 'media-playback-stop-symbolic' : 'camera-video-symbolic'
+                )}
+                label={createBinding(screenshot, 'recording').as(rec =>
+                    rec ? 'Stop' : 'Record'
+                )}
+                onClick={() => screenshot.toggleRecording()}
+                popover={popover}
+            />
+        ) as Gtk.Widget,
+    };
 };

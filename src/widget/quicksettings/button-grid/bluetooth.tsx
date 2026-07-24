@@ -2,11 +2,12 @@ import AstalBluetooth from 'gi://AstalBluetooth';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed, createState, For} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
+import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import logger from '#/lib/core/logger';
 import {LinkedBox} from '#/widget/common/linkedBox';
 import {toArray} from '#/lib/core/gjsUtils';
 
-export default () => {
+export default (): QuickButton => {
     // ButtonGrid items only render when quicksettings opens — D-Bus
     // services are already available by then, so synchronous call is safe.
     const bluetooth = AstalBluetooth.get_default();
@@ -108,33 +109,35 @@ export default () => {
         </Gtk.Popover>
     ) as Gtk.Popover;
 
-    return (
-        <QuickToggleButton
-            visible={isVisible}
-            icon={icon}
-            cssClasses={createComputed(
-                () =>
-                    isPowered() && isConnected()
-                        ? ['raised', 'suggested-action']
-                        : ['raised']
-            )}
-            label={createComputed(
-                () => {
-                    if (!isPowered()) return 'Bluetooth Off';
-                    const connectedDevices = toArray<AstalBluetooth.Device>(
-                        bluetooth.devices
-                    ).filter((d: AstalBluetooth.Device) => d.connected);
-                    if (connectedDevices.length === 0) return 'Bluetooth';
-                    if (connectedDevices.length === 1)
-                        return connectedDevices[0].name;
-                    return `${connectedDevices.length} connected`;
-                }
-            )}
-            onClick={() => {
-                if(!bluetooth?.adapter) return;
-                bluetooth.adapter.powered = !bluetooth.adapter.powered;
-            }}
-            popover={popover}
-        />
-    );
+    return {
+        widget: (
+            <QuickToggleButton
+                icon={icon}
+                cssClasses={createComputed(
+                    () =>
+                        isPowered() && isConnected()
+                            ? ['raised', 'suggested-action']
+                            : ['raised']
+                )}
+                label={createComputed(
+                    () => {
+                        if (!isPowered()) return 'Bluetooth Off';
+                        const connectedDevices = toArray<AstalBluetooth.Device>(
+                            bluetooth.devices
+                        ).filter((d: AstalBluetooth.Device) => d.connected);
+                        if (connectedDevices.length === 0) return 'Bluetooth';
+                        if (connectedDevices.length === 1)
+                            return connectedDevices[0].name;
+                        return `${connectedDevices.length} connected`;
+                    }
+                )}
+                onClick={() => {
+                    if(!bluetooth?.adapter) return;
+                    bluetooth.adapter.powered = !bluetooth.adapter.powered;
+                }}
+                popover={popover}
+            />
+        ) as Gtk.Widget,
+        visible: isVisible,
+    };
 };

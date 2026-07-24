@@ -1,9 +1,10 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
+import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import NightLight, {TEMP_MIN, TEMP_MAX} from '#/lib/services/display/nightLight';
 
-export default () => {
+export default (): QuickButton => {
     const nightLight = NightLight.get_default();
 
     const popover = (
@@ -61,17 +62,19 @@ export default () => {
         </Gtk.Popover>
     ) as Gtk.Popover;
 
-    return (
-        <QuickToggleButton
-            cssClasses={createBinding(nightLight, 'enabled').as(e =>
-                e ? ['raised', 'suggested-action'] : ['raised']
-            )}
-            icon={createBinding(nightLight, 'enabled').as(e =>
-                e ? 'night-light-symbolic' : 'night-light-disabled-symbolic'
-            )}
-            label="Night Light"
-            onClick={() => (nightLight.enabled = !nightLight.enabled)}
-            popover={popover}
-        />
-    );
+    return {
+        widget: (
+            <QuickToggleButton
+                cssClasses={createBinding(nightLight, 'enabled').as(e =>
+                    e ? ['raised', 'suggested-action'] : ['raised']
+                )}
+                icon={createBinding(nightLight, 'enabled').as(e =>
+                    e ? 'night-light-symbolic' : 'night-light-disabled-symbolic'
+                )}
+                label="Night Light"
+                onClick={() => (nightLight.enabled = !nightLight.enabled)}
+                popover={popover}
+            />
+        ) as Gtk.Widget,
+    };
 };

@@ -2,10 +2,11 @@ import Inhibit from '#/lib/services/power/inhibit';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding, createComputed} from 'gnim';
+import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
 
-export default () => {
+export default (): QuickButton => {
     const inhibit = Inhibit.get_default();
     const idle = createBinding(inhibit, 'idle');
     const remaining = createBinding(inhibit, 'remaining');
@@ -66,16 +67,18 @@ export default () => {
         </Gtk.Popover>
     ) as Gtk.Popover;
 
-    return (
-        <QuickToggleButton
-            cssClasses={cssClasses}
-            icon={icon}
-            label={label}
-            onClick={() => {
-                if (inhibit.idle) inhibit.idle = false;
-                else inhibit.setDuration(0);
-            }}
-            popover={popover}
-        />
-    );
+    return {
+        widget: (
+            <QuickToggleButton
+                cssClasses={cssClasses}
+                icon={icon}
+                label={label}
+                onClick={() => {
+                    if (inhibit.idle) inhibit.idle = false;
+                    else inhibit.setDuration(0);
+                }}
+                popover={popover}
+            />
+        ) as Gtk.Widget,
+    };
 };

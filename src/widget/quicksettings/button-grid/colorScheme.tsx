@@ -1,11 +1,12 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createBinding} from 'gnim';
+import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
 import {ColorScheme, DarkModes} from '#/lib/services/display/colorScheme';
 
-export default () => {
+export default (): QuickButton => {
     const colorScheme = ColorScheme.get_default();
 
     const popover = (
@@ -41,26 +42,28 @@ export default () => {
         </Gtk.Popover>
     ) as Gtk.Popover;
 
-    return (
-        <QuickToggleButton
-            icon={createBinding(colorScheme, 'iconName')}
-            label={createBinding(colorScheme, 'colorScheme').as(c => {
-                if (c === DarkModes.AUTO) return 'Auto';
-                if (c === DarkModes.LIGHT) return 'Light Mode';
-                return 'Dark Mode';
-            })}
-            onClick={() => {
-                if (colorScheme.colorScheme === DarkModes.LIGHT) {
-                    colorScheme.colorScheme = DarkModes.DARK;
-                } else if (colorScheme.colorScheme === DarkModes.DARK) {
-                    colorScheme.colorScheme = DarkModes.LIGHT;
-                } else if (colorScheme.daytime) {
-                    colorScheme.colorScheme = DarkModes.DARK;
-                } else {
-                    colorScheme.colorScheme = DarkModes.LIGHT;
-                }
-            }}
-            popover={popover}
-        />
-    );
+    return {
+        widget: (
+            <QuickToggleButton
+                icon={createBinding(colorScheme, 'iconName')}
+                label={createBinding(colorScheme, 'colorScheme').as(c => {
+                    if (c === DarkModes.AUTO) return 'Auto';
+                    if (c === DarkModes.LIGHT) return 'Light Mode';
+                    return 'Dark Mode';
+                })}
+                onClick={() => {
+                    if (colorScheme.colorScheme === DarkModes.LIGHT) {
+                        colorScheme.colorScheme = DarkModes.DARK;
+                    } else if (colorScheme.colorScheme === DarkModes.DARK) {
+                        colorScheme.colorScheme = DarkModes.LIGHT;
+                    } else if (colorScheme.daytime) {
+                        colorScheme.colorScheme = DarkModes.DARK;
+                    } else {
+                        colorScheme.colorScheme = DarkModes.LIGHT;
+                    }
+                }}
+                popover={popover}
+            />
+        ) as Gtk.Widget,
+    };
 };

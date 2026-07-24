@@ -1,12 +1,13 @@
+import Gtk from 'gi://Gtk?version=4.0';
 import {createState, onMount, onCleanup} from 'gnim';
 import Adw from 'gi://Adw?version=1';
-import Gtk from 'gi://Gtk?version=4.0';
 import PowerProfiles, {profileLabel, nextProfile} from '#/lib/services/power/powerProfiles';
+import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';
 import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
-export default () => {
+export default (): QuickButton => {
     const [iconName, setIconName] = createState(
         'power-profile-balanced-symbolic'
     );
@@ -58,12 +59,14 @@ export default () => {
         </Gtk.Popover>
     ) as Gtk.Popover;
 
-    return (
-        <QuickToggleButton
-            icon={iconName}
-            label={label}
-            onClick={() => setProfile(nextProfile(activeProfile()))}
-            popover={popover}
-        />
-    );
+    return {
+        widget: (
+            <QuickToggleButton
+                icon={iconName}
+                label={label}
+                onClick={() => setProfile(nextProfile(activeProfile()))}
+                popover={popover}
+            />
+        ) as Gtk.Widget,
+    };
 };
