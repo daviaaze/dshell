@@ -112,7 +112,7 @@ const NotificationContent = ({
                 onCleanup(() => cleanupNode(_hn));
             }}
         >
-            <For each={notifications(n => n.reverse())}>
+            <For each={notifications.as(n => n.reverse())}>
                 {(n: Notifd.Notification) => (
                     <Notification
                         closeAction={() => removeNotif(n.id)}

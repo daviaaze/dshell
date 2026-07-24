@@ -46,7 +46,7 @@ export const Slider = (props: SliderProps) => {
             />
             <Gtk.Label
                 cssClasses={['heading']}
-                label={props.value(v => safe(v).toFixed(0).concat('%'))}
+                label={props.value.as(v => safe(v).toFixed(0).concat('%'))}
             />
         </Gtk.Box>
     );

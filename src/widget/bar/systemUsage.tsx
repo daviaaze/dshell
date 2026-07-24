@@ -44,7 +44,7 @@ const Indicator = ({
                 <Gtk.Label
                     cssClasses={['caption', 'numeral', numeralStyle.class]}
                     ref={numeralStyle.$}
-                    label={value(v => (v * 100).toFixed(0).concat(unit))}
+                    label={value.as(v => (v * 100).toFixed(0).concat(unit))}
                 />
             </Gtk.Box>
             <Gtk.LevelBar
