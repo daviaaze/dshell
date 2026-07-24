@@ -70,14 +70,14 @@ function monitorForPoint(x: number, y: number) {
         }
     }
     // Fallback: focused monitor
-    return AstalHyprland.get_default().focused_monitor;
+    return AstalHyprland.get_default().focusedMonitor;
 }
 
 /**
  * Convert a grim "x,y WxH" global geometry to magick "WxH+X+Y" in the
  * coordinate space of the monitor that contains the selection.
  *
- * Uses the AstalHyprland monitor list (not just focused_monitor) so
+ * Uses the AstalHyprland monitor list (not just focusedMonitor) so
  * multi-monitor selections work correctly.
  */
 export function grimToMagickGeometry(geometry: string): string {
@@ -104,7 +104,7 @@ export function grimToMagickGeometry(geometry: string): string {
  */
 export function monitorForGeometry(geometry: string) {
     const g = parseGrimGeometry(geometry);
-    if (!g) return AstalHyprland.get_default().focused_monitor;
+    if (!g) return AstalHyprland.get_default().focusedMonitor;
     return monitorForPoint(g.x, g.y);
 }
 

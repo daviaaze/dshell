@@ -186,7 +186,7 @@ export default class SoundAlertService extends Object {
                             LOW_BATTERY_THRESHOLD;
                         const isNowBelow = pct <= LOW_BATTERY_THRESHOLD;
                         this.#lastBatteryPercentage = pct;
-                        if (wasAbove && isNowBelow && battery.is_present) {
+                        if (wasAbove && isNowBelow && battery.isPresent) {
                             this.play('dialog-warning');
                         }
                     }

@@ -59,7 +59,7 @@ export default () => {
     }
 
     function refreshMonOrigin() {
-        setMonOrigin(getMonitorOrigin(hyprland.focused_monitor));
+        setMonOrigin(getMonitorOrigin(hyprland.focusedMonitor));
     }
 
     // ── Event handlers ────────────────────────────────────────────

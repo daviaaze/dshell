@@ -22,7 +22,7 @@ export function recordOutput(ss: Screenshot, outputName?: string) {
     if (ss.recording) return;
     if (!outputName) {
         const hyprland = AstalHyprland.get_default();
-        outputName = hyprland.focused_monitor?.name;
+        outputName = hyprland.focusedMonitor?.name;
         logger.info('screenshot', `focused monitor name: ${outputName}`);
     }
     if (!outputName) {
@@ -65,7 +65,7 @@ export function recordWindowByAddress(ss: Screenshot, address: string) {
 export function recordWindow(ss: Screenshot) {
     if (ss.recording) return;
     const hyprland = AstalHyprland.get_default();
-    const client = hyprland.focused_client;
+    const client = hyprland.focusedClient;
     if (!client) {
         logger.error('screenshot', 'no focused client, cannot record window');
         notify(MSG_RECORDING_FAILED, 'No window focused', ICON_ERROR);

@@ -27,7 +27,7 @@ export default class BluetoothService extends Object {
 
     @property
     get isConnected(): boolean {
-        return this.#bt?.is_connected ?? false;
+        return this.#bt?.isConnected ?? false;
     }
 
     @property

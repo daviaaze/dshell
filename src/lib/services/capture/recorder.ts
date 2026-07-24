@@ -85,7 +85,7 @@ export class Recorder {
             options.output ??
             (options.geometry
                 ? undefined
-                : AstalHyprland.get_default().focused_monitor?.name);
+                : AstalHyprland.get_default().focusedMonitor?.name);
 
         const {audio, input, quality} = this.#hooks.getAudioSettings();
         const {args, backendName} = buildRecordingArgs(

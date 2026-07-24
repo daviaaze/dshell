@@ -28,12 +28,12 @@ export default class AudioController extends Object {
 
     @property
     get defaultSpeaker(): Wireplumber.Endpoint | null {
-        return this.#audio?.default_speaker ?? null;
+        return this.#audio?.defaultSpeaker ?? null;
     }
 
     @property
     get defaultMicrophone(): Wireplumber.Endpoint | null {
-        return this.#audio?.default_microphone ?? null;
+        return this.#audio?.defaultMicrophone ?? null;
     }
 
     @property

@@ -89,7 +89,7 @@ export default () => {
         const batterySignals = new Map<string, number>();
 
         function refresh() {
-            if (!bluetooth.is_connected) {
+            if (!bluetooth.isConnected) {
                 setDeviceInfo([]);
                 return;
             }

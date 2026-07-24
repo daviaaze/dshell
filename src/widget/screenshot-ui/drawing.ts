@@ -95,7 +95,7 @@ export function draw(
         drawDimRect(cr, 0, ly, lx, sWin.height);
         drawDimRect(cr, lx + sWin.width, ly, width - lx - sWin.width, sWin.height);
     } else if (target === 'monitor') {
-        const m = hyprland.focused_monitor;
+        const m = hyprland.focusedMonitor;
         if (m) {
             const origin = monOrigin;
             const lx = m.x - origin.x;
