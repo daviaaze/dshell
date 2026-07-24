@@ -1,11 +1,11 @@
-import {Object, register, property} from 'gnim/gobject';
+import {Object as GObject, register, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
 import {bus} from '#/lib/core/eventBus';
 import ServiceRegistry from '#/lib/core/serviceRegistry';
 import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'ShellState'})
-export default class ShellState extends Object {
+export default class ShellState extends GObject {
     static instance: ShellState;
 
     static get_default() {

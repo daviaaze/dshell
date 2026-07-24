@@ -4,7 +4,7 @@
  *
  * Replaces the old `Theming` service (3-color accent → full palette).
  */
-import {Object, register, property} from 'gnim/gobject';
+import {Object as GObject, register, property} from 'gnim/gobject';
 import {Accessor} from 'gnim';
 import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
@@ -45,7 +45,7 @@ interface MatugenJson {
 // ── The service ──
 
 @register({GTypeName: 'PaletteGenerator'})
-export default class PaletteGenerator extends Object {
+export default class PaletteGenerator extends GObject {
     static instance: PaletteGenerator;
 
     static get_default() {

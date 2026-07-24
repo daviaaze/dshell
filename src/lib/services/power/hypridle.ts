@@ -1,4 +1,4 @@
-import {Object, register, property} from 'gnim/gobject';
+import {Object as GObject, register, property} from 'gnim/gobject';
 import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '#/lib/core/logger';
@@ -45,7 +45,7 @@ const PROPS: Record<string, PropDef> = {
 };
 
 @register({GTypeName: 'Hypridle'})
-export default class Hypridle extends Object {
+export default class Hypridle extends GObject {
     static instance: Hypridle;
     static get_default() {
         if (!this.instance) this.instance = new Hypridle();
