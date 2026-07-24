@@ -1,6 +1,6 @@
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
-import {For, createState, onMount, onCleanup} from 'gnim';
+import {For, createState, effect, onCleanup} from 'gnim';
 import {useStyle} from '#/style/useStyle';
 import Notification from '#/widget/common/notification';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
@@ -61,7 +61,7 @@ export const LockscreenNotifications = () => {
         removeNotification(notif);
     };
 
-    onMount(() => {
+    effect(() => {
         const notifd = getNotifdSafe();
         if (!notifd) {
             logger.warn(
@@ -112,13 +112,13 @@ export const LockscreenNotifications = () => {
             hscrollbarPolicy={Gtk.PolicyType.NEVER}
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             cssClasses={['lockscreen-notifications', lockscreenStyle.class]}
-            $={lockscreenStyle.$}
+            ref={lockscreenStyle.$}
         >
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
                 cssClasses={['lockscreen-notifications-list', listStyle.class]}
-                $={listStyle.$}
+                ref={listStyle.$}
             >
                 <For each={notifications}>
                     {(n: Notifd.Notification) => (

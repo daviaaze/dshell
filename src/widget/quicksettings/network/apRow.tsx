@@ -4,7 +4,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {createComputed, createState, Accessor} from 'gnim';
+import {computed, createState, Accessor} from 'gnim';
 import {toArray} from '#/lib/core/gjsUtils';
 import {
     ApSnapshot,
@@ -185,8 +185,8 @@ function ApRow({
     const doConnect = createDoConnect(wifi, apBssid, apSsid, secure, connectState);
     const doForget = createDoForget(wifi, apBssid, apSsid);
 
-    const notActive = createComputed(() => !isActive());
-    const canForget = createComputed(() => {
+    const notActive = computed(() => !isActive());
+    const canForget = computed(() => {
         if (isActive()) return false;
         const liveAp = findLiveAp(wifi, apBssid, apSsid);
         if (!liveAp) return false;
@@ -267,7 +267,7 @@ function ApRow({
                         placeholderText="Password"
                         visibility={false}
                         hexpand
-                        $={self => {
+                        ref={self => {
                             setPasswordEntry(self);
                             GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
                                 self.grab_focus();

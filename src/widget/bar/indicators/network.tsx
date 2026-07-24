@@ -1,6 +1,6 @@
 import Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createState, onMount, onCleanup} from 'gnim';
+import {createState, effect, onCleanup} from 'gnim';
 import {wifiIconName} from '#/widget/quicksettings/network/utils';
 import {connectFor, cleanupNode} from '#/lib/core/connectFor';
 
@@ -9,7 +9,7 @@ export default () => {
     const [iconName, setIconName] = createState('network-no-route-symbolic');
     const [visible, setVisible] = createState(false);
 
-    onMount(() => {
+    effect(() => {
         const _hn = {};
         let wifiSignalIds: number[] = [];
 

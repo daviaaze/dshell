@@ -1,4 +1,4 @@
-import GObject, {register} from 'gnim/gobject';
+import {Object, register} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 /**
@@ -53,7 +53,7 @@ export interface ShellEventPayloads {
  *   ShellBus.get_default().off(h);
  */
 @register({GTypeName: 'ShellBus'})
-export default class ShellBus extends GObject.Object {
+export default class ShellBus extends Object {
     static instance: ShellBus;
 
     static get_default(): ShellBus {

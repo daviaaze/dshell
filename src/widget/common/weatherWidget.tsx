@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding, createComputed} from 'gnim';
+import {Accessor, bind, computed} from 'gnim';
 import WeatherLib from '#/lib/services/location/weather';
 import {formatTime, windDirectionLabel} from '#/lib/services/location/weatherUtils';
 import {useStyle} from '#/style/useStyle';
@@ -16,13 +16,13 @@ export const WeatherIcon = () => {
     return (
         <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
             <Gtk.Image
-                iconName={createBinding(weather, 'info').as(
+                iconName={bind(weather, 'info').as(
                     w => w?.get_icon_name() ?? ''
                 )}
                 pixelSize={20}
             />
             <Gtk.Label
-                label={createBinding(weather, 'info').as(w =>
+                label={bind(weather, 'info').as(w =>
                     w?.is_valid() ? w.get_temp_summary() : '—'
                 )}
             />
@@ -115,7 +115,7 @@ const DetailsLine = ({
 
     return (
         <Gtk.Label
-            label={createComputed(
+            label={computed(
                 () =>
                     `🍃 ${windSpeed().toFixed(0)} ${windDirectionLabel(windDirection())} · 💧 ${humidity().toFixed(0)}% · ${pressure().toFixed(0)} hPa`
             )}
@@ -131,29 +131,29 @@ const DetailsLine = ({
 export const WeatherWidget = () => {
     const weather = WeatherLib.get_default();
 
-    const locationName = createBinding(weather, 'locationName');
-    const tempSummary = createBinding(weather, 'tempSummary');
-    const feelsLike = createBinding(weather, 'feelsLike');
-    const skyDesc = createBinding(weather, 'skyDesc');
-    const iconName = createBinding(weather, 'weatherIcon');
-    const sunrise = createBinding(weather, 'sunrise');
-    const sunset = createBinding(weather, 'sunset');
-    const windSpeed = createBinding(weather, 'windSpeed');
-    const windDirection = createBinding(weather, 'windDirection');
-    const humidity = createBinding(weather, 'humidity');
-    const pressure = createBinding(weather, 'pressure');
+    const locationName = bind(weather, 'locationName');
+    const tempSummary = bind(weather, 'tempSummary');
+    const feelsLike = bind(weather, 'feelsLike');
+    const skyDesc = bind(weather, 'skyDesc');
+    const iconName = bind(weather, 'weatherIcon');
+    const sunrise = bind(weather, 'sunrise');
+    const sunset = bind(weather, 'sunset');
+    const windSpeed = bind(weather, 'windSpeed');
+    const windDirection = bind(weather, 'windDirection');
+    const humidity = bind(weather, 'humidity');
+    const pressure = bind(weather, 'pressure');
 
     // Memoized: only recomputes when weather.info actually changes
-    const hourlyForecast = createComputed(() => {
-        createBinding(weather, 'info')();
+    const hourlyForecast = computed(() => {
+        bind(weather, 'info')();
         return weather.getHourlyForecast(8);
     });
-    const dailyForecast = createComputed(() => {
-        createBinding(weather, 'info')();
+    const dailyForecast = computed(() => {
+        bind(weather, 'info')();
         return weather.getDailyForecast(5);
     });
-    const moonPhase = createComputed(() => {
-        createBinding(weather, 'info')();
+    const moonPhase = computed(() => {
+        bind(weather, 'info')();
         return weather.getMoonPhase();
     });
 
@@ -193,7 +193,7 @@ export const WeatherWidget = () => {
                     />
                     <Gtk.Label
                         cssClasses={['caption']}
-                        label={createComputed(
+                        label={computed(
                             () => `${skyDesc()} · ${feelsLike()}`
                         )}
                         halign={Gtk.Align.START}

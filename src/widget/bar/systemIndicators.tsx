@@ -1,6 +1,6 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding} from 'gnim';
+import {Accessor, bind} from 'gnim';
 import ShellState from '#/lib/services/state/shellState';
 import AudioController from '#/lib/services/audio/audioController';
 import KeepAwakeIndicator from './indicators/keepAwake';
@@ -24,9 +24,9 @@ export default ({
         <Gtk.ToggleButton
             visible={visible}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            active={createBinding(shellState, 'qsOpen')}
+            active={bind(shellState, 'qsOpen')}
             onClicked={() => shellState.toggleQuickSettings()}
-            $={self =>
+            ref={self =>
                 self.add_controller(
                     (
                         <Gtk.EventControllerScroll
@@ -35,7 +35,7 @@ export default ({
                                 audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
                             }}
                         />
-                    ) as Gtk.EventController
+                    ) as unknown as Gtk.EventController
                 )
             }
         >

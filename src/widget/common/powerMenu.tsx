@@ -54,7 +54,7 @@ export const PowerMenu = () => {
                 />
             </Gtk.Box>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return popover;
 };

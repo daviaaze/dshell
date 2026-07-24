@@ -1,5 +1,5 @@
-import GObject, {register, signal} from 'gnim/gobject';
-import {getter} from '#/lib/decorators';
+import {Object, register, signal, String, VoidType} from 'gnim/gobject';
+import {property} from '#/lib/decorators';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import logger from '#/lib/core/logger';
@@ -11,7 +11,7 @@ const MAX_RETRIES = 3;
 type FingerprintState = 'idle' | 'initializing' | 'verifying' | 'error';
 
 @register({GTypeName: 'FingerprintAuth'})
-export default class FingerprintAuth extends GObject.Object {
+export default class FingerprintAuth extends Object {
     static instance: FingerprintAuth;
 
     static get_default() {
@@ -29,7 +29,7 @@ export default class FingerprintAuth extends GObject.Object {
     #consecutiveFailures = 0;
     #signalId = 0;
 
-    @getter(Boolean)
+    @property
     get available() {
         return this.#available;
     }
@@ -43,17 +43,17 @@ export default class FingerprintAuth extends GObject.Object {
         }
     }
 
-    @getter(String)
+    @property
     get state() {
         return this.#state;
     }
 
-    @getter(String)
+    @property
     get errorMessage() {
         return this.#errorMessage;
     }
 
-    @getter(Boolean)
+    @property
     get verifying() {
         return this.#state === 'verifying';
     }
@@ -61,10 +61,10 @@ export default class FingerprintAuth extends GObject.Object {
     @signal()
     verified(): undefined { return undefined; }
 
-    @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
+    @signal([String], VoidType)
     failed(_reason: string): undefined { return undefined; }
 
-    @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
+    @signal([String], VoidType)
     statusChanged(_status: string): undefined { return undefined; }
 
     #setState(state: FingerprintState) {

@@ -11,7 +11,7 @@ import GObject from 'gi://GObject?version=2.0';
 import {connectFor, cleanupNode} from '../core/connectFor';
 import {describe, it, expect, run} from './test-runner';
 
-class TestSignaler extends GObject.Object {
+class TestSignaler extends Object {
     fire() {
         this.emit('test-signal');
     }

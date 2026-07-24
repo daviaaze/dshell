@@ -24,7 +24,7 @@ export default ({item}: {item: ClipboardEntry}) => {
     return (
         <Gtk.Button
             cssClasses={['app-button', appButtonStyle.class]}
-            $={appButtonStyle.$}
+            ref={appButtonStyle.$}
             onClicked={() => {
                 copyClipboardItem(item);
                 WindowManager.get_default().applauncher!.visible = false;

@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed} from 'gnim';
+import {bind, computed} from 'gnim';
 import TimerService from '#/lib/services/time/timerService';
 import {TimerSection} from './TimerSection';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
@@ -15,17 +15,17 @@ function fmtShort(ms: number): string {
 
 export const QuickTimerButton = (): QuickButton => {
     const timer = TimerService.get_default();
-    const remaining = createBinding(timer, 'remaining');
-    const running = createBinding(timer, 'running');
+    const remaining = bind(timer, 'remaining');
+    const running = bind(timer, 'running');
 
-    const label = createComputed(() => {
+    const label = computed(() => {
         const rem = remaining();
         return rem >= 0 ? fmtShort(rem) : 'Timer';
     });
 
-    const icon = createComputed(() => 'emoji-recent-symbolic');
+    const icon = computed(() => 'emoji-recent-symbolic');
 
-    const cssClasses = createComputed(() =>
+    const cssClasses = computed(() =>
         running() ? ['raised', 'suggested-action'] : ['raised']
     );
 
@@ -41,7 +41,7 @@ export const QuickTimerButton = (): QuickButton => {
                 <TimerSection />
             </Gtk.Box>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return {
         widget: (
@@ -54,6 +54,6 @@ export const QuickTimerButton = (): QuickButton => {
                     if (timer.remaining >= 0) timer.cancel();
                 }}
             />
-        ) as Gtk.Widget,
+        ) as unknown as Gtk.Widget,
     };
 };

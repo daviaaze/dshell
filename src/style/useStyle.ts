@@ -13,7 +13,7 @@
  *   "& > label": { "font-weight": "bold" },
  * })
  *
- * <Box cssClasses={["card", styles.class]} $={styles.$}>
+ * <Box cssClasses={["card", styles.class]} ref={styles.$}>
  * ```
  */
 import Gtk from 'gi://Gtk?version=4.0';

@@ -1,4 +1,4 @@
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import {bus} from '#/lib/core/eventBus';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
@@ -24,7 +24,7 @@ import logger from '#/lib/core/logger';
  * but notifications won't actually be suppressed.
  */
 @register({GTypeName: 'DndService'})
-export default class DndService extends GObject.Object {
+export default class DndService extends Object {
     static instance: DndService;
 
     static get_default() {
@@ -36,12 +36,12 @@ export default class DndService extends GObject.Object {
     #busSubscriptions: (() => void)[] = [];
     #initialized = false;
 
-    @getter(Boolean)
+    @property
     get dnd() {
         return this.#dnd;
     }
 
-    @setter(Boolean)
+    
     set dnd(v: boolean) {
         if (this.#dnd === v) return;
         this.#dnd = v;

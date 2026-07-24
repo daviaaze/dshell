@@ -1,11 +1,11 @@
-import GObject, {getter, register, signal} from 'gnim/gobject';
+import {Object, register, signal, property, Double, VoidType} from 'gnim/gobject';
 import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'Geolocation'})
-export default class Geolocation extends GObject.Object {
+export default class Geolocation extends Object {
     static instance: Geolocation;
 
     static get_default() {
@@ -18,22 +18,22 @@ export default class Geolocation extends GObject.Object {
     #available = false;
     #detecting = false;
 
-    @getter(Number)
+    @property
     get latitude() {
         return this.#latitude;
     }
 
-    @getter(Number)
+    @property
     get longitude() {
         return this.#longitude;
     }
 
-    @getter(Boolean)
+    @property
     get available() {
         return this.#available;
     }
 
-    @signal([GObject.TYPE_DOUBLE, GObject.TYPE_DOUBLE], GObject.TYPE_NONE)
+    @signal([Double, Double], VoidType)
     locationChanged(_lat: number, _lon: number): undefined { return undefined; }
 
     detect() {

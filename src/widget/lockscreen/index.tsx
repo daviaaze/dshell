@@ -4,7 +4,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import SessionLockService from '#/lib/services/session/sessionLockService';
 import Gtk from 'gi://Gtk?version=4.0';
 import {
-    createBinding,
+    bind,
     createRoot,
     For,
     onCleanup,
@@ -50,14 +50,14 @@ const createLocks = (onUnlock: () => void) => {
 
     authSession.connect('success', () => doUnlock());
 
-    const fpStateBinding = createBinding(fingerprint, 'state');
-    const fpErrorBinding = createBinding(fingerprint, 'errorMessage');
+    const fpStateBinding = bind(fingerprint, 'state');
+    const fpErrorBinding = bind(fingerprint, 'errorMessage');
 
     return (
         <For each={monitors}>
             {(monitor: Gdk.Monitor) => (
                 <Astal.Window
-                    $={self => {
+                    ref={self => {
                         WindowManager.get_default().registerLockscreen(self);
                         onCleanup(() => {
                             cleanupAll();
@@ -92,7 +92,7 @@ const createLocks = (onUnlock: () => void) => {
                         orientation={Gtk.Orientation.VERTICAL}
                     >
                         <Gtk.Box
-                            $type="start"
+                            slot="start"
                             orientation={Gtk.Orientation.VERTICAL}
                             marginBottom={CLOCK_MARGIN_BOTTOM}>
                             <Gtk.Label
@@ -113,7 +113,7 @@ const createLocks = (onUnlock: () => void) => {
                             fpErrorBinding={fpErrorBinding}
                         />
                         <Gtk.Box
-                            $type="end"
+                            slot="end"
                             valign={Gtk.Align.END}
                             halign={Gtk.Align.CENTER}
                             orientation={Gtk.Orientation.VERTICAL}
@@ -132,7 +132,7 @@ const createLocks = (onUnlock: () => void) => {
 export const LockScreen = () => {
     let locked = false;
 
-    const screenlocked = createBinding(
+    const screenlocked = bind(
         ShellState.get_default(),
         'screenlocked'
     );

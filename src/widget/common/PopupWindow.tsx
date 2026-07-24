@@ -19,7 +19,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding, createState} from 'gnim';
+import {Accessor, bind, createState} from 'gnim';
 import {app} from '#/apps/shell/App';
 import {useSettings} from '#/lib/settings';
 import Hyprland from 'gi://AstalHyprland';
@@ -126,7 +126,7 @@ export default (props: PopupWindowProps) => {
 
     const barCfg = useSettings().bar;
     const hyprland = Hyprland.get_default();
-    const defaultMon = createBinding(hyprland, 'focusedMonitor').as(m => m.id);
+    const defaultMon = bind(hyprland, 'focusedMonitor').as(m => m.id);
 
     // Resolve anchor
     let anchorValue: Accessor<Anchor> | Anchor;
@@ -166,10 +166,10 @@ export default (props: PopupWindowProps) => {
             onNotifyVisible={(self: Astal.Window) => {
                 if (onVisibleChange) onVisibleChange(self.visible);
             }}
-            $={widgetRef}
+            ref={widgetRef}
         >
             <Gtk.EventControllerKey
-                $={self => {
+                ref={self => {
                     self.connect('key-pressed', (_ctrl, keyval, _keycode, _state) => {
                         if (keyval === Gdk.KEY_Escape) {
                             // Toggle visible off via the accessor mechanism

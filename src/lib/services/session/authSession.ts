@@ -1,5 +1,5 @@
 import AstalAuth from 'gi://AstalAuth?version=0.1';
-import GObject, {getter, register, setter, signal} from 'gnim/gobject';
+import {Object, register, signal, property} from 'gnim/gobject';
 import {Timeout} from '#/lib/core/timeout';
 import logger from '#/lib/core/logger';
 import Brightness from '#/lib/services/display/brightness';
@@ -15,7 +15,7 @@ const PAM_TIMEOUT_MS = 10000;
  * signals — no direct PAM/fingerprint/brightness logic in UI code.
  */
 @register({GTypeName: 'AuthSession'})
-export default class AuthSession extends GObject.Object {
+export default class AuthSession extends Object {
     #pam: AstalAuth.Pam;
     #pamActive = false;
     #pendingPassword = '';
@@ -28,12 +28,12 @@ export default class AuthSession extends GObject.Object {
     #authStatus = '';
 
     /** Human-readable auth status for UI display. */
-    @getter(String)
+    @property
     get authStatus() {
         return this.#authStatus;
     }
 
-    @setter(String)
+    
     set authStatus(v: string) {
         this.#authStatus = v;
         this.notify('auth-status');
@@ -50,7 +50,7 @@ export default class AuthSession extends GObject.Object {
     @signal()
     success(): undefined { return undefined; }
 
-    @signal(String)
+    @signal([String])
     fail(_reason: string): undefined { return undefined; }
 
     /** Called when authentication process fully completes (success or fatal). */

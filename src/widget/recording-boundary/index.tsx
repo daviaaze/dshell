@@ -2,7 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
-import {createBinding, onCleanup} from 'gnim';
+import {bind, onCleanup} from 'gnim';
 import {app} from '#/apps/shell/App';
 import {monitors} from '#/lib/services/monitoring/monitors';
 import Screenshot, {BoundaryGeometry} from '#/lib/services/capture/screenshot';
@@ -124,7 +124,7 @@ export default () => {
             <Gtk.DrawingArea
                 hexpand
                 vexpand
-                $={self => {
+                ref={self => {
                     self.set_draw_func((_area, cr, _w, _h) => {
                         if (!ss.boundaryGeometry) return;
                         const geom = ss.boundaryGeometry as BoundaryGeometry;
@@ -152,7 +152,7 @@ export default () => {
                     Astal.WindowAnchor.LEFT
                 }
                 exclusivity={Astal.Exclusivity.IGNORE}
-                visible={createBinding(ss, 'boundaryVisible')}
+                visible={bind(ss, 'boundaryVisible')}
             >
                 {drawingArea}
             </Astal.Window> as Astal.Window;

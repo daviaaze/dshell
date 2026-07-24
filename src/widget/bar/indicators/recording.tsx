@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import Screenshot from '#/lib/services/capture/screenshot';
 
 function formatDuration(seconds: number): string {
@@ -16,14 +16,14 @@ export default () => {
 
     return (
         <Gtk.Button
-            visible={createBinding(screenshot, 'recording')}
+            visible={bind(screenshot, 'recording')}
             onClicked={() => screenshot.stopRecording()}
             cssClasses={['flat']}
             tooltipText="Click to stop recording"
         >
             <Adw.ButtonContent
                 iconName="media-record-symbolic"
-                label={createBinding(screenshot as any, 'recording-elapsed').as(sec =>
+                label={bind(screenshot as any, 'recording-elapsed').as(sec =>
                     formatDuration((sec as number) ?? 0)
                 )}
             />

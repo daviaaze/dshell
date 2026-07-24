@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import BluetoothService from '#/lib/services/bluetooth/bluetoothService';
 
 export default () => {
@@ -7,9 +7,9 @@ export default () => {
 
     return (
         <Gtk.Image
-            iconName={createBinding(bt, 'iconName')}
-            visible={createBinding(bt, 'isPowered')}
-            tooltipMarkup={createBinding(bt, 'connectedDeviceNames').as(
+            iconName={bind(bt, 'iconName')}
+            visible={bind(bt, 'isPowered')}
+            tooltipMarkup={bind(bt, 'connectedDeviceNames').as(
                 names => names || 'Bluetooth'
             )}
             pixelSize={18}

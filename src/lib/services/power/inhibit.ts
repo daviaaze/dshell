@@ -1,11 +1,11 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'IdleInhibit'})
-export default class Inhibit extends GObject.Object {
+export default class Inhibit extends Object {
     static instance: Inhibit;
     static get_default() {
         if (!this.instance) this.instance = new Inhibit();
@@ -20,12 +20,12 @@ export default class Inhibit extends GObject.Object {
     #timerId: number | null = null;
     #initialized = false;
 
-    @getter(Boolean)
+    @property
     get idle() {
         return this.#idle;
     }
 
-    @getter(String)
+    @property
     get remaining() {
         if (!this.#idle || this.#duration <= 0) return '';
         const secs = Math.max(
@@ -48,7 +48,7 @@ export default class Inhibit extends GObject.Object {
         this.idle = true;
     }
 
-    @setter(Boolean)
+    
     set idle(state) {
         if (state === this.#idle) return;
         this.#idle = state;

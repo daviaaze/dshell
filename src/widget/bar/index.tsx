@@ -32,7 +32,7 @@ export default () => {
         <For each={monitors}>
             {(monitor: Gdk.Monitor) => (
                 <Astal.Window
-                    $={self => {
+                    ref={self => {
                         WindowManager.get_default().registerBar(self);
                         onCleanup(() => {
                             WindowManager.get_default().unregisterBar(self);
@@ -58,7 +58,7 @@ export default () => {
                 >
                     <Gtk.CenterBox
                         cssClasses={['bar-centerbox', barCenterboxStyle.class]}
-                        $={barCenterboxStyle.$}
+                        ref={barCenterboxStyle.$}
                         orientation={vertical.as(v =>
                             v
                                 ? Gtk.Orientation.VERTICAL
@@ -66,7 +66,7 @@ export default () => {
                         )}
                     >
                         <Gtk.Box
-                            $type="start"
+                            slot="start"
                             cssClasses={['linked']}
                             orientation={vertical.as(v =>
                                 v
@@ -83,7 +83,7 @@ export default () => {
                         </Gtk.Box>
 
                         <Gtk.Box
-                            $type="center"
+                            slot="center"
                             spacing={8}
                             valign={Gtk.Align.CENTER}
                             halign={Gtk.Align.CENTER}
@@ -102,7 +102,7 @@ export default () => {
                         </Gtk.Box>
 
                         <Gtk.Box
-                            $type="end"
+                            slot="end"
                             cssClasses={['linked']}
                             orientation={vertical.as(v =>
                                 v

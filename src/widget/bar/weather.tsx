@@ -1,7 +1,7 @@
 import Weather from '#/lib/services/location/weather';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding} from 'gnim';
+import {Accessor, bind} from 'gnim';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
 import {WeatherWidget} from '#/widget/common/weatherWidget';
 
@@ -13,8 +13,8 @@ export const WeatherButton = ({
     visible?: boolean | Accessor<boolean>;
 }) => {
     const svc = Weather.get_default();
-    const iconName = createBinding(svc, 'weatherIcon');
-    const tempLabel = createBinding(svc, 'tempSummary');
+    const iconName = bind(svc, 'weatherIcon');
+    const tempLabel = bind(svc, 'tempSummary');
 
     return (
         <Gtk.MenuButton
@@ -23,7 +23,7 @@ export const WeatherButton = ({
             )}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             visible={visible}
-            $={usePopoverCleanup}
+            ref={usePopoverCleanup}
             popover={
                 (
                     <Gtk.Popover
@@ -37,7 +37,7 @@ export const WeatherButton = ({
                             <WeatherWidget />
                         </Gtk.Box>
                     </Gtk.Popover>
-                ) as Gtk.Popover
+                ) as unknown as Gtk.Popover
             }
         >
             <Gtk.Box

@@ -32,7 +32,7 @@ export default () => {
                                 stepIncrement={10}
                                 value={settings.notificationHistoryLimit}
                             />
-                        ) as Gtk.Adjustment
+                        ) as unknown as Gtk.Adjustment
                     }
                     onNotifyValue={self =>
                         settings.setNotificationHistoryLimit(self.value)
@@ -60,7 +60,7 @@ export default () => {
                     {(app: string) => (
                         <Adw.ActionRow title={app}>
                             <Gtk.Button
-                                $type="suffix"
+                                slot="suffix"
                                 cssClasses={['circular', 'destructive-action']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {

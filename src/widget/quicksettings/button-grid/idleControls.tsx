@@ -1,20 +1,20 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed} from 'gnim';
+import {bind, computed} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import Hypridle from '#/lib/services/power/hypridle';
 
 export default () => {
     const hypridle = Hypridle.get_default();
 
-    const $enabled = createBinding(hypridle, 'enabled');
-    const $idleTimeout = createBinding(hypridle, 'idleTimeout');
-    const $dpmsEnabled = createBinding(hypridle, 'dpmsEnabled');
-    const $dpmsTimeout = createBinding(hypridle, 'dpmsTimeout');
-    const $suspendEnabled = createBinding(hypridle, 'suspendEnabled');
-    const $suspendTimeout = createBinding(hypridle, 'suspendTimeout');
-    const $dimEnabled = createBinding(hypridle, 'dimEnabled');
+    const $enabled = bind(hypridle, 'enabled');
+    const $idleTimeout = bind(hypridle, 'idleTimeout');
+    const $dpmsEnabled = bind(hypridle, 'dpmsEnabled');
+    const $dpmsTimeout = bind(hypridle, 'dpmsTimeout');
+    const $suspendEnabled = bind(hypridle, 'suspendEnabled');
+    const $suspendTimeout = bind(hypridle, 'suspendTimeout');
+    const $dimEnabled = bind(hypridle, 'dimEnabled');
 
-    const chainSummary = createComputed(() => {
+    const chainSummary = computed(() => {
         if (!$enabled()) return 'Auto-lock disabled';
         const lock = Math.round($idleTimeout() / 60);
         let text = `Lock at ${lock}m`;
@@ -55,7 +55,7 @@ export default () => {
                                     stepIncrement={30}
                                     value={$idleTimeout}
                                 />
-                            ) as Gtk.Adjustment
+                            ) as unknown as Gtk.Adjustment
                         }
                         onValueChanged={self =>
                             (hypridle.idleTimeout = self.get_value())
@@ -87,19 +87,19 @@ export default () => {
                                     lower={30}
                                     upper={1740}
                                     stepIncrement={30}
-                                    value={createBinding(
+                                    value={bind(
                                         hypridle,
                                         'dimTimeout'
                                     )}
                                 />
-                            ) as Gtk.Adjustment
+                            ) as unknown as Gtk.Adjustment
                         }
                         onValueChanged={self =>
                             (hypridle.dimTimeout = self.get_value())
                         }
                     />
                     <Gtk.Label
-                        label={createBinding(hypridle, 'dimTimeout').as(
+                        label={bind(hypridle, 'dimTimeout').as(
                             t => `${Math.round(t / 60)}m`
                         )}
                         cssClasses={['caption']}
@@ -107,7 +107,7 @@ export default () => {
                 </Gtk.Box>
             </Gtk.Box>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return (
         <QuickToggleButton

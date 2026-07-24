@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import NightLight, {TEMP_MIN, TEMP_MAX} from '#/lib/services/display/nightLight';
@@ -26,12 +26,12 @@ export default (): QuickButton => {
                                     lower={TEMP_MIN}
                                     upper={TEMP_MAX}
                                     stepIncrement={100}
-                                    value={createBinding(
+                                    value={bind(
                                         nightLight,
                                         'temperature'
                                     )}
                                 />
-                            ) as Gtk.Adjustment
+                            ) as unknown as Gtk.Adjustment
                         }
                         onValueChanged={self =>
                             (nightLight.temperature = Math.round(
@@ -42,7 +42,7 @@ export default (): QuickButton => {
                     <Gtk.Label
                         widthRequest={56}
                         xalign={1}
-                        label={createBinding(nightLight, 'temperature').as(
+                        label={bind(nightLight, 'temperature').as(
                             t => `${t}K`
                         )}
                         cssClasses={['caption']}
@@ -52,7 +52,7 @@ export default (): QuickButton => {
                 <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
                     <Gtk.Label label="Auto Schedule" hexpand />
                     <Gtk.Switch
-                        active={createBinding(nightLight, 'autoSchedule')}
+                        active={bind(nightLight, 'autoSchedule')}
                         onNotifyActive={self =>
                             (nightLight.autoSchedule = self.active)
                         }
@@ -60,21 +60,21 @@ export default (): QuickButton => {
                 </Gtk.Box>
             </Gtk.Box>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return {
         widget: (
             <QuickToggleButton
-                cssClasses={createBinding(nightLight, 'enabled').as(e =>
+                cssClasses={bind(nightLight, 'enabled').as(e =>
                     e ? ['raised', 'suggested-action'] : ['raised']
                 )}
-                icon={createBinding(nightLight, 'enabled').as(e =>
+                icon={bind(nightLight, 'enabled').as(e =>
                     e ? 'night-light-symbolic' : 'night-light-disabled-symbolic'
                 )}
                 label="Night Light"
                 onClick={() => (nightLight.enabled = !nightLight.enabled)}
                 popover={popover}
             />
-        ) as Gtk.Widget,
+        ) as unknown as Gtk.Widget,
     };
 };

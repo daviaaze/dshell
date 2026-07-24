@@ -1,6 +1,6 @@
 import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 export interface AudioStream {
@@ -106,7 +106,7 @@ function parseTargets(pwMetadata: string): Map<number, number> {
 }
 
 @register({GTypeName: 'AppMixer'})
-export default class AppMixer extends GObject.Object {
+export default class AppMixer extends Object {
     static instance: AppMixer;
     static get_default() {
         if (!this.instance) this.instance = new AppMixer();
@@ -119,22 +119,22 @@ export default class AppMixer extends GObject.Object {
     #lastModified = new Map<number, number>();
     static readonly MODIFY_GRACE_MS = 3000;
 
-    @getter(Array)
+    @property
     get streams() {
         return this.#streams;
     }
 
-    @getter(Array)
+    @property
     get captureStreams() {
         return this.#captureStreams;
     }
 
-    @getter(Boolean)
+    @property
     get microphoneInUse() {
         return this.#captureStreams.length > 0;
     }
 
-    @getter(Boolean)
+    @property
     get speakerInUse() {
         return this.#streams.length > 0;
     }

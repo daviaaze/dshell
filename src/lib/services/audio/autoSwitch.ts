@@ -1,6 +1,6 @@
 import Wireplumber from 'gi://AstalWp';
 import GLib from 'gi://GLib?version=2.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import logger from '#/lib/core/logger';
 
 export function initAutoSwitch() {
@@ -9,7 +9,7 @@ export function initAutoSwitch() {
         const audio = Wireplumber.get_default()!.audio;
         let knownIds = new Set<number>();
 
-        const binding = createBinding(audio, 'speakers');
+        const binding = bind(audio, 'speakers');
         binding.subscribe(() => {
             const speakers = binding();
             if (!speakers) return;

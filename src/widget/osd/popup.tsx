@@ -19,7 +19,7 @@ export default ({
         revealChild={false}
         visible={false}
         transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
-        $={self => {
+        ref={self => {
             let timeout: GLib.Source | null = null;
             let visibilityTimeout: GLib.Source | null = null;
             const hide = () => {

@@ -39,11 +39,11 @@ const Indicator = ({
                 <Gtk.Label
                     label={label}
                     cssClasses={['caption-heading', 'numeral', numeralStyle.class]}
-                    $={numeralStyle.$}
+                    ref={numeralStyle.$}
                 />
                 <Gtk.Label
                     cssClasses={['caption', 'numeral', numeralStyle.class]}
-                    $={numeralStyle.$}
+                    ref={numeralStyle.$}
                     label={value(v => (v * 100).toFixed(0).concat(unit))}
                 />
             </Gtk.Box>

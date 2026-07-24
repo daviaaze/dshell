@@ -1,7 +1,7 @@
 import Hyprland from 'gi://AstalHyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 import {app} from '#/apps/shell/App';
 import WindowManager from '#/lib/services/state/windowManager';
 import {useSettings} from '#/lib/settings';
@@ -24,7 +24,7 @@ export default () => {
 
     return (
         <Astal.Window
-            $={self => {
+            ref={self => {
                 WindowManager.get_default().setQuicksettings(self);
                 self.connect('realize', () =>
                     logger.log('quicksettings realized')
@@ -34,7 +34,7 @@ export default () => {
             margin={12}
             application={app}
             name={'quicksettings'}
-            visible={createBinding(shellState, 'qsOpen')}
+            visible={bind(shellState, 'qsOpen')}
             onNotifyVisible={self => {
                 logger.log(`quicksettings visible -> ${self.visible}`);
                 if (
@@ -51,7 +51,7 @@ export default () => {
                 p => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM
             )}
             widthRequest={QUICKSETTINGS_WIDTH}
-            monitor={createBinding(hyprland, 'focusedMonitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focusedMonitor').as(m => m.id)}
         >
             <Gtk.ScrolledWindow
                 propagateNaturalHeight

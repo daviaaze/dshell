@@ -88,11 +88,11 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 />
             </Gtk.Box>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return (
         <Gtk.Button
-            $={self => {
+            ref={self => {
                 popover.set_parent(self);
                 onCleanup(() => {
                     popover.popdown();
@@ -101,14 +101,14 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 // Create child content once to avoid gtk_button_set_child assertion
                 // when Gnim re-renders this component (e.g. on focus change).
                 if (!self.get_first_child()) {
-                    const icon = (<Gtk.Image iconName={iconName} />) as Gtk.Image;
+                    const icon = (<Gtk.Image iconName={iconName} />) as unknown as Gtk.Image;
                     // Bind icon size reactively
                     bar.dockIconSize.subscribe(() =>
                         icon.set_pixel_size(bar.dockIconSize.get())
                     );
                     icon.set_pixel_size(bar.dockIconSize.get());
 
-                    const status = (<Gtk.Box />) as Gtk.Box & { css: string };
+                    const status = (<Gtk.Box />) as unknown as Gtk.Box & { css: string };
                     // Update status indicator reactively
                     const updateStatus = () => {
                          
@@ -153,7 +153,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
             tooltipText={app?.name || desktopFile.replace('.desktop', '')}
         >
             <Gtk.GestureClick
-                $={self => {
+                ref={self => {
                     self.set_button(Gdk.BUTTON_SECONDARY);
                     self.connect('pressed', () => popover.popup());
                 }}

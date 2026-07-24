@@ -1,7 +1,7 @@
 import Hyprland from 'gi://AstalHyprland';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed, For, Accessor, With} from 'gnim';
+import {bind, computed, For, Accessor, With} from 'gnim';
 import {toArray} from '#/lib/core/gjsUtils';
 import {getAppIcon} from '#/lib/services/state/apps';
 
@@ -25,7 +25,7 @@ export default ({
             spacing={8}
         >
             <For
-                each={createBinding(hyprland, 'workspaces').as(ws =>
+                each={bind(hyprland, 'workspaces').as(ws =>
                     ws
                         .filter(ws => ws.get_monitor() === monitor)
                         .sort((a, b) => a.id - b.id)
@@ -34,10 +34,10 @@ export default ({
                 {(ws: Hyprland.Workspace) => {
                     // Guard against race condition: only set activeName if the
                     // client toggle actually exists in this workspace's group.
-                    const focusedClient = createBinding(hyprland, 'focusedClient');
-                    const wsClients = createBinding(ws, 'clients');
+                    const focusedClient = bind(hyprland, 'focusedClient');
+                    const wsClients = bind(ws, 'clients');
 
-                    const activeName = createComputed(() => {
+                    const activeName = computed(() => {
                         const client = focusedClient();
 
                         if (!client || client.workspace !== ws) return null;
@@ -59,7 +59,7 @@ export default ({
                         activeName={activeName()}
                     >
                         <For
-                            each={createBinding(ws, 'clients').as(clients =>
+                            each={bind(ws, 'clients').as(clients =>
                                 toArray<Hyprland.Client>(clients)
                             )}
                         >
@@ -78,14 +78,14 @@ export default ({
                                                     }
                                                 />
                                             </Gtk.Image>
-                                        ) as Gtk.Widget
+                                        ) as unknown as Gtk.Widget
                                     }
                                 />
                             )}
                         </For>
                         {/* show empty dot when ws is empty */}
                         <With
-                            value={createBinding(ws, 'clients').as(
+                            value={bind(ws, 'clients').as(
                                 clients =>
                                     toArray<Hyprland.Client>(clients).length < 1
                             )}
@@ -99,7 +99,7 @@ export default ({
                                                     iconName="window-minimize-symbolic"
                                                     pixelSize={8}
                                                 />
-                                            ) as Gtk.Widget
+                                            ) as unknown as Gtk.Widget
                                         }
                                     />
                                 ) : null
@@ -110,5 +110,5 @@ export default ({
                 }}
             </For>
         </Gtk.Box>
-    ) as Gtk.Box;
+    ) as unknown as Gtk.Box;
 };

@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, For} from 'gnim';
+import {bind, For} from 'gnim';
 import AudioController from '#/lib/services/audio/audioController';
 import AppMixer from '#/lib/services/audio/mixer';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
@@ -8,8 +8,8 @@ export default () => {
     const mixer = AppMixer.get_default();
     const audioCtrl = AudioController.get_default();
 
-    const streams = createBinding(mixer, 'streams');
-    const speakers = createBinding(audioCtrl, 'speakers');
+    const streams = bind(mixer, 'streams');
+    const speakers = bind(audioCtrl, 'speakers');
 
     return (
         <Gtk.Box spacing={12} orientation={Gtk.Orientation.VERTICAL}>
@@ -36,11 +36,11 @@ export default () => {
                                 visible={speakers.as(s => s.length > 1)}
                                 cssClasses={['flat']}
                                 tooltipText="Output device"
-                                $={usePopoverCleanup}
+                                ref={usePopoverCleanup}
                                 popover={
                                     (
                                         <Gtk.Popover
-                                            $={self => {
+                                            ref={self => {
                                                 popoverRef = self;
                                             }}
                                             cssClasses={[]}
@@ -111,7 +111,7 @@ export default () => {
                                                 </For>
                                             </Gtk.Box>
                                         </Gtk.Popover>
-                                    ) as Gtk.Popover
+                                    ) as unknown as Gtk.Popover
                                 }
                             >
                                 <Gtk.Label
@@ -167,7 +167,7 @@ export default () => {
                                             stepIncrement={0.05}
                                             value={stream.volume}
                                         />
-                                    ) as Gtk.Adjustment
+                                    ) as unknown as Gtk.Adjustment
                                 }
                                 onValueChanged={self =>
                                     mixer.setVolume(id, self.get_value())

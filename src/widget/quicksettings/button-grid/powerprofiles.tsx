@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createState, onMount, onCleanup} from 'gnim';
+import {createState, effect, onCleanup} from 'gnim';
 import Adw from 'gi://Adw?version=1';
 import PowerProfiles, {profileLabel, nextProfile} from '#/lib/services/power/powerProfiles';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
@@ -17,7 +17,7 @@ export default (): QuickButton => {
     >('balanced');
     const pp = PowerProfiles.get_default();
 
-    onMount(() => {
+    effect(() => {
         const _hn = {};
         const update = () => {
             const p = pp.activeProfile;
@@ -57,7 +57,7 @@ export default (): QuickButton => {
                 </Gtk.Button>
             </LinkedBox>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    ) as unknown as Gtk.Popover;
 
     return {
         widget: (
@@ -67,6 +67,6 @@ export default (): QuickButton => {
                 onClick={() => setProfile(nextProfile(activeProfile()))}
                 popover={popover}
             />
-        ) as Gtk.Widget,
+        ) as unknown as Gtk.Widget,
     };
 };

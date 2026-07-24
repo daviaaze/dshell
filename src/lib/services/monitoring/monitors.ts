@@ -16,8 +16,8 @@ import AstalWl from 'gi://AstalWl';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register} from 'gnim/gobject';
-import {createBinding} from 'gnim';
+import {Object, register, property} from 'gnim/gobject';
+import {bind} from 'gnim';
 import logger from '#/lib/core/logger';
 
 // ── Gdk → Hyprland monitor mapper ────────────────────────────────────────
@@ -82,7 +82,7 @@ function allGdkMonitors(): Gdk.Monitor[] {
 }
 
 @register({GTypeName: 'MonitorService'})
-class MonitorService extends GObject.Object {
+class MonitorService extends Object {
     static instance: MonitorService;
 
     static get_default() {
@@ -95,7 +95,7 @@ class MonitorService extends GObject.Object {
     #wlSignalIds: number[] = [];
     #pendingSync = false;
 
-    @getter(Array)
+    @property
     get monitors() {
         return this.#monitors;
     }
@@ -263,6 +263,6 @@ class MonitorService extends GObject.Object {
 
 // ── Exports ───────────────────────────────────────────────────────────────
 
-export const monitors = createBinding(MonitorService.get_default(), 'monitors');
+export const monitors = bind(MonitorService.get_default(), 'monitors');
 
 export {Gdk2HyprMonitor, MonitorService};

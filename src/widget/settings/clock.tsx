@@ -36,7 +36,7 @@ export default () => {
                 title="Timezones"
                 subtitle={general.timezones.as(tzs => tzs.join(', '))}
             >
-                <Gtk.MenuButton $type="suffix" $={usePopoverCleanup}>
+                <Gtk.MenuButton slot="suffix" ref={usePopoverCleanup}>
                     <Gtk.Button
                         cssClasses={['circular']}
                         iconName="list-add-symbolic"
@@ -84,7 +84,7 @@ export default () => {
                         })()}
                     >
                         <Gtk.Button
-                            $type="suffix"
+                            slot="suffix"
                             cssClasses={['circular', 'destructive-action']}
                             iconName="list-remove-symbolic"
                             onClicked={() => {

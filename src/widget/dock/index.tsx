@@ -1,7 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createBinding, For, createComputed, onCleanup} from 'gnim';
+import {bind, For, computed, onCleanup} from 'gnim';
 import WindowManager from '#/lib/services/state/windowManager';
 import {useSettings} from '#/lib/settings';
 import {app} from '#/apps/shell/App';
@@ -14,13 +14,13 @@ export default () => {
     const {bar} = useSettings();
     const {BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
-    const clients = createBinding(hyprland, 'clients').as(c =>
+    const clients = bind(hyprland, 'clients').as(c =>
         toArray<AstalHyprland.Client>(c)
     );
 
-    const focusedClient = createBinding(hyprland, 'focusedClient');
+    const focusedClient = bind(hyprland, 'focusedClient');
 
-    const dockItems = createComputed(
+    const dockItems = computed(
         [bar.dockPinnedApps, clients, focusedClient],
         (pinned, running, focused) => {
             const items: {
@@ -63,7 +63,7 @@ export default () => {
 
     return (
         <Astal.Window
-            $={self => {
+            ref={self => {
                 WindowManager.get_default().registerDock(self);
                 onCleanup(() => {
                     WindowManager.get_default().unregisterDock(self);

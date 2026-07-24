@@ -42,6 +42,6 @@ export default (): QuickButton => {
                     }
                 }}
             />
-        ) as Gtk.Widget,
+        ) as unknown as Gtk.Widget,
     };
 };

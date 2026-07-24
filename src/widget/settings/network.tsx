@@ -2,7 +2,7 @@ import Network from 'gi://AstalNetwork';
 import NM from 'gi://NM?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed, createState, With, For} from 'gnim';
+import {bind, computed, createState, With, For} from 'gnim';
 import {toArray} from '#/lib/core/gjsUtils';
 import {strengthFraction, securityLabelFromKeyMgmt, deleteConnectionAsync} from '#/widget/quicksettings/network/utils';
 import logger from '#/lib/core/logger';
@@ -59,10 +59,10 @@ function getKnownNetworks(
 
 export default () => {
     const network = Network.get_default();
-    const wifi = createBinding(network, 'wifi');
-    const wired = createBinding(network, 'wired');
+    const wifi = bind(network, 'wifi');
+    const wired = bind(network, 'wired');
     const [knownVersion, bumpKnown] = createState(0);
-    const knownNetworks = createComputed(() => getKnownNetworks(network.client));
+    const knownNetworks = computed(() => getKnownNetworks(network.client));
 
     return (
         <>
@@ -72,17 +72,17 @@ export default () => {
                         {w => w ? (
                             <Adw.SwitchRow
                                 title="Wi-Fi"
-                                subtitle={createBinding(w, 'ssid').as(ssid => ssid ? `Connected to ${ssid}` : 'Not connected')}
-                                active={createBinding(w, 'enabled')}
+                                subtitle={bind(w, 'ssid').as(ssid => ssid ? `Connected to ${ssid}` : 'Not connected')}
+                                active={bind(w, 'enabled')}
                                 onNotifyActive={self => { w.enabled = self.active; }}
                             />
                         ) : null}
                     </With>
                     <With value={wifi}>
                         {w => w ? (
-                            <Adw.ActionRow title="Signal Strength" subtitle={createBinding(w, 'strength').as(s => `${s}%`)}>
-                                <Gtk.LevelBar $type="suffix" valign={Gtk.Align.CENTER}
-                                    value={createBinding(w, 'strength').as(s => strengthFraction(s))}
+                            <Adw.ActionRow title="Signal Strength" subtitle={bind(w, 'strength').as(s => `${s}%`)}>
+                                <Gtk.LevelBar slot="suffix" valign={Gtk.Align.CENTER}
+                                    value={bind(w, 'strength').as(s => strengthFraction(s))}
                                     widthRequest={NET_SIGNAL_BAR_WIDTH}
                                 />
                             </Adw.ActionRow>
@@ -91,7 +91,7 @@ export default () => {
                     <Adw.ActionRow title="Connect to Hidden Network…" activatable
                         onActivated={self => showHiddenNetworkDialog(self)}
                     >
-                        <Gtk.Image $type="prefix" iconName="network-wireless-symbolic" pixelSize={NET_ICON_PREFIX} />
+                        <Gtk.Image slot="prefix" iconName="network-wireless-symbolic" pixelSize={NET_ICON_PREFIX} />
                     </Adw.ActionRow>
                 </Adw.PreferencesGroup>
             )}
@@ -105,11 +105,11 @@ export default () => {
                         <Adw.ActionRow title={net.ssid} subtitle={net.secLabel} activatable
                             onActivated={self => showConnectionEditor(net.ssid, net.connections, self, () => bumpKnown(knownVersion() + 1))}
                         >
-                            <Gtk.Image $type="prefix"
+                            <Gtk.Image slot="prefix"
                                 iconName={net.secure ? 'network-wireless-encrypted-symbolic' : 'network-wireless-signal-none-symbolic'}
                                 pixelSize={NET_ICON_PREFIX}
                             />
-                            <Gtk.Button $type="suffix" cssClasses={['flat', 'circular']}
+                            <Gtk.Button slot="suffix" cssClasses={['flat', 'circular']}
                                 onClicked={() => {
                                     const first = net.connections[0];
                                     if (!first) return;
@@ -129,10 +129,10 @@ export default () => {
             <Adw.PreferencesGroup title="Wired" description="Ethernet connection">
                 <With value={wired}>
                     {w => w ? (
-                        <Adw.ActionRow title="Wired Connection" subtitle={createBinding(w, 'state').as(s =>
+                        <Adw.ActionRow title="Wired Connection" subtitle={bind(w, 'state').as(s =>
                             s === Network.DeviceState.ACTIVATED ? 'Connected' : 'Disconnected'
                         )}>
-                            <Gtk.Image $type="suffix" iconName={createBinding(w, 'iconName')} />
+                            <Gtk.Image slot="suffix" iconName={bind(w, 'iconName')} />
                         </Adw.ActionRow>
                     ) : null}
                 </With>
@@ -143,9 +143,9 @@ export default () => {
             >
                 <With value={wifi}>
                     {w => w ? (
-                        <Adw.ActionRow title="Hotspot" subtitle={createBinding(w, 'isHotspot').as(h => h ? 'Active' : 'Inactive')}>
-                            <Gtk.Switch $type="suffix" valign={Gtk.Align.CENTER}
-                                active={createBinding(w, 'isHotspot')}
+                        <Adw.ActionRow title="Hotspot" subtitle={bind(w, 'isHotspot').as(h => h ? 'Active' : 'Inactive')}>
+                            <Gtk.Switch slot="suffix" valign={Gtk.Align.CENTER}
+                                active={bind(w, 'isHotspot')}
                                 onNotifyActive={() => logger.info('settings-network', 'Hotspot toggle not yet implemented')}
                             />
                         </Adw.ActionRow>
@@ -154,7 +154,7 @@ export default () => {
             </Adw.PreferencesGroup>
 
             <Adw.PreferencesGroup title="Connectivity" description="Internet access status">
-                <Adw.ActionRow title="Connectivity" subtitle={createBinding(network, 'connectivity').as(c => {
+                <Adw.ActionRow title="Connectivity" subtitle={bind(network, 'connectivity').as(c => {
                     if (c === Network.Connectivity.FULL) return 'Full internet access';
                     if (c === Network.Connectivity.LIMITED) return 'Limited connectivity';
                     return 'No connectivity';

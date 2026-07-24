@@ -1,5 +1,5 @@
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register, signal} from 'gnim/gobject';
+import {Object, register, signal, property} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 import {Process} from '#/lib/core/process';
 
@@ -21,7 +21,7 @@ function parseLayoutName(fullName: string): string {
 }
 
 @register({GTypeName: 'KeyboardLayout'})
-export default class KeyboardLayout extends GObject.Object {
+export default class KeyboardLayout extends Object {
     static instance: KeyboardLayout;
 
     static get_default() {
@@ -33,12 +33,12 @@ export default class KeyboardLayout extends GObject.Object {
     #available = false;
     #timer: number | null = null;
 
-    @getter(String)
+    @property
     get layout() {
         return this.#layout;
     }
 
-    @getter(Boolean)
+    @property
     get available() {
         return this.#available;
     }

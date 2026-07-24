@@ -3,7 +3,7 @@ import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import {createBinding, createState, For, onMount} from 'gnim';
+import {bind, createState, For, effect} from 'gnim';
 import Notification from '#/widget/common/notification';
 import NotificationHistory from '#/lib/services/notifications/history';
 import DndService from '#/lib/services/notifications/dnd';
@@ -47,10 +47,10 @@ const NotificationListContent = ({
         const DNDButton = () => (
             <Gtk.ToggleButton
                 onClicked={self => (dnd.dnd = self.active)}
-                active={createBinding(dnd, 'dnd')}
+                active={bind(dnd, 'dnd')}
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
                 iconName={'notifications-disabled-symbolic'}
-                cssClasses={createBinding(dnd, 'dnd').as(d =>
+                cssClasses={bind(dnd, 'dnd').as(d =>
                     d ? ['suggested-action', 'warning'] : ['flat']
                 )}
             />
@@ -213,14 +213,14 @@ const NotificationListContent = ({
                     />
                 </Gtk.Box>
                 <For
-                    each={createBinding(history, 'history').as(h =>
+                    each={bind(history, 'history').as(h =>
                         h.slice(0, 20)
                     )}
                 >
                     {(entry: HistoryEntry) => <HistoryItem entry={entry} />}
                 </For>
                 <Adw.StatusPage
-                    visible={createBinding(history, 'history').as(
+                    visible={bind(history, 'history').as(
                         h => h.length === 0
                     )}
                     vexpand
@@ -236,7 +236,7 @@ const NotificationListContent = ({
                 spacing={6}
             >
                 <For
-                    each={createBinding(notifd, 'notifications').as(n =>
+                    each={bind(notifd, 'notifications').as(n =>
                         n
                             .sort((a, b) => b.time - a.time)
                             .reduce<Notifd.Notification[][]>((res, notif) => {
@@ -262,7 +262,7 @@ const NotificationListContent = ({
                     }
                 </For>
                 <Adw.StatusPage
-                    visible={createBinding(notifd, 'notifications').as(
+                    visible={bind(notifd, 'notifications').as(
                         n => n.length < 1
                     )}
                     vexpand
@@ -285,7 +285,7 @@ export const NotificationList = () => {
 
     // Defer Notifd initialization to avoid blocking the main loop
     // when another notification daemon is already registered.
-    onMount(() => {
+    effect(() => {
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             const n = getNotifdSafe();
             if (n) setNotifd(n);

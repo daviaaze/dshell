@@ -1,4 +1,4 @@
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '#/lib/core/logger';
@@ -45,7 +45,7 @@ const PROPS: Record<string, PropDef> = {
 };
 
 @register({GTypeName: 'Hypridle'})
-export default class Hypridle extends GObject.Object {
+export default class Hypridle extends Object {
     static instance: Hypridle;
     static get_default() {
         if (!this.instance) this.instance = new Hypridle();
@@ -68,31 +68,31 @@ export default class Hypridle extends GObject.Object {
 
     // ── GObject property accessors ────────────────────────────────────
 
-    @getter(Boolean) get enabled()         { return this.#values.enabled; }
-    @setter(Boolean) set enabled(v)        { this.#set('enabled', v); }
+    @property get enabled()         { return this.#values.enabled; }
+     set enabled(v)        { this.#set('enabled', v); }
 
-    @getter(Number)  get idleTimeout()     { return this.#values.idleTimeout; }
-    @setter(Number)  set idleTimeout(v)    { this.#set('idleTimeout', v); }
+    @property  get idleTimeout()     { return this.#values.idleTimeout; }
+      set idleTimeout(v)    { this.#set('idleTimeout', v); }
 
-    @getter(Number)  get dimTimeout()      { return this.#values.dimTimeout; }
-    @setter(Number)  set dimTimeout(v)     { this.#set('dimTimeout', v); }
+    @property  get dimTimeout()      { return this.#values.dimTimeout; }
+      set dimTimeout(v)     { this.#set('dimTimeout', v); }
 
-    @getter(Boolean) get dimEnabled()      { return this.#values.dimEnabled; }
-    @setter(Boolean) set dimEnabled(v)     { this.#set('dimEnabled', v); }
+    @property get dimEnabled()      { return this.#values.dimEnabled; }
+     set dimEnabled(v)     { this.#set('dimEnabled', v); }
 
-    @getter(Number)  get dpmsTimeout()     { return this.#values.dpmsTimeout; }
-    @setter(Number)  set dpmsTimeout(v)    { this.#set('dpmsTimeout', v); }
+    @property  get dpmsTimeout()     { return this.#values.dpmsTimeout; }
+      set dpmsTimeout(v)    { this.#set('dpmsTimeout', v); }
 
-    @getter(Boolean) get dpmsEnabled()     { return this.#values.dpmsEnabled; }
-    @setter(Boolean) set dpmsEnabled(v)    { this.#set('dpmsEnabled', v); }
+    @property get dpmsEnabled()     { return this.#values.dpmsEnabled; }
+     set dpmsEnabled(v)    { this.#set('dpmsEnabled', v); }
 
-    @getter(Number)  get suspendTimeout()  { return this.#values.suspendTimeout; }
-    @setter(Number)  set suspendTimeout(v) { this.#set('suspendTimeout', v); }
+    @property  get suspendTimeout()  { return this.#values.suspendTimeout; }
+      set suspendTimeout(v) { this.#set('suspendTimeout', v); }
 
-    @getter(Boolean) get suspendEnabled()  { return this.#values.suspendEnabled; }
-    @setter(Boolean) set suspendEnabled(v) { this.#set('suspendEnabled', v); }
+    @property get suspendEnabled()  { return this.#values.suspendEnabled; }
+     set suspendEnabled(v) { this.#set('suspendEnabled', v); }
 
-    @getter(Boolean)
+    @property
     get available() { return GLib.find_program_in_path('hypridle') !== null; }
 
     // ── Centralised property write ────────────────────────────────────

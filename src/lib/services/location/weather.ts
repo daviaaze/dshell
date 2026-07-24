@@ -1,7 +1,7 @@
 import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Geolocation from './geolocation';
 import logger from '#/lib/core/logger';
 import {Accessor} from 'gnim';
@@ -9,7 +9,7 @@ import {toArray} from '#/lib/core/gjsUtils';
 import {formatTemp} from './weatherUtils';
 
 @register({GTypeName: 'Weather'})
-export default class Weather extends GObject.Object {
+export default class Weather extends Object {
     static instance: Weather;
 
     static get_default() {
@@ -25,7 +25,7 @@ export default class Weather extends GObject.Object {
     #initialized = false;
     #generalSettings: Gio.Settings;
 
-    @getter(GWeather.Info)
+    @property
     get info() {
         return this.#weather;
     }
@@ -34,77 +34,77 @@ export default class Weather extends GObject.Object {
 
     #tempSummary = '--°';
 
-    @getter(String)
+    @property
     get tempSummary() {
         return this.#tempSummary;
     }
 
     #feelsLike = '';
 
-    @getter(String)
+    @property
     get feelsLike() {
         return this.#feelsLike;
     }
 
     #skyDesc = '';
 
-    @getter(String)
+    @property
     get skyDesc() {
         return this.#skyDesc;
     }
 
     #locationName = '—';
 
-    @getter(String)
+    @property
     get locationName() {
         return this.#locationName;
     }
 
     #weatherIcon = 'weather-none-available-symbolic';
 
-    @getter(String)
+    @property
     get weatherIcon() {
         return this.#weatherIcon;
     }
 
     #windSpeed = 0;
 
-    @getter(Number)
+    @property
     get windSpeed() {
         return this.#windSpeed;
     }
 
     #windDirection = 0;
 
-    @getter(Number)
+    @property
     get windDirection() {
         return this.#windDirection;
     }
 
     #humidity = 0;
 
-    @getter(Number)
+    @property
     get humidity() {
         return this.#humidity;
     }
 
     #pressure = 0;
 
-    @getter(Number)
+    @property
     get pressure() {
         return this.#pressure;
     }
 
     #sunrise = 0;
 
-    @getter(Number)
+    @property
     get sunrise() {
         return this.#sunrise;
     }
 
     #sunset = 0;
 
-    @getter(Number)
+    @property
     get sunset() {
         return this.#sunset;
     }
@@ -150,7 +150,7 @@ export default class Weather extends GObject.Object {
         this.notify('sunset');
     }
 
-    @setter(GWeather.Location)
+    
     set location(location: GWeather.Location | undefined) {
         if (!location) return;
         this.#location = location;

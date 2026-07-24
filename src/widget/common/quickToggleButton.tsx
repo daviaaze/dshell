@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createComputed} from 'gnim';
+import {Accessor, computed} from 'gnim';
 import {usePopoverCleanup} from './popoverCleanup';
 
 interface QuickToggleButtonProps {
@@ -23,7 +23,7 @@ export const QuickToggleButton = (props: QuickToggleButtonProps) => {
 
     const mergedCss =
         css instanceof Accessor || act instanceof Accessor
-            ? createComputed(() => {
+            ? computed(() => {
                   const base = css instanceof Accessor ? css() : (css ?? ['raised']);
                   const isActive = act instanceof Accessor ? act() : act;
                   return isActive ? [...base, 'active'] : base;
@@ -36,7 +36,7 @@ export const QuickToggleButton = (props: QuickToggleButtonProps) => {
                 visible={props.visible ?? true}
                 cssClasses={mergedCss}
                 hexpand={props.hexpand ?? true}
-                $={usePopoverCleanup}
+                ref={usePopoverCleanup}
                 onClicked={props.onClick}
                 popover={props.popover}
             >

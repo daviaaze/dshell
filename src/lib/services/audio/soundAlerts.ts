@@ -1,4 +1,4 @@
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import AstalBattery from 'gi://AstalBattery';
 import {bus} from '#/lib/core/eventBus';
@@ -28,7 +28,7 @@ type SoundCategory = 'notification' | 'capture' | 'battery' | 'system';
  * Configurable: each category can be toggled via GSettings.
  */
 @register({GTypeName: 'SoundAlertService'})
-export default class SoundAlertService extends GObject.Object {
+export default class SoundAlertService extends Object {
     static instance: SoundAlertService;
 
     static get_default() {
@@ -67,12 +67,12 @@ export default class SoundAlertService extends GObject.Object {
         return this.#getDep('DndService', this.#dndService);
     }
 
-    @getter(Boolean)
+    @property
     get enabled() {
         return this.#enabled;
     }
 
-    @setter(Boolean)
+    
     set enabled(v: boolean) {
         if (this.#enabled === v) return;
         this.#enabled = v;

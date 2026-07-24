@@ -1,7 +1,7 @@
 import SessionLock from 'gi://Gtk4SessionLock';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import GObject, {register, signal} from 'gnim/gobject';
+import {Object, register, signal} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 /**
@@ -12,7 +12,7 @@ import logger from '#/lib/core/logger';
  * through this service. Window registration uses assignWindow().
  */
 @register({GTypeName: 'SessionLockService'})
-export default class SessionLockService extends GObject.Object {
+export default class SessionLockService extends Object {
     static instance: SessionLockService;
 
     static get_default() {

@@ -32,7 +32,7 @@ export default () => {
                     })}
                 >
                     <Adw.ToggleGroup
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -40,7 +40,7 @@ export default () => {
                                 Number(self.activeName) as Astal.WindowAnchor
                             )
                         }
-                        $={self => {
+                        ref={self => {
                             const v = bar.position.peek();
                             self.activeName = String(v ?? '');
                             bar.position.subscribe(() => {
@@ -116,7 +116,7 @@ export default () => {
                                 stepIncrement={4}
                                 value={bar.dockIconSize}
                             />
-                        ) as Gtk.Adjustment
+                        ) as unknown as Gtk.Adjustment
                     }
                     onNotifyValue={self => bar.setDockIconSize(self.value)}
                 />
@@ -143,7 +143,7 @@ export default () => {
                     {(appId: string) => (
                         <Adw.ActionRow title={appId}>
                             <Gtk.Button
-                                $type="suffix"
+                                slot="suffix"
                                 cssClasses={['circular', 'destructive-action']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {

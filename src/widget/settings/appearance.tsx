@@ -19,7 +19,7 @@ export default () => {
             >
                 <Adw.ActionRow title={'System Theme'}>
                     <Adw.ToggleGroup
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self => {
@@ -30,7 +30,7 @@ export default () => {
                             };
                             settings.setColorScheme(map[self.activeName ?? 'auto'] ?? 0);
                         }}
-                        $={self => {
+                        ref={self => {
                             const v = settings.colorScheme.peek();
                             self.activeName = ['auto', 'light', 'dark'][v] ?? 'auto';
                             settings.colorScheme.subscribe(() => {
@@ -152,7 +152,7 @@ export default () => {
                                 stepIncrement={100}
                                 value={settings.nightLightTemperature}
                             />
-                        ) as Gtk.Adjustment
+                        ) as unknown as Gtk.Adjustment
                     }
                     onNotifyValue={self =>
                         settings.setNightLightTemperature(
