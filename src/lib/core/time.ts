@@ -1,7 +1,7 @@
 import GLib from 'gi://GLib?version=2.0';
 
 export function fmtOffset(local: GLib.TimeZone, remote: GLib.TimeZone): string {
-    const now = GLib.DateTime.new_now(local);
+    const now = GLib.DateTime.new_now(local)!;
     const remoteNow = now.to_timezone(remote);
     const localOffset = Number(now.get_utc_offset()) / Number(GLib.TIME_SPAN_HOUR);
     const remoteOffset = remoteNow ? Number(remoteNow.get_utc_offset()) / Number(GLib.TIME_SPAN_HOUR) : 0;

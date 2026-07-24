@@ -4,7 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 
 /** Format GLib unix timestamp → "06:12" */
 export function formatTime(unixTs: number): string {
-    const dt = GLib.DateTime.new_from_unix_local(unixTs);
+    const dt = GLib.DateTime.new_from_unix_local(unixTs)!;
     return dt.format('%H:%M') ?? '--:--';
 }
 

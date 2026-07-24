@@ -79,7 +79,7 @@ export default () => {
                         title={tz.replaceAll('_', ' ')}
                         subtitle={(() => {
                             const gtz = GLib.TimeZone.new(tz);
-                            const now = GLib.DateTime.new_now(gtz);
+                            const now = GLib.DateTime.new_now(gtz)!;
                             return now.format('%H:%M') ?? '';
                         })()}
                     >
