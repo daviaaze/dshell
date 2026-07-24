@@ -20,46 +20,46 @@ export default () => {
 
     const focusedClient = bind(hyprland, 'focusedClient');
 
-    const dockItems = computed(
-        [bar.dockPinnedApps, clients, focusedClient],
-        (pinned, running, focused) => {
-            const items: {
-                desktopFile: string;
-                pinned: boolean;
-                clients: AstalHyprland.Client[];
-                active: boolean;
-            }[] = [];
+    const dockItems = computed(() => {
+        const pinned = bar.dockPinnedApps();
+        const running = clients();
+        const focused = focusedClient();
+        const items: {
+            desktopFile: string;
+            pinned: boolean;
+            clients: AstalHyprland.Client[];
+            active: boolean;
+        }[] = [];
 
-            for (const df of pinned) {
-                const appClients = running.filter(
-                    c => getDesktopFileForClient(c) === df
-                );
-                const isActive = appClients.some(
-                    c => c.address === focused?.address
-                );
-                items.push({
-                    desktopFile: df,
-                    pinned: true,
-                    clients: appClients,
-                    active: isActive,
-                });
-            }
-
-            for (const client of running) {
-                const df = getDesktopFileForClient(client);
-                if (!df || pinned.includes(df)) continue;
-                const isActive = client.address === focused?.address;
-                items.push({
-                    desktopFile: df,
-                    pinned: false,
-                    clients: [client],
-                    active: isActive,
-                });
-            }
-
-            return items;
+        for (const df of pinned) {
+            const appClients = running.filter(
+                (c: AstalHyprland.Client) => getDesktopFileForClient(c) === df
+            );
+            const isActive = appClients.some(
+                (c: AstalHyprland.Client) => c.address === focused?.address
+            );
+            items.push({
+                desktopFile: df,
+                pinned: true,
+                clients: appClients,
+                active: isActive,
+            });
         }
-    );
+
+        for (const client of running) {
+            const df = getDesktopFileForClient(client);
+            if (!df || pinned.includes(df)) continue;
+            const isActive = client.address === focused?.address;
+            items.push({
+                desktopFile: df,
+                pinned: false,
+                clients: [client],
+                active: isActive,
+            });
+        }
+
+        return items;
+    });
 
     return (
         <Astal.Window
