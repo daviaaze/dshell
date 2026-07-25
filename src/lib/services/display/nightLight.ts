@@ -1,4 +1,4 @@
-import {Object, register, property, Int} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
@@ -43,7 +43,7 @@ export default class NightLight extends Object {
         setNightLightAutoSchedule: (v: boolean) => void;
     } | null = null;
 
-    @property(Boolean)
+    @property(Object)
     get enabled() {
         return this.#enabled;
     }
@@ -57,7 +57,7 @@ export default class NightLight extends Object {
         this.notify('enabled');
     }
 
-    @property(Int)
+    @property(Object)
     get temperature() {
         return this.#temperature;
     }
@@ -72,7 +72,7 @@ export default class NightLight extends Object {
         this.notify('temperature');
     }
 
-    @property(Boolean)
+    @property(Object)
     get autoSchedule() {
         return this.#autoSchedule;
     }

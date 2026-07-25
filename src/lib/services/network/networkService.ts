@@ -4,7 +4,7 @@
  * Handles the lazy D-Bus initialization of the wifi device proxy
  * so widgets only need to bind to reactive properties.
  */
-import {Object, register, property, Int} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Network from 'gi://AstalNetwork';
 import logger from '#/lib/core/logger';
 
@@ -27,27 +27,27 @@ export default class NetworkService extends Object {
         return this.#wifi;
     }
 
-    @property(String)
+    @property(Object)
     get wifiSsid(): string | null {
         return this.#wifi?.ssid ?? null;
     }
 
-    @property(Boolean)
+    @property(Object)
     get wifiEnabled(): boolean {
         return this.#wifi?.enabled ?? false;
     }
 
-    @property(Int)
+    @property(Object)
     get wifiStrength(): number {
         return this.#wifi?.strength ?? 0;
     }
 
-    @property(Int)
+    @property(Object)
     get wifiState(): number {
         return this.#wifi?.state ?? 0;
     }
 
-    @property(Boolean)
+    @property(Object)
     get wifiReady(): boolean {
         return this.#wifi !== null && this.#initialized;
     }

@@ -66,7 +66,7 @@ export default class PaletteGenerator extends GObject {
 
     static readonly DEBOUNCE_SECONDS = 1;
 
-    @property(Boolean)
+    @property(Object)
     get enabled() {
         return this.#enabled;
     }

@@ -25,7 +25,7 @@ export default class Inhibit extends Object {
         return this.#idle;
     }
 
-    @property(String)
+    @property(Object)
     get remaining() {
         if (!this.#idle || this.#duration <= 0) return '';
         const secs = Math.max(

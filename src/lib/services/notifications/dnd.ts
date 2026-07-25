@@ -36,7 +36,7 @@ export default class DndService extends Object {
     #busSubscriptions: (() => void)[] = [];
     #initialized = false;
 
-    @property(Boolean)
+    @property(Object)
     get dnd() {
         return this.#dnd;
     }

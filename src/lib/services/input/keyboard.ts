@@ -33,12 +33,12 @@ export default class KeyboardLayout extends Object {
     #available = false;
     #timer: number | null = null;
 
-    @property(String)
+    @property(Object)
     get layout() {
         return this.#layout;
     }
 
-    @property(Boolean)
+    @property(Object)
     get available() {
         return this.#available;
     }

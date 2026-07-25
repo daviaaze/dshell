@@ -42,17 +42,17 @@ export default class MediaController extends Object {
         return this.#activePlayer;
     }
 
-    @property(String)
+    @property(Object)
     get activeTitle(): string {
         return this.#activeTitle;
     }
 
-    @property(String)
+    @property(Object)
     get activeArtist(): string {
         return this.#activeArtist;
     }
 
-    @property(String)
+    @property(Object)
     get activeCoverArt(): string {
         return this.#activeCoverArt;
     }
