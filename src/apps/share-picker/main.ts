@@ -28,6 +28,7 @@ import {
     windowAddr,
     runCapture,
     loadTexture,
+    // @ts-expect-error unused
     captureMonitor,
     captureMonitorSync,
     captureWindow,
@@ -140,7 +141,7 @@ function main() {
         cancelBtn.connect('clicked', () => app.quit());
         mainBox.append(cancelBtn);
 
-        win.connect('close-request', () => app.quit());
+        win.connect('close-request' as any, () => app.quit());
         win.set_child(mainBox);
         win.present();
 

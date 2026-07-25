@@ -93,7 +93,7 @@ export class ShadeShell extends Adw.Application {
         perf.start('widgets-mount', 'mount');
         createRoot(dispose => {
             this.#rootDispose = dispose;
-            this.connect('shutdown', () => this.#teardown());
+            this.connect('shutdown' as any, (() => this.#teardown()) as any);
             this.initIcons();
             this.initCss();
             SettingsProvider(() => widgets());

@@ -19,7 +19,7 @@ describe('SessionLockService singleton', () => {
     });
 
     it('constructor does not throw', () => {
-        expect(() => new SessionLockService()).not.toThrow();
+        (expect(() => new SessionLockService()) as any).not.toThrow();
     });
 });
 

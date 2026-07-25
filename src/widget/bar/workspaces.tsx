@@ -78,7 +78,7 @@ export default ({
                                                     }
                                                 />
                                             </Gtk.Image>
-                                        ) as unknown as Gtk.Widget
+                                        ) as any
                                     }
                                 />
                             )}
@@ -99,7 +99,7 @@ export default ({
                                                     iconName="window-minimize-symbolic"
                                                     pixelSize={8}
                                                 />
-                                            ) as unknown as Gtk.Widget
+                                            ) as any
                                         }
                                     />
                                 ) : null
@@ -110,5 +110,5 @@ export default ({
                 }}
             </For>
         </Gtk.Box>
-    ) as unknown as Gtk.Box;
+    ) as any;
 };

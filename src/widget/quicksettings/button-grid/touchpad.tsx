@@ -1,4 +1,3 @@
-import Gtk from 'gi://Gtk?version=4.0';
 import Touchpad from '#/lib/services/input/touchpad';
 import {bind} from 'gnim';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
@@ -20,6 +19,6 @@ export default (): QuickButton => {
                 )}
                 onClick={() => touchpad.toggle()}
             />
-        ) as unknown as Gtk.Widget,
+        ) as any,
     };
 };

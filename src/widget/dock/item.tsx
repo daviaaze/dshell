@@ -88,7 +88,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 />
             </Gtk.Box>
         </Gtk.Popover>
-    ) as unknown as Gtk.Popover;
+    ) as any;
 
     return (
         <Gtk.Button
@@ -101,14 +101,14 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 // Create child content once to avoid gtk_button_set_child assertion
                 // when Gnim re-renders this component (e.g. on focus change).
                 if (!self.get_first_child()) {
-                    const icon = (<Gtk.Image iconName={iconName} />) as unknown as Gtk.Image;
+                    const icon = (<Gtk.Image iconName={iconName} />) as any;
                     // Bind icon size reactively
                     bar.dockIconSize.subscribe(() =>
-                        icon.set_pixel_size(bar.dockIconSize.get())
+                        icon.set_pixel_size(bar.dockIconSize())
                     );
-                    icon.set_pixel_size(bar.dockIconSize.get());
+                    icon.set_pixel_size(bar.dockIconSize());
 
-                    const status = (<Gtk.Box />) as unknown as Gtk.Box & { css: string };
+                    const status = (<Gtk.Box />) as any & { css: string };
                     // Update status indicator reactively
                     const updateStatus = () => {
                          
@@ -144,7 +144,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                             {status}
                         </Gtk.Box>
                     );
-                    self.child = box as Gtk.Widget;
+                    self.child = box as any;
                 }
             }}
             cssClasses={['flat', 'circular']}

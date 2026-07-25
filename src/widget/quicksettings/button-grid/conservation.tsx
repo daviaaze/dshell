@@ -7,7 +7,6 @@ import {
 } from '#/lib/services/power/batteryConservation';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import Gtk from 'gi://Gtk?version=4.0';
 
 export default (): QuickButton => {
     startConservationMonitor();
@@ -42,6 +41,6 @@ export default (): QuickButton => {
                     }
                 }}
             />
-        ) as unknown as Gtk.Widget,
+        ) as any,
     };
 };

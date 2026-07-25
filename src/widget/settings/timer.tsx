@@ -25,7 +25,7 @@ export default () => {
                                 stepIncrement={5}
                                 value={settings.pomodoroWorkDuration}
                             />
-                        ) as unknown as Gtk.Adjustment
+                        ) as any
                     }
                     onNotifyValue={self =>
                         settings.setPomodoroWorkDuration(self.value)
@@ -42,7 +42,7 @@ export default () => {
                                 stepIncrement={1}
                                 value={settings.pomodoroBreakDuration}
                             />
-                        ) as unknown as Gtk.Adjustment
+                        ) as any
                     }
                     onNotifyValue={self =>
                         settings.setPomodoroBreakDuration(self.value)
@@ -59,7 +59,7 @@ export default () => {
                                 stepIncrement={5}
                                 value={settings.pomodoroLongBreakDuration}
                             />
-                        ) as unknown as Gtk.Adjustment
+                        ) as any
                     }
                     onNotifyValue={self =>
                         settings.setPomodoroLongBreakDuration(self.value)
@@ -76,7 +76,7 @@ export default () => {
                                 stepIncrement={1}
                                 value={settings.pomodoroSessionsBeforeLongBreak}
                             />
-                        ) as unknown as Gtk.Adjustment
+                        ) as any
                     }
                     onNotifyValue={self =>
                         settings.setPomodoroSessionsBeforeLongBreak(self.value)

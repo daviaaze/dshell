@@ -37,7 +37,7 @@ export const WeatherButton = ({
                             <WeatherWidget />
                         </Gtk.Box>
                     </Gtk.Popover>
-                ) as unknown as Gtk.Popover
+                ) as any
             }
         >
             <Gtk.Box

@@ -94,8 +94,8 @@ export class ColorScheme extends Object {
 
         const msUntil = (unixTime: number) =>
             Math.abs(Number(
-                GLib.DateTime.new_from_unix_local(unixTime)
-                    .difference(GLib.DateTime.new_now_local())
+                GLib.DateTime.new_from_unix_local(unixTime)!
+                    .difference(GLib.DateTime.new_now_local()!)
                     .valueOf()
             ));
 
@@ -184,12 +184,12 @@ export class ColorScheme extends Object {
         super();
 
         this.#generalSettings = new Gio.Settings({
-            schema_id: `${import.meta.domain}.general`,
+            schemaId: `${import.meta.domain}.general`,
         });
 
         this.#gsettings = createSettings(
             new Gio.Settings({
-                schema_id: 'org.gnome.desktop.interface',
+                schemaId: 'org.gnome.desktop.interface',
             }),
             new Schema({
                 id: 'org.gnome.desktop.interface',

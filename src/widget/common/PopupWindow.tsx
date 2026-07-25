@@ -19,7 +19,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, bind, createState} from 'gnim';
+import {Accessor, bind, createState, JSX} from 'gnim';
 import {app} from '#/apps/shell/App';
 import {useSettings} from '#/lib/settings';
 import Hyprland from 'gi://AstalHyprland';
@@ -35,6 +35,9 @@ export interface PopupWindowProps {
 
     /** Reactive visibility binding. */
     visible: Accessor<boolean> | boolean;
+
+    /** Widget reference callback. */
+    ref?: (self: Astal.Window) => void;
 
     /**
      * Bar-position-derived anchor or explicit anchor bitmask.

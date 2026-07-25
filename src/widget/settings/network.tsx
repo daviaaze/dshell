@@ -89,7 +89,7 @@ export default () => {
                         ) : null}
                     </With>
                     <Adw.ActionRow title="Connect to Hidden Network…" activatable
-                        onActivated={self => showHiddenNetworkDialog(self)}
+                        onActivated={self => showHiddenNetworkDialog(self as any)}
                     >
                         <Gtk.Image slot="prefix" iconName="network-wireless-symbolic" pixelSize={NET_ICON_PREFIX} />
                     </Adw.ActionRow>
@@ -103,7 +103,7 @@ export default () => {
                 <For each={knownNetworks}>
                     {(net: {ssid: string; secure: boolean; secLabel: string; connections: NM.RemoteConnection[]}) => (
                         <Adw.ActionRow title={net.ssid} subtitle={net.secLabel} activatable
-                            onActivated={self => showConnectionEditor(net.ssid, net.connections, self, () => bumpKnown(knownVersion() + 1))}
+                            onActivated={self => showConnectionEditor(net.ssid, net.connections, self as any, () => bumpKnown(knownVersion() + 1))}
                         >
                             <Gtk.Image slot="prefix"
                                 iconName={net.secure ? 'network-wireless-encrypted-symbolic' : 'network-wireless-signal-none-symbolic'}

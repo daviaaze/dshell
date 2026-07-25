@@ -166,7 +166,7 @@ export const TimerSection = () => {
                                     </Gtk.Button>
                                 );
                                 self.attach(
-                                    btn as Gtk.Widget,
+                                    btn as any,
                                     i % 3,
                                     Math.floor(i / 3),
                                     1,

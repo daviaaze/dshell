@@ -48,7 +48,7 @@ const createLocks = (onUnlock: () => void) => {
         onUnlock();
     };
 
-    authSession.connect('success', () => doUnlock());
+    authSession.connect('success' as any, () => doUnlock());
 
     const fpStateBinding = bind(fingerprint, 'state');
     const fpErrorBinding = bind(fingerprint, 'errorMessage');

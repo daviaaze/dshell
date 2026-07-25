@@ -31,14 +31,14 @@ export function PreviewCard({
     const label = new Gtk.Label({
         label: name,
         xalign: 0.5,
-        css_classes: ['picker-label'],
+        cssClasses: ['picker-label'],
         ellipsize: 3, // Pango.EllipsizeMode.END
     });
 
     const inner = new Gtk.Box({
         orientation: Gtk.Orientation.VERTICAL,
         spacing: 2,
-        css_classes: ['picker-card'],
+        cssClasses: ['picker-card'],
     });
     inner.append(picture);
     inner.append(label);
@@ -47,13 +47,13 @@ export function PreviewCard({
         const sub = new Gtk.Label({
             label: subtitle,
             xalign: 0.5,
-            css_classes: ['picker-sublabel'],
+            cssClasses: ['picker-sublabel'],
             ellipsize: 3,
         });
         inner.append(sub);
     }
 
-    const button = new Gtk.Button({child: inner, css_classes: ['flat']});
+    const button = new Gtk.Button({child: inner, cssClasses: ['flat']});
     button.connect('clicked', onClick);
 
     const setTexture = (path: string) => {

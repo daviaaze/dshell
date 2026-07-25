@@ -65,7 +65,7 @@ function drawBoundaryForMonitor(
     cr.setSourceRGBA(color.r, color.g, color.b, 0.65);
     cr.setLineWidth(borderWidth);
     cr.setDash([8, 4], 0);
-    cr.setLineCap(Cairo.LineCap.SQUARE);
+    cr.setLineCap(2); // Cairo.LineCap.SQUARE
 
     // Only draw the visible portion of each border edge
     // Top edge

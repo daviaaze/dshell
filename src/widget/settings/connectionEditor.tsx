@@ -21,7 +21,7 @@ export function showConnectionEditor(
     const isSecureConn = settingSecurity !== null;
 
     const dialog = new Adw.Window({
-        transientFor: parent.get_root() as unknown as Gtk.Window,
+        transientFor: parent.get_root() as any,
         modal: true,
         title: ssid,
         defaultWidth: 400,
@@ -72,7 +72,7 @@ export function showConnectionEditor(
         (
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                 <Adw.HeaderBar
-                    titleWidget={(<Adw.WindowTitle title={ssid} cssClasses={['title-3']} />) as unknown as Gtk.Widget}
+                    titleWidget={(<Adw.WindowTitle title={ssid} cssClasses={['title-3']} />) as any}
                     showEndTitleButtons={false}
                 />
                 <Gtk.ScrolledWindow propagateNaturalHeight vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
@@ -133,7 +133,7 @@ export function showConnectionEditor(
                     </Adw.PreferencesPage>
                 </Gtk.ScrolledWindow>
             </Gtk.Box>
-        ) as unknown as Gtk.Widget
+        ) as any
     );
 
     dialog.present();

@@ -17,7 +17,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
         const strength = net.wifiStrength;
         const state = net.wifiState;
         if (!enabled) return 'network-wireless-offline-symbolic';
-        return wifiIconName(strength, enabled, state);
+        return wifiIconName(strength, enabled, state as any);
     });
 
     const icon = computed(() => {
@@ -71,7 +71,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
                 </With>
             </LinkedBox>
         </Gtk.Popover>
-    ) as unknown as Gtk.Popover;
+    ) as any;
 
     return {
         widget: (
@@ -85,7 +85,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
                 }}
                 popover={popover}
             />
-        ) as unknown as Gtk.Widget,
+        ) as any,
         visible: bind(net, 'wifiReady'),
     };
 };

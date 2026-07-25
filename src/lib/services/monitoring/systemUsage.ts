@@ -141,7 +141,7 @@ export default class SystemUsage {
 
     #sample(): void {
         const cpuTop = new GTop.glibtop_cpu();
-        GTop.glibtop_get_cpu(cpuTop);
+        (GTop as any).glibtop_get_cpu(cpuTop);
         const total = cpuTop.total - this.#lastCpuTop.total;
         const user = cpuTop.user - this.#lastCpuTop.user;
         const sys = cpuTop.sys - this.#lastCpuTop.sys;
@@ -150,11 +150,11 @@ export default class SystemUsage {
         this.#setCpu((user + sys + nice) / total);
 
         const memTop = new GTop.glibtop_mem();
-        GTop.glibtop_get_mem(memTop);
+        (GTop as any).glibtop_get_mem(memTop);
         this.#setMemory(memTop.user / memTop.total);
 
         const diskTop = new GTop.glibtop_fsusage();
-        GTop.glibtop_get_fsusage(diskTop, '/');
+        (GTop as any).glibtop_get_fsusage(diskTop, '/');
         this.#setDisk((diskTop.blocks - diskTop.bavail) / diskTop.blocks);
 
         if (this.#tempPath && !this.#tempFailed) {

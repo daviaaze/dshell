@@ -31,7 +31,7 @@ export default (): QuickButton => {
                                         'temperature'
                                     )}
                                 />
-                            ) as unknown as Gtk.Adjustment
+                            ) as any
                         }
                         onValueChanged={self =>
                             (nightLight.temperature = Math.round(
@@ -60,7 +60,7 @@ export default (): QuickButton => {
                 </Gtk.Box>
             </Gtk.Box>
         </Gtk.Popover>
-    ) as unknown as Gtk.Popover;
+    ) as any;
 
     return {
         widget: (
@@ -75,6 +75,6 @@ export default (): QuickButton => {
                 onClick={() => (nightLight.enabled = !nightLight.enabled)}
                 popover={popover}
             />
-        ) as unknown as Gtk.Widget,
+        ) as any,
     };
 };

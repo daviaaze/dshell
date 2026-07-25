@@ -3,7 +3,7 @@ import {useSettings} from '#/lib/settings';
 import {tickWhileAttached} from '#/lib/core/widgetTimer';
 
 try {
-    imports.gi.versions.AstalCava = '0.1';
+    (imports.gi as any).versions.AstalCava = '0.1';
 } catch {
     /* ignore */
 }

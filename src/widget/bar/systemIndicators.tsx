@@ -33,9 +33,10 @@ export default ({
                             flags={Gtk.EventControllerScrollFlags.VERTICAL}
                             onScroll={(self, dx, dy) => {
                                 audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
+                                return false;
                             }}
                         />
-                    ) as unknown as Gtk.EventController
+                    ) as any
                 )
             }
         >

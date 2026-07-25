@@ -213,12 +213,12 @@ export default class Weather extends Object {
                 geoHandlerId = null;
             }
             geoHandlerId = this.#geo.connect(
-                'location-changed',
-                (_, lat, lon) => {
+                'location-changed' as any,
+                ((_: any, lat: number, lon: number) => {
                     settings.setLatitude(lat);
                     settings.setLongitude(lon);
                     this.updateFromCoords(lat, lon);
-                }
+                }) as any
             );
         };
 
@@ -441,7 +441,7 @@ export default class Weather extends Object {
         this.#weather.set_contact_info('caiomuniz888@gmail.com');
 
         this.#generalSettings = new Gio.Settings({
-            schema_id: `${import.meta.domain}.general`,
+            schemaId: `${import.meta.domain}.general`,
         });
 
         this.#weatherHandlerId = this.#weather.connect('updated', () => {

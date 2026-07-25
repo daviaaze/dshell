@@ -146,8 +146,8 @@ export default class AuthSession extends Object {
         };
 
         this.#fpSignalIds = [
-            this.#fingerprint.connect('verified', onVerified),
-            this.#fingerprint.connect('status-changed', onStatus),
+            this.#fingerprint.connect('verified' as any, onVerified as any),
+            this.#fingerprint.connect('status-changed' as any, onStatus as any),
         ];
     }
 

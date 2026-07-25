@@ -10,7 +10,7 @@ export default ({
     connectable,
     signals,
 }: {
-    widget: GObject.Object;
+    widget: any;
     connectable: GObject.Object | null;
     signals: string[];
 }) => (

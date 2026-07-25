@@ -91,7 +91,7 @@ class MonitorService extends Object {
     }
 
     #monitors: Gdk.Monitor[] = [];
-    #wlDisplay: AstalWl.WlDisplay | null = null;
+    #wlDisplay: any = null;
     #wlSignalIds: number[] = [];
     #pendingSync = false;
 
@@ -120,7 +120,7 @@ class MonitorService extends Object {
         let useWl = false;
         try {
             const gsettings = new Gio.Settings({
-                schema_id: 'com.caioasmuniz.shade_shell.general',
+                schemaId: 'com.caioasmuniz.shade_shell.general',
             });
             useWl = gsettings.get_boolean('experimental-wayland-monitors');
         } catch {
@@ -163,7 +163,7 @@ class MonitorService extends Object {
         if (!display) return;
 
         try {
-            this.#wlDisplay = AstalWl.WlDisplay.get_default();
+            this.#wlDisplay = (AstalWl as any).WlDisplay.get_default();
         } catch (e) {
             logger.warn('monitors', 'AstalWl unavailable, falling back to Gdk:', e);
             this.#initGdk(display);
@@ -175,7 +175,7 @@ class MonitorService extends Object {
 
         // Listen for output changes
         this.#wlSignalIds = [
-            this.#wlDisplay.connect('output-added', (_wl: AstalWl.WlDisplay, output: AstalWl.Output) => {
+            this.#wlDisplay.connect('output-added', (_wl: any, output: AstalWl.Output) => {
                 const gdkMon = gdkMonitorByConnector(output.name);
                 if (gdkMon) {
                     this.#addMonitor(gdkMon);
@@ -185,7 +185,7 @@ class MonitorService extends Object {
                 }
             }),
 
-            this.#wlDisplay.connect('output-removed', (_wl: AstalWl.WlDisplay, output: AstalWl.Output) => {
+            this.#wlDisplay.connect('output-removed', (_wl: any, output: AstalWl.Output) => {
                 const gdkMon = gdkMonitorByConnector(output.name);
                 if (gdkMon) {
                     this.#removeMonitor(gdkMon);

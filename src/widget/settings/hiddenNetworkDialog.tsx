@@ -7,7 +7,7 @@ import logger from '#/lib/core/logger';
 
 export function showHiddenNetworkDialog(parent: Gtk.Widget) {
     const dialog = new Adw.Window({
-        transientFor: parent.get_root() as unknown as Gtk.Window,
+        transientFor: parent.get_root() as any,
         modal: true,
         title: 'Connect to Hidden Network',
         defaultWidth: 400,
@@ -32,7 +32,7 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
 
         try {
             const connection = createNMConnection(name, password().trim() || undefined, true);
-            network.client.add_and_activate_connection_async(connection, wifi.device, null, null)
+            (network.client.add_and_activate_connection_async as any)(connection, wifi.device, null, null)
                 .then(() => { setConnecting(false); dialog.close(); })
                 .catch((e: Error) => {
                     logger.error('settings-network', 'hidden connect failed:', e.message);
@@ -50,7 +50,7 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
         (
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                 <Adw.HeaderBar
-                    titleWidget={(<Adw.WindowTitle title="Hidden Network" cssClasses={['title-3']} />) as unknown as Gtk.Widget}
+                    titleWidget={(<Adw.WindowTitle title="Hidden Network" cssClasses={['title-3']} />) as any}
                     showEndTitleButtons={false}
                 />
                 <Adw.PreferencesPage>
@@ -85,7 +85,7 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
                     />
                 </Adw.PreferencesPage>
             </Gtk.Box>
-        ) as unknown as Gtk.Widget
+        ) as any
     );
 
     dialog.present();

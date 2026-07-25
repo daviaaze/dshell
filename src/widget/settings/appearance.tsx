@@ -152,7 +152,7 @@ export default () => {
                                 stepIncrement={100}
                                 value={settings.nightLightTemperature}
                             />
-                        ) as unknown as Gtk.Adjustment
+                        ) as any
                     }
                     onNotifyValue={self =>
                         settings.setNightLightTemperature(

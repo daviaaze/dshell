@@ -177,7 +177,7 @@ const NotificationListContent = ({
                 <Gtk.Label
                     halign={Gtk.Align.START}
                     cssClasses={['caption']}
-                    label={`${entry.appName} — ${GLib.DateTime.new_from_unix_local(entry.time).format('%H:%M') || ''}`}
+                    label={`${entry.appName} — ${GLib.DateTime.new_from_unix_local(entry.time)!.format('%H:%M') || ''}`}
                 />
             </Gtk.Box>
             <Gtk.Button

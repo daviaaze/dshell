@@ -74,7 +74,7 @@ const TitleArtist = ({player}: {player: Mpris.Player}) => {
 );
 }
 
-const PlaybackButtons = ({player}: {player: Mpris.Player}) => {
+const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) => {
     const mc = MediaController.get_default();
     return (
         <Gtk.Box>

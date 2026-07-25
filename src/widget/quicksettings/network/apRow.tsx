@@ -94,11 +94,11 @@ function createDoConnect(
                 if (apBssid) state.setConnectingAp(apBssid);
 
                 if (!secure) {
-                    await liveAp.activate(null);
+                    (liveAp as any).activate(null);
                 } else if (password !== undefined) {
-                    await liveAp.activate(password || null);
+                    (liveAp as any).activate(password || null);
                 } else if (isSaved(liveAp)) {
-                    await liveAp.activate(null);
+                    (liveAp as any).activate(null);
                 } else {
                     state.setShowPassword(!state.showPassword());
                     return;
@@ -205,9 +205,11 @@ function ApRow({
                     cssClasses={['flat']}
                     onClicked={() => {
                         if (isActive()) {
-                            (wifi.deactivate_connection()).catch((e: Error) =>
-                                logger.error('network', 'deactivate failed:', e.message)
-                            );
+                            try {
+                                (wifi as any).deactivate_connection(null);
+                            } catch (e: any) {
+                                logger.error('network', 'deactivate failed:', e.message);
+                            }
                             return;
                         }
                         doConnect();

@@ -213,7 +213,7 @@ export function copyImageToClipboard(filename: string): void {
             return;
         }
         const texture = Gdk.Texture.new_from_filename(filename);
-        display.get_clipboard().set_property('texture', texture)
+        (display.get_clipboard() as any).set_property('texture', texture);
         logger.debug('screenshot', `copied to clipboard via Gdk: ${filename}`);
     } catch (e) {
         logger.warn('screenshot', `clipboard copy failed: ${e instanceof Error ? e.message : String(e)}`);

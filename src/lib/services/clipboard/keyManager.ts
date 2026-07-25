@@ -29,7 +29,7 @@ const ATTRIBUTE_VALUE = 'shade-shell';
 // ── Schema definition ────────────────────────────────────────────────────────
 
 /** Schema for identifying our key in the keyring. */
-const schema = new Secret.Schema(SCHEMA_NAME, Secret.SchemaFlags.NONE, {
+const schema = new (Secret.Schema as any)(SCHEMA_NAME, Secret.SchemaFlags.NONE, {
     [ATTRIBUTE_KEY]: Secret.SchemaAttributeType.STRING,
 });
 
