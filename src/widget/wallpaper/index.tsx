@@ -32,7 +32,8 @@ export const Wallpaper = () => {
                             WindowManager.get_default().unregisterWallpaper(
                                 self
                             );
-                            self.destroy();
+                            self.close();
+                            
                         });
                     }}
                     gdkmonitor={monitor}

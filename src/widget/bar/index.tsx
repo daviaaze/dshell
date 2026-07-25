@@ -36,7 +36,7 @@ export default () => {
                         WindowManager.get_default().registerBar(self);
                         onCleanup(() => {
                             WindowManager.get_default().unregisterBar(self);
-                            self.destroy();
+                            self.close();
                         });
                     }}
                     visible

@@ -52,7 +52,7 @@ export const openSettings = () => {
         return;
     }
     if (existing) {
-        existing.destroy();
+        existing.close();
         wm.setSettings(null);
     }
     const win = createSettingsWindow();

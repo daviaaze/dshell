@@ -140,28 +140,30 @@ export default () => {
             />
         );
 
-        const win: Astal.Window =
-            <Astal.Window
-                application={app}
-                gdkmonitor={monitor}
-                layer={Astal.Layer.OVERLAY}
-                anchor={
-                    Astal.WindowAnchor.TOP |
-                    Astal.WindowAnchor.RIGHT |
-                    Astal.WindowAnchor.BOTTOM |
-                    Astal.WindowAnchor.LEFT
-                }
-                exclusivity={Astal.Exclusivity.IGNORE}
-                visible={bind(ss, 'boundaryVisible')}
-            >
-                {drawingArea}
-            </Astal.Window> as Astal.Window;
-
-        windows.push(win);
+        <Astal.Window
+            ref={self => {
+                if (self) windows.push(self);
+            }}
+            application={app}
+            gdkmonitor={monitor}
+            layer={Astal.Layer.OVERLAY}
+            anchor={
+                Astal.WindowAnchor.TOP |
+                Astal.WindowAnchor.RIGHT |
+                Astal.WindowAnchor.BOTTOM |
+                Astal.WindowAnchor.LEFT
+            }
+            exclusivity={Astal.Exclusivity.IGNORE}
+            visible={bind(ss, 'boundaryVisible')}
+        >
+            {drawingArea}
+        </Astal.Window>;
     }
 
     onCleanup(() => {
-        for (const w of windows) w.destroy();
+        for (const w of windows) {
+            w.close();
+        }
     });
 
     return null;
