@@ -170,7 +170,7 @@ export default ({
                             </Gtk.Box>
                         </Gtk.Box>
                     </Gtk.Popover>
-                ) as unknown as Gtk.Popover
+                ) as any
             }
         >
             <Gtk.Box

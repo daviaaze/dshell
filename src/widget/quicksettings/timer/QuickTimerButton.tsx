@@ -41,7 +41,7 @@ export const QuickTimerButton = (): QuickButton => {
                 <TimerSection />
             </Gtk.Box>
         </Gtk.Popover>
-    ) as unknown as Gtk.Popover;
+    ) as any;
 
     return {
         widget: (
@@ -54,6 +54,6 @@ export const QuickTimerButton = (): QuickButton => {
                     if (timer.remaining >= 0) timer.cancel();
                 }}
             />
-        ) as unknown as Gtk.Widget,
+        ) as any,
     };
 };

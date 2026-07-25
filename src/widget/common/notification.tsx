@@ -210,5 +210,5 @@ export default ({
                 ) : null}
             </Gtk.Box>
         </Adw.Clamp>
-    ) as unknown as Gtk.Widget;
+    ) as any;
 };

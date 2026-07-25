@@ -74,9 +74,9 @@ export const TrayBox = () => {
                                     cssClasses={['menu']}
                                     menuModel={item.menuModel}
                                 />
-                            ) as unknown as Gtk.Popover
+                            ) as any
                         }
-                        tooltip_markup={bind(item, 'tooltip_markup')}
+                        tooltipMarkup={bind(item, 'tooltipMarkup')}
                     >
                         <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />
                     </Gtk.MenuButton>

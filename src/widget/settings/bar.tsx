@@ -116,7 +116,7 @@ export default () => {
                                 stepIncrement={4}
                                 value={bar.dockIconSize}
                             />
-                        ) as unknown as Gtk.Adjustment
+                        ) as any
                     }
                     onNotifyValue={self => bar.setDockIconSize(self.value)}
                 />

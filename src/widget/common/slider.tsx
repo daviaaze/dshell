@@ -42,7 +42,7 @@ export const Slider = (props: SliderProps) => {
                 min={props.min}
                 max={props.max}
                 value={props.value.as(safe)}
-                onChangeValue={({value}) => props.setValue(safe(value))}
+                onChangeValue={(_self, _scroll, value) => { props.setValue(safe(value)); return false; }}
             />
             <Gtk.Label
                 cssClasses={['heading']}

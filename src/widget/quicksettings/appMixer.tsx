@@ -111,7 +111,7 @@ export default () => {
                                                 </For>
                                             </Gtk.Box>
                                         </Gtk.Popover>
-                                    ) as unknown as Gtk.Popover
+                                    ) as any
                                 }
                             >
                                 <Gtk.Label
@@ -167,7 +167,7 @@ export default () => {
                                             stepIncrement={0.05}
                                             value={stream.volume}
                                         />
-                                    ) as unknown as Gtk.Adjustment
+                                    ) as any
                                 }
                                 onValueChanged={self =>
                                     mixer.setVolume(id, self.get_value())

@@ -147,9 +147,9 @@ export default class SoundAlertService extends Object {
         // ── Screen unlock — listen to ShellState ──
 
         this.#shellStateHandlerId = this.#shell.connect(
-            'notify::screenlocked',
-            () => {
-                if (!this.#shell.screenlocked) {
+            'notify',
+            (_source, pspec) => {
+                if (pspec.get_name() === 'screenlocked' && !this.#shell.screenlocked) {
                     this.play('screen-unlock');
                 }
             }

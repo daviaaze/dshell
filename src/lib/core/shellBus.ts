@@ -71,7 +71,7 @@ export default class ShellBus extends Object {
             ? () => void
             : (payload: ShellEventPayloads[E]) => void
     ): number {
-        return this.connect(event, fn as (...args: unknown[]) => void);
+        return (this as any).connect(event, fn);
     }
 
     /** Remove a listener by handler ID. */
@@ -95,7 +95,7 @@ export default class ShellBus extends Object {
         event: E,
         ...args: ShellEventPayloads[E] extends void ? [] : [ShellEventPayloads[E]]
     ) {
-        this.emit(event, ...args);
+        (this as any).emit(event, ...args);
         logger.debug(
             'shellBus',
             `fired: ${event}` +

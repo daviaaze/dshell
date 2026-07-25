@@ -65,7 +65,7 @@ export default (): QuickButton => {
                 </Gtk.Button>
             </LinkedBox>
         </Gtk.Popover>
-    ) as unknown as Gtk.Popover;
+    ) as any;
 
     return {
         widget: (
@@ -79,6 +79,6 @@ export default (): QuickButton => {
                 }}
                 popover={popover}
             />
-        ) as unknown as Gtk.Widget,
+        ) as any,
     };
 };

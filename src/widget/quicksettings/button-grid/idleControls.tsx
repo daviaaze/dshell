@@ -55,7 +55,7 @@ export default () => {
                                     stepIncrement={30}
                                     value={$idleTimeout}
                                 />
-                            ) as unknown as Gtk.Adjustment
+                            ) as any
                         }
                         onValueChanged={self =>
                             (hypridle.idleTimeout = self.get_value())
@@ -92,7 +92,7 @@ export default () => {
                                         'dimTimeout'
                                     )}
                                 />
-                            ) as unknown as Gtk.Adjustment
+                            ) as any
                         }
                         onValueChanged={self =>
                             (hypridle.dimTimeout = self.get_value())
@@ -107,7 +107,7 @@ export default () => {
                 </Gtk.Box>
             </Gtk.Box>
         </Gtk.Popover>
-    ) as unknown as Gtk.Popover;
+    ) as any;
 
     return (
         <QuickToggleButton

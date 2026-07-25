@@ -43,7 +43,7 @@ export default () => {
                 iconName: speakerIcon,
                 value: computed(() => audioCtrl.defaultSpeaker?.volume ?? 0),
             })}
-        /> as Gtk.Revealer,
+        /> as any,
         <Popup
             connectable={brightness}
             signals={['notify::screen']}
@@ -51,7 +51,7 @@ export default () => {
                 iconName: 'display-brightness-symbolic',
                 value: bind(brightness, 'screen'),
             })}
-        /> as Gtk.Revealer,
+        /> as any,
         <Popup
             connectable={brightness}
             signals={['notify::kbd']}
@@ -59,7 +59,7 @@ export default () => {
                 iconName: 'keyboard-brightness-symbolic',
                 value: computed(() => brightness.kbd),
             })}
-        /> as Gtk.Revealer,
+        /> as any,
         <Popup
             connectable={audioCtrl.defaultMicrophone}
             signals={['notify::volume', 'notify::mute']}
@@ -67,12 +67,12 @@ export default () => {
                 iconName: micIcon,
                 value: computed(() => audioCtrl.defaultMicrophone?.volume ?? 0),
             })}
-        /> as Gtk.Revealer,
+        /> as any,
         <Popup
             connectable={touchpad}
             signals={['toggled']}
             widget={<TouchpadOsd />}
-        /> as Gtk.Revealer,
+        /> as any,
     ];
 
     return (

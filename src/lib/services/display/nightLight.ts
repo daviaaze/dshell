@@ -22,7 +22,7 @@ export default class NightLight extends Object {
         super();
 
         this.#generalSettings = new Gio.Settings({
-            schema_id: `${import.meta.domain}.general`,
+            schemaId: `${import.meta.domain}.general`,
         });
     }
 

@@ -172,7 +172,7 @@ export class GreetSession extends Object {
     startSession(cmd: string[], env: string[] = []): void {
         if (!this.#greeter) return;
 
-        this.#greeter.start_session(cmd, env, (_g: Greet.Greeter, res: unknown) => {
+        this.#greeter.start_session(cmd, env, (_g: any, res: any) => {
             try {
                 this.#greeter!.start_session_finish(res);
                 // If start_session returns, the session is running.

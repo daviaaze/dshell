@@ -57,8 +57,7 @@ const NotificationContent = ({
                     });
                     timeouts.delete(id);
                 },
-                expireMs,
-                []
+                expireMs
             )
         );
     };

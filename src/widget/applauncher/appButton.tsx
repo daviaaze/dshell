@@ -68,7 +68,7 @@ export default ({
                         {textBox}
                     </Gtk.Box>
                 );
-                self.child = box as Gtk.Widget;
+                self.child = box as any;
             }}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             cssClasses={['app-button', appButtonStyle.class]}

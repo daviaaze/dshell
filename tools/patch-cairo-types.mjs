@@ -27,6 +27,9 @@ const filled = `interface Context {
                 showText(utf8: string): void
                 setLineWidth(width: number): void
                 setFontSize(size: number): void
+                setDash(dashes: number[], offset: number): void
+                setLineCap(lineCap: number): void
+                lineTo(x: number, y: number): void
                 textExtents(utf8: string): {
                     x_bearing: number
                     y_bearing: number

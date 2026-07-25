@@ -35,7 +35,7 @@ const DEBUG_SCHEMA_ID = import.meta.domain
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function formatTime(): string {
-    return GLib.DateTime.new_now_local().format('%H:%M:%S.%f') || '?';
+    return GLib.DateTime.new_now_local()!.format('%H:%M:%S.%f') || '?';
 }
 
 function shouldLog(level: LogLevel, category?: string): boolean {

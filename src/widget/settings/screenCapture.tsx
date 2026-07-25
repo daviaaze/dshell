@@ -231,7 +231,7 @@ export default () => {
                                 stepIncrement={1}
                                 value={settings.virtualMonitorFps}
                             />
-                        ) as unknown as Gtk.Adjustment
+                        ) as any
                     }
                     onNotifyValue={self =>
                         settings.setVirtualMonitorFps(self.value)

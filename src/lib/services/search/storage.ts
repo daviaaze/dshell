@@ -42,7 +42,7 @@ export class FrecencyStorage {
 
     constructor() {
         try {
-            this.#settings = new Gio.Settings({schema_id: SCHEMA_ID});
+            this.#settings = new Gio.Settings({schemaId: SCHEMA_ID});
         } catch {
             logger.warn('frecency', `GSettings schema ${SCHEMA_ID} not found, using in-memory only`);
         }

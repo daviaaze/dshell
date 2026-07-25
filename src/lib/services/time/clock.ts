@@ -19,12 +19,12 @@ export default class Clock {
     #setTime: (v: GLib.DateTime) => void;
 
     constructor() {
-        const [time, setTime] = createState(GLib.DateTime.new_now_local());
+        const [time, setTime] = createState(GLib.DateTime.new_now_local()!);
         this.#time = time;
         this.#setTime = setTime;
 
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-            this.#setTime(GLib.DateTime.new_now_local());
+            this.#setTime(GLib.DateTime.new_now_local()!);
             return GLib.SOURCE_CONTINUE;
         });
     }

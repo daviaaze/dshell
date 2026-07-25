@@ -17,7 +17,7 @@ export interface LockscreenWidgetDef {
     id: string;
     position: 'center' | 'end';
     priority: number;
-    render: () => JSX.Element;
+    render: () => any;
 }
 
 // ── Registry ────────────────────────────────────────────────────

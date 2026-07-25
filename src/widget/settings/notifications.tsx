@@ -32,7 +32,7 @@ export default () => {
                                 stepIncrement={10}
                                 value={settings.notificationHistoryLimit}
                             />
-                        ) as unknown as Gtk.Adjustment
+                        ) as any
                     }
                     onNotifyValue={self =>
                         settings.setNotificationHistoryLimit(self.value)
