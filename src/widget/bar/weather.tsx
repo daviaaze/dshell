@@ -46,14 +46,8 @@ export const WeatherButton = ({
                 )}
                 spacing={4}
             >
-                <Gtk.Image
-                    pixelSize={22}
-                    iconName={iconName}
-                />
-                <Gtk.Label
-                    cssClasses={['heading']}
-                    label={tempLabel}
-                />
+                <Gtk.Image pixelSize={22} iconName={iconName} />
+                <Gtk.Label cssClasses={['heading']} label={tempLabel} />
             </Gtk.Box>
         </Gtk.MenuButton>
     );

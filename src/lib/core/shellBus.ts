@@ -93,7 +93,9 @@ export default class ShellBus extends Object {
      */
     fire<E extends ShellEventName>(
         event: E,
-        ...args: ShellEventPayloads[E] extends void ? [] : [ShellEventPayloads[E]]
+        ...args: ShellEventPayloads[E] extends void
+            ? []
+            : [ShellEventPayloads[E]]
     ) {
         (this as any).emit(event, ...args);
         logger.debug(

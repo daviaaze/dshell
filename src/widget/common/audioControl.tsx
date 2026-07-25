@@ -121,14 +121,17 @@ export const AudioEndpointControl = ({
                                 icon={getVolumeIcon(device, mutedIcon)}
                                 min={0}
                                 max={100}
-                                value={bind(device, 'volume').as(
-                                    v => v * 100
-                                )}
+                                value={bind(device, 'volume').as(v => v * 100)}
                                 setValue={value =>
-                                    AudioController.get_default().setVolume(device, value / 100)
+                                    AudioController.get_default().setVolume(
+                                        device,
+                                        value / 100
+                                    )
                                 }
                                 onIconClick={() =>
-                                    AudioController.get_default().toggleMute(device)
+                                    AudioController.get_default().toggleMute(
+                                        device
+                                    )
                                 }
                             />
                         ) : null

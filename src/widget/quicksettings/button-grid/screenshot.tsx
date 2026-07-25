@@ -13,7 +13,8 @@ export default (): QuickButton => {
 
     // Dismiss the popover and run `fn` shortly after, so the selector/overlay
     // that follows gets a clean input grab instead of fighting the popover.
-    const dismissAnd = (fn: () => void, delay = 150) =>
+    const dismissAnd =
+        (fn: () => void, delay = 150) =>
         (btn: Gtk.Button) => {
             const root = btn.get_root();
             if (root instanceof Gtk.Popover) root.popdown();
@@ -40,7 +41,11 @@ export default (): QuickButton => {
                             label="Fullscreen"
                         />
                     </Gtk.Button>
-                    <Gtk.Button onClicked={dismissAnd(() => screenshot.screenshot(false))}>
+                    <Gtk.Button
+                        onClicked={dismissAnd(() =>
+                            screenshot.screenshot(false)
+                        )}
+                    >
                         <Adw.ButtonContent
                             iconName="selection-mode-symbolic"
                             label="Area"
@@ -63,14 +68,18 @@ export default (): QuickButton => {
                             label="Fullscreen"
                         />
                     </Gtk.Button>
-                    <Gtk.Button onClicked={dismissAnd(() => screenshot.recordArea())}>
+                    <Gtk.Button
+                        onClicked={dismissAnd(() => screenshot.recordArea())}
+                    >
                         <Adw.ButtonContent
                             iconName="selection-mode-symbolic"
                             label="Area"
                         />
                     </Gtk.Button>
                     <Gtk.Button
-                        onClicked={dismissAnd(() => screenshot.recordOutputVisual())}
+                        onClicked={dismissAnd(() =>
+                            screenshot.recordOutputVisual()
+                        )}
                     >
                         <Adw.ButtonContent
                             iconName="video-display-symbolic"
@@ -78,7 +87,9 @@ export default (): QuickButton => {
                         />
                     </Gtk.Button>
                     <Gtk.Button
-                        onClicked={dismissAnd(() => screenshot.recordWindowVisual())}
+                        onClicked={dismissAnd(() =>
+                            screenshot.recordWindowVisual()
+                        )}
                     >
                         <Adw.ButtonContent
                             iconName="focus-windows-symbolic"
@@ -131,18 +142,15 @@ export default (): QuickButton => {
                     }}
                 >
                     <Adw.ButtonContent
-                        iconName={bind(
-                            screenshot,
-                            'virtualMonitorActive'
-                        ).as(active =>
-                            active
-                                ? 'user-trash-symbolic'
-                                : 'video-display-symbolic'
+                        iconName={bind(screenshot, 'virtualMonitorActive').as(
+                            active =>
+                                active
+                                    ? 'user-trash-symbolic'
+                                    : 'video-display-symbolic'
                         )}
-                        label={bind(
-                            screenshot,
-                            'virtualMonitorActive'
-                        ).as(active => (active ? 'Remove VM' : 'Add VM'))}
+                        label={bind(screenshot, 'virtualMonitorActive').as(
+                            active => (active ? 'Remove VM' : 'Add VM')
+                        )}
                     />
                 </Gtk.Button>
             </Gtk.Box>
@@ -153,7 +161,9 @@ export default (): QuickButton => {
         widget: (
             <QuickToggleButton
                 icon={bind(screenshot, 'recording').as(rec =>
-                    rec ? 'media-playback-stop-symbolic' : 'camera-video-symbolic'
+                    rec
+                        ? 'media-playback-stop-symbolic'
+                        : 'camera-video-symbolic'
                 )}
                 label={bind(screenshot, 'recording').as(rec =>
                     rec ? 'Stop' : 'Record'

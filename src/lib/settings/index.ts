@@ -1,7 +1,13 @@
 import Gio from 'gi://Gio';
 import {createSettings, Schema} from 'gnim/schema';
 import {createContext} from 'gnim';
-import {barSchema, generalSchema, weatherSchema, timerSchema, screenCaptureSchema} from './schema';
+import {
+    barSchema,
+    generalSchema,
+    weatherSchema,
+    timerSchema,
+    screenCaptureSchema,
+} from './schema';
 
 // ── Helper: create a settings group from a schema ──
 

@@ -89,7 +89,9 @@ export default () => {
                 description={'Quick timer presets in minutes'}
             >
                 <Adw.EntryRow
-                    title={'Add Preset (Enter duration in minutes, e.g. 1, 5, 10)'}
+                    title={
+                        'Add Preset (Enter duration in minutes, e.g. 1, 5, 10)'
+                    }
                     showApplyButton
                     onApply={self => {
                         const value = parseInt(self.text.trim(), 10);
@@ -105,7 +107,8 @@ export default () => {
                 />
                 <Adw.ActionRow
                     title={'Presets'}
-                    subtitle={(settings.countdownPresets())
+                    subtitle={settings
+                        .countdownPresets()
                         .map(m => `${m}m`)
                         .join(', ')}
                 >
@@ -115,7 +118,9 @@ export default () => {
                         iconName="edit-clear-all-symbolic"
                         tooltipText="Reset to defaults"
                         onClicked={() =>
-                            settings.setCountdownPresets(DEFAULT_COUNTDOWN_PRESETS)
+                            settings.setCountdownPresets(
+                                DEFAULT_COUNTDOWN_PRESETS
+                            )
                         }
                     />
                 </Adw.ActionRow>

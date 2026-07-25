@@ -5,7 +5,8 @@ import {readFile} from '#/lib/core/file';
 import {Process} from '#/lib/core/process';
 import {Accessor, createState} from 'gnim';
 
-const PATH = '/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode';
+const PATH =
+    '/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode';
 
 /**
  * Check if the sysfs file exists and is readable.
@@ -26,7 +27,11 @@ function isWritable(): boolean {
     try {
         const file = Gio.File.new_for_path(PATH);
         if (!file.query_exists(null)) return false;
-        const info = file.query_info('access::can-write', Gio.FileQueryInfoFlags.NONE, null);
+        const info = file.query_info(
+            'access::can-write',
+            Gio.FileQueryInfoFlags.NONE,
+            null
+        );
         return info.get_attribute_boolean('access::can-write');
     } catch {
         return false;
@@ -85,7 +90,11 @@ export const toggleConservationAsync = async (): Promise<boolean> => {
         await Process.pkexecAsync(`shade-conservation-toggle ${value}`);
         return true;
     } catch (err) {
-        logger.error('battery', 'Failed to toggle conservation via pkexec:', err);
+        logger.error(
+            'battery',
+            'Failed to toggle conservation via pkexec:',
+            err
+        );
         return false;
     }
 };

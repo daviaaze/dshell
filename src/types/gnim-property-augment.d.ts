@@ -28,6 +28,10 @@ declare module 'gnim/gobject' {
             | NumberConstructor
             | ObjectConstructor
             | ArrayConstructor
-            | typeof GObjectObject,
-    ): (proto: GObjectObject, name: string, value?: TypedPropertyDescriptor<any>) => void;
+            | typeof GObjectObject
+    ): (
+        proto: GObjectObject,
+        name: string,
+        value?: TypedPropertyDescriptor<any>
+    ) => void;
 }

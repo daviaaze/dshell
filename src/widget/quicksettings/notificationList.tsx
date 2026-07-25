@@ -9,7 +9,7 @@ import NotificationHistory from '#/lib/services/notifications/history';
 import DndService from '#/lib/services/notifications/dnd';
 import {getNotifdSafe} from '#/lib/services/notifications/guard';
 import type {HistoryEntry} from '#/lib/services/notifications/history';
-import { useSettings } from '#/lib/settings';
+import {useSettings} from '#/lib/settings';
 
 /**
  * Inner content component — only mounted once Notifd is initialized.
@@ -31,7 +31,6 @@ const NotificationListContent = ({
 }) => {
     const dnd = DndService.get_default();
 
-
     const clearNotifications = () => {
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             const notifs = notifd.get_notifications();
@@ -39,9 +38,8 @@ const NotificationListContent = ({
                 n.dismiss();
             }
             return GLib.SOURCE_REMOVE;
-        })
+        });
     };
-
 
     const Header = () => {
         const DNDButton = () => (
@@ -212,17 +210,11 @@ const NotificationListContent = ({
                         onClicked={() => history.clear()}
                     />
                 </Gtk.Box>
-                <For
-                    each={bind(history, 'history').as(h =>
-                        h.slice(0, 20)
-                    )}
-                >
+                <For each={bind(history, 'history').as(h => h.slice(0, 20))}>
                     {(entry: HistoryEntry) => <HistoryItem entry={entry} />}
                 </For>
                 <Adw.StatusPage
-                    visible={bind(history, 'history').as(
-                        h => h.length === 0
-                    )}
+                    visible={bind(history, 'history').as(h => h.length === 0)}
                     vexpand
                     cssClasses={['compact']}
                     title="No History"

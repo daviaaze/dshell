@@ -21,15 +21,15 @@ export default () => {
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
-                            settings.setRecorderBackend(
-                                Number(self.activeName)
-                            )
+                            settings.setRecorderBackend(Number(self.activeName))
                         }
                         ref={self => {
                             const v = settings.recorderBackend.peek();
                             self.activeName = String(v ?? 2);
                             settings.recorderBackend.subscribe(() => {
-                                self.activeName = String(settings.recorderBackend.peek());
+                                self.activeName = String(
+                                    settings.recorderBackend.peek()
+                                );
                             });
                         }}
                     >
@@ -57,15 +57,15 @@ export default () => {
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
-                            settings.setRecordingFormat(
-                                Number(self.activeName)
-                            )
+                            settings.setRecordingFormat(Number(self.activeName))
                         }
                         ref={self => {
                             const v = settings.recordingFormat.peek();
                             self.activeName = String(v ?? 0);
                             settings.recordingFormat.subscribe(() => {
-                                self.activeName = String(settings.recordingFormat.peek());
+                                self.activeName = String(
+                                    settings.recordingFormat.peek()
+                                );
                             });
                         }}
                     >
@@ -96,7 +96,9 @@ export default () => {
                             const v = settings.recordingQuality.peek();
                             self.activeName = String(v ?? 1);
                             settings.recordingQuality.subscribe(() => {
-                                self.activeName = String(settings.recordingQuality.peek());
+                                self.activeName = String(
+                                    settings.recordingQuality.peek()
+                                );
                             });
                         }}
                     >
@@ -134,7 +136,9 @@ export default () => {
                             const v = settings.screenshotFormat.peek();
                             self.activeName = String(v ?? 0);
                             settings.screenshotFormat.subscribe(() => {
-                                self.activeName = String(settings.screenshotFormat.peek());
+                                self.activeName = String(
+                                    settings.screenshotFormat.peek()
+                                );
                             });
                         }}
                     >

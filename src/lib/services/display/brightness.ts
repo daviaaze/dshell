@@ -42,7 +42,6 @@ export default class Brightness extends Object {
         return this.#screenDev?.brightness ?? 0;
     }
 
-    
     set screen(value: number) {
         const dev = this.#screenDev;
         if (dev) dev.brightness = Math.max(0, Math.min(1, value));
@@ -54,7 +53,6 @@ export default class Brightness extends Object {
         return this.#kbdDev?.brightness ?? 0;
     }
 
-    
     set kbd(value: number) {
         const dev = this.#kbdDev;
         if (dev) dev.brightness = Math.max(0, Math.min(1, value));
@@ -80,11 +78,17 @@ export default class Brightness extends Object {
             // Forward property notifications from the Device objects.
             // Device.brightness fires notify::brightness when the percentage changes.
             screenDev?.connect('notify::brightness', () => {
-                logger.info('brightness', `notify::brightness on screen → ${screenDev.brightness.toFixed(3)}`);
+                logger.info(
+                    'brightness',
+                    `notify::brightness on screen → ${screenDev.brightness.toFixed(3)}`
+                );
                 this.notify('screen');
             });
             kbdDev?.connect('notify::brightness', () => {
-                logger.info('brightness', `notify::brightness on keyboard → ${kbdDev.brightness.toFixed(3)}`);
+                logger.info(
+                    'brightness',
+                    `notify::brightness on keyboard → ${kbdDev.brightness.toFixed(3)}`
+                );
                 this.notify('kbd');
             });
 
@@ -104,7 +108,11 @@ export default class Brightness extends Object {
             this.notify('screen');
             this.notify('kbd');
         } catch (e) {
-            logger.error('brightness', 'failed to initialize AstalBrightness:', e);
+            logger.error(
+                'brightness',
+                'failed to initialize AstalBrightness:',
+                e
+            );
         }
     }
 

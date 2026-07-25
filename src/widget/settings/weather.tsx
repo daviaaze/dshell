@@ -46,7 +46,10 @@ export default () => {
                 title={'Detect Location Now'}
                 activatable
                 onActivated={() => {
-                    logger.info('weather', 'manual location detection triggered');
+                    logger.info(
+                        'weather',
+                        'manual location detection triggered'
+                    );
                     weather.detectLocation();
                 }}
             >

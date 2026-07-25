@@ -32,7 +32,9 @@ export const SBOX = [
 ];
 
 // Round constants for key expansion
-export const RCON = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
+export const RCON = [
+    0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36,
+];
 
 // ── Utility functions ───────────────────────────────────────────────────────
 
@@ -45,7 +47,13 @@ export function xor(a: Uint8Array, b: Uint8Array): Uint8Array {
 
 /** Convert 4 big-endian bytes to a 32-bit integer. */
 export function toWord(b: Uint8Array, off: number): number {
-    return ((b[off]! << 24) | (b[off + 1]! << 16) | (b[off + 2]! << 8) | b[off + 3]!) >>> 0;
+    return (
+        ((b[off]! << 24) |
+            (b[off + 1]! << 16) |
+            (b[off + 2]! << 8) |
+            b[off + 3]!) >>>
+        0
+    );
 }
 
 /** Galois Field multiply by 2 in GF(2^8) for MixColumns. */
@@ -70,14 +78,22 @@ export function padTo16(data: Uint8Array): Uint8Array {
 /** Create a 16-byte length block for GCM (big-endian 64-bit aLen || cLen). */
 export function lenBlock(aLen: number, cLen: number): Uint8Array {
     const block = new Uint8Array(16);
-    block[0] = (aLen >>> 56) & 0xff;  block[1] = (aLen >>> 48) & 0xff;
-    block[2] = (aLen >>> 40) & 0xff;  block[3] = (aLen >>> 32) & 0xff;
-    block[4] = (aLen >>> 24) & 0xff;  block[5] = (aLen >>> 16) & 0xff;
-    block[6] = (aLen >>> 8) & 0xff;   block[7] = aLen & 0xff;
-    block[8] = (cLen >>> 56) & 0xff;  block[9] = (cLen >>> 48) & 0xff;
-    block[10] = (cLen >>> 40) & 0xff; block[11] = (cLen >>> 32) & 0xff;
-    block[12] = (cLen >>> 24) & 0xff; block[13] = (cLen >>> 16) & 0xff;
-    block[14] = (cLen >>> 8) & 0xff;  block[15] = cLen & 0xff;
+    block[0] = (aLen >>> 56) & 0xff;
+    block[1] = (aLen >>> 48) & 0xff;
+    block[2] = (aLen >>> 40) & 0xff;
+    block[3] = (aLen >>> 32) & 0xff;
+    block[4] = (aLen >>> 24) & 0xff;
+    block[5] = (aLen >>> 16) & 0xff;
+    block[6] = (aLen >>> 8) & 0xff;
+    block[7] = aLen & 0xff;
+    block[8] = (cLen >>> 56) & 0xff;
+    block[9] = (cLen >>> 48) & 0xff;
+    block[10] = (cLen >>> 40) & 0xff;
+    block[11] = (cLen >>> 32) & 0xff;
+    block[12] = (cLen >>> 24) & 0xff;
+    block[13] = (cLen >>> 16) & 0xff;
+    block[14] = (cLen >>> 8) & 0xff;
+    block[15] = cLen & 0xff;
     return block;
 }
 
@@ -86,8 +102,10 @@ export function incCounter(counter: Uint8Array): Uint8Array {
     const inc = new Uint8Array(counter);
     let c = (inc[12]! << 24) | (inc[13]! << 16) | (inc[14]! << 8) | inc[15]!;
     c = (c + 1) & 0xffffffff;
-    inc[12] = (c >>> 24) & 0xff; inc[13] = (c >>> 16) & 0xff;
-    inc[14] = (c >>> 8) & 0xff;  inc[15] = c & 0xff;
+    inc[12] = (c >>> 24) & 0xff;
+    inc[13] = (c >>> 16) & 0xff;
+    inc[14] = (c >>> 8) & 0xff;
+    inc[15] = c & 0xff;
     return inc;
 }
 
@@ -109,12 +127,15 @@ export function gcmInitCounter(h: Uint8Array, nonce: Uint8Array): Uint8Array {
 
 /** Convert Uint8Array to hex string. */
 export function bytesToHex(bytes: Uint8Array): string {
-    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(bytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
 }
 
 /** Convert hex string to Uint8Array. */
 export function hexToBytes(hex: string): Uint8Array {
     const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    for (let i = 0; i < hex.length; i += 2)
+        bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
     return bytes;
 }

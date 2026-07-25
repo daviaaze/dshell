@@ -289,7 +289,8 @@ export const generalSchema = new Schema({
     })
     .key('experimental-wayland-monitors', 'b', {
         default: false,
-        summary: 'Use AstalWl for Wayland-native monitor tracking (experimental)',
+        summary:
+            'Use AstalWl for Wayland-native monitor tracking (experimental)',
         description:
             'When enabled, replaces Gdk.Monitor tracking with AstalWl.Output for ' +
             'Wayland-native monitor enumeration. The monitors array and all widget ' +
@@ -314,7 +315,8 @@ export const screenCaptureSchema = new Schema({
 })
     .key('recorder-backend', 'i', {
         default: 2,
-        summary: 'Recording backend (0 = wl-screenrec, 1 = wf-recorder, 2 = auto)',
+        summary:
+            'Recording backend (0 = wl-screenrec, 1 = wf-recorder, 2 = auto)',
     })
     .key('recording-format', 'i', {
         default: 0,
@@ -350,7 +352,8 @@ export const screenCaptureSchema = new Schema({
     })
     .key('audio-input-id', 'i', {
         default: -1,
-        summary: 'PipeWire node ID for recording audio input (-1 = system default)',
+        summary:
+            'PipeWire node ID for recording audio input (-1 = system default)',
     })
     .key('recording-quality', 'i', {
         default: 1,

@@ -34,11 +34,19 @@
    SPACING UTILITIES
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.p-8 { padding: 8px; }
-.p-12 { padding: 12px; }
+.p-8 {
+    padding: 8px;
+}
+.p-12 {
+    padding: 12px;
+}
 
-.popover-padded { margin: 8px; }
-.popover-padded-lg { margin: 12px; }
+.popover-padded {
+    margin: 8px;
+}
+.popover-padded-lg {
+    margin: 12px;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TYPOGRAPHY

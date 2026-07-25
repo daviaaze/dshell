@@ -148,9 +148,7 @@ export default (props: PopupWindowProps) => {
 
     // Resolve visible as accessor for the binding
     const visibleAccessor: Accessor<boolean> =
-        typeof visible === 'function'
-            ? visible
-            : createState(visible)[0];
+        typeof visible === 'function' ? visible : createState(visible)[0];
 
     return (
         <Astal.Window
@@ -173,14 +171,17 @@ export default (props: PopupWindowProps) => {
         >
             <Gtk.EventControllerKey
                 ref={self => {
-                    self.connect('key-pressed', (_ctrl, keyval, _keycode, _state) => {
-                        if (keyval === Gdk.KEY_Escape) {
-                            // Toggle visible off via the accessor mechanism
-                            if (onClose) onClose();
-                            return true;
+                    self.connect(
+                        'key-pressed',
+                        (_ctrl, keyval, _keycode, _state) => {
+                            if (keyval === Gdk.KEY_Escape) {
+                                // Toggle visible off via the accessor mechanism
+                                if (onClose) onClose();
+                                return true;
+                            }
+                            return false;
                         }
-                        return false;
-                    });
+                    );
                 }}
             />
             {children}

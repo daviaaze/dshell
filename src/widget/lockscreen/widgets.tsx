@@ -76,7 +76,9 @@ const MediaPlayerWidget = () => {
         >
             <Gtk.Image
                 visible={bind(mc, 'activeCoverArt').as(u => u.length > 0)}
-                css={'min-width: 32px; min-height: 32px; border-radius: calc(var(--shade-radius) / 2);'}
+                css={
+                    'min-width: 32px; min-height: 32px; border-radius: calc(var(--shade-radius) / 2);'
+                }
                 file={bind(mc, 'activeCoverArt')}
             />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={2}>

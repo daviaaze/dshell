@@ -24,13 +24,8 @@ function streamFromPwItem(item: any): AudioStream | null {
     return {
         id: item.id,
         name: props['node.name'] || 'Unknown',
-        appName:
-            props['application.name'] ||
-            props['node.name'] ||
-            'Unknown',
-        iconName:
-            props['application.icon-name'] ||
-            'audio-x-generic-symbolic',
+        appName: props['application.name'] || props['node.name'] || 'Unknown',
+        iconName: props['application.icon-name'] || 'audio-x-generic-symbolic',
         volume: streamProps.volume ?? 1.0,
         muted: streamProps.mute ?? false,
         targetNode: null,
@@ -45,7 +40,10 @@ function parseAudioStreams(
     if (!pwDump.trim()) {
         // Empty output — PipeWire may not be running.
         // Log at debug to avoid spamming every 2s.
-        logger.debug('audio', `${errorLabel}: pw-dump returned empty (PipeWire not running?)`);
+        logger.debug(
+            'audio',
+            `${errorLabel}: pw-dump returned empty (PipeWire not running?)`
+        );
         return [];
     }
     try {

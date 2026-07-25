@@ -42,7 +42,10 @@ export async function createVirtualMonitor(
         }
 
         if (!vmon) {
-            logger.error('screenshot', 'failed to find created virtual monitor');
+            logger.error(
+                'screenshot',
+                'failed to find created virtual monitor'
+            );
             notify(
                 'Virtual monitor',
                 'Hyprland did not register the headless output.',

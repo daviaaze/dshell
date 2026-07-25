@@ -19,7 +19,6 @@ export default class RecordingPrefs extends Object {
         return this.#audio;
     }
 
-    
     set audio(value: boolean) {
         if (this.#audio === value) return;
         this.#audio = value;
@@ -31,7 +30,6 @@ export default class RecordingPrefs extends Object {
         return this.#selectedAudioInput;
     }
 
-    
     set selectedAudioInput(value: number) {
         if (this.#selectedAudioInput === value) return;
         this.#selectedAudioInput = value;
@@ -57,7 +55,6 @@ export default class RecordingPrefs extends Object {
         return this.#recordingQuality;
     }
 
-    
     set recordingQuality(value: number) {
         if (this.#recordingQuality === value) return;
         this.#recordingQuality = value;
@@ -69,7 +66,6 @@ export default class RecordingPrefs extends Object {
         return this.#previewThumbnails;
     }
 
-    
     set previewThumbnails(value: boolean) {
         if (this.#previewThumbnails === value) return;
         this.#previewThumbnails = value;

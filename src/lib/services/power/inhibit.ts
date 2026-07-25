@@ -48,13 +48,12 @@ export default class Inhibit extends Object {
         this.idle = true;
     }
 
-    
     set idle(state) {
         if (state === this.#idle) return;
         this.#idle = state;
         logger.info(
             'inhibit',
-            `idle ${state ? 'enabled' : 'disabled'}${state && this.#duration > 0 ? ' (' + (this.#duration / 60000) + 'min)' : ''}`
+            `idle ${state ? 'enabled' : 'disabled'}${state && this.#duration > 0 ? ' (' + this.#duration / 60000 + 'min)' : ''}`
         );
         if (state) {
             if (this.#cookie !== 0) this.#app?.uninhibit(this.#cookie);

@@ -92,15 +92,11 @@ export default class NetworkService extends Object {
                 this.notify('wifi-state');
             };
 
-            this.#wifiSignalIds.push(
-                w.connect('notify::state', onPropChanged)
-            );
+            this.#wifiSignalIds.push(w.connect('notify::state', onPropChanged));
             this.#wifiSignalIds.push(
                 w.connect('notify::strength', onPropChanged)
             );
-            this.#wifiSignalIds.push(
-                w.connect('notify::ssid', onPropChanged)
-            );
+            this.#wifiSignalIds.push(w.connect('notify::ssid', onPropChanged));
             this.#wifiSignalIds.push(
                 w.connect('notify::enabled', onPropChanged)
             );

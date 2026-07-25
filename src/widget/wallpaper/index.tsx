@@ -33,7 +33,6 @@ export const Wallpaper = () => {
                                 self
                             );
                             self.close();
-                            
                         });
                     }}
                     gdkmonitor={monitor}

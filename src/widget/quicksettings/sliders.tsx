@@ -26,9 +26,7 @@ function createEndpointConfig(cfg: EndpointConfig) {
 
         return (
             <AudioEndpointControl
-                visible={bind(audioCtrl, cfg.devicesProp).as(
-                    s => s.length > 0
-                )}
+                visible={bind(audioCtrl, cfg.devicesProp).as(s => s.length > 0)}
                 defaultDevice={bind(audioCtrl, cfg.defaultProp)}
                 devices={bind(audioCtrl, cfg.devicesProp)}
                 mutedIcon={cfg.mutedIcon}
@@ -72,9 +70,7 @@ export const BrightnessSlider = () => {
             icon={'display-brightness-symbolic'}
             min={BRIGHTNESS_PCT_MIN}
             max={BRIGHTNESS_PCT_MAX}
-            value={bind(brightness, 'screen').as(
-                v => v * BRIGHTNESS_PCT_MAX
-            )}
+            value={bind(brightness, 'screen').as(v => v * BRIGHTNESS_PCT_MAX)}
             setValue={value =>
                 brightness.set({screen: value / BRIGHTNESS_PCT_MAX})
             }

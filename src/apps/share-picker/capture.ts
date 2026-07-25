@@ -19,7 +19,11 @@ export const POLL_INTERVAL_MS = 200;
 // ── Temp files ───────────────────────────────────────────────────
 
 export function ensureTempDir(): void {
-    try { GLib.mkdir_with_parents(TEMP_DIR, 0o755); } catch { /* ignore */ }
+    try {
+        GLib.mkdir_with_parents(TEMP_DIR, 0o755);
+    } catch {
+        /* ignore */
+    }
 }
 
 export function monPath(name: string): string {
@@ -34,7 +38,11 @@ export function winPath(addr: string): string {
 export function cleanTempDir(): void {
     try {
         const dir = Gio.File.new_for_path(TEMP_DIR);
-        const enumerator = dir.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
+        const enumerator = dir.enumerate_children(
+            'standard::name',
+            Gio.FileQueryInfoFlags.NONE,
+            null
+        );
         let info = enumerator.next_file(null);
         while (info) {
             const child = dir.get_child(info.get_name());
@@ -57,7 +65,11 @@ export function runCaptureSync(cmd: string[]): boolean {
         );
         const [, , err] = proc.communicate_utf8(null, null);
         if (!proc.get_successful()) {
-            logger.error(CAT, `runCaptureSync: ${cmd.join(' ')}`, err?.trim() || '(no stderr)');
+            logger.error(
+                CAT,
+                `runCaptureSync: ${cmd.join(' ')}`,
+                err?.trim() || '(no stderr)'
+            );
             return false;
         }
         return true;
@@ -106,7 +118,10 @@ export function loadTexture(path: string, picture: Gtk.Picture): void {
 function loadTextureAll(path: string, pictures: Gtk.Picture[]): void {
     if (pictures.length === 0) return;
     const exists = GLib.file_test(path, GLib.FileTest.EXISTS);
-    logger.debug(CAT, `loadTextureAll ${path} exists=${exists} count=${pictures.length}`);
+    logger.debug(
+        CAT,
+        `loadTextureAll ${path} exists=${exists} count=${pictures.length}`
+    );
     if (exists) {
         try {
             const tex = Gdk.Texture.new_from_filename(path);
@@ -124,23 +139,38 @@ function loadTextureAll(path: string, pictures: Gtk.Picture[]): void {
 /** Synchronous monitor capture — blocks until done. For initial renders. */
 export function captureMonitorSync(
     state: MonitorState,
-    pictures: Gtk.Picture[],
+    pictures: Gtk.Picture[]
 ): boolean {
     const path = monPath(state.info.name);
     logger.debug(CAT, `captureMonitorSync ${state.info.name} -> ${path}`);
-    const ok = runCaptureSync([GRIM_BIN, '-s', '0.25', '-o', state.info.name, path]);
+    const ok = runCaptureSync([
+        GRIM_BIN,
+        '-s',
+        '0.25',
+        '-o',
+        state.info.name,
+        path,
+    ]);
     logger.debug(CAT, `captureMonitorSync ${state.info.name} ok=${ok}`);
     if (ok) {
         try {
             state.texture = Gdk.Texture.new_from_filename(path);
         } catch (e) {
-            logger.error(CAT, `captureMonitorSync: Gdk.Texture.new_from_filename ${path}`, e);
+            logger.error(
+                CAT,
+                `captureMonitorSync: Gdk.Texture.new_from_filename ${path}`,
+                e
+            );
         }
         for (const pic of pictures) {
             try {
                 pic.set_paintable(Gdk.Texture.new_from_filename(path));
             } catch (e) {
-                logger.error(CAT, `captureMonitorSync: pic.set_paintable ${path}`, e);
+                logger.error(
+                    CAT,
+                    `captureMonitorSync: pic.set_paintable ${path}`,
+                    e
+                );
             }
         }
     }
@@ -150,27 +180,38 @@ export function captureMonitorSync(
 /** Synchronous window capture — blocks until done. For initial renders. */
 export function captureWindowSync(
     state: WindowState,
-    pictures: Gtk.Picture[],
+    pictures: Gtk.Picture[]
 ): boolean {
     if (!state.geometry) return false;
     const g = state.geometry;
     const addr = windowAddr(state);
     const path = winPath(addr);
     const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
-    logger.debug(CAT, `captureWindowSync addr=${addr} geometry=${geometry} -> ${path}`);
+    logger.debug(
+        CAT,
+        `captureWindowSync addr=${addr} geometry=${geometry} -> ${path}`
+    );
     const ok = runCaptureSync([GRIM_BIN, '-s', '0.25', '-g', geometry, path]);
     logger.debug(CAT, `captureWindowSync ${addr} ok=${ok}`);
     if (ok) {
         try {
             state.texture = Gdk.Texture.new_from_filename(path);
         } catch (e) {
-            logger.error(CAT, `captureWindowSync: Gdk.Texture.new_from_filename ${path}`, e);
+            logger.error(
+                CAT,
+                `captureWindowSync: Gdk.Texture.new_from_filename ${path}`,
+                e
+            );
         }
         for (const pic of pictures) {
             try {
                 pic.set_paintable(Gdk.Texture.new_from_filename(path));
             } catch (e) {
-                logger.error(CAT, `captureWindowSync: pic.set_paintable ${path}`, e);
+                logger.error(
+                    CAT,
+                    `captureWindowSync: pic.set_paintable ${path}`,
+                    e
+                );
             }
         }
     }
@@ -179,7 +220,7 @@ export function captureWindowSync(
 
 export function captureMonitor(
     state: MonitorState,
-    pictures: Gtk.Picture[],
+    pictures: Gtk.Picture[]
 ): void {
     if (state.capturing) return;
     state.capturing = true;
@@ -192,7 +233,11 @@ export function captureMonitor(
             try {
                 state.texture = Gdk.Texture.new_from_filename(path);
             } catch (e) {
-                logger.error(CAT, `captureMonitor: Gdk.Texture.new_from_filename ${path}`, e);
+                logger.error(
+                    CAT,
+                    `captureMonitor: Gdk.Texture.new_from_filename ${path}`,
+                    e
+                );
             }
             loadTextureAll(path, pictures);
         }
@@ -206,7 +251,7 @@ export function windowAddr(state: WindowState): string {
 
 export function captureWindow(
     state: WindowState,
-    pictures: Gtk.Picture[],
+    pictures: Gtk.Picture[]
 ): void {
     if (!state.geometry || state.capturing) return;
     state.capturing = true;
@@ -214,7 +259,10 @@ export function captureWindow(
     const addr = windowAddr(state);
     const path = winPath(addr);
     const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
-    logger.debug(CAT, `captureWindow addr=${addr} geometry=${geometry} -> ${path}`);
+    logger.debug(
+        CAT,
+        `captureWindow addr=${addr} geometry=${geometry} -> ${path}`
+    );
     runCapture([GRIM_BIN, '-s', '0.25', '-g', geometry, path], ok => {
         state.capturing = false;
         logger.debug(CAT, `captureWindow ${addr} ok=${ok}`);
@@ -222,7 +270,11 @@ export function captureWindow(
             try {
                 state.texture = Gdk.Texture.new_from_filename(path);
             } catch (e) {
-                logger.error(CAT, `captureWindow: Gdk.Texture.new_from_filename ${path}`, e);
+                logger.error(
+                    CAT,
+                    `captureWindow: Gdk.Texture.new_from_filename ${path}`,
+                    e
+                );
             }
             loadTextureAll(path, pictures);
         }

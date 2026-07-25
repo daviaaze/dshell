@@ -163,7 +163,9 @@ export default class NotificationHistory extends Object {
             if (notifd) {
                 try {
                     notifd.disconnect(this.#notifdHandlerId);
-                } catch { /* ignore */ }
+                } catch {
+                    /* ignore */
+                }
             }
             this.#notifdHandlerId = 0;
         }

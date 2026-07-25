@@ -3,7 +3,11 @@ import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {onCleanup} from 'gnim';
 import {useSettings} from '#/lib/settings';
-import {getAppList, exactQuery, launchDesktopFile} from '#/lib/services/state/apps';
+import {
+    getAppList,
+    exactQuery,
+    launchDesktopFile,
+} from '#/lib/services/state/apps';
 import {ActionButton} from '#/widget/common/actionButton';
 import logger from '#/lib/core/logger';
 
@@ -18,7 +22,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
     const {bar} = useSettings();
 
     const app =
-        getAppList().find((a) => a.entry === desktopFile) ||
+        getAppList().find(a => a.entry === desktopFile) ||
         exactQuery(desktopFile.replace('.desktop', ''))?.[0];
 
     const iconName = app?.iconName || 'application-x-executable-symbolic';
@@ -35,7 +39,10 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
     };
 
     const handleClose = () => {
-        logger.debug('dock', `close: ${desktopFile} (${clients.length} windows)`);
+        logger.debug(
+            'dock',
+            `close: ${desktopFile} (${clients.length} windows)`
+        );
         for (const client of clients) {
             client.kill();
         }
@@ -108,10 +115,9 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     );
                     icon.set_pixel_size(bar.dockIconSize());
 
-                    const status = (<Gtk.Box />) as any & { css: string };
+                    const status = (<Gtk.Box />) as any & {css: string};
                     // Update status indicator reactively
                     const updateStatus = () => {
-                         
                         status.css = active
                             ? `
                 min-width: 16px;

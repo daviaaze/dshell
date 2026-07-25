@@ -146,7 +146,9 @@ export function searchHistory(query: string): ClipboardEntry[] {
  * Sets the echo-hash so the next watcher event for this content is
  * suppressed.
  */
-export async function copyEntryToClipboard(entry: ClipboardEntry): Promise<void> {
+export async function copyEntryToClipboard(
+    entry: ClipboardEntry
+): Promise<void> {
     const display = Gdk.Display.get_default();
     if (!display) {
         logger.warn('clipboard', 'no display available');

@@ -109,19 +109,20 @@ export default class Weather extends Object {
         return this.#sunset;
     }
 
-
-
     #updateComputed() {
         const w = this.#weather;
         const valid = w.is_valid();
 
         this.#tempSummary = valid
-            ? formatTemp(w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1])
+            ? formatTemp(
+                  w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1]
+              )
             : '--°';
         this.#feelsLike = valid ? `Feels like ${w.get_apparent()}` : '';
         this.#skyDesc = valid ? w.get_sky() : '';
         this.#locationName = w.get_location_name() || '—';
-        this.#weatherIcon = w.get_icon_name() || 'weather-none-available-symbolic';
+        this.#weatherIcon =
+            w.get_icon_name() || 'weather-none-available-symbolic';
 
         if (valid) {
             const [, speed, dir] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
@@ -129,7 +130,9 @@ export default class Weather extends Object {
             this.#windDirection = dir;
             const humStr = w.get_humidity();
             this.#humidity = humStr ? parseFloat(humStr) : 0;
-            const [, pressure] = w.get_value_pressure(GWeather.PressureUnit.HPA);
+            const [, pressure] = w.get_value_pressure(
+                GWeather.PressureUnit.HPA
+            );
             this.#pressure = pressure;
             const [, sunrise] = w.get_value_sunrise();
             this.#sunrise = sunrise;
@@ -150,7 +153,6 @@ export default class Weather extends Object {
         this.notify('sunset');
     }
 
-    
     set location(location: GWeather.Location | undefined) {
         if (!location) return;
         this.#location = location;
@@ -392,13 +394,37 @@ export default class Weather extends Object {
         const idx = Math.round(d / 45) % 8;
         const PHASES = [
             {name: 'New Moon', emoji: '🌑', icon: 'moon-new-symbolic'},
-            {name: 'Waxing Crescent', emoji: '🌒', icon: 'moon-waxing-crescent-symbolic'},
-            {name: 'First Quarter', emoji: '🌓', icon: 'moon-first-quarter-symbolic'},
-            {name: 'Waxing Gibbous', emoji: '🌔', icon: 'moon-waxing-gibbous-symbolic'},
+            {
+                name: 'Waxing Crescent',
+                emoji: '🌒',
+                icon: 'moon-waxing-crescent-symbolic',
+            },
+            {
+                name: 'First Quarter',
+                emoji: '🌓',
+                icon: 'moon-first-quarter-symbolic',
+            },
+            {
+                name: 'Waxing Gibbous',
+                emoji: '🌔',
+                icon: 'moon-waxing-gibbous-symbolic',
+            },
             {name: 'Full Moon', emoji: '🌕', icon: 'moon-full-symbolic'},
-            {name: 'Waning Gibbous', emoji: '🌖', icon: 'moon-waning-gibbous-symbolic'},
-            {name: 'Last Quarter', emoji: '🌗', icon: 'moon-last-quarter-symbolic'},
-            {name: 'Waning Crescent', emoji: '🌘', icon: 'moon-waning-crescent-symbolic'},
+            {
+                name: 'Waning Gibbous',
+                emoji: '🌖',
+                icon: 'moon-waning-gibbous-symbolic',
+            },
+            {
+                name: 'Last Quarter',
+                emoji: '🌗',
+                icon: 'moon-last-quarter-symbolic',
+            },
+            {
+                name: 'Waning Crescent',
+                emoji: '🌘',
+                icon: 'moon-waning-crescent-symbolic',
+            },
         ];
         return {
             phase,
@@ -467,10 +493,7 @@ export default class Weather extends Object {
                     'weather-sunrise-time',
                     sunrise
                 );
-                this.#generalSettings.set_double(
-                    'weather-sunset-time',
-                    sunset
-                );
+                this.#generalSettings.set_double('weather-sunset-time', sunset);
             }
         });
     }
@@ -479,7 +502,9 @@ export default class Weather extends Object {
         if (this.#weatherHandlerId !== 0) {
             try {
                 this.#weather.disconnect(this.#weatherHandlerId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#weatherHandlerId = 0;
         }
         if (this.#updateTimer !== null) {

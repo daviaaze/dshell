@@ -1,12 +1,7 @@
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import {
-    Accessor,
-    bind,
-    computed,
-    For,
-} from 'gnim';
+import {Accessor, bind, computed, For} from 'gnim';
 import Clock from '#/lib/services/time/clock';
 import {useSettings} from '#/lib/settings';
 import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
@@ -139,8 +134,9 @@ export default ({
                                                     ]}
                                                     label={tzTime.as(
                                                         t =>
-                                                            t?.format('%H:%M') ??
-                                                            '--:--'
+                                                            t?.format(
+                                                                '%H:%M'
+                                                            ) ?? '--:--'
                                                     )}
                                                 />
                                                 <Gtk.Label
@@ -165,7 +161,10 @@ export default ({
                                 label="Timer"
                                 halign={Gtk.Align.CENTER}
                             />
-                            <Gtk.Box widthRequest={TIMER_WIDTH} halign={Gtk.Align.FILL}>
+                            <Gtk.Box
+                                widthRequest={TIMER_WIDTH}
+                                halign={Gtk.Align.FILL}
+                            >
                                 <TimerSection />
                             </Gtk.Box>
                         </Gtk.Box>
@@ -210,7 +209,12 @@ export default ({
                     <Gtk.Label
                         visible={timerActive}
                         label={timerDisplay}
-                        cssClasses={['title-1', 'numeric', 'timer-active', timerActiveStyle.class]}
+                        cssClasses={[
+                            'title-1',
+                            'numeric',
+                            'timer-active',
+                            timerActiveStyle.class,
+                        ]}
                         ref={timerActiveStyle.$}
                     />
                 </Gtk.Box>

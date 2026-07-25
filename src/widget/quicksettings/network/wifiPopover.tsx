@@ -41,7 +41,10 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
                 </Gtk.Button>
                 <Gtk.Button
                     onClicked={() => {
-                        logger.info('network', `wifi ${wifi.enabled ? 'disabled' : 'enabled'}`);
+                        logger.info(
+                            'network',
+                            `wifi ${wifi.enabled ? 'disabled' : 'enabled'}`
+                        );
                         wifi.enabled = !wifi.enabled;
                     }}
                 >

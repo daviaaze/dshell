@@ -1,7 +1,10 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createState, effect, onCleanup} from 'gnim';
 import Adw from 'gi://Adw?version=1';
-import PowerProfiles, {profileLabel, nextProfile} from '#/lib/services/power/powerProfiles';
+import PowerProfiles, {
+    profileLabel,
+    nextProfile,
+} from '#/lib/services/power/powerProfiles';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import {LinkedBox} from '#/widget/common/linkedBox';

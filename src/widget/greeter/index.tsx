@@ -28,7 +28,8 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
             greeter.state !== 'idle' &&
             greeter.state !== 'error' &&
             greeter.state !== 'awaiting-input'
-        ) return;
+        )
+            return;
 
         if (!showPassword()) {
             // First step: create session with username
@@ -50,7 +51,9 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
         stateBinding.subscribe(() => {
             if (stateBinding() === 'authenticated') {
                 // Start session from env var (set by cage wrapper), fallback Hyprland
-                const sessionCmd = (GLib.getenv('SHADE_SESSION_COMMAND') ?? 'Hyprland').split(' ');
+                const sessionCmd = (
+                    GLib.getenv('SHADE_SESSION_COMMAND') ?? 'Hyprland'
+                ).split(' ');
                 greeter.startSession(sessionCmd);
                 // Quit after session starts (async callback in GreetSession)
                 greeter.onSessionStarted = () => application.quit();
@@ -86,15 +89,8 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                     spacing={16}
                     marginBottom={32}
                 >
-                    <Adw.Avatar
-                        size={96}
-                        showInitials
-                        text={username}
-                    />
-                    <Gtk.Label
-                        cssClasses={['title-1']}
-                        label={username}
-                    />
+                    <Adw.Avatar size={96} showInitials text={username} />
+                    <Gtk.Label cssClasses={['title-1']} label={username} />
                 </Gtk.Box>
 
                 {/* Login form */}
@@ -127,7 +123,10 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                         <Gtk.EventControllerKey
                             ref={self => {
                                 self.connect('key-pressed', (_, keyval) => {
-                                    if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
+                                    if (
+                                        keyval === Gdk.KEY_Return ||
+                                        keyval === Gdk.KEY_KP_Enter
+                                    ) {
                                         handleLogin();
                                         return true;
                                     }
@@ -148,7 +147,9 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                     {/* Loading indicator */}
                     <Adw.Spinner
                         visible={stateBinding.as(
-                            s => s === 'authenticating' || s === 'creating-session'
+                            s =>
+                                s === 'authenticating' ||
+                                s === 'creating-session'
                         )}
                     />
 
@@ -156,7 +157,9 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                     <Gtk.Button
                         cssClasses={['suggested-action']}
                         hexpand
-                        label={showPassword.as(v => (v ? 'Log In' : 'Continue'))}
+                        label={showPassword.as(v =>
+                            v ? 'Log In' : 'Continue'
+                        )}
                         onClicked={() => handleLogin()}
                     />
                 </Gtk.Box>

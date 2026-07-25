@@ -85,10 +85,13 @@ export const LockscreenNotifications = () => {
             addNotification(id)
         );
 
-        const dismissedId = notifd.connect('dismissed' as any, ((_: any, id: number) => {
-            // eslint-disable-next-line sonarjs/no-nested-functions
-            setNotifications(prev => prev.filter(x => x.id !== id));
-        }) as any);
+        const dismissedId = notifd.connect(
+            'dismissed' as any,
+            ((_: any, id: number) => {
+                // eslint-disable-next-line sonarjs/no-nested-functions
+                setNotifications(prev => prev.filter(x => x.id !== id));
+            }) as any
+        );
 
         onCleanup(() => {
             try {

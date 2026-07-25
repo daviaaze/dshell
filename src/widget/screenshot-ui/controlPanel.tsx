@@ -31,9 +31,7 @@ interface ControlPanelProps {
 
 const ModeTab = ({label, value, icon, ss, onReset}: ModeTabProps) => (
     <Gtk.ToggleButton
-        active={bind(ss, 'selectedMode').as(
-            m => m === value
-        )}
+        active={bind(ss, 'selectedMode').as(m => m === value)}
         onToggled={btn => {
             if (btn.active) {
                 onReset();
@@ -55,9 +53,7 @@ const TargetButton = ({
     onTargetChange,
 }: TargetButtonProps) => (
     <Gtk.ToggleButton
-        active={bind(ss, 'selectedTarget').as(
-            t => t === value
-        )}
+        active={bind(ss, 'selectedTarget').as(t => t === value)}
         onToggled={btn => {
             if (btn.active) {
                 onReset();
@@ -154,15 +150,15 @@ export const ControlPanel = ({
                 {/* Audio + Boundary options (recording) */}
                 {ss.selectedMode === 'recording' && (
                     <Gtk.Box spacing={12}>
-                        <Gtk.CheckButton
-                            active={bind(ss, 'overlayOpen')}
-                        >
+                        <Gtk.CheckButton active={bind(ss, 'overlayOpen')}>
                             <Gtk.Label label="Audio" />
                         </Gtk.CheckButton>
                         <Gtk.CheckButton
                             active={captureSettings.showRecordingBoundary}
                             onNotifyActive={({active}) => {
-                                captureSettings.setShowRecordingBoundary(active);
+                                captureSettings.setShowRecordingBoundary(
+                                    active
+                                );
                             }}
                         >
                             <Gtk.Label label="Boundary" />

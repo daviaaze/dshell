@@ -1,7 +1,10 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind, computed} from 'gnim';
 import WeatherLib from '#/lib/services/location/weather';
-import {formatTime, windDirectionLabel} from '#/lib/services/location/weatherUtils';
+import {
+    formatTime,
+    windDirectionLabel,
+} from '#/lib/services/location/weatherUtils';
 import {useStyle} from '#/style/useStyle';
 import {
     HourlyForecastSection,
@@ -164,7 +167,7 @@ export const WeatherWidget = () => {
     const separatorStyle = useStyle({
         height: '1px',
         background: 'var(--shade-outline-variant)',
-        'margin': '4px 0',
+        margin: '4px 0',
     });
 
     return (
@@ -193,9 +196,7 @@ export const WeatherWidget = () => {
                     />
                     <Gtk.Label
                         cssClasses={['caption']}
-                        label={computed(
-                            () => `${skyDesc()} · ${feelsLike()}`
-                        )}
+                        label={computed(() => `${skyDesc()} · ${feelsLike()}`)}
                         halign={Gtk.Align.START}
                         opacity={0.7}
                     />

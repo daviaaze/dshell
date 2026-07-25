@@ -26,9 +26,7 @@ const PlayerApp = ({player}: {player: Mpris.Player}) => (
                     exactQuery(entry)[0]?.iconName ?? 'audio-x-generic-symbolic'
             )}
         />
-        <Gtk.Label
-            label={bind(player, 'identity').as(id => id || '')}
-        />
+        <Gtk.Label label={bind(player, 'identity').as(id => id || '')} />
     </Gtk.Box>
 );
 
@@ -38,18 +36,18 @@ const CoverArt = ({player}: {player: Mpris.Player}) => {
     });
     return (
         <Gtk.Picture
-        visible={bind(player, 'coverArt').as(c => !!c)}
-        file={bind(player, 'coverArt').as(path =>
-            Gio.File.new_for_path(path)
-        )}
-        cssClasses={['media-thumbnail', thumbnailStyle.class]}
-        ref={thumbnailStyle.$}
-        contentFit={Gtk.ContentFit.COVER}
-        widthRequest={120}
-        heightRequest={120}
-    />
-);
-}
+            visible={bind(player, 'coverArt').as(c => !!c)}
+            file={bind(player, 'coverArt').as(path =>
+                Gio.File.new_for_path(path)
+            )}
+            cssClasses={['media-thumbnail', thumbnailStyle.class]}
+            ref={thumbnailStyle.$}
+            contentFit={Gtk.ContentFit.COVER}
+            widthRequest={120}
+            heightRequest={120}
+        />
+    );
+};
 
 const TitleArtist = ({player}: {player: Mpris.Player}) => {
     const dimmedStyle = useStyle({
@@ -57,30 +55,39 @@ const TitleArtist = ({player}: {player: Mpris.Player}) => {
     });
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
-        <Gtk.Label
-            wrap
-            maxWidthChars={10}
-            cssClasses={['heading']}
-            label={bind(player, 'title')}
-        />
-        <Gtk.Label
-            cssClasses={['caption', 'dimmed', dimmedStyle.class]}
-            ref={dimmedStyle.$}
-            label={bind(player, 'artist')}
-            maxWidthChars={10}
-            ellipsize={3}
-        />
-    </Gtk.Box>
-);
-}
+            <Gtk.Label
+                wrap
+                maxWidthChars={10}
+                cssClasses={['heading']}
+                label={bind(player, 'title')}
+            />
+            <Gtk.Label
+                cssClasses={['caption', 'dimmed', dimmedStyle.class]}
+                ref={dimmedStyle.$}
+                label={bind(player, 'artist')}
+                maxWidthChars={10}
+                ellipsize={3}
+            />
+        </Gtk.Box>
+    );
+};
 
-const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) => {
+const PlaybackButtons = ({
+    player,
+    slot,
+}: {
+    player: Mpris.Player;
+    slot?: string;
+}) => {
     const mc = MediaController.get_default();
     return (
         <Gtk.Box>
             <Gtk.Button
                 iconName={'media-skip-backward-symbolic'}
-                onClicked={() => { mc.setActivePlayer(player); mc.previous(); }}
+                onClicked={() => {
+                    mc.setActivePlayer(player);
+                    mc.previous();
+                }}
                 visible={bind(player, 'canGoPrevious')}
             />
 
@@ -94,7 +101,10 @@ const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) 
             />
             <Gtk.Button
                 iconName={'media-skip-forward-symbolic'}
-                onClicked={() => { mc.setActivePlayer(player); mc.next(); }}
+                onClicked={() => {
+                    mc.setActivePlayer(player);
+                    mc.next();
+                }}
                 visible={bind(player, 'canGoNext')}
             />
         </Gtk.Box>
@@ -109,30 +119,30 @@ const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
     });
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
-        <Astal.Slider
-            cssClasses={['media-position', positionStyle.class]}
-            ref={positionStyle.$}
-            drawValue={false}
-            onNotifyValue={({value}) => mc.seek(value)}
-            min={0}
-            max={bind(player, 'length')}
-            visible={bind(player, 'canSeek')}
-            value={bind(player, 'position')}
-        />
-        <Gtk.CenterBox>
-            <Gtk.Label
-                slot="start"
-                label={bind(player, 'position').as(lengthStr)}
+            <Astal.Slider
+                cssClasses={['media-position', positionStyle.class]}
+                ref={positionStyle.$}
+                drawValue={false}
+                onNotifyValue={({value}) => mc.seek(value)}
+                min={0}
+                max={bind(player, 'length')}
+                visible={bind(player, 'canSeek')}
+                value={bind(player, 'position')}
             />
-            <PlaybackButtons slot="center" player={player} />
-            <Gtk.Label
-                slot="end"
-                label={bind(player, 'length').as(lengthStr)}
-            />
-        </Gtk.CenterBox>
-    </Gtk.Box>
-);
-}
+            <Gtk.CenterBox>
+                <Gtk.Label
+                    slot="start"
+                    label={bind(player, 'position').as(lengthStr)}
+                />
+                <PlaybackButtons slot="center" player={player} />
+                <Gtk.Label
+                    slot="end"
+                    label={bind(player, 'length').as(lengthStr)}
+                />
+            </Gtk.CenterBox>
+        </Gtk.Box>
+    );
+};
 
 export const MediaIcon = () => {
     const mc = MediaController.get_default();
@@ -150,9 +160,7 @@ export const MediaIcon = () => {
             />
             <Adw.WindowTitle
                 title={bind(mc, 'activeTitle')}
-                subtitle={bind(mc, 'activePlayer').as(
-                    p => p?.identity ?? ''
-                )}
+                subtitle={bind(mc, 'activePlayer').as(p => p?.identity ?? '')}
             />
         </Gtk.Box>
     );

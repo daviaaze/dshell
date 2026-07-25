@@ -33,7 +33,6 @@ export default class AuthSession extends Object {
         return this.#authStatus;
     }
 
-    
     set authStatus(v: string) {
         this.#authStatus = v;
         this.notify('auth-status');
@@ -101,7 +100,11 @@ export default class AuthSession extends Object {
 
     #disconnectPam() {
         for (const id of this.#pamSignalIds) {
-            try { this.#pam.disconnect(id); } catch { /* ignore */ }
+            try {
+                this.#pam.disconnect(id);
+            } catch {
+                /* ignore */
+            }
         }
         this.#pamSignalIds = [];
     }
@@ -154,7 +157,11 @@ export default class AuthSession extends Object {
     #disconnectFingerprint() {
         this.#fingerprint.stop();
         for (const id of this.#fpSignalIds) {
-            try { this.#fingerprint.disconnect(id); } catch { /* ignore */ }
+            try {
+                this.#fingerprint.disconnect(id);
+            } catch {
+                /* ignore */
+            }
         }
         this.#fpSignalIds = [];
     }

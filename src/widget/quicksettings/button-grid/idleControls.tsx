@@ -87,10 +87,7 @@ export default () => {
                                     lower={30}
                                     upper={1740}
                                     stepIncrement={30}
-                                    value={bind(
-                                        hypridle,
-                                        'dimTimeout'
-                                    )}
+                                    value={bind(hypridle, 'dimTimeout')}
                                 />
                             ) as any
                         }

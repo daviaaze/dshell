@@ -43,7 +43,11 @@ describe('securityLabelFromKeyMgmt', () => {
 
 describe('wifiIconName', () => {
     it('returns offline icon when disabled', () => {
-        const name = wifiIconName(100, false, AstalNetwork.DeviceState.ACTIVATED);
+        const name = wifiIconName(
+            100,
+            false,
+            AstalNetwork.DeviceState.ACTIVATED
+        );
         expect(name).toBe('network-wireless-offline-symbolic');
     });
 
@@ -51,9 +55,9 @@ describe('wifiIconName', () => {
         expect(wifiIconName(100, true, AstalNetwork.DeviceState.CONFIG)).toBe(
             'network-wireless-acquiring-symbolic'
         );
-        expect(wifiIconName(100, true, AstalNetwork.DeviceState.NEED_AUTH)).toBe(
-            'network-wireless-acquiring-symbolic'
-        );
+        expect(
+            wifiIconName(100, true, AstalNetwork.DeviceState.NEED_AUTH)
+        ).toBe('network-wireless-acquiring-symbolic');
     });
 
     it('returns excellent icon for strength >= 75 when activated', () => {
@@ -81,9 +85,9 @@ describe('wifiIconName', () => {
     });
 
     it('returns none icon for other states', () => {
-        expect(wifiIconName(100, true, AstalNetwork.DeviceState.DISCONNECTED)).toBe(
-            'network-wireless-signal-none-symbolic'
-        );
+        expect(
+            wifiIconName(100, true, AstalNetwork.DeviceState.DISCONNECTED)
+        ).toBe('network-wireless-signal-none-symbolic');
     });
 });
 

@@ -31,7 +31,7 @@ export function applyPopupCss(): void {
             Gtk.StyleContext.add_provider_for_display(
                 display,
                 provider,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
             );
         }
     } catch (e) {
@@ -68,7 +68,7 @@ function buildCard(
     labelText: string,
     subText: string,
     pic: Gtk.Picture,
-    onClick: () => void,
+    onClick: () => void
 ): Gtk.Button {
     const label = new Gtk.Label({
         label: labelText,
@@ -113,7 +113,12 @@ function buildSectionLabel(text: string): Gtk.Label {
     return l;
 }
 
-function monitorCard(flow: Gtk.FlowBox, state: MonitorState, select: SelectFn, subRes: boolean): Gtk.Picture {
+function monitorCard(
+    flow: Gtk.FlowBox,
+    state: MonitorState,
+    select: SelectFn,
+    subRes: boolean
+): Gtk.Picture {
     const pic = makePicture();
     const res = `${state.info.width}×${state.info.height}`;
     buildCard(
@@ -121,12 +126,17 @@ function monitorCard(flow: Gtk.FlowBox, state: MonitorState, select: SelectFn, s
         truncate(state.info.description || state.info.name, MAX_DESC_LEN),
         subRes ? `${res} — ${state.info.name}` : res,
         pic,
-        () => select('screen', state.info.name),
+        () => select('screen', state.info.name)
     );
     return pic;
 }
 
-function windowCard(flow: Gtk.FlowBox, state: WindowState, select: SelectFn, longSub: boolean): Gtk.Picture {
+function windowCard(
+    flow: Gtk.FlowBox,
+    state: WindowState,
+    select: SelectFn,
+    longSub: boolean
+): Gtk.Picture {
     const pic = makePicture();
     buildCard(
         flow,
@@ -134,10 +144,10 @@ function windowCard(flow: Gtk.FlowBox, state: WindowState, select: SelectFn, lon
         state.geometry
             ? `${state.geometry.width}×${state.geometry.height}`
             : longSub
-                ? 'No preview (hidden or off-screen)'
-                : 'No preview',
+              ? 'No preview (hidden or off-screen)'
+              : 'No preview',
         pic,
-        () => select('window', state.info.id),
+        () => select('window', state.info.id)
     );
     return pic;
 }
@@ -156,9 +166,11 @@ export function buildScreensTab(states: MonitorState[], select: SelectFn): Tab {
     const flow = buildFlowBox();
     const pics: Gtk.Picture[] = [];
     if (states.length === 0) {
-        flow.append(new Gtk.FlowBoxChild({
-            child: new Gtk.Label({label: 'No monitors found'}),
-        }));
+        flow.append(
+            new Gtk.FlowBoxChild({
+                child: new Gtk.Label({label: 'No monitors found'}),
+            })
+        );
     } else {
         for (const state of states) {
             pics.push(monitorCard(flow, state, select, true));
@@ -172,9 +184,11 @@ export function buildWindowsTab(states: WindowState[], select: SelectFn): Tab {
     const flow = buildFlowBox();
     const pics: Gtk.Picture[] = [];
     if (states.length === 0) {
-        flow.append(new Gtk.FlowBoxChild({
-            child: new Gtk.Label({label: 'No windows available'}),
-        }));
+        flow.append(
+            new Gtk.FlowBoxChild({
+                child: new Gtk.Label({label: 'No windows available'}),
+            })
+        );
     } else {
         for (const state of states) {
             pics.push(windowCard(flow, state, select, true));
@@ -193,7 +207,7 @@ export interface CombinedTab {
 export function buildCombinedTab(
     monitors: MonitorState[],
     windows: WindowState[],
-    select: SelectFn,
+    select: SelectFn
 ): CombinedTab {
     const box = new Gtk.Box({
         orientation: Gtk.Orientation.VERTICAL,
@@ -203,12 +217,16 @@ export function buildCombinedTab(
 
     box.append(buildSectionLabel('Screens'));
     const monFlow = buildFlowBox();
-    const monitorPics = monitors.map(state => monitorCard(monFlow, state, select, false));
+    const monitorPics = monitors.map(state =>
+        monitorCard(monFlow, state, select, false)
+    );
     box.append(monFlow);
 
     box.append(buildSectionLabel('Windows'));
     const winFlow = buildFlowBox();
-    const windowPics = windows.map(state => windowCard(winFlow, state, select, false));
+    const windowPics = windows.map(state =>
+        windowCard(winFlow, state, select, false)
+    );
     box.append(winFlow);
 
     return {page: scrolled(box), monitorPics, windowPics};

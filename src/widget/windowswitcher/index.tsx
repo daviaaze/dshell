@@ -14,7 +14,10 @@ let switcherWindow: Astal.Window | null = null;
 export const toggleWindowSwitcher = () => {
     if (switcherWindow) {
         const nextVisible = !switcherWindow.visible;
-        logger.debug('wm', `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`);
+        logger.debug(
+            'wm',
+            `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`
+        );
         switcherWindow.visible = nextVisible;
     } else {
         logger.debug('wm', 'windowSwitcher toggled (no window yet)');
@@ -55,7 +58,7 @@ export default () => {
     const clientsList = clientsBinding.as(c => getSortedClients(c, mru));
 
     const clampUnsubscribe = clientsList.subscribe(() => {
-        const len = (clientsList())?.length ?? 0;
+        const len = clientsList()?.length ?? 0;
         if (selectedIndex() >= len) {
             setSelectedIndex(Math.max(0, len - 1));
         }

@@ -37,9 +37,7 @@ export default () => {
                         if (currentId === SYSTEM_DEFAULT_ID) {
                             self.set_selected(0);
                         } else {
-                            const idx = list.findIndex(
-                                m => m.id === currentId
-                            );
+                            const idx = list.findIndex(m => m.id === currentId);
                             self.set_selected(idx >= 0 ? idx + 1 : 0);
                         }
                     };

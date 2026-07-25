@@ -28,14 +28,18 @@ export default () => {
                                 light: 1,
                                 dark: 2,
                             };
-                            settings.setColorScheme(map[self.activeName ?? 'auto'] ?? 0);
+                            settings.setColorScheme(
+                                map[self.activeName ?? 'auto'] ?? 0
+                            );
                         }}
                         ref={self => {
                             const v = settings.colorScheme.peek();
-                            self.activeName = ['auto', 'light', 'dark'][v] ?? 'auto';
+                            self.activeName =
+                                ['auto', 'light', 'dark'][v] ?? 'auto';
                             settings.colorScheme.subscribe(() => {
                                 const cur = settings.colorScheme();
-                                self.activeName = ['auto', 'light', 'dark'][cur] ?? 'auto';
+                                self.activeName =
+                                    ['auto', 'light', 'dark'][cur] ?? 'auto';
                             });
                         }}
                     >

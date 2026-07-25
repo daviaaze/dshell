@@ -44,7 +44,8 @@ export default class TimerService extends Object {
     // ── Pomodoro settings ──
     #workDuration = TimerService.DEFAULT_WORK_MIN * TimerService.MS_PER_MIN;
     #breakDuration = TimerService.DEFAULT_BREAK_MIN * TimerService.MS_PER_MIN;
-    #longBreakDuration = TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
+    #longBreakDuration =
+        TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
     #sessionsBeforeLongBreak = TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
 
     @property(Object)
@@ -151,20 +152,24 @@ export default class TimerService extends Object {
         this.#stopTick();
         this.#running = true;
         this.notify('running');
-        this.#tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TimerService.TICK_MS, () => {
-            this.#remaining -= TimerService.TICK_MS;
-            if (this.#remaining <= 0) {
-                this.#remaining = 0;
+        this.#tickId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            TimerService.TICK_MS,
+            () => {
+                this.#remaining -= TimerService.TICK_MS;
+                if (this.#remaining <= 0) {
+                    this.#remaining = 0;
+                    this.notify('remaining');
+                    this.#stopTick();
+                    this.#running = false;
+                    this.notify('running');
+                    this.#onComplete();
+                    return GLib.SOURCE_REMOVE;
+                }
                 this.notify('remaining');
-                this.#stopTick();
-                this.#running = false;
-                this.notify('running');
-                this.#onComplete();
-                return GLib.SOURCE_REMOVE;
+                return GLib.SOURCE_CONTINUE;
             }
-            this.notify('remaining');
-            return GLib.SOURCE_CONTINUE;
-        });
+        );
     }
 
     #stopTick() {
@@ -183,7 +188,9 @@ export default class TimerService extends Object {
         const isPomodoro = this.#mode === 'pomodoro';
         const title = (() => {
             if (!isPomodoro) return 'Timer finished!';
-            return this.#pomodoroIsBreak ? 'Break over! Back to work.' : 'Work session complete!';
+            return this.#pomodoroIsBreak
+                ? 'Break over! Back to work.'
+                : 'Work session complete!';
         })();
         const body = isPomodoro
             ? `Session ${this.#pomodoroSession} complete.`

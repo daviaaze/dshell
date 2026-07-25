@@ -69,11 +69,20 @@ export function draw(
         monOrigin: Point;
     }
 ) {
-    const {ss, selActive, dragStart, dragEnd, selectedWindow, windows, monOrigin} = params;
+    const {
+        ss,
+        selActive,
+        dragStart,
+        dragEnd,
+        selectedWindow,
+        windows,
+        monOrigin,
+    } = params;
     const target = ss.selectedTarget;
-    const sel = selActive && dragStart && dragEnd
-        ? normalizeRect(dragStart, dragEnd)
-        : null;
+    const sel =
+        selActive && dragStart && dragEnd
+            ? normalizeRect(dragStart, dragEnd)
+            : null;
     const sWin = selectedWindow;
     const winL = windows;
     const hyprland = AstalHyprland.get_default();
@@ -83,9 +92,21 @@ export function draw(
 
     if (target === 'area' && sel && sel.width >= MIN_SELECTION) {
         drawDimRect(cr, 0, 0, width, sel.y);
-        drawDimRect(cr, 0, sel.y + sel.height, width, height - sel.y - sel.height);
+        drawDimRect(
+            cr,
+            0,
+            sel.y + sel.height,
+            width,
+            height - sel.y - sel.height
+        );
         drawDimRect(cr, 0, sel.y, sel.x, sel.height);
-        drawDimRect(cr, sel.x + sel.width, sel.y, width - sel.x - sel.width, sel.height);
+        drawDimRect(
+            cr,
+            sel.x + sel.width,
+            sel.y,
+            width - sel.x - sel.width,
+            sel.height
+        );
     } else if (target === 'window' && sWin) {
         const origin = monOrigin;
         const lx = sWin.x - origin.x;
@@ -93,7 +114,13 @@ export function draw(
         drawDimRect(cr, 0, 0, width, ly);
         drawDimRect(cr, 0, ly + sWin.height, width, height - ly - sWin.height);
         drawDimRect(cr, 0, ly, lx, sWin.height);
-        drawDimRect(cr, lx + sWin.width, ly, width - lx - sWin.width, sWin.height);
+        drawDimRect(
+            cr,
+            lx + sWin.width,
+            ly,
+            width - lx - sWin.width,
+            sWin.height
+        );
     } else if (target === 'monitor') {
         const m = hyprland.focusedMonitor;
         if (m) {

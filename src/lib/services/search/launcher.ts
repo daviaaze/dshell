@@ -23,15 +23,16 @@ export interface LauncherResult {
 export function launcherSearch(query: string): LauncherResult {
     if (query.startsWith('>')) {
         const clipQuery = query.slice(1).trim();
-        const items = clipQuery
-            ? searchHistory(clipQuery)
-            : searchHistory('');
+        const items = clipQuery ? searchHistory(clipQuery) : searchHistory('');
         return {mode: 'clipboard', items, frecencyHasData: false};
     }
 
     if (query.trim() === '') {
         const fm = FrecencyManager.get_default();
-        const items = fm.rankByFrecency(getAppList(), app => app.entry ?? app.name ?? '');
+        const items = fm.rankByFrecency(
+            getAppList(),
+            app => app.entry ?? app.name ?? ''
+        );
         return {mode: 'apps', items, frecencyHasData: fm.hasData};
     }
 
@@ -42,5 +43,9 @@ export function launcherSearch(query: string): LauncherResult {
         score: fm.getSearchBoost(app.entry ?? app.name ?? ''),
     }));
     scored.sort((a, b) => b.score - a.score);
-    return {mode: 'apps', items: scored.map(s => s.app), frecencyHasData: fm.hasData};
+    return {
+        mode: 'apps',
+        items: scored.map(s => s.app),
+        frecencyHasData: fm.hasData,
+    };
 }

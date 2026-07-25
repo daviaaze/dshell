@@ -34,10 +34,7 @@ export const LockscreenAuthPanel = ({
             cssClasses={['card']}
         >
             <Adw.Avatar size={AVATAR_SIZE} />
-            <Gtk.Label
-                label={GLib.get_real_name()}
-                cssClasses={['title-3']}
-            />
+            <Gtk.Label label={GLib.get_real_name()} cssClasses={['title-3']} />
             <Gtk.PasswordEntry
                 ref={self => effect(() => self.grab_focus())}
                 placeholderText={'password'}
@@ -48,9 +45,7 @@ export const LockscreenAuthPanel = ({
                 }}
             />
             <Gtk.Label
-                visible={bind(authSession, 'authStatus').as(
-                    s => s.length > 0
-                )}
+                visible={bind(authSession, 'authStatus').as(s => s.length > 0)}
                 cssClasses={['caption']}
                 label={bind(authSession, 'authStatus')}
             />

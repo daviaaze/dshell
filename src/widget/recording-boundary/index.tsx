@@ -41,18 +41,7 @@ function drawBoundaryForMonitor(
     const mh = geo.height;
 
     // Check if boundary overlaps this monitor
-    if (
-        !rectOverlap(
-            geom.x,
-            geom.y,
-            geom.width,
-            geom.height,
-            mx,
-            my,
-            mw,
-            mh
-        )
-    ) {
+    if (!rectOverlap(geom.x, geom.y, geom.width, geom.height, mx, my, mw, mh)) {
         return;
     }
 
