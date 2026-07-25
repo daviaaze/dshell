@@ -111,7 +111,7 @@ export default class Screenshot extends Object {
 
     // ── Overlay state ─────────────────────────────────────────────────
 
-    @property(Boolean)
+    @property(Object)
     get overlayOpen() {
         return this.#overlayOpen;
     }
@@ -159,7 +159,7 @@ export default class Screenshot extends Object {
 
     // ── Region selector ───────────────────────────────────────────────
 
-    @property(Boolean)
+    @property(Object)
     get regionSelectorOpen() {
         return this.#regionSelectorOpen;
     }
@@ -176,7 +176,7 @@ export default class Screenshot extends Object {
         }
     }
 
-    @property(String)
+    @property(Object)
     get pendingCaptureGeometry(): string {
         return this.#pendingCaptureGeometry || '';
     }
@@ -204,7 +204,7 @@ export default class Screenshot extends Object {
         return this.#stage.texture;
     }
 
-    @property(Boolean)
+    @property(Object)
     get freezeActive() {
         return this.#freezeActive;
     }
@@ -216,14 +216,14 @@ export default class Screenshot extends Object {
         this.notify('freeze-active');
     }
 
-    @property(Boolean)
+    @property(Object)
     get freezeKeepAlive() {
         return this.#freezeKeepAlive;
     }
 
     // ── Boundary ───────────────────────────────────────────────────────
 
-    @property(Boolean)
+    @property(Object)
     get boundaryVisible() {
         return this.#boundaryVisible;
     }

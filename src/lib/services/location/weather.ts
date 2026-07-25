@@ -1,7 +1,7 @@
 import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import {Object, register, property, Int} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Geolocation from './geolocation';
 import logger from '#/lib/core/logger';
 import {Accessor} from 'gnim';
@@ -34,77 +34,77 @@ export default class Weather extends Object {
 
     #tempSummary = '--°';
 
-    @property(String)
+    @property(Object)
     get tempSummary() {
         return this.#tempSummary;
     }
 
     #feelsLike = '';
 
-    @property(String)
+    @property(Object)
     get feelsLike() {
         return this.#feelsLike;
     }
 
     #skyDesc = '';
 
-    @property(String)
+    @property(Object)
     get skyDesc() {
         return this.#skyDesc;
     }
 
     #locationName = '—';
 
-    @property(String)
+    @property(Object)
     get locationName() {
         return this.#locationName;
     }
 
     #weatherIcon = 'weather-none-available-symbolic';
 
-    @property(String)
+    @property(Object)
     get weatherIcon() {
         return this.#weatherIcon;
     }
 
     #windSpeed = 0;
 
-    @property(Int)
+    @property(Object)
     get windSpeed() {
         return this.#windSpeed;
     }
 
     #windDirection = 0;
 
-    @property(Int)
+    @property(Object)
     get windDirection() {
         return this.#windDirection;
     }
 
     #humidity = 0;
 
-    @property(Int)
+    @property(Object)
     get humidity() {
         return this.#humidity;
     }
 
     #pressure = 0;
 
-    @property(Int)
+    @property(Object)
     get pressure() {
         return this.#pressure;
     }
 
     #sunrise = 0;
 
-    @property(Int)
+    @property(Object)
     get sunrise() {
         return this.#sunrise;
     }
 
     #sunset = 0;
 
-    @property(Int)
+    @property(Object)
     get sunset() {
         return this.#sunset;
     }

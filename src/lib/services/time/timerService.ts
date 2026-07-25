@@ -1,7 +1,7 @@
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
-import {Object, register, property, Int} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 import {fmtDuration} from '#/lib/core/time';
 
@@ -52,12 +52,12 @@ export default class TimerService extends Object {
         return this.#remaining;
     }
 
-    @property(Int)
+    @property(Object)
     get total() {
         return this.#total;
     }
 
-    @property(Boolean)
+    @property(Object)
     get running() {
         return this.#running;
     }
@@ -67,17 +67,17 @@ export default class TimerService extends Object {
         return this.#mode;
     }
 
-    @property(String)
+    @property(Object)
     get label() {
         return this.#label;
     }
 
-    @property(Int)
+    @property(Object)
     get pomodoroSession() {
         return this.#pomodoroSession;
     }
 
-    @property(Boolean)
+    @property(Object)
     get pomodoroIsBreak() {
         return this.#pomodoroIsBreak;
     }

@@ -54,7 +54,7 @@ export class GreetSession extends Object {
         this.notify('state');
     }
 
-    @property(String)
+    @property(Object)
     get errorMessage() {
         return this.#errorMessage;
     }
@@ -65,7 +65,7 @@ export class GreetSession extends Object {
         this.notify('error-message');
     }
 
-    @property(String)
+    @property(Object)
     get infoMessage() {
         return this.#infoMessage;
     }
@@ -76,7 +76,7 @@ export class GreetSession extends Object {
         this.notify('info-message');
     }
 
-    @property(Boolean)
+    @property(Object)
     get available(): boolean {
         try {
             // Quick availability check

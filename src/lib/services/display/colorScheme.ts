@@ -44,7 +44,7 @@ export class ColorScheme extends Object {
         return this.#daytime;
     }
 
-    @property(String)
+    @property(Object)
     get colorSchemeName() {
         switch (this.#colorScheme) {
             case DarkModes.AUTO:
@@ -76,7 +76,7 @@ export class ColorScheme extends Object {
         this.#shadeSettings?.setColorScheme(this.#colorScheme);
     }
 
-    @property(String)
+    @property(Object)
     get iconName() {
         if (this.#colorScheme === DarkModes.AUTO)
             if (this.#daytime) return 'weather-clear-symbolic';
