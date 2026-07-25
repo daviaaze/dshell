@@ -86,10 +86,7 @@ export default class MediaController extends Object {
 
     #updateActivePlayer() {
         // Keep existing active player if still in the list
-        if (
-            this.#activePlayer &&
-            this.#players.includes(this.#activePlayer)
-        ) {
+        if (this.#activePlayer && this.#players.includes(this.#activePlayer)) {
             return; // player unchanged — properties will notify via signals
         }
 

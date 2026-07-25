@@ -14,7 +14,9 @@ interface QuickToggleButtonProps {
     active?: Accessor<boolean> | boolean;
 }
 
-export const QuickToggleButton = (props: QuickToggleButtonProps) => {
+export const QuickToggleButton = (
+    props: QuickToggleButtonProps
+): Gtk.Widget => {
     // Neither Gtk.Button nor Adw.SplitButton expose an `active` state that
     // fits a toggle — reflect `active` through the 'active' css class.
     // Narrow via local consts so instanceof narrowing holds inside the closure.
@@ -31,8 +33,7 @@ export const QuickToggleButton = (props: QuickToggleButtonProps) => {
             : [...(css ?? ['raised']), ...(act ? ['active'] : [])];
 
     if (props.popover) {
-        return (
-            <Adw.SplitButton
+        return <Adw.SplitButton
                 visible={props.visible ?? true}
                 cssClasses={mergedCss}
                 hexpand={props.hexpand ?? true}
@@ -41,18 +42,15 @@ export const QuickToggleButton = (props: QuickToggleButtonProps) => {
                 popover={props.popover}
             >
                 <Adw.ButtonContent iconName={props.icon} label={props.label} />
-            </Adw.SplitButton>
-        );
+            </Adw.SplitButton>;
     }
 
-    return (
-        <Gtk.Button
+    return <Gtk.Button
             visible={props.visible ?? true}
             cssClasses={mergedCss}
             hexpand={props.hexpand ?? true}
             onClicked={props.onClick}
         >
             <Adw.ButtonContent iconName={props.icon} label={props.label} />
-        </Gtk.Button>
-    );
+        </Gtk.Button>;
 };

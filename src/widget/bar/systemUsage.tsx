@@ -38,7 +38,11 @@ const Indicator = ({
             >
                 <Gtk.Label
                     label={label}
-                    cssClasses={['caption-heading', 'numeral', numeralStyle.class]}
+                    cssClasses={[
+                        'caption-heading',
+                        'numeral',
+                        numeralStyle.class,
+                    ]}
                     ref={numeralStyle.$}
                 />
                 <Gtk.Label

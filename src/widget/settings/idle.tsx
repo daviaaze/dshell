@@ -51,7 +51,10 @@ export default () => {
                             self.value = settings.screenDimTimeout();
                         });
                         settings.idleTimeout.subscribe(() => {
-                            self.adjustment!.upper = Math.max(30, settings.idleTimeout() - 10);
+                            self.adjustment!.upper = Math.max(
+                                30,
+                                settings.idleTimeout() - 10
+                            );
                         });
                         self.adjustment = new Gtk.Adjustment({
                             lower: 30,
@@ -80,7 +83,8 @@ export default () => {
                             self.value = settings.dpmsTimeout();
                         });
                         settings.idleTimeout.subscribe(() => {
-                            self.adjustment!.lower = settings.idleTimeout() + 10;
+                            self.adjustment!.lower =
+                                settings.idleTimeout() + 10;
                         });
                         self.adjustment = new Gtk.Adjustment({
                             lower: settings.idleTimeout() + 10,
@@ -108,7 +112,8 @@ export default () => {
                             self.value = settings.suspendTimeout();
                         });
                         settings.dpmsTimeout.subscribe(() => {
-                            self.adjustment!.lower = settings.dpmsTimeout() + 10;
+                            self.adjustment!.lower =
+                                settings.dpmsTimeout() + 10;
                         });
                         self.adjustment = new Gtk.Adjustment({
                             lower: settings.dpmsTimeout() + 10,

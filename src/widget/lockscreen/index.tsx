@@ -3,12 +3,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import SessionLockService from '#/lib/services/session/sessionLockService';
 import Gtk from 'gi://Gtk?version=4.0';
-import {
-    bind,
-    createRoot,
-    For,
-    onCleanup,
-} from 'gnim';
+import {bind, createRoot, For, onCleanup} from 'gnim';
 import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
 import Clock from '#/lib/services/time/clock';
@@ -94,7 +89,8 @@ const createLocks = (onUnlock: () => void) => {
                         <Gtk.Box
                             slot="start"
                             orientation={Gtk.Orientation.VERTICAL}
-                            marginBottom={CLOCK_MARGIN_BOTTOM}>
+                            marginBottom={CLOCK_MARGIN_BOTTOM}
+                        >
                             <Gtk.Label
                                 cssClasses={['title-1', 'numeric']}
                                 label={time.as(t => t.format('%R')!)}
@@ -132,10 +128,7 @@ const createLocks = (onUnlock: () => void) => {
 export const LockScreen = () => {
     let locked = false;
 
-    const screenlocked = bind(
-        ShellState.get_default(),
-        'screenlocked'
-    );
+    const screenlocked = bind(ShellState.get_default(), 'screenlocked');
 
     onCleanup(
         screenlocked.subscribe(() => {

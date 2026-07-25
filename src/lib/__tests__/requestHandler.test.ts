@@ -20,7 +20,8 @@ function resolveAction(args: string[]): string | null {
     else if (args[1] === 'record') return 'record';
     else if (args[1] === 'record-area') return 'record-area';
     else if (args[1] === 'record-window') return 'record-window';
-    else if (args[1] === 'record-window-address') return 'record-window-address';
+    else if (args[1] === 'record-window-address')
+        return 'record-window-address';
     else if (args[1] === 'record-output') return 'record-output';
     else if (args[1] === 'touchpad') return 'toggle-touchpad';
     return null;

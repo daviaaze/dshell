@@ -72,7 +72,6 @@ export default class SoundAlertService extends Object {
         return this.#enabled;
     }
 
-    
     set enabled(v: boolean) {
         if (this.#enabled === v) return;
         this.#enabled = v;
@@ -119,9 +118,7 @@ export default class SoundAlertService extends Object {
             bus.on('capture:screenshot', () => this.play('screen-capture'))
         );
         this.#busUnsubs.push(
-            bus.on('capture:screenshot:area', () =>
-                this.play('screen-capture')
-            )
+            bus.on('capture:screenshot:area', () => this.play('screen-capture'))
         );
         this.#busUnsubs.push(
             bus.on('capture:screenshot:overlay', () =>
@@ -149,7 +146,10 @@ export default class SoundAlertService extends Object {
         this.#shellStateHandlerId = this.#shell.connect(
             'notify',
             (_source, pspec) => {
-                if (pspec.get_name() === 'screenlocked' && !this.#shell.screenlocked) {
+                if (
+                    pspec.get_name() === 'screenlocked' &&
+                    !this.#shell.screenlocked
+                ) {
                     this.play('screen-unlock');
                 }
             }
@@ -182,8 +182,8 @@ export default class SoundAlertService extends Object {
                     'notify::percentage',
                     () => {
                         const pct = battery.percentage;
-                        const wasAbove = this.#lastBatteryPercentage >
-                            LOW_BATTERY_THRESHOLD;
+                        const wasAbove =
+                            this.#lastBatteryPercentage > LOW_BATTERY_THRESHOLD;
                         const isNowBelow = pct <= LOW_BATTERY_THRESHOLD;
                         this.#lastBatteryPercentage = pct;
                         if (wasAbove && isNowBelow && battery.isPresent) {
@@ -225,8 +225,7 @@ export default class SoundAlertService extends Object {
                     .get_devices()
                     .find(
                         (d: AstalBattery.Device) =>
-                            d.get_device_type() ===
-                            AstalBattery.Type.LINE_POWER
+                            d.get_device_type() === AstalBattery.Type.LINE_POWER
                     );
                 if (linePower) {
                     this.#upowerHandlerIds.push(
@@ -307,7 +306,9 @@ export default class SoundAlertService extends Object {
         if (this.#shellStateHandlerId !== 0) {
             try {
                 this.#shell.disconnect(this.#shellStateHandlerId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#shellStateHandlerId = 0;
         }
 
@@ -316,17 +317,19 @@ export default class SoundAlertService extends Object {
             if (notifd) {
                 try {
                     notifd.disconnect(this.#notifdHandlerId);
-                } catch { /* ignore */ }
+                } catch {
+                    /* ignore */
+                }
             }
             this.#notifdHandlerId = 0;
         }
 
         if (this.#batteryHandlerId !== 0) {
             try {
-                AstalBattery.get_default().disconnect(
-                    this.#batteryHandlerId
-                );
-            } catch { /* ignore */ }
+                AstalBattery.get_default().disconnect(this.#batteryHandlerId);
+            } catch {
+                /* ignore */
+            }
             this.#batteryHandlerId = 0;
         }
 
@@ -334,7 +337,9 @@ export default class SoundAlertService extends Object {
             if (this.#upowerInstance) {
                 try {
                     this.#upowerInstance.disconnect(id);
-                } catch { /* ignore */ }
+                } catch {
+                    /* ignore */
+                }
             }
         }
         this.#upowerHandlerIds = [];

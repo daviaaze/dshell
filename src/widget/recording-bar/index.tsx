@@ -52,7 +52,9 @@ export default () => {
                 {/* "REC" label */}
                 <Gtk.Label
                     label="REC"
-                    css={'color: @error_color; font-weight: bold; font-size: 13px;'}
+                    css={
+                        'color: @error_color; font-weight: bold; font-size: 13px;'
+                    }
                 />
 
                 {/* Separator */}

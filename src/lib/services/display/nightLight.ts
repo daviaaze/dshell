@@ -48,7 +48,6 @@ export default class NightLight extends Object {
         return this.#enabled;
     }
 
-    
     set enabled(v: boolean) {
         if (this.#enabled === v) return;
         this.#enabled = v;
@@ -62,7 +61,6 @@ export default class NightLight extends Object {
         return this.#temperature;
     }
 
-    
     set temperature(v: number) {
         v = Math.max(TEMP_MIN, Math.min(TEMP_MAX, v));
         if (this.#temperature === v) return;
@@ -77,7 +75,6 @@ export default class NightLight extends Object {
         return this.#autoSchedule;
     }
 
-    
     set autoSchedule(v: boolean) {
         if (this.#autoSchedule === v) return;
         this.#autoSchedule = v;
@@ -91,16 +88,14 @@ export default class NightLight extends Object {
         return GLib.find_program_in_path('hyprsunset') !== null;
     }
 
-    init(
-        settings: {
-            nightLightEnabled: Accessor<boolean>;
-            nightLightTemperature: Accessor<number>;
-            nightLightAutoSchedule: Accessor<boolean>;
-            setNightLightEnabled: (v: boolean) => void;
-            setNightLightTemperature: (v: number) => void;
-            setNightLightAutoSchedule: (v: boolean) => void;
-        }
-    ) {
+    init(settings: {
+        nightLightEnabled: Accessor<boolean>;
+        nightLightTemperature: Accessor<number>;
+        nightLightAutoSchedule: Accessor<boolean>;
+        setNightLightEnabled: (v: boolean) => void;
+        setNightLightTemperature: (v: number) => void;
+        setNightLightAutoSchedule: (v: boolean) => void;
+    }) {
         if (this.#initialized) {
             logger.warn(
                 'nightLight',
@@ -186,7 +181,8 @@ export default class NightLight extends Object {
 
     #checkSchedule() {
         if (!this.#autoSchedule) return;
-        const isDaytime = this.#generalSettings.get_boolean('weather-is-daytime');
+        const isDaytime =
+            this.#generalSettings.get_boolean('weather-is-daytime');
         const shouldBeOn = !isDaytime;
         if (this.#enabled !== shouldBeOn) {
             this.enabled = shouldBeOn;
@@ -209,7 +205,9 @@ export default class NightLight extends Object {
         if (this.#generalHandlerId !== 0) {
             try {
                 this.#generalSettings.disconnect(this.#generalHandlerId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#generalHandlerId = 0;
         }
         if (this.#pollTimer) {

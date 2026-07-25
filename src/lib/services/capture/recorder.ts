@@ -75,7 +75,8 @@ export class Recorder {
         if (this.#recording) return;
 
         const settings = getScreenCaptureSettings();
-        const pref = forceBackend ?? (settings.recorderBackend() as RecorderBackend);
+        const pref =
+            forceBackend ?? (settings.recorderBackend() as RecorderBackend);
         const backend = resolveBackend(pref);
         const format = settings.recordingFormat() as RecordingFormat;
         const ext = format === RecordingFormat.WEBM ? 'webm' : 'mp4';
@@ -89,11 +90,20 @@ export class Recorder {
 
         const {audio, input, quality} = this.#hooks.getAudioSettings();
         const {args, backendName} = buildRecordingArgs(
-            backend, filename, options.geometry, effectiveOutput,
-            audio, format, input, quality,
+            backend,
+            filename,
+            options.geometry,
+            effectiveOutput,
+            audio,
+            format,
+            input,
+            quality
         );
 
-        logger.info('screenshot', `starting ${backendName} with args: ${args.join(' ')}`);
+        logger.info(
+            'screenshot',
+            `starting ${backendName} with args: ${args.join(' ')}`
+        );
 
         const proc = this.#spawn(args, backendName);
         if (!proc) return;
@@ -154,8 +164,15 @@ export class Recorder {
         try {
             return Process.subprocessv(args);
         } catch (e) {
-            logger.error('screenshot', `failed to spawn ${backendName}: ${e instanceof Error ? e.message : String(e)}`);
-            notify(MSG_RECORDING_FAILED, `Could not start ${backendName}: ${e instanceof Error ? e.message : String(e)}`, ICON_ERROR);
+            logger.error(
+                'screenshot',
+                `failed to spawn ${backendName}: ${e instanceof Error ? e.message : String(e)}`
+            );
+            notify(
+                MSG_RECORDING_FAILED,
+                `Could not start ${backendName}: ${e instanceof Error ? e.message : String(e)}`,
+                ICON_ERROR
+            );
             return null;
         }
     }
@@ -164,7 +181,7 @@ export class Recorder {
         proc: Process,
         filename: string,
         backendName: string,
-        forceBackend: RecorderBackend | undefined,
+        forceBackend: RecorderBackend | undefined
     ) {
         this.#recording = true;
         this.#stopRequested = false;
@@ -178,37 +195,62 @@ export class Recorder {
     }
 
     #startDurationTimer() {
-        this.#durationTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-            this.#elapsed = Math.floor((Date.now() - this.#startTime) / 1000);
-            this.#hooks.notifyState();
-            return this.#recording;
-        });
+        this.#durationTimer = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            1000,
+            () => {
+                this.#elapsed = Math.floor(
+                    (Date.now() - this.#startTime) / 1000
+                );
+                this.#hooks.notifyState();
+                return this.#recording;
+            }
+        );
     }
 
     #onExit(
         proc: Process,
         options: {geometry?: string; output?: string},
         backend: RecorderBackend,
-        pref: RecorderBackend,
+        pref: RecorderBackend
     ) {
         const durationMs = Date.now() - this.#startTime;
         const durationStr = formatDuration(durationMs);
         const success = this.#stopRequested || durationMs >= 1000;
         const name = this.#backendName || '';
 
-        if (!success && !this.#isRetry && backend === RecorderBackend.WL_SCREENREC && pref === RecorderBackend.AUTO) {
-            logger.warn('screenshot', `${name} exited after ${durationMs}ms; retrying with wf-recorder`);
+        if (
+            !success &&
+            !this.#isRetry &&
+            backend === RecorderBackend.WL_SCREENREC &&
+            pref === RecorderBackend.AUTO
+        ) {
+            logger.warn(
+                'screenshot',
+                `${name} exited after ${durationMs}ms; retrying with wf-recorder`
+            );
             this.#reset();
             this.start(options, RecorderBackend.WF_RECORDER);
             return;
         }
 
-        logger.info('screenshot', `${name} exited after ${durationStr} (${durationMs}ms)`);
+        logger.info(
+            'screenshot',
+            `${name} exited after ${durationStr} (${durationMs}ms)`
+        );
 
         if (success) {
-            notify('Recording stopped', `Duration: ${durationStr}\nSaved to: ${this.#file}`, 'media-playback-stop-symbolic');
+            notify(
+                'Recording stopped',
+                `Duration: ${durationStr}\nSaved to: ${this.#file}`,
+                'media-playback-stop-symbolic'
+            );
         } else {
-            notify(MSG_RECORDING_FAILED, `${name} exited immediately (${durationMs}ms). Check geometry/output and that no other recorder is running.`, ICON_ERROR);
+            notify(
+                MSG_RECORDING_FAILED,
+                `${name} exited immediately (${durationMs}ms). Check geometry/output and that no other recorder is running.`,
+                ICON_ERROR
+            );
         }
 
         this.#reset();

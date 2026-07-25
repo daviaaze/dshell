@@ -258,15 +258,24 @@ export class Theme extends GObject {
             const colors = this.#isDark ? sheet.dark : sheet.light;
             this.#applyTheme(colors);
         } else {
-            this.#applyTheme(this.#isDark ? ADWAITA_COLORS : ADWAITA_COLORS_LIGHT);
+            this.#applyTheme(
+                this.#isDark ? ADWAITA_COLORS : ADWAITA_COLORS_LIGHT
+            );
         }
     }
 
     #applyTheme(colors: ThemeColors): void {
         const rules: string[] = [];
         for (const [key, value] of Object.entries(colors)) {
-            if (value === undefined || value === null || value === 'undefined') {
-                logger.warn('theme', `skipping undefined color: --shade-${key}`);
+            if (
+                value === undefined ||
+                value === null ||
+                value === 'undefined'
+            ) {
+                logger.warn(
+                    'theme',
+                    `skipping undefined color: --shade-${key}`
+                );
                 continue;
             }
             const varName = `--shade-${key}`;
@@ -279,13 +288,19 @@ export class Theme extends GObject {
         if (this.#isDark) {
             const darkRules: string[] = [];
             for (const [key, value] of Object.entries(colors)) {
-                if (value === undefined || value === null || value === 'undefined') {
+                if (
+                    value === undefined ||
+                    value === null ||
+                    value === 'undefined'
+                ) {
                     continue;
                 }
                 const varName = `--shade-${key}`;
                 darkRules.push(`  ${varName}: ${value};`);
             }
-            this.#darkProvider.load_from_string(`* {\n${darkRules.join('\n')}\n}`);
+            this.#darkProvider.load_from_string(
+                `* {\n${darkRules.join('\n')}\n}`
+            );
         } else {
             this.#darkProvider.load_from_string('');
         }

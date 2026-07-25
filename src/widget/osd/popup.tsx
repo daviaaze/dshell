@@ -33,10 +33,7 @@ export default ({
                 self.revealChild = true;
                 timeout = setTimeout(() => {
                     self.revealChild = false;
-                    visibilityTimeout = setTimeout(
-                        hide,
-                        200
-                    );
+                    visibilityTimeout = setTimeout(hide, 200);
                 }, TIMEOUT_MS);
             };
             // Defer signal connections so OSD widget creation doesn't block

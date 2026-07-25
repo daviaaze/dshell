@@ -142,13 +142,20 @@ function createDoForget(
             const conns = liveAp.get_connections();
             if (!conns) return;
             for (const conn of toArray<NM.RemoteConnection>(conns)) {
-                conn.delete_async(null, (_source: unknown, res: Gio.AsyncResult) => {
-                    try {
-                        conn.delete_finish(res);
-                    } catch (e) {
-                        logger.error('network', 'forget failed:', e instanceof Error ? e.message : String(e));
+                conn.delete_async(
+                    null,
+                    (_source: unknown, res: Gio.AsyncResult) => {
+                        try {
+                            conn.delete_finish(res);
+                        } catch (e) {
+                            logger.error(
+                                'network',
+                                'forget failed:',
+                                e instanceof Error ? e.message : String(e)
+                            );
+                        }
                     }
-                });
+                );
             }
         } catch (e) {
             logger.error('network', 'forget error:', e);
@@ -171,7 +178,9 @@ function ApRow({
     const secLabel = snap.secLabel;
 
     const [showPassword, setShowPassword] = createState(false);
-    const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(null);
+    const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(
+        null
+    );
     const [passwordError, setPasswordError] = createState<string | null>(null);
 
     const connectState: ConnectState = {
@@ -182,7 +191,13 @@ function ApRow({
         setPasswordError,
     };
 
-    const doConnect = createDoConnect(wifi, apBssid, apSsid, secure, connectState);
+    const doConnect = createDoConnect(
+        wifi,
+        apBssid,
+        apSsid,
+        secure,
+        connectState
+    );
     const doForget = createDoForget(wifi, apBssid, apSsid);
 
     const notActive = computed(() => !isActive());
@@ -208,7 +223,11 @@ function ApRow({
                             try {
                                 (wifi as any).deactivate_connection(null);
                             } catch (e: any) {
-                                logger.error('network', 'deactivate failed:', e.message);
+                                logger.error(
+                                    'network',
+                                    'deactivate failed:',
+                                    e.message
+                                );
                             }
                             return;
                         }
@@ -216,7 +235,10 @@ function ApRow({
                     }}
                 >
                     <Gtk.Box spacing={12}>
-                        <Gtk.Image iconName={prefixIcon} pixelSize={AP_ICON_SIZE} />
+                        <Gtk.Image
+                            iconName={prefixIcon}
+                            pixelSize={AP_ICON_SIZE}
+                        />
 
                         <Gtk.Box
                             hexpand
@@ -224,7 +246,12 @@ function ApRow({
                             orientation={Gtk.Orientation.VERTICAL}
                             spacing={2}
                         >
-                            <Gtk.Label hexpand halign={Gtk.Align.FILL} label={apSsid} ellipsize={3} />
+                            <Gtk.Label
+                                hexpand
+                                halign={Gtk.Align.FILL}
+                                label={apSsid}
+                                ellipsize={3}
+                            />
                             <Gtk.Label
                                 halign={Gtk.Align.START}
                                 label={secLabel}
@@ -247,7 +274,11 @@ function ApRow({
                             tooltipText={`${snap.strength}%`}
                         />
 
-                        <Gtk.Image iconName="emblem-ok-symbolic" pixelSize={AP_ICON_SIZE} visible={isActive} />
+                        <Gtk.Image
+                            iconName="emblem-ok-symbolic"
+                            pixelSize={AP_ICON_SIZE}
+                            visible={isActive}
+                        />
                         <Gtk.Spinner spinning visible={isConnecting} />
                     </Gtk.Box>
                 </Gtk.Button>
@@ -259,12 +290,24 @@ function ApRow({
                     tooltipText="Forget Network"
                     valign={Gtk.Align.CENTER}
                 >
-                    <Gtk.Image iconName="user-trash-symbolic" pixelSize={AP_TRASH_ICON_SIZE} />
+                    <Gtk.Image
+                        iconName="user-trash-symbolic"
+                        pixelSize={AP_TRASH_ICON_SIZE}
+                    />
                 </Gtk.Button>
             </Gtk.Box>
 
-            <Gtk.Revealer revealChild={showPassword} transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}>
-                <Gtk.Box spacing={4} marginStart={28} marginEnd={4} marginTop={4} marginBottom={4}>
+            <Gtk.Revealer
+                revealChild={showPassword}
+                transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+            >
+                <Gtk.Box
+                    spacing={4}
+                    marginStart={28}
+                    marginEnd={4}
+                    marginTop={4}
+                    marginBottom={4}
+                >
                     <Gtk.Entry
                         placeholderText="Password"
                         visibility={false}
@@ -277,20 +320,29 @@ function ApRow({
                             });
 
                             const controller = new Gtk.EventControllerKey();
-                            controller.connect('key-pressed', (_ctrl, keyval) => {
-                                if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
-                                    doConnect(self.get_text() || undefined);
-                                    return true;
+                            controller.connect(
+                                'key-pressed',
+                                (_ctrl, keyval) => {
+                                    if (
+                                        keyval === Gdk.KEY_Return ||
+                                        keyval === Gdk.KEY_KP_Enter
+                                    ) {
+                                        doConnect(self.get_text() || undefined);
+                                        return true;
+                                    }
+                                    return false;
                                 }
-                                return false;
-                            });
+                            );
                             self.add_controller(controller);
                         }}
                     />
-                    <Gtk.Button cssClasses={['suggested-action']} onClicked={() => {
-                        const entry = passwordEntry();
-                        doConnect(entry?.get_text() || undefined);
-                    }}>
+                    <Gtk.Button
+                        cssClasses={['suggested-action']}
+                        onClicked={() => {
+                            const entry = passwordEntry();
+                            doConnect(entry?.get_text() || undefined);
+                        }}
+                    >
                         <Gtk.Image iconName="go-next-symbolic" />
                     </Gtk.Button>
                     <Gtk.Button onClicked={() => setShowPassword(false)}>

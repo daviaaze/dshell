@@ -5,7 +5,11 @@ import type {QuickButton} from './quickButton';
 function removeAllChildren(grid: Gtk.Grid) {
     // Gtk.Grid has no remove_all(); detach every child from the first one
     // until the container is empty.
-    for (let child = grid.get_first_child(); child; child = grid.get_first_child()) {
+    for (
+        let child = grid.get_first_child();
+        child;
+        child = grid.get_first_child()
+    ) {
         grid.remove(child);
     }
 }

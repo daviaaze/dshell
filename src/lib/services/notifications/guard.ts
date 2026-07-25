@@ -54,7 +54,12 @@ function checkNotifdDaemon(): boolean {
             );
 
             if (infoResult) {
-                const unpacked = infoResult.deepUnpack() as [string, string, string, string];
+                const unpacked = infoResult.deepUnpack() as [
+                    string,
+                    string,
+                    string,
+                    string,
+                ];
                 const [name, vendor] = unpacked;
                 if (vendor === 'astal') return true;
                 logger.warn(

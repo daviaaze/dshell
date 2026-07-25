@@ -48,7 +48,6 @@ export class GreetSession extends Object {
         return this.#state;
     }
 
-    
     set state(v: GreetState) {
         this.#state = v;
         this.notify('state');
@@ -59,7 +58,6 @@ export class GreetSession extends Object {
         return this.#errorMessage;
     }
 
-    
     set errorMessage(v: string) {
         this.#errorMessage = v;
         this.notify('error-message');
@@ -70,7 +68,6 @@ export class GreetSession extends Object {
         return this.#infoMessage;
     }
 
-    
     set infoMessage(v: string) {
         this.#infoMessage = v;
         this.notify('info-message');
@@ -110,28 +107,40 @@ export class GreetSession extends Object {
 
         // Connect all signals
         this.#signalIds = [
-            this.#greeter.connect('visible-request', (_g: Greet.Greeter, msg: string) => {
-                this.#infoMessage = msg;
-                this.notify('info-message');
-                this.state = 'awaiting-input';
-            }),
+            this.#greeter.connect(
+                'visible-request',
+                (_g: Greet.Greeter, msg: string) => {
+                    this.#infoMessage = msg;
+                    this.notify('info-message');
+                    this.state = 'awaiting-input';
+                }
+            ),
 
-            this.#greeter.connect('secret-request', (_g: Greet.Greeter, msg: string) => {
-                this.#infoMessage = msg || 'Password required';
-                this.notify('info-message');
-                this.state = 'awaiting-input';
-            }),
+            this.#greeter.connect(
+                'secret-request',
+                (_g: Greet.Greeter, msg: string) => {
+                    this.#infoMessage = msg || 'Password required';
+                    this.notify('info-message');
+                    this.state = 'awaiting-input';
+                }
+            ),
 
-            this.#greeter.connect('info-message', (_g: Greet.Greeter, msg: string) => {
-                this.#infoMessage = msg;
-                this.notify('info-message');
-            }),
+            this.#greeter.connect(
+                'info-message',
+                (_g: Greet.Greeter, msg: string) => {
+                    this.#infoMessage = msg;
+                    this.notify('info-message');
+                }
+            ),
 
-            this.#greeter.connect('error-message', (_g: Greet.Greeter, msg: string) => {
-                this.#errorMessage = msg;
-                this.notify('error-message');
-                this.state = 'error';
-            }),
+            this.#greeter.connect(
+                'error-message',
+                (_g: Greet.Greeter, msg: string) => {
+                    this.#errorMessage = msg;
+                    this.notify('error-message');
+                    this.state = 'error';
+                }
+            ),
 
             this.#greeter.connect('cancelled', () => {
                 this.#errorMessage = 'Authentication cancelled';

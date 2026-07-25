@@ -49,63 +49,66 @@ export default ({
                     });
 
                     return (
-                    <Adw.ToggleGroup
-                        orientation={vertical.as(v =>
-                            v
-                                ? Gtk.Orientation.VERTICAL
-                                : Gtk.Orientation.HORIZONTAL
-                        )}
-                        cssClasses={[ws.id < 0 ? 'success' : '']}
-                        activeName={activeName()}
-                    >
-                        <For
-                            each={bind(ws, 'clients').as(clients =>
-                                toArray<Hyprland.Client>(clients)
+                        <Adw.ToggleGroup
+                            orientation={vertical.as(v =>
+                                v
+                                    ? Gtk.Orientation.VERTICAL
+                                    : Gtk.Orientation.HORIZONTAL
                             )}
+                            cssClasses={[ws.id < 0 ? 'success' : '']}
+                            activeName={activeName()}
                         >
-                            {(client: Hyprland.Client) => (
-                                <Adw.Toggle
-                                    name={client.address}
-                                    child={
-                                        (
-                                            <Gtk.Image
-                                                iconName={getAppIcon(client)}
-                                                pixelSize={24}
-                                            >
-                                                <Gtk.GestureClick
-                                                    onPressed={() =>
-                                                        client.focus()
-                                                    }
-                                                />
-                                            </Gtk.Image>
-                                        ) as any
-                                    }
-                                />
-                            )}
-                        </For>
-                        {/* show empty dot when ws is empty */}
-                        <With
-                            value={bind(ws, 'clients').as(
-                                clients =>
-                                    toArray<Hyprland.Client>(clients).length < 1
-                            )}
-                        >
-                            {(isEmpty: boolean) =>
-                                isEmpty ? (
+                            <For
+                                each={bind(ws, 'clients').as(clients =>
+                                    toArray<Hyprland.Client>(clients)
+                                )}
+                            >
+                                {(client: Hyprland.Client) => (
                                     <Adw.Toggle
+                                        name={client.address}
                                         child={
                                             (
                                                 <Gtk.Image
-                                                    iconName="window-minimize-symbolic"
-                                                    pixelSize={8}
-                                                />
+                                                    iconName={getAppIcon(
+                                                        client
+                                                    )}
+                                                    pixelSize={24}
+                                                >
+                                                    <Gtk.GestureClick
+                                                        onPressed={() =>
+                                                            client.focus()
+                                                        }
+                                                    />
+                                                </Gtk.Image>
                                             ) as any
                                         }
                                     />
-                                ) : null
-                            }
-                        </With>
-                    </Adw.ToggleGroup>
+                                )}
+                            </For>
+                            {/* show empty dot when ws is empty */}
+                            <With
+                                value={bind(ws, 'clients').as(
+                                    clients =>
+                                        toArray<Hyprland.Client>(clients)
+                                            .length < 1
+                                )}
+                            >
+                                {(isEmpty: boolean) =>
+                                    isEmpty ? (
+                                        <Adw.Toggle
+                                            child={
+                                                (
+                                                    <Gtk.Image
+                                                        iconName="window-minimize-symbolic"
+                                                        pixelSize={8}
+                                                    />
+                                                ) as any
+                                            }
+                                        />
+                                    ) : null
+                                }
+                            </With>
+                        </Adw.ToggleGroup>
                     );
                 }}
             </For>

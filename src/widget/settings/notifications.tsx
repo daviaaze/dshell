@@ -44,10 +44,12 @@ export default () => {
                     onApply={self => {
                         const name = self.text.trim();
                         if (!name) return;
-                        const current =
-                            settings.notificationIgnoredApps();
+                        const current = settings.notificationIgnoredApps();
                         if (!current.includes(name)) {
-                            logger.info('settings', `ignore app added: ${name}`);
+                            logger.info(
+                                'settings',
+                                `ignore app added: ${name}`
+                            );
                             settings.setNotificationIgnoredApps([
                                 ...current,
                                 name,
@@ -66,7 +68,10 @@ export default () => {
                                 onClicked={() => {
                                     const current =
                                         settings.notificationIgnoredApps();
-                                    logger.info('settings', `ignore app removed: ${app}`);
+                                    logger.info(
+                                        'settings',
+                                        `ignore app removed: ${app}`
+                                    );
                                     settings.setNotificationIgnoredApps(
                                         current.filter(a => a !== app)
                                     );

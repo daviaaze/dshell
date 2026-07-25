@@ -50,7 +50,12 @@ describe('GreetSession', () => {
         // The outcome depends on whether AstalGreet.Greeter constructor
         // throws immediately or succeeds and create_session fails later.
         // Either way, the state should be 'error' after a short delay.
-        const states = ['error', 'creating-session', 'awaiting-input', 'authenticating'];
+        const states = [
+            'error',
+            'creating-session',
+            'awaiting-input',
+            'authenticating',
+        ];
         expect(states).toContain(session.state);
 
         // If we're still in creating-session, the proxy was created

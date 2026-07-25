@@ -149,10 +149,7 @@ export const DailyForecastSection = ({
                                 cssClasses={['caption']}
                                 label={d.dayName}
                             />
-                            <Gtk.Image
-                                iconName={d.iconName}
-                                pixelSize={18}
-                            />
+                            <Gtk.Image iconName={d.iconName} pixelSize={18} />
                             <Gtk.Label
                                 label={`${formatTemp(d.tempMax)} / ${formatTemp(d.tempMin)}`}
                                 cssClasses={[

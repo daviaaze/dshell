@@ -19,7 +19,10 @@ import logger from '#/lib/core/logger';
 
 export type ClipType = 'text' | 'image';
 
-export type ClipboardChangeCallback = (type: ClipType, rawBytes: Uint8Array) => void;
+export type ClipboardChangeCallback = (
+    type: ClipType,
+    rawBytes: Uint8Array
+) => void;
 
 let textWatcher: Process | null = null;
 let imageWatcher: Process | null = null;
@@ -35,7 +38,10 @@ let activeCallback: ClipboardChangeCallback | null = null;
  */
 export function startClipboardWatcher(callback: ClipboardChangeCallback): void {
     if (textWatcher || imageWatcher) {
-        logger.warn('clipboard', 'watcher already started, ignoring duplicate start');
+        logger.warn(
+            'clipboard',
+            'watcher already started, ignoring duplicate start'
+        );
         return;
     }
 

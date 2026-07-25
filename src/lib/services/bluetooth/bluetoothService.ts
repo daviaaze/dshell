@@ -60,7 +60,11 @@ export default class BluetoothService extends Object {
         try {
             this.#bt = Bluetooth.get_default();
         } catch (e) {
-            logger.error('bluetoothService', 'Failed to init AstalBluetooth:', e);
+            logger.error(
+                'bluetoothService',
+                'Failed to init AstalBluetooth:',
+                e
+            );
             return;
         }
 

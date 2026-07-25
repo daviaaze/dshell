@@ -13,8 +13,8 @@ import ShellState from '#/lib/services/state/shellState';
 import logger from '#/lib/core/logger';
 import {launcherSearch} from '#/lib/services/search/launcher';
 import type {LauncherMode, ListItem} from '#/lib/services/search/launcher';
-import { fuzzyQuery } from '#/lib/services/state/apps';
-import { ClipboardEntry } from '#/lib/services/clipboard/encryptedStore';
+import {fuzzyQuery} from '#/lib/services/state/apps';
+import {ClipboardEntry} from '#/lib/services/clipboard/encryptedStore';
 import AstalApps from 'gi://AstalApps?version=0.1';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
@@ -154,7 +154,9 @@ export default () => {
                                     />
                                 ) : (
                                     <AppButton
-                                        application={item as AstalApps.Application}
+                                        application={
+                                            item as AstalApps.Application
+                                        }
                                     />
                                 )
                             }

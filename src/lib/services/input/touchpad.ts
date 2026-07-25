@@ -1,4 +1,11 @@
-import {Object, register, signal, property, Boolean, VoidType} from 'gnim/gobject';
+import {
+    Object,
+    register,
+    signal,
+    property,
+    Boolean,
+    VoidType,
+} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
 import {bus} from '#/lib/core/eventBus';
 import {Process} from '#/lib/core/process';
@@ -36,7 +43,6 @@ export default class Touchpad extends Object {
         return this.#enabled;
     }
 
-    
     set enabled(v: boolean) {
         if (this.#enabled === v) return;
         this.#enabled = v;

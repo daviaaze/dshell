@@ -29,9 +29,13 @@ const ATTRIBUTE_VALUE = 'shade-shell';
 // ── Schema definition ────────────────────────────────────────────────────────
 
 /** Schema for identifying our key in the keyring. */
-const schema = new (Secret.Schema as any)(SCHEMA_NAME, Secret.SchemaFlags.NONE, {
-    [ATTRIBUTE_KEY]: Secret.SchemaAttributeType.STRING,
-});
+const schema = new (Secret.Schema as any)(
+    SCHEMA_NAME,
+    Secret.SchemaFlags.NONE,
+    {
+        [ATTRIBUTE_KEY]: Secret.SchemaAttributeType.STRING,
+    }
+);
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -69,7 +73,10 @@ export function initKeyManager(): void {
             logger.info('clipboard', 'retrieved encryption key from keyring');
             keyResult = hexToBytes(keyHex);
         } else {
-            logger.info('clipboard', 'no encryption key found, generating new key');
+            logger.info(
+                'clipboard',
+                'no encryption key found, generating new key'
+            );
             keyResult = generateKey();
             storeKey(keyResult);
         }
@@ -103,7 +110,10 @@ function storeKey(key: Uint8Array): void {
         if (stored) {
             logger.info('clipboard', 'encryption key stored in keyring');
         } else {
-            logger.warn('clipboard', 'failed to store encryption key in keyring');
+            logger.warn(
+                'clipboard',
+                'failed to store encryption key in keyring'
+            );
         }
     } catch (e) {
         logger.warn('clipboard', 'failed to store key in keyring:', e);
@@ -135,7 +145,11 @@ export function getKey(): Uint8Array {
 export function deleteKey(): void {
     if (!keyringReady) return;
     try {
-        Secret.password_clear_sync(schema, {[ATTRIBUTE_KEY]: ATTRIBUTE_VALUE}, null);
+        Secret.password_clear_sync(
+            schema,
+            {[ATTRIBUTE_KEY]: ATTRIBUTE_VALUE},
+            null
+        );
         logger.info('clipboard', 'encryption key deleted from keyring');
         keyResult = null;
     } catch (e) {

@@ -30,7 +30,9 @@ export default () => {
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
     const [selActive, setSelActive] = createState(false);
-    const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(null);
+    const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(
+        null
+    );
     const [windows, setWindows] = createState<WinInfo[]>([]);
     const [monOrigin, setMonOrigin] = createState<Point>({x: 0, y: 0});
 

@@ -73,10 +73,7 @@ export const createSettingsWindow = (): any => {
                 <Weather />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage
-                title={'Timer'}
-                iconName={'alarm-symbolic'}
-            >
+            <Adw.PreferencesPage title={'Timer'} iconName={'alarm-symbolic'}>
                 <Timer />
             </Adw.PreferencesPage>
 

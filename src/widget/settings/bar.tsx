@@ -147,8 +147,7 @@ export default () => {
                                 cssClasses={['circular', 'destructive-action']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
-                                    const current =
-                                        bar.dockPinnedApps();
+                                    const current = bar.dockPinnedApps();
                                     bar.setDockPinnedApps(
                                         current.filter(a => a !== appId)
                                     );

@@ -3,7 +3,11 @@ import Gio from 'gi://Gio?version=2.0';
 import {Object, register} from 'gnim/gobject';
 import {property} from '#/lib/decorators';
 import logger from '#/lib/core/logger';
-import {RecorderBackend, type VirtualMonitor, type BoundaryGeometry} from './types';
+import {
+    RecorderBackend,
+    type VirtualMonitor,
+    type BoundaryGeometry,
+} from './types';
 import {Recorder} from './recorder';
 import RecordingPrefs from './prefs';
 import {Freeze} from './freeze';
@@ -24,10 +28,7 @@ import {
     recordWindowByAddress,
     recordWindow,
 } from './recordTargets';
-import {
-    createVirtualMonitor,
-    removeVirtualMonitors,
-} from './virtualMonitors';
+import {createVirtualMonitor, removeVirtualMonitors} from './virtualMonitors';
 
 export {RecorderBackend, RecordingFormat} from './types';
 export type {VirtualMonitor, BoundaryGeometry} from './types';
@@ -116,14 +117,16 @@ export default class Screenshot extends Object {
         return this.#overlayOpen;
     }
 
-    
     set overlayOpen(v: boolean) {
         if (this.#overlayOpen === v) return;
 
         if (v) {
             this.#stage.captureSync();
             if (!this.#stage.pixPath) {
-                logger.warn('screenshot', 'stage capture failed, overlay will show live screen');
+                logger.warn(
+                    'screenshot',
+                    'stage capture failed, overlay will show live screen'
+                );
             }
         }
 
@@ -140,7 +143,6 @@ export default class Screenshot extends Object {
         return this.#selectedMode;
     }
 
-    
     set selectedMode(v: 'screenshot' | 'recording') {
         this.#selectedMode = v;
         this.notify('selected-mode');
@@ -151,7 +153,6 @@ export default class Screenshot extends Object {
         return this.#selectedTarget;
     }
 
-    
     set selectedTarget(v: 'fullscreen' | 'area' | 'window' | 'monitor') {
         this.#selectedTarget = v;
         this.notify('selected-target');
@@ -164,7 +165,6 @@ export default class Screenshot extends Object {
         return this.#regionSelectorOpen;
     }
 
-    
     set regionSelectorOpen(v: boolean) {
         if (this.#regionSelectorOpen === v) return;
         this.#regionSelectorOpen = v;
@@ -181,7 +181,6 @@ export default class Screenshot extends Object {
         return this.#pendingCaptureGeometry || '';
     }
 
-    
     set pendingCaptureGeometry(v: string | null) {
         this.#pendingCaptureGeometry = v;
         this.notify('pending-capture-geometry');
@@ -209,7 +208,6 @@ export default class Screenshot extends Object {
         return this.#freezeActive;
     }
 
-    
     set freezeActive(v: boolean) {
         if (this.#freezeActive === v) return;
         this.#freezeActive = v;
@@ -228,7 +226,6 @@ export default class Screenshot extends Object {
         return this.#boundaryVisible;
     }
 
-    
     set boundaryVisible(v: boolean) {
         if (this.#boundaryVisible === v) return;
         this.#boundaryVisible = v;
@@ -240,7 +237,6 @@ export default class Screenshot extends Object {
         return this.#boundaryGeometry;
     }
 
-    
     set boundaryGeometry(v: BoundaryGeometry | null) {
         this.#boundaryGeometry = v;
         this.notify('boundary-geometry');
@@ -285,7 +281,9 @@ export default class Screenshot extends Object {
 
     // ── Recording ──────────────────────────────────────────────────────
 
-    toggleRecording() { this.#recorder.toggle(); }
+    toggleRecording() {
+        this.#recorder.toggle();
+    }
 
     startRecording(
         options: {geometry?: string; output?: string} = {},
@@ -294,7 +292,9 @@ export default class Screenshot extends Object {
         this.#recorder.start(options, forceBackend);
     }
 
-    stopRecording() { this.#recorder.stop(); }
+    stopRecording() {
+        this.#recorder.stop();
+    }
 
     startRecordingAfterOverlayClose(target: string, geometry?: string | null) {
         startRecordingAfterOverlayClose(this, target, geometry);
@@ -326,12 +326,24 @@ export default class Screenshot extends Object {
 
     // ── Overlay & freeze ───────────────────────────────────────────────
 
-    toggleOverlay() { this.overlayOpen = !this.#overlayOpen; }
-    showOverlay() { this.overlayOpen = true; }
-    hideOverlay() { this.overlayOpen = false; }
-    setFreezeKeepAlive(v: boolean) { this.#freezeKeepAlive = v; }
-    startFreeze() { this.#freeze.start(); }
-    stopFreeze() { this.#freeze.stop(); }
+    toggleOverlay() {
+        this.overlayOpen = !this.#overlayOpen;
+    }
+    showOverlay() {
+        this.overlayOpen = true;
+    }
+    hideOverlay() {
+        this.overlayOpen = false;
+    }
+    setFreezeKeepAlive(v: boolean) {
+        this.#freezeKeepAlive = v;
+    }
+    startFreeze() {
+        this.#freeze.start();
+    }
+    stopFreeze() {
+        this.#freeze.stop();
+    }
 
     // ── Recording boundary ─────────────────────────────────────────────
 
@@ -347,15 +359,26 @@ export default class Screenshot extends Object {
 
     // ── Virtual monitors ──────────────────────────────────────────────
 
-    async createVirtualMonitor(resolution = '1920x1080', fps = 60): Promise<VirtualMonitor | null> {
-        const vm = await createVirtualMonitor(this.#virtualMonitors, resolution, fps);
-        if (vm) { this.notify('virtual-monitors'); this.notify('virtual-monitor-active'); }
+    async createVirtualMonitor(
+        resolution = '1920x1080',
+        fps = 60
+    ): Promise<VirtualMonitor | null> {
+        const vm = await createVirtualMonitor(
+            this.#virtualMonitors,
+            resolution,
+            fps
+        );
+        if (vm) {
+            this.notify('virtual-monitors');
+            this.notify('virtual-monitor-active');
+        }
         return vm;
     }
 
     removeVirtualMonitors() {
         removeVirtualMonitors(this.#virtualMonitors);
-        this.notify('virtual-monitors'); this.notify('virtual-monitor-active');
+        this.notify('virtual-monitors');
+        this.notify('virtual-monitor-active');
     }
 
     /** Register GAction commands for screenshot/recording. */

@@ -29,7 +29,12 @@ export const Slider = (props: SliderProps) => {
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
 
     return (
-        <Gtk.Box cssClasses={['slider', sliderStyle.class]} spacing={SLIDER_SPACING} visible={props.visible} ref={sliderStyle.$}>
+        <Gtk.Box
+            cssClasses={['slider', sliderStyle.class]}
+            spacing={SLIDER_SPACING}
+            visible={props.visible}
+            ref={sliderStyle.$}
+        >
             {props.onIconClick ? (
                 <Gtk.Button onClicked={props.onIconClick}>
                     <Gtk.Image iconName={props.icon} />
@@ -42,7 +47,10 @@ export const Slider = (props: SliderProps) => {
                 min={props.min}
                 max={props.max}
                 value={props.value.as(safe)}
-                onChangeValue={(_self, _scroll, value) => { props.setValue(safe(value)); return false; }}
+                onChangeValue={(_self, _scroll, value) => {
+                    props.setValue(safe(value));
+                    return false;
+                }}
             />
             <Gtk.Label
                 cssClasses={['heading']}

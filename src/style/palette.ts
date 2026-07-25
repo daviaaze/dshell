@@ -82,7 +82,10 @@ export default class PaletteGenerator extends GObject {
         wallpaperNight: Accessor<string>;
     }) {
         if (this.#initialized) {
-            logger.warn('palette', 'init() called but already initialized — skipping');
+            logger.warn(
+                'palette',
+                'init() called but already initialized — skipping'
+            );
             return;
         }
         this.#initialized = true;
@@ -163,13 +166,18 @@ export default class PaletteGenerator extends GObject {
             });
     }
 
-    #parseMatugenJson(json: string): {dark: ThemeColors; light: ThemeColors} | null {
+    #parseMatugenJson(
+        json: string
+    ): {dark: ThemeColors; light: ThemeColors} | null {
         try {
             const data: MatugenJson = JSON.parse(json);
             const rawDark = data.colors?.dark;
             const rawLight = data.colors?.light;
             if (!rawDark || !rawLight) {
-                logger.warn('palette', 'matugen JSON missing colors.dark or colors.light');
+                logger.warn(
+                    'palette',
+                    'matugen JSON missing colors.dark or colors.light'
+                );
                 return null;
             }
 

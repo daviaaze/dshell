@@ -1,18 +1,14 @@
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import {
-    For,
-    bind,
-    createState,
-    computed,
-    effect,
-    onCleanup,
-} from 'gnim';
+import {For, bind, createState, computed, effect, onCleanup} from 'gnim';
 import Notification from '#/widget/common/notification';
 import PopupWindow from '#/widget/common/PopupWindow';
 import WindowManager from '#/lib/services/state/windowManager';
-import {getNotifdSafe, watchNotifdInit} from '#/lib/services/notifications/guard';
+import {
+    getNotifdSafe,
+    watchNotifdInit,
+} from '#/lib/services/notifications/guard';
 import {useSettings} from '#/lib/settings';
 import ShellState from '#/lib/services/state/shellState';
 import DndService from '#/lib/services/notifications/dnd';
@@ -47,18 +43,14 @@ const NotificationContent = ({
         })();
         timeouts.set(
             id,
-            setTimeout(
-                () => {
-                    // eslint-disable-next-line sonarjs/no-nested-functions
-                    setNotifications(prev => {
-                        const next = prev.filter(x => x.id !== id);
-                        setNotificationCount(next.length);
-                        return next;
-                    });
-                    timeouts.delete(id);
-                },
-                expireMs
-            )
+            setTimeout(() => {
+                setNotifications(prev => {
+                    const next = prev.filter(x => x.id !== id);
+                    setNotificationCount(next.length);
+                    return next;
+                });
+                timeouts.delete(id);
+            }, expireMs)
         );
     };
 
@@ -88,7 +80,6 @@ const NotificationContent = ({
         timeouts.set(
             id,
             setTimeout(() => {
-                // eslint-disable-next-line sonarjs/no-nested-functions
                 setNotifications(prev => {
                     const next = prev.filter(x => x.id !== id);
                     setNotificationCount(next.length);
@@ -177,10 +168,7 @@ export default () => {
         onCleanup(() => cleanupNode(_hn));
     });
 
-    const screenlocked = bind(
-        ShellState.get_default(),
-        'screenlocked'
-    );
+    const screenlocked = bind(ShellState.get_default(), 'screenlocked');
 
     return (
         <PopupWindow

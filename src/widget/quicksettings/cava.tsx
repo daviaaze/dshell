@@ -10,7 +10,6 @@ try {
 
 const AstalCava = (() => {
     try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
         return (imports.gi as any).AstalCava;
     } catch {
         return null;
@@ -63,9 +62,7 @@ export default () => {
                         i < Math.min(bars.length, values.length);
                         i++
                     ) {
-                        bars[i].set_value(
-                            Math.min(1, Math.max(0, values[i]))
-                        );
+                        bars[i].set_value(Math.min(1, Math.max(0, values[i])));
                     }
                 });
 

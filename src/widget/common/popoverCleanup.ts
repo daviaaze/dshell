@@ -7,7 +7,9 @@ import {logger} from '#/lib/core/logger';
  */
 export function usePopoverCleanup(self: any) {
     (self as any).connect('destroy', () => {
-        const popover = ('popover' in self ? (self as any).popover : null) ?? ('get_popover' in self ? (self as any).get_popover() : undefined);
+        const popover =
+            ('popover' in self ? (self as any).popover : null) ??
+            ('get_popover' in self ? (self as any).get_popover() : undefined);
         if (popover) {
             try {
                 popover.popdown();

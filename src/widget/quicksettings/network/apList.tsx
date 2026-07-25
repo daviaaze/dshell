@@ -1,12 +1,7 @@
 import Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, For} from 'gnim';
-import {
-    bssidOf,
-    bssidEquals,
-    ApSnapshot,
-    snapshotAp,
-} from './utils';
+import {bssidOf, bssidEquals, ApSnapshot, snapshotAp} from './utils';
 import {useStyle} from '#/style/useStyle';
 import ApRow from './apRow';
 
@@ -18,8 +13,14 @@ interface ApListProps {
 
 function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
     return [...aps].sort((a, b) => {
-        const aActive = a.bssid !== null && activeBssid !== null && bssidEquals(a.bssid, activeBssid);
-        const bActive = b.bssid !== null && activeBssid !== null && bssidEquals(b.bssid, activeBssid);
+        const aActive =
+            a.bssid !== null &&
+            activeBssid !== null &&
+            bssidEquals(a.bssid, activeBssid);
+        const bActive =
+            b.bssid !== null &&
+            activeBssid !== null &&
+            bssidEquals(b.bssid, activeBssid);
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
         return b.strength - a.strength;
@@ -34,8 +35,8 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
     });
     const aps = bind(wifi, 'accessPoints');
 
-    const sortedAps = computed(
-        () => sortAps(aps().map(snapshotAp), activeBssid())
+    const sortedAps = computed(() =>
+        sortAps(aps().map(snapshotAp), activeBssid())
     );
 
     return (
@@ -56,8 +57,11 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
                         return bssidEquals(apBssid, active);
                     });
 
-                    const isConnecting = connectingAp.as(c =>
-                        apBssid !== null && c !== null && bssidEquals(c, apBssid)
+                    const isConnecting = connectingAp.as(
+                        c =>
+                            apBssid !== null &&
+                            c !== null &&
+                            bssidEquals(c, apBssid)
                     );
 
                     return (

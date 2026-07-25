@@ -73,9 +73,7 @@ export default class ServiceRegistry {
      * Does not re-init; the caller must manage mock lifecycle.
      */
     override(name: string, mockService: Service) {
-        const existing = this.#registrations.findIndex(
-            r => r.name === name
-        );
+        const existing = this.#registrations.findIndex(r => r.name === name);
         if (existing >= 0) {
             this.#registrations[existing]!.service = mockService;
         } else {
@@ -95,10 +93,7 @@ export default class ServiceRegistry {
     /** Initialize all registered services in dependency/order sequence. */
     initAll(): boolean {
         if (this.#initialized) {
-            logger.warn(
-                'serviceRegistry',
-                'initAll() called twice — skipping'
-            );
+            logger.warn('serviceRegistry', 'initAll() called twice — skipping');
             return true;
         }
         this.#initialized = true;
@@ -111,7 +106,10 @@ export default class ServiceRegistry {
             perf.start(`service-${label}`, 'init');
             try {
                 if (typeof reg.service.init !== 'function') {
-                    logger.debug('serviceRegistry', `${label} — no init method, skipping`);
+                    logger.debug(
+                        'serviceRegistry',
+                        `${label} — no init method, skipping`
+                    );
                 } else if (reg.initArgs && reg.initArgs.length > 0) {
                     reg.service.init(...reg.initArgs);
                     logger.info('serviceRegistry', `${label} initialized`);
@@ -148,10 +146,7 @@ export default class ServiceRegistry {
             if (reg.service.dispose) {
                 try {
                     reg.service.dispose();
-                    logger.info(
-                        'serviceRegistry',
-                        `${reg.name} disposed`
-                    );
+                    logger.info('serviceRegistry', `${reg.name} disposed`);
                 } catch (e) {
                     logger.error(
                         'serviceRegistry',

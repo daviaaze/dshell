@@ -19,12 +19,12 @@ export default (): QuickButton => {
     const isVisible = bind(bluetooth, 'adapters').as(a => a.length > 0);
     const isConnected = bind(bluetooth, 'isConnected');
     const isPowered = bind(bluetooth, 'isPowered');
-    const icon = computed(
-        () => {
-            if (isConnecting()) return 'content-loading-symbolic';
-            return isPowered() ? 'bluetooth-symbolic' : 'bluetooth-disabled-symbolic';
-        }
-    )
+    const icon = computed(() => {
+        if (isConnecting()) return 'content-loading-symbolic';
+        return isPowered()
+            ? 'bluetooth-symbolic'
+            : 'bluetooth-disabled-symbolic';
+    });
 
     const popover = (
         <Gtk.Popover cssClasses={[]}>
@@ -93,10 +93,7 @@ export default (): QuickButton => {
                                         marginEnd={4}
                                     />
                                     <Gtk.Image
-                                        visible={bind(
-                                            device,
-                                            'connected'
-                                        )}
+                                        visible={bind(device, 'connected')}
                                         iconName="selection-mode-symbolic"
                                         pixelSize={16}
                                     />
@@ -113,26 +110,23 @@ export default (): QuickButton => {
         widget: (
             <QuickToggleButton
                 icon={icon}
-                cssClasses={computed(
-                    () =>
-                        isPowered() && isConnected()
-                            ? ['raised', 'suggested-action']
-                            : ['raised']
+                cssClasses={computed(() =>
+                    isPowered() && isConnected()
+                        ? ['raised', 'suggested-action']
+                        : ['raised']
                 )}
-                label={computed(
-                    () => {
-                        if (!isPowered()) return 'Bluetooth Off';
-                        const connectedDevices = toArray<AstalBluetooth.Device>(
-                            bluetooth.devices
-                        ).filter((d: AstalBluetooth.Device) => d.connected);
-                        if (connectedDevices.length === 0) return 'Bluetooth';
-                        if (connectedDevices.length === 1)
-                            return connectedDevices[0].name;
-                        return `${connectedDevices.length} connected`;
-                    }
-                )}
+                label={computed(() => {
+                    if (!isPowered()) return 'Bluetooth Off';
+                    const connectedDevices = toArray<AstalBluetooth.Device>(
+                        bluetooth.devices
+                    ).filter((d: AstalBluetooth.Device) => d.connected);
+                    if (connectedDevices.length === 0) return 'Bluetooth';
+                    if (connectedDevices.length === 1)
+                        return connectedDevices[0].name;
+                    return `${connectedDevices.length} connected`;
+                })}
                 onClick={() => {
-                    if(!bluetooth?.adapter) return;
+                    if (!bluetooth?.adapter) return;
                     bluetooth.adapter.powered = !bluetooth.adapter.powered;
                 }}
                 popover={popover}

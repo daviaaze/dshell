@@ -31,12 +31,16 @@ function findCoretempPath(): string | null {
                 ) {
                     return `/sys/class/hwmon/${hwmonName}/temp1_input`;
                 }
-            } catch { // eslint-disable-line no-empty
+            } catch {
                 // hwmon entry without a name file — skip
             }
         }
     } catch (e) {
-        logger.error('systemUsage', 'hwmon enumeration failed:', e instanceof Error ? e.message : String(e));
+        logger.error(
+            'systemUsage',
+            'hwmon enumeration failed:',
+            e instanceof Error ? e.message : String(e)
+        );
     } finally {
         iter?.close(null);
     }
@@ -81,11 +85,21 @@ export default class SystemUsage {
         [this.#tempAvailable, this.#setTempAvailable] = createState(false);
     }
 
-    get cpu(): Accessor<number> { return this.#cpu; }
-    get memory(): Accessor<number> { return this.#memory; }
-    get disk(): Accessor<number> { return this.#disk; }
-    get temp(): Accessor<number> { return this.#temp; }
-    get tempAvailable(): Accessor<boolean> { return this.#tempAvailable; }
+    get cpu(): Accessor<number> {
+        return this.#cpu;
+    }
+    get memory(): Accessor<number> {
+        return this.#memory;
+    }
+    get disk(): Accessor<number> {
+        return this.#disk;
+    }
+    get temp(): Accessor<number> {
+        return this.#temp;
+    }
+    get tempAvailable(): Accessor<boolean> {
+        return this.#tempAvailable;
+    }
 
     /**
      * Launch a system monitor command asynchronously.

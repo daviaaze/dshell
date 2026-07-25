@@ -60,7 +60,6 @@ export const openSettings = () => {
     win.present();
 };
 
-
 // ── Register services with lifecycle manager ──
 
 function registerServices(s: ReturnType<typeof useSettings>) {

@@ -17,7 +17,6 @@ export default () => {
                 {stream => {
                     const id = stream.id;
 
-                    // eslint-disable-next-line sonarjs/no-nested-functions
                     const OutputSelector = () => {
                         let popoverRef: Gtk.Popover | null = null;
 
@@ -81,7 +80,7 @@ export default () => {
                                                                 Gtk.Align.FILL
                                                             }
                                                             // eslint-disable-next-line sonarjs/no-nested-functions
-                                                    onClicked={() => {
+                                                            onClicked={() => {
                                                                 mixer.setTargetNode(
                                                                     id,
                                                                     speaker.id

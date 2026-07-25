@@ -1,7 +1,12 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
-import {Object, register, signal, ConstructorProps as GObjectConstructorProps} from 'gnim/gobject';
+import {
+    Object,
+    register,
+    signal,
+    ConstructorProps as GObjectConstructorProps,
+} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -56,7 +61,6 @@ export class Process extends Object {
             }
         });
     }
-
 
     connect<S extends keyof Process.SignalSignatures>(
         signal: S,
@@ -195,14 +199,17 @@ export class Process extends Object {
             cmd,
             (silenceStderr
                 ? Gio.SubprocessFlags.STDERR_SILENCE
-                : Gio.SubprocessFlags.STDERR_PIPE) | Gio.SubprocessFlags.STDOUT_PIPE
+                : Gio.SubprocessFlags.STDERR_PIPE) |
+                Gio.SubprocessFlags.STDOUT_PIPE
         );
 
         const [, out, err] = process.communicate_utf8(null, null);
         if (process.get_successful()) {
             return (out ?? '').trim();
         } else {
-            throw new Error(err ?? `exited with status ${process.get_exit_status()}`);
+            throw new Error(
+                err ?? `exited with status ${process.get_exit_status()}`
+            );
         }
     }
 
@@ -231,7 +238,8 @@ export class Process extends Object {
             cmd,
             (silenceStderr
                 ? Gio.SubprocessFlags.STDERR_SILENCE
-                : Gio.SubprocessFlags.STDERR_PIPE) | Gio.SubprocessFlags.STDOUT_PIPE
+                : Gio.SubprocessFlags.STDERR_PIPE) |
+                Gio.SubprocessFlags.STDOUT_PIPE
         );
 
         return new Promise((resolve, reject) => {

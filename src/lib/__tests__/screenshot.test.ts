@@ -93,13 +93,15 @@ describe('Geometry parsing', () => {
     });
 
     it('toGrimGeometry formats correctly', () => {
-        expect(toGrimGeometry({x: 100, y: 200, width: 1920, height: 1080}))
-            .toBe('100,200 1920x1080');
+        expect(
+            toGrimGeometry({x: 100, y: 200, width: 1920, height: 1080})
+        ).toBe('100,200 1920x1080');
     });
 
     it('toMagickGeometry formats correctly', () => {
-        expect(toMagickGeometry({x: 100, y: 200, width: 1920, height: 1080}))
-            .toBe('1920x1080+100+200');
+        expect(
+            toMagickGeometry({x: 100, y: 200, width: 1920, height: 1080})
+        ).toBe('1920x1080+100+200');
     });
 
     it('round-trip: parse then toGrimGeometry is identity', () => {

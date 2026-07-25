@@ -41,10 +41,18 @@ export default () => {
                     }}
                     visible
                     cssClasses={['card', 'background']}
-                    marginTop={position.as(p => (p === BOTTOM ? 0 : BAR_MARGIN))}
-                    marginLeft={position.as(p => (p === RIGHT ? 0 : BAR_MARGIN))}
-                    marginBottom={position.as(p => (p === TOP ? 0 : BAR_MARGIN))}
-                    marginRight={position.as(p => (p === LEFT ? 0 : BAR_MARGIN))}
+                    marginTop={position.as(p =>
+                        p === BOTTOM ? 0 : BAR_MARGIN
+                    )}
+                    marginLeft={position.as(p =>
+                        p === RIGHT ? 0 : BAR_MARGIN
+                    )}
+                    marginBottom={position.as(p =>
+                        p === TOP ? 0 : BAR_MARGIN
+                    )}
+                    marginRight={position.as(p =>
+                        p === LEFT ? 0 : BAR_MARGIN
+                    )}
                     application={app}
                     gdkmonitor={monitor}
                     name={`bar-${monitor.get_description()}`}

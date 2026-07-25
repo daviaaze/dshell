@@ -2,7 +2,10 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import NightLight, {TEMP_MIN, TEMP_MAX} from '#/lib/services/display/nightLight';
+import NightLight, {
+    TEMP_MIN,
+    TEMP_MAX,
+} from '#/lib/services/display/nightLight';
 
 export default (): QuickButton => {
     const nightLight = NightLight.get_default();
@@ -26,10 +29,7 @@ export default (): QuickButton => {
                                     lower={TEMP_MIN}
                                     upper={TEMP_MAX}
                                     stepIncrement={100}
-                                    value={bind(
-                                        nightLight,
-                                        'temperature'
-                                    )}
+                                    value={bind(nightLight, 'temperature')}
                                 />
                             ) as any
                         }
@@ -42,9 +42,7 @@ export default (): QuickButton => {
                     <Gtk.Label
                         widthRequest={56}
                         xalign={1}
-                        label={bind(nightLight, 'temperature').as(
-                            t => `${t}K`
-                        )}
+                        label={bind(nightLight, 'temperature').as(t => `${t}K`)}
                         cssClasses={['caption']}
                     />
                 </Gtk.Box>

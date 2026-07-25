@@ -41,7 +41,6 @@ export default class DndService extends Object {
         return this.#dnd;
     }
 
-    
     set dnd(v: boolean) {
         if (this.#dnd === v) return;
         this.#dnd = v;
@@ -64,7 +63,7 @@ export default class DndService extends Object {
             bus.on('system:dnd:toggle', () => this.toggle())
         );
         this.#busSubscriptions.push(
-            bus.on('system:dnd:set', (v) => {
+            bus.on('system:dnd:set', v => {
                 this.dnd = v;
             })
         );

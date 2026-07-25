@@ -116,7 +116,11 @@ export default ({
                         </Gtk.Box>
                         {appName ? (
                             <Gtk.Label
-                                cssClasses={['caption', 'dimmed', dimmedStyle.class]}
+                                cssClasses={[
+                                    'caption',
+                                    'dimmed',
+                                    dimmedStyle.class,
+                                ]}
                                 ref={dimmedStyle.$}
                                 label={appName}
                                 xalign={0}
@@ -143,7 +147,10 @@ export default ({
                 <Gtk.Box spacing={8}>
                     {hasImage ? (
                         <Gtk.Image
-                            cssClasses={['notification-image', notifImageStyle.class]}
+                            cssClasses={[
+                                'notification-image',
+                                notifImageStyle.class,
+                            ]}
                             ref={notifImageStyle.$}
                             file={notification.image}
                             pixelSize={64}
@@ -166,7 +173,10 @@ export default ({
                 <Gtk.ProgressBar
                     visible={showProgress}
                     fraction={1}
-                    cssClasses={['notification-progress', notifProgressStyle.class]}
+                    cssClasses={[
+                        'notification-progress',
+                        notifProgressStyle.class,
+                    ]}
                     ref={self => {
                         notifProgressStyle.$(self);
                         if (!showProgress) return;
@@ -186,13 +196,18 @@ export default ({
 
                 {/* Action buttons */}
                 {hasActions ? (
-                    <Gtk.Box cssClasses={['notification-actions', notifActionsStyle.class]} spacing={4}>
+                    <Gtk.Box
+                        cssClasses={[
+                            'notification-actions',
+                            notifActionsStyle.class,
+                        ]}
+                        spacing={4}
+                    >
                         <For
-                            each={bind(notification, 'actions').as(
-                                actions =>
-                                    actions.filter(
-                                        a => a.label && a.label.trim() !== ''
-                                    )
+                            each={bind(notification, 'actions').as(actions =>
+                                actions.filter(
+                                    a => a.label && a.label.trim() !== ''
+                                )
                             )}
                         >
                             {(action: Notifd.Action) => (

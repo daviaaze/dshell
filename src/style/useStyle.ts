@@ -72,10 +72,18 @@ function flattenStyles(className: string, styles: StyleObject): string {
 
     for (const [key, value] of Object.entries(styles)) {
         if (key.startsWith('&')) {
-            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            if (
+                typeof value === 'object' &&
+                value !== null &&
+                !Array.isArray(value)
+            ) {
                 nestedSelectors.push([key, value as StyleObject]);
             }
-        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        } else if (
+            typeof value === 'object' &&
+            value !== null &&
+            !Array.isArray(value)
+        ) {
             // Treat any non-& object as a nested rule too (e.g., @media)
             nestedSelectors.push([key, value as StyleObject]);
         } else {
@@ -102,7 +110,11 @@ function flattenStyles(className: string, styles: StyleObject): string {
 function flattenSubSelector(selector: string, styles: StyleObject): string {
     const rules: string[] = [];
     for (const [key, value] of Object.entries(styles)) {
-        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        if (
+            typeof value === 'object' &&
+            value !== null &&
+            !Array.isArray(value)
+        ) {
             continue; // skip deeper nesting for simplicity
         }
         const prop = toKebab(key);
@@ -201,7 +213,10 @@ export function useStyle(styles: StyleObject): StyleHandle {
                 if (entry.refCount <= 0) {
                     const d = Gdk.Display.get_default();
                     if (d) {
-                        Gtk.StyleContext.remove_provider_for_display(d, provider);
+                        Gtk.StyleContext.remove_provider_for_display(
+                            d,
+                            provider
+                        );
                     }
                     registry.delete(key);
                 }

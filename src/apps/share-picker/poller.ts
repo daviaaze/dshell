@@ -19,7 +19,7 @@ export class MonitorPoller {
     constructor(
         private states: MonitorState[],
         private primaryPics: Gtk.Picture[],
-        private onTick?: (state: MonitorState, index: number) => void,
+        private onTick?: (state: MonitorState, index: number) => void
     ) {}
 
     get running(): boolean {
@@ -29,7 +29,11 @@ export class MonitorPoller {
     start(): void {
         if (this.running) return;
         this.index = 0;
-        this.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_INTERVAL_MS, this.tick);
+        this.timer = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            POLL_INTERVAL_MS,
+            this.tick
+        );
     }
 
     stop(): void {

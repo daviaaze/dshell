@@ -21,58 +21,73 @@ export default () => {
     const brightness = Brightness.get_default();
     const touchpad = Touchpad.get_default();
 
-    const speakerIcon = computed(
-        () =>
-            audioCtrl.defaultSpeaker?.mute || audioCtrl.defaultSpeaker?.volume === 0
-                ? MUTED_SPEAKER_ICON
-                : audioCtrl.defaultSpeaker?.volumeIcon ?? 'audio-volume-high-symbolic'
+    const speakerIcon = computed(() =>
+        audioCtrl.defaultSpeaker?.mute || audioCtrl.defaultSpeaker?.volume === 0
+            ? MUTED_SPEAKER_ICON
+            : (audioCtrl.defaultSpeaker?.volumeIcon ??
+              'audio-volume-high-symbolic')
     );
 
-    const micIcon = computed(
-        () =>
-            audioCtrl.defaultMicrophone?.mute || audioCtrl.defaultMicrophone?.volume === 0
-                ? MUTED_MIC_ICON
-                : audioCtrl.defaultMicrophone?.volumeIcon ?? 'audio-input-microphone-symbolic'
+    const micIcon = computed(() =>
+        audioCtrl.defaultMicrophone?.mute ||
+        audioCtrl.defaultMicrophone?.volume === 0
+            ? MUTED_MIC_ICON
+            : (audioCtrl.defaultMicrophone?.volumeIcon ??
+              'audio-input-microphone-symbolic')
     );
 
     const popupList: Gtk.Revealer[] = [
-        <Popup
-            connectable={audioCtrl.defaultSpeaker}
-            signals={['notify::volume', 'notify::mute']}
-            widget={Slider({
-                iconName: speakerIcon,
-                value: computed(() => audioCtrl.defaultSpeaker?.volume ?? 0),
-            })}
-        /> as any,
-        <Popup
-            connectable={brightness}
-            signals={['notify::screen']}
-            widget={Slider({
-                iconName: 'display-brightness-symbolic',
-                value: bind(brightness, 'screen'),
-            })}
-        /> as any,
-        <Popup
-            connectable={brightness}
-            signals={['notify::kbd']}
-            widget={Slider({
-                iconName: 'keyboard-brightness-symbolic',
-                value: computed(() => brightness.kbd),
-            })}
-        /> as any,
-        <Popup
-            connectable={audioCtrl.defaultMicrophone}
-            signals={['notify::volume', 'notify::mute']}
-            widget={Slider({
-                iconName: micIcon,
-                value: computed(() => audioCtrl.defaultMicrophone?.volume ?? 0),
-            })}
-        /> as any,
-        <Popup
-            connectable={touchpad}
-            signals={['toggled']}
-            widget={<TouchpadOsd />}
-        /> as any,
+        (
+            <Popup
+                connectable={audioCtrl.defaultSpeaker}
+                signals={['notify::volume', 'notify::mute']}
+                widget={Slider({
+                    iconName: speakerIcon,
+                    value: computed(
+                        () => audioCtrl.defaultSpeaker?.volume ?? 0
+                    ),
+                })}
+            />
+        ) as any,
+        (
+            <Popup
+                connectable={brightness}
+                signals={['notify::screen']}
+                widget={Slider({
+                    iconName: 'display-brightness-symbolic',
+                    value: bind(brightness, 'screen'),
+                })}
+            />
+        ) as any,
+        (
+            <Popup
+                connectable={brightness}
+                signals={['notify::kbd']}
+                widget={Slider({
+                    iconName: 'keyboard-brightness-symbolic',
+                    value: computed(() => brightness.kbd),
+                })}
+            />
+        ) as any,
+        (
+            <Popup
+                connectable={audioCtrl.defaultMicrophone}
+                signals={['notify::volume', 'notify::mute']}
+                widget={Slider({
+                    iconName: micIcon,
+                    value: computed(
+                        () => audioCtrl.defaultMicrophone?.volume ?? 0
+                    ),
+                })}
+            />
+        ) as any,
+        (
+            <Popup
+                connectable={touchpad}
+                signals={['toggled']}
+                widget={<TouchpadOsd />}
+            />
+        ) as any,
     ];
 
     return (
@@ -82,9 +97,8 @@ export default () => {
             margin={OSD_MARGIN}
             anchor={Astal.WindowAnchor.BOTTOM}
             layer={Astal.Layer.OVERLAY}
-            visible={computed(
-                () => (popupList).map(p =>
-                    p.revealChild).reduce((a, b) => a || b)
+            visible={computed(() =>
+                popupList.map(p => p.revealChild).reduce((a, b) => a || b)
             )}
             ref={self => WindowManager.get_default().setOsd(self)}
         >

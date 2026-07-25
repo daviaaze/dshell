@@ -5,7 +5,9 @@ import {KEY_SIZE, SBOX, xtime} from './cryptoEngineTables';
  */
 export function expandKey(key: Uint8Array): Uint8Array {
     if (key.length !== KEY_SIZE) {
-        throw new Error(`AES-256 requires ${KEY_SIZE}-byte key, got ${key.length}`);
+        throw new Error(
+            `AES-256 requires ${KEY_SIZE}-byte key, got ${key.length}`
+        );
     }
 
     const w = new Uint32Array(60);
@@ -14,24 +16,31 @@ export function expandKey(key: Uint8Array): Uint8Array {
     const Nr = 14;
 
     for (let i = 0; i < Nk; i++) {
-        w[i] = ((key[i * 4]! << 24) | (key[i * 4 + 1]! << 16) | (key[i * 4 + 2]! << 8) | key[i * 4 + 3]!) >>> 0;
+        w[i] =
+            ((key[i * 4]! << 24) |
+                (key[i * 4 + 1]! << 16) |
+                (key[i * 4 + 2]! << 8) |
+                key[i * 4 + 3]!) >>>
+            0;
     }
 
     for (let i = Nk; i < Nb * (Nr + 1); i++) {
         let temp = w[i - 1]!;
         if (i % Nk === 0) {
             temp = ((temp << 8) | (temp >>> 24)) >>> 0;
-            temp = (SBOX[(temp >>> 24) & 0xff]! << 24) |
-                   (SBOX[(temp >>> 16) & 0xff]! << 16) |
-                   (SBOX[(temp >>> 8) & 0xff]! << 8) |
-                   SBOX[temp & 0xff]!;
-            temp ^= (RCON[Math.floor(i / Nk) - 1]! << 24);
+            temp =
+                (SBOX[(temp >>> 24) & 0xff]! << 24) |
+                (SBOX[(temp >>> 16) & 0xff]! << 16) |
+                (SBOX[(temp >>> 8) & 0xff]! << 8) |
+                SBOX[temp & 0xff]!;
+            temp ^= RCON[Math.floor(i / Nk) - 1]! << 24;
             temp >>>= 0;
         } else if (i % Nk === 4) {
-            temp = (SBOX[(temp >>> 24) & 0xff]! << 24) |
-                   (SBOX[(temp >>> 16) & 0xff]! << 16) |
-                   (SBOX[(temp >>> 8) & 0xff]! << 8) |
-                   SBOX[temp & 0xff]!;
+            temp =
+                (SBOX[(temp >>> 24) & 0xff]! << 24) |
+                (SBOX[(temp >>> 16) & 0xff]! << 16) |
+                (SBOX[(temp >>> 8) & 0xff]! << 8) |
+                SBOX[temp & 0xff]!;
         }
         w[i] = (w[i - Nk]! ^ temp) >>> 0;
     }
@@ -93,7 +102,7 @@ export function encryptBlock(block: Uint8Array, rk: Uint8Array): Uint8Array {
                 state[i] = xtime(a0) ^ (xtime(a1) ^ a1) ^ a2 ^ a3;
                 state[i + 1] = a0 ^ xtime(a1) ^ (xtime(a2) ^ a2) ^ a3;
                 state[i + 2] = a0 ^ a1 ^ xtime(a2) ^ (xtime(a3) ^ a3);
-                state[i + 3] = (xtime(a0) ^ a0) ^ a1 ^ a2 ^ xtime(a3);
+                state[i + 3] = xtime(a0) ^ a0 ^ a1 ^ a2 ^ xtime(a3);
             }
         }
 

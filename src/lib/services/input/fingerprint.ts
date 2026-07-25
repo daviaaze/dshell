@@ -38,7 +38,9 @@ export default class FingerprintAuth extends Object {
         if (this.#signalId !== 0 && this.#deviceProxy) {
             try {
                 this.#deviceProxy.disconnect(this.#signalId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#signalId = 0;
         }
     }

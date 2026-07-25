@@ -31,7 +31,10 @@ export function parseGrimGeometry(s: string): BoundaryGeometry | null {
     const [sx, sy] = pos.split(',');
     const [sw, sh] = size.split('x');
     if (!sx || !sy || !sw || !sh) return null;
-    const x = Number(sx), y = Number(sy), w = Number(sw), h = Number(sh);
+    const x = Number(sx),
+        y = Number(sy),
+        w = Number(sw),
+        h = Number(sh);
     if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) return null;
     if (w <= 0 || h <= 0) return null;
     return {x, y, width: w, height: h};
@@ -60,12 +63,7 @@ function monitorForPoint(x: number, y: number) {
     // Look through the monitor list for one that contains (x, y)
     for (let i = 0; i < monitors.length; i++) {
         const m = monitors[i];
-        if (
-            x >= m.x &&
-            x < m.x + m.width &&
-            y >= m.y &&
-            y < m.y + m.height
-        ) {
+        if (x >= m.x && x < m.x + m.width && y >= m.y && y < m.y + m.height) {
             return m;
         }
     }
@@ -167,7 +165,9 @@ export class Stage {
             try {
                 const f = Gio.File.new_for_path(this.#pixPath);
                 f.delete(null);
-            } catch { /* file may already be deleted */ }
+            } catch {
+                /* file may already be deleted */
+            }
             this.#pixPath = null;
         }
     }
@@ -176,7 +176,11 @@ export class Stage {
     async captureCrop(geometry: string | null): Promise<boolean> {
         if (!this.#pixPath) {
             logger.error('screenshot', 'no stage texture for capture');
-            notify('Screenshot failed', 'No frozen frame available', ICON_ERROR);
+            notify(
+                'Screenshot failed',
+                'No frozen frame available',
+                ICON_ERROR
+            );
             return false;
         }
 
@@ -186,7 +190,10 @@ export class Stage {
 
         try {
             if (geometry) {
-                logger.info('screenshot', `captureCrop: crop ${geometry} from stage`);
+                logger.info(
+                    'screenshot',
+                    `captureCrop: crop ${geometry} from stage`
+                );
                 await Process.execAsync(
                     `${MAGICK_BIN} "${this.#pixPath}" -crop ${geometry} +repage "${filename}"`
                 );

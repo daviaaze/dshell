@@ -24,7 +24,7 @@ export const BatteryIcon = () => {
     const charging = bind(battery, 'charging');
     const timeToEmpty = bind(battery, 'timeToEmpty');
     const timeToFull = bind(battery, 'timeToFull');
-    const timeTo = computed(() => charging() ? timeToFull() : timeToEmpty());
+    const timeTo = computed(() => (charging() ? timeToFull() : timeToEmpty()));
 
     return (
         <IconInfoRow
@@ -35,7 +35,9 @@ export const BatteryIcon = () => {
             )}
             secondary={timeTo.as(t => {
                 if (t === 0) return 'Full';
-                const suffix = battery.get_charging() ? ' to full' : ' to empty';
+                const suffix = battery.get_charging()
+                    ? ' to full'
+                    : ' to empty';
                 return fmtDuration(t) + suffix;
             })}
         />
@@ -47,7 +49,7 @@ export const Battery = () => {
     const charging = bind(battery, 'charging');
     const timeToEmpty = bind(battery, 'timeToEmpty');
     const timeToFull = bind(battery, 'timeToFull');
-    const timeTo = computed(() => charging() ? timeToFull() : timeToEmpty());
+    const timeTo = computed(() => (charging() ? timeToFull() : timeToEmpty()));
 
     const chargingLabel = charging.as((c: boolean) =>
         c ? 'Charged in:' : 'Discharged in:'

@@ -22,9 +22,7 @@ export const SpeakerIndicator = () => {
                 if (!s || s.mute || s.volume === 0) return MUTED_SPEAKER_ICON;
                 return s.volumeIcon;
             })}
-            tooltipMarkup={speaker.as(s =>
-                s ? volumeTooltip(s.volume) : ''
-            )}
+            tooltipMarkup={speaker.as(s => (s ? volumeTooltip(s.volume) : ''))}
             pixelSize={18}
         />
     );
@@ -42,9 +40,7 @@ export const MicrophoneIndicator = () => {
                 if (!m || m.mute || m.volume === 0) return MUTED_MIC_ICON;
                 return m.volumeIcon;
             })}
-            tooltipMarkup={mic.as(m =>
-                m ? volumeTooltip(m.volume) : ''
-            )}
+            tooltipMarkup={mic.as(m => (m ? volumeTooltip(m.volume) : ''))}
             pixelSize={18}
         />
     );

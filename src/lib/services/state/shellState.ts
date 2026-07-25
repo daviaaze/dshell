@@ -28,13 +28,11 @@ export default class ShellState extends GObject {
         return this.#launcherQuery;
     }
 
-    
     set launcherQuery(v: string) {
         this.#launcherQuery = v;
         this.notify('launcher-query');
     }
 
-    
     set launcherOpen(v: boolean) {
         logger.debug(
             'state',
@@ -49,7 +47,6 @@ export default class ShellState extends GObject {
         return this.#qsOpen;
     }
 
-    
     set qsOpen(v: boolean) {
         logger.debug('state', `ShellState.qsOpen ${this.#qsOpen} -> ${v}`);
         this.#qsOpen = v;
@@ -61,7 +58,6 @@ export default class ShellState extends GObject {
         return this.#screenlocked;
     }
 
-    
     set screenlocked(v: boolean) {
         logger.info(
             'state',
@@ -122,7 +118,10 @@ export default class ShellState extends GObject {
     }
 
     toggleBar() {
-        const wm = ServiceRegistry.get_default().resolve<import('#/lib/services/state/windowManager').default>('WindowManager');
+        const wm =
+            ServiceRegistry.get_default().resolve<
+                import('#/lib/services/state/windowManager').default
+            >('WindowManager');
         wm.bars.forEach(bar => (bar.visible = !bar.visible));
     }
 
@@ -143,8 +142,10 @@ export default class ShellState extends GObject {
         onToggleSettings?: () => void;
         onToggleWindowSwitcher?: () => void;
     }) {
-        if (opts.onToggleSettings) this.#onToggleSettings = opts.onToggleSettings;
-        if (opts.onToggleWindowSwitcher) this.#onToggleWindowSwitcher = opts.onToggleWindowSwitcher;
+        if (opts.onToggleSettings)
+            this.#onToggleSettings = opts.onToggleSettings;
+        if (opts.onToggleWindowSwitcher)
+            this.#onToggleWindowSwitcher = opts.onToggleWindowSwitcher;
     }
 
     toggleSettings() {

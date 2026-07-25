@@ -58,7 +58,6 @@ export class ColorScheme extends Object {
         }
     }
 
-    
     set colorScheme(c: DarkModes) {
         this.#colorScheme = c;
         if (c === DarkModes.AUTO)
@@ -93,19 +92,21 @@ export class ColorScheme extends Object {
         }
 
         const msUntil = (unixTime: number) =>
-            Math.abs(Number(
-                GLib.DateTime.new_from_unix_local(unixTime)!
-                    .difference(GLib.DateTime.new_now_local()!)
-                    .valueOf()
-            ));
+            Math.abs(
+                Number(
+                    GLib.DateTime.new_from_unix_local(unixTime)!
+                        .difference(GLib.DateTime.new_now_local()!)
+                        .valueOf()
+                )
+            );
 
-        const sunrise = this.#generalSettings.get_double('weather-sunrise-time');
+        const sunrise = this.#generalSettings.get_double(
+            'weather-sunrise-time'
+        );
         const sunset = this.#generalSettings.get_double('weather-sunset-time');
         if (sunrise <= 0 || sunset <= 0) return;
 
-        const interval = this.#daytime
-            ? msUntil(sunset)
-            : msUntil(sunrise);
+        const interval = this.#daytime ? msUntil(sunset) : msUntil(sunrise);
 
         this.#timerId = setTimeout(() => {
             this.#timerId = null;
@@ -118,12 +119,10 @@ export class ColorScheme extends Object {
         }, interval / GLib.TIME_SPAN_MILLISECOND);
     }
 
-    init(
-        settings: {
-            colorScheme: Accessor<DarkModes>;
-            setColorScheme: (v: DarkModes) => void;
-        }
-    ) {
+    init(settings: {
+        colorScheme: Accessor<DarkModes>;
+        setColorScheme: (v: DarkModes) => void;
+    }) {
         if (this.#initialized) {
             logger.warn(
                 'colorscheme',
@@ -152,7 +151,8 @@ export class ColorScheme extends Object {
         this.#generalHandlerId = this.#generalSettings.connect(
             'changed::weather-is-daytime',
             () => {
-                const newDaytime = this.#generalSettings.get_boolean('weather-is-daytime');
+                const newDaytime =
+                    this.#generalSettings.get_boolean('weather-is-daytime');
                 if (newDaytime !== this.#daytime) {
                     this.#daytime = newDaytime;
                     this.notify('daytime');
@@ -170,7 +170,9 @@ export class ColorScheme extends Object {
         if (this.#generalHandlerId !== 0) {
             try {
                 this.#generalSettings.disconnect(this.#generalHandlerId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#generalHandlerId = 0;
         }
         if (this.#timerId) {

@@ -28,7 +28,10 @@ export class Freeze {
                 this.#onActiveChange(false);
             });
         } catch {
-            logger.warn('screenshot', 'wayfreeze not available, skipping freeze');
+            logger.warn(
+                'screenshot',
+                'wayfreeze not available, skipping freeze'
+            );
         }
     }
 
