@@ -67,7 +67,7 @@ pkgs.stdenv.mkDerivation {
       inherit pname version src;
       pnpm = pkgs.pnpm_10;
       fetcherVersion = 4;
-      hash = "sha256-nF8SmorWFzUyHr75sxb5mgPD62R3iaXy8jm/e9IVQRI=";
+      hash = "sha256-0RroO7gu3WMlkIyvlm/vLZFsDFgJRQsnq6GN19COHx0=";
     };
 
     installPhase = ''
@@ -100,13 +100,12 @@ pkgs.stdenv.mkDerivation {
         "''${commonArgs[@]}"
     '') apps)}
 
-    # GSettings schema (gnim-schemas cli bundles the .ts with esbuild and
-    # validates with xmllint — esbuild/libxml2 are in nativeBuildInputs)
+    # GSettings schema (gnim cli compiles .ts → xml + gschema)
     mkdir schema-out
     sed -e 's|@domain@|${domain}|g' \
         -e "s|@datadir@|$out/share|g" \
         src/lib/settings/schema.ts > schema-out/${domain}.gschema.ts
-    gjs -m node_modules/gnim-schemas/lib/cli.js schema-out --targetdir schema-out
+    node node_modules/gnim/dist/bin/gnim.js schemas schema-out -o schema-out
 
     runHook postBuild
   '';

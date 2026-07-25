@@ -20,12 +20,12 @@ export default class Inhibit extends Object {
     #timerId: number | null = null;
     #initialized = false;
 
-    @property
+    @property(Object)
     get idle() {
         return this.#idle;
     }
 
-    @property
+    @property(String)
     get remaining() {
         if (!this.#idle || this.#duration <= 0) return '';
         const secs = Math.max(

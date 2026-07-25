@@ -31,7 +31,7 @@ export default class Touchpad extends Object {
     #process: Process | null = null;
     #initialized = false;
 
-    @property
+    @property(Boolean)
     get enabled() {
         return this.#enabled;
     }
@@ -45,7 +45,7 @@ export default class Touchpad extends Object {
         this.toggled(v);
     }
 
-    @property
+    @property(Boolean)
     get available() {
         return this.#available;
     }

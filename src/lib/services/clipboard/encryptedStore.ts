@@ -66,7 +66,7 @@ export class EncryptedStore extends Object {
     #ready = false;
 
     /** Emitted after every mutation (add, delete, toggle, clear). */
-    @signal()
+    @signal([])
     entriesChanged() {}
 
     // ── Initialisation ───────────────────────────────────────────────────

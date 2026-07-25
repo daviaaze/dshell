@@ -43,7 +43,7 @@ export class GreetSession extends Object {
         this.#onSessionStarted = cb;
     }
 
-    @property
+    @property(Object)
     get state() {
         return this.#state;
     }
@@ -54,7 +54,7 @@ export class GreetSession extends Object {
         this.notify('state');
     }
 
-    @property
+    @property(String)
     get errorMessage() {
         return this.#errorMessage;
     }
@@ -65,7 +65,7 @@ export class GreetSession extends Object {
         this.notify('error-message');
     }
 
-    @property
+    @property(String)
     get infoMessage() {
         return this.#infoMessage;
     }
@@ -76,7 +76,7 @@ export class GreetSession extends Object {
         this.notify('info-message');
     }
 
-    @property
+    @property(Boolean)
     get available(): boolean {
         try {
             // Quick availability check

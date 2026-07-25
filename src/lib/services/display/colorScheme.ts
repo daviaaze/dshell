@@ -34,17 +34,17 @@ export class ColorScheme extends Object {
     };
     #generalSettings: Gio.Settings;
 
-    @property
+    @property(Object)
     get colorScheme() {
         return this.#colorScheme;
     }
 
-    @property
+    @property(Object)
     get daytime() {
         return this.#daytime;
     }
 
-    @property
+    @property(String)
     get colorSchemeName() {
         switch (this.#colorScheme) {
             case DarkModes.AUTO:
@@ -76,7 +76,7 @@ export class ColorScheme extends Object {
         this.#shadeSettings?.setColorScheme(this.#colorScheme);
     }
 
-    @property
+    @property(String)
     get iconName() {
         if (this.#colorScheme === DarkModes.AUTO)
             if (this.#daytime) return 'weather-clear-symbolic';

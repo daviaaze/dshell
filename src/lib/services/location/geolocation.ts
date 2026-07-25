@@ -1,4 +1,4 @@
-import {Object, register, signal, property, Double, VoidType} from 'gnim/gobject';
+import {Object, register, signal, property, Double, VoidType, Int} from 'gnim/gobject';
 import {Process} from '#/lib/core/process';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
@@ -18,17 +18,17 @@ export default class Geolocation extends Object {
     #available = false;
     #detecting = false;
 
-    @property
+    @property(Int)
     get latitude() {
         return this.#latitude;
     }
 
-    @property
+    @property(Int)
     get longitude() {
         return this.#longitude;
     }
 
-    @property
+    @property(Boolean)
     get available() {
         return this.#available;
     }

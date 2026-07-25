@@ -47,47 +47,47 @@ export default class WindowManager extends Object {
     #dock: Astal.Window | null = null;
     // ── Getters ──
 
-    @property
+    @property(Object)
     get bars() {
         return this.#bars.getAll();
     }
 
-    @property
+    @property(Object)
     get wallpapers() {
         return this.#wallpapers.getAll();
     }
 
-    @property
+    @property(Object)
     get lockscreens() {
         return this.#lockscreens.getAll();
     }
 
-    @property
+    @property(Object)
     get quicksettings() {
         return this.#quicksettings;
     }
 
-    @property
+    @property(Object)
     get osd() {
         return this.#osd;
     }
 
-    @property
+    @property(Object)
     get applauncher() {
         return this.#applauncher;
     }
 
-    @property
+    @property(Object)
     get notifications() {
         return this.#notifications;
     }
 
-    @property
+    @property(Object)
     get settings() {
         return this.#settings;
     }
 
-    @property
+    @property(Object)
     get dock() {
         return this.#dock;
     }

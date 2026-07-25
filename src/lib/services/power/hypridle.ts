@@ -68,31 +68,31 @@ export default class Hypridle extends GObject {
 
     // ── GObject property accessors ────────────────────────────────────
 
-    @property get enabled()         { return this.#values.enabled; }
+    @property(Object) get enabled()         { return this.#values.enabled; }
      set enabled(v)        { this.#set('enabled', v); }
 
-    @property  get idleTimeout()     { return this.#values.idleTimeout; }
+    @property(Object) get idleTimeout()     { return this.#values.idleTimeout; }
       set idleTimeout(v)    { this.#set('idleTimeout', v); }
 
-    @property  get dimTimeout()      { return this.#values.dimTimeout; }
+    @property(Object) get dimTimeout()      { return this.#values.dimTimeout; }
       set dimTimeout(v)     { this.#set('dimTimeout', v); }
 
-    @property get dimEnabled()      { return this.#values.dimEnabled; }
+    @property(Object) get dimEnabled()      { return this.#values.dimEnabled; }
      set dimEnabled(v)     { this.#set('dimEnabled', v); }
 
-    @property  get dpmsTimeout()     { return this.#values.dpmsTimeout; }
+    @property(Object) get dpmsTimeout()     { return this.#values.dpmsTimeout; }
       set dpmsTimeout(v)    { this.#set('dpmsTimeout', v); }
 
-    @property get dpmsEnabled()     { return this.#values.dpmsEnabled; }
+    @property(Object) get dpmsEnabled()     { return this.#values.dpmsEnabled; }
      set dpmsEnabled(v)    { this.#set('dpmsEnabled', v); }
 
-    @property  get suspendTimeout()  { return this.#values.suspendTimeout; }
+    @property(Object) get suspendTimeout()  { return this.#values.suspendTimeout; }
       set suspendTimeout(v) { this.#set('suspendTimeout', v); }
 
-    @property get suspendEnabled()  { return this.#values.suspendEnabled; }
+    @property(Object) get suspendEnabled()  { return this.#values.suspendEnabled; }
      set suspendEnabled(v) { this.#set('suspendEnabled', v); }
 
-    @property
+    @property(Object)
     get available() { return GLib.find_program_in_path('hypridle') !== null; }
 
     // ── Centralised property write ────────────────────────────────────

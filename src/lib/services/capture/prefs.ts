@@ -1,5 +1,5 @@
 import AstalWp from 'gi://AstalWp?version=0.1';
-import {Object, register} from 'gnim/gobject';
+import {Object, register, Int} from 'gnim/gobject';
 import {property} from '#/lib/decorators';
 
 /**
@@ -14,7 +14,7 @@ export default class RecordingPrefs extends Object {
     #recordingQuality = 1; // 0=Low, 1=Medium, 2=High
     #previewThumbnails = true;
 
-    @property
+    @property(Boolean)
     get audio() {
         return this.#audio;
     }
@@ -26,7 +26,7 @@ export default class RecordingPrefs extends Object {
         this.notify('audio');
     }
 
-    @property
+    @property(Number)
     get selectedAudioInput() {
         return this.#selectedAudioInput;
     }
@@ -47,12 +47,12 @@ export default class RecordingPrefs extends Object {
         this.notify('selected-audio-input-name');
     }
 
-    @property
+    @property(String)
     get selectedAudioInputName() {
         return this.#selectedAudioInputName;
     }
 
-    @property
+    @property(Int)
     get recordingQuality() {
         return this.#recordingQuality;
     }
@@ -64,7 +64,7 @@ export default class RecordingPrefs extends Object {
         this.notify('recording-quality');
     }
 
-    @property
+    @property(Boolean)
     get previewThumbnails() {
         return this.#previewThumbnails;
     }

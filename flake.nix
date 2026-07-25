@@ -47,7 +47,7 @@
       nativeBuildInputs = with pkgs; [
         wrapGAppsHook4
         gobject-introspection
-        esbuild # gnim-schemas cli bundles schema.ts with it
+        esbuild # gnim schemas cli bundles schema.ts with it
         libxml2 # xmllint, validates the generated gschema
         nodejs
       ];
