@@ -28,7 +28,7 @@ export default class AuthSession extends Object {
     #authStatus = '';
 
     /** Human-readable auth status for UI display. */
-    @property
+    @property(String)
     get authStatus() {
         return this.#authStatus;
     }
@@ -47,7 +47,7 @@ export default class AuthSession extends Object {
 
     // ── Signals ──
 
-    @signal()
+    @signal([])
     success(): void {}
 
     @signal([String])

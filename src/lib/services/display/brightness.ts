@@ -15,7 +15,7 @@
  * The service also emits `brightness-changed(device)` on any change.
  */
 import AstalBrightness from 'gi://AstalBrightness';
-import {Object, register, property} from 'gnim/gobject';
+import {Object, register, property, Int} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
 @register({GTypeName: 'Brightness'})
@@ -31,13 +31,13 @@ export default class Brightness extends Object {
     #kbdDev: AstalBrightness.Device | null = null;
     #ready = false;
 
-    @property
+    @property(Boolean)
     get ready() {
         return this.#ready;
     }
 
     /** Screen brightness [0–1] */
-    @property
+    @property(Int)
     get screen(): number {
         return this.#screenDev?.brightness ?? 0;
     }
@@ -49,7 +49,7 @@ export default class Brightness extends Object {
     }
 
     /** Keyboard brightness [0–1] */
-    @property
+    @property(Int)
     get kbd(): number {
         return this.#kbdDev?.brightness ?? 0;
     }

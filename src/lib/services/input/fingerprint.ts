@@ -29,7 +29,7 @@ export default class FingerprintAuth extends Object {
     #consecutiveFailures = 0;
     #signalId = 0;
 
-    @property
+    @property(Boolean)
     get available() {
         return this.#available;
     }
@@ -43,22 +43,22 @@ export default class FingerprintAuth extends Object {
         }
     }
 
-    @property
+    @property(Object)
     get state() {
         return this.#state;
     }
 
-    @property
+    @property(String)
     get errorMessage() {
         return this.#errorMessage;
     }
 
-    @property
+    @property(Object)
     get verifying() {
         return this.#state === 'verifying';
     }
 
-    @signal()
+    @signal([])
     verified(): void {}
 
     @signal([String], VoidType)

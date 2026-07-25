@@ -95,7 +95,7 @@ class MonitorService extends Object {
     #wlSignalIds: number[] = [];
     #pendingSync = false;
 
-    @property
+    @property(Object)
     get monitors() {
         return this.#monitors;
     }

@@ -66,12 +66,12 @@ export default class PaletteGenerator extends GObject {
 
     static readonly DEBOUNCE_SECONDS = 1;
 
-    @property
+    @property(Boolean)
     get enabled() {
         return this.#enabled;
     }
 
-    @property
+    @property(Object)
     get available() {
         return GLib.find_program_in_path('matugen') !== null;
     }

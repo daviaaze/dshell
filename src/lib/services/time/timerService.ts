@@ -1,7 +1,7 @@
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
-import {Object, register, property} from 'gnim/gobject';
+import {Object, register, property, Int} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 import {fmtDuration} from '#/lib/core/time';
 
@@ -47,37 +47,37 @@ export default class TimerService extends Object {
     #longBreakDuration = TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
     #sessionsBeforeLongBreak = TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
 
-    @property
+    @property(Object)
     get remaining() {
         return this.#remaining;
     }
 
-    @property
+    @property(Int)
     get total() {
         return this.#total;
     }
 
-    @property
+    @property(Boolean)
     get running() {
         return this.#running;
     }
 
-    @property
+    @property(Object)
     get mode() {
         return this.#mode;
     }
 
-    @property
+    @property(String)
     get label() {
         return this.#label;
     }
 
-    @property
+    @property(Int)
     get pomodoroSession() {
         return this.#pomodoroSession;
     }
 
-    @property
+    @property(Boolean)
     get pomodoroIsBreak() {
         return this.#pomodoroIsBreak;
     }
