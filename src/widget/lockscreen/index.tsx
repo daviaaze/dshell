@@ -43,7 +43,7 @@ const createLocks = (onUnlock: () => void) => {
     const doUnlock = () => {
         cleanupAll();
         lockService.unlock();
-        WindowManager.get_default().lockscreens.forEach(w => w.destroy());
+        WindowManager.get_default().lockscreens.forEach(w => w.close());
         ShellState.get_default().unlock();
         onUnlock();
     };
