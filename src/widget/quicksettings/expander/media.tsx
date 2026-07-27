@@ -36,8 +36,8 @@ const CoverArt = ({player}: {player: Mpris.Player}) => {
     });
     return (
         <Gtk.Picture
-            visible={bind(player, 'coverArt').as(c => !!c)}
-            file={bind(player, 'coverArt').as(path =>
+            visible={bind(player, 'cover-art').as(c => !!c)}
+            file={bind(player, 'cover-art').as(path =>
                 Gio.File.new_for_path(path)
             )}
             cssClasses={['media-thumbnail', thumbnailStyle.class]}
@@ -88,11 +88,11 @@ const PlaybackButtons = ({
                     mc.setActivePlayer(player);
                     mc.previous();
                 }}
-                visible={bind(player, 'canGoPrevious')}
+                visible={bind(player, 'can-go-previous')}
             />
 
             <Gtk.Button
-                iconName={bind(player, 'playbackStatus').as(s =>
+                iconName={bind(player, 'playback-status').as(s =>
                     s === Mpris.PlaybackStatus.PLAYING
                         ? 'media-playback-pause-symbolic'
                         : 'media-playback-start-symbolic'
@@ -105,7 +105,7 @@ const PlaybackButtons = ({
                     mc.setActivePlayer(player);
                     mc.next();
                 }}
-                visible={bind(player, 'canGoNext')}
+                visible={bind(player, 'can-go-next')}
             />
         </Gtk.Box>
     );
@@ -126,7 +126,7 @@ const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
                 onNotifyValue={({value}) => mc.seek(value)}
                 min={0}
                 max={bind(player, 'length')}
-                visible={bind(player, 'canSeek')}
+                visible={bind(player, 'can-seek')}
                 value={bind(player, 'position')}
             />
             <Gtk.CenterBox>

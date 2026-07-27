@@ -29,11 +29,11 @@ function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
 
 export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
     const listStyle = useStyle({});
-    const activeBssid = bind(wifi, 'activeAccessPoint').as(active => {
+    const activeBssid = bind(wifi, 'active-access-point').as(active => {
         if (!active) return null;
         return bssidOf(active);
     });
-    const aps = bind(wifi, 'accessPoints');
+    const aps = bind(wifi, 'access-points');
 
     const sortedAps = computed(() =>
         sortAps(aps().map(snapshotAp), activeBssid())

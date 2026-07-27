@@ -95,24 +95,24 @@ export default class Screenshot extends Object {
 
     // ── Getters / Setters ────────────────────────────────────────────
 
-    @property(Object)
+    @property
     get recordingElapsed() {
         return this.#recorder.elapsed;
     }
 
-    @property(Object)
+    @property
     get recording() {
         return this.#recorder.recording;
     }
 
-    @property(Object)
+    @property
     get prefs(): RecordingPrefs {
         return this.#prefs;
     }
 
     // ── Overlay state ─────────────────────────────────────────────────
 
-    @property(Object)
+    @property
     get overlayOpen() {
         return this.#overlayOpen;
     }
@@ -138,7 +138,7 @@ export default class Screenshot extends Object {
         }
     }
 
-    @property(Object)
+    @property
     get selectedMode() {
         return this.#selectedMode;
     }
@@ -148,7 +148,7 @@ export default class Screenshot extends Object {
         this.notify('selected-mode');
     }
 
-    @property(Object)
+    @property
     get selectedTarget() {
         return this.#selectedTarget;
     }
@@ -160,7 +160,7 @@ export default class Screenshot extends Object {
 
     // ── Region selector ───────────────────────────────────────────────
 
-    @property(Object)
+    @property
     get regionSelectorOpen() {
         return this.#regionSelectorOpen;
     }
@@ -176,7 +176,7 @@ export default class Screenshot extends Object {
         }
     }
 
-    @property(Object)
+    @property
     get pendingCaptureGeometry(): string {
         return this.#pendingCaptureGeometry || '';
     }
@@ -198,12 +198,12 @@ export default class Screenshot extends Object {
 
     // ── Stage / freeze ────────────────────────────────────────────────
 
-    @property(Object)
+    @property
     get stageTexture(): Gdk.Texture | null {
         return this.#stage.texture;
     }
 
-    @property(Object)
+    @property
     get freezeActive() {
         return this.#freezeActive;
     }
@@ -214,14 +214,14 @@ export default class Screenshot extends Object {
         this.notify('freeze-active');
     }
 
-    @property(Object)
+    @property
     get freezeKeepAlive() {
         return this.#freezeKeepAlive;
     }
 
     // ── Boundary ───────────────────────────────────────────────────────
 
-    @property(Object)
+    @property
     get boundaryVisible() {
         return this.#boundaryVisible;
     }
@@ -232,7 +232,7 @@ export default class Screenshot extends Object {
         this.notify('boundary-visible');
     }
 
-    @property(Object)
+    @property
     get boundaryGeometry() {
         return this.#boundaryGeometry;
     }
@@ -244,12 +244,12 @@ export default class Screenshot extends Object {
 
     // ── Virtual monitors ──────────────────────────────────────────────
 
-    @property(Object)
+    @property
     get virtualMonitors() {
         return this.#virtualMonitors;
     }
 
-    @property(Object)
+    @property
     get virtualMonitorActive() {
         return this.#virtualMonitors.length > 0;
     }

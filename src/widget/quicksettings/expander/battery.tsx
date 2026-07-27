@@ -22,14 +22,14 @@ function fmtDurationHMS(seconds: number): string {
 export const BatteryIcon = () => {
     const battery = AstalBattery.get_default();
     const charging = bind(battery, 'charging');
-    const timeToEmpty = bind(battery, 'timeToEmpty');
-    const timeToFull = bind(battery, 'timeToFull');
+    const timeToEmpty = bind(battery, 'time-to-empty');
+    const timeToFull = bind(battery, 'time-to-full');
     const timeTo = computed(() => (charging() ? timeToFull() : timeToEmpty()));
 
     return (
         <IconInfoRow
-            visible={bind(battery, 'isPresent')}
-            icon={bind(battery, 'iconName')}
+            visible={bind(battery, 'is-present')}
+            icon={bind(battery, 'icon-name')}
             primary={bind(battery, 'percentage').as(
                 (p: number) => (p * 100).toFixed(0) + '%'
             )}
@@ -47,8 +47,8 @@ export const BatteryIcon = () => {
 export const Battery = () => {
     const battery = AstalBattery.get_default();
     const charging = bind(battery, 'charging');
-    const timeToEmpty = bind(battery, 'timeToEmpty');
-    const timeToFull = bind(battery, 'timeToFull');
+    const timeToEmpty = bind(battery, 'time-to-empty');
+    const timeToFull = bind(battery, 'time-to-full');
     const timeTo = computed(() => (charging() ? timeToFull() : timeToEmpty()));
 
     const chargingLabel = charging.as((c: boolean) =>
@@ -64,7 +64,7 @@ export const Battery = () => {
             orientation={Gtk.Orientation.VERTICAL}
             cssClasses={['card', 'p-12']}
             spacing={4}
-            visible={bind(battery, 'isPresent')}
+            visible={bind(battery, 'is-present')}
         >
             <Gtk.Label
                 cssClasses={['title-3']}
@@ -78,7 +78,7 @@ export const Battery = () => {
             <Gtk.Box spacing={8} halign={Gtk.Align.START}>
                 <Gtk.Label cssClasses={['heading']} label={rateLabel} />
                 <Gtk.Label
-                    label={bind(battery, 'energyRate').as(
+                    label={bind(battery, 'energy-rate').as(
                         r => `${r.toFixed(2)}W`
                     )}
                 />

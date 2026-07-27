@@ -26,19 +26,16 @@ export default ({
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             active={bind(shellState, 'qsOpen')}
             onClicked={() => shellState.toggleQuickSettings()}
-            ref={self =>
-                self.add_controller(
-                    (
-                        <Gtk.EventControllerScroll
-                            flags={Gtk.EventControllerScrollFlags.VERTICAL}
-                            onScroll={(self, dx, dy) => {
-                                audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
-                                return false;
-                            }}
-                        />
-                    ) as any
-                )
-            }
+            ref={self => {
+                const scrollCtrl = new Gtk.EventControllerScroll({
+                    flags: Gtk.EventControllerScrollFlags.VERTICAL,
+                });
+                scrollCtrl.connect('scroll', (_ctrl, _dx: number, dy: number) => {
+                    audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
+                    return false;
+                });
+                self.add_controller(scrollCtrl);
+            }}
         >
             <Gtk.Box
                 spacing={4}

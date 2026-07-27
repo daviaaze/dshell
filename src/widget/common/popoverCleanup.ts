@@ -1,3 +1,6 @@
+import Adw from 'gi://Adw?version=1';
+import GObject from 'gi://GObject?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import {logger} from '#/lib/core/logger';
 
 /**
@@ -5,11 +8,13 @@ import {logger} from '#/lib/core/logger';
  * Prevents GTK warnings about popovers with stale parent references.
  * Usage: `<Adw.SplitButton ref={usePopoverCleanup} ... />`
  */
-export function usePopoverCleanup(self: any) {
-    (self as any).connect('destroy', () => {
+export function usePopoverCleanup(
+    self: Adw.SplitButton | Gtk.MenuButton | Gtk.Widget
+) {
+    GObject.signal_connect(self, 'destroy', () => {
         const popover =
-            ('popover' in self ? (self as any).popover : null) ??
-            ('get_popover' in self ? (self as any).get_popover() : undefined);
+            (self instanceof Adw.SplitButton ? self.popover : null) ??
+            (self instanceof Gtk.MenuButton ? self.get_popover() : undefined);
         if (popover) {
             try {
                 popover.popdown();

@@ -18,12 +18,12 @@ export default class ShellState extends GObject {
     #qsOpen = false;
     #screenlocked = false;
 
-    @property(Boolean)
+    @property
     get launcherOpen() {
         return this.#launcherOpen;
     }
 
-    @property(Boolean)
+    @property
     get launcherQuery() {
         return this.#launcherQuery;
     }
@@ -42,7 +42,7 @@ export default class ShellState extends GObject {
         this.notify('launcher-open');
     }
 
-    @property(Boolean)
+    @property
     get qsOpen() {
         return this.#qsOpen;
     }
@@ -53,7 +53,7 @@ export default class ShellState extends GObject {
         this.notify('qs-open');
     }
 
-    @property(Boolean)
+    @property
     get screenlocked() {
         return this.#screenlocked;
     }

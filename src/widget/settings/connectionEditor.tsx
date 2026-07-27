@@ -2,6 +2,7 @@ import NM from 'gi://NM?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createState} from 'gnim';
+import {render} from '@gnim-js/gtk4';
 import {
     securityLabelFromKeyMgmt,
     commitChangesAsync,
@@ -14,7 +15,7 @@ const NET_ICON_PREFIX = 16;
 export function showConnectionEditor(
     ssid: string,
     connections: NM.RemoteConnection[],
-    parent: Gtk.Widget,
+    parent: Adw.ActionRow,
     onForgotten?: () => void
 ) {
     if (connections.length === 0) return;
@@ -24,8 +25,9 @@ export function showConnectionEditor(
     const settingSecurity = conn.get_setting_wireless_security();
     const isSecureConn = settingSecurity !== null;
 
+    const root = parent.get_root();
     const dialog = new Adw.Window({
-        transientFor: parent.get_root() as any,
+        transientFor: root instanceof Gtk.Window ? root : null,
         modal: true,
         title: ssid,
         defaultWidth: 400,
@@ -84,18 +86,17 @@ export function showConnectionEditor(
             );
     };
 
-    dialog.set_content(
-        (
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
+    const disposeDialog = render(
+        () =>
+            (
+                <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                 <Adw.HeaderBar
-                    titleWidget={
-                        (
-                            <Adw.WindowTitle
-                                title={ssid}
-                                cssClasses={['title-3']}
-                            />
-                        ) as any
-                    }
+                    ref={self => {
+                        self.titleWidget = new Adw.WindowTitle({
+                            title: ssid,
+                            cssClasses: ['title-3'],
+                        });
+                    }}
                     showEndTitleButtons={false}
                 />
                 <Gtk.ScrolledWindow
@@ -187,7 +188,8 @@ export function showConnectionEditor(
                     </Adw.PreferencesPage>
                 </Gtk.ScrolledWindow>
             </Gtk.Box>
-        ) as any
+        ),
+        dialog
     );
 
     dialog.present();

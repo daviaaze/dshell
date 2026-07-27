@@ -17,8 +17,8 @@ export default (): QuickButton => {
 
     const isConnecting = connectingAddress.as(addr => addr !== null);
     const isVisible = bind(bluetooth, 'adapters').as(a => a.length > 0);
-    const isConnected = bind(bluetooth, 'isConnected');
-    const isPowered = bind(bluetooth, 'isPowered');
+    const isConnected = bind(bluetooth, 'is-connected');
+    const isPowered = bind(bluetooth, 'is-powered');
     const icon = computed(() => {
         if (isConnecting()) return 'content-loading-symbolic';
         return isPowered()
@@ -104,7 +104,7 @@ export default (): QuickButton => {
                 </For>
             </LinkedBox>
         </Gtk.Popover>
-    ) as any;
+    );
 
     return {
         widget: (
@@ -131,7 +131,7 @@ export default (): QuickButton => {
                 }}
                 popover={popover}
             />
-        ) as any,
+        ),
         visible: isVisible,
     };
 };

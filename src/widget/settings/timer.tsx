@@ -15,69 +15,61 @@ export default () => {
                 description={'Work/break cycle durations'}
             >
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: 1,
+                            upper: 120,
+                            stepIncrement: 5,
+                            value: settings.pomodoroWorkDuration(),
+                        });
+                    }}
                     title={'Work Duration'}
                     subtitle={'Minutes per work session'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={1}
-                                upper={120}
-                                stepIncrement={5}
-                                value={settings.pomodoroWorkDuration}
-                            />
-                        ) as any
-                    }
                     onNotifyValue={self =>
                         settings.setPomodoroWorkDuration(self.value)
                     }
                 />
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: 1,
+                            upper: 30,
+                            stepIncrement: 1,
+                            value: settings.pomodoroBreakDuration(),
+                        });
+                    }}
                     title={'Short Break Duration'}
                     subtitle={'Minutes per short break'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={1}
-                                upper={30}
-                                stepIncrement={1}
-                                value={settings.pomodoroBreakDuration}
-                            />
-                        ) as any
-                    }
                     onNotifyValue={self =>
                         settings.setPomodoroBreakDuration(self.value)
                     }
                 />
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: 1,
+                            upper: 60,
+                            stepIncrement: 5,
+                            value: settings.pomodoroLongBreakDuration(),
+                        });
+                    }}
                     title={'Long Break Duration'}
                     subtitle={'Minutes per long break'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={1}
-                                upper={60}
-                                stepIncrement={5}
-                                value={settings.pomodoroLongBreakDuration}
-                            />
-                        ) as any
-                    }
                     onNotifyValue={self =>
                         settings.setPomodoroLongBreakDuration(self.value)
                     }
                 />
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: 1,
+                            upper: 10,
+                            stepIncrement: 1,
+                            value: settings.pomodoroSessionsBeforeLongBreak(),
+                        });
+                    }}
                     title={'Sessions Before Long Break'}
                     subtitle={'Number of work sessions between long breaks'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={1}
-                                upper={10}
-                                stepIncrement={1}
-                                value={settings.pomodoroSessionsBeforeLongBreak}
-                            />
-                        ) as any
-                    }
                     onNotifyValue={self =>
                         settings.setPomodoroSessionsBeforeLongBreak(self.value)
                     }
@@ -113,7 +105,6 @@ export default () => {
                         .join(', ')}
                 >
                     <Gtk.Button
-                        slot="suffix"
                         cssClasses={['circular', 'destructive-action']}
                         iconName="edit-clear-all-symbolic"
                         tooltipText="Reset to defaults"

@@ -1,3 +1,4 @@
+import GObject from 'gi://GObject?version=2.0';
 import {Object, register} from 'gnim/gobject';
 import logger from '#/lib/core/logger';
 
@@ -71,7 +72,10 @@ export default class ShellBus extends Object {
             ? () => void
             : (payload: ShellEventPayloads[E]) => void
     ): number {
-        return (this as any).connect(event, fn);
+        return GObject.signal_connect(this, event, (_source: GObject.Object, ...args: unknown[]) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-arguments
+            (fn as (...args: unknown[]) => void)(...args);
+        });
     }
 
     /** Remove a listener by handler ID. */
@@ -97,7 +101,7 @@ export default class ShellBus extends Object {
             ? []
             : [ShellEventPayloads[E]]
     ) {
-        (this as any).emit(event, ...args);
+        GObject.signal_emit_by_name(this, event, ...args);
         logger.debug(
             'shellBus',
             `fired: ${event}` +

@@ -146,27 +146,22 @@ export const TimerSection = () => {
                         ref={self => {
                             const flat = PRESETS.flat();
                             flat.forEach((min, i) => {
-                                const btn = (
-                                    <Gtk.Button
-                                        cssClasses={['flat']}
-                                        hexpand
-                                        onClicked={() =>
-                                            timer.startCountdown(
-                                                min * 60 * 1000
-                                            )
-                                        }
-                                    >
-                                        <Gtk.Label
-                                            label={
-                                                min >= 60
-                                                    ? `${min / 60}h`
-                                                    : `${min}m`
-                                            }
-                                        />
-                                    </Gtk.Button>
+                                const btn = new Gtk.Button({
+                                    cssClasses: ['flat'],
+                                    hexpand: true,
+                                });
+                                const label = new Gtk.Label({
+                                    label:
+                                        min >= 60
+                                            ? `${min / 60}h`
+                                            : `${min}m`,
+                                });
+                                btn.set_child(label);
+                                btn.connect('clicked', () =>
+                                    timer.startCountdown(min * 60 * 1000)
                                 );
                                 self.attach(
-                                    btn as any,
+                                    btn,
                                     i % 3,
                                     Math.floor(i / 3),
                                     1,

@@ -7,7 +7,7 @@ import {
     weatherSchema,
     timerSchema,
     screenCaptureSchema,
-} from './schema';
+} from './schema.gschema';
 
 // ── Helper: create a settings group from a schema ──
 
@@ -21,7 +21,13 @@ function createSettingsGroup<S extends Schema>(schema: S) {
 
 // ── App settings ──
 
-function createAppSettings() {
+type Settings = ReturnType<typeof createAppSettings>;
+
+const SettingsContext = createContext<Settings | null>(null);
+
+export {SettingsContext};
+
+export function createAppSettings() {
     return {
         bar: createSettingsGroup(barSchema),
         general: createSettingsGroup(generalSchema),
@@ -30,10 +36,6 @@ function createAppSettings() {
         screenCapture: createSettingsGroup(screenCaptureSchema),
     };
 }
-
-type Settings = ReturnType<typeof createAppSettings>;
-
-const SettingsContext = createContext<Settings | null>(null);
 
 export function SettingsProvider<T>(fn: () => T) {
     return SettingsContext.provide(createAppSettings(), fn);

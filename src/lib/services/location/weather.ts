@@ -1,3 +1,4 @@
+import GObject from 'gi://GObject?version=2.0';
 import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
@@ -25,7 +26,7 @@ export default class Weather extends Object {
     #initialized = false;
     #generalSettings: Gio.Settings;
 
-    @property(Object)
+    @property
     get info() {
         return this.#weather;
     }
@@ -34,77 +35,77 @@ export default class Weather extends Object {
 
     #tempSummary = '--°';
 
-    @property(Object)
+    @property
     get tempSummary() {
         return this.#tempSummary;
     }
 
     #feelsLike = '';
 
-    @property(Object)
+    @property
     get feelsLike() {
         return this.#feelsLike;
     }
 
     #skyDesc = '';
 
-    @property(Object)
+    @property
     get skyDesc() {
         return this.#skyDesc;
     }
 
     #locationName = '—';
 
-    @property(Object)
+    @property
     get locationName() {
         return this.#locationName;
     }
 
     #weatherIcon = 'weather-none-available-symbolic';
 
-    @property(Object)
+    @property
     get weatherIcon() {
         return this.#weatherIcon;
     }
 
     #windSpeed = 0;
 
-    @property(Object)
+    @property
     get windSpeed() {
         return this.#windSpeed;
     }
 
     #windDirection = 0;
 
-    @property(Object)
+    @property
     get windDirection() {
         return this.#windDirection;
     }
 
     #humidity = 0;
 
-    @property(Object)
+    @property
     get humidity() {
         return this.#humidity;
     }
 
     #pressure = 0;
 
-    @property(Object)
+    @property
     get pressure() {
         return this.#pressure;
     }
 
     #sunrise = 0;
 
-    @property(Object)
+    @property
     get sunrise() {
         return this.#sunrise;
     }
 
     #sunset = 0;
 
-    @property(Object)
+    @property
     get sunset() {
         return this.#sunset;
     }
@@ -214,14 +215,13 @@ export default class Weather extends Object {
                 this.#geo.disconnect(geoHandlerId);
                 geoHandlerId = null;
             }
-            geoHandlerId = this.#geo.connect(
-                'location-changed' as any,
-                ((_: any, lat: number, lon: number) => {
-                    settings.setLatitude(lat);
-                    settings.setLongitude(lon);
-                    this.updateFromCoords(lat, lon);
-                }) as any
-            );
+            geoHandlerId = GObject.signal_connect(this.#geo, 'location-changed', (_source: Geolocation, ...args: unknown[]) => {
+                const lat = args[0] as number;
+                const lon = args[1] as number;
+                settings.setLatitude(lat);
+                settings.setLongitude(lon);
+                this.updateFromCoords(lat, lon);
+            });
         };
 
         // Auto-location on startup if enabled

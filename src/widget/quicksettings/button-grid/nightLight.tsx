@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind} from 'gnim';
+import {bind, effect} from 'gnim';
 import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import NightLight, {
@@ -19,26 +19,31 @@ export default (): QuickButton => {
             >
                 <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
                     <Gtk.Label label="Temperature" />
-                    <Gtk.Scale
-                        widthRequest={150}
-                        digits={0}
-                        roundDigits={0}
-                        adjustment={
-                            (
-                                <Gtk.Adjustment
-                                    lower={TEMP_MIN}
-                                    upper={TEMP_MAX}
-                                    stepIncrement={100}
-                                    value={bind(nightLight, 'temperature')}
-                                />
-                            ) as any
-                        }
-                        onValueChanged={self =>
-                            (nightLight.temperature = Math.round(
-                                self.get_value()
-                            ))
-                        }
-                    />
+                    {(() => {
+                        const $temperature = bind(nightLight, 'temperature');
+                        const adjustment = new Gtk.Adjustment({
+                            lower: TEMP_MIN,
+                            upper: TEMP_MAX,
+                            stepIncrement: 100,
+                            value: $temperature(),
+                        });
+                        effect(() => {
+                            adjustment.value = $temperature();
+                        });
+                        return (
+                            <Gtk.Scale
+                                widthRequest={150}
+                                digits={0}
+                                roundDigits={0}
+                                adjustment={adjustment}
+                                onValueChanged={self =>
+                                    (nightLight.temperature = Math.round(
+                                        self.get_value()
+                                    ))
+                                }
+                            />
+                        );
+                    })()}
                     <Gtk.Label
                         widthRequest={56}
                         xalign={1}
@@ -58,7 +63,7 @@ export default (): QuickButton => {
                 </Gtk.Box>
             </Gtk.Box>
         </Gtk.Popover>
-    ) as any;
+    );
 
     return {
         widget: (
@@ -73,6 +78,6 @@ export default (): QuickButton => {
                 onClick={() => (nightLight.enabled = !nightLight.enabled)}
                 popover={popover}
             />
-        ) as any,
+        ),
     };
 };

@@ -2,6 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland} from '#/lib/hyprland';
 import Cairo from 'gi://cairo?version=1.0';
 import {bind, createState} from 'gnim';
 import {app} from '#/apps/shell/App';
@@ -38,7 +39,8 @@ function getNormalizedSelection(
 
 export default () => {
     const ss = Screenshot.get_default();
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const [selStart, setSelStart] = createState<{x: number; y: number} | null>(
         null
     );
@@ -306,7 +308,7 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={bind(hyprland, 'focusedMonitor').as(
+            monitor={bind(hyprland, 'focused-monitor').as(
                 monitorIndexFromHyprland
             )}
             css={'background-color: transparent;'}

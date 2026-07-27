@@ -17,7 +17,6 @@ export default () => {
             >
                 <Adw.ActionRow title={'Backend'}>
                     <Adw.ToggleGroup
-                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -53,7 +52,6 @@ export default () => {
 
                 <Adw.ActionRow title={'Container Format'}>
                     <Adw.ToggleGroup
-                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -84,7 +82,6 @@ export default () => {
 
                 <Adw.ActionRow title={'Quality'}>
                     <Adw.ToggleGroup
-                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -124,7 +121,6 @@ export default () => {
             >
                 <Adw.ActionRow title={'Image Format'}>
                     <Adw.ToggleGroup
-                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -173,7 +169,6 @@ export default () => {
                     subtitle={settings.recordingBoundaryColor}
                 >
                     <Gtk.ColorDialogButton
-                        slot="suffix"
                         valign={Gtk.Align.CENTER}
                         dialog={new Gtk.ColorDialog()}
                         ref={self => {
@@ -225,18 +220,16 @@ export default () => {
                     }
                 />
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: VIRTUAL_MONITOR_FPS_MIN,
+                            upper: VIRTUAL_MONITOR_FPS_MAX,
+                            stepIncrement: 1,
+                            value: settings.virtualMonitorFps(),
+                        });
+                    }}
                     title={'Refresh Rate'}
                     subtitle={'Frames per second'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={VIRTUAL_MONITOR_FPS_MIN}
-                                upper={VIRTUAL_MONITOR_FPS_MAX}
-                                stepIncrement={1}
-                                value={settings.virtualMonitorFps}
-                            />
-                        ) as any
-                    }
                     onNotifyValue={self =>
                         settings.setVirtualMonitorFps(self.value)
                     }

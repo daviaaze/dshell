@@ -1,6 +1,6 @@
 import Gio from 'gi://Gio';
 import {createSettings} from 'gnim/schema';
-import {screenCaptureSchema} from './schema';
+import {screenCaptureSchema} from './schema.gschema';
 
 let instance: ReturnType<typeof createScreenCaptureSettings> | null = null;
 

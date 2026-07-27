@@ -60,7 +60,7 @@ export default (): QuickButton => {
                 </Gtk.Button>
             </LinkedBox>
         </Gtk.Popover>
-    ) as any;
+    );
 
     return {
         widget: (
@@ -70,6 +70,6 @@ export default (): QuickButton => {
                 onClick={() => setProfile(nextProfile(activeProfile()))}
                 popover={popover}
             />
-        ) as any,
+        ),
     };
 };

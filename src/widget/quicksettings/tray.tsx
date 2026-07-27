@@ -21,16 +21,14 @@ export const TrayBox = () => {
         />
     );
 
-    const PowerButton = () => {
-        const menu = PowerMenu();
-        return (
-            <IconMenuButton
-                icon="system-shutdown-symbolic"
-                cssClasses={['destructive-action']}
-                popover={menu}
-            />
-        );
-    };
+    const PowerButton = () => (
+        <IconMenuButton
+            icon="system-shutdown-symbolic"
+            cssClasses={['destructive-action']}
+        >
+            <PowerMenu />
+        </IconMenuButton>
+    );
 
     const RotateButton = () => {
         const barCfg = useSettings().bar;
@@ -68,16 +66,13 @@ export const TrayBox = () => {
                             );
                             usePopoverCleanup(self);
                         }}
-                        popover={
-                            (
-                                <Gtk.PopoverMenu
-                                    cssClasses={['menu']}
-                                    menuModel={item.menuModel}
-                                />
-                            ) as any
-                        }
-                        tooltipMarkup={bind(item, 'tooltipMarkup')}
+                        tooltipMarkup={bind(item, 'tooltip-markup')}
                     >
+                        <Gtk.PopoverMenu
+                            slot="popover"
+                            cssClasses={['menu']}
+                            menuModel={item.menuModel}
+                        />
                         <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />
                     </Gtk.MenuButton>
                 )}

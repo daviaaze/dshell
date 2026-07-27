@@ -117,22 +117,22 @@ export default class AppMixer extends Object {
     #lastModified = new Map<number, number>();
     static readonly MODIFY_GRACE_MS = 3000;
 
-    @property(Object)
+    @property
     get streams() {
         return this.#streams;
     }
 
-    @property(Object)
+    @property
     get captureStreams() {
         return this.#captureStreams;
     }
 
-    @property(Object)
+    @property
     get microphoneInUse() {
         return this.#captureStreams.length > 0;
     }
 
-    @property(Object)
+    @property
     get speakerInUse() {
         return this.#streams.length > 0;
     }

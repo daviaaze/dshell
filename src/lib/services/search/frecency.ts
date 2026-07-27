@@ -152,7 +152,7 @@ export class FrecencyManager extends GObject {
     /**
      * Check if frecency is available (has any entries).
      */
-    @property(Boolean)
+    @property
     get hasData(): boolean {
         return Object.keys(this.#storage.getAll()).length > 0;
     }

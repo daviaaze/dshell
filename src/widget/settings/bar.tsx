@@ -107,17 +107,15 @@ export default () => {
                     onNotifyActive={self => bar.setDockAutoHide(self.active)}
                 />
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: 24,
+                            upper: 64,
+                            stepIncrement: 4,
+                            value: bar.dockIconSize(),
+                        });
+                    }}
                     title="Icon Size"
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={24}
-                                upper={64}
-                                stepIncrement={4}
-                                value={bar.dockIconSize}
-                            />
-                        ) as any
-                    }
                     onNotifyValue={self => bar.setDockIconSize(self.value)}
                 />
             </Adw.PreferencesGroup>

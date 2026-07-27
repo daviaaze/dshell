@@ -1,6 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland} from '#/lib/hyprland';
 import {bind} from 'gnim';
 import {app} from '#/apps/shell/App';
 import Screenshot from '#/lib/services/capture/screenshot';
@@ -18,7 +19,8 @@ function formatDuration(seconds: number): string {
 
 export default () => {
     const ss = Screenshot.get_default();
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
 
     const elapsedLabel = bind(ss, 'recordingElapsed').as(sec =>
         formatDuration(sec ?? 0)
@@ -31,7 +33,7 @@ export default () => {
             layer={Astal.Layer.OVERLAY}
             margin={12}
             anchor={Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.RIGHT}
-            monitor={bind(hyprland, 'focusedMonitor').as(
+            monitor={bind(hyprland, 'focused-monitor').as(
                 monitorIndexFromHyprland
             )}
             visible={bind(ss, 'recording')}

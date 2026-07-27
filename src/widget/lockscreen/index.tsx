@@ -1,9 +1,12 @@
 import {monitors} from '#/lib/services/monitoring/monitors';
+import GObject from 'gi://GObject?version=2.0';
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import SessionLockService from '#/lib/services/session/sessionLockService';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, createRoot, For, onCleanup} from 'gnim';
+import {bind, For, onCleanup} from 'gnim';
+import {render} from '@gnim-js/gtk4';
+import {app} from '#/apps/shell/App';
 import WindowManager from '#/lib/services/state/windowManager';
 import ShellState from '#/lib/services/state/shellState';
 import Clock from '#/lib/services/time/clock';
@@ -43,7 +46,7 @@ const createLocks = (onUnlock: () => void) => {
         onUnlock();
     };
 
-    authSession.connect('success' as any, () => doUnlock());
+    GObject.signal_connect(authSession, 'success', () => doUnlock());
 
     const fpStateBinding = bind(fingerprint, 'state');
     const fpErrorBinding = bind(fingerprint, 'errorMessage');
@@ -134,12 +137,13 @@ export const LockScreen = () => {
         screenlocked.subscribe(() => {
             if (screenlocked() && !locked) {
                 locked = true;
-                createRoot(dispose => {
-                    createLocks(() => {
+                const dispose = render(
+                    () => createLocks(() => {
                         locked = false;
                         dispose();
-                    });
-                });
+                    }),
+                    app,
+                );
             }
         })
     );

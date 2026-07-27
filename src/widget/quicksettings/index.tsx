@@ -1,4 +1,5 @@
 import Hyprland from 'gi://AstalHyprland';
+import {getHyprland} from '#/lib/hyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
@@ -18,7 +19,8 @@ const QUICKSETTINGS_SPACING = 8;
 
 export default () => {
     const barCfg = useSettings().bar;
-    const hyprland = Hyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const shellState = ShellState.get_default();
     const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
@@ -51,7 +53,7 @@ export default () => {
                 p => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM
             )}
             widthRequest={QUICKSETTINGS_WIDTH}
-            monitor={bind(hyprland, 'focusedMonitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as(m => m.id)}
         >
             <Gtk.ScrolledWindow
                 propagateNaturalHeight

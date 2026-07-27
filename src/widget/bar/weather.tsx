@@ -24,22 +24,19 @@ export const WeatherButton = ({
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             visible={visible}
             ref={usePopoverCleanup}
-            popover={
-                (
-                    <Gtk.Popover
-                        valign={Gtk.Align.CENTER}
-                        halign={Gtk.Align.CENTER}
-                        cssClasses={[]}
-                        hasArrow={false}
-                        widthRequest={320}
-                    >
-                        <Gtk.Box cssClasses={[]}>
-                            <WeatherWidget />
-                        </Gtk.Box>
-                    </Gtk.Popover>
-                ) as any
-            }
         >
+            <Gtk.Popover
+                slot="popover"
+                valign={Gtk.Align.CENTER}
+                halign={Gtk.Align.CENTER}
+                cssClasses={[]}
+                hasArrow={false}
+                widthRequest={320}
+            >
+                <Gtk.Box cssClasses={[]}>
+                    <WeatherWidget />
+                </Gtk.Box>
+            </Gtk.Popover>
             <Gtk.Box
                 orientation={vertical.as(v =>
                     v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL

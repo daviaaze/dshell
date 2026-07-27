@@ -146,18 +146,16 @@ export default () => {
                     }
                 />
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: TEMP_MIN,
+                            upper: TEMP_MAX,
+                            stepIncrement: 100,
+                            value: settings.nightLightTemperature(),
+                        });
+                    }}
                     title={'Color Temperature'}
                     subtitle={'Lower values are warmer (redder)'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={TEMP_MIN}
-                                upper={TEMP_MAX}
-                                stepIncrement={100}
-                                value={settings.nightLightTemperature}
-                            />
-                        ) as any
-                    }
                     onNotifyValue={self =>
                         settings.setNightLightTemperature(
                             Math.round(self.value)

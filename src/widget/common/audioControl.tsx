@@ -32,7 +32,7 @@ export const AudioEndpointControl = ({
             <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
                 <Gtk.CheckButton
                     group={radioGroup}
-                    active={bind(device, 'isDefault')}
+                    active={bind(device, 'is-default')}
                     onNotifyActive={({active}) => {
                         if (active) device.isDefault = true;
                     }}

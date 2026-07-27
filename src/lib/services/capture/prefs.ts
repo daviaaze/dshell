@@ -14,7 +14,7 @@ export default class RecordingPrefs extends Object {
     #recordingQuality = 1; // 0=Low, 1=Medium, 2=High
     #previewThumbnails = true;
 
-    @property(Boolean)
+    @property
     get audio() {
         return this.#audio;
     }
@@ -25,7 +25,7 @@ export default class RecordingPrefs extends Object {
         this.notify('audio');
     }
 
-    @property(Number)
+    @property
     get selectedAudioInput() {
         return this.#selectedAudioInput;
     }
@@ -45,7 +45,7 @@ export default class RecordingPrefs extends Object {
         this.notify('selected-audio-input-name');
     }
 
-    @property(String)
+    @property
     get selectedAudioInputName() {
         return this.#selectedAudioInputName;
     }
@@ -61,7 +61,7 @@ export default class RecordingPrefs extends Object {
         this.notify('recording-quality');
     }
 
-    @property(Boolean)
+    @property
     get previewThumbnails() {
         return this.#previewThumbnails;
     }

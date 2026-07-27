@@ -40,6 +40,7 @@ import ShellState from '#/lib/services/state/shellState';
 import {useSettings} from '#/lib/settings';
 import WindowManager from '#/lib/services/state/windowManager';
 import ServiceRegistry from '#/lib/core/serviceRegistry';
+import type {GnimNode} from 'gnim';
 import logger, {perf} from '#/lib/core/logger';
 
 // ── Settings window lifecycle ──
@@ -62,7 +63,7 @@ export const openSettings = () => {
 
 // ── Register services with lifecycle manager ──
 
-function registerServices(s: ReturnType<typeof useSettings>) {
+export function registerServices(s: ReturnType<typeof useSettings>) {
     const reg = ServiceRegistry.get_default();
     reg.register(
         {
@@ -185,10 +186,10 @@ function registerServices(s: ReturnType<typeof useSettings>) {
 
 interface WidgetDescriptor {
     name: string;
-    mount: () => void;
+    mount: () => GnimNode;
 }
 
-function getWidgetDescriptors(): WidgetDescriptor[] {
+export function getWidgetDescriptors(): WidgetDescriptor[] {
     return [
         {name: 'wallpaper', mount: Wallpaper},
         {name: 'bar', mount: bar},

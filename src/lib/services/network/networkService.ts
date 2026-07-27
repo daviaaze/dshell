@@ -22,32 +22,32 @@ export default class NetworkService extends Object {
         return _instance;
     }
 
-    @property(Object)
+    @property
     get wifi(): Network.Wifi | null {
         return this.#wifi;
     }
 
-    @property(Object)
+    @property
     get wifiSsid(): string | null {
         return this.#wifi?.ssid ?? null;
     }
 
-    @property(Object)
+    @property
     get wifiEnabled(): boolean {
         return this.#wifi?.enabled ?? false;
     }
 
-    @property(Object)
+    @property
     get wifiStrength(): number {
         return this.#wifi?.strength ?? 0;
     }
 
-    @property(Object)
+    @property
     get wifiState(): number {
         return this.#wifi?.state ?? 0;
     }
 
-    @property(Object)
+    @property
     get wifiReady(): boolean {
         return this.#wifi !== null && this.#initialized;
     }

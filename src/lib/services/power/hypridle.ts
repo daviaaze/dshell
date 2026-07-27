@@ -89,63 +89,63 @@ export default class Hypridle extends GObject {
 
     // ── GObject property accessors ────────────────────────────────────
 
-    @property(Object) get enabled() {
+    @property get enabled() {
         return this.#values.enabled;
     }
     set enabled(v) {
         this.#set('enabled', v);
     }
 
-    @property(Object) get idleTimeout() {
+    @property get idleTimeout() {
         return this.#values.idleTimeout;
     }
     set idleTimeout(v) {
         this.#set('idleTimeout', v);
     }
 
-    @property(Object) get dimTimeout() {
+    @property get dimTimeout() {
         return this.#values.dimTimeout;
     }
     set dimTimeout(v) {
         this.#set('dimTimeout', v);
     }
 
-    @property(Object) get dimEnabled() {
+    @property get dimEnabled() {
         return this.#values.dimEnabled;
     }
     set dimEnabled(v) {
         this.#set('dimEnabled', v);
     }
 
-    @property(Object) get dpmsTimeout() {
+    @property get dpmsTimeout() {
         return this.#values.dpmsTimeout;
     }
     set dpmsTimeout(v) {
         this.#set('dpmsTimeout', v);
     }
 
-    @property(Object) get dpmsEnabled() {
+    @property get dpmsEnabled() {
         return this.#values.dpmsEnabled;
     }
     set dpmsEnabled(v) {
         this.#set('dpmsEnabled', v);
     }
 
-    @property(Object) get suspendTimeout() {
+    @property get suspendTimeout() {
         return this.#values.suspendTimeout;
     }
     set suspendTimeout(v) {
         this.#set('suspendTimeout', v);
     }
 
-    @property(Object) get suspendEnabled() {
+    @property get suspendEnabled() {
         return this.#values.suspendEnabled;
     }
     set suspendEnabled(v) {
         this.#set('suspendEnabled', v);
     }
 
-    @property(Object)
+    @property
     get available() {
         return GLib.find_program_in_path('hypridle') !== null;
     }

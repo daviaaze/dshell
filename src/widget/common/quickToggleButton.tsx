@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, computed, isAccessor} from 'gnim';
+import {Accessor, computed, effect, isAccessor, type GnimNode} from 'gnim';
 import {usePopoverCleanup} from './popoverCleanup';
 
 interface QuickToggleButtonProps {
@@ -8,7 +8,7 @@ interface QuickToggleButtonProps {
     label: Accessor<string> | string;
     cssClasses?: Accessor<string[]> | string[];
     onClick?: () => void;
-    popover?: Accessor<Gtk.Popover> | Gtk.Popover;
+    popover?: Accessor<GnimNode> | GnimNode;
     hexpand?: boolean;
     visible?: Accessor<boolean> | boolean;
     active?: Accessor<boolean> | boolean;
@@ -16,7 +16,7 @@ interface QuickToggleButtonProps {
 
 export const QuickToggleButton = (
     props: QuickToggleButtonProps
-): Gtk.Widget => {
+): GnimNode => {
     // Neither Gtk.Button nor Adw.SplitButton expose an `active` state that
     // fits a toggle — reflect `active` through the 'active' css class.
     // Narrow via local consts so instanceof narrowing holds inside the closure.
@@ -33,14 +33,28 @@ export const QuickToggleButton = (
             : [...(css ?? ['raised']), ...(act ? ['active'] : [])];
 
     if (props.popover) {
+        const popoverNode = isAccessor(props.popover) ? props.popover() : props.popover;
+        let splitButton: Adw.SplitButton | null = null;
+        effect(() => {
+            if (!splitButton) return;
+            let child = splitButton.get_first_child();
+            while (child) {
+                if (child instanceof Gtk.Popover) {
+                    splitButton.popover = child;
+                    break;
+                }
+                child = child.get_next_sibling();
+            }
+        });
+
         return <Adw.SplitButton
                 visible={props.visible ?? true}
                 cssClasses={mergedCss}
                 hexpand={props.hexpand ?? true}
-                ref={usePopoverCleanup}
+                ref={self => { splitButton = self; usePopoverCleanup(self); }}
                 onClicked={props.onClick}
-                popover={props.popover}
             >
+                {popoverNode}
                 <Adw.ButtonContent iconName={props.icon} label={props.label} />
             </Adw.SplitButton>;
     }

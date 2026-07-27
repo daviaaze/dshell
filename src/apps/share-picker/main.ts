@@ -11,6 +11,7 @@
  *   Stdout: [SELECTION][r]/screen:NAME  or  [SELECTION][r]/window:ID
  */
 
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {programArgs} from 'system';
@@ -28,7 +29,6 @@ import {
     windowAddr,
     runCapture,
     loadTexture,
-    // @ts-expect-error unused
     captureMonitor,
     captureMonitorSync,
     captureWindow,
@@ -174,7 +174,7 @@ function main() {
         cancelBtn.connect('clicked', () => app.quit());
         mainBox.append(cancelBtn);
 
-        win.connect('close-request' as any, () => app.quit());
+        GObject.signal_connect(win, 'close-request', () => app.quit());
         win.set_child(mainBox);
         win.present();
 

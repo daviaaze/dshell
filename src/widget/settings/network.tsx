@@ -114,7 +114,6 @@ export default () => {
                                     )}
                                 >
                                     <Gtk.LevelBar
-                                        slot="suffix"
                                         valign={Gtk.Align.CENTER}
                                         value={bind(w, 'strength').as(s =>
                                             strengthFraction(s)
@@ -128,12 +127,9 @@ export default () => {
                     <Adw.ActionRow
                         title="Connect to Hidden Network…"
                         activatable
-                        onActivated={self =>
-                            showHiddenNetworkDialog(self as any)
-                        }
+                        onActivated={self => showHiddenNetworkDialog(self)}
                     >
                         <Gtk.Image
-                            slot="prefix"
                             iconName="network-wireless-symbolic"
                             pixelSize={NET_ICON_PREFIX}
                         />
@@ -161,13 +157,12 @@ export default () => {
                                 showConnectionEditor(
                                     net.ssid,
                                     net.connections,
-                                    self as any,
+                                    self,
                                     () => bumpKnown(knownVersion() + 1)
                                 )
                             }
                         >
                             <Gtk.Image
-                                slot="prefix"
                                 iconName={
                                     net.secure
                                         ? 'network-wireless-encrypted-symbolic'
@@ -176,7 +171,6 @@ export default () => {
                                 pixelSize={NET_ICON_PREFIX}
                             />
                             <Gtk.Button
-                                slot="suffix"
                                 cssClasses={['flat', 'circular']}
                                 onClicked={() => {
                                     const first = net.connections[0];
@@ -221,8 +215,7 @@ export default () => {
                                 )}
                             >
                                 <Gtk.Image
-                                    slot="suffix"
-                                    iconName={bind(w, 'iconName')}
+                                    iconName={bind(w, 'icon-name')}
                                 />
                             </Adw.ActionRow>
                         ) : null
@@ -240,14 +233,13 @@ export default () => {
                         w ? (
                             <Adw.ActionRow
                                 title="Hotspot"
-                                subtitle={bind(w, 'isHotspot').as(h =>
+                                subtitle={bind(w, 'is-hotspot').as(h =>
                                     h ? 'Active' : 'Inactive'
                                 )}
                             >
                                 <Gtk.Switch
-                                    slot="suffix"
                                     valign={Gtk.Align.CENTER}
-                                    active={bind(w, 'isHotspot')}
+                                    active={bind(w, 'is-hotspot')}
                                     onNotifyActive={() =>
                                         logger.info(
                                             'settings-network',

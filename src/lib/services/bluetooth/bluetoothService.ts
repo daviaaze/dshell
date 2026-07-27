@@ -20,23 +20,23 @@ export default class BluetoothService extends Object {
         return _instance;
     }
 
-    @property(Object)
+    @property
     get isPowered(): boolean {
         return this.#bt?.isPowered ?? false;
     }
 
-    @property(Object)
+    @property
     get isConnected(): boolean {
         return this.#bt?.isConnected ?? false;
     }
 
-    @property(Object)
+    @property
     get devices(): Bluetooth.Device[] {
         if (!this.#bt?.devices) return [];
         return toArray<Bluetooth.Device>(this.#bt.devices);
     }
 
-    @property(Object)
+    @property
     get connectedDeviceNames(): string {
         return this.devices
             .filter(d => d.connected)
@@ -44,7 +44,7 @@ export default class BluetoothService extends Object {
             .join(', ');
     }
 
-    @property(Object)
+    @property
     get iconName(): string {
         if (!this.isPowered) return 'bluetooth-disconnected-symbolic';
         return this.isConnected

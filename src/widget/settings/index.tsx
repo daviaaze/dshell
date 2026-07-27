@@ -84,5 +84,5 @@ export const createSettingsWindow = (): any => {
                 <Debug />
             </Adw.PreferencesPage>
         </Adw.PreferencesWindow>
-    ) as any;
+    );
 };

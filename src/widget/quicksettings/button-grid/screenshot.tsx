@@ -155,7 +155,7 @@ export default (): QuickButton => {
                 </Gtk.Button>
             </Gtk.Box>
         </Gtk.Popover>
-    ) as any;
+    );
 
     return {
         widget: (
@@ -171,6 +171,6 @@ export default (): QuickButton => {
                 onClick={() => screenshot.toggleRecording()}
                 popover={popover}
             />
-        ) as any,
+        ),
     };
 };

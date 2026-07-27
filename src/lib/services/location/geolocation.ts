@@ -36,7 +36,7 @@ export default class Geolocation extends Object {
         return this.#longitude;
     }
 
-    @property(Boolean)
+    @property
     get available() {
         return this.#available;
     }
