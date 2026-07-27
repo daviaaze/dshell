@@ -165,7 +165,7 @@ export const WeatherWidget = () => {
         'font-weight': 'bold',
     });
     const separatorStyle = useStyle({
-        height: '1px',
+        'min-height': '1px',
         background: 'var(--shade-outline-variant)',
         margin: '4px 0',
     });
