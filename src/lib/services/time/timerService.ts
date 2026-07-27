@@ -48,37 +48,37 @@ export default class TimerService extends Object {
         TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
     #sessionsBeforeLongBreak = TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
 
-    @property(Object)
+    @property
     get remaining() {
         return this.#remaining;
     }
 
-    @property(Object)
+    @property
     get total() {
         return this.#total;
     }
 
-    @property(Object)
+    @property
     get running() {
         return this.#running;
     }
 
-    @property(Object)
+    @property
     get mode() {
         return this.#mode;
     }
 
-    @property(Object)
+    @property
     get label() {
         return this.#label;
     }
 
-    @property(Object)
+    @property
     get pomodoroSession() {
         return this.#pomodoroSession;
     }
 
-    @property(Object)
+    @property
     get pomodoroIsBreak() {
         return this.#pomodoroIsBreak;
     }

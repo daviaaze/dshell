@@ -67,23 +67,23 @@ export default ({
                             >
                                 {(client: Hyprland.Client) => (
                                     <Adw.Toggle
-                                        construct={() => {
-                                            const img = new Gtk.Image({
-                                                iconName: getAppIcon(client),
-                                                pixelSize: 24,
-                                            });
-                                            const gesture =
-                                                new Gtk.GestureClick();
-                                            gesture.connect(
-                                                'pressed',
-                                                () => client.focus()
-                                            );
-                                            img.add_controller(gesture);
-                                            return new Adw.Toggle({
-                                                child: img,
-                                                name: client.address,
-                                            });
-                                        }}
+                                        name={client.address}
+                                        child={
+                                            (
+                                                <Gtk.Image
+                                                    iconName={getAppIcon(
+                                                        client
+                                                    )}
+                                                    pixelSize={24}
+                                                >
+                                                    <Gtk.GestureClick
+                                                        onPressed={() =>
+                                                            client.focus()
+                                                        }
+                                                    />
+                                                </Gtk.Image>
+                                            ) as any
+                                        }
                                     />
                                 )}
                             </For>
@@ -98,14 +98,13 @@ export default ({
                                 {(isEmpty: boolean) =>
                                     isEmpty ? (
                                         <Adw.Toggle
-                                            construct={() =>
-                                                new Adw.Toggle({
-                                                    child: new Gtk.Image({
-                                                        iconName:
-                                                            'window-minimize-symbolic',
-                                                        pixelSize: 8,
-                                                    }),
-                                                })
+                                            child={
+                                                (
+                                                    <Gtk.Image
+                                                        iconName="window-minimize-symbolic"
+                                                        pixelSize={8}
+                                                    />
+                                                ) as any
                                             }
                                         />
                                     ) : null
@@ -116,5 +115,5 @@ export default ({
                 }}
             </For>
         </Gtk.Box>
-    );
+    ) as any;
 };

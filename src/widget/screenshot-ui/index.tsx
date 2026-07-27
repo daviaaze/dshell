@@ -2,6 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland} from '#/lib/hyprland';
 import {bind, createState} from 'gnim';
 import {app} from '#/apps/shell/App';
 import Screenshot from '#/lib/services/capture/screenshot';
@@ -25,7 +26,8 @@ import {
 
 export default () => {
     const ss = Screenshot.get_default();
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const isVisible = bind(ss, 'overlayOpen');
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
@@ -57,11 +59,11 @@ export default () => {
     }
 
     function refreshWindows() {
-        setWindows(loadWindows(hyprland.get_clients()));
+        setWindows(loadWindows(hyprland!.get_clients()));
     }
 
     function refreshMonOrigin() {
-        setMonOrigin(getMonitorOrigin(hyprland.focusedMonitor));
+        setMonOrigin(getMonitorOrigin(hyprland!.focusedMonitor));
     }
 
     // ── Event handlers ────────────────────────────────────────────
@@ -185,7 +187,7 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={bind(hyprland, 'focusedMonitor').as(
+            monitor={bind(hyprland, 'focused-monitor').as(
                 monitorIndexFromHyprland
             )}
             css={'background-color: transparent;'}

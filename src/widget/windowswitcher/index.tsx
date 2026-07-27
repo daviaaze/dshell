@@ -3,6 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland} from '#/lib/hyprland';
 import {bind, createState, For, onCleanup} from 'gnim';
 import {app} from '#/apps/shell/App';
 import {toArray} from '#/lib/core/gjsUtils';
@@ -37,7 +38,8 @@ const getSortedClients = (
 };
 
 export default () => {
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const [selectedIndex, setSelectedIndex] = createState(0);
 
     let mru: string[] = [];
@@ -48,7 +50,7 @@ export default () => {
         mru.unshift(client.address);
     };
 
-    const focusedClient = bind(hyprland, 'focusedClient');
+    const focusedClient = bind(hyprland, 'focused-client');
 
     const focusedClientUnsubscribe = focusedClient.subscribe(() => {
         updateMru(focusedClient());
@@ -205,7 +207,7 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={bind(hyprland, 'focusedMonitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as(m => m.id)}
             css={'background-color: transparent;'}
         >
             <Gtk.Box

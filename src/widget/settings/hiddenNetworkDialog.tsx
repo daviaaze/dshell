@@ -1,13 +1,16 @@
+import Gio from 'gi://Gio?version=2.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Network from 'gi://AstalNetwork';
 import {createState} from 'gnim';
+import {render} from '@gnim-js/gtk4';
 import {createNMConnection} from '#/widget/quicksettings/network/utils';
 import logger from '#/lib/core/logger';
 
-export function showHiddenNetworkDialog(parent: Gtk.Widget) {
+export async function showHiddenNetworkDialog(parent: Adw.ActionRow) {
+    const root = parent.get_root();
     const dialog = new Adw.Window({
-        transientFor: parent.get_root() as any,
+        transientFor: root instanceof Gtk.Window ? root : null,
         modal: true,
         title: 'Connect to Hidden Network',
         defaultWidth: 400,
@@ -20,7 +23,7 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
     const [connecting, setConnecting] = createState(false);
     const [errorMsg, setErrorMsg] = createState<string | null>(null);
 
-    const connect = () => {
+    const connect = async () => {
         const name = ssid().trim();
         if (!name) {
             setErrorMsg('Network name is required');
@@ -43,13 +46,21 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
                 password().trim() || undefined,
                 true
             );
-            (network.client.add_and_activate_connection_async as any)(
-                connection,
-                wifi.device,
-                null,
-                null
-            )
-                .then(() => {
+            await new Promise<void>((resolve, reject) => {
+                network.client.add_and_activate_connection_async(
+                    connection,
+                    wifi.device,
+                    null,
+                    null,
+                    () => {
+                        try {
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        }
+                    },
+                );
+            }).then(() => {
                     setConnecting(false);
                     dialog.close();
                 })
@@ -69,18 +80,17 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
         }
     };
 
-    dialog.set_content(
-        (
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
+    const disposeDialog = render(
+        () =>
+            (
+                <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                 <Adw.HeaderBar
-                    titleWidget={
-                        (
-                            <Adw.WindowTitle
-                                title="Hidden Network"
-                                cssClasses={['title-3']}
-                            />
-                        ) as any
-                    }
+                    ref={self => {
+                        self.titleWidget = new Adw.WindowTitle({
+                            title: 'Hidden Network',
+                            cssClasses: ['title-3'],
+                        });
+                    }}
                     showEndTitleButtons={false}
                 />
                 <Adw.PreferencesPage>
@@ -136,7 +146,8 @@ export function showHiddenNetworkDialog(parent: Gtk.Widget) {
                     />
                 </Adw.PreferencesPage>
             </Gtk.Box>
-        ) as any
+        ),
+        dialog
     );
 
     dialog.present();

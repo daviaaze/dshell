@@ -63,7 +63,7 @@ export default class NotificationHistory extends Object {
     #ignoredApps: string[] = [];
     #notifdHandlerId = 0;
 
-    @property(Object)
+    @property
     get history() {
         return this.#history;
     }

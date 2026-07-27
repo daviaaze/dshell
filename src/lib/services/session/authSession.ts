@@ -1,3 +1,4 @@
+import GObject from 'gi://GObject?version=2.0';
 import AstalAuth from 'gi://AstalAuth?version=0.1';
 import {Object, register, signal, property} from 'gnim/gobject';
 import {Timeout} from '#/lib/core/timeout';
@@ -28,7 +29,7 @@ export default class AuthSession extends Object {
     #authStatus = '';
 
     /** Human-readable auth status for UI display. */
-    @property(String)
+    @property
     get authStatus() {
         return this.#authStatus;
     }
@@ -149,8 +150,12 @@ export default class AuthSession extends Object {
         };
 
         this.#fpSignalIds = [
-            this.#fingerprint.connect('verified' as any, onVerified as any),
-            this.#fingerprint.connect('status-changed' as any, onStatus as any),
+            GObject.signal_connect(this.#fingerprint, 'verified', (_source: FingerprintAuth, ..._args: unknown[]) => {
+                onVerified();
+            }),
+            GObject.signal_connect(this.#fingerprint, 'statusChanged', (_source: FingerprintAuth, ...args: unknown[]) => {
+                onStatus(_source, args.length > 0 ? String(args[0]) : '');
+            }),
         ];
     }
 

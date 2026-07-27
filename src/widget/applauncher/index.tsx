@@ -1,4 +1,5 @@
 import Hyprland from 'gi://AstalHyprland';
+import {getHyprland} from '#/lib/hyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
@@ -21,7 +22,8 @@ const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
 export default () => {
     const barCfg = useSettings().bar;
-    const hyprland = Hyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const shellState = ShellState.get_default();
     const [list, setList] = createState<ListItem[]>([]);
     const [mode, setMode] = createState<LauncherMode>('apps');
@@ -74,7 +76,7 @@ export default () => {
             cssClasses={['card', 'frame', 'background']}
             css={'padding-right:0px;'}
             keymode={Astal.Keymode.ON_DEMAND}
-            monitor={bind(hyprland, 'focusedMonitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as(m => m.id)}
             anchor={barCfg.position.as(
                 p => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM
             )}

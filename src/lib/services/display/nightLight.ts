@@ -43,7 +43,7 @@ export default class NightLight extends Object {
         setNightLightAutoSchedule: (v: boolean) => void;
     } | null = null;
 
-    @property(Object)
+    @property
     get enabled() {
         return this.#enabled;
     }
@@ -56,7 +56,7 @@ export default class NightLight extends Object {
         this.notify('enabled');
     }
 
-    @property(Object)
+    @property
     get temperature() {
         return this.#temperature;
     }
@@ -70,7 +70,7 @@ export default class NightLight extends Object {
         this.notify('temperature');
     }
 
-    @property(Object)
+    @property
     get autoSchedule() {
         return this.#autoSchedule;
     }
@@ -83,7 +83,7 @@ export default class NightLight extends Object {
         this.notify('auto-schedule');
     }
 
-    @property(Object)
+    @property
     get available() {
         return GLib.find_program_in_path('hyprsunset') !== null;
     }

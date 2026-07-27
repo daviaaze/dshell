@@ -242,7 +242,10 @@ export function copyImageToClipboard(filename: string): void {
             return;
         }
         const texture = Gdk.Texture.new_from_filename(filename);
-        (display.get_clipboard() as any).set_property('texture', texture);
+        const clipboard = display.get_clipboard();
+        const bytes = texture.save_to_png_bytes();
+        const provider = Gdk.ContentProvider.new_for_bytes('image/png', bytes);
+        clipboard.set_content(provider);
         logger.debug('screenshot', `copied to clipboard via Gdk: ${filename}`);
     } catch (e) {
         logger.warn(

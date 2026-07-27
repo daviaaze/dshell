@@ -1,3 +1,4 @@
+import GObject from 'gi://GObject?version=2.0';
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, createState, effect, onCleanup} from 'gnim';
@@ -85,13 +86,10 @@ export const LockscreenNotifications = () => {
             addNotification(id)
         );
 
-        const dismissedId = notifd.connect(
-            'dismissed' as any,
-            ((_: any, id: number) => {
-                // eslint-disable-next-line sonarjs/no-nested-functions
-                setNotifications(prev => prev.filter(x => x.id !== id));
-            }) as any
-        );
+        const dismissedId = GObject.signal_connect(notifd, 'dismissed', (_source: Notifd.Notifd, ...args: unknown[]) => {
+            const id = args[0] as number;
+            setNotifications(prev => prev.filter(x => x.id !== id));
+        });
 
         onCleanup(() => {
             try {

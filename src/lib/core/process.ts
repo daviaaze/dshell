@@ -33,7 +33,7 @@ export class Process extends Object {
         // signal parameter intentionally unused
     }
 
-    @signal([Number], Boolean)
+    @signal([Number, Boolean])
     protected exit(_code: number, _signaled: boolean) {
         // signal parameters intentionally unused
     }

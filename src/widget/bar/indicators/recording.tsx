@@ -23,8 +23,8 @@ export default () => {
         >
             <Adw.ButtonContent
                 iconName="media-record-symbolic"
-                label={bind(screenshot as any, 'recording-elapsed').as(sec =>
-                    formatDuration((sec as number) ?? 0)
+                label={bind(screenshot, 'recordingElapsed').as(sec =>
+                    formatDuration(sec ?? 0)
                 )}
             />
         </Gtk.Button>

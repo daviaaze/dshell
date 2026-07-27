@@ -162,7 +162,7 @@ export class Theme extends GObject {
     #isDark = false;
 
     /** Whether dark mode is active. */
-    @property(Boolean)
+    @property
     get dark(): boolean {
         return this.#isDark;
     }

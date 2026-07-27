@@ -46,11 +46,7 @@ const decoder = new TextDecoder();
 function contentHash(data: Uint8Array): string {
     const b64 = GLib.base64_encode(data);
     // GLib.ChecksumType.SHA1 is a numeric enum
-    return GLib.compute_checksum_for_string(
-        GLib.ChecksumType.SHA1 as any,
-        b64,
-        -1
-    ) as string;
+    return GLib.compute_checksum_for_string(GLib.ChecksumType.SHA1, b64, -1) ?? '';
 }
 
 function generateId(): string {

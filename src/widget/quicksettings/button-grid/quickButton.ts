@@ -1,12 +1,12 @@
-import Gtk from 'gi://Gtk?version=4.0';
-import type {Accessor} from 'gnim';
+import type {Accessor, GnimNode} from 'gnim';
 
 /**
  * A toggleable button that the quick-settings grid can dynamically hide and
- * re-layout. The widget is always instantiated; visibility is evaluated by the
- * grid so removing a button never leaves empty cells.
+ * re-layout. The button JSX node (virtual node) is stored directly — the
+ * grid renders it declaratively via `<For>`, and the actual Gtk widgets
+ * are materialized by the renderer.
  */
 export interface QuickButton {
-    widget: Gtk.Widget;
+    widget: GnimNode;
     visible?: Accessor<boolean>;
 }

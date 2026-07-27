@@ -67,7 +67,7 @@ export default class SoundAlertService extends Object {
         return this.#getDep('DndService', this.#dndService);
     }
 
-    @property(Object)
+    @property
     get enabled() {
         return this.#enabled;
     }

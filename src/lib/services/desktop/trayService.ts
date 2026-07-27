@@ -19,7 +19,7 @@ export default class TrayService extends Object {
     #tray: Tray.Tray | null = null;
     #initialized = false;
 
-    @property(Object)
+    @property
     get items(): Tray.TrayItem[] {
         return this.#tray?.items ?? [];
     }

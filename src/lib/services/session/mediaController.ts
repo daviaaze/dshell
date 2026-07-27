@@ -27,32 +27,32 @@ export default class MediaController extends Object {
     #listening = false;
     #hn: Record<string, number> = {};
 
-    @property(Object)
+    @property
     get mpris(): Mpris.Mpris | null {
         return this.#mpris;
     }
 
-    @property(Object)
+    @property
     get players(): Mpris.Player[] {
         return this.#players;
     }
 
-    @property(Object)
+    @property
     get activePlayer(): Mpris.Player | null {
         return this.#activePlayer;
     }
 
-    @property(Object)
+    @property
     get activeTitle(): string {
         return this.#activeTitle;
     }
 
-    @property(Object)
+    @property
     get activeArtist(): string {
         return this.#activeArtist;
     }
 
-    @property(Object)
+    @property
     get activeCoverArt(): string {
         return this.#activeCoverArt;
     }

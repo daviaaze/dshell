@@ -30,8 +30,10 @@ export default () => {
 
     return (
         <For each={monitors}>
-            {(monitor: Gdk.Monitor) => (
-                <Astal.Window
+            {(monitor: Gdk.Monitor) => {
+                const hyprMonitor = Gdk2HyprMonitor(monitor);
+                return (
+                    <Astal.Window
                     ref={self => {
                         WindowManager.get_default().registerBar(self);
                         onCleanup(() => {
@@ -101,11 +103,13 @@ export default () => {
                                     : Gtk.Orientation.HORIZONTAL
                             )}
                         >
-                            <Workspaces
-                                vertical={vertical}
-                                monitor={Gdk2HyprMonitor(monitor)}
-                                visible={bar.showWorkspaces}
-                            />
+                            {hyprMonitor ? (
+                                <Workspaces
+                                    vertical={vertical}
+                                    monitor={hyprMonitor}
+                                    visible={bar.showWorkspaces}
+                                />
+                            ) : null}
                             <WindowTitle visible={bar.showWindowTitle} />
                         </Gtk.Box>
 
@@ -145,7 +149,8 @@ export default () => {
                         </Gtk.Box>
                     </Gtk.CenterBox>
                 </Astal.Window>
-            )}
+                );
+            }}
         </For>
     );
 };

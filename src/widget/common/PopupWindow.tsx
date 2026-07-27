@@ -23,6 +23,7 @@ import {Accessor, bind, createState, JSX} from 'gnim';
 import {app} from '#/apps/shell/App';
 import {useSettings} from '#/lib/settings';
 import Hyprland from 'gi://AstalHyprland';
+import {getHyprland} from '#/lib/hyprland';
 
 // ── Types ──
 
@@ -128,8 +129,9 @@ export default (props: PopupWindowProps) => {
     } = props;
 
     const barCfg = useSettings().bar;
-    const hyprland = Hyprland.get_default();
-    const defaultMon = bind(hyprland, 'focusedMonitor').as(m => m.id);
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
+    const defaultMon = bind(hyprland, 'focused-monitor').as(m => m.id);
 
     // Resolve anchor
     let anchorValue: Accessor<Anchor> | Anchor;

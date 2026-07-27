@@ -1,4 +1,5 @@
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland} from '#/lib/hyprland';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '#/lib/core/logger';
 import {Process} from '#/lib/core/process';
@@ -86,7 +87,7 @@ export class Recorder {
             options.output ??
             (options.geometry
                 ? undefined
-                : AstalHyprland.get_default().focusedMonitor?.name);
+                : getHyprland()?.focusedMonitor?.name);
 
         const {audio, input, quality} = this.#hooks.getAudioSettings();
         const {args, backendName} = buildRecordingArgs(

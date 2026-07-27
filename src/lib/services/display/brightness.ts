@@ -31,7 +31,7 @@ export default class Brightness extends Object {
     #kbdDev: AstalBrightness.Device | null = null;
     #ready = false;
 
-    @property(Boolean)
+    @property
     get ready() {
         return this.#ready;
     }

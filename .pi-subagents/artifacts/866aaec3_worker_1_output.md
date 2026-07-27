@@ -1,1 +1,0 @@
-No staged files. All changes are uncommitted as expected. Here's the structured acceptance report.

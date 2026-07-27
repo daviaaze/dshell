@@ -1,22 +1,21 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "experimentalDecorators": true,
+    "target": "ES2022",
     "module": "ES2022",
     "lib": ["ES2024"],
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "./src",
     "strict": true,
-    "noUncheckedIndexedAccess": false,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUnusedLocals": true,
     "moduleResolution": "Bundler",
     "skipLibCheck": true,
-    "paths": { "#/*": ["./src/*"] },
     "jsx": "react-jsx",
     "jsxImportSource": "gnim",
-    "experimentalDecorators": true,
+    "types": ["gi", "gnim"],
+    "typeRoots": ["./.gnim/types"],
+    "paths": {
+      "#/*": ["./src/*"],
+    }
   },
-  "exclude": ["build"],
-  "include": ["src", ".gnim/types/gi", "node_modules/@gnim-js/gtk4/dist/renderer.d.ts"]
+  "include": ["./src/**/*"]
 }

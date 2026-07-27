@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, computed} from 'gnim';
+import {bind, computed, effect} from 'gnim';
 import {QuickToggleButton} from '#/widget/common/quickToggleButton';
 import Hypridle from '#/lib/services/power/hypridle';
 
@@ -44,23 +44,27 @@ export default () => {
                 <Gtk.Separator />
                 <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
                     <Gtk.Label label="Lock after" />
-                    <Gtk.Scale
-                        hexpand
-                        digits={0}
-                        adjustment={
-                            (
-                                <Gtk.Adjustment
-                                    lower={60}
-                                    upper={1800}
-                                    stepIncrement={30}
-                                    value={$idleTimeout}
-                                />
-                            ) as any
-                        }
-                        onValueChanged={self =>
-                            (hypridle.idleTimeout = self.get_value())
-                        }
-                    />
+                    {(() => {
+                        const adjustment = new Gtk.Adjustment({
+                            lower: 60,
+                            upper: 1800,
+                            stepIncrement: 30,
+                            value: $idleTimeout(),
+                        });
+                        effect(() => {
+                            adjustment.value = $idleTimeout();
+                        });
+                        return (
+                            <Gtk.Scale
+                                hexpand
+                                digits={0}
+                                adjustment={adjustment}
+                                onValueChanged={self =>
+                                    (hypridle.idleTimeout = self.get_value())
+                                }
+                            />
+                        );
+                    })()}
                     <Gtk.Label
                         label={$idleTimeout.as(t => `${Math.round(t / 60)}m`)}
                         cssClasses={['caption']}
@@ -78,23 +82,28 @@ export default () => {
                 </Gtk.Box>
                 <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
                     <Gtk.Label label="Dim after" />
-                    <Gtk.Scale
-                        widthRequest={120}
-                        digits={0}
-                        adjustment={
-                            (
-                                <Gtk.Adjustment
-                                    lower={30}
-                                    upper={1740}
-                                    stepIncrement={30}
-                                    value={bind(hypridle, 'dimTimeout')}
-                                />
-                            ) as any
-                        }
-                        onValueChanged={self =>
-                            (hypridle.dimTimeout = self.get_value())
-                        }
-                    />
+                    {(() => {
+                        const $dimTimeout = bind(hypridle, 'dimTimeout');
+                        const adjustment = new Gtk.Adjustment({
+                            lower: 30,
+                            upper: 1740,
+                            stepIncrement: 30,
+                            value: $dimTimeout(),
+                        });
+                        effect(() => {
+                            adjustment.value = $dimTimeout();
+                        });
+                        return (
+                            <Gtk.Scale
+                                widthRequest={120}
+                                digits={0}
+                                adjustment={adjustment}
+                                onValueChanged={self =>
+                                    (hypridle.dimTimeout = self.get_value())
+                                }
+                            />
+                        );
+                    })()}
                     <Gtk.Label
                         label={bind(hypridle, 'dimTimeout').as(
                             t => `${Math.round(t / 60)}m`
@@ -104,7 +113,7 @@ export default () => {
                 </Gtk.Box>
             </Gtk.Box>
         </Gtk.Popover>
-    ) as any;
+    );
 
     return (
         <QuickToggleButton

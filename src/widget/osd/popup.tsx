@@ -9,10 +9,12 @@ export default ({
     widget,
     connectable,
     signals,
+    revealerRef,
 }: {
     widget: any;
     connectable: GObject.Object | null;
     signals: string[];
+    revealerRef?: (revealer: Gtk.Revealer) => void;
 }) => (
     <Gtk.Revealer
         transitionDuration={200}
@@ -20,6 +22,7 @@ export default ({
         visible={false}
         transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
         ref={self => {
+            revealerRef?.(self);
             let timeout: GLib.Source | null = null;
             let visibilityTimeout: GLib.Source | null = null;
             const hide = () => {

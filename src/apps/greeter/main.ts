@@ -14,7 +14,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {programArgs, programInvocationName, exit} from 'system';
-import {createRoot} from 'gnim';
+import {render} from '@gnim-js/gtk4';
 import {Greeter} from '#/widget/greeter';
 import logger from '#/lib/core/logger';
 
@@ -31,11 +31,9 @@ GLib.set_prgname('shade-shell-greet');
 
 app.connect('activate', () => {
     logger.info('greeter', 'activating greeter UI');
-    // Create the greeter UI which handles its own Astal.Window
-    createRoot(dispose => {
-        app.connect('shutdown', dispose);
-        Greeter({application: app});
-    });
+    // Render the greeter UI which creates its own Astal.Window
+    const dispose = render(() => Greeter({application: app}), app);
+    app.connect('shutdown', dispose);
 });
 
 // ── Run ──

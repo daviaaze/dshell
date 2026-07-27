@@ -225,5 +225,5 @@ export default ({
                 ) : null}
             </Gtk.Box>
         </Adw.Clamp>
-    ) as any;
+    );
 };

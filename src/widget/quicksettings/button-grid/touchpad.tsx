@@ -19,6 +19,6 @@ export default (): QuickButton => {
                 )}
                 onClick={() => touchpad.toggle()}
             />
-        ) as any,
+        ),
     };
 };

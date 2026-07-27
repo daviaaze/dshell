@@ -7,6 +7,13 @@ import logger from '#/lib/core/logger';
 export default () => {
     const settings = useSettings().general;
 
+    const historyLimitAdjustment = new Gtk.Adjustment({
+        lower: 20,
+        upper: 500,
+        stepIncrement: 10,
+        value: settings.notificationHistoryLimit(),
+    });
+
     return (
         <>
             <Adw.PreferencesGroup
@@ -24,16 +31,7 @@ export default () => {
                 <Adw.SpinRow
                     title={'History Limit'}
                     subtitle={'Maximum notifications to keep in history'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={20}
-                                upper={500}
-                                stepIncrement={10}
-                                value={settings.notificationHistoryLimit}
-                            />
-                        ) as any
-                    }
+                    adjustment={historyLimitAdjustment}
                     onNotifyValue={self =>
                         settings.setNotificationHistoryLimit(self.value)
                     }
@@ -62,7 +60,6 @@ export default () => {
                     {(app: string) => (
                         <Adw.ActionRow title={app}>
                             <Gtk.Button
-                                slot="suffix"
                                 cssClasses={['circular', 'destructive-action']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {

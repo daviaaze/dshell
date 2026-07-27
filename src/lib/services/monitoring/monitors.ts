@@ -11,7 +11,7 @@
  * The monitors array still returns Gdk.Monitor[] for backward compatibility
  * with Astal.Window.gdkmonitor and all existing widgets.
  */
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland, type AstalHyprland} from '#/lib/hyprland';
 import AstalWl from 'gi://AstalWl';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
@@ -31,8 +31,9 @@ import logger from '#/lib/core/logger';
  *
  * Falls back to description matching and then to geometry matching.
  */
-const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor => {
-    const hyprland = AstalHyprland.get_default();
+const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor | null => {
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
 
     // Gdk 4.10+ exposes the connector name directly
     const connector = GMonitor.connector;
@@ -100,7 +101,7 @@ class MonitorService extends Object {
     #wlSignalIds: number[] = [];
     #pendingSync = false;
 
-    @property(Object)
+    @property
     get monitors() {
         return this.#monitors;
     }
@@ -152,13 +153,15 @@ class MonitorService extends Object {
         // Sync with Hyprland's monitor list to handle the race condition:
         // Gdk fires items-changed before Hyprland's IPC has updated its own
         // monitor list. When the Hyprland list catches up, re-notify.
-        const hyprland = AstalHyprland.get_default();
-        hyprland.connect('notify::monitors', () => {
-            if (this.#pendingSync) {
-                this.#pendingSync = false;
-                this.notify('monitors');
-            }
-        });
+        const hyprland = getHyprland();
+        if (hyprland) {
+            hyprland.connect('notify::monitors', () => {
+                if (this.#pendingSync) {
+                    this.#pendingSync = false;
+                    this.notify('monitors');
+                }
+            });
+        }
     }
 
     // ── AstalWl path (experimental) ───────────────────────────────────────
@@ -212,15 +215,17 @@ class MonitorService extends Object {
         ];
 
         // Sync with Hyprland after AstalWl fires (allow Hyprland IPC to catch up)
-        const hyprland = AstalHyprland.get_default();
-        this.#wlSignalIds.push(
-            hyprland.connect('notify::monitors', () => {
-                if (this.#pendingSync) {
-                    this.#pendingSync = false;
-                    this.#updateMonitors(allGdkMonitors());
-                }
-            })
-        );
+        const hyprland = getHyprland();
+        if (hyprland) {
+            this.#wlSignalIds.push(
+                hyprland.connect('notify::monitors', () => {
+                    if (this.#pendingSync) {
+                        this.#pendingSync = false;
+                        this.#updateMonitors(allGdkMonitors());
+                    }
+                })
+            );
+        }
     }
 
     // ── Monitor list management ───────────────────────────────────────────
@@ -243,12 +248,14 @@ class MonitorService extends Object {
         this.#monitors = monitors;
 
         // Check if Hyprland monitor list matches the Gdk count
-        const hyprland = AstalHyprland.get_default();
-        if (hyprland.get_monitors().length !== this.#monitors.length) {
-            this.#pendingSync = true;
-            logger.debug('monitors', 'Monitor counts differ, deferring notify');
-        } else {
-            this.#pendingSync = false;
+        const hyprland = getHyprland();
+        if (hyprland) {
+            if (hyprland.get_monitors().length !== this.#monitors.length) {
+                this.#pendingSync = true;
+                logger.debug('monitors', 'Monitor counts differ, deferring notify');
+            } else {
+                this.#pendingSync = false;
+            }
         }
 
         this.notify('monitors');
@@ -256,13 +263,15 @@ class MonitorService extends Object {
 
     #scheduleHyprlandSync(): void {
         // Defer notification to give Hyprland IPC time to catch up
-        const hyprland = AstalHyprland.get_default();
-        if (hyprland.get_monitors().length !== this.#monitors.length) {
-            this.#pendingSync = true;
-            logger.debug('monitors', 'Monitor counts differ, deferring notify');
-        } else {
-            this.#pendingSync = false;
-            this.notify('monitors');
+        const hyprland = getHyprland();
+        if (hyprland) {
+            if (hyprland.get_monitors().length !== this.#monitors.length) {
+                this.#pendingSync = true;
+                logger.debug('monitors', 'Monitor counts differ, deferring notify');
+            } else {
+                this.#pendingSync = false;
+                this.notify('monitors');
+            }
         }
     }
 

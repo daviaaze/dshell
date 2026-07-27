@@ -76,7 +76,7 @@ export function bssidEquals(a: unknown, b: unknown): boolean {
 export function wifiIconName(
     strength: number,
     enabled: boolean,
-    state: Network.DeviceState
+    state: number
 ): string {
     if (!enabled) return 'network-wireless-offline-symbolic';
 

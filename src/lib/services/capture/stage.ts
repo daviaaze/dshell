@@ -1,5 +1,6 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland} from '#/lib/hyprland';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import logger from '#/lib/core/logger';
@@ -59,7 +60,9 @@ export function toMagickGeometry(g: BoundaryGeometry): string {
  * Falls back to the focused monitor if no match is found.
  */
 function monitorForPoint(x: number, y: number) {
-    const monitors = AstalHyprland.get_default().monitors;
+    const hl = getHyprland();
+    if (!hl) return null;
+    const monitors = hl.monitors;
     // Look through the monitor list for one that contains (x, y)
     for (let i = 0; i < monitors.length; i++) {
         const m = monitors[i];
@@ -68,7 +71,7 @@ function monitorForPoint(x: number, y: number) {
         }
     }
     // Fallback: focused monitor
-    return AstalHyprland.get_default().focusedMonitor;
+    return hl.focusedMonitor;
 }
 
 /**
@@ -102,7 +105,10 @@ export function grimToMagickGeometry(geometry: string): string {
  */
 export function monitorForGeometry(geometry: string) {
     const g = parseGrimGeometry(geometry);
-    if (!g) return AstalHyprland.get_default().focusedMonitor;
+    if (!g) {
+        const hl = getHyprland();
+        return hl ? hl.focusedMonitor : null;
+    }
     return monitorForPoint(g.x, g.y);
 }
 

@@ -1,12 +1,14 @@
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland} from '#/lib/hyprland';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango?version=1.0';
 import {Accessor, bind, computed} from 'gnim';
 import {getAppIcon} from '#/lib/services/state/apps';
 
 export default ({visible: settingsVisible}: {visible: Accessor<boolean>}) => {
-    const hyprland = AstalHyprland.get_default();
-    const client = bind(hyprland, 'focusedClient');
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
+    const client = bind(hyprland, 'focused-client');
 
     const title = client.as(c => {
         if (!c || c.address === '0x0') return '';

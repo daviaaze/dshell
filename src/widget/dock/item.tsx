@@ -58,8 +58,14 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
         }
     };
 
-    const popover = (
-        <Gtk.Popover cssClasses={['menu']} hasArrow={false}>
+    let popoverWidget: Gtk.Popover | null = null;
+
+    const popoverNode = (
+        <Gtk.Popover
+            ref={self => { popoverWidget = self; }}
+            cssClasses={['menu']}
+            hasArrow={false}
+        >
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={4}
@@ -71,7 +77,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     visible={running}
                     onClicked={() => {
                         handleLeftClick();
-                        popover.popdown();
+                        popoverWidget?.popdown();
                     }}
                 />
                 <ActionButton
@@ -80,7 +86,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     visible={running}
                     onClicked={() => {
                         handleClose();
-                        popover.popdown();
+                        popoverWidget?.popdown();
                     }}
                 />
                 <ActionButton
@@ -90,78 +96,66 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     label={pinned ? 'Unpin' : 'Pin'}
                     onClicked={() => {
                         handlePinToggle();
-                        popover.popdown();
+                        popoverWidget?.popdown();
                     }}
                 />
             </Gtk.Box>
         </Gtk.Popover>
-    ) as any;
+    );
+
+    const statusCssClasses = active
+        ? ['status-active']
+        : running
+          ? ['status-running']
+          : [];
 
     return (
         <Gtk.Button
             ref={self => {
-                popover.set_parent(self);
-                onCleanup(() => {
-                    popover.popdown();
-                    popover.unparent();
+                if (!popoverWidget) return;
+                popoverWidget.set_parent(self);
+                bar.dockIconSize.subscribe(() => {
+                    const firstChild = self.get_first_child();
+                    if (firstChild instanceof Gtk.Image) {
+                        firstChild.pixelSize = bar.dockIconSize();
+                    }
                 });
-                // Create child content once to avoid gtk_button_set_child assertion
-                // when Gnim re-renders this component (e.g. on focus change).
-                if (!self.get_first_child()) {
-                    const icon = (<Gtk.Image iconName={iconName} />) as any;
-                    // Bind icon size reactively
-                    bar.dockIconSize.subscribe(() =>
-                        icon.set_pixel_size(bar.dockIconSize())
-                    );
-                    icon.set_pixel_size(bar.dockIconSize());
-
-                    const status = (<Gtk.Box />) as any & {css: string};
-                    // Update status indicator reactively
-                    const updateStatus = () => {
-                        status.css = active
-                            ? `
-                min-width: 16px;
-                min-height: 3px;
-                border-radius: calc(var(--shade-radius) / 4);
-                background-color: @accent_color;
-              `
-                            : running
-                              ? `
-                  min-width: 4px;
-                  min-height: 4px;
-                  border-radius: calc(var(--shade-radius) / 4);
-                  background-color: @accent_color;
-                `
-                              : '';
-                        status.visible = active || running;
-                    };
-                    updateStatus();
-                    // Re-evaluate status on active/running changes isn't reactive via props —
-                    // the component re-creates on those changes, so this runs once per mount.
-
-                    const box = (
-                        <Gtk.Box
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={4}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                        >
-                            {icon}
-                            {status}
-                        </Gtk.Box>
-                    );
-                    self.child = box as any;
+                const firstChild = self.get_first_child();
+                if (firstChild instanceof Gtk.Image) {
+                    firstChild.pixelSize = bar.dockIconSize();
                 }
+                onCleanup(() => {
+                    popoverWidget?.popdown();
+                    popoverWidget?.unparent();
+                });
             }}
             cssClasses={['flat', 'circular']}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             onClicked={handleLeftClick}
             tooltipText={app?.name || desktopFile.replace('.desktop', '')}
         >
+            <Gtk.Box
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={4}
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.CENTER}
+            >
+                <Gtk.Image
+                    iconName={iconName}
+                    pixelSize={bar.dockIconSize()}
+                />
+                <Gtk.Box
+                    cssClasses={statusCssClasses}
+                    visible={active || running}
+                />
+            </Gtk.Box>
+            {popoverNode}
             <Gtk.GestureClick
                 ref={self => {
                     self.set_button(Gdk.BUTTON_SECONDARY);
-                    self.connect('pressed', () => popover.popup());
+                    self.connect('pressed', () => {
+                        if (popoverWidget) popoverWidget.popup();
+                    });
                 }}
             />
         </Gtk.Button>

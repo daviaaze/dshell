@@ -1,6 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland} from '#/lib/hyprland';
 import {bind, For, computed, onCleanup} from 'gnim';
 import WindowManager from '#/lib/services/state/windowManager';
 import {useSettings} from '#/lib/settings';
@@ -10,7 +11,8 @@ import {toArray} from '#/lib/core/gjsUtils';
 import {getDesktopFileForClient} from '#/lib/services/state/apps';
 
 export default () => {
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const {bar} = useSettings();
     const {BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
@@ -18,7 +20,7 @@ export default () => {
         toArray<AstalHyprland.Client>(c)
     );
 
-    const focusedClient = bind(hyprland, 'focusedClient');
+    const focusedClient = bind(hyprland, 'focused-client');
 
     const dockItems = computed(() => {
         const pinned = bar.dockPinnedApps();

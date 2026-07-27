@@ -21,17 +21,17 @@ export const IconButton = (props: IconButtonProps) => (
 );
 
 interface IconMenuButtonProps extends Omit<IconButtonProps, 'onClicked'> {
-    popover: Gtk.Popover;
+    children?: any;
 }
 
 export const IconMenuButton = (props: IconMenuButtonProps) => (
     <Gtk.MenuButton
         cssClasses={['circular', ...(props.cssClasses ?? [])]}
-        popover={props.popover}
         tooltipText={props.tooltipText}
         cursor={props.cursor}
         ref={usePopoverCleanup}
     >
+        {props.children}
         <Gtk.Image iconName={props.icon} />
     </Gtk.MenuButton>
 );

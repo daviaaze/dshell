@@ -13,4 +13,4 @@ test-output/
 .atl/
 .vscode
 # Indexed documentation cache
-Knowledge-Base/.docs-index/
+Knowledge-Base/
