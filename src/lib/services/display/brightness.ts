@@ -78,23 +78,14 @@ export default class Brightness extends Object {
             // Forward property notifications from the Device objects.
             // Device.brightness fires notify::brightness when the percentage changes.
             screenDev?.connect('notify::brightness', () => {
-                logger.info(
-                    'brightness',
-                    `notify::brightness on screen → ${screenDev.brightness.toFixed(3)}`
-                );
                 this.notify('screen');
             });
             kbdDev?.connect('notify::brightness', () => {
-                logger.info(
-                    'brightness',
-                    `notify::brightness on keyboard → ${kbdDev.brightness.toFixed(3)}`
-                );
                 this.notify('kbd');
             });
 
             // Also listen to the service-level convenience signal
             svc.connect('brightness-changed', (_device: unknown) => {
-                logger.info('brightness', 'brightness-changed signal');
                 // Re-notify both — the device param tells us which one,
                 // but re-notifying both is simpler and harmless.
                 this.notify('screen');

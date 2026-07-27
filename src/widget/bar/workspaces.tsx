@@ -1,6 +1,5 @@
 import Hyprland from 'gi://AstalHyprland';
 import {getHyprland} from '#/lib/hyprland';
-import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, For, Accessor, With} from 'gnim';
 import {toArray} from '#/lib/core/gjsUtils';
@@ -51,14 +50,13 @@ export default ({
                     });
 
                     return (
-                        <Adw.ToggleGroup
+                        <Gtk.Box
                             orientation={vertical.as(v =>
                                 v
                                     ? Gtk.Orientation.VERTICAL
                                     : Gtk.Orientation.HORIZONTAL
                             )}
-                            cssClasses={[ws.id < 0 ? 'success' : '']}
-                            activeName={activeName()}
+                            spacing={4}
                         >
                             <For
                                 each={bind(ws, 'clients').as(clients =>
@@ -66,25 +64,20 @@ export default ({
                                 )}
                             >
                                 {(client: Hyprland.Client) => (
-                                    <Adw.Toggle
-                                        construct={() => {
-                                            const img = new Gtk.Image({
-                                                iconName: getAppIcon(client),
-                                                pixelSize: 24,
-                                            });
-                                            const gesture =
-                                                new Gtk.GestureClick();
-                                            gesture.connect(
-                                                'pressed',
-                                                () => client.focus()
-                                            );
-                                            img.add_controller(gesture);
-                                            return new Adw.Toggle({
-                                                child: img,
-                                                name: client.address,
-                                            });
-                                        }}
-                                    />
+                                    <Gtk.ToggleButton
+                                        active={computed(
+                                            () =>
+                                                activeName() ===
+                                                client.address
+                                        )}
+                                        onClicked={() => client.focus()}
+                                        cssClasses={['flat']}
+                                    >
+                                        <Gtk.Image
+                                            iconName={getAppIcon(client)}
+                                            pixelSize={24}
+                                        />
+                                    </Gtk.ToggleButton>
                                 )}
                             </For>
                             {/* show empty dot when ws is empty */}
@@ -97,21 +90,21 @@ export default ({
                             >
                                 {(isEmpty: boolean) =>
                                     isEmpty ? (
-                                        <Adw.Toggle
-                                            construct={() =>
-                                                new Adw.Toggle({
-                                                    child: new Gtk.Image({
-                                                        iconName:
-                                                            'window-minimize-symbolic',
-                                                        pixelSize: 8,
-                                                    }),
-                                                })
-                                            }
-                                        />
+                                        <Gtk.ToggleButton
+                                            active={false}
+                                            cssClasses={['flat']}
+                                        >
+                                            <Gtk.Image
+                                                iconName={
+                                                    'window-minimize-symbolic'
+                                                }
+                                                pixelSize={8}
+                                            />
+                                        </Gtk.ToggleButton>
                                     ) : null
                                 }
                             </With>
-                        </Adw.ToggleGroup>
+                        </Gtk.Box>
                     );
                 }}
             </For>
