@@ -22,13 +22,11 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind, createState, JSX} from 'gnim';
 import {app} from '../../apps/shell/App';
 import {useSettings} from '../../lib/settings';
-import Hyprland from 'gi://AstalHyprland';
 import {getHyprland} from '../../lib/hyprland';
 
 // ── Types ──
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
-type Anchor = number; // bitmask of Astal.WindowAnchor
 
 export interface PopupWindowProps {
     /** Unique window name, used as the Astal namespace. */
@@ -44,7 +42,8 @@ export interface PopupWindowProps {
      * Bar-position-derived anchor or explicit anchor bitmask.
      * Auto-derived from `bar.position` GSetting by default.
      */
-    anchor?: Accessor<Anchor> | Anchor;
+    /** Bitmask of Astal.WindowAnchor. */
+    anchor?: Accessor<number> | number;
 
     /** Astal layer preference. Defaults to OVERLAY. */
     layer?: Astal.Layer;
@@ -93,7 +92,7 @@ export interface PopupHandle {
 const BAR_MARGIN_TOP_BOTTOM = 40;
 const BAR_MARGIN_SIDE = 8;
 
-function defaultAnchor(position: number): Anchor {
+function defaultAnchor(position: number): number {
     if (position === TOP) return TOP | LEFT | RIGHT;
     if (position === RIGHT) return RIGHT | TOP | BOTTOM;
     if (position === BOTTOM) return BOTTOM | LEFT | RIGHT;
@@ -134,7 +133,7 @@ export default (props: PopupWindowProps) => {
     const defaultMon = bind(hyprland, 'focused-monitor').as(m => m.id);
 
     // Resolve anchor
-    let anchorValue: Accessor<Anchor> | Anchor;
+    let anchorValue: Accessor<number> | number;
     if (anchorProp !== undefined) {
         anchorValue = anchorProp;
     } else {

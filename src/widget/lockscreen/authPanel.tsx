@@ -22,7 +22,7 @@ export const LockscreenAuthPanel = ({
     fpStateBinding,
     fpErrorBinding,
 }: AuthPanelProps) => {
-    const [_password, setPassword] = createState('');
+    const [, setPassword] = createState('');
 
     return (
         <Gtk.Box

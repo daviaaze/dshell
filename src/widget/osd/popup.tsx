@@ -2,16 +2,16 @@ import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {connectFor} from '../../lib/core/connectFor';
+import {JSX} from 'gnim';
 
 const TIMEOUT_MS = 2000;
-
 export default ({
     widget,
     connectable,
     signals,
     revealerRef,
 }: {
-    widget: any;
+    widget: JSX.Element;
     connectable: GObject.Object | null;
     signals: string[];
     revealerRef?: (revealer: Gtk.Revealer) => void;

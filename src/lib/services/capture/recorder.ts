@@ -1,4 +1,3 @@
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {getHyprland} from '../../hyprland';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '../../core/logger';

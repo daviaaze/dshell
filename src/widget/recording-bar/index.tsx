@@ -1,6 +1,5 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {getHyprland} from '../../lib/hyprland';
 import {bind} from 'gnim';
 import {app} from '../../apps/shell/App';

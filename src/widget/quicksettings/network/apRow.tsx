@@ -222,11 +222,11 @@ function ApRow({
                         if (isActive()) {
                             try {
                                 wifi.deactivate_connection(null);
-                            } catch (e: any) {
+                            } catch (e) {
                                 logger.error(
                                     'network',
                                     'deactivate failed:',
-                                    e.message
+                                    e instanceof Error ? e.message : String(e)
                                 );
                             }
                             return;

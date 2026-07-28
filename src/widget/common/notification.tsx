@@ -55,7 +55,7 @@ export default ({
     const expireMs =
         notification.expireTimeout > 0 ? notification.expireTimeout : 5000;
     const urgency = notification.urgency;
-    const appName = notification.appName || notification.appName || '';
+    const appName = notification.appName || '';
     const hasImage = !!notification.image;
     const bodyText = notification.body || '';
     const hasActions = notification.actions.length > 0;

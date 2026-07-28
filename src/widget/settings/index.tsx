@@ -12,7 +12,7 @@ import Timer from './timer';
 import Debug from './debug';
 import {app} from '../../apps/shell/App';
 
-export const createSettingsWindow = (): any => {
+export const createSettingsWindow = (): Adw.PreferencesWindow => {
     return (
         <Adw.PreferencesWindow
             ref={self => WindowManager.get_default().setSettings(self)}
@@ -84,5 +84,5 @@ export const createSettingsWindow = (): any => {
                 <Debug />
             </Adw.PreferencesPage>
         </Adw.PreferencesWindow>
-    );
+    ) as unknown as Adw.PreferencesWindow;
 };

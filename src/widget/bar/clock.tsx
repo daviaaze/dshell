@@ -1,4 +1,3 @@
-import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Accessor, For, bind, computed} from 'gnim';
@@ -6,11 +5,10 @@ import Clock from '../../lib/services/time/clock';
 import TimerService from '../../lib/services/time/timerService';
 import {useSettings} from '../../lib/settings';
 import {useStyle} from '../../style/useStyle';
-import {fmtDuration, cityName, fmtOffset} from '../../lib/core/time';
+import {fmtDuration, cityName} from '../../lib/core/time';
 import {TimerSection} from '../quicksettings/timer/TimerSection';
 
 export default ({
-    vertical,
     visible = true,
 }: {
     vertical: Accessor<boolean>;
@@ -22,7 +20,6 @@ export default ({
     });
     const {general} = useSettings();
     const time = Clock.get_default().time;
-    const localTz = GLib.TimeZone.new_local();
     const hour = time.as(t => t.format('%H')!);
     const minute = time.as(t => t.format('%M')!);
 
@@ -46,11 +43,17 @@ export default ({
                     <Gtk.Label label="World Clock" halign={Gtk.Align.CENTER} />
                     <For each={general.timezones}>
                         {(tzId: string) => {
-                            const tz = GLib.TimeZone.new(tzId);
                             return (
                                 <Gtk.Box spacing={8}>
-                                    <Gtk.Label label={cityName(tzId)} hexpand halign={Gtk.Align.START} />
-                                    <Gtk.Label label={tzId} halign={Gtk.Align.END} />
+                                    <Gtk.Label
+                                        label={cityName(tzId)}
+                                        hexpand
+                                        halign={Gtk.Align.START}
+                                    />
+                                    <Gtk.Label
+                                        label={tzId}
+                                        halign={Gtk.Align.END}
+                                    />
                                 </Gtk.Box>
                             );
                         }}
@@ -67,10 +70,7 @@ export default ({
                 valign={Gtk.Align.CENTER}
                 spacing={4}
             >
-                <Gtk.Box
-                    visible={timerActive.as(a => !a)}
-                    spacing={4}
-                >
+                <Gtk.Box visible={timerActive.as(a => !a)} spacing={4}>
                     <Gtk.Label
                         label={hour}
                         cssClasses={['title-1', 'numeric']}
