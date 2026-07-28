@@ -19,7 +19,13 @@ describe('SessionLockService singleton', () => {
     });
 
     it('constructor does not throw', () => {
-        (expect(() => new SessionLockService()) as any).not.toThrow();
+        let threw = false;
+        try {
+            new SessionLockService();
+        } catch {
+            threw = true;
+        }
+        expect(threw).toBe(false);
     });
 });
 
