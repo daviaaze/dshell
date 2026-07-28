@@ -87,9 +87,8 @@ export function showConnectionEditor(
     };
 
     const disposeDialog = render(
-        () =>
-            (
-                <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
+        () => (
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                 <Adw.HeaderBar
                     ref={self => {
                         self.titleWidget = new Adw.WindowTitle({
@@ -192,5 +191,9 @@ export function showConnectionEditor(
         dialog
     );
 
+    dialog.connect('close-request', () => {
+        disposeDialog();
+        return false; // allow default close handling
+    });
     dialog.present();
 }

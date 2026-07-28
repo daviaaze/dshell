@@ -1,4 +1,3 @@
-import Gio from 'gi://Gio?version=2.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Network from 'gi://AstalNetwork';
@@ -58,9 +57,10 @@ export async function showHiddenNetworkDialog(parent: Adw.ActionRow) {
                         } catch (e) {
                             reject(e);
                         }
-                    },
+                    }
                 );
-            }).then(() => {
+            })
+                .then(() => {
                     setConnecting(false);
                     dialog.close();
                 })
@@ -81,9 +81,8 @@ export async function showHiddenNetworkDialog(parent: Adw.ActionRow) {
     };
 
     const disposeDialog = render(
-        () =>
-            (
-                <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
+        () => (
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
                 <Adw.HeaderBar
                     ref={self => {
                         self.titleWidget = new Adw.WindowTitle({
@@ -150,5 +149,9 @@ export async function showHiddenNetworkDialog(parent: Adw.ActionRow) {
         dialog
     );
 
+    dialog.connect('close-request', () => {
+        disposeDialog();
+        return false; // allow default close handling
+    });
     dialog.present();
 }
