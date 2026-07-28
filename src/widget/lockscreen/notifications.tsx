@@ -2,10 +2,10 @@ import GObject from 'gi://GObject?version=2.0';
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, createState, effect, onCleanup} from 'gnim';
-import {useStyle} from '#/style/useStyle';
-import Notification from '#/widget/common/notification';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import logger from '#/lib/core/logger';
+import {useStyle} from '../../style/useStyle';
+import Notification from '../common/notification';
+import {getNotifdSafe} from '../../lib/services/notifications/guard';
+import logger from '../../lib/core/logger';
 
 /**
  * LockscreenNotifications — displays active notifications on the lockscreen.

@@ -1,11 +1,11 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, createState, With} from 'gnim';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import {LinkedBox} from '#/widget/common/linkedBox';
+import type {QuickButton} from '../button-grid/quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import {LinkedBox} from '../../common/linkedBox';
 import WifiPopover from './wifiPopover';
 import {wifiIconName} from './utils';
-import NetworkService from '#/lib/services/network/networkService';
+import NetworkService from '../../../lib/services/network/networkService';
 import AstalNetwork from 'gi://AstalNetwork?version=0.1';
 
 const WifiQuicksettingsButton = (): QuickButton => {

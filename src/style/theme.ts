@@ -21,7 +21,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import logger from '#/lib/core/logger';
+import logger from '../lib/core/logger';
 import {Object as GObject, register, property} from 'gnim/gobject';
 
 // ── CSS custom property names ──

@@ -1,13 +1,13 @@
 import {bind, computed, createState} from 'gnim';
-import Brightness from '#/lib/services/display/brightness';
+import Brightness from '../../lib/services/display/brightness';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
-import Touchpad from '#/lib/services/input/touchpad';
+import Touchpad from '../../lib/services/input/touchpad';
 import Gtk from 'gi://Gtk?version=4.0';
 import Astal from 'gi://Astal?version=4.0';
-import PopupWindow from '#/widget/common/PopupWindow';
-import WindowManager from '#/lib/services/state/windowManager';
-import AudioController from '#/lib/services/audio/audioController';
+import PopupWindow from '../common/PopupWindow';
+import WindowManager from '../../lib/services/state/windowManager';
+import AudioController from '../../lib/services/audio/audioController';
 import Popup from './popup';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';

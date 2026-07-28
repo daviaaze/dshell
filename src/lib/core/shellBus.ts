@@ -1,6 +1,6 @@
 import GObject from 'gi://GObject?version=2.0';
 import {Object, register} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import logger from './logger';
 
 /**
  * Well-known shell bus event names.

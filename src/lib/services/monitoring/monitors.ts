@@ -11,14 +11,14 @@
  * The monitors array still returns Gdk.Monitor[] for backward compatibility
  * with Astal.Window.gdkmonitor and all existing widgets.
  */
-import {getHyprland, type AstalHyprland} from '#/lib/hyprland';
+import {getHyprland, type AstalHyprland} from '../../hyprland';
 import AstalWl from 'gi://AstalWl';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
 import {bind} from 'gnim';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 // ── Gdk → Hyprland monitor mapper ────────────────────────────────────────
 
@@ -97,7 +97,7 @@ class MonitorService extends Object {
     }
 
     #monitors: Gdk.Monitor[] = [];
-    #wlDisplay: any = null;
+    #wlDisplay: AstalWl.Registry | null = null;
     #wlSignalIds: number[] = [];
     #pendingSync = false;
 
@@ -171,7 +171,7 @@ class MonitorService extends Object {
         if (!display) return;
 
         try {
-            this.#wlDisplay = (AstalWl as any).WlDisplay.get_default();
+            this.#wlDisplay = AstalWl.Registry.get_default();
         } catch (e) {
             logger.warn(
                 'monitors',

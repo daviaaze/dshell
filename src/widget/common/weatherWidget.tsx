@@ -1,15 +1,15 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind, computed} from 'gnim';
-import WeatherLib from '#/lib/services/location/weather';
+import WeatherLib from '../../lib/services/location/weather';
 import {
     formatTime,
     windDirectionLabel,
-} from '#/lib/services/location/weatherUtils';
-import {useStyle} from '#/style/useStyle';
+} from '../../lib/services/location/weatherUtils';
+import {useStyle} from '../../style/useStyle';
 import {
     HourlyForecastSection,
     DailyForecastSection,
-} from '#/widget/common/weatherForecast';
+} from './weatherForecast';
 
 /**
  * Weather icon + temp summary, suitable for a compact indicator.

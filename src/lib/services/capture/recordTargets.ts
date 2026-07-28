@@ -1,6 +1,6 @@
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {getHyprland} from '#/lib/hyprland';
-import logger from '#/lib/core/logger';
+import {getHyprland} from '../../hyprland';
+import logger from '../../core/logger';
 import {notify} from './utils';
 import type Screenshot from './screenshot';
 

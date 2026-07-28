@@ -1,7 +1,7 @@
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, signal, property} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
-import {Process} from '#/lib/core/process';
+import logger from '../../core/logger';
+import {Process} from '../../core/process';
 
 interface KeyboardDevice {
     name: string;

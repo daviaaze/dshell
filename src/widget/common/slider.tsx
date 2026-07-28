@@ -1,7 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor} from 'gnim';
-import {useStyle} from '#/style/useStyle';
+import {useStyle} from '../../style/useStyle';
 
 type SliderProps = {
     icon: Accessor<string> | string;

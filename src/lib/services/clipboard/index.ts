@@ -12,15 +12,15 @@
  *   `ClipboardItem`           → `ClipboardEntry`
  */
 
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 import Gdk from 'gi://Gdk?version=4.0';
 import {
     getHistory,
     searchHistory,
     copyEntryToClipboard,
     deleteEntry,
-} from '#/lib/services/clipboard/history';
-import type {ClipboardEntry} from '#/lib/services/clipboard/history';
+} from './history';
+import type {ClipboardEntry} from './history';
 
 /** @deprecated Use ClipboardEntry from clipboardHistory instead. */
 export interface ClipboardItem {

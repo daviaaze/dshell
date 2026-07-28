@@ -1,7 +1,7 @@
 import {Object as GObject, register, property} from 'gnim/gobject';
-import {Process} from '#/lib/core/process';
+import {Process} from '../../core/process';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 import {Accessor} from 'gnim';
 import {
     writeHypridleConfig,

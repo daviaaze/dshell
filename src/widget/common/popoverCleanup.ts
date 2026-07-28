@@ -1,7 +1,7 @@
 import Adw from 'gi://Adw?version=1';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {logger} from '#/lib/core/logger';
+import {logger} from '../../lib/core/logger';
 
 /**
  * Connects a widget's destroy signal to unparent its popover.

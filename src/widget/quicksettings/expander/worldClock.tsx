@@ -1,9 +1,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {For} from 'gnim';
-import {useSettings} from '#/lib/settings';
-import {fmtOffset, cityName} from '#/lib/core/time';
-import Clock from '#/lib/services/time/clock';
+import {useSettings} from '../../../lib/settings';
+import {fmtOffset, cityName} from '../../../lib/core/time';
+import Clock from '../../../lib/services/time/clock';
 
 export const WorldClock = () => {
     const {general} = useSettings();

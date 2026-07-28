@@ -4,9 +4,9 @@ import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, bind} from 'gnim';
 import Adw from 'gi://Adw?version=1';
-import {useStyle} from '#/style/useStyle';
-import MediaController from '#/lib/services/session/mediaController';
-import {exactQuery} from '#/lib/services/state/apps';
+import {useStyle} from '../../../style/useStyle';
+import MediaController from '../../../lib/services/session/mediaController';
+import {exactQuery} from '../../../lib/services/state/apps';
 
 function lengthStr(length: number) {
     const min = Math.floor(length / 60);

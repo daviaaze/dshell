@@ -5,8 +5,8 @@
  * (built via esbuild by the 'test' script in package.json)
  */
 
-import {EncryptedStore} from '#/lib/services/clipboard/encryptedStore';
-import type {ClipboardEntry} from '#/lib/services/clipboard/encryptedStore';
+import {EncryptedStore} from '../services/clipboard/encryptedStore';
+import type {ClipboardEntry} from '../services/clipboard/encryptedStore';
 import {describe, it, expect, run} from '../__tests__/test-runner';
 
 /** Valid 32-byte AES-256 key for testing. */

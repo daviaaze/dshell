@@ -7,10 +7,10 @@ import {
     VoidType,
     Int,
 } from 'gnim/gobject';
-import {Process} from '#/lib/core/process';
+import {Process} from '../../core/process';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 @register({GTypeName: 'Geolocation'})
 export default class Geolocation extends Object {

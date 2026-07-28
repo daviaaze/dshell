@@ -2,8 +2,8 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import NM from 'gi://NM?version=1.0';
 import Network from 'gi://AstalNetwork';
-import {toArray} from '#/lib/core/gjsUtils';
-import logger from '#/lib/core/logger';
+import {toArray} from '../../../lib/core/gjsUtils';
+import logger from '../../../lib/core/logger';
 
 // ── NM 802.11 flag constants ──────────────────────────────────────
 // NM.__80211ApSecurityFlags is not reliably exposed across GIR versions.

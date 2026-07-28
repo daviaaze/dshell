@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
-import AudioController from '#/lib/services/audio/audioController';
-import AppMixer from '#/lib/services/audio/mixer';
+import AudioController from '../../../lib/services/audio/audioController';
+import AppMixer from '../../../lib/services/audio/mixer';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';

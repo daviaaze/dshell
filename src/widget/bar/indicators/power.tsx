@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createState, effect, onCleanup} from 'gnim';
-import PowerProfiles from '#/lib/services/power/powerProfiles';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
+import PowerProfiles from '../../../lib/services/power/powerProfiles';
+import {connectFor, cleanupNode} from '../../../lib/core/connectFor';
 
 export default () => {
     const [visible, setVisible] = createState(false);

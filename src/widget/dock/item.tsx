@@ -2,14 +2,14 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {onCleanup} from 'gnim';
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 import {
     getAppList,
     exactQuery,
     launchDesktopFile,
-} from '#/lib/services/state/apps';
-import {ActionButton} from '#/widget/common/actionButton';
-import logger from '#/lib/core/logger';
+} from '../../lib/services/state/apps';
+import {ActionButton} from '../common/actionButton';
+import logger from '../../lib/core/logger';
 
 interface DockItemProps {
     desktopFile: string;

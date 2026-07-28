@@ -1,9 +1,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';
-import TimerService from '#/lib/services/time/timerService';
+import TimerService from '../../../lib/services/time/timerService';
 import {TimerSection} from './TimerSection';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
+import type {QuickButton} from '../button-grid/quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
 
 function fmtShort(ms: number): string {
     if (ms < 0) return 'Timer';
@@ -13,7 +13,7 @@ function fmtShort(ms: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export const QuickTimerButton = (): QuickButton => {
+export default (): QuickButton => {
     const timer = TimerService.get_default();
     const remaining = bind(timer, 'remaining');
     const running = bind(timer, 'running');

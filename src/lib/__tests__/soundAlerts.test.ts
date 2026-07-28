@@ -8,7 +8,7 @@
  */
 
 import {describe, it, expect, run} from './test-runner';
-import ServiceRegistry from '#/lib/core/serviceRegistry';
+import ServiceRegistry from '../core/serviceRegistry';
 
 // ── Mock ShellState ───────────────────────────────────────────────
 

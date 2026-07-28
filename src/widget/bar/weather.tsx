@@ -1,9 +1,9 @@
-import Weather from '#/lib/services/location/weather';
+import Weather from '../../lib/services/location/weather';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind} from 'gnim';
-import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
-import {WeatherWidget} from '#/widget/common/weatherWidget';
+import {usePopoverCleanup} from '../common/popoverCleanup';
+import {WeatherWidget} from '../common/weatherWidget';
 
 export const WeatherButton = ({
     vertical,

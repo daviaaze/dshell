@@ -1,8 +1,8 @@
 import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
-import {bus} from '#/lib/core/eventBus';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import logger from '#/lib/core/logger';
+import {bus} from '../../core/eventBus';
+import {getNotifdSafe} from './guard';
+import logger from '../../core/logger';
 
 /**
  * Centralized Do Not Disturb service.
@@ -13,7 +13,7 @@ import logger from '#/lib/core/logger';
  *
  * Usage:
  * ```ts
- * import DndService from '#/lib/services/notifications/dnd';
+ * import DndService from './dnd';
  *
  * DndService.get_default().dnd = true;       // enable DND
  * bus.emit('system:dnd:toggle');              // toggle via bus

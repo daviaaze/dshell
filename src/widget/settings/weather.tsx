@@ -1,8 +1,8 @@
-import {useSettings} from '#/lib/settings';
-import Weather from '#/lib/services/location/weather';
+import {useSettings} from '../../lib/settings';
+import Weather from '../../lib/services/location/weather';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 
 export default () => {
     const settings = useSettings().weather;

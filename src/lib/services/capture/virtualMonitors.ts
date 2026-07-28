@@ -1,6 +1,6 @@
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/core/logger';
-import {Process} from '#/lib/core/process';
+import logger from '../../core/logger';
+import {Process} from '../../core/process';
 import {notify} from './utils';
 import type {VirtualMonitor} from './types';
 

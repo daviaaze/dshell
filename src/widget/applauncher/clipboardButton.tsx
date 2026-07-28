@@ -2,10 +2,10 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {
     formatClipboardPreview,
     copyClipboardItem,
-} from '#/lib/services/clipboard';
-import WindowManager from '#/lib/services/state/windowManager';
-import {useStyle} from '#/style/useStyle';
-import {ClipboardEntry} from '#/lib/services/clipboard/encryptedStore';
+} from '../../lib/services/clipboard';
+import WindowManager from '../../lib/services/state/windowManager';
+import {useStyle} from '../../style/useStyle';
+import {ClipboardEntry} from '../../lib/services/clipboard/encryptedStore';
 
 export default ({item}: {item: ClipboardEntry}) => {
     const preview = formatClipboardPreview(item.content);

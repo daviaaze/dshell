@@ -2,7 +2,7 @@ import Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, For} from 'gnim';
 import {bssidOf, bssidEquals, ApSnapshot, snapshotAp} from './utils';
-import {useStyle} from '#/style/useStyle';
+import {useStyle} from '../../../style/useStyle';
 import ApRow from './apRow';
 
 interface ApListProps {

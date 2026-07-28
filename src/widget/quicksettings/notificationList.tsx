@@ -4,12 +4,12 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {bind, createState, For, effect} from 'gnim';
-import Notification from '#/widget/common/notification';
-import NotificationHistory from '#/lib/services/notifications/history';
-import DndService from '#/lib/services/notifications/dnd';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import type {HistoryEntry} from '#/lib/services/notifications/history';
-import {useSettings} from '#/lib/settings';
+import Notification from '../common/notification';
+import NotificationHistory from '../../lib/services/notifications/history';
+import DndService from '../../lib/services/notifications/dnd';
+import {getNotifdSafe} from '../../lib/services/notifications/guard';
+import type {HistoryEntry} from '../../lib/services/notifications/history';
+import {useSettings} from '../../lib/settings';
 
 /**
  * Inner content component — only mounted once Notifd is initialized.

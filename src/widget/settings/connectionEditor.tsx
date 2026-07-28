@@ -7,8 +7,8 @@ import {
     securityLabelFromKeyMgmt,
     commitChangesAsync,
     deleteConnectionAsync,
-} from '#/widget/quicksettings/network/utils';
-import logger from '#/lib/core/logger';
+} from '../quicksettings/network/utils';
+import logger from '../../lib/core/logger';
 
 const NET_ICON_PREFIX = 16;
 

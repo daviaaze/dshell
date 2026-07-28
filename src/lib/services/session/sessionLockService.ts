@@ -2,7 +2,7 @@ import SessionLock from 'gi://Gtk4SessionLock';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Object, register, signal} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 /**
  * Encapsulates the Gtk4SessionLock lifecycle so widgets don't import

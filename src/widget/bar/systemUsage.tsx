@@ -1,9 +1,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Accessor} from 'gnim';
-import {useStyle} from '#/style/useStyle';
-import {useSettings} from '#/lib/settings';
-import SystemUsage from '#/lib/services/monitoring/systemUsage';
+import {useStyle} from '../../style/useStyle';
+import {useSettings} from '../../lib/settings';
+import SystemUsage from '../../lib/services/monitoring/systemUsage';
 
 const LEVEL_BAR_SIZE = 50;
 

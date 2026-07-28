@@ -16,7 +16,7 @@
  */
 import AstalBrightness from 'gi://AstalBrightness';
 import {Object, register, property, Int} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 @register({GTypeName: 'Brightness'})
 export default class Brightness extends Object {

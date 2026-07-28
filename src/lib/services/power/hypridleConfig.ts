@@ -1,6 +1,6 @@
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 const CONFIG_PATH = `${GLib.get_user_config_dir()}/hypr/hypridle.conf`;
 

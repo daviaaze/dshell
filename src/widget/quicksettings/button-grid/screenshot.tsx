@@ -1,11 +1,11 @@
-import Screenshot from '#/lib/services/capture/screenshot';
+import Screenshot from '../../../lib/services/capture/screenshot';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import {LinkedBox} from '#/widget/common/linkedBox';
-import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
+import type {QuickButton} from './quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import {LinkedBox} from '../../common/linkedBox';
+import {getScreenCaptureSettings} from '../../../lib/settings/screenCapture';
 
 export default (): QuickButton => {
     const screenshot = Screenshot.get_default();

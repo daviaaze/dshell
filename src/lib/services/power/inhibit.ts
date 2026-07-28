@@ -2,7 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 @register({GTypeName: 'IdleInhibit'})
 export default class Inhibit extends Object {

@@ -1,13 +1,13 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, For} from 'gnim';
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 import Tray from 'gi://AstalTray';
-import TrayService from '#/lib/services/desktop/trayService';
-import ShellState from '#/lib/services/state/shellState';
-import {PowerMenu} from '#/widget/common/powerMenu';
-import {IconButton, IconMenuButton} from '#/widget/common/iconButton';
-import {openSettings} from '#/widget';
-import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
+import TrayService from '../../lib/services/desktop/trayService';
+import ShellState from '../../lib/services/state/shellState';
+import {PowerMenu} from '../common/powerMenu';
+import {IconButton, IconMenuButton} from '../common/iconButton';
+import {openSettings} from '..';
+import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export const TrayBox = () => {
     const tray = TrayService.get_default();

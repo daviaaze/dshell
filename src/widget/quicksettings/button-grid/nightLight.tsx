@@ -1,11 +1,11 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, effect} from 'gnim';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
+import type {QuickButton} from './quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
 import NightLight, {
     TEMP_MIN,
     TEMP_MAX,
-} from '#/lib/services/display/nightLight';
+} from '../../../lib/services/display/nightLight';
 
 export default (): QuickButton => {
     const nightLight = NightLight.get_default();

@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
-import AudioController from '#/lib/services/audio/audioController';
-import Screenshot from '#/lib/services/capture/screenshot';
+import AudioController from '../../lib/services/audio/audioController';
+import Screenshot from '../../lib/services/capture/screenshot';
 
 const AUDIO_PICKER_SPACING = 8;
 const AUDIO_ICON_SIZE = 16;

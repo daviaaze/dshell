@@ -1,8 +1,8 @@
 import {Object as GObject, register, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
-import {bus} from '#/lib/core/eventBus';
-import ServiceRegistry from '#/lib/core/serviceRegistry';
-import logger from '#/lib/core/logger';
+import {bus} from '../../core/eventBus';
+import ServiceRegistry from '../../core/serviceRegistry';
+import logger from '../../core/logger';
 
 @register({GTypeName: 'ShellState'})
 export default class ShellState extends GObject {
@@ -120,7 +120,7 @@ export default class ShellState extends GObject {
     toggleBar() {
         const wm =
             ServiceRegistry.get_default().resolve<
-                import('#/lib/services/state/windowManager').default
+                import('./windowManager').default
             >('WindowManager');
         wm.bars.forEach(bar => (bar.visible = !bar.visible));
     }

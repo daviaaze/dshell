@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
-import BluetoothService from '#/lib/services/bluetooth/bluetoothService';
+import BluetoothService from '../../../lib/services/bluetooth/bluetoothService';
 
 export default () => {
     const bt = BluetoothService.get_default();

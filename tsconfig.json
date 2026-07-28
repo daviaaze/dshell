@@ -12,10 +12,7 @@
     "jsx": "react-jsx",
     "jsxImportSource": "gnim",
     "types": ["gi", "gnim"],
-    "typeRoots": ["./.gnim/types"],
-    "paths": {
-      "#/*": ["./src/*"],
-    }
+    "typeRoots": ["./.gnim/types"]
   },
   "include": ["./src/**/*"]
 }

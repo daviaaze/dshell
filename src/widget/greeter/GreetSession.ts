@@ -8,7 +8,7 @@
  */
 import Greet from 'gi://AstalGreet';
 import {Object, register, property} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 
 export type GreetState =
     | 'idle'

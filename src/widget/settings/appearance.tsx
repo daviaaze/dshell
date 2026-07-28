@@ -1,9 +1,9 @@
-import WindowManager from '#/lib/services/state/windowManager';
-import {useSettings} from '#/lib/settings';
-import PaletteGenerator from '#/style/palette';
+import WindowManager from '../../lib/services/state/windowManager';
+import {useSettings} from '../../lib/settings';
+import PaletteGenerator from '../../style/palette';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {TEMP_MIN, TEMP_MAX} from '#/lib/services/display/nightLight';
+import {TEMP_MIN, TEMP_MAX} from '../../lib/services/display/nightLight';
 
 export default () => {
     const settings = useSettings().general;

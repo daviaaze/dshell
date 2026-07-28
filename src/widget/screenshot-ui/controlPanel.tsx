@@ -1,9 +1,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import {bind} from 'gnim';
-import type Screenshot from '#/lib/services/capture/screenshot';
-import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
-import {LinkedBox} from '#/widget/common/linkedBox';
+import type Screenshot from '../../lib/services/capture/screenshot';
+import {getScreenCaptureSettings} from '../../lib/settings/screenCapture';
+import {LinkedBox} from '../common/linkedBox';
 
 interface ModeTabProps {
     label: string;

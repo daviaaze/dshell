@@ -1,7 +1,7 @@
-import {Process} from '#/lib/core/process';
+import {Process} from '../../core/process';
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 export interface AudioStream {
     id: number;

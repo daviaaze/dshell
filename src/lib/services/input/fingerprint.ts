@@ -1,8 +1,8 @@
 import {Object, register, signal, String, VoidType} from 'gnim/gobject';
-import {property} from '#/lib/decorators';
+import {property} from '../../decorators';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 const FPRINTD_SERVICE = 'net.reactivated.Fprint';
 const FPRINTD_MANAGER = '/net/reactivated/Fprint/Manager';

@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';
-import Inhibit from '#/lib/services/power/inhibit';
+import Inhibit from '../../../lib/services/power/inhibit';
 
 export default () => {
     const inhibit = Inhibit.get_default();

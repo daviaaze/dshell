@@ -1,8 +1,8 @@
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import logger from '#/lib/core/logger';
-import {readFile} from '#/lib/core/file';
-import {Process} from '#/lib/core/process';
+import logger from '../../core/logger';
+import {readFile} from '../../core/file';
+import {Process} from '../../core/process';
 import {Accessor, createState} from 'gnim';
 
 const PATH =

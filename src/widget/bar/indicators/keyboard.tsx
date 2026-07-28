@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
-import KeyboardLayout from '#/lib/services/input/keyboard';
+import KeyboardLayout from '../../../lib/services/input/keyboard';
 
 export default () => {
     const keyboard = KeyboardLayout.get_default();

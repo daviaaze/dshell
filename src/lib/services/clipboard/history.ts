@@ -29,7 +29,7 @@ import {
 } from './encryptedStore';
 export type {ClipboardEntry};
 import {startClipboardWatcher, stopClipboardWatcher} from './clipboardWatcher';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 // ── State ────────────────────────────────────────────────────────────────────
 

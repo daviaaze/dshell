@@ -1,10 +1,10 @@
 import Apps from 'gi://AstalApps';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import WindowManager from '#/lib/services/state/windowManager';
-import {FrecencyManager} from '#/lib/services/search/frecency';
-import {launchApp} from '#/lib/services/state/apps';
-import {useStyle} from '#/style/useStyle';
+import WindowManager from '../../lib/services/state/windowManager';
+import {FrecencyManager} from '../../lib/services/search/frecency';
+import {launchApp} from '../../lib/services/state/apps';
+import {useStyle} from '../../style/useStyle';
 
 export default ({
     application,

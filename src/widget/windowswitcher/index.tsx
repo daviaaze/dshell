@@ -3,12 +3,12 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {getHyprland} from '#/lib/hyprland';
+import {getHyprland} from '../../lib/hyprland';
 import {bind, createState, For, onCleanup} from 'gnim';
-import {app} from '#/apps/shell/App';
-import {toArray} from '#/lib/core/gjsUtils';
+import {app} from '../../apps/shell/App';
+import {toArray} from '../../lib/core/gjsUtils';
 import SwitcherItem from './item';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 
 let switcherWindow: Astal.Window | null = null;
 
