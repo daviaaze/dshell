@@ -7,7 +7,7 @@
  */
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 import type {HyprClient, HyprMonitor, XDPHWindow} from './types';
 
 const CAT = 'share-picker';

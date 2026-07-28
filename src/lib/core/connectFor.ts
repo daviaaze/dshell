@@ -3,7 +3,7 @@
  *
  * Usage:
  * ```typescript
- * import { connectFor } from "#/lib/connectFor"
+ * import { connectFor } from "../connectFor"
  *
  * // Inside a Gnim ref={() => {}} callback, effect, or createRoot scope:
  * connectFor(self, notifd, "notified", (_, id) => addNotification(id))

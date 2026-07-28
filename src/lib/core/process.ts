@@ -7,7 +7,7 @@ import {
     signal,
     ConstructorProps as GObjectConstructorProps,
 } from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import logger from './logger';
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Process {
@@ -23,6 +23,8 @@ export namespace Process {
 
 @register()
 export class Process extends Object {
+    declare readonly $signals: Process.SignalSignatures;
+
     @signal([String])
     protected stdout(_out: string) {
         // signal parameter intentionally unused
@@ -60,13 +62,6 @@ export class Process extends Object {
                 logger.error('process', error);
             }
         });
-    }
-
-    connect<S extends keyof Process.SignalSignatures>(
-        signal: S,
-        callback: GObject.SignalCallback<this, Process.SignalSignatures[S]>
-    ): number {
-        return super.connect(signal as any, callback as any);
     }
 
     /**

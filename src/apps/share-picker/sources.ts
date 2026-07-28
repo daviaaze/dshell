@@ -2,7 +2,7 @@
  * Builds the share-source states by querying Hyprland and matching
  * XDPH windows to hyprctl client geometries.
  */
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 import type {MonitorState, WindowState, XDPHWindow} from './types';
 import {getHyprMonitors, getHyprClients, matchXDPHToHyprctl} from './protocol';
 

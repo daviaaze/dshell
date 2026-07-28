@@ -1,20 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {useSettings} from '#/lib/settings';
-import {tickWhileAttached} from '#/lib/core/widgetTimer';
-
-try {
-    (imports.gi as any).versions.AstalCava = '0.1';
-} catch {
-    /* ignore */
-}
-
-const AstalCava = (() => {
-    try {
-        return (imports.gi as any).AstalCava;
-    } catch {
-        return null;
-    }
-})();
+import AstalCava from 'gi://AstalCava?version=0.1';
+import {useSettings} from '../../lib/settings';
+import {tickWhileAttached} from '../../lib/core/widgetTimer';
 
 export default () => {
     const settings = useSettings().general;

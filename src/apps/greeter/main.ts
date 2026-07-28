@@ -15,8 +15,8 @@ import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {programArgs, programInvocationName, exit} from 'system';
 import {render} from '@gnim-js/gtk4';
-import {Greeter} from '#/widget/greeter';
-import logger from '#/lib/core/logger';
+import {Greeter} from '../../widget/greeter';
+import logger from '../../lib/core/logger';
 
 // ── Minimal Gtk application ──
 

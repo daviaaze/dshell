@@ -4,7 +4,7 @@
  * Run: gjs -m src/lib/__tests__/stdout.test.ts
  */
 
-import printOut from '#/lib/core/stdout';
+import printOut from '../core/stdout';
 import {describe, it, expect, run} from './test-runner';
 
 describe('printOut', () => {

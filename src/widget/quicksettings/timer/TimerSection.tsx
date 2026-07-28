@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import {bind, computed, createState} from 'gnim';
-import TimerService from '#/lib/services/time/timerService';
+import TimerService from '../../../lib/services/time/timerService';
 
 function fmtRemaining(ms: number): string {
     if (ms < 0) return '--:--';

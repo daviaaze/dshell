@@ -4,8 +4,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Network from 'gi://AstalNetwork';
 import {createState} from 'gnim';
 import {render} from '@gnim-js/gtk4';
-import {createNMConnection} from '#/widget/quicksettings/network/utils';
-import logger from '#/lib/core/logger';
+import {createNMConnection} from '../quicksettings/network/utils';
+import logger from '../../lib/core/logger';
 
 export async function showHiddenNetworkDialog(parent: Adw.ActionRow) {
     const root = parent.get_root();

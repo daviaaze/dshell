@@ -7,12 +7,12 @@
  * Run: gjs -m src/lib/__tests__/screenshot.test.ts
  */
 
-import Screenshot from '#/lib/services/capture/screenshot';
+import Screenshot from '../services/capture/screenshot';
 import {
     parseGrimGeometry,
     toGrimGeometry,
     toMagickGeometry,
-} from '#/lib/services/capture/stage';
+} from '../services/capture/stage';
 import {describe, it, expect, run} from './test-runner';
 
 describe('Screenshot singleton', () => {

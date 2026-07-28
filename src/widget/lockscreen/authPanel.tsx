@@ -2,8 +2,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
 import {Accessor, bind, createState, effect} from 'gnim';
-import AuthSession from '#/lib/services/session/authSession';
-import FingerprintAuth from '#/lib/services/input/fingerprint';
+import AuthSession from '../../lib/services/session/authSession';
+import FingerprintAuth from '../../lib/services/input/fingerprint';
 import {LockscreenWidgets} from './widgets';
 
 interface AuthPanelProps {

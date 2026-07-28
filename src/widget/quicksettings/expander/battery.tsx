@@ -1,7 +1,7 @@
 import AstalBattery from 'gi://AstalBattery';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';
-import {IconInfoRow} from '#/widget/common/iconInfoRow';
+import {IconInfoRow} from '../../common/iconInfoRow';
 
 function fmtDuration(seconds: number): string {
     const abs = Math.abs(Math.round(seconds));

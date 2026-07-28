@@ -1,8 +1,8 @@
 import Apps from 'gi://AstalApps';
-import {getAppList, fuzzyQuery} from '#/lib/services/state/apps';
-import {FrecencyManager} from '#/lib/services/search/frecency';
-import {searchHistory} from '#/lib/services/clipboard/history';
-import type {ClipboardEntry} from '#/lib/services/clipboard/history';
+import {getAppList, fuzzyQuery} from '../state/apps';
+import {FrecencyManager} from './frecency';
+import {searchHistory} from '../clipboard/history';
+import type {ClipboardEntry} from '../clipboard/history';
 
 export type LauncherMode = 'apps' | 'clipboard';
 export type ListItem = Apps.Application | ClipboardEntry;

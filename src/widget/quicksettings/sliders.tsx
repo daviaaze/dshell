@@ -1,9 +1,9 @@
 import {bind, createState} from 'gnim';
-import Brightness from '#/lib/services/display/brightness';
-import AudioController from '#/lib/services/audio/audioController';
-import {AudioEndpointControl} from '#/widget/common/audioControl';
-import {Slider} from '#/widget/common/slider';
-import logger from '#/lib/core/logger';
+import Brightness from '../../lib/services/display/brightness';
+import AudioController from '../../lib/services/audio/audioController';
+import {AudioEndpointControl} from '../common/audioControl';
+import {Slider} from '../common/slider';
+import logger from '../../lib/core/logger';
 
 const BRIGHTNESS_PRESETS = [0.25, 0.5, 0.75, 1.0];
 const BRIGHTNESS_PCT_MAX = 100;

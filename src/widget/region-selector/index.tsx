@@ -2,14 +2,14 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {getHyprland} from '#/lib/hyprland';
+import {getHyprland} from '../../lib/hyprland';
 import Cairo from 'gi://cairo?version=1.0';
 import {bind, createState} from 'gnim';
-import {app} from '#/apps/shell/App';
-import Screenshot from '#/lib/services/capture/screenshot';
-import {getWindowGeometries} from '#/lib/services/monitoring/windows';
-import type {WindowGeometry} from '#/lib/services/monitoring/windows';
-import {monitorIndexFromHyprland} from '#/lib/utils/monitors';
+import {app} from '../../apps/shell/App';
+import Screenshot from '../../lib/services/capture/screenshot';
+import {getWindowGeometries} from '../../lib/services/monitoring/windows';
+import type {WindowGeometry} from '../../lib/services/monitoring/windows';
+import {monitorIndexFromHyprland} from '../../lib/utils/monitors';
 
 // ── Constants ───────────────────────────────────────────────────
 

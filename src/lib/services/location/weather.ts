@@ -4,9 +4,9 @@ import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
 import Geolocation from './geolocation';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 import {Accessor} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
+import {toArray} from '../../core/gjsUtils';
 import {formatTemp} from './weatherUtils';
 
 @register({GTypeName: 'Weather'})

@@ -17,7 +17,7 @@
 
 import Secret from 'gi://Secret?version=1';
 import {generateKey, bytesToHex, hexToBytes} from './cryptoEngine';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

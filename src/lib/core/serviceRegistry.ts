@@ -1,4 +1,4 @@
-import logger, {perf} from '#/lib/core/logger';
+import logger, {perf} from './logger';
 
 /**
  * Minimal lifecycle interface for shell services.

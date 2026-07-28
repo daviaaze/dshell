@@ -32,3 +32,21 @@ The ESLint config enforces `no-restricted-imports` for `src/widget/**`:
 | `gi://Gtk4SessionLock*` | `AuthSession` service |
 | `gi://GWeather*` | `Weather` service getters |
 | `gi://cairo*` | Drawing methods on the relevant service |
+
+## Gnim Dev Mode Compatibility
+
+### QuickButton Factory Exports
+
+QuickButton factory functions (returning `{widget, visible}`) **must use** `export default`
+instead of `export const UppercaseName = …`.
+
+Reason: gnim v2's dev server wraps `export const` declarations starting with uppercase
+via `$$registerComponent`, which assumes the function returns a JSX node. QuickButton
+factories return a `{widget: JSX, visible?: …}` object — the wrapper crashes with
+`ctor is undefined` when `resolveNode` encounters this object.
+
+Default exports (`export default (): QuickButton => { … }`) are not wrapped and are
+compatible with both dev mode and the bundled nix build.
+
+All button-grid children (`powerprofiles`, `bluetooth`, `conservation`, …) already
+follow this convention.

@@ -5,8 +5,8 @@
  */
 import {Object, register, property} from 'gnim/gobject';
 import Bluetooth from 'gi://AstalBluetooth';
-import {toArray} from '#/lib/core/gjsUtils';
-import logger from '#/lib/core/logger';
+import {toArray} from '../../core/gjsUtils';
+import logger from '../../core/logger';
 
 let _instance: BluetoothService | null = null;
 

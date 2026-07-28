@@ -1,7 +1,7 @@
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import {connectFor} from '#/lib/core/connectFor';
+import {connectFor} from '../../lib/core/connectFor';
 
 const TIMEOUT_MS = 2000;
 

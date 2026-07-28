@@ -14,8 +14,8 @@
  */
 
 import GLib from 'gi://GLib?version=2.0';
-import {subprocess, Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {subprocess, Process} from '../../core/process';
+import logger from '../../core/logger';
 
 export type ClipType = 'text' | 'image';
 

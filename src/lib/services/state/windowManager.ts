@@ -1,7 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import {Object, register} from 'gnim/gobject';
-import {property} from '#/lib/decorators';
+import {property} from '../../decorators';
 
 // ── Generic window collection for multi-window types (bars, wallpapers, lockscreens) ──
 function windowCollection<T extends Astal.Window>(

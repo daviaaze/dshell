@@ -1,9 +1,9 @@
 import Hyprland from 'gi://AstalHyprland';
-import {getHyprland} from '#/lib/hyprland';
+import {getHyprland} from '../../lib/hyprland';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, For, Accessor, With} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
-import {getAppIcon} from '#/lib/services/state/apps';
+import {toArray} from '../../lib/core/gjsUtils';
+import {getAppIcon} from '../../lib/services/state/apps';
 
 export default ({
     monitor,

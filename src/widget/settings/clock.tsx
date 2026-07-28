@@ -1,9 +1,9 @@
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {createState, For} from 'gnim';
-import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
+import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export default () => {
     const {general} = useSettings();

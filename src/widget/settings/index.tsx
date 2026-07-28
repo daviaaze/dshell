@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Bar from './bar';
-import WindowManager from '#/lib/services/state/windowManager';
+import WindowManager from '../../lib/services/state/windowManager';
 import Weather from './weather';
 import Appearance from './appearance';
 import Idle from './idle';
@@ -10,7 +10,7 @@ import Network from './network';
 import ScreenCapture from './screenCapture';
 import Timer from './timer';
 import Debug from './debug';
-import {app} from '#/apps/shell/App';
+import {app} from '../../apps/shell/App';
 
 export const createSettingsWindow = (): any => {
     return (

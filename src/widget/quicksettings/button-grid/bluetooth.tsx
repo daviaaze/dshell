@@ -1,11 +1,11 @@
 import AstalBluetooth from 'gi://AstalBluetooth';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, createState, For} from 'gnim';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import logger from '#/lib/core/logger';
-import {LinkedBox} from '#/widget/common/linkedBox';
-import {toArray} from '#/lib/core/gjsUtils';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import type {QuickButton} from './quickButton';
+import logger from '../../../lib/core/logger';
+import {LinkedBox} from '../../common/linkedBox';
+import {toArray} from '../../../lib/core/gjsUtils';
 
 export default (): QuickButton => {
     // ButtonGrid items only render when quicksettings opens — D-Bus

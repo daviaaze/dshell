@@ -1,7 +1,7 @@
 import {Object, register, property} from 'gnim/gobject';
 import Mpris from 'gi://AstalMpris';
-import logger from '#/lib/core/logger';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
+import logger from '../../core/logger';
+import {connectFor, cleanupNode} from '../../core/connectFor';
 
 /**
  * MediaController — semantic command layer over AstalMpris.

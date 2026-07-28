@@ -3,7 +3,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import {createSettings, Schema} from 'gnim/schema';
 import {Accessor, Setter} from 'gnim';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 export enum DarkModes {
     AUTO,

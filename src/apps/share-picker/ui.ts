@@ -3,7 +3,7 @@
  */
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 import type {MonitorState, SelectFn, WindowState} from './types';
 
 const CAT = 'share-picker';

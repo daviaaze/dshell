@@ -1,8 +1,8 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, effect, For} from 'gnim';
-import AudioController from '#/lib/services/audio/audioController';
-import AppMixer from '#/lib/services/audio/mixer';
-import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
+import AudioController from '../../lib/services/audio/audioController';
+import AppMixer from '../../lib/services/audio/mixer';
+import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export default () => {
     const mixer = AppMixer.get_default();

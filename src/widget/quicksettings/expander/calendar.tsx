@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
-import {IconInfoRow} from '#/widget/common/iconInfoRow';
+import {IconInfoRow} from '../../common/iconInfoRow';
 
 function updateCalendar(calendar: Gtk.Calendar) {
     const now = GLib.DateTime.new_now_local()!;

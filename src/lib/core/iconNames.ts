@@ -7,7 +7,7 @@
  * Run `scripts/audit-icons.sh` to verify against the installed theme.
  *
  * Usage:
- *   import { IconNames, type IconName } from "#/lib/iconNames"
+ *   import { IconNames, type IconName } from "../iconNames"
  *
  *   // As a constant default:
  *   iconName={IconNames.folderMusic}

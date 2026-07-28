@@ -2,8 +2,8 @@ import AstalWp from 'gi://AstalWp?version=0.1';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import {Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {Process} from '../../core/process';
+import logger from '../../core/logger';
 import {RecorderBackend, RecordingFormat} from './types';
 
 // ── Constants ─────────────────────────────────────────────────────

@@ -1,8 +1,8 @@
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For} from 'gnim';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 
 export default () => {
     const settings = useSettings().general;

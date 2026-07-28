@@ -2,8 +2,8 @@ import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {For, bind} from 'gnim';
-import {useStyle} from '#/style/useStyle';
-import {tickWhileAttached} from '#/lib/core/widgetTimer';
+import {useStyle} from '../../style/useStyle';
+import {tickWhileAttached} from '../../lib/core/widgetTimer';
 import Adw from 'gi://Adw?version=1';
 
 function relativeTime(unix: number): string {

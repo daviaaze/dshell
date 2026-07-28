@@ -2,7 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For} from 'gnim';
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 
 export default () => {
     const {bar} = useSettings();

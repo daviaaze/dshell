@@ -5,7 +5,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {computed, createState, Accessor} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
+import {toArray} from '../../../lib/core/gjsUtils';
 import {
     ApSnapshot,
     findLiveAp,
@@ -13,7 +13,7 @@ import {
     signalIconName,
     createNMConnection,
 } from './utils';
-import logger from '#/lib/core/logger';
+import logger from '../../../lib/core/logger';
 
 const AP_ICON_SIZE = 16;
 const AP_TRASH_ICON_SIZE = 14;

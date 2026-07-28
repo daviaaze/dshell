@@ -1,6 +1,6 @@
 import {Object, register, property} from 'gnim/gobject';
 import Tray from 'gi://AstalTray';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 /**
  * TrayService — reactive wrapper around AstalTray D-Bus proxy.

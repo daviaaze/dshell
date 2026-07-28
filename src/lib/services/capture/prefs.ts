@@ -1,6 +1,6 @@
 import AstalWp from 'gi://AstalWp?version=0.1';
 import {Object, register, Int} from 'gnim/gobject';
-import {property} from '#/lib/decorators';
+import {property} from '../../decorators';
 
 /**
  * Recording preferences — audio toggle, input selection, quality, thumbnails.

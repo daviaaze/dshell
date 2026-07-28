@@ -5,7 +5,7 @@
  * (built via esbuild by the 'test' script in package.json)
  */
 
-import {GreetSession} from '#/widget/greeter/GreetSession';
+import {GreetSession} from '../../widget/greeter/GreetSession';
 import {describe, it, expect, run} from '../__tests__/test-runner';
 
 describe('GreetSession', () => {

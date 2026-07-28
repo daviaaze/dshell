@@ -3,13 +3,13 @@ import NM from 'gi://NM?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, createState, With, For} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
+import {toArray} from '../../lib/core/gjsUtils';
 import {
     strengthFraction,
     securityLabelFromKeyMgmt,
     deleteConnectionAsync,
-} from '#/widget/quicksettings/network/utils';
-import logger from '#/lib/core/logger';
+} from '../quicksettings/network/utils';
+import logger from '../../lib/core/logger';
 import {showConnectionEditor} from './connectionEditor';
 import {showHiddenNetworkDialog} from './hiddenNetworkDialog';
 

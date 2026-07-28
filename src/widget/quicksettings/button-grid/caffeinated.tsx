@@ -1,10 +1,10 @@
-import Inhibit from '#/lib/services/power/inhibit';
+import Inhibit from '../../../lib/services/power/inhibit';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import {LinkedBox} from '#/widget/common/linkedBox';
+import type {QuickButton} from './quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import {LinkedBox} from '../../common/linkedBox';
 
 export default (): QuickButton => {
     const inhibit = Inhibit.get_default();

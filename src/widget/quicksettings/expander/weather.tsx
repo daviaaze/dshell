@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {WeatherWidget} from '#/widget/common/weatherWidget';
+import {WeatherWidget} from '../../common/weatherWidget';
 
 export const Weather = () => {
     return (

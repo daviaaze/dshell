@@ -3,7 +3,7 @@
  *
  * Usage:
  * ```ts
- * import {bus} from '#/lib/core/eventBus';
+ * import {bus} from './eventBus';
  *
  * // Subscribe
  * const unsub = bus.on('shell:lockscreen', () => lockScreen());

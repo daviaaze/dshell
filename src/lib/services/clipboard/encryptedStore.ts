@@ -22,7 +22,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import {encrypt, decrypt} from './cryptoEngine';
 import {getKey, initKeyManager} from './keyManager';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 export interface ClipboardEntry {
     id: string;

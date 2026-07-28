@@ -2,12 +2,12 @@ import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Accessor, For, bind, computed} from 'gnim';
-import Clock from '#/lib/services/time/clock';
-import TimerService from '#/lib/services/time/timerService';
-import {useSettings} from '#/lib/settings';
-import {useStyle} from '#/style/useStyle';
-import {fmtDuration, cityName, fmtOffset} from '#/lib/core/time';
-import {TimerSection} from '#/widget/quicksettings/timer/TimerSection';
+import Clock from '../../lib/services/time/clock';
+import TimerService from '../../lib/services/time/timerService';
+import {useSettings} from '../../lib/settings';
+import {useStyle} from '../../style/useStyle';
+import {fmtDuration, cityName, fmtOffset} from '../../lib/core/time';
+import {TimerSection} from '../quicksettings/timer/TimerSection';
 
 export default ({
     vertical,

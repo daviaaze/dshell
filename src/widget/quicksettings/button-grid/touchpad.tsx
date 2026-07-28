@@ -1,7 +1,7 @@
-import Touchpad from '#/lib/services/input/touchpad';
+import Touchpad from '../../../lib/services/input/touchpad';
 import {bind} from 'gnim';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
+import type {QuickButton} from './quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
 
 export default (): QuickButton => {
     const touchpad = Touchpad.get_default();

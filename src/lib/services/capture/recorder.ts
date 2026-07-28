@@ -1,9 +1,9 @@
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {getHyprland} from '#/lib/hyprland';
+import {getHyprland} from '../../hyprland';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/core/logger';
-import {Process} from '#/lib/core/process';
-import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
+import logger from '../../core/logger';
+import {Process} from '../../core/process';
+import {getScreenCaptureSettings} from '../../settings/screenCapture';
 import {RecorderBackend, RecordingFormat} from './types';
 import {
     buildRecordingArgs,

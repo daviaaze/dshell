@@ -1,6 +1,6 @@
 import {Object, register, property} from 'gnim/gobject';
 import Wireplumber from 'gi://AstalWp';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 /**
  * AudioController — semantic command layer over AstalWp.

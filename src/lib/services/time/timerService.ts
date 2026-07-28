@@ -2,8 +2,8 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
-import {fmtDuration} from '#/lib/core/time';
+import logger from '../../core/logger';
+import {fmtDuration} from '../../core/time';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 

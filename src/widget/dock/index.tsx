@@ -1,14 +1,14 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {getHyprland} from '#/lib/hyprland';
+import {getHyprland} from '../../lib/hyprland';
 import {bind, For, computed, onCleanup} from 'gnim';
-import WindowManager from '#/lib/services/state/windowManager';
-import {useSettings} from '#/lib/settings';
-import {app} from '#/apps/shell/App';
+import WindowManager from '../../lib/services/state/windowManager';
+import {useSettings} from '../../lib/settings';
+import {app} from '../../apps/shell/App';
 import DockItem from './item';
-import {toArray} from '#/lib/core/gjsUtils';
-import {getDesktopFileForClient} from '#/lib/services/state/apps';
+import {toArray} from '../../lib/core/gjsUtils';
+import {getDesktopFileForClient} from '../../lib/services/state/apps';
 
 export default () => {
     const hyprland = getHyprland();

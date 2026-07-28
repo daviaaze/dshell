@@ -7,9 +7,9 @@ import {
     VoidType,
 } from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
-import {bus} from '#/lib/core/eventBus';
-import {Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {bus} from '../../core/eventBus';
+import {Process} from '../../core/process';
+import logger from '../../core/logger';
 
 logger.info('touchpad', 'module loaded');
 

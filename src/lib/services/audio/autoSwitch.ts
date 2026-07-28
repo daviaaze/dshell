@@ -1,7 +1,7 @@
 import Wireplumber from 'gi://AstalWp';
 import GLib from 'gi://GLib?version=2.0';
 import {bind} from 'gnim';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 export function initAutoSwitch() {
     // Defer Wireplumber D-Bus proxy to avoid blocking the main loop

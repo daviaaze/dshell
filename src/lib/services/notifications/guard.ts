@@ -1,8 +1,8 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
 import Notifd from 'gi://AstalNotifd';
-import logger from '#/lib/core/logger';
-import {DeferredSingleton} from '#/lib/core/deferredSingleton';
+import logger from '../../core/logger';
+import {DeferredSingleton} from '../../core/deferredSingleton';
 
 const NOTIF_BUS_NAME = 'org.freedesktop.Notifications';
 const NOTIF_OBJECT_PATH = '/org/freedesktop/Notifications';

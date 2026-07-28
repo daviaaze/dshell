@@ -8,9 +8,9 @@
 import Quarrel from 'gi://Quarrel';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {bus} from '#/lib/core/eventBus';
-import logger, {perf} from '#/lib/core/logger';
-import printOut from '#/lib/core/stdout';
+import {bus} from '../../core/eventBus';
+import logger, {perf} from '../../core/logger';
+import printOut from '../../core/stdout';
 
 // ── Help flag (shared) ──
 

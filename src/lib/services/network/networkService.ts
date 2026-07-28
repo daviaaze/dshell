@@ -6,7 +6,7 @@
  */
 import {Object, register, property} from 'gnim/gobject';
 import Network from 'gi://AstalNetwork';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 let _instance: NetworkService | null = null;
 

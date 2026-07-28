@@ -1,10 +1,10 @@
 import GObject from 'gi://GObject?version=2.0';
 import AstalAuth from 'gi://AstalAuth?version=0.1';
 import {Object, register, signal, property} from 'gnim/gobject';
-import {Timeout} from '#/lib/core/timeout';
-import logger from '#/lib/core/logger';
-import Brightness from '#/lib/services/display/brightness';
-import FingerprintAuth from '#/lib/services/input/fingerprint';
+import {Timeout} from '../../core/timeout';
+import logger from '../../core/logger';
+import Brightness from '../display/brightness';
+import FingerprintAuth from '../input/fingerprint';
 
 const PAM_TIMEOUT_MS = 10000;
 

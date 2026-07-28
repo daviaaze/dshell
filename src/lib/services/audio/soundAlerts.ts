@@ -1,11 +1,11 @@
 import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import AstalBattery from 'gi://AstalBattery';
-import {bus} from '#/lib/core/eventBus';
-import ServiceRegistry from '#/lib/core/serviceRegistry';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import {Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {bus} from '../../core/eventBus';
+import ServiceRegistry from '../../core/serviceRegistry';
+import {getNotifdSafe} from '../notifications/guard';
+import {Process} from '../../core/process';
+import logger from '../../core/logger';
 import type {Accessor} from 'gnim';
 
 /** Fraction (0..1) at which low-battery warning sounds fire. */
@@ -49,8 +49,8 @@ export default class SoundAlertService extends Object {
     #upowerInstance: AstalBattery.UPower | null = null;
     #lastBatteryPercentage = 1.0;
     #initialized = false;
-    #shellState: {v?: import('#/lib/services/state/shellState').default} = {};
-    #dndService: {v?: import('#/lib/services/notifications/dnd').default} = {};
+    #shellState: {v?: import('../state/shellState').default} = {};
+    #dndService: {v?: import('../notifications/dnd').default} = {};
 
     /** Resolve a dependency from the service registry. */
     /** Resolve a dependency from the service registry (lazy). */
@@ -59,11 +59,11 @@ export default class SoundAlertService extends Object {
         return cache.v;
     }
 
-    get #shell(): import('#/lib/services/state/shellState').default {
+    get #shell(): import('../state/shellState').default {
         return this.#getDep('ShellState', this.#shellState);
     }
 
-    get #dnd(): import('#/lib/services/notifications/dnd').default {
+    get #dnd(): import('../notifications/dnd').default {
         return this.#getDep('DndService', this.#dndService);
     }
 

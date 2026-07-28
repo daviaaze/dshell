@@ -1,8 +1,8 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import {Object, register} from 'gnim/gobject';
-import {property} from '#/lib/decorators';
-import logger from '#/lib/core/logger';
+import {property} from '../../decorators';
+import logger from '../../core/logger';
 import {
     RecorderBackend,
     type VirtualMonitor,
