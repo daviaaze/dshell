@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- GObject signal/member access in test doubles is untyped by design */
 /**
  * Tests for EncryptedStore — clipboard history store.
  *
