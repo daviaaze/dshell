@@ -1,3 +1,5 @@
+import Gio from 'gi://Gio?version=2.0';
+
 // ── AES-256 constants ───────────────────────────────────────────────────────
 
 export const BLOCK_SIZE = 16; // 128 bits
@@ -61,11 +63,15 @@ export function xtime(a: number): number {
     return ((a << 1) ^ (((a >>> 7) & 1) * 0x1b)) & 0xff;
 }
 
-/** Generate cryptographically random bytes using Math.random (GJS fallback). */
+/** Generate cryptographically random bytes from /dev/urandom. */
 export function getRandomBytes(count: number): Uint8Array {
-    const bytes = new Uint8Array(count);
-    for (let i = 0; i < count; i++) bytes[i] = Math.floor(Math.random() * 256);
-    return bytes;
+    const stream = Gio.File.new_for_path('/dev/urandom').read(null);
+    try {
+        const bytes = stream.read_bytes(count, null);
+        return new Uint8Array(bytes.toArray());
+    } finally {
+        stream.close(null);
+    }
 }
 
 /** Pad data to a multiple of 16 bytes with zeros. */
