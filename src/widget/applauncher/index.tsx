@@ -1,4 +1,3 @@
-import Hyprland from 'gi://AstalHyprland';
 import {getHyprland} from '../../lib/hyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';

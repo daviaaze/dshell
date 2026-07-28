@@ -44,7 +44,7 @@ export interface EventMap {
 type Unsubscribe = () => void;
 
 class EventBus {
-    #listeners = new Map<string, Set<Function>>();
+    #listeners = new Map<string, Set<(...args: unknown[]) => void>>();
 
     on<K extends keyof EventMap>(
         event: K,
@@ -54,9 +54,11 @@ class EventBus {
         if (!this.#listeners.has(key)) {
             this.#listeners.set(key, new Set());
         }
-        (this.#listeners.get(key) as Set<Function>).add(fn);
+        this.#listeners.get(key)!.add(fn as (...args: unknown[]) => void);
         return () => {
-            this.#listeners.get(key)?.delete(fn);
+            this.#listeners
+                .get(key)
+                ?.delete(fn as (...args: unknown[]) => void);
         };
     }
 
@@ -68,7 +70,7 @@ class EventBus {
         const fns = this.#listeners.get(key);
         if (!fns) return;
         for (const fn of fns) {
-            (fn as (...args: any[]) => void)(...args);
+            fn(...(args as unknown[]));
         }
     }
 

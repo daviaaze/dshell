@@ -1,5 +1,6 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import {JSX} from 'gnim';
 import {usePopoverCleanup} from './popoverCleanup';
 
 interface IconButtonProps {
@@ -21,7 +22,7 @@ export const IconButton = (props: IconButtonProps) => (
 );
 
 interface IconMenuButtonProps extends Omit<IconButtonProps, 'onClicked'> {
-    children?: any;
+    children?: JSX.Element | JSX.Element[];
 }
 
 export const IconMenuButton = (props: IconMenuButtonProps) => (

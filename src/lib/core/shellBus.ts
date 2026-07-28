@@ -72,10 +72,13 @@ export default class ShellBus extends Object {
             ? () => void
             : (payload: ShellEventPayloads[E]) => void
     ): number {
-        return GObject.signal_connect(this, event, (_source: GObject.Object, ...args: unknown[]) => {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-arguments
-            (fn as (...args: unknown[]) => void)(...args);
-        });
+        return GObject.signal_connect(
+            this,
+            event,
+            (_source: GObject.Object, ...args: unknown[]) => {
+                (fn as (...args: unknown[]) => void)(...args);
+            }
+        );
     }
 
     /** Remove a listener by handler ID. */
