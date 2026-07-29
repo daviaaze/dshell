@@ -173,33 +173,42 @@ export function deleteKey(): void {
 const SecretService = Secret.Service;
 
 /**
- * Check if the secret service has at least one collection registered.
+ * Check if a persistent (non-session) collection is available in the
+ * Secret Service.
  *
- * The keyring daemon (gnome-keyring) starts via D-Bus activation on first
- * use, but the "login" collection path is only set after PAM unlocks the
- * keyring.  Calling password_store_sync before the collection exists hits a
- * GLib C assertion in libsecret:
+ * gnome-keyring exposes a "session" collection immediately on D-Bus
+ * activation.  The "login" (default) collection path is %NULL until PAM
+ * unlocks the keyring via pam_gnome_keyring.  Calling
+ * password_store_sync(NULL) before then hits:
  *
  *   secret_service_create_item_dbus_path: assertion
  *   'collection_path != NULL && g_variant_is_object_path (collection_path)'
  *   failed
  *
- * This check prevents that path by verifying a collection is available
- * before any store operation.
+ * We filter out the well-known session path and return true only
+ * when a real persistent collection is registered.
  */
 function secretServiceHasCollection(): boolean {
     try {
-        // Get_or_create the service proxy, establishing a session + loading
-        // collections.  This never hits the C assertion because it only
-        // retrieves existing collections rather than trying to create items.
         const service = SecretService.get_sync(
-            Secret.ServiceFlags.LOAD_COLLECTIONS,
+            Secret.ServiceFlags.OPEN_SESSION | Secret.ServiceFlags.LOAD_COLLECTIONS,
             null,
         );
         if (!service) return false;
 
         const collections = service.get_collections();
-        return collections !== null && collections.length > 0;
+        if (!collections) return false;
+
+        // gnome-keyring always exposes a session collection immediately
+        // on D-Bus activation.  That collection does NOT have a valid
+        // default-collection path — password_store_sync(NULL) on it
+        // triggers a GLib C assertion.  Filter it out.
+        const SESSION_PATH = '/org/freedesktop/secrets/collection/session';
+        const realCollections = collections.filter(
+            c => c.get_object_path() !== SESSION_PATH,
+        );
+
+        return realCollections.length > 0;
     } catch {
         return false;
     }
