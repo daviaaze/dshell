@@ -115,7 +115,7 @@ function storeKey(key: Uint8Array): void {
         const stored = Secret.password_store_sync(
             schema,
             {[ATTRIBUTE_KEY]: ATTRIBUTE_VALUE},
-            '',
+            null,
             LABEL,
             keyHex,
             null
