@@ -76,7 +76,22 @@ export function initKeyManager(): void {
                 'no encryption key found, generating new key'
             );
             keyResult = generateKey();
-            storeKey(keyResult);
+
+            // Only attempt to persist the key if the secret service has a
+            // default collection (i.e. the keyring has been unlocked via PAM).
+            // If the collection path is NULL (keyring daemon started but login
+            // collection not yet registered), password_store_sync triggers a
+            // GLib C assertion that prints a non-fatal warning to stderr and
+            // fails silently — the key is ephemeral for this session instead.
+            if (secretServiceHasCollection()) {
+                storeKey(keyResult);
+            } else {
+                logger.info(
+                    'clipboard',
+                    'keyring collection not available, ' +
+                        'keeping encryption key in memory for this session'
+                );
+            }
         }
     } catch (e) {
         keyringReady = false;
@@ -155,11 +170,41 @@ export function deleteKey(): void {
     }
 }
 
+const SecretService = Secret.Service;
+
 /**
- * Check if an encryption key exists in the keyring.
+ * Check if the secret service has at least one collection registered.
  *
- * @returns true if a key exists
+ * The keyring daemon (gnome-keyring) starts via D-Bus activation on first
+ * use, but the "login" collection path is only set after PAM unlocks the
+ * keyring.  Calling password_store_sync before the collection exists hits a
+ * GLib C assertion in libsecret:
+ *
+ *   secret_service_create_item_dbus_path: assertion
+ *   'collection_path != NULL && g_variant_is_object_path (collection_path)'
+ *   failed
+ *
+ * This check prevents that path by verifying a collection is available
+ * before any store operation.
  */
+function secretServiceHasCollection(): boolean {
+    try {
+        // Get_or_create the service proxy, establishing a session + loading
+        // collections.  This never hits the C assertion because it only
+        // retrieves existing collections rather than trying to create items.
+        const service = SecretService.get_sync(
+            Secret.ServiceFlags.LOAD_COLLECTIONS,
+            null,
+        );
+        if (!service) return false;
+
+        const collections = service.get_collections();
+        return collections !== null && collections.length > 0;
+    } catch {
+        return false;
+    }
+}
+
 export function hasKey(): boolean {
     if (!keyringReady) return false;
     try {
