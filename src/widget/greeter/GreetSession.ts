@@ -7,6 +7,8 @@
  *   → start_session (on success)
  */
 import Greet from 'gi://AstalGreet';
+import GObject from 'gi://GObject?version=2.0';
+import Gio from 'gi://Gio?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
 import logger from '../../lib/core/logger';
 
@@ -181,19 +183,23 @@ export class GreetSession extends Object {
     startSession(cmd: string[], env: string[] = []): void {
         if (!this.#greeter) return;
 
-        this.#greeter.start_session(cmd, env, (_g: any, res: any) => {
-            try {
-                this.#greeter!.start_session_finish(res);
-                // If start_session returns, the session is running.
-                // The greeter process (this app) should terminate.
-                logger.info('greeter', 'session started successfully');
-                this.#onSessionStarted?.();
-            } catch (e) {
-                this.#errorMessage = `Failed to start session: ${e}`;
-                this.notify('error-message');
-                this.state = 'error';
+        this.#greeter.start_session(
+            cmd,
+            env,
+            (_g: GObject.Object | null, res: Gio.AsyncResult) => {
+                try {
+                    this.#greeter!.start_session_finish(res);
+                    // If start_session returns, the session is running.
+                    // The greeter process (this app) should terminate.
+                    logger.info('greeter', 'session started successfully');
+                    this.#onSessionStarted?.();
+                } catch (e) {
+                    this.#errorMessage = `Failed to start session: ${e}`;
+                    this.notify('error-message');
+                    this.state = 'error';
+                }
             }
-        });
+        );
     }
 
     /**

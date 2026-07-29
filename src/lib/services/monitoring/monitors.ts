@@ -1,7 +1,7 @@
 /**
  * Monitor Service — Wayland-native monitor tracking via AstalWl.
  *
- * Uses AstalWl.WlDisplay for monitor enumeration and hotplug detection
+ * Uses AstalWl.Registry for monitor enumeration and hotplug detection
  * instead of Gdk.Monitor. This gives us:
  *   - Reliable connector names (no fallback chain needed)
  *   - Fires at the Wayland protocol level (before Gdk/Hyprland)
@@ -31,7 +31,9 @@ import logger from '../../core/logger';
  *
  * Falls back to description matching and then to geometry matching.
  */
-const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor | null => {
+const Gdk2HyprMonitor = (
+    GMonitor: Gdk.Monitor
+): AstalHyprland.Monitor | null => {
     const hyprland = getHyprland();
     if (!hyprland) return null;
 
@@ -189,7 +191,7 @@ class MonitorService extends Object {
         this.#wlSignalIds = [
             this.#wlDisplay.connect(
                 'output-added',
-                (_wl: any, output: AstalWl.Output) => {
+                (_wl: AstalWl.Registry, output: AstalWl.Output) => {
                     const gdkMon = gdkMonitorByConnector(output.name);
                     if (gdkMon) {
                         this.#addMonitor(gdkMon);
@@ -202,7 +204,7 @@ class MonitorService extends Object {
 
             this.#wlDisplay.connect(
                 'output-removed',
-                (_wl: any, output: AstalWl.Output) => {
+                (_wl: AstalWl.Registry, output: AstalWl.Output) => {
                     const gdkMon = gdkMonitorByConnector(output.name);
                     if (gdkMon) {
                         this.#removeMonitor(gdkMon);
@@ -252,7 +254,10 @@ class MonitorService extends Object {
         if (hyprland) {
             if (hyprland.get_monitors().length !== this.#monitors.length) {
                 this.#pendingSync = true;
-                logger.debug('monitors', 'Monitor counts differ, deferring notify');
+                logger.debug(
+                    'monitors',
+                    'Monitor counts differ, deferring notify'
+                );
             } else {
                 this.#pendingSync = false;
             }
@@ -267,7 +272,10 @@ class MonitorService extends Object {
         if (hyprland) {
             if (hyprland.get_monitors().length !== this.#monitors.length) {
                 this.#pendingSync = true;
-                logger.debug('monitors', 'Monitor counts differ, deferring notify');
+                logger.debug(
+                    'monitors',
+                    'Monitor counts differ, deferring notify'
+                );
             } else {
                 this.#pendingSync = false;
                 this.notify('monitors');

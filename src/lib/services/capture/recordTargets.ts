@@ -1,4 +1,3 @@
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {getHyprland} from '../../hyprland';
 import logger from '../../core/logger';
 import {notify} from './utils';

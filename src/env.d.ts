@@ -17,13 +17,3 @@ declare module 'gi://GTop' {
         path: string
     ): void;
 }
-
-// AstalWl.WlDisplay is not included in the GIR type definitions.
-declare module 'gi://AstalWl?version=0.1' {
-    interface WlDisplay {
-        // wayland-native display — no additional methods needed
-    }
-    var WlDisplay: {
-        get_default(): WlDisplay;
-    };
-}

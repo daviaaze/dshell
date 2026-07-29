@@ -29,7 +29,6 @@ import {
     windowAddr,
     runCapture,
     loadTexture,
-    captureMonitor,
     captureMonitorSync,
     captureWindow,
 } from './capture';
@@ -98,10 +97,10 @@ function main() {
             );
         }
         for (const w of windows) {
-            logger.info(
-                CAT,
-                `  window: ${w.info.clazz} geo=${w.geometry ? `${w.geometry.width}x${w.geometry.height}` : 'none'}`
-            );
+            const geo = w.geometry
+                ? `${w.geometry.width}x${w.geometry.height}`
+                : 'none';
+            logger.info(CAT, `  window: ${w.info.clazz} geo=${geo}`);
         }
 
         applyPopupCss();

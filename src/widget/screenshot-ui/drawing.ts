@@ -1,6 +1,5 @@
 import Cairo from 'gi://cairo?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {getHyprland} from '../../lib/hyprland';
 import type Screenshot from '../../lib/services/capture/screenshot';
 
@@ -87,7 +86,7 @@ export function draw(
     const sWin = selectedWindow;
     const winL = windows;
     const hyprland = getHyprland();
-    if (!hyprland) return null;
+    if (!hyprland) return;
 
     // ── Dim overlay ──────────────────────────────────────────
     cr.setSourceRGBA(DIM_COLOR.r, DIM_COLOR.g, DIM_COLOR.b, DIM_COLOR.a);

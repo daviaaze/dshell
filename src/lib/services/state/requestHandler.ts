@@ -40,7 +40,7 @@ function activateWithString(
 
 // ── Build command tree ──
 
-function buildCLI(app: Gio.Application): Quarrel.Command {
+function buildCLI(_app: Gio.Application): Quarrel.Command {
     // Subcommands
     const toggle = new Quarrel.Command({name: 'toggle'})
         .about('Toggle a widget visibility')

@@ -7,7 +7,7 @@
  */
 
 import Gtk from 'gi://Gtk?version=4.0';
-import {For, bind, createState} from 'gnim';
+import {For, bind, createState, JSX} from 'gnim';
 import MediaController from '../../lib/services/session/mediaController';
 import logger from '../../lib/core/logger';
 
@@ -17,7 +17,7 @@ export interface LockscreenWidgetDef {
     id: string;
     position: 'center' | 'end';
     priority: number;
-    render: () => any;
+    render: () => JSX.Element;
 }
 
 // ── Registry ────────────────────────────────────────────────────

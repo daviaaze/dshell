@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, effect, For} from 'gnim';
+import {bind, For} from 'gnim';
 import AudioController from '../../lib/services/audio/audioController';
 import AppMixer from '../../lib/services/audio/mixer';
 import {usePopoverCleanup} from '../common/popoverCleanup';
@@ -53,10 +53,7 @@ export default () => {
                                             cssClasses={['flat']}
                                             halign={Gtk.Align.FILL}
                                             onClicked={() => {
-                                                mixer.setTargetNode(
-                                                    id,
-                                                    -1
-                                                );
+                                                mixer.setTargetNode(id, -1);
                                                 popoverRef?.popdown();
                                             }}
                                         >
@@ -71,12 +68,8 @@ export default () => {
                                         <For each={speakers}>
                                             {speaker => (
                                                 <Gtk.Button
-                                                    cssClasses={[
-                                                        'flat',
-                                                    ]}
-                                                    halign={
-                                                        Gtk.Align.FILL
-                                                    }
+                                                    cssClasses={['flat']}
+                                                    halign={Gtk.Align.FILL}
                                                     // eslint-disable-next-line sonarjs/no-nested-functions
                                                     onClicked={() => {
                                                         mixer.setTargetNode(
@@ -91,17 +84,10 @@ export default () => {
                                                             speaker.description ??
                                                             ''
                                                         }
-                                                        maxWidthChars={
-                                                            25
-                                                        }
+                                                        maxWidthChars={25}
                                                         ellipsize={3}
-                                                        halign={
-                                                            Gtk.Align
-                                                                .START
-                                                        }
-                                                        cssClasses={[
-                                                            'body',
-                                                        ]}
+                                                        halign={Gtk.Align.START}
+                                                        cssClasses={['body']}
                                                     />
                                                 </Gtk.Button>
                                             )}
@@ -163,7 +149,10 @@ export default () => {
                                         widthRequest={100}
                                         adjustment={adjustment}
                                         onValueChanged={self =>
-                                            mixer.setVolume(id, self.get_value())
+                                            mixer.setVolume(
+                                                id,
+                                                self.get_value()
+                                            )
                                         }
                                     />
                                 );
