@@ -4,7 +4,6 @@ import logger from './logger';
 
 // Keeps Gio.FileMonitor instances alive so GJS doesn't GC them while
 // monitoring (monitors must stay referenced to keep delivering events).
-// eslint-disable-next-line sonarjs/no-unused-collection
 const monitorFiles = new Set<Gio.FileMonitor>();
 
 export function readFile(file: string | Gio.File) {

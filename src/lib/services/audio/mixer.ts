@@ -15,7 +15,6 @@ export interface AudioStream {
 
 // ── Shared pipewire stream parser ──
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function streamFromPwItem(item: any): AudioStream | null {
     const info = item.info || {};
     const props = info.props || {};

@@ -18,7 +18,6 @@ function setupSignalHandlers() {
             logger.log(`received signal ${sig}, force exiting...`);
             exit(0);
         }
-        return GLib.SOURCE_REMOVE;
     };
 
     for (const sig of [2 /* SIGINT */, 15 /* SIGTERM */]) {

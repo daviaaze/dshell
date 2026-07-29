@@ -98,27 +98,24 @@ export default () => {
                 setDeviceInfo([]);
                 return;
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const arr = toArray<any>(list);
-
             // Disconnect battery signals for devices no longer connected
             for (const [addr, id] of batterySignals) {
-                if (!arr.some(d => d.address === addr && d.connected)) {
-                    const dev = arr.find(d => d.address === addr);
+                if (!list.some(d => d.address === addr && d.connected)) {
+                    const dev = list.find(d => d.address === addr);
                     if (dev) dev.disconnect(id);
                     batterySignals.delete(addr);
                 }
             }
 
             // Connect battery signals for newly connected devices
-            for (const d of arr) {
+            for (const d of list) {
                 if (d.connected && !batterySignals.has(d.address)) {
                     const id = d.connect('notify::battery-percentage', refresh);
                     batterySignals.set(d.address, id);
                 }
             }
 
-            const devices = arr
+            const devices = list
                 .filter(d => d.connected)
                 .map(d => ({
                     name: d.name || 'Device',
@@ -137,8 +134,7 @@ export default () => {
             // Disconnect per-device battery signals
             for (const [, id] of batterySignals) {
                 try {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const dev = toArray<any>(bluetooth.devices || []).find(
+                    const dev = bluetooth.devices.find(
                         d => d.address
                     );
                     if (dev) dev.disconnect(id);

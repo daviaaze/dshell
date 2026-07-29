@@ -53,7 +53,6 @@ export function connectFor(
     obj: Connectable,
     signal: string,
     // GObject signal handlers use variadic args
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     callback: (...args: any[]) => void
 ): number {
     const handlerId = obj.connect(signal, callback);

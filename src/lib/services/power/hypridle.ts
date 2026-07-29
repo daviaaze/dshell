@@ -73,7 +73,6 @@ export default class Hypridle extends GObject {
         return this.instance;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     #values: Record<PropKey, any> = {
         enabled: true,
         idleTimeout: 300,
@@ -85,7 +84,6 @@ export default class Hypridle extends GObject {
         suspendEnabled: false,
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     #settings: Record<string, (v: any) => void> | null = null;
     #process: Process | null = null;
 
@@ -154,7 +152,6 @@ export default class Hypridle extends GObject {
 
     // ── Centralised property write ────────────────────────────────────
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     #set(key: PropKey, value: any) {
         const def = PROPS[key];
         if (!def) return;

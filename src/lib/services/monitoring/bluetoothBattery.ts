@@ -26,7 +26,6 @@ export function getBlueZBatteryPercentage(address: string): number | null {
     }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getDeviceBatteryPercentage(device: any): number | null {
     if (device.battery_percentage >= 0) {
         return device.battery_percentage * 100;

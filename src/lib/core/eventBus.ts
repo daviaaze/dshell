@@ -70,7 +70,7 @@ class EventBus {
         const fns = this.#listeners.get(key);
         if (!fns) return;
         for (const fn of fns) {
-            fn(...(args as unknown[]));
+            fn(...(args));
         }
     }
 

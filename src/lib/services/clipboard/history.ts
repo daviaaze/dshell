@@ -50,7 +50,6 @@ function contentHash(data: Uint8Array): string {
 }
 
 function generateId(): string {
-    // eslint-disable-next-line sonarjs/pseudo-random
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 

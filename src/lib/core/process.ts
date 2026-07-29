@@ -8,7 +8,6 @@ import {
 } from 'gnim/gobject';
 import logger from './logger';
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Process {
     export interface SignalSignatures extends Object.SignalSignatures {
         stdout: Process['stdout'];

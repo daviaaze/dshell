@@ -21,11 +21,9 @@ export default () => {
                         let popoverRef: Gtk.Popover | null = null;
 
                         const label = streams.as(all => {
-                            // eslint-disable-next-line sonarjs/no-nested-functions
                             const s = all.find(s => s.id === id);
                             const targetId = s?.targetNode;
                             if (!targetId) return 'Default';
-                            // eslint-disable-next-line sonarjs/no-nested-functions
                             const spk = speakers().find(d => d.id === targetId);
                             return spk?.description ?? 'Default';
                         });
@@ -70,7 +68,6 @@ export default () => {
                                                 <Gtk.Button
                                                     cssClasses={['flat']}
                                                     halign={Gtk.Align.FILL}
-                                                    // eslint-disable-next-line sonarjs/no-nested-functions
                                                     onClicked={() => {
                                                         mixer.setTargetNode(
                                                             id,

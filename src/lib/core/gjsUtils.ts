@@ -1,6 +1,5 @@
 import logger from './logger';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toArray<T>(list: any): T[] {
     if (!list) return [];
     if (Array.isArray(list)) return list;
@@ -35,7 +34,6 @@ export function toArray<T>(list: any): T[] {
     return arr;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function listLength(list: any): number {
     if (!list) return 0;
     if (Array.isArray(list)) return list.length;

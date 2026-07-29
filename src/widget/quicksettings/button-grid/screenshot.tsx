@@ -133,8 +133,7 @@ export default (): QuickButton => {
                         if (screenshot.virtualMonitors.length > 0) {
                             screenshot.removeVirtualMonitors();
                         } else {
-                            // eslint-disable-next-line sonarjs/void-use
-                            void screenshot.createVirtualMonitor(
+                            screenshot.createVirtualMonitor(
                                 captureSettings.virtualMonitorResolution(),
                                 captureSettings.virtualMonitorFps()
                             );

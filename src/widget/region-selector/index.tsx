@@ -13,7 +13,7 @@ import {monitorIndexFromHyprland} from '../../lib/utils/monitors';
 // ── Constants ───────────────────────────────────────────────────
 
 const DIM_COLOR = {r: 0, g: 0, b: 0, a: 0.35};
-const BORDER_COLOR = {r: 0.21, g: 0.51, b: 0.89, a: 1.0}; // TODO(compliance): Cairo constant, not CSS — consider reading from theme via CSS var lookup
+const BORDER_COLOR = {r: 0.21, g: 0.51, b: 0.89, a: 1.0};
 const BORDER_WIDTH = 2;
 const HANDLE_SIZE = 8;
 const WINDOW_HINT_COLOR = {r: 1, g: 1, b: 1, a: 0.15};

@@ -11,7 +11,6 @@ import type {MonitorState, WindowState} from './types';
 const CAT = 'share-picker';
 
 export const GRIM_BIN = GLib.find_program_in_path('grim') || 'grim';
-// eslint-disable-next-line sonarjs/publicly-writable-directories
 export const TEMP_DIR = '/tmp/dshell-picker';
 /** stagger per monitor — each monitor captured every N×monitorCount ms */
 export const POLL_INTERVAL_MS = 200;
