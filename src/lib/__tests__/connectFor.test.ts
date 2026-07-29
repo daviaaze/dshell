@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- GObject signal/member access in test doubles is untyped by design */
 /**
  * Tests for connectFor — signal lifecycle helper.
  *
@@ -11,7 +12,7 @@ import GObject from 'gi://GObject?version=2.0';
 import {connectFor, cleanupNode} from '../core/connectFor';
 import {describe, it, expect, run} from './test-runner';
 
-class TestSignaler extends Object {
+class TestSignaler extends GObject.Object {
     fire() {
         (this as any).emit('test-signal');
     }
@@ -22,7 +23,7 @@ class TestSignaler extends Object {
 }
 
 // Register a simple GObject type for testing
-(GObject as any).registerClass(
+GObject.registerClass(
     {
         GTypeName: 'TestSignaler',
         Signals: {

@@ -7,6 +7,7 @@ import {ColorScheme, DarkModes} from '../../lib/services/display/colorScheme';
 import {useSettings} from '../../lib/settings';
 import WindowManager from '../../lib/services/state/windowManager';
 import {monitors} from '../../lib/services/monitoring/monitors';
+import {app} from '../../apps/shell/App';
 
 export const Wallpaper = () => {
     const settings = useSettings().general;
@@ -35,6 +36,7 @@ export const Wallpaper = () => {
                             self.close();
                         });
                     }}
+                    application={app}
                     gdkmonitor={monitor}
                     layer={Astal.Layer.BACKGROUND}
                     anchor={

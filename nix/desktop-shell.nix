@@ -137,7 +137,7 @@ pkgs.stdenv.mkDerivation {
       --replace-fail '@comment@' 'open shade settings' \
       --replace-fail '@exe@' "$out/bin/${pname} toggle settings"
 
-    install -Dm644 data/wp-day.jpg data/wp-night.jpg \
+    install -Dm644 data/shade-shell/wp-day.jpg data/shade-shell/wp-night.jpg \
       -t $out/share/shade-shell
 
     mkdir -p $out/share/shade-shell/icons

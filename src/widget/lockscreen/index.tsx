@@ -79,6 +79,7 @@ const createLocks = (onUnlock: () => void) => {
                         }
                     }}
                     gdkmonitor={monitor}
+                    application={app}
                     anchor={TOP | BOTTOM | LEFT | RIGHT}
                     visible
                     exclusivity={Astal.Exclusivity.IGNORE}
@@ -138,11 +139,12 @@ export const LockScreen = () => {
             if (screenlocked() && !locked) {
                 locked = true;
                 const dispose = render(
-                    () => createLocks(() => {
-                        locked = false;
-                        dispose();
-                    }),
-                    app,
+                    () =>
+                        createLocks(() => {
+                            locked = false;
+                            dispose();
+                        }),
+                    app
                 );
             }
         })
