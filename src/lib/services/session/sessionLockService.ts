@@ -11,7 +11,7 @@ import logger from '../../core/logger';
  * Widgets create bindings to shellState and call lock()/unlock()
  * through this service. Window registration uses assignWindow().
  */
-@register({GTypeName: 'SessionLockService'})
+@register
 export default class SessionLockService extends Object {
     static instance: SessionLockService;
 
@@ -30,11 +30,11 @@ export default class SessionLockService extends Object {
     // ── Signals ──
 
     /** Emitted when the session lock is acquired. */
-    @signal([])
+    @signal
     locked(): void {}
 
     /** Emitted when the session lock is released. */
-    @signal([])
+    @signal
     unlocked(): void {}
 
     // ── Public API ──

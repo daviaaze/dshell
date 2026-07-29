@@ -2,7 +2,6 @@
  * GTK widget builders for the picker UI.
  */
 import Gtk from 'gi://Gtk?version=4.0';
-import Gdk from 'gi://Gdk?version=4.0';
 import logger from '../../lib/core/logger';
 import type {MonitorState, SelectFn, WindowState} from './types';
 
@@ -18,25 +17,7 @@ function truncate(s: string, max: number): string {
 
 /** Popup window rounding — non-fatal if the display isn't ready */
 export function applyPopupCss(): void {
-    try {
-        const provider = new Gtk.CssProvider();
-        provider.load_from_string(`
-            window.picker-popup {
-                border-radius: var(--shade-radius);
-                border: 1px solid alpha(@window_bg_color, 0.08);
-            }
-        `);
-        const display = Gdk.Display.get_default();
-        if (display) {
-            Gtk.StyleContext.add_provider_for_display(
-                display,
-                provider,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-            );
-        }
-    } catch (e) {
-        logger.error(CAT, 'popup CSS provider', e);
-    }
+    // CSS is now auto-loaded by gnim dev/bundle via picker.css import
 }
 
 function makePicture(): Gtk.Picture {

@@ -10,7 +10,7 @@ import logger from '../../core/logger';
 
 let _instance: NetworkService | null = null;
 
-@register({GTypeName: 'NetworkService'})
+@register
 export default class NetworkService extends Object {
     #network: Network.Network | null = null;
     #wifi: Network.Wifi | null = null;

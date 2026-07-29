@@ -4,7 +4,7 @@ import {bus} from '../../core/eventBus';
 import ServiceRegistry from '../../core/serviceRegistry';
 import logger from '../../core/logger';
 
-@register({GTypeName: 'ShellState'})
+@register
 export default class ShellState extends GObject {
     static instance: ShellState;
 

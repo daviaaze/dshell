@@ -24,7 +24,7 @@ const SEARCH_BOOST = 0.5;
 
 // ── Frecency Manager ──
 
-@register({GTypeName: 'FrecencyManager'})
+@register
 export class FrecencyManager extends GObject {
     static instance: FrecencyManager;
     static get_default() {
@@ -146,7 +146,7 @@ export class FrecencyManager extends GObject {
     }
 
     /** Emitted when frecency data changes. */
-    @signal([])
+    @signal
     changed(): void {}
 
     /**

@@ -56,3 +56,15 @@
 .numeric {
     font-feature-settings: 'tnum';
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BATTERY — Bluetooth device battery levels
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.battery-critical {
+    color: @error_color;
+}
+
+.battery-low {
+    color: @warning_color;
+}

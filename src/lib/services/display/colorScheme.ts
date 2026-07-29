@@ -11,7 +11,7 @@ export enum DarkModes {
     DARK,
 }
 
-@register({GTypeName: 'ColorScheme'})
+@register
 export class ColorScheme extends Object {
     static instance: ColorScheme;
     static get_default() {

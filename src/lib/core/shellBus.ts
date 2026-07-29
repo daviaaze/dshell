@@ -53,7 +53,7 @@ export interface ShellEventPayloads {
  *   const h = ShellBus.get_default().on(ShellEvents.OSD_SHOW, p => ...);
  *   ShellBus.get_default().off(h);
  */
-@register({GTypeName: 'ShellBus'})
+@register
 export default class ShellBus extends Object {
     static instance: ShellBus;
 

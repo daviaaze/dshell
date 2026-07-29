@@ -23,7 +23,7 @@ import logger from '../../core/logger';
  * stored locally and the dnd property still works for UI toggling,
  * but notifications won't actually be suppressed.
  */
-@register({GTypeName: 'DndService'})
+@register
 export default class DndService extends Object {
     static instance: DndService;
 

@@ -1,8 +1,9 @@
 /**
  * Scoped CSS hook — Marble-style `useStyle()` for per-component styling.
  *
- * Generates a unique CSS class, injects scoped rules into a dedicated
- * Gtk.CssProvider, and returns a handle with auto-cleanup.
+ * Uses a single global Gtk.CssProvider to avoid the deprecated
+ * Gtk.StyleContext API. All CSS (static + scoped) feeds into one
+ * provider via load_from_string() on every change.
  *
  * Usage:
  * ```tsx
@@ -27,10 +28,10 @@ interface StyleObject {
     [key: string]: CSSValue | StyleObject;
 }
 
-interface StyleEntry {
-    class: string;
-    provider: Gtk.CssProvider;
+interface CSSEntry {
+    css: string;
     refCount: number;
+    className?: string;
 }
 
 export interface StyleHandle {
@@ -43,9 +44,78 @@ export interface StyleHandle {
     $: (self: Gtk.Widget) => void;
 }
 
-// ── Registry ──
+// ── Single global CSS provider ──
 
-const registry = new Map<string, StyleEntry>();
+let globalProvider: Gtk.CssProvider | null = null;
+let initialized = false;
+
+/** Initialize the global provider once. */
+function ensureGlobalProvider(): boolean {
+    if (initialized) return !!globalProvider;
+    const display = Gdk.Display.get_default();
+    if (!display) {
+        initialized = true;
+        return false;
+    }
+    globalProvider = new Gtk.CssProvider();
+    globalProvider.load_from_string('');
+    Gtk.StyleContext.add_provider_for_display(
+        display,
+        globalProvider,
+        Gtk.STYLE_PROVIDER_PRIORITY_USER
+    );
+    initialized = true;
+    return true;
+}
+
+/** Rebuild the full CSS string from all registry entries. */
+function rebuildAllCSS(): void {
+    if (!globalProvider) return;
+    const allCSS = [...cssRegistry.values()].map(e => e.css).join('\n');
+    globalProvider.load_from_string(allCSS);
+}
+
+// ── StyleSheet registry (named, mutable entries for App/theme/share-picker) ──
+
+const cssRegistry = new Map<string, CSSEntry>();
+let sheetCounter = 0;
+
+/**
+ * Register a named CSS block that can be updated later.
+ * Returns a unique key for updateStyleSheet() / unregisterStyleSheet().
+ */
+export function registerStyleSheet(css: string): string {
+    ensureGlobalProvider();
+    const key = `__sheet_${sheetCounter++}`;
+    cssRegistry.set(key, {css, refCount: 1});
+    rebuildAllCSS();
+    return key;
+}
+
+/**
+ * Update a previously registered stylesheet.
+ * Useful for theme changes where the CSS content changes but the key stays.
+ */
+export function updateStyleSheet(key: string, css: string): void {
+    const entry = cssRegistry.get(key);
+    if (entry) {
+        entry.css = css;
+        rebuildAllCSS();
+    }
+}
+
+/**
+ * Remove a named stylesheet from the registry.
+ */
+export function unregisterStyleSheet(key: string): void {
+    if (cssRegistry.delete(key)) {
+        rebuildAllCSS();
+    }
+}
+
+// ── Scoped style registry (internal, for useStyle) ──
+
+const scopedRegistry = new Map<string, CSSEntry>();
 let classCounter = 0;
 
 // ── CSS helpers ──
@@ -129,21 +199,6 @@ function serializeStyles(styles: StyleObject): string {
     return JSON.stringify(styles, Object.keys(styles).sort());
 }
 
-// ── Provider helper ──
-
-function getDisplayProvider(display: Gdk.Display): Gtk.CssProvider {
-    // Use a dedicated provider for all scoped styles at a custom priority.
-    // We create a fresh provider per unique style so cleanup is easy.
-    // Dedup prevents duplicates.
-    const provider = new Gtk.CssProvider();
-    Gtk.StyleContext.add_provider_for_display(
-        display,
-        provider,
-        Gtk.STYLE_PROVIDER_PRIORITY_USER + 10
-    );
-    return provider;
-}
-
 // ── Main API ──
 
 /**
@@ -154,25 +209,19 @@ function getDisplayProvider(display: Gdk.Display): Gtk.CssProvider {
  */
 export function useStyle(styles: StyleObject): StyleHandle {
     const key = serializeStyles(styles);
-    const existing = registry.get(key);
+    const existing = scopedRegistry.get(key);
 
     if (existing) {
         // Dedup hit — create a handle that increments the ref count
         const handle: StyleHandle = {
-            class: existing.class,
+            class: existing.className!,
             $: () => {
                 existing.refCount++;
                 onCleanup(() => {
                     existing.refCount--;
                     if (existing.refCount <= 0) {
-                        const display = Gdk.Display.get_default();
-                        if (display) {
-                            Gtk.StyleContext.remove_provider_for_display(
-                                display,
-                                existing.provider
-                            );
-                        }
-                        registry.delete(key);
+                        scopedRegistry.delete(key);
+                        rebuildAllCSS();
                     }
                 });
             },
@@ -183,9 +232,8 @@ export function useStyle(styles: StyleObject): StyleHandle {
     // Generate new class name and CSS
     const className = `shade-s-${classCounter++}`;
     const css = flattenStyles(className, styles);
-    const display = Gdk.Display.get_default();
 
-    if (!display) {
+    if (!ensureGlobalProvider()) {
         // No display yet — return a no-op handle
         return {
             class: className,
@@ -193,16 +241,14 @@ export function useStyle(styles: StyleObject): StyleHandle {
         };
     }
 
-    const provider = getDisplayProvider(display);
-    provider.load_from_string(css);
-
-    const entry: StyleEntry = {
-        class: className,
-        provider,
+    const entry: CSSEntry = {
+        css,
         refCount: 0,
+        className,
     };
 
-    registry.set(key, entry);
+    scopedRegistry.set(key, entry);
+    rebuildAllCSS();
 
     const handle: StyleHandle = {
         class: className,
@@ -211,14 +257,8 @@ export function useStyle(styles: StyleObject): StyleHandle {
             onCleanup(() => {
                 entry.refCount--;
                 if (entry.refCount <= 0) {
-                    const d = Gdk.Display.get_default();
-                    if (d) {
-                        Gtk.StyleContext.remove_provider_for_display(
-                            d,
-                            provider
-                        );
-                    }
-                    registry.delete(key);
+                    scopedRegistry.delete(key);
+                    rebuildAllCSS();
                 }
             });
         },
@@ -231,13 +271,5 @@ export function useStyle(styles: StyleObject): StyleHandle {
  * Useful for utility classes that don't need scoping.
  */
 export function registerGlobalCSS(css: string): void {
-    const display = Gdk.Display.get_default();
-    if (!display) return;
-    const provider = new Gtk.CssProvider();
-    provider.load_from_string(css);
-    Gtk.StyleContext.add_provider_for_display(
-        display,
-        provider,
-        Gtk.STYLE_PROVIDER_PRIORITY_USER + 10
-    );
+    registerStyleSheet(css);
 }

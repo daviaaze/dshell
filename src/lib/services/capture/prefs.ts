@@ -1,12 +1,12 @@
 import AstalWp from 'gi://AstalWp?version=0.1';
-import {Object, register, Int} from 'gnim/gobject';
+import {Object, register} from 'gnim/gobject';
 import {property} from '../../decorators';
 
 /**
  * Recording preferences — audio toggle, input selection, quality, thumbnails.
  * Extracted from the Screenshot service; bind via `Screenshot.prefs`.
  */
-@register({GTypeName: 'RecordingPrefs'})
+@register
 export default class RecordingPrefs extends Object {
     #audio = false;
     #selectedAudioInput = -1; // -1 = system default
@@ -50,7 +50,7 @@ export default class RecordingPrefs extends Object {
         return this.#selectedAudioInputName;
     }
 
-    @property(Int)
+    @property
     get recordingQuality() {
         return this.#recordingQuality;
     }

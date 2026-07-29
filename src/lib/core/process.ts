@@ -19,21 +19,21 @@ export namespace Process {
     }
 }
 
-@register()
+@register
 export class Process extends Object {
     declare readonly $signals: Process.SignalSignatures;
 
-    @signal([String])
+    @signal
     protected stdout(_out: string) {
         // signal parameter intentionally unused
     }
 
-    @signal([String])
+    @signal
     protected stderr(_err: string) {
         // signal parameter intentionally unused
     }
 
-    @signal([Number, Boolean])
+    @signal
     protected exit(_code: number, _signaled: boolean) {
         // signal parameters intentionally unused
     }

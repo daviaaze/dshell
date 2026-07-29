@@ -15,7 +15,7 @@ const PAM_TIMEOUT_MS = 10000;
  * Widgets create an instance, call submitPassword(), and listen for
  * signals — no direct PAM/fingerprint/brightness logic in UI code.
  */
-@register({GTypeName: 'AuthSession'})
+@register
 export default class AuthSession extends Object {
     #pam: AstalAuth.Pam;
     #pamActive = false;
@@ -47,10 +47,10 @@ export default class AuthSession extends Object {
 
     // ── Signals ──
 
-    @signal([])
+    @signal
     success(): void {}
 
-    @signal([String])
+    @signal
     fail(_reason: string): void {}
 
     /** Called when authentication process fully completes (success or fatal). */

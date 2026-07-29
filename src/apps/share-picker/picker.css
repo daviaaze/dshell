@@ -1,0 +1,4 @@
+window.picker-popup {
+    border-radius: var(--shade-radius);
+    border: 1px solid alpha(@window_bg_color, 0.08);
+}

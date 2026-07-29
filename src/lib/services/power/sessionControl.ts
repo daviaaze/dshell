@@ -6,7 +6,7 @@ import logger from '../../core/logger';
  * Encapsulates power/session shell commands.
  * Widgets call semantic methods; this service owns the Process.exec calls.
  */
-@register({GTypeName: 'SessionControl'})
+@register
 export default class SessionControl extends Object {
     static instance: SessionControl;
 

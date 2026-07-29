@@ -44,7 +44,7 @@ export type {VirtualMonitor, BoundaryGeometry} from './types';
  * - `virtualMonitors.ts` headless output management
  * - `commands.ts`        GAction registration
  */
-@register({GTypeName: 'Screenshot'})
+@register
 export default class Screenshot extends Object {
     static instance: Screenshot | undefined;
 

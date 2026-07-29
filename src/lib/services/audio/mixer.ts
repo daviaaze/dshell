@@ -102,7 +102,7 @@ function parseTargets(pwMetadata: string): Map<number, number> {
     return targets;
 }
 
-@register({GTypeName: 'AppMixer'})
+@register
 export default class AppMixer extends Object {
     static instance: AppMixer;
     static get_default() {

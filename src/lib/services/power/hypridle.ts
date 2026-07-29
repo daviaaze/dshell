@@ -65,7 +65,7 @@ const PROPS: Record<string, PropDef> = {
     suspendEnabled: {notify: 'suspend-enabled', settingsKey: 'suspendEnabled'},
 };
 
-@register({GTypeName: 'Hypridle'})
+@register
 export default class Hypridle extends GObject {
     static instance: Hypridle;
     static get_default() {

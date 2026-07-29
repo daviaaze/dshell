@@ -44,7 +44,7 @@ interface MatugenJson {
 
 // ── The service ──
 
-@register({GTypeName: 'PaletteGenerator'})
+@register
 export default class PaletteGenerator extends GObject {
     static instance: PaletteGenerator;
 

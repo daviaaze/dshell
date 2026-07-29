@@ -10,7 +10,7 @@ import logger from '../../core/logger';
 
 let _instance: BluetoothService | null = null;
 
-@register({GTypeName: 'BluetoothService'})
+@register
 export default class BluetoothService extends Object {
     #bt: Bluetooth.Bluetooth | null = null;
     #initialized = false;

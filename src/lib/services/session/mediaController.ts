@@ -9,7 +9,7 @@ import {connectFor, cleanupNode} from '../../core/connectFor';
  * Widgets bind to reactive properties and call semantic methods;
  * they never call Mpris.Player.play(), .pause(), .next(), etc. directly.
  */
-@register({GTypeName: 'MediaController'})
+@register
 export default class MediaController extends Object {
     static instance: MediaController;
 

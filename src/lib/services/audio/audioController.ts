@@ -9,7 +9,7 @@ import logger from '../../core/logger';
  * they never access Wireplumber.Audio D-Bus proxy or call
  * Endpoint.set_volume() / .set_mute() directly.
  */
-@register({GTypeName: 'AudioController'})
+@register
 export default class AudioController extends Object {
     static instance: AudioController;
 

@@ -50,7 +50,7 @@ function saveHistory(history: HistoryEntry[]) {
     });
 }
 
-@register({GTypeName: 'NotificationHistory'})
+@register
 export default class NotificationHistory extends Object {
     static instance: NotificationHistory;
     static get_default() {

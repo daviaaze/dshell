@@ -4,7 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
 import logger from '../../core/logger';
 
-@register({GTypeName: 'IdleInhibit'})
+@register
 export default class Inhibit extends Object {
     static instance: Inhibit;
     static get_default() {

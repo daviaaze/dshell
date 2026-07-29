@@ -23,7 +23,7 @@ fcntl.ioctl(fd, 0x40044590, 1)
 signal.pause()
 `;
 
-@register({GTypeName: 'Touchpad'})
+@register
 export default class Touchpad extends Object {
     static instance: Touchpad;
     static get_default() {
@@ -56,7 +56,7 @@ export default class Touchpad extends Object {
         return this.#available;
     }
 
-    @signal([Boolean], VoidType)
+    @signal
     toggled(_enabled: boolean): void {}
 
     toggle() {

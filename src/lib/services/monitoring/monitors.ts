@@ -89,7 +89,7 @@ function allGdkMonitors(): Gdk.Monitor[] {
     return result;
 }
 
-@register({GTypeName: 'MonitorService'})
+@register
 class MonitorService extends Object {
     static instance: MonitorService;
 

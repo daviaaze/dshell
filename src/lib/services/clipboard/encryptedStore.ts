@@ -50,7 +50,7 @@ const LEGACY_PNG_RE = /^clipboard-\d+\.png$/;
 
 // ── Singleton service ────────────────────────────────────────────────────────
 
-@register({GTypeName: 'EncryptedStore'})
+@register
 export class EncryptedStore extends Object {
     static instance: EncryptedStore;
 
@@ -66,7 +66,7 @@ export class EncryptedStore extends Object {
     #ready = false;
 
     /** Emitted after every mutation (add, delete, toggle, clear). */
-    @signal([])
+    @signal
     entriesChanged() {}
 
     // ── Initialisation ───────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import {Accessor} from 'gnim';
 import {toArray} from '../../core/gjsUtils';
 import {formatTemp} from './weatherUtils';
 
-@register({GTypeName: 'Weather'})
+@register
 export default class Weather extends Object {
     static instance: Weather;
 

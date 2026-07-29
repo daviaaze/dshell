@@ -2,7 +2,6 @@ import Bluetooth from 'gi://AstalBluetooth';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {computed, createState, onCleanup, effect} from 'gnim';
-import {toArray} from '../../../lib/core/gjsUtils';
 import {useSettings} from '../../../lib/settings';
 import {getDeviceBatteryPercentage} from '../../../lib/services/monitoring/bluetoothBattery';
 import {connectFor, cleanupNode} from '../../../lib/core/connectFor';
@@ -33,17 +32,11 @@ function deviceIcon(icon: string): string {
 }
 
 function applyColorCss(widget: Gtk.Widget, level: number | null) {
-    let css: string;
     if (level === null) return;
-    if (level < 20) css = '* { color: @error_color; }';
-    else if (level < 50) css = '* { color: @warning_color; }';
-    else return;
-
-    const provider = new Gtk.CssProvider();
-    provider.load_from_string(css);
-    widget
-        .get_style_context()
-        .add_provider(provider, Gtk.STYLE_PROVIDER_PRIORITY_USER);
+    widget.remove_css_class('battery-critical');
+    widget.remove_css_class('battery-low');
+    if (level < 20) widget.add_css_class('battery-critical');
+    else if (level < 50) widget.add_css_class('battery-low');
 }
 
 export default () => {

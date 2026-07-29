@@ -24,7 +24,7 @@ function windowCollection<T extends Astal.Window>(
     };
 }
 
-@register({GTypeName: 'WindowManager'})
+@register
 export default class WindowManager extends Object {
     static instance: WindowManager;
 

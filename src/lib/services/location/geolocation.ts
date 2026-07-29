@@ -12,7 +12,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import logger from '../../core/logger';
 
-@register({GTypeName: 'Geolocation'})
+@register
 export default class Geolocation extends Object {
     static instance: Geolocation;
 
@@ -26,12 +26,12 @@ export default class Geolocation extends Object {
     #available = false;
     #detecting = false;
 
-    @property(Int)
+    @property
     get latitude() {
         return this.#latitude;
     }
 
-    @property(Int)
+    @property
     get longitude() {
         return this.#longitude;
     }
@@ -41,7 +41,7 @@ export default class Geolocation extends Object {
         return this.#available;
     }
 
-    @signal([Double, Double], VoidType)
+    @signal
     locationChanged(_lat: number, _lon: number): void {}
 
     detect() {

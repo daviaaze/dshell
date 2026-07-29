@@ -18,11 +18,10 @@
  * catppuccin.activate()
  * ```
  */
-import Gtk from 'gi://Gtk?version=4.0';
-import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import logger from '../lib/core/logger';
 import {Object as GObject, register, property} from 'gnim/gobject';
+import {registerStyleSheet, updateStyleSheet} from './useStyle';
 
 // ── CSS custom property names ──
 
@@ -145,7 +144,7 @@ export class Stylesheet {
 
 // ── Theme Manager ──
 
-@register({GTypeName: 'ShadeTheme'})
+@register
 export class Theme extends GObject {
     static instance: Theme;
 
@@ -154,8 +153,7 @@ export class Theme extends GObject {
         return this.instance;
     }
 
-    #provider: Gtk.CssProvider;
-    #darkProvider: Gtk.CssProvider;
+    #paletteKey: string;
     #styleManager: Adw.StyleManager;
     #activeStylesheet: Stylesheet | null = null;
     #themes: Map<string, Stylesheet> = new Map();
@@ -170,26 +168,9 @@ export class Theme extends GObject {
     constructor() {
         super();
 
-        this.#provider = new Gtk.CssProvider();
-        this.#darkProvider = new Gtk.CssProvider();
+        this.#paletteKey = registerStyleSheet('');
         this.#styleManager = Adw.StyleManager.get_default();
         this.#isDark = this.#styleManager.dark;
-
-        // Register providers
-        const display = Gdk.Display.get_default();
-        if (display) {
-            Gtk.StyleContext.add_provider_for_display(
-                display,
-                this.#provider,
-                Gtk.STYLE_PROVIDER_PRIORITY_USER
-            );
-            // Dark-mode override at a slightly higher priority
-            Gtk.StyleContext.add_provider_for_display(
-                display,
-                this.#darkProvider,
-                Gtk.STYLE_PROVIDER_PRIORITY_USER + 1
-            );
-        }
 
         // Apply default theme
         this.#applyTheme(ADWAITA_COLORS);
@@ -282,27 +263,6 @@ export class Theme extends GObject {
             rules.push(`  ${varName}: ${value};`);
         }
         const css = `* {\n${rules.join('\n')}\n}`;
-        this.#provider.load_from_string(css);
-
-        // Re-apply with dark mode variant
-        if (this.#isDark) {
-            const darkRules: string[] = [];
-            for (const [key, value] of Object.entries(colors)) {
-                if (
-                    value === undefined ||
-                    value === null ||
-                    value === 'undefined'
-                ) {
-                    continue;
-                }
-                const varName = `--shade-${key}`;
-                darkRules.push(`  ${varName}: ${value};`);
-            }
-            this.#darkProvider.load_from_string(
-                `* {\n${darkRules.join('\n')}\n}`
-            );
-        } else {
-            this.#darkProvider.load_from_string('');
-        }
+        updateStyleSheet(this.#paletteKey, css);
     }
 }

@@ -8,7 +8,7 @@ import {Accessor} from 'gnim';
 export const TEMP_MIN = 2000;
 export const TEMP_MAX = 6500;
 
-@register({GTypeName: 'NightLight'})
+@register
 export default class NightLight extends Object {
     static readonly POLL_INTERVAL_SECONDS = 5;
 

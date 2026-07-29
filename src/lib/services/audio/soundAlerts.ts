@@ -27,7 +27,7 @@ type SoundCategory = 'notification' | 'capture' | 'battery' | 'system';
  * DND-aware: skips sounds when DndService.dnd is true.
  * Configurable: each category can be toggled via GSettings.
  */
-@register({GTypeName: 'SoundAlertService'})
+@register
 export default class SoundAlertService extends Object {
     static instance: SoundAlertService;
 

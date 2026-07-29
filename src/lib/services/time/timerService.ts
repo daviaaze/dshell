@@ -7,7 +7,7 @@ import {fmtDuration} from '../../core/time';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 
-@register({GTypeName: 'TimerService'})
+@register
 export default class TimerService extends Object {
     static instance: TimerService;
     static get_default() {

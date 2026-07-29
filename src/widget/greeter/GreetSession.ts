@@ -20,7 +20,7 @@ export type GreetState =
     | 'authenticated'
     | 'error';
 
-@register({GTypeName: 'GreetSession'})
+@register
 export class GreetSession extends Object {
     static instance: GreetSession;
 

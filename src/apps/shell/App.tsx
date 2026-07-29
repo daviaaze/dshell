@@ -15,10 +15,8 @@ import Touchpad from '../../lib/services/input/touchpad';
 import {registerServices, getWidgetDescriptors} from '../../widget';
 import ServiceRegistry from '../../lib/core/serviceRegistry';
 import logger, {perf} from '../../lib/core/logger';
-import resetCss from '../../style/reset.css';
-import css from './shade.css';
 
-@register()
+@register
 export class ShadeShell extends Adw.Application {
     constructor() {
         super({
@@ -31,34 +29,6 @@ export class ShadeShell extends Adw.Application {
         ShellState.get_default().registerCommands(this);
         Screenshot.get_default().registerCommands(this);
         Touchpad.get_default().registerCommands(this);
-    }
-
-    private initCss() {
-        const display = Gdk.Display.get_default();
-        if (!display) {
-            logger.warn('app', 'No display available. Cannot initialize CSS.');
-            return;
-        }
-
-        // Layer 1 — base resets (tooltips, popovers, accessibility)
-        const resetProvider = new Gtk.CssProvider();
-        resetProvider.load_from_string(resetCss);
-        Gtk.StyleContext.add_provider_for_display(
-            display,
-            resetProvider,
-            Gtk.STYLE_PROVIDER_PRIORITY_USER - 1
-        );
-
-        // Layer 2 — shell design tokens and global utility classes
-        const provider = new Gtk.CssProvider();
-        provider.load_from_string(css);
-        Gtk.StyleContext.add_provider_for_display(
-            display,
-            provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_USER
-        );
-
-        logger.debug('mount', 'CSS providers registered');
     }
 
     private initIcons() {
@@ -91,7 +61,6 @@ export class ShadeShell extends Adw.Application {
     /** Mount all widgets inside the SettingsProvider context. */
     private bootstrapUi() {
         perf.start('widgets-mount', 'mount');
-        this.initCss();
         this.initIcons();
 
         const settings = createAppSettings();

@@ -20,7 +20,7 @@ function parseLayoutName(fullName: string): string {
     return fullName.substring(0, 3).toUpperCase();
 }
 
-@register({GTypeName: 'KeyboardLayout'})
+@register
 export default class KeyboardLayout extends Object {
     static instance: KeyboardLayout;
 
@@ -43,7 +43,7 @@ export default class KeyboardLayout extends Object {
         return this.#available;
     }
 
-    @signal([])
+    @signal
     layoutChanged() {}
 
     #update() {

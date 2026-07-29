@@ -1,4 +1,4 @@
-import {Object, register, signal, String, VoidType} from 'gnim/gobject';
+import {Object, register, signal} from 'gnim/gobject';
 import {property} from '../../decorators';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -10,7 +10,7 @@ const MAX_RETRIES = 3;
 
 type FingerprintState = 'idle' | 'initializing' | 'verifying' | 'error';
 
-@register({GTypeName: 'FingerprintAuth'})
+@register
 export default class FingerprintAuth extends Object {
     static instance: FingerprintAuth;
 
@@ -60,13 +60,13 @@ export default class FingerprintAuth extends Object {
         return this.#state === 'verifying';
     }
 
-    @signal([])
+    @signal
     verified(): void {}
 
-    @signal([String], VoidType)
+    @signal
     failed(_reason: string): void {}
 
-    @signal([String], VoidType)
+    @signal
     statusChanged(_status: string): void {}
 
     #setState(state: FingerprintState) {

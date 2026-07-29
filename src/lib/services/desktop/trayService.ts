@@ -7,7 +7,7 @@ import logger from '../../core/logger';
  *
  * Widgets bind to `items` instead of importing `gi://AstalTray` directly.
  */
-@register({GTypeName: 'TrayService'})
+@register
 export default class TrayService extends Object {
     static instance: TrayService;
 

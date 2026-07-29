@@ -103,8 +103,7 @@ function main() {
             logger.info(CAT, `  window: ${w.info.clazz} geo=${geo}`);
         }
 
-        applyPopupCss();
-
+        
         // ── Window ──────────────────────────────────────────
         const win = new Gtk.Window({
             application: app,
