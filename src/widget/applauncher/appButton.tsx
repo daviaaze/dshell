@@ -1,10 +1,10 @@
 import Apps from 'gi://AstalApps';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import WindowManager from '#/lib/services/state/windowManager';
-import {FrecencyManager} from '#/lib/services/search/frecency';
-import {launchApp} from '#/lib/services/state/apps';
-import {useStyle} from '#/style/useStyle';
+import WindowManager from '../../lib/services/state/windowManager';
+import {FrecencyManager} from '../../lib/services/search/frecency';
+import {launchApp} from '../../lib/services/state/apps';
+import {useStyle} from '../../style/useStyle';
 
 export default ({
     application,
@@ -24,51 +24,10 @@ export default ({
             background: 'var(--shade-active-bg)',
         },
     });
-    // Create child content once per button instance to avoid
-    // gtk_button_set_child assertion on re-render.
-    let set = false;
     return (
         <Gtk.Button
-            $={self => {
-                if (set) return;
-                set = true;
+            ref={self => {
                 appButtonStyle.$(self);
-                const icon = (
-                    <Gtk.Image
-                        iconName={application.iconName || ''}
-                        pixelSize={48}
-                    />
-                );
-                const label = (
-                    <Gtk.Label
-                        wrap
-                        cssClasses={['title-2']}
-                        label={application.name}
-                        xalign={0}
-                    />
-                );
-                const desc = (
-                    <Gtk.Label
-                        cssClasses={['body']}
-                        label={application.description}
-                        xalign={0}
-                        maxWidthChars={25}
-                        wrap
-                    />
-                );
-                const textBox = (
-                    <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
-                        {label}
-                        {desc}
-                    </Gtk.Box>
-                );
-                const box = (
-                    <Gtk.Box spacing={8}>
-                        {icon}
-                        {textBox}
-                    </Gtk.Box>
-                );
-                self.child = box as Gtk.Widget;
             }}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             cssClasses={['app-button', appButtonStyle.class]}
@@ -83,6 +42,28 @@ export default ({
                 application.frequency += 1;
                 launchApp(application);
             }}
-        />
+        >
+            <Gtk.Box spacing={8}>
+                <Gtk.Image
+                    iconName={application.iconName || ''}
+                    pixelSize={48}
+                />
+                <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
+                    <Gtk.Label
+                        wrap
+                        cssClasses={['title-2']}
+                        label={application.name}
+                        xalign={0}
+                    />
+                    <Gtk.Label
+                        cssClasses={['body']}
+                        label={application.description}
+                        xalign={0}
+                        maxWidthChars={25}
+                        wrap
+                    />
+                </Gtk.Box>
+            </Gtk.Box>
+        </Gtk.Button>
     );
 };

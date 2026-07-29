@@ -10,7 +10,7 @@
  * Run: gjs -m src/lib/__tests__/hypridle.test.ts
  */
 
-import Hypridle from '#/lib/services/power/hypridle';
+import Hypridle from '../services/power/hypridle';
 import {describe, it, expect, run} from './test-runner';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -28,14 +28,24 @@ function mockAccessor<T>(override?: T): import('gnim').Accessor<T> {
 /** Minimal mock settings object for init() */
 function mockSettings(overrides: Record<string, unknown> = {}) {
     return {
-        autoLockEnabled: mockAccessor(overrides.autoLockEnabled as boolean ?? true),
-        idleTimeout: mockAccessor(overrides.idleTimeout as number ?? 300),
-        screenDimEnabled: mockAccessor(overrides.screenDimEnabled as boolean ?? true),
-        screenDimTimeout: mockAccessor(overrides.screenDimTimeout as number ?? 240),
-        dpmsEnabled: mockAccessor(overrides.dpmsEnabled as boolean ?? true),
-        dpmsTimeout: mockAccessor(overrides.dpmsTimeout as number ?? 600),
-        suspendEnabled: mockAccessor(overrides.suspendEnabled as boolean ?? false),
-        suspendTimeout: mockAccessor(overrides.suspendTimeout as number ?? 1800),
+        autoLockEnabled: mockAccessor(
+            (overrides.autoLockEnabled as boolean) ?? true
+        ),
+        idleTimeout: mockAccessor((overrides.idleTimeout as number) ?? 300),
+        screenDimEnabled: mockAccessor(
+            (overrides.screenDimEnabled as boolean) ?? true
+        ),
+        screenDimTimeout: mockAccessor(
+            (overrides.screenDimTimeout as number) ?? 240
+        ),
+        dpmsEnabled: mockAccessor((overrides.dpmsEnabled as boolean) ?? true),
+        dpmsTimeout: mockAccessor((overrides.dpmsTimeout as number) ?? 600),
+        suspendEnabled: mockAccessor(
+            (overrides.suspendEnabled as boolean) ?? false
+        ),
+        suspendTimeout: mockAccessor(
+            (overrides.suspendTimeout as number) ?? 1800
+        ),
         setAutoLockEnabled: () => {},
         setIdleTimeout: () => {},
         setScreenDimEnabled: () => {},

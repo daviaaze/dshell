@@ -1,4 +1,4 @@
-import logger from '#/lib/core/logger';
+import logger from './logger';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toArray<T>(list: any): T[] {

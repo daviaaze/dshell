@@ -1,13 +1,13 @@
-import GObject, {register} from 'gnim/gobject';
-import {Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {Object, register} from 'gnim/gobject';
+import {Process} from '../../core/process';
+import logger from '../../core/logger';
 
 /**
  * Encapsulates power/session shell commands.
  * Widgets call semantic methods; this service owns the Process.exec calls.
  */
 @register({GTypeName: 'SessionControl'})
-export default class SessionControl extends GObject.Object {
+export default class SessionControl extends Object {
     static instance: SessionControl;
 
     static get_default() {

@@ -6,20 +6,17 @@
         "lint": "eslint . --fix",
         "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
         "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
-        "types": "npx @ts-for-gir/cli generate -o @girs --ignoreVersionConflicts",
+        "types": "gnim types --alias",
         "check": "tsc --noEmit",
-        "check:compliance": "node tools/check-compliance.mjs",
-        "check:all": "pnpm run types && pnpm run lint && pnpm run check && pnpm run check:compliance",
-        "test": "echo '=== Building test files ===' && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/hypridle.test.ts'],bundle:true,outfile:'build/test/hypridle.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/timeout.test.ts'],bundle:true,outfile:'build/test/timeout.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/stdout.test.ts'],bundle:true,outfile:'build/test/stdout.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/clock.test.ts'],bundle:true,outfile:'build/test/clock.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/screenshot.test.ts'],bundle:true,outfile:'build/test/screenshot.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/greeter.test.ts'],bundle:true,outfile:'build/test/greeter.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/clipboard.test.ts'],bundle:true,outfile:'build/test/clipboard.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/shellState.test.ts'],bundle:true,outfile:'build/test/shellState.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/sessionLockService.test.ts'],bundle:true,outfile:'build/test/sessionLockService.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && echo '=== Running tests ===' && nix develop -c gjs -m build/test/hypridle.test.js && nix develop -c gjs -m build/test/timeout.test.js && nix develop -c gjs -m build/test/stdout.test.js && nix develop -c gjs -m build/test/clock.test.js && nix develop -c gjs -m build/test/screenshot.test.js && nix develop -c gjs -m build/test/greeter.test.js && nix develop -c gjs -m build/test/clipboard.test.js && nix develop -c gjs -m build/test/shellState.test.js && nix develop -c gjs -m build/test/sessionLockService.test.js nix develop -c gjs -m build/test/shellState.test.js && nix develop -c gjs -m build/test/sessionLockService.test.js && echo '=== All tests passed ==='",
+        "check:all": "pnpm run types && pnpm run lint && pnpm run check",
+        "test": "echo '=== Building test files ===' && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/hypridle.test.ts'],bundle:true,outfile:'build/test/hypridle.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/timeout.test.ts'],bundle:true,outfile:'build/test/timeout.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/stdout.test.ts'],bundle:true,outfile:'build/test/stdout.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/clock.test.ts'],bundle:true,outfile:'build/test/clock.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/screenshot.test.ts'],bundle:true,outfile:'build/test/screenshot.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/greeter.test.ts'],bundle:true,outfile:'build/test/greeter.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/clipboard.test.ts'],bundle:true,outfile:'build/test/clipboard.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/shellState.test.ts'],bundle:true,outfile:'build/test/shellState.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/sessionLockService.test.ts'],bundle:true,outfile:'build/test/sessionLockService.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\" && echo '=== Running tests ===' && nix develop -c gjs -m build/test/hypridle.test.js && nix develop -c gjs -m build/test/timeout.test.js && nix develop -c gjs -m build/test/stdout.test.js && nix develop -c gjs -m build/test/clock.test.js && nix develop -c gjs -m build/test/screenshot.test.js && nix develop -c gjs -m build/test/greeter.test.js && nix develop -c gjs -m build/test/clipboard.test.js && nix develop -c gjs -m build/test/shellState.test.js && nix develop -c gjs -m build/test/sessionLockService.test.js && nix develop -c gjs -m build/test/shellState.test.js && echo '=== All tests passed ==='",
         "test:compile": "node -e \"require('esbuild').buildSync({entryPoints:['src/lib/__tests__/hypridle.test.ts'],bundle:true,outfile:'build/test/hypridle.test.js',format:'esm',external:['gi://*'],alias:{'#':'./src'},target:'es2022'})\"",
         "build": "nix build",
-        "dev": "nix run . --",
+        "dev": "bash scripts/dev.sh",
         "syntax": "mkdir -p /tmp/esbuild-check && esbuild src/apps/shell/main.ts --bundle --format=esm --external:gi://* --external:resource://* --external:system --external:gettext --external:gnim --external:gnim/* --external:gnim-schemas --outdir=/tmp/esbuild-check && rm -rf /tmp/esbuild-check"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "@girs/adw-1": "^1.10.0-4.0.4",
-        "@girs/gweather-4.0": "^4.1.0",
         "esbuild": "^0.28.0",
         "eslint": "^10.4.1",
         "eslint-plugin-sonarjs": "^4.1.0",
@@ -27,8 +24,9 @@
         "typescript-eslint": "^8.60.0"
     },
     "dependencies": {
-        "gnim": "1.9.1",
-        "gnim-schemas": "^0.3.0"
+        "@gnim-js/gtk4": "2.0.0-beta.7",
+        "gnim": "2.0.0-beta.7",
+        "prettier": "^3.9.6"
     },
     "prettier": {
         "semi": true,

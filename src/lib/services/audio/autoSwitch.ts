@@ -1,7 +1,7 @@
 import Wireplumber from 'gi://AstalWp';
 import GLib from 'gi://GLib?version=2.0';
-import {createBinding} from 'gnim';
-import logger from '#/lib/core/logger';
+import {bind} from 'gnim';
+import logger from '../../core/logger';
 
 export function initAutoSwitch() {
     // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
@@ -9,7 +9,7 @@ export function initAutoSwitch() {
         const audio = Wireplumber.get_default()!.audio;
         let knownIds = new Set<number>();
 
-        const binding = createBinding(audio, 'speakers');
+        const binding = bind(audio, 'speakers');
         binding.subscribe(() => {
             const speakers = binding();
             if (!speakers) return;

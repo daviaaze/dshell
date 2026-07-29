@@ -7,8 +7,8 @@
  *   → start_session (on success)
  */
 import Greet from 'gi://AstalGreet';
-import GObject, {getter, register, setter} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import {Object, register, property} from 'gnim/gobject';
+import logger from '../../lib/core/logger';
 
 export type GreetState =
     | 'idle'
@@ -19,7 +19,7 @@ export type GreetState =
     | 'error';
 
 @register({GTypeName: 'GreetSession'})
-export class GreetSession extends GObject.Object {
+export class GreetSession extends Object {
     static instance: GreetSession;
 
     static get_default() {
@@ -43,40 +43,37 @@ export class GreetSession extends GObject.Object {
         this.#onSessionStarted = cb;
     }
 
-    @getter(String)
+    @property
     get state() {
         return this.#state;
     }
 
-    @setter(String)
     set state(v: GreetState) {
         this.#state = v;
         this.notify('state');
     }
 
-    @getter(String)
+    @property
     get errorMessage() {
         return this.#errorMessage;
     }
 
-    @setter(String)
     set errorMessage(v: string) {
         this.#errorMessage = v;
         this.notify('error-message');
     }
 
-    @getter(String)
+    @property
     get infoMessage() {
         return this.#infoMessage;
     }
 
-    @setter(String)
     set infoMessage(v: string) {
         this.#infoMessage = v;
         this.notify('info-message');
     }
 
-    @getter(Boolean)
+    @property
     get available(): boolean {
         try {
             // Quick availability check
@@ -110,28 +107,40 @@ export class GreetSession extends GObject.Object {
 
         // Connect all signals
         this.#signalIds = [
-            this.#greeter.connect('visible-request', (_g: Greet.Greeter, msg: string) => {
-                this.#infoMessage = msg;
-                this.notify('info-message');
-                this.state = 'awaiting-input';
-            }),
+            this.#greeter.connect(
+                'visible-request',
+                (_g: Greet.Greeter, msg: string) => {
+                    this.#infoMessage = msg;
+                    this.notify('info-message');
+                    this.state = 'awaiting-input';
+                }
+            ),
 
-            this.#greeter.connect('secret-request', (_g: Greet.Greeter, msg: string) => {
-                this.#infoMessage = msg || 'Password required';
-                this.notify('info-message');
-                this.state = 'awaiting-input';
-            }),
+            this.#greeter.connect(
+                'secret-request',
+                (_g: Greet.Greeter, msg: string) => {
+                    this.#infoMessage = msg || 'Password required';
+                    this.notify('info-message');
+                    this.state = 'awaiting-input';
+                }
+            ),
 
-            this.#greeter.connect('info-message', (_g: Greet.Greeter, msg: string) => {
-                this.#infoMessage = msg;
-                this.notify('info-message');
-            }),
+            this.#greeter.connect(
+                'info-message',
+                (_g: Greet.Greeter, msg: string) => {
+                    this.#infoMessage = msg;
+                    this.notify('info-message');
+                }
+            ),
 
-            this.#greeter.connect('error-message', (_g: Greet.Greeter, msg: string) => {
-                this.#errorMessage = msg;
-                this.notify('error-message');
-                this.state = 'error';
-            }),
+            this.#greeter.connect(
+                'error-message',
+                (_g: Greet.Greeter, msg: string) => {
+                    this.#errorMessage = msg;
+                    this.notify('error-message');
+                    this.state = 'error';
+                }
+            ),
 
             this.#greeter.connect('cancelled', () => {
                 this.#errorMessage = 'Authentication cancelled';
@@ -172,7 +181,7 @@ export class GreetSession extends GObject.Object {
     startSession(cmd: string[], env: string[] = []): void {
         if (!this.#greeter) return;
 
-        this.#greeter.start_session(cmd, env, (_g: Greet.Greeter, res: unknown) => {
+        this.#greeter.start_session(cmd, env, (_g: any, res: any) => {
             try {
                 this.#greeter!.start_session_finish(res);
                 // If start_session returns, the session is running.

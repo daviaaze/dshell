@@ -1,9 +1,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Accessor} from 'gnim';
-import {useStyle} from '#/style/useStyle';
-import {useSettings} from '#/lib/settings';
-import SystemUsage from '#/lib/services/monitoring/systemUsage';
+import {useStyle} from '../../style/useStyle';
+import {useSettings} from '../../lib/settings';
+import SystemUsage from '../../lib/services/monitoring/systemUsage';
 
 const LEVEL_BAR_SIZE = 50;
 
@@ -38,13 +38,17 @@ const Indicator = ({
             >
                 <Gtk.Label
                     label={label}
-                    cssClasses={['caption-heading', 'numeral', numeralStyle.class]}
-                    $={numeralStyle.$}
+                    cssClasses={[
+                        'caption-heading',
+                        'numeral',
+                        numeralStyle.class,
+                    ]}
+                    ref={numeralStyle.$}
                 />
                 <Gtk.Label
                     cssClasses={['caption', 'numeral', numeralStyle.class]}
-                    $={numeralStyle.$}
-                    label={value(v => (v * 100).toFixed(0).concat(unit))}
+                    ref={numeralStyle.$}
+                    label={value.as(v => (v * 100).toFixed(0).concat(unit))}
                 />
             </Gtk.Box>
             <Gtk.LevelBar

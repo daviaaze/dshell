@@ -7,7 +7,9 @@ import {xor, padTo16, lenBlock, incCounter} from './cryptoEngineTables';
 function ghashMul(x: Uint8Array, y: Uint8Array): Uint8Array {
     const V = new Uint8Array(y);
     const Z = new Uint8Array(16);
-    const R = new Uint8Array([0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    const R = new Uint8Array([
+        0xe1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]);
 
     for (let i = 0; i < 128; i++) {
         const byteIdx = Math.floor(i / 8);
@@ -16,11 +18,13 @@ function ghashMul(x: Uint8Array, y: Uint8Array): Uint8Array {
             for (let j = 0; j < 16; j++) Z[j]! ^= V[j]!;
         }
         if (V[15]! & 1) {
-            for (let j = 15; j > 0; j--) V[j] = (V[j]! >>> 1) | ((V[j - 1]! & 1) << 7);
+            for (let j = 15; j > 0; j--)
+                V[j] = (V[j]! >>> 1) | ((V[j - 1]! & 1) << 7);
             V[0] = V[0]! >>> 1;
             for (let j = 0; j < 16; j++) V[j]! ^= R[j]!;
         } else {
-            for (let j = 15; j > 0; j--) V[j] = (V[j]! >>> 1) | ((V[j - 1]! & 1) << 7);
+            for (let j = 15; j > 0; j--)
+                V[j] = (V[j]! >>> 1) | ((V[j - 1]! & 1) << 7);
             V[0] = V[0]! >>> 1;
         }
     }
@@ -53,7 +57,10 @@ export function buildAuthData(
     const authData = new Uint8Array(aadPadded.length + ctPadded.length + 16);
     authData.set(aadPadded);
     authData.set(ctPadded, aadPadded.length);
-    authData.set(lenBlock(additionalData.length, ciphertext.length), aadPadded.length + ctPadded.length);
+    authData.set(
+        lenBlock(additionalData.length, ciphertext.length),
+        aadPadded.length + ctPadded.length
+    );
     return authData;
 }
 

@@ -10,8 +10,8 @@
  *   frecencyScore = log2(count + 1) * recencyScore
  *   finalSearchScore = fuzzyScore * (1 + boost * frecencyScore)
  */
-import GObject, {getter, register, signal} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import {Object as GObject, register, signal, property} from 'gnim/gobject';
+import logger from '../../core/logger';
 import {FrecencyStorage, type FrecencyEntry} from './storage';
 
 // ── Constants ──
@@ -25,7 +25,7 @@ const SEARCH_BOOST = 0.5;
 // ── Frecency Manager ──
 
 @register({GTypeName: 'FrecencyManager'})
-export class FrecencyManager extends GObject.Object {
+export class FrecencyManager extends GObject {
     static instance: FrecencyManager;
     static get_default() {
         if (!this.instance) this.instance = new FrecencyManager();
@@ -146,13 +146,13 @@ export class FrecencyManager extends GObject.Object {
     }
 
     /** Emitted when frecency data changes. */
-    @signal()
+    @signal([])
     changed(): void {}
 
     /**
      * Check if frecency is available (has any entries).
      */
-    @getter(Boolean)
+    @property
     get hasData(): boolean {
         return Object.keys(this.#storage.getAll()).length > 0;
     }

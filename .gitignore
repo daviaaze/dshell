@@ -2,7 +2,7 @@ node_modules/
 result/
 build/
 dist/
-@girs/
+.gnim/
 .direnv
 result
 *.qcow2
@@ -13,4 +13,4 @@ test-output/
 .atl/
 .vscode
 # Indexed documentation cache
-Knowledge-Base/.docs-index/
+Knowledge-Base/

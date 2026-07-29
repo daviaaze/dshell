@@ -1,11 +1,11 @@
 import Batery from 'gi://AstalBattery';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
+import {bind} from 'gnim';
 
 export default () => {
     const b = Batery.get_default();
 
-    const warningStyles = createBinding(b, 'warningLevel').as(level => {
+    const warningStyles = bind(b, 'warning-level').as(level => {
         if (
             level === Batery.WarningLevel.CRITICIAL ||
             level === Batery.WarningLevel.ACTION
@@ -21,9 +21,9 @@ export default () => {
 
     return (
         <Gtk.Image
-            visible={createBinding(b, 'isPresent')}
-            iconName={createBinding(b, 'batteryIconName')}
-            tooltipMarkup={createBinding(b, 'percentage').as(
+            visible={bind(b, 'is-present')}
+            iconName={bind(b, 'battery-icon-name')}
+            tooltipMarkup={bind(b, 'percentage').as(
                 p => `${(p * 100).toFixed(0)}%`
             )}
             cssClasses={warningStyles}

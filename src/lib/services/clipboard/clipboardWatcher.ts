@@ -14,12 +14,15 @@
  */
 
 import GLib from 'gi://GLib?version=2.0';
-import {subprocess, Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {subprocess, Process} from '../../core/process';
+import logger from '../../core/logger';
 
 export type ClipType = 'text' | 'image';
 
-export type ClipboardChangeCallback = (type: ClipType, rawBytes: Uint8Array) => void;
+export type ClipboardChangeCallback = (
+    type: ClipType,
+    rawBytes: Uint8Array
+) => void;
 
 let textWatcher: Process | null = null;
 let imageWatcher: Process | null = null;
@@ -35,7 +38,10 @@ let activeCallback: ClipboardChangeCallback | null = null;
  */
 export function startClipboardWatcher(callback: ClipboardChangeCallback): void {
     if (textWatcher || imageWatcher) {
-        logger.warn('clipboard', 'watcher already started, ignoring duplicate start');
+        logger.warn(
+            'clipboard',
+            'watcher already started, ignoring duplicate start'
+        );
         return;
     }
 

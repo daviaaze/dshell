@@ -1,11 +1,19 @@
-import GObject, {getter, register, signal} from 'gnim/gobject';
-import {Process} from '#/lib/core/process';
+import {
+    Object,
+    register,
+    signal,
+    property,
+    Double,
+    VoidType,
+    Int,
+} from 'gnim/gobject';
+import {Process} from '../../core/process';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 @register({GTypeName: 'Geolocation'})
-export default class Geolocation extends GObject.Object {
+export default class Geolocation extends Object {
     static instance: Geolocation;
 
     static get_default() {
@@ -18,23 +26,23 @@ export default class Geolocation extends GObject.Object {
     #available = false;
     #detecting = false;
 
-    @getter(Number)
+    @property(Int)
     get latitude() {
         return this.#latitude;
     }
 
-    @getter(Number)
+    @property(Int)
     get longitude() {
         return this.#longitude;
     }
 
-    @getter(Boolean)
+    @property
     get available() {
         return this.#available;
     }
 
-    @signal([GObject.TYPE_DOUBLE, GObject.TYPE_DOUBLE], GObject.TYPE_NONE)
-    locationChanged(_lat: number, _lon: number): undefined { return undefined; }
+    @signal([Double, Double], VoidType)
+    locationChanged(_lat: number, _lon: number): void {}
 
     detect() {
         if (this.#detecting) return;
@@ -56,7 +64,7 @@ export default class Geolocation extends GObject.Object {
         name: string,
         objectPath: string,
         interfaceName: string,
-        errorLabel: string,
+        errorLabel: string
     ): Promise<Gio.DBusProxy> {
         return new Promise<Gio.DBusProxy>((resolve, reject) => {
             Gio.DBusProxy.new_for_bus(
@@ -114,15 +122,16 @@ export default class Geolocation extends GObject.Object {
         );
     }
 
-    #connectGeoClueLocationSignal(client: Gio.DBusProxy): {signalId: number; latestLocation: string | null} {
+    #connectGeoClueLocationSignal(client: Gio.DBusProxy): {
+        signalId: number;
+        latestLocation: string | null;
+    } {
         let latestLocation: string | null = null;
         const signalId = client.connect(
             'g-signal',
             (_proxy, _sender, signalName, params) => {
                 if (signalName === 'LocationUpdated') {
-                    const newPath = params
-                        .get_child_value(1)
-                        .get_string()?.[0];
+                    const newPath = params.get_child_value(1).get_string()?.[0];
                     logger.debug('geo', `LocationUpdated signal: ${newPath}`);
                     if (newPath && newPath !== '/') latestLocation = newPath;
                 }
@@ -155,13 +164,18 @@ export default class Geolocation extends GObject.Object {
 
     async #waitForGeoClueLocation(
         client: Gio.DBusProxy,
-        latestLocationRef: {latestLocation: string | null},
+        latestLocationRef: {latestLocation: string | null}
     ): Promise<string | null> {
         for (let i = 0; i < 60; i++) {
-            if (latestLocationRef.latestLocation && latestLocationRef.latestLocation !== '/') {
+            if (
+                latestLocationRef.latestLocation &&
+                latestLocationRef.latestLocation !== '/'
+            ) {
                 return latestLocationRef.latestLocation;
             }
-            const cached = client.get_cached_property('Location')?.get_string()?.[0] ?? null;
+            const cached =
+                client.get_cached_property('Location')?.get_string()?.[0] ??
+                null;
             if (cached && cached !== '/') return cached;
             await new Promise<void>(r =>
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
@@ -181,7 +195,7 @@ export default class Geolocation extends GObject.Object {
                 'org.freedesktop.GeoClue2',
                 '/org/freedesktop/GeoClue2/Manager',
                 'org.freedesktop.GeoClue2.Manager',
-                'Manager proxy failed',
+                'Manager proxy failed'
             );
 
             const clientPath = this.#getGeoClueClientPath(manager);
@@ -195,17 +209,21 @@ export default class Geolocation extends GObject.Object {
                 'org.freedesktop.GeoClue2',
                 clientPath,
                 'org.freedesktop.GeoClue2.Client',
-                'Client proxy failed',
+                'Client proxy failed'
             );
 
             this.#configureGeoClueClient(client, clientPath);
 
-            const {signalId, latestLocation} = this.#connectGeoClueLocationSignal(client);
+            const {signalId, latestLocation} =
+                this.#connectGeoClueLocationSignal(client);
             const latestLocationRef = {latestLocation};
 
             await this.#startGeoClueClient(client);
 
-            const locationPath = await this.#waitForGeoClueLocation(client, latestLocationRef);
+            const locationPath = await this.#waitForGeoClueLocation(
+                client,
+                latestLocationRef
+            );
 
             if (signalId) client.disconnect(signalId);
 
@@ -220,11 +238,13 @@ export default class Geolocation extends GObject.Object {
                 'org.freedesktop.GeoClue2',
                 locationPath,
                 'org.freedesktop.GeoClue2.Location',
-                'Location proxy failed',
+                'Location proxy failed'
             );
 
-            const lat = location.get_cached_property('Latitude')?.get_double() ?? 0;
-            const lon = location.get_cached_property('Longitude')?.get_double() ?? 0;
+            const lat =
+                location.get_cached_property('Latitude')?.get_double() ?? 0;
+            const lon =
+                location.get_cached_property('Longitude')?.get_double() ?? 0;
             logger.info('geo', `coordinates lat=${lat} lon=${lon}`);
 
             this.#update(lat, lon);
@@ -235,8 +255,16 @@ export default class Geolocation extends GObject.Object {
         } finally {
             if (client) {
                 try {
-                    client.call_sync('Stop', null, Gio.DBusCallFlags.NONE, -1, null);
-                } catch { /* ignore */ }
+                    client.call_sync(
+                        'Stop',
+                        null,
+                        Gio.DBusCallFlags.NONE,
+                        -1,
+                        null
+                    );
+                } catch {
+                    /* ignore */
+                }
             }
         }
     }

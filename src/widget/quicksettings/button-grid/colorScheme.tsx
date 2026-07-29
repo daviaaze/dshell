@@ -1,10 +1,10 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import {LinkedBox} from '#/widget/common/linkedBox';
-import {ColorScheme, DarkModes} from '#/lib/services/display/colorScheme';
+import {bind} from 'gnim';
+import type {QuickButton} from './quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import {LinkedBox} from '../../common/linkedBox';
+import {ColorScheme, DarkModes} from '../../../lib/services/display/colorScheme';
 
 export default (): QuickButton => {
     const colorScheme = ColorScheme.get_default();
@@ -40,13 +40,13 @@ export default (): QuickButton => {
                 </Gtk.Button>
             </LinkedBox>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    );
 
     return {
         widget: (
             <QuickToggleButton
-                icon={createBinding(colorScheme, 'iconName')}
-                label={createBinding(colorScheme, 'colorScheme').as(c => {
+                icon={bind(colorScheme, 'iconName')}
+                label={bind(colorScheme, 'colorScheme').as(c => {
                     if (c === DarkModes.AUTO) return 'Auto';
                     if (c === DarkModes.LIGHT) return 'Light Mode';
                     return 'Dark Mode';
@@ -64,6 +64,6 @@ export default (): QuickButton => {
                 }}
                 popover={popover}
             />
-        ) as Gtk.Widget,
+        ),
     };
 };

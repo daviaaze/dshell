@@ -1,13 +1,13 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, For} from 'gnim';
-import {useSettings} from '#/lib/settings';
+import {bind, For} from 'gnim';
+import {useSettings} from '../../lib/settings';
 import Tray from 'gi://AstalTray';
-import TrayService from '#/lib/services/desktop/trayService';
-import ShellState from '#/lib/services/state/shellState';
-import {PowerMenu} from '#/widget/common/powerMenu';
-import {IconButton, IconMenuButton} from '#/widget/common/iconButton';
-import {openSettings} from '#/widget';
-import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
+import TrayService from '../../lib/services/desktop/trayService';
+import ShellState from '../../lib/services/state/shellState';
+import {PowerMenu} from '../common/powerMenu';
+import {IconButton, IconMenuButton} from '../common/iconButton';
+import {openSettings} from '..';
+import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export const TrayBox = () => {
     const tray = TrayService.get_default();
@@ -21,16 +21,14 @@ export const TrayBox = () => {
         />
     );
 
-    const PowerButton = () => {
-        const menu = PowerMenu();
-        return (
-            <IconMenuButton
-                icon="system-shutdown-symbolic"
-                cssClasses={['destructive-action']}
-                popover={menu}
-            />
-        );
-    };
+    const PowerButton = () => (
+        <IconMenuButton
+            icon="system-shutdown-symbolic"
+            cssClasses={['destructive-action']}
+        >
+            <PowerMenu />
+        </IconMenuButton>
+    );
 
     const RotateButton = () => {
         const barCfg = useSettings().bar;
@@ -57,27 +55,24 @@ export const TrayBox = () => {
 
     return (
         <Gtk.Box spacing={4} homogeneous halign={Gtk.Align.CENTER}>
-            <For each={createBinding(tray, 'items')}>
+            <For each={bind(tray, 'items')}>
                 {(item: Tray.TrayItem) => (
                     <Gtk.MenuButton
                         cssClasses={['circular']}
-                        $={self => {
+                        ref={self => {
                             self.insert_action_group(
                                 'dbusmenu',
                                 item.actionGroup
                             );
                             usePopoverCleanup(self);
                         }}
-                        popover={
-                            (
-                                <Gtk.PopoverMenu
-                                    cssClasses={['menu']}
-                                    menuModel={item.menuModel}
-                                />
-                            ) as Gtk.Popover
-                        }
-                        tooltip_markup={createBinding(item, 'tooltip_markup')}
+                        tooltipMarkup={bind(item, 'tooltip-markup')}
                     >
+                        <Gtk.PopoverMenu
+                            slot="popover"
+                            cssClasses={['menu']}
+                            menuModel={item.menuModel}
+                        />
                         <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />
                     </Gtk.MenuButton>
                 )}

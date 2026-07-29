@@ -1,8 +1,8 @@
-import {useSettings} from '#/lib/settings';
-import Weather from '#/lib/services/location/weather';
+import {useSettings} from '../../lib/settings';
+import Weather from '../../lib/services/location/weather';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 
 export default () => {
     const settings = useSettings().weather;
@@ -46,12 +46,14 @@ export default () => {
                 title={'Detect Location Now'}
                 activatable
                 onActivated={() => {
-                    logger.info('weather', 'manual location detection triggered');
+                    logger.info(
+                        'weather',
+                        'manual location detection triggered'
+                    );
                     weather.detectLocation();
                 }}
             >
                 <Gtk.Image
-                    $type="prefix"
                     iconName="find-location-symbolic"
                     pixelSize={16}
                 />
@@ -68,7 +70,6 @@ export default () => {
                 }}
             >
                 <Gtk.Image
-                    $type="prefix"
                     iconName="view-refresh-symbolic"
                     pixelSize={16}
                 />

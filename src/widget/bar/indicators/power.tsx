@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createState, onMount, onCleanup} from 'gnim';
-import PowerProfiles from '#/lib/services/power/powerProfiles';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
+import {createState, effect, onCleanup} from 'gnim';
+import PowerProfiles from '../../../lib/services/power/powerProfiles';
+import {connectFor, cleanupNode} from '../../../lib/core/connectFor';
 
 export default () => {
     const [visible, setVisible] = createState(false);
@@ -9,7 +9,7 @@ export default () => {
     const [tooltip, setTooltip] = createState('');
     const pp = PowerProfiles.get_default();
 
-    onMount(() => {
+    effect(() => {
         const _hn = {};
         const update = () => {
             const p = pp.activeProfile;

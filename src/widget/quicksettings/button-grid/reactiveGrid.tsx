@@ -1,14 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createComputed, createEffect} from 'gnim';
+import {computed, For} from 'gnim';
 import type {QuickButton} from './quickButton';
-
-function removeAllChildren(grid: Gtk.Grid) {
-    // Gtk.Grid has no remove_all(); detach every child from the first one
-    // until the container is empty.
-    for (let child = grid.get_first_child(); child; child = grid.get_first_child()) {
-        grid.remove(child);
-    }
-}
 
 export interface ReactiveGridProps {
     cols?: number;
@@ -16,37 +8,47 @@ export interface ReactiveGridProps {
 }
 
 /**
- * A Gtk.Grid that recomputes the layout whenever a QuickButton's `visible`
- * accessor changes, removing hidden children and packing the remaining ones
- * tightly in row-major order.
+ * A reactive grid that reflows visible items tightly into rows.
+ *
+ * Uses nested Gtk.Boxes (vertical outer, horizontal per-row) instead of
+ * Gtk.Grid, because JSX in gnim v2 returns virtual nodes (not widget
+ * instances) and Gtk.Grid.attach() requires real widgets.  The `<For>`
+ * component preserves child identity via object reference, so the same
+ * QuickButton keeps its widget across reflows.
  */
 export const ReactiveGrid = ({cols = 2, items}: ReactiveGridProps) => {
-    const visibleItems = createComputed(() =>
-        items
-            .filter(item => item.visible?.() !== false)
-            .map(item => item.widget)
+    const visibleItems = computed(() =>
+        items.filter(item => item.visible?.() !== false)
     );
 
+    const rows = computed(() => {
+        const vis = visibleItems();
+        const result: QuickButton[][] = [];
+        for (let i = 0; i < vis.length; i += cols) {
+            result.push(vis.slice(i, i + cols));
+        }
+        return result;
+    });
+
     return (
-        <Gtk.Grid
-            rowSpacing={4}
-            columnSpacing={4}
-            columnHomogeneous
+        <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={4}
             hexpand
-            $={self =>
-                createEffect(() => {
-                    removeAllChildren(self);
-                    visibleItems().forEach((widget, index) => {
-                        self.attach(
-                            widget,
-                            index % cols,
-                            Math.floor(index / cols),
-                            1,
-                            1
-                        );
-                    });
-                })
-            }
-        />
+        >
+            <For each={rows}>
+                {(row) => (
+                    <Gtk.Box
+                        spacing={4}
+                        homogeneous
+                        hexpand
+                    >
+                        <For each={computed(() => row)}>
+                            {(item: QuickButton) => item.widget}
+                        </For>
+                    </Gtk.Box>
+                )}
+            </For>
+        </Gtk.Box>
     );
 };

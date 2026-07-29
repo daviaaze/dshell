@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, For} from 'gnim';
-import {useStyle} from '#/style/useStyle';
-import {formatTemp} from '#/lib/services/location/weatherUtils';
+import {useStyle} from '../../style/useStyle';
+import {formatTemp} from '../../lib/services/location/weatherUtils';
 
 interface HourlyItem {
     time: number;
@@ -149,10 +149,7 @@ export const DailyForecastSection = ({
                                 cssClasses={['caption']}
                                 label={d.dayName}
                             />
-                            <Gtk.Image
-                                iconName={d.iconName}
-                                pixelSize={18}
-                            />
+                            <Gtk.Image iconName={d.iconName} pixelSize={18} />
                             <Gtk.Label
                                 label={`${formatTemp(d.tempMax)} / ${formatTemp(d.tempMin)}`}
                                 cssClasses={[

@@ -1,9 +1,13 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
-import GObject, {register} from 'gnim/gobject';
-import {getter, setter} from '#/lib/decorators';
-import logger from '#/lib/core/logger';
-import {RecorderBackend, type VirtualMonitor, type BoundaryGeometry} from './types';
+import {Object, register} from 'gnim/gobject';
+import {property} from '../../decorators';
+import logger from '../../core/logger';
+import {
+    RecorderBackend,
+    type VirtualMonitor,
+    type BoundaryGeometry,
+} from './types';
 import {Recorder} from './recorder';
 import RecordingPrefs from './prefs';
 import {Freeze} from './freeze';
@@ -24,10 +28,7 @@ import {
     recordWindowByAddress,
     recordWindow,
 } from './recordTargets';
-import {
-    createVirtualMonitor,
-    removeVirtualMonitors,
-} from './virtualMonitors';
+import {createVirtualMonitor, removeVirtualMonitors} from './virtualMonitors';
 
 export {RecorderBackend, RecordingFormat} from './types';
 export type {VirtualMonitor, BoundaryGeometry} from './types';
@@ -44,7 +45,7 @@ export type {VirtualMonitor, BoundaryGeometry} from './types';
  * - `commands.ts`        GAction registration
  */
 @register({GTypeName: 'Screenshot'})
-export default class Screenshot extends GObject.Object {
+export default class Screenshot extends Object {
     static instance: Screenshot | undefined;
 
     static get_default() {
@@ -94,36 +95,38 @@ export default class Screenshot extends GObject.Object {
 
     // ── Getters / Setters ────────────────────────────────────────────
 
-    @getter(Number)
+    @property
     get recordingElapsed() {
         return this.#recorder.elapsed;
     }
 
-    @getter(Boolean)
+    @property
     get recording() {
         return this.#recorder.recording;
     }
 
-    @getter(GObject.Object)
+    @property
     get prefs(): RecordingPrefs {
         return this.#prefs;
     }
 
     // ── Overlay state ─────────────────────────────────────────────────
 
-    @getter(Boolean)
+    @property
     get overlayOpen() {
         return this.#overlayOpen;
     }
 
-    @setter(Boolean)
     set overlayOpen(v: boolean) {
         if (this.#overlayOpen === v) return;
 
         if (v) {
             this.#stage.captureSync();
             if (!this.#stage.pixPath) {
-                logger.warn('screenshot', 'stage capture failed, overlay will show live screen');
+                logger.warn(
+                    'screenshot',
+                    'stage capture failed, overlay will show live screen'
+                );
             }
         }
 
@@ -135,23 +138,21 @@ export default class Screenshot extends GObject.Object {
         }
     }
 
-    @getter(String)
+    @property
     get selectedMode() {
         return this.#selectedMode;
     }
 
-    @setter(String)
     set selectedMode(v: 'screenshot' | 'recording') {
         this.#selectedMode = v;
         this.notify('selected-mode');
     }
 
-    @getter(String)
+    @property
     get selectedTarget() {
         return this.#selectedTarget;
     }
 
-    @setter(String)
     set selectedTarget(v: 'fullscreen' | 'area' | 'window' | 'monitor') {
         this.#selectedTarget = v;
         this.notify('selected-target');
@@ -159,12 +160,11 @@ export default class Screenshot extends GObject.Object {
 
     // ── Region selector ───────────────────────────────────────────────
 
-    @getter(Boolean)
+    @property
     get regionSelectorOpen() {
         return this.#regionSelectorOpen;
     }
 
-    @setter(Boolean)
     set regionSelectorOpen(v: boolean) {
         if (this.#regionSelectorOpen === v) return;
         this.#regionSelectorOpen = v;
@@ -176,12 +176,11 @@ export default class Screenshot extends GObject.Object {
         }
     }
 
-    @getter(String)
+    @property
     get pendingCaptureGeometry(): string {
         return this.#pendingCaptureGeometry || '';
     }
 
-    @setter(String)
     set pendingCaptureGeometry(v: string | null) {
         this.#pendingCaptureGeometry = v;
         this.notify('pending-capture-geometry');
@@ -199,48 +198,45 @@ export default class Screenshot extends GObject.Object {
 
     // ── Stage / freeze ────────────────────────────────────────────────
 
-    @getter(GObject.Object)
+    @property
     get stageTexture(): Gdk.Texture | null {
         return this.#stage.texture;
     }
 
-    @getter(Boolean)
+    @property
     get freezeActive() {
         return this.#freezeActive;
     }
 
-    @setter(Boolean)
     set freezeActive(v: boolean) {
         if (this.#freezeActive === v) return;
         this.#freezeActive = v;
         this.notify('freeze-active');
     }
 
-    @getter(Boolean)
+    @property
     get freezeKeepAlive() {
         return this.#freezeKeepAlive;
     }
 
     // ── Boundary ───────────────────────────────────────────────────────
 
-    @getter(Boolean)
+    @property
     get boundaryVisible() {
         return this.#boundaryVisible;
     }
 
-    @setter(Boolean)
     set boundaryVisible(v: boolean) {
         if (this.#boundaryVisible === v) return;
         this.#boundaryVisible = v;
         this.notify('boundary-visible');
     }
 
-    @getter(Object)
+    @property
     get boundaryGeometry() {
         return this.#boundaryGeometry;
     }
 
-    @setter(Object)
     set boundaryGeometry(v: BoundaryGeometry | null) {
         this.#boundaryGeometry = v;
         this.notify('boundary-geometry');
@@ -248,12 +244,12 @@ export default class Screenshot extends GObject.Object {
 
     // ── Virtual monitors ──────────────────────────────────────────────
 
-    @getter(Array)
+    @property
     get virtualMonitors() {
         return this.#virtualMonitors;
     }
 
-    @getter(Boolean)
+    @property
     get virtualMonitorActive() {
         return this.#virtualMonitors.length > 0;
     }
@@ -285,7 +281,9 @@ export default class Screenshot extends GObject.Object {
 
     // ── Recording ──────────────────────────────────────────────────────
 
-    toggleRecording() { this.#recorder.toggle(); }
+    toggleRecording() {
+        this.#recorder.toggle();
+    }
 
     startRecording(
         options: {geometry?: string; output?: string} = {},
@@ -294,7 +292,9 @@ export default class Screenshot extends GObject.Object {
         this.#recorder.start(options, forceBackend);
     }
 
-    stopRecording() { this.#recorder.stop(); }
+    stopRecording() {
+        this.#recorder.stop();
+    }
 
     startRecordingAfterOverlayClose(target: string, geometry?: string | null) {
         startRecordingAfterOverlayClose(this, target, geometry);
@@ -326,12 +326,24 @@ export default class Screenshot extends GObject.Object {
 
     // ── Overlay & freeze ───────────────────────────────────────────────
 
-    toggleOverlay() { this.overlayOpen = !this.#overlayOpen; }
-    showOverlay() { this.overlayOpen = true; }
-    hideOverlay() { this.overlayOpen = false; }
-    setFreezeKeepAlive(v: boolean) { this.#freezeKeepAlive = v; }
-    startFreeze() { this.#freeze.start(); }
-    stopFreeze() { this.#freeze.stop(); }
+    toggleOverlay() {
+        this.overlayOpen = !this.#overlayOpen;
+    }
+    showOverlay() {
+        this.overlayOpen = true;
+    }
+    hideOverlay() {
+        this.overlayOpen = false;
+    }
+    setFreezeKeepAlive(v: boolean) {
+        this.#freezeKeepAlive = v;
+    }
+    startFreeze() {
+        this.#freeze.start();
+    }
+    stopFreeze() {
+        this.#freeze.stop();
+    }
 
     // ── Recording boundary ─────────────────────────────────────────────
 
@@ -347,15 +359,26 @@ export default class Screenshot extends GObject.Object {
 
     // ── Virtual monitors ──────────────────────────────────────────────
 
-    async createVirtualMonitor(resolution = '1920x1080', fps = 60): Promise<VirtualMonitor | null> {
-        const vm = await createVirtualMonitor(this.#virtualMonitors, resolution, fps);
-        if (vm) { this.notify('virtual-monitors'); this.notify('virtual-monitor-active'); }
+    async createVirtualMonitor(
+        resolution = '1920x1080',
+        fps = 60
+    ): Promise<VirtualMonitor | null> {
+        const vm = await createVirtualMonitor(
+            this.#virtualMonitors,
+            resolution,
+            fps
+        );
+        if (vm) {
+            this.notify('virtual-monitors');
+            this.notify('virtual-monitor-active');
+        }
         return vm;
     }
 
     removeVirtualMonitors() {
         removeVirtualMonitors(this.#virtualMonitors);
-        this.notify('virtual-monitors'); this.notify('virtual-monitor-active');
+        this.notify('virtual-monitors');
+        this.notify('virtual-monitor-active');
     }
 
     /** Register GAction commands for screenshot/recording. */

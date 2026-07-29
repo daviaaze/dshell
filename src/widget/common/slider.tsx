@@ -1,7 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor} from 'gnim';
-import {useStyle} from '#/style/useStyle';
+import {useStyle} from '../../style/useStyle';
 
 type SliderProps = {
     icon: Accessor<string> | string;
@@ -29,7 +29,12 @@ export const Slider = (props: SliderProps) => {
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
 
     return (
-        <Gtk.Box cssClasses={['slider', sliderStyle.class]} spacing={SLIDER_SPACING} visible={props.visible} $={sliderStyle.$}>
+        <Gtk.Box
+            cssClasses={['slider', sliderStyle.class]}
+            spacing={SLIDER_SPACING}
+            visible={props.visible}
+            ref={sliderStyle.$}
+        >
             {props.onIconClick ? (
                 <Gtk.Button onClicked={props.onIconClick}>
                     <Gtk.Image iconName={props.icon} />
@@ -42,11 +47,14 @@ export const Slider = (props: SliderProps) => {
                 min={props.min}
                 max={props.max}
                 value={props.value.as(safe)}
-                onChangeValue={({value}) => props.setValue(safe(value))}
+                onChangeValue={(_self, _scroll, value) => {
+                    props.setValue(safe(value));
+                    return false;
+                }}
             />
             <Gtk.Label
                 cssClasses={['heading']}
-                label={props.value(v => safe(v).toFixed(0).concat('%'))}
+                label={props.value.as(v => safe(v).toFixed(0).concat('%'))}
             />
         </Gtk.Box>
     );

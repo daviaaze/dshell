@@ -1,9 +1,9 @@
-import {register, Object, getter, setter} from 'gnim/gobject';
+import {register, Object, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import {createSettings, Schema} from 'gnim-schemas';
+import {createSettings, Schema} from 'gnim/schema';
 import {Accessor, Setter} from 'gnim';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 export enum DarkModes {
     AUTO,
@@ -34,17 +34,17 @@ export class ColorScheme extends Object {
     };
     #generalSettings: Gio.Settings;
 
-    @getter(Number)
+    @property
     get colorScheme() {
         return this.#colorScheme;
     }
 
-    @getter(Boolean)
+    @property
     get daytime() {
         return this.#daytime;
     }
 
-    @getter(String)
+    @property
     get colorSchemeName() {
         switch (this.#colorScheme) {
             case DarkModes.AUTO:
@@ -58,7 +58,6 @@ export class ColorScheme extends Object {
         }
     }
 
-    @setter(Number)
     set colorScheme(c: DarkModes) {
         this.#colorScheme = c;
         if (c === DarkModes.AUTO)
@@ -76,7 +75,7 @@ export class ColorScheme extends Object {
         this.#shadeSettings?.setColorScheme(this.#colorScheme);
     }
 
-    @getter(String)
+    @property
     get iconName() {
         if (this.#colorScheme === DarkModes.AUTO)
             if (this.#daytime) return 'weather-clear-symbolic';
@@ -93,19 +92,21 @@ export class ColorScheme extends Object {
         }
 
         const msUntil = (unixTime: number) =>
-            Math.abs(Number(
-                GLib.DateTime.new_from_unix_local(unixTime)
-                    .difference(GLib.DateTime.new_now_local())
-                    .valueOf()
-            ));
+            Math.abs(
+                Number(
+                    GLib.DateTime.new_from_unix_local(unixTime)!
+                        .difference(GLib.DateTime.new_now_local()!)
+                        .valueOf()
+                )
+            );
 
-        const sunrise = this.#generalSettings.get_double('weather-sunrise-time');
+        const sunrise = this.#generalSettings.get_double(
+            'weather-sunrise-time'
+        );
         const sunset = this.#generalSettings.get_double('weather-sunset-time');
         if (sunrise <= 0 || sunset <= 0) return;
 
-        const interval = this.#daytime
-            ? msUntil(sunset)
-            : msUntil(sunrise);
+        const interval = this.#daytime ? msUntil(sunset) : msUntil(sunrise);
 
         this.#timerId = setTimeout(() => {
             this.#timerId = null;
@@ -118,12 +119,10 @@ export class ColorScheme extends Object {
         }, interval / GLib.TIME_SPAN_MILLISECOND);
     }
 
-    init(
-        settings: {
-            colorScheme: Accessor<DarkModes>;
-            setColorScheme: (v: DarkModes) => void;
-        }
-    ) {
+    init(settings: {
+        colorScheme: Accessor<DarkModes>;
+        setColorScheme: (v: DarkModes) => void;
+    }) {
         if (this.#initialized) {
             logger.warn(
                 'colorscheme',
@@ -152,7 +151,8 @@ export class ColorScheme extends Object {
         this.#generalHandlerId = this.#generalSettings.connect(
             'changed::weather-is-daytime',
             () => {
-                const newDaytime = this.#generalSettings.get_boolean('weather-is-daytime');
+                const newDaytime =
+                    this.#generalSettings.get_boolean('weather-is-daytime');
                 if (newDaytime !== this.#daytime) {
                     this.#daytime = newDaytime;
                     this.notify('daytime');
@@ -170,7 +170,9 @@ export class ColorScheme extends Object {
         if (this.#generalHandlerId !== 0) {
             try {
                 this.#generalSettings.disconnect(this.#generalHandlerId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#generalHandlerId = 0;
         }
         if (this.#timerId) {
@@ -184,12 +186,12 @@ export class ColorScheme extends Object {
         super();
 
         this.#generalSettings = new Gio.Settings({
-            schema_id: `${import.meta.domain}.general`,
+            schemaId: `${import.meta.domain}.general`,
         });
 
         this.#gsettings = createSettings(
             new Gio.Settings({
-                schema_id: 'org.gnome.desktop.interface',
+                schemaId: 'org.gnome.desktop.interface',
             }),
             new Schema({
                 id: 'org.gnome.desktop.interface',

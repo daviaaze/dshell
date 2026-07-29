@@ -2,7 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For} from 'gnim';
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 
 export default () => {
     const {bar} = useSettings();
@@ -32,7 +32,7 @@ export default () => {
                     })}
                 >
                     <Adw.ToggleGroup
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self =>
@@ -40,7 +40,7 @@ export default () => {
                                 Number(self.activeName) as Astal.WindowAnchor
                             )
                         }
-                        $={self => {
+                        ref={self => {
                             const v = bar.position.peek();
                             self.activeName = String(v ?? '');
                             bar.position.subscribe(() => {
@@ -107,17 +107,15 @@ export default () => {
                     onNotifyActive={self => bar.setDockAutoHide(self.active)}
                 />
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: 24,
+                            upper: 64,
+                            stepIncrement: 4,
+                            value: bar.dockIconSize(),
+                        });
+                    }}
                     title="Icon Size"
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={24}
-                                upper={64}
-                                stepIncrement={4}
-                                value={bar.dockIconSize}
-                            />
-                        ) as Gtk.Adjustment
-                    }
                     onNotifyValue={self => bar.setDockIconSize(self.value)}
                 />
             </Adw.PreferencesGroup>
@@ -143,12 +141,11 @@ export default () => {
                     {(appId: string) => (
                         <Adw.ActionRow title={appId}>
                             <Gtk.Button
-                                $type="suffix"
+                                slot="suffix"
                                 cssClasses={['circular', 'destructive-action']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
-                                    const current =
-                                        bar.dockPinnedApps();
+                                    const current = bar.dockPinnedApps();
                                     bar.setDockPinnedApps(
                                         current.filter(a => a !== appId)
                                     );

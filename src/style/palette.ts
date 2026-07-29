@@ -4,12 +4,12 @@
  *
  * Replaces the old `Theming` service (3-color accent → full palette).
  */
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object as GObject, register, property} from 'gnim/gobject';
 import {Accessor} from 'gnim';
-import {Process} from '#/lib/core/process';
+import {Process} from '../lib/core/process';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/core/logger';
-import {Theme, Stylesheet, type ThemeColors} from '#/style/theme';
+import logger from '../lib/core/logger';
+import {Theme, Stylesheet, type ThemeColors} from './theme';
 
 // ── Material 3 → shade CSS variable mapping ──
 
@@ -45,7 +45,7 @@ interface MatugenJson {
 // ── The service ──
 
 @register({GTypeName: 'PaletteGenerator'})
-export default class PaletteGenerator extends GObject.Object {
+export default class PaletteGenerator extends GObject {
     static instance: PaletteGenerator;
 
     static get_default() {
@@ -66,12 +66,12 @@ export default class PaletteGenerator extends GObject.Object {
 
     static readonly DEBOUNCE_SECONDS = 1;
 
-    @getter(Boolean)
+    @property
     get enabled() {
         return this.#enabled;
     }
 
-    @getter(Boolean)
+    @property
     get available() {
         return GLib.find_program_in_path('matugen') !== null;
     }
@@ -82,7 +82,10 @@ export default class PaletteGenerator extends GObject.Object {
         wallpaperNight: Accessor<string>;
     }) {
         if (this.#initialized) {
-            logger.warn('palette', 'init() called but already initialized — skipping');
+            logger.warn(
+                'palette',
+                'init() called but already initialized — skipping'
+            );
             return;
         }
         this.#initialized = true;
@@ -163,13 +166,18 @@ export default class PaletteGenerator extends GObject.Object {
             });
     }
 
-    #parseMatugenJson(json: string): {dark: ThemeColors; light: ThemeColors} | null {
+    #parseMatugenJson(
+        json: string
+    ): {dark: ThemeColors; light: ThemeColors} | null {
         try {
             const data: MatugenJson = JSON.parse(json);
             const rawDark = data.colors?.dark;
             const rawLight = data.colors?.light;
             if (!rawDark || !rawLight) {
-                logger.warn('palette', 'matugen JSON missing colors.dark or colors.light');
+                logger.warn(
+                    'palette',
+                    'matugen JSON missing colors.dark or colors.light'
+                );
                 return null;
             }
 

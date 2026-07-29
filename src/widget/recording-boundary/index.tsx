@@ -2,12 +2,12 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Cairo from 'gi://cairo?version=1.0';
-import {createBinding, onCleanup} from 'gnim';
-import {app} from '#/apps/shell/App';
-import {monitors} from '#/lib/services/monitoring/monitors';
-import Screenshot, {BoundaryGeometry} from '#/lib/services/capture/screenshot';
-import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
-import {toArray} from '#/lib/core/gjsUtils';
+import {bind, onCleanup} from 'gnim';
+import {app} from '../../apps/shell/App';
+import {monitors} from '../../lib/services/monitoring/monitors';
+import Screenshot, {BoundaryGeometry} from '../../lib/services/capture/screenshot';
+import {getScreenCaptureSettings} from '../../lib/settings/screenCapture';
+import {toArray} from '../../lib/core/gjsUtils';
 
 /** Check if two rectangles overlap */
 function rectOverlap(
@@ -41,18 +41,7 @@ function drawBoundaryForMonitor(
     const mh = geo.height;
 
     // Check if boundary overlaps this monitor
-    if (
-        !rectOverlap(
-            geom.x,
-            geom.y,
-            geom.width,
-            geom.height,
-            mx,
-            my,
-            mw,
-            mh
-        )
-    ) {
+    if (!rectOverlap(geom.x, geom.y, geom.width, geom.height, mx, my, mw, mh)) {
         return;
     }
 
@@ -65,7 +54,7 @@ function drawBoundaryForMonitor(
     cr.setSourceRGBA(color.r, color.g, color.b, 0.65);
     cr.setLineWidth(borderWidth);
     cr.setDash([8, 4], 0);
-    cr.setLineCap(Cairo.LineCap.SQUARE);
+    cr.setLineCap(2); // Cairo.LineCap.SQUARE
 
     // Only draw the visible portion of each border edge
     // Top edge
@@ -124,7 +113,7 @@ export default () => {
             <Gtk.DrawingArea
                 hexpand
                 vexpand
-                $={self => {
+                ref={self => {
                     self.set_draw_func((_area, cr, _w, _h) => {
                         if (!ss.boundaryGeometry) return;
                         const geom = ss.boundaryGeometry as BoundaryGeometry;
@@ -140,28 +129,30 @@ export default () => {
             />
         );
 
-        const win: Astal.Window =
-            <Astal.Window
-                application={app}
-                gdkmonitor={monitor}
-                layer={Astal.Layer.OVERLAY}
-                anchor={
-                    Astal.WindowAnchor.TOP |
-                    Astal.WindowAnchor.RIGHT |
-                    Astal.WindowAnchor.BOTTOM |
-                    Astal.WindowAnchor.LEFT
-                }
-                exclusivity={Astal.Exclusivity.IGNORE}
-                visible={createBinding(ss, 'boundaryVisible')}
-            >
-                {drawingArea}
-            </Astal.Window> as Astal.Window;
-
-        windows.push(win);
+        <Astal.Window
+            ref={self => {
+                if (self) windows.push(self);
+            }}
+            application={app}
+            gdkmonitor={monitor}
+            layer={Astal.Layer.OVERLAY}
+            anchor={
+                Astal.WindowAnchor.TOP |
+                Astal.WindowAnchor.RIGHT |
+                Astal.WindowAnchor.BOTTOM |
+                Astal.WindowAnchor.LEFT
+            }
+            exclusivity={Astal.Exclusivity.IGNORE}
+            visible={bind(ss, 'boundaryVisible')}
+        >
+            {drawingArea}
+        </Astal.Window>;
     }
 
     onCleanup(() => {
-        for (const w of windows) w.destroy();
+        for (const w of windows) {
+            w.close();
+        }
     });
 
     return null;

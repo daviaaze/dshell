@@ -3,18 +3,22 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createBinding, createState, For, onCleanup} from 'gnim';
-import {app} from '#/apps/shell/App';
-import {toArray} from '#/lib/core/gjsUtils';
+import {getHyprland} from '../../lib/hyprland';
+import {bind, createState, For, onCleanup} from 'gnim';
+import {app} from '../../apps/shell/App';
+import {toArray} from '../../lib/core/gjsUtils';
 import SwitcherItem from './item';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 
 let switcherWindow: Astal.Window | null = null;
 
 export const toggleWindowSwitcher = () => {
     if (switcherWindow) {
         const nextVisible = !switcherWindow.visible;
-        logger.debug('wm', `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`);
+        logger.debug(
+            'wm',
+            `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`
+        );
         switcherWindow.visible = nextVisible;
     } else {
         logger.debug('wm', 'windowSwitcher toggled (no window yet)');
@@ -34,7 +38,8 @@ const getSortedClients = (
 };
 
 export default () => {
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const [selectedIndex, setSelectedIndex] = createState(0);
 
     let mru: string[] = [];
@@ -45,17 +50,17 @@ export default () => {
         mru.unshift(client.address);
     };
 
-    const focusedClient = createBinding(hyprland, 'focusedClient');
+    const focusedClient = bind(hyprland, 'focused-client');
 
     const focusedClientUnsubscribe = focusedClient.subscribe(() => {
         updateMru(focusedClient());
     });
 
-    const clientsBinding = createBinding(hyprland, 'clients');
+    const clientsBinding = bind(hyprland, 'clients');
     const clientsList = clientsBinding.as(c => getSortedClients(c, mru));
 
     const clampUnsubscribe = clientsList.subscribe(() => {
-        const len = (clientsList())?.length ?? 0;
+        const len = clientsList()?.length ?? 0;
         if (selectedIndex() >= len) {
             setSelectedIndex(Math.max(0, len - 1));
         }
@@ -180,7 +185,7 @@ export default () => {
 
     return (
         <Astal.Window
-            $={self => {
+            ref={self => {
                 switcherWindow = self;
                 onCleanup(() => {
                     switcherWindow = null;
@@ -202,11 +207,11 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={createBinding(hyprland, 'focusedMonitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as(m => m.id)}
             css={'background-color: transparent;'}
         >
             <Gtk.Box
-                $={self => {
+                ref={self => {
                     boxRef = self;
                 }}
                 focusable
@@ -217,7 +222,7 @@ export default () => {
                 widthRequest={500}
             >
                 <Gtk.EventControllerKey
-                    $={self => {
+                    ref={self => {
                         self.connect('key-pressed', handleKeyPressed);
                         self.connect('key-released', handleKeyReleased);
                     }}

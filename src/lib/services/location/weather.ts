@@ -1,15 +1,16 @@
+import GObject from 'gi://GObject?version=2.0';
 import GWeather from 'gi://GWeather?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Geolocation from './geolocation';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 import {Accessor} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
+import {toArray} from '../../core/gjsUtils';
 import {formatTemp} from './weatherUtils';
 
 @register({GTypeName: 'Weather'})
-export default class Weather extends GObject.Object {
+export default class Weather extends Object {
     static instance: Weather;
 
     static get_default() {
@@ -25,7 +26,7 @@ export default class Weather extends GObject.Object {
     #initialized = false;
     #generalSettings: Gio.Settings;
 
-    @getter(GWeather.Info)
+    @property
     get info() {
         return this.#weather;
     }
@@ -34,94 +35,95 @@ export default class Weather extends GObject.Object {
 
     #tempSummary = '--°';
 
-    @getter(String)
+    @property
     get tempSummary() {
         return this.#tempSummary;
     }
 
     #feelsLike = '';
 
-    @getter(String)
+    @property
     get feelsLike() {
         return this.#feelsLike;
     }
 
     #skyDesc = '';
 
-    @getter(String)
+    @property
     get skyDesc() {
         return this.#skyDesc;
     }
 
     #locationName = '—';
 
-    @getter(String)
+    @property
     get locationName() {
         return this.#locationName;
     }
 
     #weatherIcon = 'weather-none-available-symbolic';
 
-    @getter(String)
+    @property
     get weatherIcon() {
         return this.#weatherIcon;
     }
 
     #windSpeed = 0;
 
-    @getter(Number)
+    @property
     get windSpeed() {
         return this.#windSpeed;
     }
 
     #windDirection = 0;
 
-    @getter(Number)
+    @property
     get windDirection() {
         return this.#windDirection;
     }
 
     #humidity = 0;
 
-    @getter(Number)
+    @property
     get humidity() {
         return this.#humidity;
     }
 
     #pressure = 0;
 
-    @getter(Number)
+    @property
     get pressure() {
         return this.#pressure;
     }
 
     #sunrise = 0;
 
-    @getter(Number)
+    @property
     get sunrise() {
         return this.#sunrise;
     }
 
     #sunset = 0;
 
-    @getter(Number)
+    @property
     get sunset() {
         return this.#sunset;
     }
-
-
 
     #updateComputed() {
         const w = this.#weather;
         const valid = w.is_valid();
 
         this.#tempSummary = valid
-            ? formatTemp(w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1])
+            ? formatTemp(
+                  w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1]
+              )
             : '--°';
         this.#feelsLike = valid ? `Feels like ${w.get_apparent()}` : '';
         this.#skyDesc = valid ? w.get_sky() : '';
         this.#locationName = w.get_location_name() || '—';
-        this.#weatherIcon = w.get_icon_name() || 'weather-none-available-symbolic';
+        this.#weatherIcon =
+            w.get_icon_name() || 'weather-none-available-symbolic';
 
         if (valid) {
             const [, speed, dir] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
@@ -129,7 +131,9 @@ export default class Weather extends GObject.Object {
             this.#windDirection = dir;
             const humStr = w.get_humidity();
             this.#humidity = humStr ? parseFloat(humStr) : 0;
-            const [, pressure] = w.get_value_pressure(GWeather.PressureUnit.HPA);
+            const [, pressure] = w.get_value_pressure(
+                GWeather.PressureUnit.HPA
+            );
             this.#pressure = pressure;
             const [, sunrise] = w.get_value_sunrise();
             this.#sunrise = sunrise;
@@ -150,7 +154,6 @@ export default class Weather extends GObject.Object {
         this.notify('sunset');
     }
 
-    @setter(GWeather.Location)
     set location(location: GWeather.Location | undefined) {
         if (!location) return;
         this.#location = location;
@@ -212,14 +215,13 @@ export default class Weather extends GObject.Object {
                 this.#geo.disconnect(geoHandlerId);
                 geoHandlerId = null;
             }
-            geoHandlerId = this.#geo.connect(
-                'location-changed',
-                (_, lat, lon) => {
-                    settings.setLatitude(lat);
-                    settings.setLongitude(lon);
-                    this.updateFromCoords(lat, lon);
-                }
-            );
+            geoHandlerId = GObject.signal_connect(this.#geo, 'location-changed', (_source: Geolocation, ...args: unknown[]) => {
+                const lat = args[0] as number;
+                const lon = args[1] as number;
+                settings.setLatitude(lat);
+                settings.setLongitude(lon);
+                this.updateFromCoords(lat, lon);
+            });
         };
 
         // Auto-location on startup if enabled
@@ -251,7 +253,7 @@ export default class Weather extends GObject.Object {
         const list = this.#weather.get_forecast_list();
         if (!list) return [];
         const forecasts = toArray<GWeather.Info>(list);
-        const now = GLib.DateTime.new_now_local().to_unix();
+        const now = GLib.DateTime.new_now_local()!.to_unix();
 
         logger.debug(
             'weather',
@@ -309,7 +311,7 @@ export default class Weather extends GObject.Object {
         for (const f of forecasts) {
             const [valid, ts] = f.get_value_update();
             if (!valid) continue;
-            const dt = GLib.DateTime.new_from_unix_local(ts);
+            const dt = GLib.DateTime.new_from_unix_local(ts)!;
             const dayKey = dt.format('%Y-%m-%d');
             if (!dayKey) continue;
             if (!dayMap.has(dayKey)) dayMap.set(dayKey, []);
@@ -322,7 +324,7 @@ export default class Weather extends GObject.Object {
         );
 
         // Sort days chronologically and skip today
-        const today = GLib.DateTime.new_now_local().format('%Y-%m-%d');
+        const today = GLib.DateTime.new_now_local()!.format('%Y-%m-%d');
         if (!today) return [];
         const sortedDays = Array.from(dayMap.entries()).sort(([a], [b]) =>
             a.localeCompare(b)
@@ -338,7 +340,7 @@ export default class Weather extends GObject.Object {
             let tempMax = -Infinity;
             let tempMin = Infinity;
             const [, ts] = fs[0].get_value_update();
-            const dt = GLib.DateTime.new_from_unix_local(ts);
+            const dt = GLib.DateTime.new_from_unix_local(ts)!;
             const midIcon = fs[Math.floor(fs.length / 2)].get_icon_name();
 
             for (const f of fs) {
@@ -392,13 +394,37 @@ export default class Weather extends GObject.Object {
         const idx = Math.round(d / 45) % 8;
         const PHASES = [
             {name: 'New Moon', emoji: '🌑', icon: 'moon-new-symbolic'},
-            {name: 'Waxing Crescent', emoji: '🌒', icon: 'moon-waxing-crescent-symbolic'},
-            {name: 'First Quarter', emoji: '🌓', icon: 'moon-first-quarter-symbolic'},
-            {name: 'Waxing Gibbous', emoji: '🌔', icon: 'moon-waxing-gibbous-symbolic'},
+            {
+                name: 'Waxing Crescent',
+                emoji: '🌒',
+                icon: 'moon-waxing-crescent-symbolic',
+            },
+            {
+                name: 'First Quarter',
+                emoji: '🌓',
+                icon: 'moon-first-quarter-symbolic',
+            },
+            {
+                name: 'Waxing Gibbous',
+                emoji: '🌔',
+                icon: 'moon-waxing-gibbous-symbolic',
+            },
             {name: 'Full Moon', emoji: '🌕', icon: 'moon-full-symbolic'},
-            {name: 'Waning Gibbous', emoji: '🌖', icon: 'moon-waning-gibbous-symbolic'},
-            {name: 'Last Quarter', emoji: '🌗', icon: 'moon-last-quarter-symbolic'},
-            {name: 'Waning Crescent', emoji: '🌘', icon: 'moon-waning-crescent-symbolic'},
+            {
+                name: 'Waning Gibbous',
+                emoji: '🌖',
+                icon: 'moon-waning-gibbous-symbolic',
+            },
+            {
+                name: 'Last Quarter',
+                emoji: '🌗',
+                icon: 'moon-last-quarter-symbolic',
+            },
+            {
+                name: 'Waning Crescent',
+                emoji: '🌘',
+                icon: 'moon-waning-crescent-symbolic',
+            },
         ];
         return {
             phase,
@@ -441,7 +467,7 @@ export default class Weather extends GObject.Object {
         this.#weather.set_contact_info('caiomuniz888@gmail.com');
 
         this.#generalSettings = new Gio.Settings({
-            schema_id: `${import.meta.domain}.general`,
+            schemaId: `${import.meta.domain}.general`,
         });
 
         this.#weatherHandlerId = this.#weather.connect('updated', () => {
@@ -467,10 +493,7 @@ export default class Weather extends GObject.Object {
                     'weather-sunrise-time',
                     sunrise
                 );
-                this.#generalSettings.set_double(
-                    'weather-sunset-time',
-                    sunset
-                );
+                this.#generalSettings.set_double('weather-sunset-time', sunset);
             }
         });
     }
@@ -479,7 +502,9 @@ export default class Weather extends GObject.Object {
         if (this.#weatherHandlerId !== 0) {
             try {
                 this.#weather.disconnect(this.#weatherHandlerId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#weatherHandlerId = 0;
         }
         if (this.#updateTimer !== null) {

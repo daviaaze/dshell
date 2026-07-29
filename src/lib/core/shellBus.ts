@@ -1,5 +1,6 @@
-import GObject, {register} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import GObject from 'gi://GObject?version=2.0';
+import {Object, register} from 'gnim/gobject';
+import logger from './logger';
 
 /**
  * Well-known shell bus event names.
@@ -53,7 +54,7 @@ export interface ShellEventPayloads {
  *   ShellBus.get_default().off(h);
  */
 @register({GTypeName: 'ShellBus'})
-export default class ShellBus extends GObject.Object {
+export default class ShellBus extends Object {
     static instance: ShellBus;
 
     static get_default(): ShellBus {
@@ -71,7 +72,10 @@ export default class ShellBus extends GObject.Object {
             ? () => void
             : (payload: ShellEventPayloads[E]) => void
     ): number {
-        return this.connect(event, fn as (...args: unknown[]) => void);
+        return GObject.signal_connect(this, event, (_source: GObject.Object, ...args: unknown[]) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-arguments
+            (fn as (...args: unknown[]) => void)(...args);
+        });
     }
 
     /** Remove a listener by handler ID. */
@@ -93,9 +97,11 @@ export default class ShellBus extends GObject.Object {
      */
     fire<E extends ShellEventName>(
         event: E,
-        ...args: ShellEventPayloads[E] extends void ? [] : [ShellEventPayloads[E]]
+        ...args: ShellEventPayloads[E] extends void
+            ? []
+            : [ShellEventPayloads[E]]
     ) {
-        this.emit(event, ...args);
+        GObject.signal_emit_by_name(this, event, ...args);
         logger.debug(
             'shellBus',
             `fired: ${event}` +

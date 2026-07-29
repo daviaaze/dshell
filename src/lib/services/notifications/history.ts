@@ -1,9 +1,9 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import {readFile} from '#/lib/core/file';
+import {Object, register, property} from 'gnim/gobject';
+import logger from '../../core/logger';
+import {getNotifdSafe} from './guard';
+import {readFile} from '../../core/file';
 import {Accessor} from 'gnim';
 
 const CACHE_DIR = `${GLib.get_user_cache_dir()}/shade`;
@@ -51,7 +51,7 @@ function saveHistory(history: HistoryEntry[]) {
 }
 
 @register({GTypeName: 'NotificationHistory'})
-export default class NotificationHistory extends GObject.Object {
+export default class NotificationHistory extends Object {
     static instance: NotificationHistory;
     static get_default() {
         if (!this.instance) this.instance = new NotificationHistory();
@@ -63,7 +63,7 @@ export default class NotificationHistory extends GObject.Object {
     #ignoredApps: string[] = [];
     #notifdHandlerId = 0;
 
-    @getter(Array)
+    @property
     get history() {
         return this.#history;
     }
@@ -163,7 +163,9 @@ export default class NotificationHistory extends GObject.Object {
             if (notifd) {
                 try {
                     notifd.disconnect(this.#notifdHandlerId);
-                } catch { /* ignore */ }
+                } catch {
+                    /* ignore */
+                }
             }
             this.#notifdHandlerId = 0;
         }

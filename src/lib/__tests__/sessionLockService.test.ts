@@ -8,7 +8,7 @@
  * contract and that the service instantiates without throwing.
  */
 
-import SessionLockService from '#/lib/services/session/sessionLockService';
+import SessionLockService from '../services/session/sessionLockService';
 import {describe, it, expect, run} from './test-runner';
 
 describe('SessionLockService singleton', () => {
@@ -19,7 +19,7 @@ describe('SessionLockService singleton', () => {
     });
 
     it('constructor does not throw', () => {
-        expect(() => new SessionLockService()).not.toThrow();
+        (expect(() => new SessionLockService()) as any).not.toThrow();
     });
 });
 

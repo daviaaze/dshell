@@ -1,21 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {useSettings} from '#/lib/settings';
-import {tickWhileAttached} from '#/lib/core/widgetTimer';
-
-try {
-    imports.gi.versions.AstalCava = '0.1';
-} catch {
-    /* ignore */
-}
-
-const AstalCava = (() => {
-    try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        return (imports.gi as any).AstalCava;
-    } catch {
-        return null;
-    }
-})();
+import AstalCava from 'gi://AstalCava?version=0.1';
+import {useSettings} from '../../lib/settings';
+import {tickWhileAttached} from '../../lib/core/widgetTimer';
 
 export default () => {
     const settings = useSettings().general;
@@ -32,7 +18,7 @@ export default () => {
             halign={Gtk.Align.CENTER}
             valign={Gtk.Align.END}
             cssClasses={['popover-padded']}
-            $={self => {
+            ref={self => {
                 if (!settings.cavaEnabled()) return;
                 const cava = new AstalCava.Cava();
                 cava.bars = settings.cavaBars() || 16;
@@ -63,9 +49,7 @@ export default () => {
                         i < Math.min(bars.length, values.length);
                         i++
                     ) {
-                        bars[i].set_value(
-                            Math.min(1, Math.max(0, values[i]))
-                        );
+                        bars[i].set_value(Math.min(1, Math.max(0, values[i])));
                     }
                 });
 

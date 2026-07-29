@@ -1,10 +1,11 @@
+import GObject from 'gi://GObject?version=2.0';
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
-import {For, createState, onMount, onCleanup} from 'gnim';
-import {useStyle} from '#/style/useStyle';
-import Notification from '#/widget/common/notification';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import logger from '#/lib/core/logger';
+import {For, createState, effect, onCleanup} from 'gnim';
+import {useStyle} from '../../style/useStyle';
+import Notification from '../common/notification';
+import {getNotifdSafe} from '../../lib/services/notifications/guard';
+import logger from '../../lib/core/logger';
 
 /**
  * LockscreenNotifications — displays active notifications on the lockscreen.
@@ -61,7 +62,7 @@ export const LockscreenNotifications = () => {
         removeNotification(notif);
     };
 
-    onMount(() => {
+    effect(() => {
         const notifd = getNotifdSafe();
         if (!notifd) {
             logger.warn(
@@ -85,8 +86,8 @@ export const LockscreenNotifications = () => {
             addNotification(id)
         );
 
-        const dismissedId = notifd.connect('dismissed', (_, id: number) => {
-            // eslint-disable-next-line sonarjs/no-nested-functions
+        const dismissedId = GObject.signal_connect(notifd, 'dismissed', (_source: Notifd.Notifd, ...args: unknown[]) => {
+            const id = args[0] as number;
             setNotifications(prev => prev.filter(x => x.id !== id));
         });
 
@@ -112,13 +113,13 @@ export const LockscreenNotifications = () => {
             hscrollbarPolicy={Gtk.PolicyType.NEVER}
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             cssClasses={['lockscreen-notifications', lockscreenStyle.class]}
-            $={lockscreenStyle.$}
+            ref={lockscreenStyle.$}
         >
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
                 cssClasses={['lockscreen-notifications-list', listStyle.class]}
-                $={listStyle.$}
+                ref={listStyle.$}
             >
                 <For each={notifications}>
                     {(n: Notifd.Notification) => (

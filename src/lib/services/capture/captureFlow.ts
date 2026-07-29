@@ -1,7 +1,7 @@
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/core/logger';
-import {bus} from '#/lib/core/eventBus';
-import {Process} from '#/lib/core/process';
+import logger from '../../core/logger';
+import {bus} from '../../core/eventBus';
+import {Process} from '../../core/process';
 import {
     ensureScreenshotDir,
     notify,

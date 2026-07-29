@@ -1,5 +1,6 @@
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import logger from '#/lib/core/logger';
+import {getHyprland} from '../../hyprland';
+import logger from '../../core/logger';
 import {notify} from './utils';
 import type Screenshot from './screenshot';
 
@@ -21,8 +22,9 @@ export function recordArea(ss: Screenshot) {
 export function recordOutput(ss: Screenshot, outputName?: string) {
     if (ss.recording) return;
     if (!outputName) {
-        const hyprland = AstalHyprland.get_default();
-        outputName = hyprland.focused_monitor?.name;
+        const hyprland = getHyprland();
+        if (!hyprland) return;
+        outputName = hyprland.focusedMonitor?.name;
         logger.info('screenshot', `focused monitor name: ${outputName}`);
     }
     if (!outputName) {
@@ -49,7 +51,8 @@ export function recordWindowVisual(ss: Screenshot) {
 
 export function recordWindowByAddress(ss: Screenshot, address: string) {
     if (ss.recording) return;
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return;
     const clients = hyprland.clients || [];
     const target = clients.find(c => c.address === address);
     if (!target) {
@@ -64,8 +67,9 @@ export function recordWindowByAddress(ss: Screenshot, address: string) {
 
 export function recordWindow(ss: Screenshot) {
     if (ss.recording) return;
-    const hyprland = AstalHyprland.get_default();
-    const client = hyprland.focused_client;
+    const hyprland = getHyprland();
+    if (!hyprland) return;
+    const client = hyprland.focusedClient;
     if (!client) {
         logger.error('screenshot', 'no focused client, cannot record window');
         notify(MSG_RECORDING_FAILED, 'No window focused', ICON_ERROR);

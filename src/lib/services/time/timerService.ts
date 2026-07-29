@@ -1,14 +1,14 @@
 import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
-import {fmtDuration} from '#/lib/core/time';
+import {Object, register, property} from 'gnim/gobject';
+import logger from '../../core/logger';
+import {fmtDuration} from '../../core/time';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 
 @register({GTypeName: 'TimerService'})
-export default class TimerService extends GObject.Object {
+export default class TimerService extends Object {
     static instance: TimerService;
     static get_default() {
         if (!this.instance) this.instance = new TimerService();
@@ -44,40 +44,41 @@ export default class TimerService extends GObject.Object {
     // ── Pomodoro settings ──
     #workDuration = TimerService.DEFAULT_WORK_MIN * TimerService.MS_PER_MIN;
     #breakDuration = TimerService.DEFAULT_BREAK_MIN * TimerService.MS_PER_MIN;
-    #longBreakDuration = TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
+    #longBreakDuration =
+        TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
     #sessionsBeforeLongBreak = TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
 
-    @getter(Number)
+    @property
     get remaining() {
         return this.#remaining;
     }
 
-    @getter(Number)
+    @property
     get total() {
         return this.#total;
     }
 
-    @getter(Boolean)
+    @property
     get running() {
         return this.#running;
     }
 
-    @getter(String)
+    @property
     get mode() {
         return this.#mode;
     }
 
-    @getter(String)
+    @property
     get label() {
         return this.#label;
     }
 
-    @getter(Number)
+    @property
     get pomodoroSession() {
         return this.#pomodoroSession;
     }
 
-    @getter(Boolean)
+    @property
     get pomodoroIsBreak() {
         return this.#pomodoroIsBreak;
     }
@@ -151,20 +152,24 @@ export default class TimerService extends GObject.Object {
         this.#stopTick();
         this.#running = true;
         this.notify('running');
-        this.#tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TimerService.TICK_MS, () => {
-            this.#remaining -= TimerService.TICK_MS;
-            if (this.#remaining <= 0) {
-                this.#remaining = 0;
+        this.#tickId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            TimerService.TICK_MS,
+            () => {
+                this.#remaining -= TimerService.TICK_MS;
+                if (this.#remaining <= 0) {
+                    this.#remaining = 0;
+                    this.notify('remaining');
+                    this.#stopTick();
+                    this.#running = false;
+                    this.notify('running');
+                    this.#onComplete();
+                    return GLib.SOURCE_REMOVE;
+                }
                 this.notify('remaining');
-                this.#stopTick();
-                this.#running = false;
-                this.notify('running');
-                this.#onComplete();
-                return GLib.SOURCE_REMOVE;
+                return GLib.SOURCE_CONTINUE;
             }
-            this.notify('remaining');
-            return GLib.SOURCE_CONTINUE;
-        });
+        );
     }
 
     #stopTick() {
@@ -183,7 +188,9 @@ export default class TimerService extends GObject.Object {
         const isPomodoro = this.#mode === 'pomodoro';
         const title = (() => {
             if (!isPomodoro) return 'Timer finished!';
-            return this.#pomodoroIsBreak ? 'Break over! Back to work.' : 'Work session complete!';
+            return this.#pomodoroIsBreak
+                ? 'Break over! Back to work.'
+                : 'Work session complete!';
         })();
         const body = isPomodoro
             ? `Session ${this.#pomodoroSession} complete.`

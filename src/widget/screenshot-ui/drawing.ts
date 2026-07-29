@@ -1,7 +1,8 @@
 import Cairo from 'gi://cairo?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import type Screenshot from '#/lib/services/capture/screenshot';
+import {getHyprland} from '../../lib/hyprland';
+import type Screenshot from '../../lib/services/capture/screenshot';
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -69,23 +70,45 @@ export function draw(
         monOrigin: Point;
     }
 ) {
-    const {ss, selActive, dragStart, dragEnd, selectedWindow, windows, monOrigin} = params;
+    const {
+        ss,
+        selActive,
+        dragStart,
+        dragEnd,
+        selectedWindow,
+        windows,
+        monOrigin,
+    } = params;
     const target = ss.selectedTarget;
-    const sel = selActive && dragStart && dragEnd
-        ? normalizeRect(dragStart, dragEnd)
-        : null;
+    const sel =
+        selActive && dragStart && dragEnd
+            ? normalizeRect(dragStart, dragEnd)
+            : null;
     const sWin = selectedWindow;
     const winL = windows;
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
 
     // ── Dim overlay ──────────────────────────────────────────
     cr.setSourceRGBA(DIM_COLOR.r, DIM_COLOR.g, DIM_COLOR.b, DIM_COLOR.a);
 
     if (target === 'area' && sel && sel.width >= MIN_SELECTION) {
         drawDimRect(cr, 0, 0, width, sel.y);
-        drawDimRect(cr, 0, sel.y + sel.height, width, height - sel.y - sel.height);
+        drawDimRect(
+            cr,
+            0,
+            sel.y + sel.height,
+            width,
+            height - sel.y - sel.height
+        );
         drawDimRect(cr, 0, sel.y, sel.x, sel.height);
-        drawDimRect(cr, sel.x + sel.width, sel.y, width - sel.x - sel.width, sel.height);
+        drawDimRect(
+            cr,
+            sel.x + sel.width,
+            sel.y,
+            width - sel.x - sel.width,
+            sel.height
+        );
     } else if (target === 'window' && sWin) {
         const origin = monOrigin;
         const lx = sWin.x - origin.x;
@@ -93,9 +116,15 @@ export function draw(
         drawDimRect(cr, 0, 0, width, ly);
         drawDimRect(cr, 0, ly + sWin.height, width, height - ly - sWin.height);
         drawDimRect(cr, 0, ly, lx, sWin.height);
-        drawDimRect(cr, lx + sWin.width, ly, width - lx - sWin.width, sWin.height);
+        drawDimRect(
+            cr,
+            lx + sWin.width,
+            ly,
+            width - lx - sWin.width,
+            sWin.height
+        );
     } else if (target === 'monitor') {
-        const m = hyprland.focused_monitor;
+        const m = hyprland.focusedMonitor;
         if (m) {
             const origin = monOrigin;
             const lx = m.x - origin.x;

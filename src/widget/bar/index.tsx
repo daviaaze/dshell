@@ -2,11 +2,11 @@ import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, onCleanup} from 'gnim';
-import {app} from '#/apps/shell/App';
-import WindowManager from '#/lib/services/state/windowManager';
-import {Gdk2HyprMonitor, monitors} from '#/lib/services/monitoring/monitors';
-import {useSettings} from '#/lib/settings';
-import {useStyle} from '#/style/useStyle';
+import {app} from '../../apps/shell/App';
+import WindowManager from '../../lib/services/state/windowManager';
+import {Gdk2HyprMonitor, monitors} from '../../lib/services/monitoring/monitors';
+import {useSettings} from '../../lib/settings';
+import {useStyle} from '../../style/useStyle';
 import SystemIndicators from './systemIndicators';
 import SystemUsage from './systemUsage';
 import Workspaces from './workspaces';
@@ -30,21 +30,31 @@ export default () => {
 
     return (
         <For each={monitors}>
-            {(monitor: Gdk.Monitor) => (
-                <Astal.Window
-                    $={self => {
+            {(monitor: Gdk.Monitor) => {
+                const hyprMonitor = Gdk2HyprMonitor(monitor);
+                return (
+                    <Astal.Window
+                    ref={self => {
                         WindowManager.get_default().registerBar(self);
                         onCleanup(() => {
                             WindowManager.get_default().unregisterBar(self);
-                            self.destroy();
+                            self.close();
                         });
                     }}
                     visible
                     cssClasses={['card', 'background']}
-                    marginTop={position.as(p => (p === BOTTOM ? 0 : BAR_MARGIN))}
-                    marginLeft={position.as(p => (p === RIGHT ? 0 : BAR_MARGIN))}
-                    marginBottom={position.as(p => (p === TOP ? 0 : BAR_MARGIN))}
-                    marginRight={position.as(p => (p === LEFT ? 0 : BAR_MARGIN))}
+                    marginTop={position.as(p =>
+                        p === BOTTOM ? 0 : BAR_MARGIN
+                    )}
+                    marginLeft={position.as(p =>
+                        p === RIGHT ? 0 : BAR_MARGIN
+                    )}
+                    marginBottom={position.as(p =>
+                        p === TOP ? 0 : BAR_MARGIN
+                    )}
+                    marginRight={position.as(p =>
+                        p === LEFT ? 0 : BAR_MARGIN
+                    )}
                     application={app}
                     gdkmonitor={monitor}
                     name={`bar-${monitor.get_description()}`}
@@ -58,7 +68,7 @@ export default () => {
                 >
                     <Gtk.CenterBox
                         cssClasses={['bar-centerbox', barCenterboxStyle.class]}
-                        $={barCenterboxStyle.$}
+                        ref={barCenterboxStyle.$}
                         orientation={vertical.as(v =>
                             v
                                 ? Gtk.Orientation.VERTICAL
@@ -66,7 +76,7 @@ export default () => {
                         )}
                     >
                         <Gtk.Box
-                            $type="start"
+                            slot="start"
                             cssClasses={['linked']}
                             orientation={vertical.as(v =>
                                 v
@@ -83,7 +93,7 @@ export default () => {
                         </Gtk.Box>
 
                         <Gtk.Box
-                            $type="center"
+                            slot="center"
                             spacing={8}
                             valign={Gtk.Align.CENTER}
                             halign={Gtk.Align.CENTER}
@@ -93,16 +103,18 @@ export default () => {
                                     : Gtk.Orientation.HORIZONTAL
                             )}
                         >
-                            <Workspaces
-                                vertical={vertical}
-                                monitor={Gdk2HyprMonitor(monitor)}
-                                visible={bar.showWorkspaces}
-                            />
+                            {hyprMonitor ? (
+                                <Workspaces
+                                    vertical={vertical}
+                                    monitor={hyprMonitor}
+                                    visible={bar.showWorkspaces}
+                                />
+                            ) : null}
                             <WindowTitle visible={bar.showWindowTitle} />
                         </Gtk.Box>
 
                         <Gtk.Box
-                            $type="end"
+                            slot="end"
                             cssClasses={['linked']}
                             orientation={vertical.as(v =>
                                 v
@@ -137,7 +149,8 @@ export default () => {
                         </Gtk.Box>
                     </Gtk.CenterBox>
                 </Astal.Window>
-            )}
+                );
+            }}
         </For>
     );
 };

@@ -1,19 +1,17 @@
-import {monitors} from '#/lib/services/monitoring/monitors';
+import {monitors} from '../../lib/services/monitoring/monitors';
+import GObject from 'gi://GObject?version=2.0';
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import SessionLockService from '#/lib/services/session/sessionLockService';
+import SessionLockService from '../../lib/services/session/sessionLockService';
 import Gtk from 'gi://Gtk?version=4.0';
-import {
-    createBinding,
-    createRoot,
-    For,
-    onCleanup,
-} from 'gnim';
-import WindowManager from '#/lib/services/state/windowManager';
-import ShellState from '#/lib/services/state/shellState';
-import Clock from '#/lib/services/time/clock';
-import FingerprintAuth from '#/lib/services/input/fingerprint';
-import AuthSession from '#/lib/services/session/authSession';
+import {bind, For, onCleanup} from 'gnim';
+import {render} from '@gnim-js/gtk4';
+import {app} from '../../apps/shell/App';
+import WindowManager from '../../lib/services/state/windowManager';
+import ShellState from '../../lib/services/state/shellState';
+import Clock from '../../lib/services/time/clock';
+import FingerprintAuth from '../../lib/services/input/fingerprint';
+import AuthSession from '../../lib/services/session/authSession';
 import {LockscreenNotifications} from './notifications';
 import {LockscreenWidgets} from './widgets';
 import {LockscreenAuthPanel} from './authPanel';
@@ -43,21 +41,21 @@ const createLocks = (onUnlock: () => void) => {
     const doUnlock = () => {
         cleanupAll();
         lockService.unlock();
-        WindowManager.get_default().lockscreens.forEach(w => w.destroy());
+        WindowManager.get_default().lockscreens.forEach(w => w.close());
         ShellState.get_default().unlock();
         onUnlock();
     };
 
-    authSession.connect('success', () => doUnlock());
+    GObject.signal_connect(authSession, 'success', () => doUnlock());
 
-    const fpStateBinding = createBinding(fingerprint, 'state');
-    const fpErrorBinding = createBinding(fingerprint, 'errorMessage');
+    const fpStateBinding = bind(fingerprint, 'state');
+    const fpErrorBinding = bind(fingerprint, 'errorMessage');
 
     return (
         <For each={monitors}>
             {(monitor: Gdk.Monitor) => (
                 <Astal.Window
-                    $={self => {
+                    ref={self => {
                         WindowManager.get_default().registerLockscreen(self);
                         onCleanup(() => {
                             cleanupAll();
@@ -92,9 +90,10 @@ const createLocks = (onUnlock: () => void) => {
                         orientation={Gtk.Orientation.VERTICAL}
                     >
                         <Gtk.Box
-                            $type="start"
+                            slot="start"
                             orientation={Gtk.Orientation.VERTICAL}
-                            marginBottom={CLOCK_MARGIN_BOTTOM}>
+                            marginBottom={CLOCK_MARGIN_BOTTOM}
+                        >
                             <Gtk.Label
                                 cssClasses={['title-1', 'numeric']}
                                 label={time.as(t => t.format('%R')!)}
@@ -113,7 +112,7 @@ const createLocks = (onUnlock: () => void) => {
                             fpErrorBinding={fpErrorBinding}
                         />
                         <Gtk.Box
-                            $type="end"
+                            slot="end"
                             valign={Gtk.Align.END}
                             halign={Gtk.Align.CENTER}
                             orientation={Gtk.Orientation.VERTICAL}
@@ -132,21 +131,19 @@ const createLocks = (onUnlock: () => void) => {
 export const LockScreen = () => {
     let locked = false;
 
-    const screenlocked = createBinding(
-        ShellState.get_default(),
-        'screenlocked'
-    );
+    const screenlocked = bind(ShellState.get_default(), 'screenlocked');
 
     onCleanup(
         screenlocked.subscribe(() => {
             if (screenlocked() && !locked) {
                 locked = true;
-                createRoot(dispose => {
-                    createLocks(() => {
+                const dispose = render(
+                    () => createLocks(() => {
                         locked = false;
                         dispose();
-                    });
-                });
+                    }),
+                    app,
+                );
             }
         })
     );

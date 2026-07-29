@@ -13,7 +13,7 @@
  */
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 // ── Types ──
 
@@ -42,9 +42,12 @@ export class FrecencyStorage {
 
     constructor() {
         try {
-            this.#settings = new Gio.Settings({schema_id: SCHEMA_ID});
+            this.#settings = new Gio.Settings({schemaId: SCHEMA_ID});
         } catch {
-            logger.warn('frecency', `GSettings schema ${SCHEMA_ID} not found, using in-memory only`);
+            logger.warn(
+                'frecency',
+                `GSettings schema ${SCHEMA_ID} not found, using in-memory only`
+            );
         }
     }
 

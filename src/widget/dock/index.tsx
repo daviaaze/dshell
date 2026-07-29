@@ -1,69 +1,71 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {createBinding, For, createComputed, onCleanup} from 'gnim';
-import WindowManager from '#/lib/services/state/windowManager';
-import {useSettings} from '#/lib/settings';
-import {app} from '#/apps/shell/App';
+import {getHyprland} from '../../lib/hyprland';
+import {bind, For, computed, onCleanup} from 'gnim';
+import WindowManager from '../../lib/services/state/windowManager';
+import {useSettings} from '../../lib/settings';
+import {app} from '../../apps/shell/App';
 import DockItem from './item';
-import {toArray} from '#/lib/core/gjsUtils';
-import {getDesktopFileForClient} from '#/lib/services/state/apps';
+import {toArray} from '../../lib/core/gjsUtils';
+import {getDesktopFileForClient} from '../../lib/services/state/apps';
 
 export default () => {
-    const hyprland = AstalHyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const {bar} = useSettings();
     const {BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
-    const clients = createBinding(hyprland, 'clients').as(c =>
+    const clients = bind(hyprland, 'clients').as(c =>
         toArray<AstalHyprland.Client>(c)
     );
 
-    const focusedClient = createBinding(hyprland, 'focusedClient');
+    const focusedClient = bind(hyprland, 'focused-client');
 
-    const dockItems = createComputed(
-        [bar.dockPinnedApps, clients, focusedClient],
-        (pinned, running, focused) => {
-            const items: {
-                desktopFile: string;
-                pinned: boolean;
-                clients: AstalHyprland.Client[];
-                active: boolean;
-            }[] = [];
+    const dockItems = computed(() => {
+        const pinned = bar.dockPinnedApps();
+        const running = clients();
+        const focused = focusedClient();
+        const items: {
+            desktopFile: string;
+            pinned: boolean;
+            clients: AstalHyprland.Client[];
+            active: boolean;
+        }[] = [];
 
-            for (const df of pinned) {
-                const appClients = running.filter(
-                    c => getDesktopFileForClient(c) === df
-                );
-                const isActive = appClients.some(
-                    c => c.address === focused?.address
-                );
-                items.push({
-                    desktopFile: df,
-                    pinned: true,
-                    clients: appClients,
-                    active: isActive,
-                });
-            }
-
-            for (const client of running) {
-                const df = getDesktopFileForClient(client);
-                if (!df || pinned.includes(df)) continue;
-                const isActive = client.address === focused?.address;
-                items.push({
-                    desktopFile: df,
-                    pinned: false,
-                    clients: [client],
-                    active: isActive,
-                });
-            }
-
-            return items;
+        for (const df of pinned) {
+            const appClients = running.filter(
+                (c: AstalHyprland.Client) => getDesktopFileForClient(c) === df
+            );
+            const isActive = appClients.some(
+                (c: AstalHyprland.Client) => c.address === focused?.address
+            );
+            items.push({
+                desktopFile: df,
+                pinned: true,
+                clients: appClients,
+                active: isActive,
+            });
         }
-    );
+
+        for (const client of running) {
+            const df = getDesktopFileForClient(client);
+            if (!df || pinned.includes(df)) continue;
+            const isActive = client.address === focused?.address;
+            items.push({
+                desktopFile: df,
+                pinned: false,
+                clients: [client],
+                active: isActive,
+            });
+        }
+
+        return items;
+    });
 
     return (
         <Astal.Window
-            $={self => {
+            ref={self => {
                 WindowManager.get_default().registerDock(self);
                 onCleanup(() => {
                     WindowManager.get_default().unregisterDock(self);
@@ -82,7 +84,9 @@ export default () => {
                 valign={Gtk.Align.END}
                 spacing={8}
                 cssClasses={['linked', 'card', 'background']}
-                css={'padding: 8px; border-radius: calc(var(--shade-radius) * 3);'}
+                css={
+                    'padding: 8px; border-radius: calc(var(--shade-radius) * 3);'
+                }
             >
                 <For each={dockItems}>
                     {item => (

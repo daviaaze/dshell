@@ -13,34 +13,35 @@ import recordingBoundary from './recording-boundary';
 import {toggleWindowSwitcher} from './windowswitcher';
 import {createSettingsWindow} from './settings';
 import {Wallpaper} from './wallpaper';
-import Weather from '#/lib/services/location/weather';
-import MediaController from '#/lib/services/session/mediaController';
-import {ColorScheme} from '#/lib/services/display/colorScheme';
-import Inhibit from '#/lib/services/power/inhibit';
-import NightLight from '#/lib/services/display/nightLight';
-import Hypridle from '#/lib/services/power/hypridle';
-import AudioController from '#/lib/services/audio/audioController';
-import Touchpad from '#/lib/services/input/touchpad';
-import PaletteGenerator from '#/style/palette';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import NotificationHistory from '#/lib/services/notifications/history';
-import DndService from '#/lib/services/notifications/dnd';
-import SoundAlertService from '#/lib/services/audio/soundAlerts';
-import SystemUsage from '#/lib/services/monitoring/systemUsage';
-import TimerService from '#/lib/services/time/timerService';
-import {FrecencyManager} from '#/lib/services/search/frecency';
-import TrayService from '#/lib/services/desktop/trayService';
-import NetworkService from '#/lib/services/network/networkService';
-import BluetoothService from '#/lib/services/bluetooth/bluetoothService';
-import {initAutoSwitch} from '#/lib/services/audio/autoSwitch';
-import {initAppWatcher} from '#/lib/services/state/apps';
-import {initClipboardHistory} from '#/lib/services/clipboard/history';
-import {app} from '#/apps/shell/App';
-import ShellState from '#/lib/services/state/shellState';
-import {useSettings} from '#/lib/settings';
-import WindowManager from '#/lib/services/state/windowManager';
-import ServiceRegistry from '#/lib/core/serviceRegistry';
-import logger, {perf} from '#/lib/core/logger';
+import Weather from '../lib/services/location/weather';
+import MediaController from '../lib/services/session/mediaController';
+import {ColorScheme} from '../lib/services/display/colorScheme';
+import Inhibit from '../lib/services/power/inhibit';
+import NightLight from '../lib/services/display/nightLight';
+import Hypridle from '../lib/services/power/hypridle';
+import AudioController from '../lib/services/audio/audioController';
+import Touchpad from '../lib/services/input/touchpad';
+import PaletteGenerator from '../style/palette';
+import {getNotifdSafe} from '../lib/services/notifications/guard';
+import NotificationHistory from '../lib/services/notifications/history';
+import DndService from '../lib/services/notifications/dnd';
+import SoundAlertService from '../lib/services/audio/soundAlerts';
+import SystemUsage from '../lib/services/monitoring/systemUsage';
+import TimerService from '../lib/services/time/timerService';
+import {FrecencyManager} from '../lib/services/search/frecency';
+import TrayService from '../lib/services/desktop/trayService';
+import NetworkService from '../lib/services/network/networkService';
+import BluetoothService from '../lib/services/bluetooth/bluetoothService';
+import {initAutoSwitch} from '../lib/services/audio/autoSwitch';
+import {initAppWatcher} from '../lib/services/state/apps';
+import {initClipboardHistory} from '../lib/services/clipboard/history';
+import {app} from '../apps/shell/App';
+import ShellState from '../lib/services/state/shellState';
+import {useSettings} from '../lib/settings';
+import WindowManager from '../lib/services/state/windowManager';
+import ServiceRegistry from '../lib/core/serviceRegistry';
+import type {GnimNode} from 'gnim';
+import logger, {perf} from '../lib/core/logger';
 
 // ── Settings window lifecycle ──
 
@@ -52,7 +53,7 @@ export const openSettings = () => {
         return;
     }
     if (existing) {
-        existing.destroy();
+        existing.close();
         wm.setSettings(null);
     }
     const win = createSettingsWindow();
@@ -60,10 +61,9 @@ export const openSettings = () => {
     win.present();
 };
 
-
 // ── Register services with lifecycle manager ──
 
-function registerServices(s: ReturnType<typeof useSettings>) {
+export function registerServices(s: ReturnType<typeof useSettings>) {
     const reg = ServiceRegistry.get_default();
     reg.register(
         {
@@ -186,10 +186,10 @@ function registerServices(s: ReturnType<typeof useSettings>) {
 
 interface WidgetDescriptor {
     name: string;
-    mount: () => void;
+    mount: () => GnimNode;
 }
 
-function getWidgetDescriptors(): WidgetDescriptor[] {
+export function getWidgetDescriptors(): WidgetDescriptor[] {
     return [
         {name: 'wallpaper', mount: Wallpaper},
         {name: 'bar', mount: bar},

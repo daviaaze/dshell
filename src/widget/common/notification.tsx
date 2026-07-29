@@ -1,14 +1,14 @@
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
-import {For, createBinding} from 'gnim';
-import {useStyle} from '#/style/useStyle';
-import {tickWhileAttached} from '#/lib/core/widgetTimer';
+import {For, bind} from 'gnim';
+import {useStyle} from '../../style/useStyle';
+import {tickWhileAttached} from '../../lib/core/widgetTimer';
 import Adw from 'gi://Adw?version=1';
 
 function relativeTime(unix: number): string {
-    const now = GLib.DateTime.new_now_local();
-    const then = GLib.DateTime.new_from_unix_local(unix);
+    const now = GLib.DateTime.new_now_local()!;
+    const then = GLib.DateTime.new_from_unix_local(unix)!;
     const diff = now.difference(then);
     const seconds = Number(diff.valueOf()) / 1_000_000;
 
@@ -23,7 +23,7 @@ function relativeTime(unix: number): string {
 
 function fullTimestamp(unix: number): string {
     return (
-        GLib.DateTime.new_from_unix_local(unix).format('%H:%M:%S') || 'ERROR'
+        GLib.DateTime.new_from_unix_local(unix)!.format('%H:%M:%S') || 'ERROR'
     );
 }
 
@@ -53,9 +53,9 @@ export default ({
     const notifActionsStyle = useStyle({});
 
     const expireMs =
-        notification.expire_timeout > 0 ? notification.expire_timeout : 5000;
+        notification.expireTimeout > 0 ? notification.expireTimeout : 5000;
     const urgency = notification.urgency;
-    const appName = notification.app_name || notification.appName || '';
+    const appName = notification.appName || notification.appName || '';
     const hasImage = !!notification.image;
     const bodyText = notification.body || '';
     const hasActions = notification.actions.length > 0;
@@ -79,7 +79,7 @@ export default ({
                 spacing={8}
                 orientation={Gtk.Orientation.VERTICAL}
                 tooltipText={`${appName} · ${fullTimestamp(notification.time)}`}
-                $={self => {
+                ref={self => {
                     if (pauseDismiss && resumeDismiss) {
                         const controller = Gtk.EventControllerMotion.new();
                         controller.connect('enter', pauseDismiss);
@@ -92,8 +92,8 @@ export default ({
                 <Gtk.Box spacing={8}>
                     <Gtk.Image
                         pixelSize={24}
-                        visible={!!notification.app_icon}
-                        iconName={notification.app_icon}
+                        visible={!!notification.appIcon}
+                        iconName={notification.appIcon}
                     />
                     <Gtk.Box
                         orientation={Gtk.Orientation.VERTICAL}
@@ -116,8 +116,12 @@ export default ({
                         </Gtk.Box>
                         {appName ? (
                             <Gtk.Label
-                                cssClasses={['caption', 'dimmed', dimmedStyle.class]}
-                                $={dimmedStyle.$}
+                                cssClasses={[
+                                    'caption',
+                                    'dimmed',
+                                    dimmedStyle.class,
+                                ]}
+                                ref={dimmedStyle.$}
                                 label={appName}
                                 xalign={0}
                             />
@@ -143,8 +147,11 @@ export default ({
                 <Gtk.Box spacing={8}>
                     {hasImage ? (
                         <Gtk.Image
-                            cssClasses={['notification-image', notifImageStyle.class]}
-                            $={notifImageStyle.$}
+                            cssClasses={[
+                                'notification-image',
+                                notifImageStyle.class,
+                            ]}
+                            ref={notifImageStyle.$}
                             file={notification.image}
                             pixelSize={64}
                             valign={Gtk.Align.START}
@@ -166,8 +173,11 @@ export default ({
                 <Gtk.ProgressBar
                     visible={showProgress}
                     fraction={1}
-                    cssClasses={['notification-progress', notifProgressStyle.class]}
-                    $={self => {
+                    cssClasses={[
+                        'notification-progress',
+                        notifProgressStyle.class,
+                    ]}
+                    ref={self => {
                         notifProgressStyle.$(self);
                         if (!showProgress) return;
                         let elapsed = 0;
@@ -186,13 +196,18 @@ export default ({
 
                 {/* Action buttons */}
                 {hasActions ? (
-                    <Gtk.Box cssClasses={['notification-actions', notifActionsStyle.class]} spacing={4}>
+                    <Gtk.Box
+                        cssClasses={[
+                            'notification-actions',
+                            notifActionsStyle.class,
+                        ]}
+                        spacing={4}
+                    >
                         <For
-                            each={createBinding(notification, 'actions').as(
-                                actions =>
-                                    actions.filter(
-                                        a => a.label && a.label.trim() !== ''
-                                    )
+                            each={bind(notification, 'actions').as(actions =>
+                                actions.filter(
+                                    a => a.label && a.label.trim() !== ''
+                                )
                             )}
                         >
                             {(action: Notifd.Action) => (
@@ -210,5 +225,5 @@ export default ({
                 ) : null}
             </Gtk.Box>
         </Adw.Clamp>
-    ) as Gtk.Widget;
+    );
 };

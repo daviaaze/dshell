@@ -1,11 +1,18 @@
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For} from 'gnim';
-import logger from '#/lib/core/logger';
+import logger from '../../lib/core/logger';
 
 export default () => {
     const settings = useSettings().general;
+
+    const historyLimitAdjustment = new Gtk.Adjustment({
+        lower: 20,
+        upper: 500,
+        stepIncrement: 10,
+        value: settings.notificationHistoryLimit(),
+    });
 
     return (
         <>
@@ -24,16 +31,7 @@ export default () => {
                 <Adw.SpinRow
                     title={'History Limit'}
                     subtitle={'Maximum notifications to keep in history'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={20}
-                                upper={500}
-                                stepIncrement={10}
-                                value={settings.notificationHistoryLimit}
-                            />
-                        ) as Gtk.Adjustment
-                    }
+                    adjustment={historyLimitAdjustment}
                     onNotifyValue={self =>
                         settings.setNotificationHistoryLimit(self.value)
                     }
@@ -44,10 +42,12 @@ export default () => {
                     onApply={self => {
                         const name = self.text.trim();
                         if (!name) return;
-                        const current =
-                            settings.notificationIgnoredApps();
+                        const current = settings.notificationIgnoredApps();
                         if (!current.includes(name)) {
-                            logger.info('settings', `ignore app added: ${name}`);
+                            logger.info(
+                                'settings',
+                                `ignore app added: ${name}`
+                            );
                             settings.setNotificationIgnoredApps([
                                 ...current,
                                 name,
@@ -60,13 +60,15 @@ export default () => {
                     {(app: string) => (
                         <Adw.ActionRow title={app}>
                             <Gtk.Button
-                                $type="suffix"
                                 cssClasses={['circular', 'destructive-action']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
                                     const current =
                                         settings.notificationIgnoredApps();
-                                    logger.info('settings', `ignore app removed: ${app}`);
+                                    logger.info(
+                                        'settings',
+                                        `ignore app removed: ${app}`
+                                    );
                                     settings.setNotificationIgnoredApps(
                                         current.filter(a => a !== app)
                                     );

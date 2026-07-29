@@ -7,9 +7,9 @@
  */
 
 import Gtk from 'gi://Gtk?version=4.0';
-import {For, createBinding, createState} from 'gnim';
-import MediaController from '#/lib/services/session/mediaController';
-import logger from '#/lib/core/logger';
+import {For, bind, createState} from 'gnim';
+import MediaController from '../../lib/services/session/mediaController';
+import logger from '../../lib/core/logger';
 
 // ── Widget Interface ────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ export interface LockscreenWidgetDef {
     id: string;
     position: 'center' | 'end';
     priority: number;
-    render: () => JSX.Element;
+    render: () => any;
 }
 
 // ── Registry ────────────────────────────────────────────────────
@@ -68,27 +68,29 @@ const MediaPlayerWidget = () => {
 
     return (
         <Gtk.Box
-            visible={createBinding(mc, 'players').as(p => p.length > 0)}
+            visible={bind(mc, 'players').as(p => p.length > 0)}
             orientation={Gtk.Orientation.HORIZONTAL}
             spacing={8}
             cssClasses={['card', 'p-8']}
             halign={Gtk.Align.CENTER}
         >
             <Gtk.Image
-                visible={createBinding(mc, 'activeCoverArt').as(u => u.length > 0)}
-                css={'min-width: 32px; min-height: 32px; border-radius: calc(var(--shade-radius) / 2);'}
-                file={createBinding(mc, 'activeCoverArt')}
+                visible={bind(mc, 'activeCoverArt').as(u => u.length > 0)}
+                css={
+                    'min-width: 32px; min-height: 32px; border-radius: calc(var(--shade-radius) / 2);'
+                }
+                file={bind(mc, 'activeCoverArt')}
             />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
                 <Gtk.Label
-                    label={createBinding(mc, 'activeTitle')}
+                    label={bind(mc, 'activeTitle')}
                     maxWidthChars={30}
                     ellipsize={3}
                     halign={Gtk.Align.START}
                     cssClasses={['body']}
                 />
                 <Gtk.Label
-                    label={createBinding(mc, 'activeArtist')}
+                    label={bind(mc, 'activeArtist')}
                     maxWidthChars={30}
                     ellipsize={3}
                     halign={Gtk.Align.START}

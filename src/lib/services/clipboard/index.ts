@@ -12,15 +12,15 @@
  *   `ClipboardItem`           → `ClipboardEntry`
  */
 
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 import Gdk from 'gi://Gdk?version=4.0';
 import {
     getHistory,
     searchHistory,
     copyEntryToClipboard,
     deleteEntry,
-} from '#/lib/services/clipboard/history';
-import type {ClipboardEntry} from '#/lib/services/clipboard/history';
+} from './history';
+import type {ClipboardEntry} from './history';
 
 /** @deprecated Use ClipboardEntry from clipboardHistory instead. */
 export interface ClipboardItem {
@@ -78,7 +78,10 @@ export async function copyClipboardItem(item: ClipboardEntry) {
             // Fallback: if the entry isn't found (shouldn't happen), try to
             // reconstruct from the ClipboardItem. For text, use the text field.
             // For images, we can't reconstruct without the file.
-            logger.warn('clipboard', 'entry not found in history, creating from item');
+            logger.warn(
+                'clipboard',
+                'entry not found in history, creating from item'
+            );
             const display = Gdk.Display.get_default();
             if (display) {
                 display.get_clipboard().set(item.content);

@@ -1,11 +1,11 @@
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import AstalBattery from 'gi://AstalBattery';
-import {bus} from '#/lib/core/eventBus';
-import ServiceRegistry from '#/lib/core/serviceRegistry';
-import {getNotifdSafe} from '#/lib/services/notifications/guard';
-import {Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {bus} from '../../core/eventBus';
+import ServiceRegistry from '../../core/serviceRegistry';
+import {getNotifdSafe} from '../notifications/guard';
+import {Process} from '../../core/process';
+import logger from '../../core/logger';
 import type {Accessor} from 'gnim';
 
 /** Fraction (0..1) at which low-battery warning sounds fire. */
@@ -28,7 +28,7 @@ type SoundCategory = 'notification' | 'capture' | 'battery' | 'system';
  * Configurable: each category can be toggled via GSettings.
  */
 @register({GTypeName: 'SoundAlertService'})
-export default class SoundAlertService extends GObject.Object {
+export default class SoundAlertService extends Object {
     static instance: SoundAlertService;
 
     static get_default() {
@@ -49,8 +49,8 @@ export default class SoundAlertService extends GObject.Object {
     #upowerInstance: AstalBattery.UPower | null = null;
     #lastBatteryPercentage = 1.0;
     #initialized = false;
-    #shellState: {v?: import('#/lib/services/state/shellState').default} = {};
-    #dndService: {v?: import('#/lib/services/notifications/dnd').default} = {};
+    #shellState: {v?: import('../state/shellState').default} = {};
+    #dndService: {v?: import('../notifications/dnd').default} = {};
 
     /** Resolve a dependency from the service registry. */
     /** Resolve a dependency from the service registry (lazy). */
@@ -59,20 +59,19 @@ export default class SoundAlertService extends GObject.Object {
         return cache.v;
     }
 
-    get #shell(): import('#/lib/services/state/shellState').default {
+    get #shell(): import('../state/shellState').default {
         return this.#getDep('ShellState', this.#shellState);
     }
 
-    get #dnd(): import('#/lib/services/notifications/dnd').default {
+    get #dnd(): import('../notifications/dnd').default {
         return this.#getDep('DndService', this.#dndService);
     }
 
-    @getter(Boolean)
+    @property
     get enabled() {
         return this.#enabled;
     }
 
-    @setter(Boolean)
     set enabled(v: boolean) {
         if (this.#enabled === v) return;
         this.#enabled = v;
@@ -119,9 +118,7 @@ export default class SoundAlertService extends GObject.Object {
             bus.on('capture:screenshot', () => this.play('screen-capture'))
         );
         this.#busUnsubs.push(
-            bus.on('capture:screenshot:area', () =>
-                this.play('screen-capture')
-            )
+            bus.on('capture:screenshot:area', () => this.play('screen-capture'))
         );
         this.#busUnsubs.push(
             bus.on('capture:screenshot:overlay', () =>
@@ -147,9 +144,12 @@ export default class SoundAlertService extends GObject.Object {
         // ── Screen unlock — listen to ShellState ──
 
         this.#shellStateHandlerId = this.#shell.connect(
-            'notify::screenlocked',
-            () => {
-                if (!this.#shell.screenlocked) {
+            'notify',
+            (_source, pspec) => {
+                if (
+                    pspec.get_name() === 'screenlocked' &&
+                    !this.#shell.screenlocked
+                ) {
                     this.play('screen-unlock');
                 }
             }
@@ -182,11 +182,11 @@ export default class SoundAlertService extends GObject.Object {
                     'notify::percentage',
                     () => {
                         const pct = battery.percentage;
-                        const wasAbove = this.#lastBatteryPercentage >
-                            LOW_BATTERY_THRESHOLD;
+                        const wasAbove =
+                            this.#lastBatteryPercentage > LOW_BATTERY_THRESHOLD;
                         const isNowBelow = pct <= LOW_BATTERY_THRESHOLD;
                         this.#lastBatteryPercentage = pct;
-                        if (wasAbove && isNowBelow && battery.is_present) {
+                        if (wasAbove && isNowBelow && battery.isPresent) {
                             this.play('dialog-warning');
                         }
                     }
@@ -225,8 +225,7 @@ export default class SoundAlertService extends GObject.Object {
                     .get_devices()
                     .find(
                         (d: AstalBattery.Device) =>
-                            d.get_device_type() ===
-                            AstalBattery.Type.LINE_POWER
+                            d.get_device_type() === AstalBattery.Type.LINE_POWER
                     );
                 if (linePower) {
                     this.#upowerHandlerIds.push(
@@ -307,7 +306,9 @@ export default class SoundAlertService extends GObject.Object {
         if (this.#shellStateHandlerId !== 0) {
             try {
                 this.#shell.disconnect(this.#shellStateHandlerId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#shellStateHandlerId = 0;
         }
 
@@ -316,17 +317,19 @@ export default class SoundAlertService extends GObject.Object {
             if (notifd) {
                 try {
                     notifd.disconnect(this.#notifdHandlerId);
-                } catch { /* ignore */ }
+                } catch {
+                    /* ignore */
+                }
             }
             this.#notifdHandlerId = 0;
         }
 
         if (this.#batteryHandlerId !== 0) {
             try {
-                AstalBattery.get_default().disconnect(
-                    this.#batteryHandlerId
-                );
-            } catch { /* ignore */ }
+                AstalBattery.get_default().disconnect(this.#batteryHandlerId);
+            } catch {
+                /* ignore */
+            }
             this.#batteryHandlerId = 0;
         }
 
@@ -334,7 +337,9 @@ export default class SoundAlertService extends GObject.Object {
             if (this.#upowerInstance) {
                 try {
                     this.#upowerInstance.disconnect(id);
-                } catch { /* ignore */ }
+                } catch {
+                    /* ignore */
+                }
             }
         }
         this.#upowerHandlerIds = [];

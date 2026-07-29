@@ -21,8 +21,8 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import logger from '#/lib/core/logger';
-import GObject, {getter, register} from 'gnim/gobject';
+import logger from '../lib/core/logger';
+import {Object as GObject, register, property} from 'gnim/gobject';
 
 // ── CSS custom property names ──
 
@@ -146,7 +146,7 @@ export class Stylesheet {
 // ── Theme Manager ──
 
 @register({GTypeName: 'ShadeTheme'})
-export class Theme extends GObject.Object {
+export class Theme extends GObject {
     static instance: Theme;
 
     static get_default(): Theme {
@@ -162,7 +162,7 @@ export class Theme extends GObject.Object {
     #isDark = false;
 
     /** Whether dark mode is active. */
-    @getter(Boolean)
+    @property
     get dark(): boolean {
         return this.#isDark;
     }
@@ -258,15 +258,24 @@ export class Theme extends GObject.Object {
             const colors = this.#isDark ? sheet.dark : sheet.light;
             this.#applyTheme(colors);
         } else {
-            this.#applyTheme(this.#isDark ? ADWAITA_COLORS : ADWAITA_COLORS_LIGHT);
+            this.#applyTheme(
+                this.#isDark ? ADWAITA_COLORS : ADWAITA_COLORS_LIGHT
+            );
         }
     }
 
     #applyTheme(colors: ThemeColors): void {
         const rules: string[] = [];
         for (const [key, value] of Object.entries(colors)) {
-            if (value === undefined || value === null || value === 'undefined') {
-                logger.warn('theme', `skipping undefined color: --shade-${key}`);
+            if (
+                value === undefined ||
+                value === null ||
+                value === 'undefined'
+            ) {
+                logger.warn(
+                    'theme',
+                    `skipping undefined color: --shade-${key}`
+                );
                 continue;
             }
             const varName = `--shade-${key}`;
@@ -279,13 +288,19 @@ export class Theme extends GObject.Object {
         if (this.#isDark) {
             const darkRules: string[] = [];
             for (const [key, value] of Object.entries(colors)) {
-                if (value === undefined || value === null || value === 'undefined') {
+                if (
+                    value === undefined ||
+                    value === null ||
+                    value === 'undefined'
+                ) {
                     continue;
                 }
                 const varName = `--shade-${key}`;
                 darkRules.push(`  ${varName}: ${value};`);
             }
-            this.#darkProvider.load_from_string(`* {\n${darkRules.join('\n')}\n}`);
+            this.#darkProvider.load_from_string(
+                `* {\n${darkRules.join('\n')}\n}`
+            );
         } else {
             this.#darkProvider.load_from_string('');
         }

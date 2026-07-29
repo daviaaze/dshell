@@ -1,9 +1,9 @@
-import WindowManager from '#/lib/services/state/windowManager';
-import {useSettings} from '#/lib/settings';
-import PaletteGenerator from '#/style/palette';
+import WindowManager from '../../lib/services/state/windowManager';
+import {useSettings} from '../../lib/settings';
+import PaletteGenerator from '../../style/palette';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {TEMP_MIN, TEMP_MAX} from '#/lib/services/display/nightLight';
+import {TEMP_MIN, TEMP_MAX} from '../../lib/services/display/nightLight';
 
 export default () => {
     const settings = useSettings().general;
@@ -19,7 +19,7 @@ export default () => {
             >
                 <Adw.ActionRow title={'System Theme'}>
                     <Adw.ToggleGroup
-                        $type="suffix"
+                        slot="suffix"
                         cssClasses={['round']}
                         valign={Gtk.Align.CENTER}
                         onNotifyActiveName={self => {
@@ -28,14 +28,18 @@ export default () => {
                                 light: 1,
                                 dark: 2,
                             };
-                            settings.setColorScheme(map[self.activeName ?? 'auto'] ?? 0);
+                            settings.setColorScheme(
+                                map[self.activeName ?? 'auto'] ?? 0
+                            );
                         }}
-                        $={self => {
+                        ref={self => {
                             const v = settings.colorScheme.peek();
-                            self.activeName = ['auto', 'light', 'dark'][v] ?? 'auto';
+                            self.activeName =
+                                ['auto', 'light', 'dark'][v] ?? 'auto';
                             settings.colorScheme.subscribe(() => {
                                 const cur = settings.colorScheme();
-                                self.activeName = ['auto', 'light', 'dark'][cur] ?? 'auto';
+                                self.activeName =
+                                    ['auto', 'light', 'dark'][cur] ?? 'auto';
                             });
                         }}
                     >
@@ -142,18 +146,16 @@ export default () => {
                     }
                 />
                 <Adw.SpinRow
+                    ref={self => {
+                        self.adjustment = new Gtk.Adjustment({
+                            lower: TEMP_MIN,
+                            upper: TEMP_MAX,
+                            stepIncrement: 100,
+                            value: settings.nightLightTemperature(),
+                        });
+                    }}
                     title={'Color Temperature'}
                     subtitle={'Lower values are warmer (redder)'}
-                    adjustment={
-                        (
-                            <Gtk.Adjustment
-                                lower={TEMP_MIN}
-                                upper={TEMP_MAX}
-                                stepIncrement={100}
-                                value={settings.nightLightTemperature}
-                            />
-                        ) as Gtk.Adjustment
-                    }
                     onNotifyValue={self =>
                         settings.setNightLightTemperature(
                             Math.round(self.value)

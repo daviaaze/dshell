@@ -1,9 +1,9 @@
 import Network from 'gi://AstalNetwork';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, Accessor} from 'gnim';
+import {bind, Accessor} from 'gnim';
 import ApList from './apList';
-import logger from '#/lib/core/logger';
+import logger from '../../../lib/core/logger';
 
 interface WifiPopoverProps {
     wifi: Network.Wifi;
@@ -12,8 +12,8 @@ interface WifiPopoverProps {
 }
 
 export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
-    const wifiEnabled = createBinding(wifi, 'enabled');
-    const scanning = createBinding(wifi, 'scanning');
+    const wifiEnabled = bind(wifi, 'enabled');
+    const scanning = bind(wifi, 'scanning');
 
     return (
         <Gtk.Box
@@ -41,7 +41,10 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
                 </Gtk.Button>
                 <Gtk.Button
                     onClicked={() => {
-                        logger.info('network', `wifi ${wifi.enabled ? 'disabled' : 'enabled'}`);
+                        logger.info(
+                            'network',
+                            `wifi ${wifi.enabled ? 'disabled' : 'enabled'}`
+                        );
                         wifi.enabled = !wifi.enabled;
                     }}
                 >

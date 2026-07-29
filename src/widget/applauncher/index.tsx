@@ -1,27 +1,29 @@
 import Hyprland from 'gi://AstalHyprland';
+import {getHyprland} from '../../lib/hyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import {createBinding, createState, For} from 'gnim';
+import {bind, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
-import {useSettings} from '#/lib/settings';
-import {app} from '#/apps/shell/App';
-import WindowManager from '#/lib/services/state/windowManager';
-import ShellState from '#/lib/services/state/shellState';
-import logger from '#/lib/core/logger';
-import {launcherSearch} from '#/lib/services/search/launcher';
-import type {LauncherMode, ListItem} from '#/lib/services/search/launcher';
-import { fuzzyQuery } from '#/lib/services/state/apps';
-import { ClipboardEntry } from '#/lib/services/clipboard/encryptedStore';
+import {useSettings} from '../../lib/settings';
+import {app} from '../../apps/shell/App';
+import WindowManager from '../../lib/services/state/windowManager';
+import ShellState from '../../lib/services/state/shellState';
+import logger from '../../lib/core/logger';
+import {launcherSearch} from '../../lib/services/search/launcher';
+import type {LauncherMode, ListItem} from '../../lib/services/search/launcher';
+import {fuzzyQuery} from '../../lib/services/state/apps';
+import {ClipboardEntry} from '../../lib/services/clipboard/encryptedStore';
 import AstalApps from 'gi://AstalApps?version=0.1';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
 export default () => {
     const barCfg = useSettings().bar;
-    const hyprland = Hyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
     const shellState = ShellState.get_default();
     const [list, setList] = createState<ListItem[]>([]);
     const [mode, setMode] = createState<LauncherMode>('apps');
@@ -37,7 +39,7 @@ export default () => {
 
     return (
         <Astal.Window
-            $={self => {
+            ref={self => {
                 WindowManager.get_default().setApplauncher(self);
                 self.connect('realize', () =>
                     logger.log('applauncher realized')
@@ -48,7 +50,7 @@ export default () => {
             name={'applauncher'}
             margin={12}
             application={app}
-            visible={createBinding(shellState, 'launcherOpen')}
+            visible={bind(shellState, 'launcherOpen')}
             onNotifyVisible={self => {
                 logger.log(`applauncher visible -> ${self.visible}`);
                 if (
@@ -74,7 +76,7 @@ export default () => {
             cssClasses={['card', 'frame', 'background']}
             css={'padding-right:0px;'}
             keymode={Astal.Keymode.ON_DEMAND}
-            monitor={createBinding(hyprland, 'focusedMonitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as(m => m.id)}
             anchor={barCfg.position.as(
                 p => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM
             )}
@@ -92,7 +94,7 @@ export default () => {
                             ? 'Search clipboard history...'
                             : 'Search your apps'
                     )}
-                    $={self => {
+                    ref={self => {
                         entryRef = self;
                     }}
                     onNotifyText={self => updateSearch(self.text)}
@@ -105,7 +107,7 @@ export default () => {
                     }}
                 >
                     <Gtk.EventControllerKey
-                        $={self => {
+                        ref={self => {
                             self.connect('key-pressed', (_, keyval) => {
                                 if (keyval === Gdk.KEY_Escape) {
                                     WindowManager.get_default().applauncher!.visible = false;
@@ -154,7 +156,9 @@ export default () => {
                                     />
                                 ) : (
                                     <AppButton
-                                        application={item as AstalApps.Application}
+                                        application={
+                                            item as AstalApps.Application
+                                        }
                                     />
                                 )
                             }

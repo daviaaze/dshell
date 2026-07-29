@@ -1,6 +1,6 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import logger from '#/lib/core/logger';
+import logger from './logger';
 
 const monitorFiles = new Set<Gio.FileMonitor>();
 

@@ -1,9 +1,9 @@
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {createState, For} from 'gnim';
-import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
+import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export default () => {
     const {general} = useSettings();
@@ -36,7 +36,7 @@ export default () => {
                 title="Timezones"
                 subtitle={general.timezones.as(tzs => tzs.join(', '))}
             >
-                <Gtk.MenuButton $type="suffix" $={usePopoverCleanup}>
+                <Gtk.MenuButton slot="suffix" ref={usePopoverCleanup}>
                     <Gtk.Button
                         cssClasses={['circular']}
                         iconName="list-add-symbolic"
@@ -79,12 +79,12 @@ export default () => {
                         title={tz.replaceAll('_', ' ')}
                         subtitle={(() => {
                             const gtz = GLib.TimeZone.new(tz);
-                            const now = GLib.DateTime.new_now(gtz);
+                            const now = GLib.DateTime.new_now(gtz)!;
                             return now.format('%H:%M') ?? '';
                         })()}
                     >
                         <Gtk.Button
-                            $type="suffix"
+                            slot="suffix"
                             cssClasses={['circular', 'destructive-action']}
                             iconName="list-remove-symbolic"
                             onClicked={() => {

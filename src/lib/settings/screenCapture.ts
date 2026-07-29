@@ -1,12 +1,12 @@
 import Gio from 'gi://Gio';
-import {createSettings} from 'gnim-schemas';
-import {screenCaptureSchema} from './schema';
+import {createSettings} from 'gnim/schema';
+import {screenCaptureSchema} from './schema.gschema';
 
 let instance: ReturnType<typeof createScreenCaptureSettings> | null = null;
 
 function createScreenCaptureSettings() {
     const settings = new Gio.Settings({schemaId: screenCaptureSchema.id});
-    return createSettings(settings, screenCaptureSchema)
+    return createSettings(settings, screenCaptureSchema);
 }
 
 export function getScreenCaptureSettings() {

@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createComputed} from 'gnim';
+import {Accessor, computed, effect, isAccessor, type GnimNode} from 'gnim';
 import {usePopoverCleanup} from './popoverCleanup';
 
 interface QuickToggleButtonProps {
@@ -8,13 +8,15 @@ interface QuickToggleButtonProps {
     label: Accessor<string> | string;
     cssClasses?: Accessor<string[]> | string[];
     onClick?: () => void;
-    popover?: Accessor<Gtk.Popover> | Gtk.Popover;
+    popover?: Accessor<GnimNode> | GnimNode;
     hexpand?: boolean;
     visible?: Accessor<boolean> | boolean;
     active?: Accessor<boolean> | boolean;
 }
 
-export const QuickToggleButton = (props: QuickToggleButtonProps) => {
+export const QuickToggleButton = (
+    props: QuickToggleButtonProps
+): GnimNode => {
     // Neither Gtk.Button nor Adw.SplitButton expose an `active` state that
     // fits a toggle — reflect `active` through the 'active' css class.
     // Narrow via local consts so instanceof narrowing holds inside the closure.
@@ -22,37 +24,47 @@ export const QuickToggleButton = (props: QuickToggleButtonProps) => {
     const act = props.active;
 
     const mergedCss =
-        css instanceof Accessor || act instanceof Accessor
-            ? createComputed(() => {
-                  const base = css instanceof Accessor ? css() : (css ?? ['raised']);
-                  const isActive = act instanceof Accessor ? act() : act;
+        isAccessor(css) || isAccessor(act)
+            ? computed(() => {
+                  const base = isAccessor(css) ? css() : (css ?? ['raised']);
+                  const isActive = isAccessor(act) ? act() : act;
                   return isActive ? [...base, 'active'] : base;
               })
             : [...(css ?? ['raised']), ...(act ? ['active'] : [])];
 
     if (props.popover) {
-        return (
-            <Adw.SplitButton
+        const popoverNode = isAccessor(props.popover) ? props.popover() : props.popover;
+        let splitButton: Adw.SplitButton | null = null;
+        effect(() => {
+            if (!splitButton) return;
+            let child = splitButton.get_first_child();
+            while (child) {
+                if (child instanceof Gtk.Popover) {
+                    splitButton.popover = child;
+                    break;
+                }
+                child = child.get_next_sibling();
+            }
+        });
+
+        return <Adw.SplitButton
                 visible={props.visible ?? true}
                 cssClasses={mergedCss}
                 hexpand={props.hexpand ?? true}
-                $={usePopoverCleanup}
+                ref={self => { splitButton = self; usePopoverCleanup(self); }}
                 onClicked={props.onClick}
-                popover={props.popover}
             >
+                {popoverNode}
                 <Adw.ButtonContent iconName={props.icon} label={props.label} />
-            </Adw.SplitButton>
-        );
+            </Adw.SplitButton>;
     }
 
-    return (
-        <Gtk.Button
+    return <Gtk.Button
             visible={props.visible ?? true}
             cssClasses={mergedCss}
             hexpand={props.hexpand ?? true}
             onClicked={props.onClick}
         >
             <Adw.ButtonContent iconName={props.icon} label={props.label} />
-        </Gtk.Button>
-    );
+        </Gtk.Button>;
 };

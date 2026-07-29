@@ -107,5 +107,7 @@ export function loadWindows(
 export function getMonitorOrigin(
     focusedMonitor: {x: number; y: number} | null
 ): Point {
-    return focusedMonitor ? {x: focusedMonitor.x, y: focusedMonitor.y} : {x: 0, y: 0};
+    return focusedMonitor
+        ? {x: focusedMonitor.x, y: focusedMonitor.y}
+        : {x: 0, y: 0};
 }

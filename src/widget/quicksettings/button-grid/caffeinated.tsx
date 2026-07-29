@@ -1,28 +1,28 @@
-import Inhibit from '#/lib/services/power/inhibit';
+import Inhibit from '../../../lib/services/power/inhibit';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed} from 'gnim';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import {LinkedBox} from '#/widget/common/linkedBox';
+import {bind, computed} from 'gnim';
+import type {QuickButton} from './quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import {LinkedBox} from '../../common/linkedBox';
 
 export default (): QuickButton => {
     const inhibit = Inhibit.get_default();
-    const idle = createBinding(inhibit, 'idle');
-    const remaining = createBinding(inhibit, 'remaining');
+    const idle = bind(inhibit, 'idle');
+    const remaining = bind(inhibit, 'remaining');
 
-    const label = createComputed(() => {
+    const label = computed(() => {
         const _idle = idle();
         const rem = remaining();
         if (!_idle) return 'Auto Sleep';
         return rem ? `Keep Awake (${rem})` : 'Keep Awake';
     });
 
-    const icon = createComputed(() =>
+    const icon = computed(() =>
         idle() ? 'weather-clear-symbolic' : 'weather-clear-night-symbolic'
     );
 
-    const cssClasses = createComputed(() =>
+    const cssClasses = computed(() =>
         idle() ? ['raised', 'suggested-action'] : ['raised']
     );
 
@@ -53,9 +53,9 @@ export default (): QuickButton => {
                         label="1 hour"
                     />
                 </Gtk.Button>
-                <Gtk.Separator visible={createBinding(inhibit, 'idle')} />
+                <Gtk.Separator visible={bind(inhibit, 'idle')} />
                 <Gtk.Button
-                    visible={createBinding(inhibit, 'idle')}
+                    visible={bind(inhibit, 'idle')}
                     onClicked={() => (inhibit.idle = false)}
                 >
                     <Adw.ButtonContent
@@ -65,7 +65,7 @@ export default (): QuickButton => {
                 </Gtk.Button>
             </LinkedBox>
         </Gtk.Popover>
-    ) as Gtk.Popover;
+    );
 
     return {
         widget: (
@@ -79,6 +79,6 @@ export default (): QuickButton => {
                 }}
                 popover={popover}
             />
-        ) as Gtk.Widget,
+        ),
     };
 };

@@ -1,9 +1,9 @@
-import {createBinding, createState} from 'gnim';
-import Brightness from '#/lib/services/display/brightness';
-import AudioController from '#/lib/services/audio/audioController';
-import {AudioEndpointControl} from '#/widget/common/audioControl';
-import {Slider} from '#/widget/common/slider';
-import logger from '#/lib/core/logger';
+import {bind, createState} from 'gnim';
+import Brightness from '../../lib/services/display/brightness';
+import AudioController from '../../lib/services/audio/audioController';
+import {AudioEndpointControl} from '../common/audioControl';
+import {Slider} from '../common/slider';
+import logger from '../../lib/core/logger';
 
 const BRIGHTNESS_PRESETS = [0.25, 0.5, 0.75, 1.0];
 const BRIGHTNESS_PCT_MAX = 100;
@@ -26,11 +26,9 @@ function createEndpointConfig(cfg: EndpointConfig) {
 
         return (
             <AudioEndpointControl
-                visible={createBinding(audioCtrl, cfg.devicesProp).as(
-                    s => s.length > 0
-                )}
-                defaultDevice={createBinding(audioCtrl, cfg.defaultProp)}
-                devices={createBinding(audioCtrl, cfg.devicesProp)}
+                visible={bind(audioCtrl, cfg.devicesProp).as(s => s.length > 0)}
+                defaultDevice={bind(audioCtrl, cfg.defaultProp)}
+                devices={bind(audioCtrl, cfg.devicesProp)}
                 mutedIcon={cfg.mutedIcon}
                 showAppMixer={cfg.showAppMixer}
             />
@@ -68,13 +66,11 @@ export const BrightnessSlider = () => {
     logger.debug('brightness', 'BrightnessSlider: done');
     return (
         <Slider
-            visible={createBinding(brightness, 'screen').as(v => v > 0)}
+            visible={bind(brightness, 'screen').as(v => v > 0)}
             icon={'display-brightness-symbolic'}
             min={BRIGHTNESS_PCT_MIN}
             max={BRIGHTNESS_PCT_MAX}
-            value={createBinding(brightness, 'screen').as(
-                v => v * BRIGHTNESS_PCT_MAX
-            )}
+            value={bind(brightness, 'screen').as(v => v * BRIGHTNESS_PCT_MAX)}
             setValue={value =>
                 brightness.set({screen: value / BRIGHTNESS_PCT_MAX})
             }

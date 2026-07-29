@@ -8,9 +8,9 @@
 import Quarrel from 'gi://Quarrel';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {bus} from '#/lib/core/eventBus';
-import logger, {perf} from '#/lib/core/logger';
-import printOut from '#/lib/core/stdout';
+import {bus} from '../../core/eventBus';
+import logger, {perf} from '../../core/logger';
+import printOut from '../../core/stdout';
 
 // ── Help flag (shared) ──
 
@@ -44,7 +44,10 @@ function buildCLI(app: Gio.Application): Quarrel.Command {
     // Subcommands
     const toggle = new Quarrel.Command({name: 'toggle'})
         .about('Toggle a widget visibility')
-        .arg('WIDGET', 'Widget to toggle: launcher, quicksettings, settings, bar, windowswitcher, touchpad')
+        .arg(
+            'WIDGET',
+            'Widget to toggle: launcher, quicksettings, settings, bar, windowswitcher, touchpad'
+        )
         .opt(help);
 
     const screenshot = new Quarrel.Command({name: 'screenshot'})
@@ -71,7 +74,9 @@ function buildCLI(app: Gio.Application): Quarrel.Command {
         .about('Record the focused window')
         .opt(help);
 
-    const recordWindowAddr = new Quarrel.Command({name: 'record-window-address'})
+    const recordWindowAddr = new Quarrel.Command({
+        name: 'record-window-address',
+    })
         .about('Record a window by its Hyprland address')
         .arg('ADDRESS', 'Hyprland window address (e.g. 0x12345678)')
         .opt(help);
@@ -124,10 +129,7 @@ function buildCLI(app: Gio.Application): Quarrel.Command {
 
 // ── Dispatch ──
 
-function dispatch(
-    command: Quarrel.Command,
-    app: Gio.Application
-): boolean {
+function dispatch(command: Quarrel.Command, app: Gio.Application): boolean {
     const name = command.get_name();
 
     switch (name) {
@@ -232,7 +234,10 @@ export const requestHandler = (
             'dbus'
         );
     } else {
-        logger.warn('dbus', `no command matched, args=${args.slice(1).join(' ')}`);
+        logger.warn(
+            'dbus',
+            `no command matched, args=${args.slice(1).join(' ')}`
+        );
         printOut(Quarrel.help(cli));
     }
 

@@ -15,11 +15,11 @@
  * The service also emits `brightness-changed(device)` on any change.
  */
 import AstalBrightness from 'gi://AstalBrightness';
-import GObject, {getter, register, setter} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import {Object, register, property, Int} from 'gnim/gobject';
+import logger from '../../core/logger';
 
 @register({GTypeName: 'Brightness'})
-export default class Brightness extends GObject.Object {
+export default class Brightness extends Object {
     static instance: Brightness;
 
     static get_default() {
@@ -31,30 +31,28 @@ export default class Brightness extends GObject.Object {
     #kbdDev: AstalBrightness.Device | null = null;
     #ready = false;
 
-    @getter(Boolean)
+    @property
     get ready() {
         return this.#ready;
     }
 
     /** Screen brightness [0–1] */
-    @getter(Number)
+    @property(Int)
     get screen(): number {
         return this.#screenDev?.brightness ?? 0;
     }
 
-    @setter(Number)
     set screen(value: number) {
         const dev = this.#screenDev;
         if (dev) dev.brightness = Math.max(0, Math.min(1, value));
     }
 
     /** Keyboard brightness [0–1] */
-    @getter(Number)
+    @property(Int)
     get kbd(): number {
         return this.#kbdDev?.brightness ?? 0;
     }
 
-    @setter(Number)
     set kbd(value: number) {
         const dev = this.#kbdDev;
         if (dev) dev.brightness = Math.max(0, Math.min(1, value));
@@ -80,17 +78,14 @@ export default class Brightness extends GObject.Object {
             // Forward property notifications from the Device objects.
             // Device.brightness fires notify::brightness when the percentage changes.
             screenDev?.connect('notify::brightness', () => {
-                logger.info('brightness', `notify::brightness on screen → ${screenDev.brightness.toFixed(3)}`);
                 this.notify('screen');
             });
             kbdDev?.connect('notify::brightness', () => {
-                logger.info('brightness', `notify::brightness on keyboard → ${kbdDev.brightness.toFixed(3)}`);
                 this.notify('kbd');
             });
 
             // Also listen to the service-level convenience signal
             svc.connect('brightness-changed', (_device: unknown) => {
-                logger.info('brightness', 'brightness-changed signal');
                 // Re-notify both — the device param tells us which one,
                 // but re-notifying both is simpler and harmless.
                 this.notify('screen');
@@ -104,7 +99,11 @@ export default class Brightness extends GObject.Object {
             this.notify('screen');
             this.notify('kbd');
         } catch (e) {
-            logger.error('brightness', 'failed to initialize AstalBrightness:', e);
+            logger.error(
+                'brightness',
+                'failed to initialize AstalBrightness:',
+                e
+            );
         }
     }
 

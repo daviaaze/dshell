@@ -4,7 +4,7 @@
  * Run: gjs -m src/lib/__tests__/timeout.test.ts
  */
 
-import {Timeout} from '#/lib/core/timeout';
+import {Timeout} from '../core/timeout';
 import GLib from 'gi://GLib?version=2.0';
 import {describe, it, expect, run} from './test-runner';
 
@@ -21,7 +21,9 @@ describe('Timeout', () => {
     it('fires callback after the specified delay', async () => {
         const t = new Timeout();
         let fired = false;
-        t.start(10, () => { fired = true; });
+        t.start(10, () => {
+            fired = true;
+        });
         await delayMs(20);
         expect(fired).toBe(true);
         t.cancel();
@@ -30,7 +32,9 @@ describe('Timeout', () => {
     it('cancel() prevents callback from firing', async () => {
         const t = new Timeout();
         let fired = false;
-        t.start(50, () => { fired = true; });
+        t.start(50, () => {
+            fired = true;
+        });
         t.cancel();
         await delayMs(80);
         expect(fired).toBe(false);

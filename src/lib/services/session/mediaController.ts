@@ -1,7 +1,7 @@
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Mpris from 'gi://AstalMpris';
-import logger from '#/lib/core/logger';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
+import logger from '../../core/logger';
+import {connectFor, cleanupNode} from '../../core/connectFor';
 
 /**
  * MediaController — semantic command layer over AstalMpris.
@@ -10,7 +10,7 @@ import {connectFor, cleanupNode} from '#/lib/core/connectFor';
  * they never call Mpris.Player.play(), .pause(), .next(), etc. directly.
  */
 @register({GTypeName: 'MediaController'})
-export default class MediaController extends GObject.Object {
+export default class MediaController extends Object {
     static instance: MediaController;
 
     static get_default(): MediaController {
@@ -27,32 +27,32 @@ export default class MediaController extends GObject.Object {
     #listening = false;
     #hn: Record<string, number> = {};
 
-    @getter(Object)
+    @property
     get mpris(): Mpris.Mpris | null {
         return this.#mpris;
     }
 
-    @getter(Array)
+    @property
     get players(): Mpris.Player[] {
         return this.#players;
     }
 
-    @getter(Object)
+    @property
     get activePlayer(): Mpris.Player | null {
         return this.#activePlayer;
     }
 
-    @getter(String)
+    @property
     get activeTitle(): string {
         return this.#activeTitle;
     }
 
-    @getter(String)
+    @property
     get activeArtist(): string {
         return this.#activeArtist;
     }
 
-    @getter(String)
+    @property
     get activeCoverArt(): string {
         return this.#activeCoverArt;
     }
@@ -86,10 +86,7 @@ export default class MediaController extends GObject.Object {
 
     #updateActivePlayer() {
         // Keep existing active player if still in the list
-        if (
-            this.#activePlayer &&
-            this.#players.includes(this.#activePlayer)
-        ) {
+        if (this.#activePlayer && this.#players.includes(this.#activePlayer)) {
             return; // player unchanged — properties will notify via signals
         }
 

@@ -2,8 +2,8 @@ import AstalWp from 'gi://AstalWp?version=0.1';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import {Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {Process} from '../../core/process';
+import logger from '../../core/logger';
 import {RecorderBackend, RecordingFormat} from './types';
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ function buildWlScreenrecArgs(
     audio: boolean,
     isWebm: boolean,
     audioInputId: number,
-    quality: number,
+    quality: number
 ): RecordingArgs {
     const args = ['wl-screenrec', '-f', filename];
     if (geometry) args.push('-g', geometry);
@@ -95,7 +95,7 @@ function buildWfRecorderArgs(
     audio: boolean,
     isWebm: boolean,
     audioInputId: number,
-    quality: number,
+    quality: number
 ): RecordingArgs {
     const args = ['wf-recorder', '-f', filename, '-y'];
     if (geometry) args.push('-g', geometry);
@@ -123,13 +123,29 @@ export function buildRecordingArgs(
     audio: boolean,
     format: RecordingFormat = RecordingFormat.MP4,
     audioInputId: number = -1,
-    quality: number = 1,
+    quality: number = 1
 ): RecordingArgs {
     const isWebm = format === RecordingFormat.WEBM;
     if (backend === RecorderBackend.WL_SCREENREC) {
-        return buildWlScreenrecArgs(filename, geometry, output, audio, isWebm, audioInputId, quality);
+        return buildWlScreenrecArgs(
+            filename,
+            geometry,
+            output,
+            audio,
+            isWebm,
+            audioInputId,
+            quality
+        );
     }
-    return buildWfRecorderArgs(filename, geometry, output, audio, isWebm, audioInputId, quality);
+    return buildWfRecorderArgs(
+        filename,
+        geometry,
+        output,
+        audio,
+        isWebm,
+        audioInputId,
+        quality
+    );
 }
 
 // ── Backend resolution ───────────────────────────────────────────
@@ -167,8 +183,15 @@ export function notify(
 ) {
     // Use execAsyncv to avoid GLib.shell_parse_argv quoting issues
     // when title or body contain special characters.
-    Process.execAsyncv(['notify-send', '-a', 'shade-shell', '-i', icon, title, body])
-        .catch(e => logger.warn('screenshot', 'notify-send failed:', e));
+    Process.execAsyncv([
+        'notify-send',
+        '-a',
+        'shade-shell',
+        '-i',
+        icon,
+        title,
+        body,
+    ]).catch(e => logger.warn('screenshot', 'notify-send failed:', e));
 }
 
 // ── Image clipboard copy ─────────────────────────────────────────
@@ -198,11 +221,17 @@ export function copyImageToClipboard(filename: string): void {
                 }
                 proc.wait(null);
             }
-            logger.debug('screenshot', `copied to clipboard via wl-copy: ${filename}`);
+            logger.debug(
+                'screenshot',
+                `copied to clipboard via wl-copy: ${filename}`
+            );
             return;
         }
     } catch (e) {
-        logger.warn('screenshot', `wl-copy clipboard failed: ${e instanceof Error ? e.message : String(e)}`);
+        logger.warn(
+            'screenshot',
+            `wl-copy clipboard failed: ${e instanceof Error ? e.message : String(e)}`
+        );
     }
 
     try {
@@ -213,9 +242,15 @@ export function copyImageToClipboard(filename: string): void {
             return;
         }
         const texture = Gdk.Texture.new_from_filename(filename);
-        display.get_clipboard().set_property('texture', texture)
+        const clipboard = display.get_clipboard();
+        const bytes = texture.save_to_png_bytes();
+        const provider = Gdk.ContentProvider.new_for_bytes('image/png', bytes);
+        clipboard.set_content(provider);
         logger.debug('screenshot', `copied to clipboard via Gdk: ${filename}`);
     } catch (e) {
-        logger.warn('screenshot', `clipboard copy failed: ${e instanceof Error ? e.message : String(e)}`);
+        logger.warn(
+            'screenshot',
+            `clipboard copy failed: ${e instanceof Error ? e.message : String(e)}`
+        );
     }
 }

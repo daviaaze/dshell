@@ -1,8 +1,8 @@
-import GObject, {register, signal} from 'gnim/gobject';
-import {getter} from '#/lib/decorators';
+import {Object, register, signal, String, VoidType} from 'gnim/gobject';
+import {property} from '../../decorators';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 const FPRINTD_SERVICE = 'net.reactivated.Fprint';
 const FPRINTD_MANAGER = '/net/reactivated/Fprint/Manager';
@@ -11,7 +11,7 @@ const MAX_RETRIES = 3;
 type FingerprintState = 'idle' | 'initializing' | 'verifying' | 'error';
 
 @register({GTypeName: 'FingerprintAuth'})
-export default class FingerprintAuth extends GObject.Object {
+export default class FingerprintAuth extends Object {
     static instance: FingerprintAuth;
 
     static get_default() {
@@ -29,7 +29,7 @@ export default class FingerprintAuth extends GObject.Object {
     #consecutiveFailures = 0;
     #signalId = 0;
 
-    @getter(Boolean)
+    @property
     get available() {
         return this.#available;
     }
@@ -38,34 +38,36 @@ export default class FingerprintAuth extends GObject.Object {
         if (this.#signalId !== 0 && this.#deviceProxy) {
             try {
                 this.#deviceProxy.disconnect(this.#signalId);
-            } catch { /* ignore */ }
+            } catch {
+                /* ignore */
+            }
             this.#signalId = 0;
         }
     }
 
-    @getter(String)
+    @property
     get state() {
         return this.#state;
     }
 
-    @getter(String)
+    @property
     get errorMessage() {
         return this.#errorMessage;
     }
 
-    @getter(Boolean)
+    @property
     get verifying() {
         return this.#state === 'verifying';
     }
 
-    @signal()
-    verified(): undefined { return undefined; }
+    @signal([])
+    verified(): void {}
 
-    @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
-    failed(_reason: string): undefined { return undefined; }
+    @signal([String], VoidType)
+    failed(_reason: string): void {}
 
-    @signal([GObject.TYPE_STRING], GObject.TYPE_NONE)
-    statusChanged(_status: string): undefined { return undefined; }
+    @signal([String], VoidType)
+    statusChanged(_status: string): void {}
 
     #setState(state: FingerprintState) {
         if (this.#state === state) return;
@@ -173,7 +175,7 @@ export default class FingerprintAuth extends GObject.Object {
         // already ended verification. Just release and restart.
         this.#setState('idle');
         this.#release();
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
         this.start();
     }
 

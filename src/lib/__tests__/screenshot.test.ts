@@ -7,12 +7,12 @@
  * Run: gjs -m src/lib/__tests__/screenshot.test.ts
  */
 
-import Screenshot from '#/lib/services/capture/screenshot';
+import Screenshot from '../services/capture/screenshot';
 import {
     parseGrimGeometry,
     toGrimGeometry,
     toMagickGeometry,
-} from '#/lib/services/capture/stage';
+} from '../services/capture/stage';
 import {describe, it, expect, run} from './test-runner';
 
 describe('Screenshot singleton', () => {
@@ -93,13 +93,15 @@ describe('Geometry parsing', () => {
     });
 
     it('toGrimGeometry formats correctly', () => {
-        expect(toGrimGeometry({x: 100, y: 200, width: 1920, height: 1080}))
-            .toBe('100,200 1920x1080');
+        expect(
+            toGrimGeometry({x: 100, y: 200, width: 1920, height: 1080})
+        ).toBe('100,200 1920x1080');
     });
 
     it('toMagickGeometry formats correctly', () => {
-        expect(toMagickGeometry({x: 100, y: 200, width: 1920, height: 1080}))
-            .toBe('1920x1080+100+200');
+        expect(
+            toMagickGeometry({x: 100, y: 200, width: 1920, height: 1080})
+        ).toBe('1920x1080+100+200');
     });
 
     it('round-trip: parse then toGrimGeometry is identity', () => {

@@ -1,10 +1,10 @@
 import Wireplumber from 'gi://AstalWp';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding, createState, For, With} from 'gnim';
+import {Accessor, bind, createState, For, With} from 'gnim';
 import {Slider} from './slider';
-import {getVolumeIcon} from '#/lib/services/audio/icons';
-import AppMixer from '#/widget/quicksettings/appMixer';
-import AudioController from '#/lib/services/audio/audioController';
+import {getVolumeIcon} from '../../lib/services/audio/icons';
+import AppMixer from '../quicksettings/appMixer';
+import AudioController from '../../lib/services/audio/audioController';
 
 export {getVolumeIcon};
 
@@ -32,7 +32,7 @@ export const AudioEndpointControl = ({
             <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
                 <Gtk.CheckButton
                     group={radioGroup}
-                    active={createBinding(device, 'isDefault')}
+                    active={bind(device, 'is-default')}
                     onNotifyActive={({active}) => {
                         if (active) device.isDefault = true;
                     }}
@@ -51,7 +51,7 @@ export const AudioEndpointControl = ({
                 max={100}
                 onIconClick={() => device.set_mute(!device.get_mute())}
                 icon={getVolumeIcon(device, mutedIcon)}
-                value={createBinding(device, 'volume').as(v => v * 100)}
+                value={bind(device, 'volume').as(v => v * 100)}
                 setValue={value => device.set_volume(value / 100)}
             />
         </Gtk.Box>
@@ -121,14 +121,17 @@ export const AudioEndpointControl = ({
                                 icon={getVolumeIcon(device, mutedIcon)}
                                 min={0}
                                 max={100}
-                                value={createBinding(device, 'volume').as(
-                                    v => v * 100
-                                )}
+                                value={bind(device, 'volume').as(v => v * 100)}
                                 setValue={value =>
-                                    AudioController.get_default().setVolume(device, value / 100)
+                                    AudioController.get_default().setVolume(
+                                        device,
+                                        value / 100
+                                    )
                                 }
                                 onIconClick={() =>
-                                    AudioController.get_default().toggleMute(device)
+                                    AudioController.get_default().toggleMute(
+                                        device
+                                    )
                                 }
                             />
                         ) : null

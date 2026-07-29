@@ -1,13 +1,13 @@
-import {createBinding, createComputed} from 'gnim';
-import Brightness from '#/lib/services/display/brightness';
+import {bind, computed, createState} from 'gnim';
+import Brightness from '../../lib/services/display/brightness';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
-import Touchpad from '#/lib/services/input/touchpad';
+import Touchpad from '../../lib/services/input/touchpad';
 import Gtk from 'gi://Gtk?version=4.0';
 import Astal from 'gi://Astal?version=4.0';
-import PopupWindow from '#/widget/common/PopupWindow';
-import WindowManager from '#/lib/services/state/windowManager';
-import AudioController from '#/lib/services/audio/audioController';
+import PopupWindow from '../common/PopupWindow';
+import WindowManager from '../../lib/services/state/windowManager';
+import AudioController from '../../lib/services/audio/audioController';
 import Popup from './popup';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
@@ -21,58 +21,86 @@ export default () => {
     const brightness = Brightness.get_default();
     const touchpad = Touchpad.get_default();
 
-    const speakerIcon = createComputed(
-        () =>
-            audioCtrl.defaultSpeaker?.mute || audioCtrl.defaultSpeaker?.volume === 0
-                ? MUTED_SPEAKER_ICON
-                : audioCtrl.defaultSpeaker?.volumeIcon ?? 'audio-volume-high-symbolic'
+    const speakerIcon = computed(() =>
+        audioCtrl.defaultSpeaker?.mute || audioCtrl.defaultSpeaker?.volume === 0
+            ? MUTED_SPEAKER_ICON
+            : (audioCtrl.defaultSpeaker?.volumeIcon ??
+              'audio-volume-high-symbolic')
     );
 
-    const micIcon = createComputed(
-        () =>
-            audioCtrl.defaultMicrophone?.mute || audioCtrl.defaultMicrophone?.volume === 0
-                ? MUTED_MIC_ICON
-                : audioCtrl.defaultMicrophone?.volumeIcon ?? 'audio-input-microphone-symbolic'
+    const micIcon = computed(() =>
+        audioCtrl.defaultMicrophone?.mute ||
+        audioCtrl.defaultMicrophone?.volume === 0
+            ? MUTED_MIC_ICON
+            : (audioCtrl.defaultMicrophone?.volumeIcon ??
+              'audio-input-microphone-symbolic')
     );
 
-    const popupList: Gtk.Revealer[] = [
+    const [v0, s0] = createState(false);
+    const [v1, s1] = createState(false);
+    const [v2, s2] = createState(false);
+    const [v3, s3] = createState(false);
+    const [v4, s4] = createState(false);
+
+    const anyVisible = computed(() => v0() || v1() || v2() || v3() || v4());
+
+    const popupList = [
         <Popup
             connectable={audioCtrl.defaultSpeaker}
             signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: speakerIcon,
-                value: createComputed(() => audioCtrl.defaultSpeaker?.volume ?? 0),
+                value: computed(
+                    () => audioCtrl.defaultSpeaker?.volume ?? 0
+                ),
             })}
-        /> as Gtk.Revealer,
+            revealerRef={r =>
+                r.connect('notify::reveal-child', () => s0(r.revealChild))
+            }
+        />,
         <Popup
             connectable={brightness}
             signals={['notify::screen']}
             widget={Slider({
                 iconName: 'display-brightness-symbolic',
-                value: createBinding(brightness, 'screen'),
+                value: bind(brightness, 'screen'),
             })}
-        /> as Gtk.Revealer,
+            revealerRef={r =>
+                r.connect('notify::reveal-child', () => s1(r.revealChild))
+            }
+        />,
         <Popup
             connectable={brightness}
             signals={['notify::kbd']}
             widget={Slider({
                 iconName: 'keyboard-brightness-symbolic',
-                value: createComputed(() => brightness.kbd),
+                value: computed(() => brightness.kbd),
             })}
-        /> as Gtk.Revealer,
+            revealerRef={r =>
+                r.connect('notify::reveal-child', () => s2(r.revealChild))
+            }
+        />,
         <Popup
             connectable={audioCtrl.defaultMicrophone}
             signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: micIcon,
-                value: createComputed(() => audioCtrl.defaultMicrophone?.volume ?? 0),
+                value: computed(
+                    () => audioCtrl.defaultMicrophone?.volume ?? 0
+                ),
             })}
-        /> as Gtk.Revealer,
+            revealerRef={r =>
+                r.connect('notify::reveal-child', () => s3(r.revealChild))
+            }
+        />,
         <Popup
             connectable={touchpad}
             signals={['toggled']}
             widget={<TouchpadOsd />}
-        /> as Gtk.Revealer,
+            revealerRef={r =>
+                r.connect('notify::reveal-child', () => s4(r.revealChild))
+            }
+        />,
     ];
 
     return (
@@ -82,11 +110,8 @@ export default () => {
             margin={OSD_MARGIN}
             anchor={Astal.WindowAnchor.BOTTOM}
             layer={Astal.Layer.OVERLAY}
-            visible={createComputed(
-                () => (popupList).map(p =>
-                    p.revealChild).reduce((a, b) => a || b)
-            )}
-            $={self => WindowManager.get_default().setOsd(self)}
+            visible={anyVisible}
+            ref={self => WindowManager.get_default().setOsd(self)}
         >
             <Gtk.Box
                 cssClasses={['linked', 'card', 'background']}

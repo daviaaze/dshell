@@ -4,10 +4,9 @@ import {
     refreshConservation,
     toggleConservation,
     toggleConservationAsync,
-} from '#/lib/services/power/batteryConservation';
-import type {QuickButton} from '#/widget/quicksettings/button-grid/quickButton';
-import {QuickToggleButton} from '#/widget/common/quickToggleButton';
-import Gtk from 'gi://Gtk?version=4.0';
+} from '../../../lib/services/power/batteryConservation';
+import type {QuickButton} from './quickButton';
+import {QuickToggleButton} from '../../common/quickToggleButton';
 
 export default (): QuickButton => {
     startConservationMonitor();
@@ -42,6 +41,6 @@ export default (): QuickButton => {
                     }
                 }}
             />
-        ) as Gtk.Widget,
+        ),
     };
 };

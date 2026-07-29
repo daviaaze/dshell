@@ -1,9 +1,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
-import {Accessor, createBinding, createState, onMount} from 'gnim';
-import AuthSession from '#/lib/services/session/authSession';
-import FingerprintAuth from '#/lib/services/input/fingerprint';
+import {Accessor, bind, createState, effect} from 'gnim';
+import AuthSession from '../../lib/services/session/authSession';
+import FingerprintAuth from '../../lib/services/input/fingerprint';
 import {LockscreenWidgets} from './widgets';
 
 interface AuthPanelProps {
@@ -34,12 +34,9 @@ export const LockscreenAuthPanel = ({
             cssClasses={['card']}
         >
             <Adw.Avatar size={AVATAR_SIZE} />
-            <Gtk.Label
-                label={GLib.get_real_name()}
-                cssClasses={['title-3']}
-            />
+            <Gtk.Label label={GLib.get_real_name()} cssClasses={['title-3']} />
             <Gtk.PasswordEntry
-                $={self => onMount(() => self.grab_focus())}
+                ref={self => effect(() => self.grab_focus())}
                 placeholderText={'password'}
                 showPeekIcon
                 onActivate={self => {
@@ -48,11 +45,9 @@ export const LockscreenAuthPanel = ({
                 }}
             />
             <Gtk.Label
-                visible={createBinding(authSession, 'authStatus').as(
-                    s => s.length > 0
-                )}
+                visible={bind(authSession, 'authStatus').as(s => s.length > 0)}
                 cssClasses={['caption']}
-                label={createBinding(authSession, 'authStatus')}
+                label={bind(authSession, 'authStatus')}
             />
             <Gtk.Spinner
                 visible={fpStateBinding.as(

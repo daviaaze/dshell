@@ -1,1 +1,0 @@
-I have enough grounding. Writing the four spec files now.

@@ -4,14 +4,14 @@
  * Handles the lazy D-Bus initialization of the wifi device proxy
  * so widgets only need to bind to reactive properties.
  */
-import GObject, {getter, register} from 'gnim/gobject';
+import {Object, register, property} from 'gnim/gobject';
 import Network from 'gi://AstalNetwork';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 let _instance: NetworkService | null = null;
 
 @register({GTypeName: 'NetworkService'})
-export default class NetworkService extends GObject.Object {
+export default class NetworkService extends Object {
     #network: Network.Network | null = null;
     #wifi: Network.Wifi | null = null;
     #wifiSignalIds: number[] = [];
@@ -22,32 +22,32 @@ export default class NetworkService extends GObject.Object {
         return _instance;
     }
 
-    @getter(Network.Wifi)
+    @property
     get wifi(): Network.Wifi | null {
         return this.#wifi;
     }
 
-    @getter(String)
+    @property
     get wifiSsid(): string | null {
         return this.#wifi?.ssid ?? null;
     }
 
-    @getter(Boolean)
+    @property
     get wifiEnabled(): boolean {
         return this.#wifi?.enabled ?? false;
     }
 
-    @getter(Number)
+    @property
     get wifiStrength(): number {
         return this.#wifi?.strength ?? 0;
     }
 
-    @getter(Number)
+    @property
     get wifiState(): number {
         return this.#wifi?.state ?? 0;
     }
 
-    @getter(Boolean)
+    @property
     get wifiReady(): boolean {
         return this.#wifi !== null && this.#initialized;
     }
@@ -92,15 +92,11 @@ export default class NetworkService extends GObject.Object {
                 this.notify('wifi-state');
             };
 
-            this.#wifiSignalIds.push(
-                w.connect('notify::state', onPropChanged)
-            );
+            this.#wifiSignalIds.push(w.connect('notify::state', onPropChanged));
             this.#wifiSignalIds.push(
                 w.connect('notify::strength', onPropChanged)
             );
-            this.#wifiSignalIds.push(
-                w.connect('notify::ssid', onPropChanged)
-            );
+            this.#wifiSignalIds.push(w.connect('notify::ssid', onPropChanged));
             this.#wifiSignalIds.push(
                 w.connect('notify::enabled', onPropChanged)
             );

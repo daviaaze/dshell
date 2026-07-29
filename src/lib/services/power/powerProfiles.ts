@@ -1,6 +1,6 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 const BUS_NAME = 'net.hadess.PowerProfiles';
 const OBJECT_PATH = '/net/hadess/PowerProfiles';

@@ -1,12 +1,12 @@
 import Wireplumber from 'gi://AstalWp';
-import {createBinding, createComputed} from 'gnim';
+import {bind, computed} from 'gnim';
 
 export function getVolumeIcon(device: Wireplumber.Endpoint, mutedIcon: string) {
-    const volume = createBinding(device, 'volume');
-    const mute = createBinding(device, 'mute');
-    const volumeIcon = createBinding(device, 'volumeIcon');
+    const volume = bind(device, 'volume');
+    const mute = bind(device, 'mute');
+    const volumeIcon = bind(device, 'volume-icon');
 
-    return createComputed(() =>
+    return computed(() =>
         mute() || volume() === 0 ? mutedIcon : volumeIcon()
     );
 }

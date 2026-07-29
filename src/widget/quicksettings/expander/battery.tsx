@@ -1,7 +1,7 @@
 import AstalBattery from 'gi://AstalBattery';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed} from 'gnim';
-import {IconInfoRow} from '#/widget/common/iconInfoRow';
+import {bind, computed} from 'gnim';
+import {IconInfoRow} from '../../common/iconInfoRow';
 
 function fmtDuration(seconds: number): string {
     const abs = Math.abs(Math.round(seconds));
@@ -21,27 +21,24 @@ function fmtDurationHMS(seconds: number): string {
 
 export const BatteryIcon = () => {
     const battery = AstalBattery.get_default();
-    const timeTo = createComputed(
-        [
-            createBinding(battery, 'charging'),
-            createBinding(battery, 'timeToEmpty'),
-            createBinding(battery, 'timeToFull'),
-        ],
-        (charging, timeToEmpty, timeToFull) =>
-            charging ? timeToFull : timeToEmpty
-    );
+    const charging = bind(battery, 'charging');
+    const timeToEmpty = bind(battery, 'time-to-empty');
+    const timeToFull = bind(battery, 'time-to-full');
+    const timeTo = computed(() => (charging() ? timeToFull() : timeToEmpty()));
 
     return (
         <IconInfoRow
-            visible={createBinding(battery, 'isPresent')}
-            icon={createBinding(battery, 'iconName')}
-            primary={createBinding(battery, 'percentage').as(
-                p => (p * 100).toFixed(0) + '%'
+            visible={bind(battery, 'is-present')}
+            icon={bind(battery, 'icon-name')}
+            primary={bind(battery, 'percentage').as(
+                (p: number) => (p * 100).toFixed(0) + '%'
             )}
-            secondary={timeTo(timeTo => {
-                if (timeTo === 0) return 'Full';
-                const suffix = battery.get_charging() ? ' to full' : ' to empty';
-                return fmtDuration(timeTo) + suffix;
+            secondary={timeTo.as(t => {
+                if (t === 0) return 'Full';
+                const suffix = battery.get_charging()
+                    ? ' to full'
+                    : ' to empty';
+                return fmtDuration(t) + suffix;
             })}
         />
     );
@@ -49,21 +46,16 @@ export const BatteryIcon = () => {
 
 export const Battery = () => {
     const battery = AstalBattery.get_default();
-    const timeTo = createComputed(
-        [
-            createBinding(battery, 'charging'),
-            createBinding(battery, 'timeToEmpty'),
-            createBinding(battery, 'timeToFull'),
-        ],
-        (charging, timeToEmpty, timeToFull) =>
-            charging ? timeToFull : timeToEmpty
-    );
+    const charging = bind(battery, 'charging');
+    const timeToEmpty = bind(battery, 'time-to-empty');
+    const timeToFull = bind(battery, 'time-to-full');
+    const timeTo = computed(() => (charging() ? timeToFull() : timeToEmpty()));
 
-    const chargingLabel = createBinding(battery, 'charging').as(c =>
+    const chargingLabel = charging.as((c: boolean) =>
         c ? 'Charged in:' : 'Discharged in:'
     );
 
-    const rateLabel = createBinding(battery, 'charging').as(c =>
+    const rateLabel = charging.as((c: boolean) =>
         c ? 'Rate of Charge:' : 'Rate of discharge:'
     );
 
@@ -72,7 +64,7 @@ export const Battery = () => {
             orientation={Gtk.Orientation.VERTICAL}
             cssClasses={['card', 'p-12']}
             spacing={4}
-            visible={createBinding(battery, 'isPresent')}
+            visible={bind(battery, 'is-present')}
         >
             <Gtk.Label
                 cssClasses={['title-3']}
@@ -86,7 +78,7 @@ export const Battery = () => {
             <Gtk.Box spacing={8} halign={Gtk.Align.START}>
                 <Gtk.Label cssClasses={['heading']} label={rateLabel} />
                 <Gtk.Label
-                    label={createBinding(battery, 'energyRate').as(
+                    label={bind(battery, 'energy-rate').as(
                         r => `${r.toFixed(2)}W`
                     )}
                 />
@@ -94,19 +86,19 @@ export const Battery = () => {
             <Gtk.Box spacing={8} halign={Gtk.Align.START}>
                 <Gtk.Label cssClasses={['heading']} label={'Energy:'} />
                 <Gtk.Label
-                    label={createBinding(battery, 'energy').as(
+                    label={bind(battery, 'energy').as(
                         e =>
                             `${e.toFixed(2)}/${battery.energyFull.toFixed(0)}Wh`
                     )}
                 />
             </Gtk.Box>
             <Gtk.LevelBar
-                value={createBinding(battery, 'percentage')}
+                value={bind(battery, 'percentage')}
                 widthRequest={100}
                 heightRequest={50}
             >
                 <Gtk.Label
-                    label={createBinding(battery, 'percentage').as(
+                    label={bind(battery, 'percentage').as(
                         p => `${(p * 100).toFixed(0)}%`
                     )}
                 />

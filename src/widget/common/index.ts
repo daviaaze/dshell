@@ -43,9 +43,9 @@
  * ## Usage
  *
  * ```tsx
- * import { QuickToggleButton } from "#/widget/common/quickToggleButton"
- * import { Slider } from "#/widget/common/slider"
- * import { IconButton } from "#/widget/common/iconButton"
+ * import { QuickToggleButton } from "./quickToggleButton"
+ * import { Slider } from "./slider"
+ * import { IconButton } from "./iconButton"
  * ```
  *
  * ## Adding Components

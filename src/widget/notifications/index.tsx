@@ -1,22 +1,18 @@
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
+import {For, bind, createState, computed, effect, onCleanup} from 'gnim';
+import Notification from '../common/notification';
+import PopupWindow from '../common/PopupWindow';
+import WindowManager from '../../lib/services/state/windowManager';
 import {
-    For,
-    createBinding,
-    createState,
-    createComputed,
-    onMount,
-    onCleanup,
-} from 'gnim';
-import Notification from '#/widget/common/notification';
-import PopupWindow from '#/widget/common/PopupWindow';
-import WindowManager from '#/lib/services/state/windowManager';
-import {getNotifdSafe, watchNotifdInit} from '#/lib/services/notifications/guard';
-import {useSettings} from '#/lib/settings';
-import ShellState from '#/lib/services/state/shellState';
-import DndService from '#/lib/services/notifications/dnd';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
+    getNotifdSafe,
+    watchNotifdInit,
+} from '../../lib/services/notifications/guard';
+import {useSettings} from '../../lib/settings';
+import ShellState from '../../lib/services/state/shellState';
+import DndService from '../../lib/services/notifications/dnd';
+import {connectFor, cleanupNode} from '../../lib/core/connectFor';
 
 const NotificationContent = ({
     notifd,
@@ -41,25 +37,20 @@ const NotificationContent = ({
             return next;
         });
         const expireMs = (() => {
-            if (n.expire_timeout > 0) return n.expire_timeout;
-            if (notifd.default_timeout > 0) return notifd.default_timeout;
+            if (n.expireTimeout > 0) return n.expireTimeout;
+            if (notifd.defaultTimeout > 0) return notifd.defaultTimeout;
             return 5000;
         })();
         timeouts.set(
             id,
-            setTimeout(
-                () => {
-                    // eslint-disable-next-line sonarjs/no-nested-functions
-                    setNotifications(prev => {
-                        const next = prev.filter(x => x.id !== id);
-                        setNotificationCount(next.length);
-                        return next;
-                    });
-                    timeouts.delete(id);
-                },
-                expireMs,
-                []
-            )
+            setTimeout(() => {
+                setNotifications(prev => {
+                    const next = prev.filter(x => x.id !== id);
+                    setNotificationCount(next.length);
+                    return next;
+                });
+                timeouts.delete(id);
+            }, expireMs)
         );
     };
 
@@ -89,7 +80,6 @@ const NotificationContent = ({
         timeouts.set(
             id,
             setTimeout(() => {
-                // eslint-disable-next-line sonarjs/no-nested-functions
                 setNotifications(prev => {
                     const next = prev.filter(x => x.id !== id);
                     setNotificationCount(next.length);
@@ -104,7 +94,7 @@ const NotificationContent = ({
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
             spacing={4}
-            $={() => {
+            ref={() => {
                 const _hn = {};
                 connectFor(_hn, notifd, 'notified', (_, id) =>
                     addNotification(id)
@@ -112,7 +102,7 @@ const NotificationContent = ({
                 onCleanup(() => cleanupNode(_hn));
             }}
         >
-            <For each={notifications(n => n.reverse())}>
+            <For each={notifications.as(n => n.reverse())}>
                 {(n: Notifd.Notification) => (
                     <Notification
                         closeAction={() => removeNotif(n.id)}
@@ -139,7 +129,7 @@ export default () => {
     // notification daemon (dunst, mako) is already registered.
     // Also add a timeout guard: if the D-Bus handshake hangs, log a warning
     // after 15 seconds so we know the widget silently never initialized.
-    onMount(() => {
+    effect(() => {
         const _hn = {};
         let initialized = false;
 
@@ -178,23 +168,20 @@ export default () => {
         onCleanup(() => cleanupNode(_hn));
     });
 
-    const screenlocked = createBinding(
-        ShellState.get_default(),
-        'screenlocked'
-    );
+    const screenlocked = bind(ShellState.get_default(), 'screenlocked');
 
     return (
         <PopupWindow
             name="notifications"
             margin={12}
-            visible={createComputed(
+            visible={computed(
                 () =>
                     notifd() !== null &&
                     notificationCount() > 0 &&
                     !dontDisturb() &&
                     !screenlocked()
             )}
-            $={self => WindowManager.get_default().setNotifications(self)}
+            ref={self => WindowManager.get_default().setNotifications(self)}
         >
             <For each={notifd.as(n => (n ? [n] : ([] as Notifd.Notifd[])))}>
                 {(n: Notifd.Notifd) => (

@@ -1,9 +1,9 @@
-import Weather from '#/lib/services/location/weather';
+import Weather from '../../lib/services/location/weather';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding} from 'gnim';
-import {usePopoverCleanup} from '#/widget/common/popoverCleanup';
-import {WeatherWidget} from '#/widget/common/weatherWidget';
+import {Accessor, bind} from 'gnim';
+import {usePopoverCleanup} from '../common/popoverCleanup';
+import {WeatherWidget} from '../common/weatherWidget';
 
 export const WeatherButton = ({
     vertical,
@@ -13,8 +13,8 @@ export const WeatherButton = ({
     visible?: boolean | Accessor<boolean>;
 }) => {
     const svc = Weather.get_default();
-    const iconName = createBinding(svc, 'weatherIcon');
-    const tempLabel = createBinding(svc, 'tempSummary');
+    const iconName = bind(svc, 'weatherIcon');
+    const tempLabel = bind(svc, 'tempSummary');
 
     return (
         <Gtk.MenuButton
@@ -23,37 +23,28 @@ export const WeatherButton = ({
             )}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             visible={visible}
-            $={usePopoverCleanup}
-            popover={
-                (
-                    <Gtk.Popover
-                        valign={Gtk.Align.CENTER}
-                        halign={Gtk.Align.CENTER}
-                        cssClasses={[]}
-                        hasArrow={false}
-                        widthRequest={320}
-                    >
-                        <Gtk.Box cssClasses={[]}>
-                            <WeatherWidget />
-                        </Gtk.Box>
-                    </Gtk.Popover>
-                ) as Gtk.Popover
-            }
+            ref={usePopoverCleanup}
         >
+            <Gtk.Popover
+                slot="popover"
+                valign={Gtk.Align.CENTER}
+                halign={Gtk.Align.CENTER}
+                cssClasses={[]}
+                hasArrow={false}
+                widthRequest={320}
+            >
+                <Gtk.Box cssClasses={[]}>
+                    <WeatherWidget />
+                </Gtk.Box>
+            </Gtk.Popover>
             <Gtk.Box
                 orientation={vertical.as(v =>
                     v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                 )}
                 spacing={4}
             >
-                <Gtk.Image
-                    pixelSize={22}
-                    iconName={iconName}
-                />
-                <Gtk.Label
-                    cssClasses={['heading']}
-                    label={tempLabel}
-                />
+                <Gtk.Image pixelSize={22} iconName={iconName} />
+                <Gtk.Label cssClasses={['heading']} label={tempLabel} />
             </Gtk.Box>
         </Gtk.MenuButton>
     );

@@ -1,11 +1,11 @@
-import GObject, {getter, register, setter} from 'gnim/gobject';
+import {Object as GObject, register, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
-import {bus} from '#/lib/core/eventBus';
-import ServiceRegistry from '#/lib/core/serviceRegistry';
-import logger from '#/lib/core/logger';
+import {bus} from '../../core/eventBus';
+import ServiceRegistry from '../../core/serviceRegistry';
+import logger from '../../core/logger';
 
 @register({GTypeName: 'ShellState'})
-export default class ShellState extends GObject.Object {
+export default class ShellState extends GObject {
     static instance: ShellState;
 
     static get_default() {
@@ -18,23 +18,21 @@ export default class ShellState extends GObject.Object {
     #qsOpen = false;
     #screenlocked = false;
 
-    @getter(Boolean)
+    @property
     get launcherOpen() {
         return this.#launcherOpen;
     }
 
-    @getter(String)
+    @property
     get launcherQuery() {
         return this.#launcherQuery;
     }
 
-    @setter(String)
     set launcherQuery(v: string) {
         this.#launcherQuery = v;
         this.notify('launcher-query');
     }
 
-    @setter(Boolean)
     set launcherOpen(v: boolean) {
         logger.debug(
             'state',
@@ -44,24 +42,22 @@ export default class ShellState extends GObject.Object {
         this.notify('launcher-open');
     }
 
-    @getter(Boolean)
+    @property
     get qsOpen() {
         return this.#qsOpen;
     }
 
-    @setter(Boolean)
     set qsOpen(v: boolean) {
         logger.debug('state', `ShellState.qsOpen ${this.#qsOpen} -> ${v}`);
         this.#qsOpen = v;
         this.notify('qs-open');
     }
 
-    @getter(Boolean)
+    @property
     get screenlocked() {
         return this.#screenlocked;
     }
 
-    @setter(Boolean)
     set screenlocked(v: boolean) {
         logger.info(
             'state',
@@ -122,7 +118,10 @@ export default class ShellState extends GObject.Object {
     }
 
     toggleBar() {
-        const wm = ServiceRegistry.get_default().resolve<import('#/lib/services/state/windowManager').default>('WindowManager');
+        const wm =
+            ServiceRegistry.get_default().resolve<
+                import('./windowManager').default
+            >('WindowManager');
         wm.bars.forEach(bar => (bar.visible = !bar.visible));
     }
 
@@ -143,8 +142,10 @@ export default class ShellState extends GObject.Object {
         onToggleSettings?: () => void;
         onToggleWindowSwitcher?: () => void;
     }) {
-        if (opts.onToggleSettings) this.#onToggleSettings = opts.onToggleSettings;
-        if (opts.onToggleWindowSwitcher) this.#onToggleWindowSwitcher = opts.onToggleWindowSwitcher;
+        if (opts.onToggleSettings)
+            this.#onToggleSettings = opts.onToggleSettings;
+        if (opts.onToggleWindowSwitcher)
+            this.#onToggleWindowSwitcher = opts.onToggleWindowSwitcher;
     }
 
     toggleSettings() {

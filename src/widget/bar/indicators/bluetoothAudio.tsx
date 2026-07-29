@@ -1,11 +1,11 @@
 import Bluetooth from 'gi://AstalBluetooth';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createComputed, createState, onCleanup, onMount} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
-import {useSettings} from '#/lib/settings';
-import {getDeviceBatteryPercentage} from '#/lib/services/monitoring/bluetoothBattery';
-import {connectFor, cleanupNode} from '#/lib/core/connectFor';
+import {computed, createState, onCleanup, effect} from 'gnim';
+import {toArray} from '../../../lib/core/gjsUtils';
+import {useSettings} from '../../../lib/settings';
+import {getDeviceBatteryPercentage} from '../../../lib/services/monitoring/bluetoothBattery';
+import {connectFor, cleanupNode} from '../../../lib/core/connectFor';
 
 const ICON_MAP: Record<string, string> = {
     'audio-headset': 'audio-headset-symbolic',
@@ -84,12 +84,12 @@ export default () => {
         }
     }
 
-    onMount(() => {
+    effect(() => {
         const _hn = {};
         const batterySignals = new Map<string, number>();
 
         function refresh() {
-            if (!bluetooth.is_connected) {
+            if (!bluetooth.isConnected) {
                 setDeviceInfo([]);
                 return;
             }
@@ -152,7 +152,7 @@ export default () => {
         });
     });
 
-    const visible = createComputed(
+    const visible = computed(
         () => deviceInfo().length > 0 && bar.showBluetoothBattery()
     );
 
@@ -173,7 +173,7 @@ export default () => {
             visible={visible}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             tooltipMarkup={tooltipText}
-            $={self => {
+            ref={self => {
                 iconBox = new Gtk.Box({spacing: 4});
                 self.set_child(iconBox);
                 onCleanup(() => {

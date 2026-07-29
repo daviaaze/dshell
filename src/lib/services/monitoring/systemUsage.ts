@@ -1,9 +1,17 @@
 import GTop from 'gi://GTop';
+
+// GIR does not capture these raw C functions — typed wrappers around them.
+const glibtop_get_cpu = (buffer: GTop.glibtop_cpu): void =>
+    (GTop as unknown as {glibtop_get_cpu: (b: GTop.glibtop_cpu) => void}).glibtop_get_cpu(buffer);
+const glibtop_get_mem = (buffer: GTop.glibtop_mem): void =>
+    (GTop as unknown as {glibtop_get_mem: (b: GTop.glibtop_mem) => void}).glibtop_get_mem(buffer);
+const glibtop_get_fsusage = (buffer: GTop.glibtop_fsusage, path: string): void =>
+    (GTop as unknown as {glibtop_get_fsusage: (b: GTop.glibtop_fsusage, p: string) => void}).glibtop_get_fsusage(buffer, path);
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Accessor, createState} from 'gnim';
-import logger from '#/lib/core/logger';
-import {Process} from '#/lib/core/process';
+import logger from '../../core/logger';
+import {Process} from '../../core/process';
 
 const POLL_INTERVAL = 1000;
 /** hwmon temp1_input is millidegrees. Divide by 1000 for °C, then 100 maps to 0..1. */
@@ -31,12 +39,16 @@ function findCoretempPath(): string | null {
                 ) {
                     return `/sys/class/hwmon/${hwmonName}/temp1_input`;
                 }
-            } catch { // eslint-disable-line no-empty
+            } catch {
                 // hwmon entry without a name file — skip
             }
         }
     } catch (e) {
-        logger.error('systemUsage', 'hwmon enumeration failed:', e instanceof Error ? e.message : String(e));
+        logger.error(
+            'systemUsage',
+            'hwmon enumeration failed:',
+            e instanceof Error ? e.message : String(e)
+        );
     } finally {
         iter?.close(null);
     }
@@ -81,11 +93,21 @@ export default class SystemUsage {
         [this.#tempAvailable, this.#setTempAvailable] = createState(false);
     }
 
-    get cpu(): Accessor<number> { return this.#cpu; }
-    get memory(): Accessor<number> { return this.#memory; }
-    get disk(): Accessor<number> { return this.#disk; }
-    get temp(): Accessor<number> { return this.#temp; }
-    get tempAvailable(): Accessor<boolean> { return this.#tempAvailable; }
+    get cpu(): Accessor<number> {
+        return this.#cpu;
+    }
+    get memory(): Accessor<number> {
+        return this.#memory;
+    }
+    get disk(): Accessor<number> {
+        return this.#disk;
+    }
+    get temp(): Accessor<number> {
+        return this.#temp;
+    }
+    get tempAvailable(): Accessor<boolean> {
+        return this.#tempAvailable;
+    }
 
     /**
      * Launch a system monitor command asynchronously.
@@ -141,7 +163,7 @@ export default class SystemUsage {
 
     #sample(): void {
         const cpuTop = new GTop.glibtop_cpu();
-        GTop.glibtop_get_cpu(cpuTop);
+        glibtop_get_cpu(cpuTop);
         const total = cpuTop.total - this.#lastCpuTop.total;
         const user = cpuTop.user - this.#lastCpuTop.user;
         const sys = cpuTop.sys - this.#lastCpuTop.sys;
@@ -150,11 +172,11 @@ export default class SystemUsage {
         this.#setCpu((user + sys + nice) / total);
 
         const memTop = new GTop.glibtop_mem();
-        GTop.glibtop_get_mem(memTop);
+        glibtop_get_mem(memTop);
         this.#setMemory(memTop.user / memTop.total);
 
         const diskTop = new GTop.glibtop_fsusage();
-        GTop.glibtop_get_fsusage(diskTop, '/');
+        glibtop_get_fsusage(diskTop, '/');
         this.#setDisk((diskTop.blocks - diskTop.bavail) / diskTop.blocks);
 
         if (this.#tempPath && !this.#tempFailed) {

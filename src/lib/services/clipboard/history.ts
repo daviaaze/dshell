@@ -29,7 +29,7 @@ import {
 } from './encryptedStore';
 export type {ClipboardEntry};
 import {startClipboardWatcher, stopClipboardWatcher} from './clipboardWatcher';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -46,11 +46,7 @@ const decoder = new TextDecoder();
 function contentHash(data: Uint8Array): string {
     const b64 = GLib.base64_encode(data);
     // GLib.ChecksumType.SHA1 is a numeric enum
-    return GLib.compute_checksum_for_string(
-        GLib.ChecksumType.SHA1 as number,
-        b64,
-        -1
-    ) as string;
+    return GLib.compute_checksum_for_string(GLib.ChecksumType.SHA1, b64, -1) ?? '';
 }
 
 function generateId(): string {
@@ -146,7 +142,9 @@ export function searchHistory(query: string): ClipboardEntry[] {
  * Sets the echo-hash so the next watcher event for this content is
  * suppressed.
  */
-export async function copyEntryToClipboard(entry: ClipboardEntry): Promise<void> {
+export async function copyEntryToClipboard(
+    entry: ClipboardEntry
+): Promise<void> {
     const display = Gdk.Display.get_default();
     if (!display) {
         logger.warn('clipboard', 'no display available');

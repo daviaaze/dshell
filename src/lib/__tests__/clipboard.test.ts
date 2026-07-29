@@ -5,8 +5,8 @@
  * (built via esbuild by the 'test' script in package.json)
  */
 
-import {EncryptedStore} from '#/lib/services/clipboard/encryptedStore';
-import type {ClipboardEntry} from '#/lib/services/clipboard/encryptedStore';
+import {EncryptedStore} from '../services/clipboard/encryptedStore';
+import type {ClipboardEntry} from '../services/clipboard/encryptedStore';
 import {describe, it, expect, run} from '../__tests__/test-runner';
 
 /** Valid 32-byte AES-256 key for testing. */
@@ -190,7 +190,7 @@ describe('EncryptedStore', () => {
     it('entriesChanged signal fires on addEntry', () => {
         const store = freshStore();
         let signalFired = false;
-        store.connect('entries-changed', () => {
+        (store as any).connect('entries-changed', () => {
             signalFired = true;
         });
         store.addEntry({

@@ -1,20 +1,22 @@
-import Adw from 'gi://Adw';
-import Gio from 'gi://Gio';
+import GObject from 'gi://GObject?version=2.0';
+import Adw from 'gi://Adw?version=1';
+import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import {createRoot} from 'gnim';
+import {render} from '@gnim-js/gtk4';
 import {register} from 'gnim/gobject';
 import {gettext} from 'gettext';
-import {SettingsProvider} from '#/lib/settings';
-import {requestHandler} from '#/lib/services/state/requestHandler';
-import ShellState from '#/lib/services/state/shellState';
-import Screenshot from '#/lib/services/capture/screenshot';
-import Touchpad from '#/lib/services/input/touchpad';
-import {widgets} from '#/widget';
-import logger, {perf} from '#/lib/core/logger';
+import {SettingsContext, createAppSettings} from '../../lib/settings';
+import {requestHandler} from '../../lib/services/state/requestHandler';
+import ShellState from '../../lib/services/state/shellState';
+import Screenshot from '../../lib/services/capture/screenshot';
+import Touchpad from '../../lib/services/input/touchpad';
+import {registerServices, getWidgetDescriptors} from '../../widget';
+import ServiceRegistry from '../../lib/core/serviceRegistry';
+import logger, {perf} from '../../lib/core/logger';
+import resetCss from '../../style/reset.css';
 import css from './shade.css';
-import resetCss from '#/style/reset.css';
 
 @register()
 export class ShadeShell extends Adw.Application {
@@ -29,6 +31,34 @@ export class ShadeShell extends Adw.Application {
         ShellState.get_default().registerCommands(this);
         Screenshot.get_default().registerCommands(this);
         Touchpad.get_default().registerCommands(this);
+    }
+
+    private initCss() {
+        const display = Gdk.Display.get_default();
+        if (!display) {
+            logger.warn('app', 'No display available. Cannot initialize CSS.');
+            return;
+        }
+
+        // Layer 1 — base resets (tooltips, popovers, accessibility)
+        const resetProvider = new Gtk.CssProvider();
+        resetProvider.load_from_string(resetCss);
+        Gtk.StyleContext.add_provider_for_display(
+            display,
+            resetProvider,
+            Gtk.STYLE_PROVIDER_PRIORITY_USER - 1
+        );
+
+        // Layer 2 — shell design tokens and global utility classes
+        const provider = new Gtk.CssProvider();
+        provider.load_from_string(css);
+        Gtk.StyleContext.add_provider_for_display(
+            display,
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_USER
+        );
+
+        logger.debug('mount', 'CSS providers registered');
     }
 
     private initIcons() {
@@ -48,36 +78,6 @@ export class ShadeShell extends Adw.Application {
         }
     }
 
-    private initCss() {
-        perf.start('initCss', 'mount');
-        const display = Gdk.Display.get_default();
-        if (!display) {
-            logger.warn('app', 'No display available. Cannot initialize CSS.');
-            return;
-        }
-
-        // Layer 1 — base resets (tooltips, popovers, accessibility)
-        const resetProvider = new Gtk.CssProvider();
-        resetProvider.load_from_data(resetCss, -1);
-        Gtk.StyleContext.add_provider_for_display(
-            display,
-            resetProvider,
-            Gtk.STYLE_PROVIDER_PRIORITY_USER - 1
-        );
-
-        // Layer 2 — shell design tokens and global utility classes
-        const provider = new Gtk.CssProvider();
-        provider.load_from_data(css, -1);
-        Gtk.StyleContext.add_provider_for_display(
-            display,
-            provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_USER
-        );
-
-        logger.debug('mount', 'CSS providers registered');
-        perf.stop('initCss', 'mount');
-    }
-
     vfunc_command_line(cmd: Gio.ApplicationCommandLine) {
         logger.debug('app', `vfunc_command_line isRemote=${cmd.isRemote}`);
         if (cmd.isRemote) {
@@ -88,25 +88,53 @@ export class ShadeShell extends Adw.Application {
         return 0;
     }
 
-    /** Initialize CSS, then mount all widgets inside the SettingsProvider context. */
+    /** Mount all widgets inside the SettingsProvider context. */
     private bootstrapUi() {
         perf.start('widgets-mount', 'mount');
-        createRoot(dispose => {
-            this.#rootDispose = dispose;
-            this.connect('shutdown', () => this.#teardown());
-            this.initIcons();
-            this.initCss();
-            SettingsProvider(() => widgets());
-        });
+        this.initCss();
+        this.initIcons();
+
+        const settings = createAppSettings();
+        this.#rootDisposers = [];
+
+        // Register and init services (no context needed — settings passed directly)
+        registerServices(settings);
+        const ok = ServiceRegistry.get_default().initAll();
+        if (!ok) {
+            logger.error('mount', 'Some services failed to init — continuing');
+        }
+
+        // Mount each widget with its own render() for error isolation
+        for (const {name, mount: W} of getWidgetDescriptors()) {
+            if (name === 'settings') continue; // created lazily by openSettings()
+            try {
+                perf.start(`widget-${name}`, 'mount');
+                this.#rootDisposers.push(
+                    render(
+                        () => (
+                            <SettingsContext value={settings}>
+                                <W/>
+                            </SettingsContext>
+                        ),
+                        this,
+                    )
+                );
+                const elapsed = perf.stop(`widget-${name}`, 'mount');
+                logger.info('mount', `${name} mounted in ${elapsed.toFixed(1)}ms`);
+            } catch (e) {
+                logger.error('mount', `Widget ${name} FAILED to mount:`, e);
+            }
+        }
+
+        GObject.signal_connect(this, 'shutdown', () => this.#teardown());
+        perf.stop('widgets-mount', 'mount');
     }
 
-    #rootDispose: (() => void) | null = null;
+    #rootDisposers: (() => void)[] = [];
 
     #teardown(): void {
-        if (!this.#rootDispose) return;
-        const dispose = this.#rootDispose;
-        this.#rootDispose = null;
-        dispose();
+        this.#rootDisposers.forEach(d => d());
+        this.#rootDisposers = [];
     }
 
     shutdown(): void {

@@ -40,12 +40,41 @@ let
     src = ../.;
   };
 
-  # Entry points: <attr> = { entry, extra esbuild args }
-  apps = {
+  entries = {
     "shade-shell" = "src/apps/shell/main.ts";
     "shade-shell-greet" = "src/apps/greeter/main.ts";
     "shade-shell-share-picker" = "src/apps/share-picker/main.ts";
   };
+
+  # Build a define-flag pair with a JS-string-literal value for rolldown.
+  # Example: mkDefine "import.meta.name" "shade-shell"
+  #   produces: -d "import.meta.name=\"shade-shell\""
+  mkDefine = key: value:
+    "-d " + ''"${key}=\"${value}\""'';
+
+  # Each entry gets a name define plus the common defines.
+  mkEntryCommands = name: entry:
+    ''
+      echo "building ${name} from ${entry}"
+      node "$PWD/node_modules/gnim/dist/bin/gnim.js" bundle "${entry}" \
+        --id "${domain}" \
+        ${mkDefine "import.meta.name" name} \
+        ${mkDefine "import.meta.version" version} \
+        ${mkDefine "import.meta.domain" domain} \
+        ${mkDefine "import.meta.datadir" "$out/share"} \
+        ${mkDefine "import.meta.bindir" "$out/bin"} \
+        -o "${name}.gresource"
+      node "$PWD/node_modules/gnim/dist/bin/gnim.js" exe "$out/share/${domain}/${name}.gresource" \
+        -o "${name}" \
+        --id "${domain}" --prefix "$out" --datadir share --libdir lib
+    '';
+
+  # Install commands for each entry.
+  mkInstallCommands = name: _:
+    ''
+      install -Dm755 ${name} $out/bin/${name}
+      install -Dm644 ${name}.gresource $out/share/${domain}/${name}.gresource
+    '';
 in
 pkgs.stdenv.mkDerivation {
   inherit
@@ -67,7 +96,7 @@ pkgs.stdenv.mkDerivation {
       inherit pname version src;
       pnpm = pkgs.pnpm_10;
       fetcherVersion = 4;
-      hash = "sha256-nF8SmorWFzUyHr75sxb5mgPD62R3iaXy8jm/e9IVQRI=";
+      hash = "sha256-sKXtz7JpWwPql1KT4MJjJuYWUXAsBtsRRFl6WG5GUuk=";
     };
 
     installPhase = ''
@@ -79,34 +108,13 @@ pkgs.stdenv.mkDerivation {
   buildPhase = ''
     runHook preBuild
 
-    commonArgs=(
-      --source-root "$PWD"
-      --external 'gi://*'
-      --external 'resource://*'
-      --external system
-      --external gettext
-      --format esm
-      --loader .css=text
-      --banner '#!${pkgs.gjs}/bin/gjs -m'
-      --define import.meta.version '${version}'
-      --define import.meta.domain '${domain}'
-      --define import.meta.datadir "$out/share"
-      --define import.meta.bindir "$out/bin"
-    )
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList mkEntryCommands entries)}
 
-    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: entry: ''
-      node tools/build.mjs ${entry} ${name} \
-        --define import.meta.name '${name}' \
-        "''${commonArgs[@]}"
-    '') apps)}
-
-    # GSettings schema (gnim-schemas cli bundles the .ts with esbuild and
-    # validates with xmllint — esbuild/libxml2 are in nativeBuildInputs)
-    mkdir schema-out
-    sed -e 's|@domain@|${domain}|g' \
-        -e "s|@datadir@|$out/share|g" \
-        src/lib/settings/schema.ts > schema-out/${domain}.gschema.ts
-    gjs -m node_modules/gnim-schemas/lib/cli.js schema-out --targetdir schema-out
+    node "$PWD/node_modules/gnim/dist/bin/gnim.js" schemas src/lib/settings \
+      -o schema-out \
+      ${mkDefine "import.meta.domain" domain} \
+      ${mkDefine "import.meta.datadir" "$out/share"} \
+      ${mkDefine "import.meta.bindir" "$out/bin"}
 
     runHook postBuild
   '';
@@ -118,36 +126,26 @@ pkgs.stdenv.mkDerivation {
       $out/share/polkit-1/actions $out/share/glib-2.0/schemas \
       $out/share/shade-shell
 
-    # App binaries
-    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-      install -Dm755 ${name} $out/bin/${name}
-    '') apps)}
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList mkInstallCommands entries)}
 
-    # GSettings schema
-    install -Dm644 schema-out/${domain}.gschema.xml \
+    install -Dm644 schema-out/schema.gschema.xml \
       $out/share/glib-2.0/schemas/${domain}.gschema.xml
     glib-compile-schemas $out/share/glib-2.0/schemas
 
-    # Desktop entry (opens shade settings)
     substitute data/desktop.in.desktop $out/share/applications/${domain}.desktop \
       --replace-fail '@name@' '${pname}settings' \
       --replace-fail '@comment@' 'open shade settings' \
       --replace-fail '@exe@' "$out/bin/${pname} toggle settings"
 
-    # Wallpapers
     install -Dm644 data/wp-day.jpg data/wp-night.jpg \
       -t $out/share/shade-shell
 
-    # Custom icons (moon phases, etc.)
     mkdir -p $out/share/shade-shell/icons
     install -Dm644 assets/icons/*.svg -t $out/share/shade-shell/icons
 
-    # systemd user service for non-NixOS users (NixOS module uses its own)
     substitute data/shade-shell.service.in $out/share/systemd/user/shade-shell.service \
       --replace-fail '@wrapper_bin@' "$out/bin"
 
-    # pkexec helper + polkit action for battery conservation.
-    # patchShebangs (fixup) rewrites the helper's /usr/bin/env shebang.
     install -Dm755 data/shade-conservation-toggle \
       $out/bin/shade-conservation-toggle
 
@@ -164,7 +162,8 @@ pkgs.stdenv.mkDerivation {
       --prefix PATH : ${pkgs.lib.makeBinPath wrapperPackages}
       --prefix LD_PRELOAD :
       "${pkgs.gtk4-layer-shell}/lib/libgtk4-layer-shell.so"
-      )'';
+    )
+  '';
 
   meta = {
     mainProgram = pname;

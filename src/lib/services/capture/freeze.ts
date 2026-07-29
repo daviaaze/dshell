@@ -1,5 +1,5 @@
-import logger from '#/lib/core/logger';
-import {Process} from '#/lib/core/process';
+import logger from '../../core/logger';
+import {Process} from '../../core/process';
 
 /**
  * wayfreeze process lifecycle — freezes the screen so area selection happens
@@ -28,7 +28,10 @@ export class Freeze {
                 this.#onActiveChange(false);
             });
         } catch {
-            logger.warn('screenshot', 'wayfreeze not available, skipping freeze');
+            logger.warn(
+                'screenshot',
+                'wayfreeze not available, skipping freeze'
+            );
         }
     }
 

@@ -1,4 +1,4 @@
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 
@@ -22,7 +22,7 @@ export default () => {
                 <Adw.SpinRow
                     title={'Idle Timeout'}
                     subtitle={'Seconds of inactivity before locking'}
-                    $={self => {
+                    ref={self => {
                         settings.idleTimeout.subscribe(() => {
                             self.value = settings.idleTimeout();
                         });
@@ -46,12 +46,15 @@ export default () => {
                 <Adw.SpinRow
                     title={'Dim Timeout'}
                     subtitle={'Seconds before lock to start dimming'}
-                    $={self => {
+                    ref={self => {
                         settings.screenDimTimeout.subscribe(() => {
                             self.value = settings.screenDimTimeout();
                         });
                         settings.idleTimeout.subscribe(() => {
-                            self.adjustment!.upper = Math.max(30, settings.idleTimeout() - 10);
+                            self.adjustment!.upper = Math.max(
+                                30,
+                                settings.idleTimeout() - 10
+                            );
                         });
                         self.adjustment = new Gtk.Adjustment({
                             lower: 30,
@@ -75,12 +78,13 @@ export default () => {
                 <Adw.SpinRow
                     title={'Display Timeout'}
                     subtitle={'Seconds before turning off display'}
-                    $={self => {
+                    ref={self => {
                         settings.dpmsTimeout.subscribe(() => {
                             self.value = settings.dpmsTimeout();
                         });
                         settings.idleTimeout.subscribe(() => {
-                            self.adjustment!.lower = settings.idleTimeout() + 10;
+                            self.adjustment!.lower =
+                                settings.idleTimeout() + 10;
                         });
                         self.adjustment = new Gtk.Adjustment({
                             lower: settings.idleTimeout() + 10,
@@ -103,12 +107,13 @@ export default () => {
                     title={'Suspend Timeout'}
                     subtitle={'Seconds before suspending'}
                     sensitive={settings.suspendEnabled}
-                    $={self => {
+                    ref={self => {
                         settings.suspendTimeout.subscribe(() => {
                             self.value = settings.suspendTimeout();
                         });
                         settings.dpmsTimeout.subscribe(() => {
-                            self.adjustment!.lower = settings.dpmsTimeout() + 10;
+                            self.adjustment!.lower =
+                                settings.dpmsTimeout() + 10;
                         });
                         self.adjustment = new Gtk.Adjustment({
                             lower: settings.dpmsTimeout() + 10,

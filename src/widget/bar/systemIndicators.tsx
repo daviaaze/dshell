@@ -1,8 +1,8 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding} from 'gnim';
-import ShellState from '#/lib/services/state/shellState';
-import AudioController from '#/lib/services/audio/audioController';
+import {Accessor, bind} from 'gnim';
+import ShellState from '../../lib/services/state/shellState';
+import AudioController from '../../lib/services/audio/audioController';
 import KeepAwakeIndicator from './indicators/keepAwake';
 import PowerIndicator from './indicators/power';
 import BluetoothIndicator from './indicators/bluetooth';
@@ -24,20 +24,18 @@ export default ({
         <Gtk.ToggleButton
             visible={visible}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            active={createBinding(shellState, 'qsOpen')}
+            active={bind(shellState, 'qsOpen')}
             onClicked={() => shellState.toggleQuickSettings()}
-            $={self =>
-                self.add_controller(
-                    (
-                        <Gtk.EventControllerScroll
-                            flags={Gtk.EventControllerScrollFlags.VERTICAL}
-                            onScroll={(self, dx, dy) => {
-                                audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
-                            }}
-                        />
-                    ) as Gtk.EventController
-                )
-            }
+            ref={self => {
+                const scrollCtrl = new Gtk.EventControllerScroll({
+                    flags: Gtk.EventControllerScrollFlags.VERTICAL,
+                });
+                scrollCtrl.connect('scroll', (_ctrl, _dx: number, dy: number) => {
+                    audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
+                    return false;
+                });
+                self.add_controller(scrollCtrl);
+            }}
         >
             <Gtk.Box
                 spacing={4}

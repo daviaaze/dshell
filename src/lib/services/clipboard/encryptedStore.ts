@@ -17,12 +17,12 @@
  * @module encryptedStore
  */
 
-import GObject, {register, signal} from 'gnim/gobject';
+import {Object, register, signal} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import {encrypt, decrypt} from './cryptoEngine';
 import {getKey, initKeyManager} from './keyManager';
-import logger from '#/lib/core/logger';
+import logger from '../../core/logger';
 
 export interface ClipboardEntry {
     id: string;
@@ -51,7 +51,7 @@ const LEGACY_PNG_RE = /^clipboard-\d+\.png$/;
 // ── Singleton service ────────────────────────────────────────────────────────
 
 @register({GTypeName: 'EncryptedStore'})
-export class EncryptedStore extends GObject.Object {
+export class EncryptedStore extends Object {
     static instance: EncryptedStore;
 
     static get_default() {
@@ -66,7 +66,7 @@ export class EncryptedStore extends GObject.Object {
     #ready = false;
 
     /** Emitted after every mutation (add, delete, toggle, clear). */
-    @signal()
+    @signal([])
     entriesChanged() {}
 
     // ── Initialisation ───────────────────────────────────────────────────
@@ -91,7 +91,10 @@ export class EncryptedStore extends GObject.Object {
         this.#loadEncryptedFile();
         this.#migrateLegacyImages();
         this.#ready = true;
-        logger.info('clipboard', `store initialised (${this.#entries.length} entries)`);
+        logger.info(
+            'clipboard',
+            `store initialised (${this.#entries.length} entries)`
+        );
     }
 
     /** True after `init()` has been called successfully. */
@@ -110,9 +113,12 @@ export class EncryptedStore extends GObject.Object {
     searchEntries(query: string): ClipboardEntry[] {
         if (!query) return [...this.#entries].slice(0, 20);
         const lower = query.toLowerCase();
-        return this.#entries.filter(
-            e => e.type === 'text' && e.content.toLowerCase().includes(lower)
-        ).slice(0, 20);
+        return this.#entries
+            .filter(
+                e =>
+                    e.type === 'text' && e.content.toLowerCase().includes(lower)
+            )
+            .slice(0, 20);
     }
 
     /** Find a single entry by id. */
@@ -219,7 +225,9 @@ export class EncryptedStore extends GObject.Object {
 
     #ensureReady(): void {
         if (!this.#ready) {
-            throw new Error('EncryptedStore not initialised — call init() first');
+            throw new Error(
+                'EncryptedStore not initialised — call init() first'
+            );
         }
     }
 
@@ -257,14 +265,20 @@ export class EncryptedStore extends GObject.Object {
             const version =
                 (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
             if (version !== VERSION) {
-                logger.warn('clipboard', `unsupported file version: ${version}`);
+                logger.warn(
+                    'clipboard',
+                    `unsupported file version: ${version}`
+                );
                 // Don't clear — old version might still be readable
                 return;
             }
 
             // Parse layout
             const nonce = data.subarray(8, 8 + NONCE_SIZE);
-            const ciphertext = data.subarray(8 + NONCE_SIZE, data.length - TAG_SIZE);
+            const ciphertext = data.subarray(
+                8 + NONCE_SIZE,
+                data.length - TAG_SIZE
+            );
             const tag = data.subarray(data.length - TAG_SIZE);
 
             // Reconstruct [nonce][ciphertext][tag] for decrypt
@@ -284,7 +298,11 @@ export class EncryptedStore extends GObject.Object {
             this.#entries = parsed.entries || [];
             logger.info('clipboard', `loaded ${this.#entries.length} entries`);
         } catch (e) {
-            logger.warn('clipboard', 'failed to load history, starting fresh:', e);
+            logger.warn(
+                'clipboard',
+                'failed to load history, starting fresh:',
+                e
+            );
             this.#entries = [];
             try {
                 file.delete(null);
@@ -361,7 +379,11 @@ export class EncryptedStore extends GObject.Object {
             const filePath = `${LEGACY_CLIPBOARD_DIR}/${entry.content}`;
             const file = Gio.File.new_for_path(filePath);
             if (!file.query_exists(null)) {
-                logger.warn('clipboard', 'legacy image file missing, skipping:', filePath);
+                logger.warn(
+                    'clipboard',
+                    'legacy image file missing, skipping:',
+                    filePath
+                );
                 continue;
             }
 
@@ -373,12 +395,20 @@ export class EncryptedStore extends GObject.Object {
                     migrated++;
                 }
             } catch (e) {
-                logger.warn('clipboard', 'failed to migrate legacy image:', filePath, e);
+                logger.warn(
+                    'clipboard',
+                    'failed to migrate legacy image:',
+                    filePath,
+                    e
+                );
             }
         }
 
         if (migrated > 0) {
-            logger.info('clipboard', `migrated ${migrated} legacy image(s) to inline base64`);
+            logger.info(
+                'clipboard',
+                `migrated ${migrated} legacy image(s) to inline base64`
+            );
             this.#save();
 
             // Clean up legacy directory
@@ -388,7 +418,11 @@ export class EncryptedStore extends GObject.Object {
                     dir.delete(null);
                 }
             } catch (e) {
-                logger.warn('clipboard', 'could not remove legacy clipboard dir:', e);
+                logger.warn(
+                    'clipboard',
+                    'could not remove legacy clipboard dir:',
+                    e
+                );
             }
         }
     }

@@ -19,10 +19,11 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createBinding, createState} from 'gnim';
-import {app} from '#/apps/shell/App';
-import {useSettings} from '#/lib/settings';
+import {Accessor, bind, createState, JSX} from 'gnim';
+import {app} from '../../apps/shell/App';
+import {useSettings} from '../../lib/settings';
 import Hyprland from 'gi://AstalHyprland';
+import {getHyprland} from '../../lib/hyprland';
 
 // ── Types ──
 
@@ -35,6 +36,9 @@ export interface PopupWindowProps {
 
     /** Reactive visibility binding. */
     visible: Accessor<boolean> | boolean;
+
+    /** Widget reference callback. */
+    ref?: (self: Astal.Window) => void;
 
     /**
      * Bar-position-derived anchor or explicit anchor bitmask.
@@ -125,8 +129,9 @@ export default (props: PopupWindowProps) => {
     } = props;
 
     const barCfg = useSettings().bar;
-    const hyprland = Hyprland.get_default();
-    const defaultMon = createBinding(hyprland, 'focusedMonitor').as(m => m.id);
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
+    const defaultMon = bind(hyprland, 'focused-monitor').as(m => m.id);
 
     // Resolve anchor
     let anchorValue: Accessor<Anchor> | Anchor;
@@ -145,9 +150,7 @@ export default (props: PopupWindowProps) => {
 
     // Resolve visible as accessor for the binding
     const visibleAccessor: Accessor<boolean> =
-        typeof visible === 'function'
-            ? visible
-            : createState(visible)[0];
+        typeof visible === 'function' ? visible : createState(visible)[0];
 
     return (
         <Astal.Window
@@ -166,18 +169,21 @@ export default (props: PopupWindowProps) => {
             onNotifyVisible={(self: Astal.Window) => {
                 if (onVisibleChange) onVisibleChange(self.visible);
             }}
-            $={widgetRef}
+            ref={widgetRef}
         >
             <Gtk.EventControllerKey
-                $={self => {
-                    self.connect('key-pressed', (_ctrl, keyval, _keycode, _state) => {
-                        if (keyval === Gdk.KEY_Escape) {
-                            // Toggle visible off via the accessor mechanism
-                            if (onClose) onClose();
-                            return true;
+                ref={self => {
+                    self.connect(
+                        'key-pressed',
+                        (_ctrl, keyval, _keycode, _state) => {
+                            if (keyval === Gdk.KEY_Escape) {
+                                // Toggle visible off via the accessor mechanism
+                                if (onClose) onClose();
+                                return true;
+                            }
+                            return false;
                         }
-                        return false;
-                    });
+                    );
                 }}
             />
             {children}

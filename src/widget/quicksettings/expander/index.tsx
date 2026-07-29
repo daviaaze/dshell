@@ -3,7 +3,7 @@ import {createState} from 'gnim';
 import {Battery, BatteryIcon} from './battery';
 import {Media, MediaIcon} from './media';
 import {Calendar, CalendarIcon} from './calendar';
-import {WeatherIcon} from '#/widget/common/weatherWidget';
+import {WeatherIcon} from '../../common/weatherWidget';
 import {Weather} from './weather';
 import {WorldClock} from './worldClock';
 import Adw from 'gi://Adw?version=1';

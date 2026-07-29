@@ -1,4 +1,4 @@
-import {useSettings} from '#/lib/settings';
+import {useSettings} from '../../lib/settings';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For} from 'gnim';
@@ -21,7 +21,9 @@ export default () => {
                     }
                 />
                 <Adw.EntryRow
-                    title={'Add Category (mount, state, theme, dbus, exec, perf, memory)'}
+                    title={
+                        'Add Category (mount, state, theme, dbus, exec, perf, memory)'
+                    }
                     showApplyButton
                     onApply={self => {
                         const cats = self.text
@@ -29,8 +31,7 @@ export default () => {
                             .map(s => s.trim())
                             .filter(Boolean);
                         if (cats.length === 0) return;
-                        const current =
-                            settings.debugCategories();
+                        const current = settings.debugCategories();
                         for (const cat of cats) {
                             if (!current.includes(cat)) {
                                 current.push(cat);
@@ -45,20 +46,17 @@ export default () => {
             <Adw.PreferencesGroup
                 title={'Active Categories'}
                 description={'Currently enabled debug categories'}
-                visible={settings.debugCategories.as(
-                    cats => cats.length > 0
-                )}
+                visible={settings.debugCategories.as(cats => cats.length > 0)}
             >
                 <For each={settings.debugCategories}>
                     {(cat: string) => (
                         <Adw.ActionRow title={cat}>
                             <Gtk.Button
-                                $type="suffix"
+                                slot="suffix"
                                 cssClasses={['circular', 'destructive-action']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
-                                    const current =
-                                        settings.debugCategories();
+                                    const current = settings.debugCategories();
                                     settings.setDebugCategories(
                                         current.filter(c => c !== cat)
                                     );

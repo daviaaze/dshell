@@ -11,11 +11,12 @@
  *   Stdout: [SELECTION][r]/screen:NAME  or  [SELECTION][r]/window:ID
  */
 
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {programArgs} from 'system';
-import logger from '#/lib/core/logger';
-import printOut from '#/lib/core/stdout';
+import logger from '../../lib/core/logger';
+import printOut from '../../lib/core/stdout';
 import type {SelectFn} from './types';
 import {HYPRCTL_BIN, parseWindowList} from './protocol';
 import {buildSources} from './sources';
@@ -33,14 +34,21 @@ import {
     captureWindow,
 } from './capture';
 import {MonitorPoller} from './poller';
-import {applyPopupCss, buildScreensTab, buildWindowsTab, buildCombinedTab} from './ui';
+import {
+    applyPopupCss,
+    buildScreensTab,
+    buildWindowsTab,
+    buildCombinedTab,
+} from './ui';
 
 const CAT = 'share-picker';
 const APP_ID = 'com.caioasmuniz.shade_shell.share_picker';
 
 function main() {
     const allowTokenDefault = programArgs.includes('--allow-token');
-    const xdphWindows = parseWindowList(GLib.getenv('XDPH_WINDOW_SHARING_LIST'));
+    const xdphWindows = parseWindowList(
+        GLib.getenv('XDPH_WINDOW_SHARING_LIST')
+    );
 
     const app = new Gtk.Application({applicationId: APP_ID, flags: 0});
 
@@ -63,19 +71,37 @@ function main() {
     app.connect('activate', () => {
         ensureTempDir();
 
-        logger.debug(CAT, 'XDPH_WINDOW_SHARING_LIST=' + (GLib.getenv('XDPH_WINDOW_SHARING_LIST') || '(null)'));
+        logger.debug(
+            CAT,
+            'XDPH_WINDOW_SHARING_LIST=' +
+                (GLib.getenv('XDPH_WINDOW_SHARING_LIST') || '(null)')
+        );
         logger.debug(CAT, `GRIM_BIN=${GRIM_BIN}, HYPRCTL_BIN=${HYPRCTL_BIN}`);
-        if (!GRIM_BIN.includes('/')) logger.warn(CAT, 'grim not found in PATH, previews will be blank');
-        if (!HYPRCTL_BIN.includes('/')) logger.warn(CAT, 'hyprctl not found in PATH, monitors/windows will be empty');
+        if (!GRIM_BIN.includes('/'))
+            logger.warn(CAT, 'grim not found in PATH, previews will be blank');
+        if (!HYPRCTL_BIN.includes('/'))
+            logger.warn(
+                CAT,
+                'hyprctl not found in PATH, monitors/windows will be empty'
+            );
 
         const {monitors, windows} = buildSources(xdphWindows);
 
-        logger.info(CAT, `${monitors.length} monitors loaded, ${windows.length} windows loaded`);
+        logger.info(
+            CAT,
+            `${monitors.length} monitors loaded, ${windows.length} windows loaded`
+        );
         for (const m of monitors) {
-            logger.info(CAT, `  monitor: ${m.info.name} ${m.info.width}x${m.info.height} @ (${m.info.x},${m.info.y})`);
+            logger.info(
+                CAT,
+                `  monitor: ${m.info.name} ${m.info.width}x${m.info.height} @ (${m.info.x},${m.info.y})`
+            );
         }
         for (const w of windows) {
-            logger.info(CAT, `  window: ${w.info.clazz} geo=${w.geometry ? `${w.geometry.width}x${w.geometry.height}` : 'none'}`);
+            logger.info(
+                CAT,
+                `  window: ${w.info.clazz} geo=${w.geometry ? `${w.geometry.width}x${w.geometry.height}` : 'none'}`
+            );
         }
 
         applyPopupCss();
@@ -101,21 +127,29 @@ function main() {
             marginEnd: 12,
         });
 
-        mainBox.append(new Gtk.Label({
-            label: 'Select what to share',
-            cssClasses: ['title-2'],
-            halign: Gtk.Align.START,
-        }));
+        mainBox.append(
+            new Gtk.Label({
+                label: 'Select what to share',
+                cssClasses: ['title-2'],
+                halign: Gtk.Align.START,
+            })
+        );
 
         // ── Tabs ────────────────────────────────────────────
         const notebook = new Gtk.Notebook();
         notebook.set_scrollable(true);
 
         const screensTab = buildScreensTab(monitors, select);
-        notebook.append_page(screensTab.page, new Gtk.Label({label: 'Screens'}));
+        notebook.append_page(
+            screensTab.page,
+            new Gtk.Label({label: 'Screens'})
+        );
 
         const windowsTab = buildWindowsTab(windows, select);
-        notebook.append_page(windowsTab.page, new Gtk.Label({label: 'Windows'}));
+        notebook.append_page(
+            windowsTab.page,
+            new Gtk.Label({label: 'Windows'})
+        );
 
         const combinedTab = buildCombinedTab(monitors, windows, select);
         notebook.append_page(combinedTab.page, new Gtk.Label({label: 'All'}));
@@ -140,7 +174,7 @@ function main() {
         cancelBtn.connect('clicked', () => app.quit());
         mainBox.append(cancelBtn);
 
-        win.connect('close-request', () => app.quit());
+        GObject.signal_connect(win, 'close-request', () => app.quit());
         win.set_child(mainBox);
         win.present();
 
@@ -148,10 +182,14 @@ function main() {
 
         // Live polling on the Screens tab; each tick also refreshes the
         // combined-tab picture from the *previous* capture file.
-        const poller = new MonitorPoller(monitors, screensTab.pics, (state, i) => {
-            const pic = combinedTab.monitorPics[i];
-            if (pic) loadTexture(monPath(state.info.name), pic);
-        });
+        const poller = new MonitorPoller(
+            monitors,
+            screensTab.pics,
+            (state, i) => {
+                const pic = combinedTab.monitorPics[i];
+                if (pic) loadTexture(monPath(state.info.name), pic);
+            }
+        );
 
         const captureAllWindows = (): void => {
             windows.forEach((state, i) => {
@@ -160,7 +198,8 @@ function main() {
                 if (pic) captureWindow(state, [pic]);
                 // Also fill combined tab from the previous capture file
                 const combinedPic = combinedTab.windowPics[i];
-                if (combinedPic) loadTexture(winPath(windowAddr(state)), combinedPic);
+                if (combinedPic)
+                    loadTexture(winPath(windowAddr(state)), combinedPic);
             });
         };
 
@@ -169,9 +208,12 @@ function main() {
                 const pic = combinedTab.monitorPics[i];
                 if (!pic) return;
                 const path = monPath(state.info.name);
-                runCapture([GRIM_BIN, '-s', '0.25', '-o', state.info.name, path], ok => {
-                    if (ok) loadTexture(path, pic);
-                });
+                runCapture(
+                    [GRIM_BIN, '-s', '0.25', '-o', state.info.name, path],
+                    ok => {
+                        if (ok) loadTexture(path, pic);
+                    }
+                );
             });
             windows.forEach((state, i) => {
                 const pic = combinedTab.windowPics[i];
@@ -179,10 +221,17 @@ function main() {
                 if (!pic || !g) return;
                 const path = winPath(windowAddr(state));
                 runCapture(
-                    [GRIM_BIN, '-s', '0.25', '-g', `${g.x},${g.y} ${g.width}x${g.height}`, path],
+                    [
+                        GRIM_BIN,
+                        '-s',
+                        '0.25',
+                        '-g',
+                        `${g.x},${g.y} ${g.width}x${g.height}`,
+                        path,
+                    ],
                     ok => {
                         if (ok) loadTexture(path, pic);
-                    },
+                    }
                 );
             });
         };

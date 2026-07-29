@@ -2,17 +2,17 @@ import Astal from 'gi://Astal?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import {createBinding, createComputed, For, onCleanup} from 'gnim';
-import {ColorScheme, DarkModes} from '#/lib/services/display/colorScheme';
-import {useSettings} from '#/lib/settings';
-import WindowManager from '#/lib/services/state/windowManager';
-import {monitors} from '#/lib/services/monitoring/monitors';
+import {bind, computed, For, onCleanup} from 'gnim';
+import {ColorScheme, DarkModes} from '../../lib/services/display/colorScheme';
+import {useSettings} from '../../lib/settings';
+import WindowManager from '../../lib/services/state/windowManager';
+import {monitors} from '../../lib/services/monitoring/monitors';
 
 export const Wallpaper = () => {
     const settings = useSettings().general;
-    const color = createBinding(ColorScheme.get_default(), 'colorScheme');
-    const daytime = createBinding(ColorScheme.get_default(), 'daytime');
-    const wp = createComputed(() => {
+    const color = bind(ColorScheme.get_default(), 'colorScheme');
+    const daytime = bind(ColorScheme.get_default(), 'daytime');
+    const wp = computed(() => {
         if (color() === DarkModes.AUTO)
             return Gio.File.new_for_path(
                 daytime() ? settings.wallpaperDay() : settings.wallpaperNight()
@@ -26,13 +26,13 @@ export const Wallpaper = () => {
         <For each={monitors}>
             {(monitor: Gdk.Monitor) => (
                 <Astal.Window
-                    $={self => {
+                    ref={self => {
                         WindowManager.get_default().registerWallpaper(self);
                         onCleanup(() => {
                             WindowManager.get_default().unregisterWallpaper(
                                 self
                             );
-                            self.destroy();
+                            self.close();
                         });
                     }}
                     gdkmonitor={monitor}

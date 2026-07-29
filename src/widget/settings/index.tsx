@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Bar from './bar';
-import WindowManager from '#/lib/services/state/windowManager';
+import WindowManager from '../../lib/services/state/windowManager';
 import Weather from './weather';
 import Appearance from './appearance';
 import Idle from './idle';
@@ -10,12 +10,12 @@ import Network from './network';
 import ScreenCapture from './screenCapture';
 import Timer from './timer';
 import Debug from './debug';
-import {app} from '#/apps/shell/App';
+import {app} from '../../apps/shell/App';
 
-export const createSettingsWindow = (): Adw.Window => {
+export const createSettingsWindow = (): any => {
     return (
         <Adw.PreferencesWindow
-            $={self => WindowManager.get_default().setSettings(self)}
+            ref={self => WindowManager.get_default().setSettings(self)}
             hideOnClose={false}
             application={app}
             name={'settings'}
@@ -73,10 +73,7 @@ export const createSettingsWindow = (): Adw.Window => {
                 <Weather />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage
-                title={'Timer'}
-                iconName={'alarm-symbolic'}
-            >
+            <Adw.PreferencesPage title={'Timer'} iconName={'alarm-symbolic'}>
                 <Timer />
             </Adw.PreferencesPage>
 
@@ -87,5 +84,5 @@ export const createSettingsWindow = (): Adw.Window => {
                 <Debug />
             </Adw.PreferencesPage>
         </Adw.PreferencesWindow>
-    ) as Adw.Window;
+    );
 };

@@ -1,5 +1,5 @@
-import {Process} from '#/lib/core/process';
-import logger from '#/lib/core/logger';
+import {Process} from '../../core/process';
+import logger from '../../core/logger';
 
 export interface WindowGeometry {
     address: string;

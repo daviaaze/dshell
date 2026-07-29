@@ -1,22 +1,14 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding} from 'gnim';
-import Screenshot from '#/lib/services/capture/screenshot';
-import {getScreenCaptureSettings} from '#/lib/settings/screenCapture';
+import {bind} from 'gnim';
+import Screenshot from '../../lib/services/capture/screenshot';
+import {getScreenCaptureSettings} from '../../lib/settings/screenCapture';
 
 export default () => {
     const ss = Screenshot.get_default();
     const captureSettings = getScreenCaptureSettings();
 
-    const QualityButton = ({
-        label,
-        value,
-    }: {
-        label: string;
-        value: number;
-    }) => {
-        const active = createBinding(ss.prefs, 'recordingQuality').as(
-            q => q === value
-        );
+    const QualityButton = ({label, value}: {label: string; value: number}) => {
+        const active = bind(ss.prefs, 'recordingQuality').as(q => q === value);
         return (
             <Gtk.ToggleButton
                 active={active}

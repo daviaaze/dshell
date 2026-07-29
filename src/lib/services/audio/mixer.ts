@@ -1,7 +1,7 @@
-import {Process} from '#/lib/core/process';
+import {Process} from '../../core/process';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register} from 'gnim/gobject';
-import logger from '#/lib/core/logger';
+import {Object, register, property} from 'gnim/gobject';
+import logger from '../../core/logger';
 
 export interface AudioStream {
     id: number;
@@ -24,13 +24,8 @@ function streamFromPwItem(item: any): AudioStream | null {
     return {
         id: item.id,
         name: props['node.name'] || 'Unknown',
-        appName:
-            props['application.name'] ||
-            props['node.name'] ||
-            'Unknown',
-        iconName:
-            props['application.icon-name'] ||
-            'audio-x-generic-symbolic',
+        appName: props['application.name'] || props['node.name'] || 'Unknown',
+        iconName: props['application.icon-name'] || 'audio-x-generic-symbolic',
         volume: streamProps.volume ?? 1.0,
         muted: streamProps.mute ?? false,
         targetNode: null,
@@ -45,7 +40,10 @@ function parseAudioStreams(
     if (!pwDump.trim()) {
         // Empty output — PipeWire may not be running.
         // Log at debug to avoid spamming every 2s.
-        logger.debug('audio', `${errorLabel}: pw-dump returned empty (PipeWire not running?)`);
+        logger.debug(
+            'audio',
+            `${errorLabel}: pw-dump returned empty (PipeWire not running?)`
+        );
         return [];
     }
     try {
@@ -106,7 +104,7 @@ function parseTargets(pwMetadata: string): Map<number, number> {
 }
 
 @register({GTypeName: 'AppMixer'})
-export default class AppMixer extends GObject.Object {
+export default class AppMixer extends Object {
     static instance: AppMixer;
     static get_default() {
         if (!this.instance) this.instance = new AppMixer();
@@ -119,22 +117,22 @@ export default class AppMixer extends GObject.Object {
     #lastModified = new Map<number, number>();
     static readonly MODIFY_GRACE_MS = 3000;
 
-    @getter(Array)
+    @property
     get streams() {
         return this.#streams;
     }
 
-    @getter(Array)
+    @property
     get captureStreams() {
         return this.#captureStreams;
     }
 
-    @getter(Boolean)
+    @property
     get microphoneInUse() {
         return this.#captureStreams.length > 0;
     }
 
-    @getter(Boolean)
+    @property
     get speakerInUse() {
         return this.#streams.length > 0;
     }

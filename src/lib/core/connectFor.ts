@@ -3,9 +3,9 @@
  *
  * Usage:
  * ```typescript
- * import { connectFor } from "#/lib/connectFor"
+ * import { connectFor } from "../connectFor"
  *
- * // Inside a Gnim $={() => {}} callback, onMount, or createRoot scope:
+ * // Inside a Gnim ref={() => {}} callback, effect, or createRoot scope:
  * connectFor(self, notifd, "notified", (_, id) => addNotification(id))
  * connectFor(self, bluetooth, "notify::is-powered", () => updateUI())
  * ```
@@ -42,7 +42,7 @@ function getOrCreateEntries(node: object): CleanupEntry[] {
  * Register a GObject signal handler that is automatically disconnected
  * when the given Gnim node is cleaned up (unmounted/destroyed).
  *
- * @param node  The Gnim reactive node (`self` inside `$={}`, `onMount`, or similar)
+ * @param node  The Gnim reactive node (`self` inside `ref={}`, `effect`, or similar)
  * @param obj   The GObject instance to connect to
  * @param signal  Signal name (e.g. "notified", "notify::my-prop")
  * @param callback  Signal handler function

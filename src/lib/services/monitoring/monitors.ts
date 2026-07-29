@@ -11,14 +11,14 @@
  * The monitors array still returns Gdk.Monitor[] for backward compatibility
  * with Astal.Window.gdkmonitor and all existing widgets.
  */
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import {getHyprland, type AstalHyprland} from '../../hyprland';
 import AstalWl from 'gi://AstalWl';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import GObject, {getter, register} from 'gnim/gobject';
-import {createBinding} from 'gnim';
-import logger from '#/lib/core/logger';
+import {Object, register, property} from 'gnim/gobject';
+import {bind} from 'gnim';
+import logger from '../../core/logger';
 
 // ── Gdk → Hyprland monitor mapper ────────────────────────────────────────
 
@@ -31,15 +31,19 @@ import logger from '#/lib/core/logger';
  *
  * Falls back to description matching and then to geometry matching.
  */
-const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor => {
-    const hyprland = AstalHyprland.get_default();
+const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor | null => {
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
 
     // Gdk 4.10+ exposes the connector name directly
     const connector = GMonitor.connector;
     if (connector) {
         const found = hyprland.get_monitor_by_name(connector);
         if (found) return found;
-        logger.warn('monitors', `Hyprland monitor not found for connector: ${connector}`);
+        logger.warn(
+            'monitors',
+            `Hyprland monitor not found for connector: ${connector}`
+        );
     }
 
     // Fallback: match by description (includes connector info in some setups)
@@ -51,7 +55,9 @@ const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor => {
 
     // Last resort: find the first monitor with matching geometry
     const geo = GMonitor.geometry;
-    const found = hyprland.get_monitors().find(m => m.x === geo.x && m.y === geo.y);
+    const found = hyprland
+        .get_monitors()
+        .find(m => m.x === geo.x && m.y === geo.y);
     return found ?? hyprland.get_monitor(0);
 };
 
@@ -82,7 +88,7 @@ function allGdkMonitors(): Gdk.Monitor[] {
 }
 
 @register({GTypeName: 'MonitorService'})
-class MonitorService extends GObject.Object {
+class MonitorService extends Object {
     static instance: MonitorService;
 
     static get_default() {
@@ -91,11 +97,11 @@ class MonitorService extends GObject.Object {
     }
 
     #monitors: Gdk.Monitor[] = [];
-    #wlDisplay: AstalWl.WlDisplay | null = null;
+    #wlDisplay: AstalWl.Registry | null = null;
     #wlSignalIds: number[] = [];
     #pendingSync = false;
 
-    @getter(Array)
+    @property
     get monitors() {
         return this.#monitors;
     }
@@ -120,7 +126,7 @@ class MonitorService extends GObject.Object {
         let useWl = false;
         try {
             const gsettings = new Gio.Settings({
-                schema_id: 'com.caioasmuniz.shade_shell.general',
+                schemaId: 'com.caioasmuniz.shade_shell.general',
             });
             useWl = gsettings.get_boolean('experimental-wayland-monitors');
         } catch {
@@ -147,13 +153,15 @@ class MonitorService extends GObject.Object {
         // Sync with Hyprland's monitor list to handle the race condition:
         // Gdk fires items-changed before Hyprland's IPC has updated its own
         // monitor list. When the Hyprland list catches up, re-notify.
-        const hyprland = AstalHyprland.get_default();
-        hyprland.connect('notify::monitors', () => {
-            if (this.#pendingSync) {
-                this.#pendingSync = false;
-                this.notify('monitors');
-            }
-        });
+        const hyprland = getHyprland();
+        if (hyprland) {
+            hyprland.connect('notify::monitors', () => {
+                if (this.#pendingSync) {
+                    this.#pendingSync = false;
+                    this.notify('monitors');
+                }
+            });
+        }
     }
 
     // ── AstalWl path (experimental) ───────────────────────────────────────
@@ -163,9 +171,13 @@ class MonitorService extends GObject.Object {
         if (!display) return;
 
         try {
-            this.#wlDisplay = AstalWl.WlDisplay.get_default();
+            this.#wlDisplay = AstalWl.Registry.get_default();
         } catch (e) {
-            logger.warn('monitors', 'AstalWl unavailable, falling back to Gdk:', e);
+            logger.warn(
+                'monitors',
+                'AstalWl unavailable, falling back to Gdk:',
+                e
+            );
             this.#initGdk(display);
             return;
         }
@@ -175,37 +187,45 @@ class MonitorService extends GObject.Object {
 
         // Listen for output changes
         this.#wlSignalIds = [
-            this.#wlDisplay.connect('output-added', (_wl: AstalWl.WlDisplay, output: AstalWl.Output) => {
-                const gdkMon = gdkMonitorByConnector(output.name);
-                if (gdkMon) {
-                    this.#addMonitor(gdkMon);
-                } else {
-                    // Gdk hasn't caught up yet — retry
-                    this.#scheduleHyprlandSync();
+            this.#wlDisplay.connect(
+                'output-added',
+                (_wl: any, output: AstalWl.Output) => {
+                    const gdkMon = gdkMonitorByConnector(output.name);
+                    if (gdkMon) {
+                        this.#addMonitor(gdkMon);
+                    } else {
+                        // Gdk hasn't caught up yet — retry
+                        this.#scheduleHyprlandSync();
+                    }
                 }
-            }),
+            ),
 
-            this.#wlDisplay.connect('output-removed', (_wl: AstalWl.WlDisplay, output: AstalWl.Output) => {
-                const gdkMon = gdkMonitorByConnector(output.name);
-                if (gdkMon) {
-                    this.#removeMonitor(gdkMon);
-                } else {
-                    // Gdk already removed it — resync all
-                    this.#updateMonitors(allGdkMonitors());
+            this.#wlDisplay.connect(
+                'output-removed',
+                (_wl: any, output: AstalWl.Output) => {
+                    const gdkMon = gdkMonitorByConnector(output.name);
+                    if (gdkMon) {
+                        this.#removeMonitor(gdkMon);
+                    } else {
+                        // Gdk already removed it — resync all
+                        this.#updateMonitors(allGdkMonitors());
+                    }
                 }
-            }),
+            ),
         ];
 
         // Sync with Hyprland after AstalWl fires (allow Hyprland IPC to catch up)
-        const hyprland = AstalHyprland.get_default();
-        this.#wlSignalIds.push(
-            hyprland.connect('notify::monitors', () => {
-                if (this.#pendingSync) {
-                    this.#pendingSync = false;
-                    this.#updateMonitors(allGdkMonitors());
-                }
-            })
-        );
+        const hyprland = getHyprland();
+        if (hyprland) {
+            this.#wlSignalIds.push(
+                hyprland.connect('notify::monitors', () => {
+                    if (this.#pendingSync) {
+                        this.#pendingSync = false;
+                        this.#updateMonitors(allGdkMonitors());
+                    }
+                })
+            );
+        }
     }
 
     // ── Monitor list management ───────────────────────────────────────────
@@ -218,7 +238,9 @@ class MonitorService extends GObject.Object {
     }
 
     #removeMonitor(monitor: Gdk.Monitor): void {
-        this.#monitors = this.#monitors.filter(m => m.connector !== monitor.connector);
+        this.#monitors = this.#monitors.filter(
+            m => m.connector !== monitor.connector
+        );
         this.notify('monitors');
     }
 
@@ -226,12 +248,14 @@ class MonitorService extends GObject.Object {
         this.#monitors = monitors;
 
         // Check if Hyprland monitor list matches the Gdk count
-        const hyprland = AstalHyprland.get_default();
-        if (hyprland.get_monitors().length !== this.#monitors.length) {
-            this.#pendingSync = true;
-            logger.debug('monitors', 'Monitor counts differ, deferring notify');
-        } else {
-            this.#pendingSync = false;
+        const hyprland = getHyprland();
+        if (hyprland) {
+            if (hyprland.get_monitors().length !== this.#monitors.length) {
+                this.#pendingSync = true;
+                logger.debug('monitors', 'Monitor counts differ, deferring notify');
+            } else {
+                this.#pendingSync = false;
+            }
         }
 
         this.notify('monitors');
@@ -239,13 +263,15 @@ class MonitorService extends GObject.Object {
 
     #scheduleHyprlandSync(): void {
         // Defer notification to give Hyprland IPC time to catch up
-        const hyprland = AstalHyprland.get_default();
-        if (hyprland.get_monitors().length !== this.#monitors.length) {
-            this.#pendingSync = true;
-            logger.debug('monitors', 'Monitor counts differ, deferring notify');
-        } else {
-            this.#pendingSync = false;
-            this.notify('monitors');
+        const hyprland = getHyprland();
+        if (hyprland) {
+            if (hyprland.get_monitors().length !== this.#monitors.length) {
+                this.#pendingSync = true;
+                logger.debug('monitors', 'Monitor counts differ, deferring notify');
+            } else {
+                this.#pendingSync = false;
+                this.notify('monitors');
+            }
         }
     }
 
@@ -263,6 +289,6 @@ class MonitorService extends GObject.Object {
 
 // ── Exports ───────────────────────────────────────────────────────────────
 
-export const monitors = createBinding(MonitorService.get_default(), 'monitors');
+export const monitors = bind(MonitorService.get_default(), 'monitors');
 
 export {Gdk2HyprMonitor, MonitorService};

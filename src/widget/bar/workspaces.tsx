@@ -1,9 +1,9 @@
 import Hyprland from 'gi://AstalHyprland';
-import Adw from 'gi://Adw?version=1';
+import {getHyprland} from '../../lib/hyprland';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createBinding, createComputed, For, Accessor, With} from 'gnim';
-import {toArray} from '#/lib/core/gjsUtils';
-import {getAppIcon} from '#/lib/services/state/apps';
+import {bind, computed, For, Accessor, With} from 'gnim';
+import {toArray} from '../../lib/core/gjsUtils';
+import {getAppIcon} from '../../lib/services/state/apps';
 
 export default ({
     monitor,
@@ -14,7 +14,8 @@ export default ({
     vertical: Accessor<boolean>;
     visible?: boolean | Accessor<boolean>;
 }) => {
-    const hyprland = Hyprland.get_default();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
 
     return (
         <Gtk.Box
@@ -25,7 +26,7 @@ export default ({
             spacing={8}
         >
             <For
-                each={createBinding(hyprland, 'workspaces').as(ws =>
+                each={bind(hyprland, 'workspaces').as(ws =>
                     ws
                         .filter(ws => ws.get_monitor() === monitor)
                         .sort((a, b) => a.id - b.id)
@@ -34,10 +35,10 @@ export default ({
                 {(ws: Hyprland.Workspace) => {
                     // Guard against race condition: only set activeName if the
                     // client toggle actually exists in this workspace's group.
-                    const focusedClient = createBinding(hyprland, 'focusedClient');
-                    const wsClients = createBinding(ws, 'clients');
+                    const focusedClient = bind(hyprland, 'focused-client');
+                    const wsClients = bind(ws, 'clients');
 
-                    const activeName = createComputed(() => {
+                    const activeName = computed(() => {
                         const client = focusedClient();
 
                         if (!client || client.workspace !== ws) return null;
@@ -49,66 +50,64 @@ export default ({
                     });
 
                     return (
-                    <Adw.ToggleGroup
-                        orientation={vertical.as(v =>
-                            v
-                                ? Gtk.Orientation.VERTICAL
-                                : Gtk.Orientation.HORIZONTAL
-                        )}
-                        cssClasses={[ws.id < 0 ? 'success' : '']}
-                        activeName={activeName()}
-                    >
-                        <For
-                            each={createBinding(ws, 'clients').as(clients =>
-                                toArray<Hyprland.Client>(clients)
+                        <Gtk.Box
+                            orientation={vertical.as(v =>
+                                v
+                                    ? Gtk.Orientation.VERTICAL
+                                    : Gtk.Orientation.HORIZONTAL
                             )}
+                            spacing={4}
                         >
-                            {(client: Hyprland.Client) => (
-                                <Adw.Toggle
-                                    name={client.address}
-                                    child={
-                                        (
+                            <For
+                                each={bind(ws, 'clients').as(clients =>
+                                    toArray<Hyprland.Client>(clients)
+                                )}
+                            >
+                                {(client: Hyprland.Client) => (
+                                    <Gtk.ToggleButton
+                                        active={computed(
+                                            () =>
+                                                activeName() ===
+                                                client.address
+                                        )}
+                                        onClicked={() => client.focus()}
+                                        cssClasses={['flat']}
+                                    >
+                                        <Gtk.Image
+                                            iconName={getAppIcon(client)}
+                                            pixelSize={24}
+                                        />
+                                    </Gtk.ToggleButton>
+                                )}
+                            </For>
+                            {/* show empty dot when ws is empty */}
+                            <With
+                                value={bind(ws, 'clients').as(
+                                    clients =>
+                                        toArray<Hyprland.Client>(clients)
+                                            .length < 1
+                                )}
+                            >
+                                {(isEmpty: boolean) =>
+                                    isEmpty ? (
+                                        <Gtk.ToggleButton
+                                            active={false}
+                                            cssClasses={['flat']}
+                                        >
                                             <Gtk.Image
-                                                iconName={getAppIcon(client)}
-                                                pixelSize={24}
-                                            >
-                                                <Gtk.GestureClick
-                                                    onPressed={() =>
-                                                        client.focus()
-                                                    }
-                                                />
-                                            </Gtk.Image>
-                                        ) as Gtk.Widget
-                                    }
-                                />
-                            )}
-                        </For>
-                        {/* show empty dot when ws is empty */}
-                        <With
-                            value={createBinding(ws, 'clients').as(
-                                clients =>
-                                    toArray<Hyprland.Client>(clients).length < 1
-                            )}
-                        >
-                            {(isEmpty: boolean) =>
-                                isEmpty ? (
-                                    <Adw.Toggle
-                                        child={
-                                            (
-                                                <Gtk.Image
-                                                    iconName="window-minimize-symbolic"
-                                                    pixelSize={8}
-                                                />
-                                            ) as Gtk.Widget
-                                        }
-                                    />
-                                ) : null
-                            }
-                        </With>
-                    </Adw.ToggleGroup>
+                                                iconName={
+                                                    'window-minimize-symbolic'
+                                                }
+                                                pixelSize={8}
+                                            />
+                                        </Gtk.ToggleButton>
+                                    ) : null
+                                }
+                            </With>
+                        </Gtk.Box>
                     );
                 }}
             </For>
         </Gtk.Box>
-    ) as Gtk.Box;
+    );
 };

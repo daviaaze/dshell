@@ -3,7 +3,7 @@
  *
  * Usage:
  * ```ts
- * import {bus} from '#/lib/core/eventBus';
+ * import {bus} from './eventBus';
  *
  * // Subscribe
  * const unsub = bus.on('shell:lockscreen', () => lockScreen());
@@ -60,7 +60,10 @@ class EventBus {
         };
     }
 
-    emit<K extends keyof EventMap>(event: K, ...args: EventMap[K] extends void ? [] : [payload: EventMap[K]]): void {
+    emit<K extends keyof EventMap>(
+        event: K,
+        ...args: EventMap[K] extends void ? [] : [payload: EventMap[K]]
+    ): void {
         const key = event;
         const fns = this.#listeners.get(key);
         if (!fns) return;
