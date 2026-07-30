@@ -41,9 +41,9 @@ let
   };
 
   entries = {
-    "shade-shell" = "src/apps/shell/main.ts";
-    "shade-shell-greet" = "src/apps/greeter/main.ts";
-    "shade-shell-share-picker" = "src/apps/share-picker/main.ts";
+    "shade-shell" = "apps/shell/src/main.ts";
+    "shade-shell-greet" = "apps/greeter/src/main.ts";
+    "shade-shell-share-picker" = "apps/share-picker/src/main.ts";
   };
 
   # Build a define-flag pair with a JS-string-literal value for rolldown.
@@ -110,7 +110,7 @@ pkgs.stdenv.mkDerivation {
 
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList mkEntryCommands entries)}
 
-    node "$PWD/node_modules/gnim/dist/bin/gnim.js" schemas src/lib/settings \
+    node "$PWD/node_modules/gnim/dist/bin/gnim.js" schemas packages/services/src/settings \
       -o schema-out \
       ${mkDefine "import.meta.domain" domain} \
       ${mkDefine "import.meta.datadir" "$out/share"} \

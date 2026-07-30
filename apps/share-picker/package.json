@@ -1,0 +1,11 @@
+{
+  "name": "@shade/share-picker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "gnim": "workspace:*",
+    "@shade/core": "workspace:*",
+    "@shade/services": "workspace:*"
+  }
+}

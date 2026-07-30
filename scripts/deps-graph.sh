@@ -18,9 +18,9 @@ SRC="$ROOT/src"
 OUT_DIR="${OUT_DIR:-$ROOT/docs/deps}"
 mkdir -p "$OUT_DIR"
 
-SHELL_ENTRY="$SRC/apps/shell/main.ts"
-GREETER_ENTRY="$SRC/apps/greeter/main.ts"
-SHAREPICKER_ENTRY="$SRC/apps/share-picker/main.ts"
+SHELL_ENTRY="apps/shell/src/main.ts"
+GREETER_ENTRY="apps/greeter/src/main.ts"
+SHAREPICKER_ENTRY="apps/share-picker/src/main.ts"
 
 echo "==> Finding files & building graph (madge)"
 npx madge --json \
@@ -35,18 +35,28 @@ const path = require('node:path');
 const { JSON_PATH, OUT_DOT } = process.env;
 const graph = JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
 
-// Keys are relative to src/apps/ (madge's common ancestor of the entries).
-const SRC = 'src/apps';
+// Keys are relative to apps/ (madge's common ancestor of the entries),
+// so packages/ files get a ../ prefix.
 function normalize(file) {
-    return path.posix.normalize(path.posix.join(SRC, file)).replace(/\.\w+$/, '');
+    // Strip leading ../ so paths start cleanly
+    const cleaned = file.replace(/^\.\.\//, '');
+    return cleaned.replace(/\.\w+$/, '');
 }
 function bucket(file) {
     const p = normalize(file).split('/');
-    if (p[0] !== 'src') return null;
-    const top = p[1];
-    if (top === 'apps' || top === 'lib' || top === 'widget')
-        return p.length > 2 ? `${top}/${p[2]}` : top;
-    return p.length > 2 ? `${top}/${p[2]}` : top;
+    // Skip gnim/third-party type files
+    if (p[0] === '.gnim') return null;
+    // packages/<name>/src/<subpath>
+    if (p[0] === 'packages') {
+        if (p.length < 4) return p[1];                         // packages/<name>
+        if (p[2] !== 'src') return `${p[1]}`;                    // unexpected path
+        if (p.length === 4) return p[1];                         // packages/<name>/src/<file> → <name>
+        return `${p[1]}/${p[3]}`;                                // packages/<name>/src/<sub>/... → <name>/<sub>
+    }
+    // apps/<name>/src/<subpath> → apps/<name>
+    if (p[0] === 'apps')
+        return p.length > 1 ? `apps/${p[1]}` : 'apps';
+    return p.length > 2 ? `${p[0]}/${p[1]}` : p[0];
 }
 
 const edges = new Map();
@@ -71,7 +81,7 @@ for (const [key, count] of [...edges.entries()].sort()) {
     const w = Math.min(1 + Math.log2(count), 6);
     L.push(`  "${from}" -> "${to}" [penwidth=${w.toFixed(1)}, label="${count}"];`);
 }
-const fill = { apps: '#585b70', lib: '#313244', widget: '#45475a' };
+const fill = { apps: '#585b70', core: '#313244', services: '#45475a', widgets: '#fab387', style: '#b4befe' };
 for (const n of nodes)
     L.push(`  "${n}" [fillcolor="${fill[n.split('/')[0]] || '#313244'}"];`);
 L.push('}');
