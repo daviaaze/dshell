@@ -146,7 +146,7 @@ export class Stylesheet {
 
 @register
 export class Theme extends GObject {
-    static instance: Theme;
+    private static instance: Theme;
 
     static get_default(): Theme {
         if (!this.instance) this.instance = new Theme();

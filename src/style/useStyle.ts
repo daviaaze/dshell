@@ -68,10 +68,15 @@ function ensureGlobalProvider(): boolean {
     return true;
 }
 
-/** Rebuild the full CSS string from all registry entries. */
+/** Rebuild the full CSS string from all registry entries.
+ *  Named sheets first (theme vars, app styles), scoped useStyle classes
+ *  last so they win at equal provider priority (documented Layer 4). */
 function rebuildAllCSS(): void {
     if (!globalProvider) return;
-    const allCSS = [...cssRegistry.values()].map(e => e.css).join('\n');
+    const allCSS = [
+        ...[...cssRegistry.values()].map(e => e.css),
+        ...[...scopedRegistry.values()].map(e => e.css),
+    ].join('\n');
     globalProvider.load_from_string(allCSS);
 }
 

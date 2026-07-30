@@ -2,10 +2,7 @@
  * GTK widget builders for the picker UI.
  */
 import Gtk from 'gi://Gtk?version=4.0';
-import logger from '../../lib/core/logger';
 import type {MonitorState, SelectFn, WindowState} from './types';
-
-const CAT = 'share-picker';
 
 const PICTURE_W = 240;
 const PICTURE_H = 135;
@@ -15,9 +12,8 @@ function truncate(s: string, max: number): string {
     return s.length <= max ? s : `${s.substring(0, max - 1)}…`;
 }
 
-/** Popup window rounding — non-fatal if the display isn't ready */
-export function applyPopupCss(): void {
-    // CSS is now auto-loaded by gnim dev/bundle via picker.css import
+function noPreviewLabel(longSub: boolean): string {
+    return longSub ? 'No preview (hidden or off-screen)' : 'No preview';
 }
 
 function makePicture(): Gtk.Picture {
@@ -124,9 +120,7 @@ function windowCard(
         state.info.clazz || state.info.title,
         state.geometry
             ? `${state.geometry.width}×${state.geometry.height}`
-            : longSub
-              ? 'No preview (hidden or off-screen)'
-              : 'No preview',
+            : noPreviewLabel(longSub),
         pic,
         () => select('window', state.info.id)
     );

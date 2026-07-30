@@ -11,7 +11,12 @@ import type {MonitorState, WindowState} from './types';
 const CAT = 'share-picker';
 
 export const GRIM_BIN = GLib.find_program_in_path('grim') || 'grim';
-export const TEMP_DIR = '/tmp/dshell-picker';
+/** User-private runtime dir (0700) — /tmp is world-writable and unsafe
+ *  for screen capture previews. */
+export const TEMP_DIR = GLib.build_filenamev([
+    GLib.get_user_runtime_dir(),
+    'dshell-picker',
+]);
 /** stagger per monitor — each monitor captured every N×monitorCount ms */
 export const POLL_INTERVAL_MS = 200;
 
@@ -19,7 +24,7 @@ export const POLL_INTERVAL_MS = 200;
 
 export function ensureTempDir(): void {
     try {
-        GLib.mkdir_with_parents(TEMP_DIR, 0o755);
+        GLib.mkdir_with_parents(TEMP_DIR, 0o700);
     } catch {
         /* ignore */
     }

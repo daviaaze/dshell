@@ -13,11 +13,17 @@ function setupSignalHandlers() {
         if (quitting) {
             logger.log(`received signal ${sig} again, forcing exit`);
             exit(1);
-        } else {
-            quitting = true;
-            logger.log(`received signal ${sig}, force exiting...`);
-            exit(0);
         }
+        quitting = true;
+        logger.log(`received signal ${sig}, shutting down gracefully`);
+        // Goes through GTK shutdown → #teardown → ServiceRegistry.disposeAll
+        app.quit();
+        // Safety net: force-exit if graceful shutdown wedges
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 3000, () => {
+            logger.log('graceful shutdown timed out, forcing exit');
+            exit(1);
+        });
+        return GLib.SOURCE_REMOVE;
     };
 
     for (const sig of [2 /* SIGINT */, 15 /* SIGTERM */]) {

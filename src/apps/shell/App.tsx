@@ -16,6 +16,9 @@ import {registerServices, getWidgetDescriptors} from '../../widget';
 import ServiceRegistry from '../../lib/core/serviceRegistry';
 import logger, {perf} from '../../lib/core/logger';
 
+// gnim dev/bundle auto-registers a Gtk.CssProvider for each imported .css
+import './shade.css';
+
 @register
 export class ShadeShell extends Adw.Application {
     constructor() {
@@ -100,10 +103,16 @@ export class ShadeShell extends Adw.Application {
     }
 
     #rootDisposers: (() => void)[] = [];
+    #disposed = false;
 
+    /** Idempotent: disposes widgets AND services (clipboard flush,
+     *  file monitors, timers, DBus connections) on any shutdown path. */
     #teardown(): void {
+        if (this.#disposed) return;
+        this.#disposed = true;
         this.#rootDisposers.forEach(d => d());
         this.#rootDisposers = [];
+        ServiceRegistry.get_default().disposeAll();
     }
 
     shutdown(): void {

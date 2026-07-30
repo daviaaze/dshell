@@ -15,6 +15,7 @@ import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {programArgs} from 'system';
+import './picker.css'; // auto-loaded as CssProvider by gnim dev/bundle
 import logger from '../../lib/core/logger';
 import printOut from '../../lib/core/stdout';
 import type {SelectFn} from './types';
@@ -33,12 +34,7 @@ import {
     captureWindow,
 } from './capture';
 import {MonitorPoller} from './poller';
-import {
-    applyPopupCss,
-    buildScreensTab,
-    buildWindowsTab,
-    buildCombinedTab,
-} from './ui';
+import {buildScreensTab, buildWindowsTab, buildCombinedTab} from './ui';
 
 const CAT = 'share-picker';
 const APP_ID = 'com.caioasmuniz.shade_shell.share_picker';

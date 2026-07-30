@@ -1,38 +1,12 @@
 /*
- * Shade Shell — Design Token System
+ * Shade Shell — CSS Utilities
  *
- * Leverages Libadwaita's built-in classes (card, frame, title-*, caption, etc.)
- * and GTK4 CSS extensions (@define-color, alpha(), mix()).
+ * Everything visual comes from Libadwaita style classes (card, flat, title-*,
+ * caption, numeric, dimmed, accent, error, warning...). This file only keeps
+ * what Adwaita deliberately does not provide: spacing utilities.
  *
- * Palette colors are injected by Theme manager via CSS custom properties.
- * Widget-specific classes migrate to useStyle() per-component (see Phase 2).
- *
- * Token hierarchy:
- *   Layer 0 — GTK/Libadwaita defaults (built-in)
- *   Layer 1 — reset.css (base resets, loaded separately)
- *   Layer 2 — shade.css (this file, PRIORITY_USER)
- *   Layer 3 — Theme manager (CSS custom properties, PRIORITY_USER)
- *   Layer 4 — useStyle scoped classes (PRIORITY_USER + 10)
+ * Loaded via gnim dev/bundle auto-registered Gtk.CssProvider.
  */
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   WINDOW SURFACES
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Semi-transparent window background */
-.background {
-    box-shadow: none;
-    background: oklab(from var(--window-bg-color) l a b / 0.75);
-}
-
-/* Card — tighter padding than Libadwaita's default */
-.card {
-    padding: 4px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SPACING UTILITIES
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 .p-8 {
     padding: 8px;
@@ -46,25 +20,4 @@
 }
 .popover-padded-lg {
     margin: 12px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   TYPOGRAPHY
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* Monospaced digits for clocks, stats, counters */
-.numeric {
-    font-feature-settings: 'tnum';
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   BATTERY — Bluetooth device battery levels
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.battery-critical {
-    color: @error_color;
-}
-
-.battery-low {
-    color: @warning_color;
 }
