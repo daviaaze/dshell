@@ -174,5 +174,16 @@ export default tseslint.config(
             'sonarjs/no-nested-functions': 'warn',
             'sonarjs/no-nested-conditional': 'warn',
         },
+    },
+
+    // ── Test files — explicit string literals in test cases are
+    // intentional (readability over DRY); sonarjs recommends excluding
+    // tests. Must come last: flat config is last-match-wins.
+    {
+        files: ['**/__tests__/**'],
+        rules: {
+            'sonarjs/no-duplicate-string': 'off',
+            'sonarjs/max-lines-per-function': 'off',
+        },
     }
 );
