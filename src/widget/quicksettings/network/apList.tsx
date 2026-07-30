@@ -28,7 +28,6 @@ function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
 }
 
 export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
-    const listStyle = useStyle({});
     const activeBssid = bind(wifi, 'active-access-point').as(active => {
         if (!active) return null;
         return bssidOf(active);
@@ -44,8 +43,7 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
             orientation={Gtk.Orientation.VERTICAL}
             spacing={0}
             hexpand
-            cssClasses={['network-list', listStyle.class]}
-            ref={listStyle.$}
+            cssClasses={['network-list']}
         >
             <For each={sortedAps} id={snap => snap.bssid ?? snap.ssid}>
                 {(snap: ApSnapshot) => {

@@ -12,6 +12,7 @@ import Popup from './popup';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';
+const REVEAL_SIGNAL = 'notify::reveal-child';
 const OSD_WIDTH = 250;
 const OSD_MARGIN = 24;
 const OSD_SPACING = 12;
@@ -55,7 +56,7 @@ export default () => {
                 ),
             })}
             revealerRef={r =>
-                r.connect('notify::reveal-child', () => s0(r.revealChild))
+                r.connect(REVEAL_SIGNAL, () => s0(r.revealChild))
             }
         />,
         <Popup
@@ -66,7 +67,7 @@ export default () => {
                 value: bind(brightness, 'screen'),
             })}
             revealerRef={r =>
-                r.connect('notify::reveal-child', () => s1(r.revealChild))
+                r.connect(REVEAL_SIGNAL, () => s1(r.revealChild))
             }
         />,
         <Popup
@@ -77,7 +78,7 @@ export default () => {
                 value: computed(() => brightness.kbd),
             })}
             revealerRef={r =>
-                r.connect('notify::reveal-child', () => s2(r.revealChild))
+                r.connect(REVEAL_SIGNAL, () => s2(r.revealChild))
             }
         />,
         <Popup
@@ -90,7 +91,7 @@ export default () => {
                 ),
             })}
             revealerRef={r =>
-                r.connect('notify::reveal-child', () => s3(r.revealChild))
+                r.connect(REVEAL_SIGNAL, () => s3(r.revealChild))
             }
         />,
         <Popup
@@ -98,7 +99,7 @@ export default () => {
             signals={['toggled']}
             widget={<TouchpadOsd />}
             revealerRef={r =>
-                r.connect('notify::reveal-child', () => s4(r.revealChild))
+                r.connect(REVEAL_SIGNAL, () => s4(r.revealChild))
             }
         />,
     ];

@@ -4,9 +4,9 @@ import {Accessor, For, bind, computed} from 'gnim';
 import Clock from '../../lib/services/time/clock';
 import TimerService from '../../lib/services/time/timerService';
 import {useSettings} from '../../lib/settings';
-import {useStyle} from '../../style/useStyle';
-import {fmtDuration, cityName} from '../../lib/core/time';
+import {fmtDuration, cityName, fmtOffset} from '../../lib/core/time';
 import {TimerSection} from '../quicksettings/timer/TimerSection';
+import GLib from 'gi://GLib?version=2.0';
 
 export default ({
     visible = true,
@@ -14,14 +14,13 @@ export default ({
     vertical: Accessor<boolean>;
     visible?: boolean | Accessor<boolean>;
 }) => {
-    const timerActiveStyle = useStyle({
-        color: 'var(--shade-primary)',
-        'font-weight': 'bold',
-    });
     const {general} = useSettings();
     const time = Clock.get_default().time;
     const hour = time.as(t => t.format('%H')!);
     const minute = time.as(t => t.format('%M')!);
+    const day = time.as(t => t.format('%d')!);
+    const month = time.as(t => t.format('%B')!);
+    const localTz = GLib.TimeZone.new_local();
 
     const timer = TimerService.get_default();
     const timerRemaining = bind(timer, 'remaining');
@@ -43,6 +42,12 @@ export default ({
                     <Gtk.Label label="World Clock" halign={Gtk.Align.CENTER} />
                     <For each={general.timezones}>
                         {(tzId: string) => {
+                            const tz = GLib.TimeZone.new_identifier(tzId);
+
+                            if (!tz) return null;
+
+                            const tzTime = time.as(t => t.to_timezone(tz));
+
                             return (
                                 <Gtk.Box spacing={8}>
                                     <Gtk.Label
@@ -50,10 +55,35 @@ export default ({
                                         hexpand
                                         halign={Gtk.Align.START}
                                     />
-                                    <Gtk.Label
-                                        label={tzId}
+                                    <Gtk.Box
+                                        orientation={Gtk.Orientation.VERTICAL}
+                                        hexpand
                                         halign={Gtk.Align.END}
-                                    />
+                                    >
+                                        <Gtk.Label
+                                            label={tzId}
+                                        />
+                                        <Gtk.Box>
+                                            <Gtk.Label
+                                                cssClasses={[
+                                                    'numeric',
+                                                    'title-4',
+                                                ]}
+                                                label={tzTime.as(
+                                                    t =>
+                                                        t?.format('%H:%M') ??
+                                                        '--:--'
+                                                )}
+                                            />
+                                            <Gtk.Label
+                                                cssClasses={[
+                                                    'caption',
+                                                    'dim-label',
+                                                ]}
+                                                label={fmtOffset(localTz, tz)}
+                                            />
+                                        </Gtk.Box>
+                                    </Gtk.Box>
                                 </Gtk.Box>
                             );
                         }}
@@ -79,12 +109,23 @@ export default ({
                         label={minute}
                         cssClasses={['title-1', 'numeric']}
                     />
+                    <Gtk.Box
+                        visible={timerActive.as(a => !a)}
+                        orientation={Gtk.Orientation.VERTICAL}
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                    >
+                        <Gtk.Label
+                            cssClasses={['caption-heading']}
+                            label={day}
+                        />
+                        <Gtk.Label cssClasses={['caption']} label={month} />
+                    </Gtk.Box>
                 </Gtk.Box>
                 <Gtk.Label
                     visible={timerActive}
                     label={timerDisplay}
-                    cssClasses={['title-1', 'numeric', timerActiveStyle.class]}
-                    ref={timerActiveStyle.$}
+                    cssClasses={['title-1', 'numeric', 'accent']}
                 />
             </Gtk.Box>
         </Gtk.MenuButton>

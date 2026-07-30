@@ -1,7 +1,7 @@
 import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {For} from 'gnim';
+import {For, onCleanup} from 'gnim';
 import {useSettings} from '../../lib/settings';
 
 export default () => {
@@ -43,9 +43,11 @@ export default () => {
                         ref={self => {
                             const v = bar.position.peek();
                             self.activeName = String(v ?? '');
-                            bar.position.subscribe(() => {
-                                self.activeName = String(bar.position());
-                            });
+                            onCleanup(
+                                bar.position.subscribe(() => {
+                                    self.activeName = String(bar.position());
+                                })
+                            );
                         }}
                     >
                         <Adw.Toggle

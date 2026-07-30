@@ -1,31 +1,11 @@
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib';
-import {For, bind} from 'gnim';
-import {useStyle} from '../../style/useStyle';
-import {tickWhileAttached} from '../../lib/core/widgetTimer';
 import Adw from 'gi://Adw?version=1';
-
-function relativeTime(unix: number): string {
-    const now = GLib.DateTime.new_now_local()!;
-    const then = GLib.DateTime.new_from_unix_local(unix)!;
-    const diff = now.difference(then);
-    const seconds = Number(diff.valueOf()) / 1_000_000;
-
-    if (seconds < 10) return 'now';
-    if (seconds < 60) return `${Math.floor(seconds)}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-}
-
-function fullTimestamp(unix: number): string {
-    return (
-        GLib.DateTime.new_from_unix_local(unix)!.format('%H:%M:%S') || 'ERROR'
-    );
-}
+import {For, bind} from 'gnim';
+import {tickWhileAttached} from '../../lib/core/widgetTimer';
+import {relativeTime, fullTimestamp} from '../../lib/core/time';
+import {getExpireMs} from '../../lib/services/notifications/expire';
+import {getNotifdSafe} from '../../lib/services/notifications/guard';
 
 export default ({
     notification,
@@ -40,46 +20,31 @@ export default ({
     resumeDismiss?: () => void;
     showProgress?: boolean;
 }) => {
-    const dimmedStyle = useStyle({
-        opacity: '0.6',
-    });
-    const notifImageStyle = useStyle({
-        'border-radius': '8px',
-    });
-    const notifProgressStyle = useStyle({
-        'min-height': '4px',
-        'border-radius': '2px',
-    });
-    const notifActionsStyle = useStyle({});
-
-    const expireMs =
-        notification.expireTimeout > 0 ? notification.expireTimeout : 5000;
     const urgency = notification.urgency;
+    const isCritical = urgency === Notifd.Urgency.CRITICAL;
+    const isLow = urgency === Notifd.Urgency.LOW;
+
+    const expireMs = getExpireMs(notification, getNotifdSafe());
     const appName = notification.appName || '';
     const hasImage = !!notification.image;
     const bodyText = notification.body || '';
     const hasActions = notification.actions.length > 0;
-    const isCritical = urgency === Notifd.Urgency.CRITICAL;
-    const isLow = urgency === Notifd.Urgency.LOW;
     const useMarkup = /<[a-zA-Z/]/.test(bodyText);
+
+    // Captured via ref so closeAction receives the card widget directly
+    // (no fragile parent traversal from the close button).
+    let card: Gtk.Box;
 
     return (
         <Adw.Clamp widthRequest={360}>
             <Gtk.Box
                 name={notification.id.toString()}
-                cssClasses={[
-                    'card',
-                    'frame',
-                    'p-12',
-                    'notification-card',
-                    // Use Libadwaita's built-in style classes for urgency
-                    isCritical ? 'notification-critical' : '',
-                    isLow ? 'dimmed' : '',
-                ].filter(Boolean)}
+                cssClasses={['card', 'frame', 'p-12']}
                 spacing={8}
                 orientation={Gtk.Orientation.VERTICAL}
                 tooltipText={`${appName} · ${fullTimestamp(notification.time)}`}
                 ref={self => {
+                    card = self;
                     if (pauseDismiss && resumeDismiss) {
                         const controller = Gtk.EventControllerMotion.new();
                         controller.connect('enter', pauseDismiss);
@@ -116,12 +81,7 @@ export default ({
                         </Gtk.Box>
                         {appName ? (
                             <Gtk.Label
-                                cssClasses={[
-                                    'caption',
-                                    'dimmed',
-                                    dimmedStyle.class,
-                                ]}
-                                ref={dimmedStyle.$}
+                                cssClasses={['caption', 'dim-label']}
                                 label={appName}
                                 xalign={0}
                             />
@@ -136,9 +96,7 @@ export default ({
                             'flat',
                             isCritical ? 'destructive-action' : '',
                         ].filter(Boolean)}
-                        onClicked={self =>
-                            closeAction(notification, self.parent!.parent!)
-                        }
+                        onClicked={() => closeAction(notification, card)}
                         iconName={'window-close-symbolic'}
                     />
                 </Gtk.Box>
@@ -147,11 +105,6 @@ export default ({
                 <Gtk.Box spacing={8}>
                     {hasImage ? (
                         <Gtk.Image
-                            cssClasses={[
-                                'notification-image',
-                                notifImageStyle.class,
-                            ]}
-                            ref={notifImageStyle.$}
                             file={notification.image}
                             pixelSize={64}
                             valign={Gtk.Align.START}
@@ -173,12 +126,7 @@ export default ({
                 <Gtk.ProgressBar
                     visible={showProgress}
                     fraction={1}
-                    cssClasses={[
-                        'notification-progress',
-                        notifProgressStyle.class,
-                    ]}
                     ref={self => {
-                        notifProgressStyle.$(self);
                         if (!showProgress) return;
                         let elapsed = 0;
                         const interval = 50;
@@ -196,13 +144,7 @@ export default ({
 
                 {/* Action buttons */}
                 {hasActions ? (
-                    <Gtk.Box
-                        cssClasses={[
-                            'notification-actions',
-                            notifActionsStyle.class,
-                        ]}
-                        spacing={4}
-                    >
+                    <Gtk.Box spacing={4}>
                         <For
                             each={bind(notification, 'actions').as(actions =>
                                 actions.filter(

@@ -103,11 +103,9 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
         </Gtk.Popover>
     );
 
-    const statusCssClasses = active
-        ? ['status-active']
-        : running
-          ? ['status-running']
-          : [];
+    let statusCssClasses: string[] = [];
+    if (active) statusCssClasses = ['status-active'];
+    else if (running) statusCssClasses = ['status-running'];
 
     return (
         <Gtk.Button

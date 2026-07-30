@@ -129,13 +129,12 @@ export default () => {
                     halign={Gtk.Align.START}
                     marginStart={4}
                     cssClasses={['caption']}
-                    label={list.as(l =>
-                        frecencyHasData() && l.length > 0
-                            ? entryRef?.text
-                                ? 'Search results (boosted by usage)'
-                                : 'Most used apps'
-                            : ''
-                    )}
+                    label={list.as(l => {
+                        if (!frecencyHasData() || l.length === 0) return '';
+                        return entryRef?.text
+                            ? 'Search results (boosted by usage)'
+                            : 'Most used apps';
+                    })}
                 />
                 <Gtk.ScrolledWindow
                     css={'padding-right:0px;'}

@@ -51,8 +51,9 @@ export async function showHiddenNetworkDialog(parent: Adw.ActionRow) {
                     wifi.device,
                     null,
                     null,
-                    () => {
+                    (_, res) => {
                         try {
+                            network.client.add_and_activate_connection_finish(res);
                             resolve();
                         } catch (e) {
                             reject(e);

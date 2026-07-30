@@ -106,10 +106,24 @@ export default () => {
     const BORDER_WIDTH = 3;
     const monList = toArray<Gdk.Monitor>(monitors.peek());
 
-    const windows: Astal.Window[] = [];
-
-    for (const monitor of monList) {
-        const drawingArea = (
+    const windowRefs: Astal.Window[] = [];
+    const windows = monList.map(monitor => (
+        <Astal.Window
+            ref={self => {
+                if (self) windowRefs.push(self);
+            }}
+            application={app}
+            gdkmonitor={monitor}
+            layer={Astal.Layer.OVERLAY}
+            anchor={
+                Astal.WindowAnchor.TOP |
+                Astal.WindowAnchor.RIGHT |
+                Astal.WindowAnchor.BOTTOM |
+                Astal.WindowAnchor.LEFT
+            }
+            exclusivity={Astal.Exclusivity.IGNORE}
+            visible={bind(ss, 'boundaryVisible')}
+        >
             <Gtk.DrawingArea
                 hexpand
                 vexpand
@@ -127,33 +141,14 @@ export default () => {
                     });
                 }}
             />
-        );
-
-        <Astal.Window
-            ref={self => {
-                if (self) windows.push(self);
-            }}
-            application={app}
-            gdkmonitor={monitor}
-            layer={Astal.Layer.OVERLAY}
-            anchor={
-                Astal.WindowAnchor.TOP |
-                Astal.WindowAnchor.RIGHT |
-                Astal.WindowAnchor.BOTTOM |
-                Astal.WindowAnchor.LEFT
-            }
-            exclusivity={Astal.Exclusivity.IGNORE}
-            visible={bind(ss, 'boundaryVisible')}
-        >
-            {drawingArea}
-        </Astal.Window>;
-    }
+        </Astal.Window>
+    ));
 
     onCleanup(() => {
-        for (const w of windows) {
+        for (const w of windowRefs) {
             w.close();
         }
     });
 
-    return null;
+    return windows;
 };

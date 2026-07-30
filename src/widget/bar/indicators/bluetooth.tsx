@@ -9,7 +9,7 @@ export default () => {
         <Gtk.Image
             iconName={bind(bt, 'iconName')}
             visible={bind(bt, 'isPowered')}
-            tooltipMarkup={bind(bt, 'connectedDeviceNames').as(
+            tooltipText={bind(bt, 'connectedDeviceNames').as(
                 names => names || 'Bluetooth'
             )}
             pixelSize={18}

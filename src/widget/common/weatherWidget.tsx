@@ -5,7 +5,6 @@ import {
     formatTime,
     windDirectionLabel,
 } from '../../lib/services/location/weatherUtils';
-import {useStyle} from '../../style/useStyle';
 import {
     HourlyForecastSection,
     DailyForecastSection,
@@ -50,17 +49,11 @@ const SunMoonRow = ({
         iconName: string;
     } | null>;
 }) => {
-    const rowStyle = useStyle({
-        padding: '6px 0',
-        'font-size': '12px',
-        opacity: '0.8',
-    });
-
     return (
         <Gtk.Box
             spacing={16}
             halign={Gtk.Align.CENTER}
-            cssClasses={['weather-sun-moon-row', rowStyle.class]}
+            cssClasses={['weather-sun-moon-row']}
         >
             <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
                 <Gtk.Image
@@ -110,12 +103,6 @@ const DetailsLine = ({
     humidity: Accessor<number>;
     pressure: Accessor<number>;
 }) => {
-    const lineStyle = useStyle({
-        padding: '6px 0',
-        'font-size': '11px',
-        opacity: '0.7',
-    });
-
     return (
         <Gtk.Label
             label={computed(
@@ -123,7 +110,7 @@ const DetailsLine = ({
                     `🍃 ${windSpeed().toFixed(0)} ${windDirectionLabel(windDirection())} · 💧 ${humidity().toFixed(0)}% · ${pressure().toFixed(0)} hPa`
             )}
             halign={Gtk.Align.CENTER}
-            cssClasses={['weather-details-line', lineStyle.class]}
+            cssClasses={['weather-details-line', 'caption', 'dimmed']}
         />
     );
 };
@@ -160,16 +147,6 @@ export const WeatherWidget = () => {
         return weather.getMoonPhase();
     });
 
-    const tempStyle = useStyle({
-        'font-size': '24px',
-        'font-weight': 'bold',
-    });
-    const separatorStyle = useStyle({
-        'min-height': '1px',
-        background: 'var(--shade-outline-variant)',
-        margin: '4px 0',
-    });
-
     return (
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
@@ -185,7 +162,7 @@ export const WeatherWidget = () => {
                     spacing={0}
                 >
                     <Gtk.Label
-                        cssClasses={['weather-temp', tempStyle.class]}
+                        cssClasses={['weather-temp', 'title-1']}
                         label={tempSummary}
                         halign={Gtk.Align.START}
                     />
@@ -210,7 +187,7 @@ export const WeatherWidget = () => {
             </Gtk.Box>
 
             {/* ── Separator ── */}
-            <Gtk.Box cssClasses={[separatorStyle.class]} />
+            <Gtk.Separator />
 
             {/* ── Sun/Moon Row ── */}
             <SunMoonRow
@@ -220,19 +197,19 @@ export const WeatherWidget = () => {
             />
 
             {/* ── Separator ── */}
-            <Gtk.Box cssClasses={[separatorStyle.class]} />
+            <Gtk.Separator />
 
             {/* ── Hourly Forecast ── */}
             <HourlyForecastSection hourlyForecast={hourlyForecast} />
 
             {/* ── Separator ── */}
-            <Gtk.Box cssClasses={[separatorStyle.class]} />
+            <Gtk.Separator />
 
             {/* ── Daily Forecast ── */}
             <DailyForecastSection dailyForecast={dailyForecast} />
 
             {/* ── Separator ── */}
-            <Gtk.Box cssClasses={[separatorStyle.class]} />
+            <Gtk.Separator />
 
             {/* ── Details Line ── */}
             <DetailsLine

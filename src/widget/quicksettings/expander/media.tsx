@@ -3,9 +3,7 @@ import Mpris from 'gi://AstalMpris';
 import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, bind} from 'gnim';
-import Adw from 'gi://Adw?version=1';
-import {useStyle} from '../../../style/useStyle';
-import MediaController from '../../../lib/services/session/mediaController';
+import Adw from '../../../lib/services/session/mediaController';
 import {exactQuery} from '../../../lib/services/state/apps';
 
 function lengthStr(length: number) {
@@ -31,17 +29,13 @@ const PlayerApp = ({player}: {player: Mpris.Player}) => (
 );
 
 const CoverArt = ({player}: {player: Mpris.Player}) => {
-    const thumbnailStyle = useStyle({
-        'border-radius': '8px',
-    });
     return (
         <Gtk.Picture
             visible={bind(player, 'cover-art').as(c => !!c)}
             file={bind(player, 'cover-art').as(path =>
                 Gio.File.new_for_path(path)
             )}
-            cssClasses={['media-thumbnail', thumbnailStyle.class]}
-            ref={thumbnailStyle.$}
+            cssClasses={['media-thumbnail']}
             contentFit={Gtk.ContentFit.COVER}
             widthRequest={120}
             heightRequest={120}
@@ -50,9 +44,6 @@ const CoverArt = ({player}: {player: Mpris.Player}) => {
 };
 
 const TitleArtist = ({player}: {player: Mpris.Player}) => {
-    const dimmedStyle = useStyle({
-        opacity: '0.6',
-    });
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
             <Gtk.Label
@@ -62,8 +53,7 @@ const TitleArtist = ({player}: {player: Mpris.Player}) => {
                 label={bind(player, 'title')}
             />
             <Gtk.Label
-                cssClasses={['caption', 'dimmed', dimmedStyle.class]}
-                ref={dimmedStyle.$}
+                cssClasses={['caption', 'dimmed']}
                 label={bind(player, 'artist')}
                 maxWidthChars={10}
                 ellipsize={3}
@@ -107,17 +97,15 @@ const PlaybackButtons = ({player}: {player: Mpris.Player; slot?: string}) => {
 
 const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
     const mc = MediaController.get_default();
-    const positionStyle = useStyle({
-        'min-height': '8px',
-        'border-radius': '4px',
-    });
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
             <Astal.Slider
-                cssClasses={['media-position', positionStyle.class]}
-                ref={positionStyle.$}
+                cssClasses={['media-position']}
                 drawValue={false}
-                onNotifyValue={({value}) => mc.seek(value)}
+                onNotifyValue={({value}) => {
+                    const pos = player.position ?? 0;
+                    if (Math.abs(value - pos) > 1.5) mc.seek(value);
+                }}
                 min={0}
                 max={bind(player, 'length')}
                 visible={bind(player, 'can-seek')}

@@ -1,7 +1,7 @@
 import NM from 'gi://NM?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createState} from 'gnim';
+import {createState, onCleanup} from 'gnim';
 import {render} from '@gnim-js/gtk4';
 import {
     securityLabelFromKeyMgmt,
@@ -125,10 +125,12 @@ export function showConnectionEditor(
                                         placeholderText="WiFi password"
                                         ref={entry => {
                                             entry.visibility = !showPassword();
-                                            showPassword.subscribe(() => {
-                                                entry.visibility =
-                                                    !showPassword();
-                                            });
+                                            onCleanup(
+                                                showPassword.subscribe(() => {
+                                                    entry.visibility =
+                                                        !showPassword();
+                                                })
+                                            );
                                             entry.connect('notify::text', () =>
                                                 setPassword(entry.get_text())
                                             );

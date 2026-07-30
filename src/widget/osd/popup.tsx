@@ -1,8 +1,8 @@
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import {connectFor} from '../../lib/core/connectFor';
-import {JSX} from 'gnim';
+import {connectFor, cleanupNode} from '../../lib/core/connectFor';
+import {JSX, onCleanup} from 'gnim';
 
 const TIMEOUT_MS = 2000;
 export default ({
@@ -23,6 +23,7 @@ export default ({
         transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
         ref={self => {
             revealerRef?.(self);
+            onCleanup(() => cleanupNode(self));
             let timeout: GLib.Source | null = null;
             let visibilityTimeout: GLib.Source | null = null;
             const hide = () => {

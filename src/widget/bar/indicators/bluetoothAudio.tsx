@@ -33,10 +33,10 @@ function deviceIcon(icon: string): string {
 
 function applyColorCss(widget: Gtk.Widget, level: number | null) {
     if (level === null) return;
-    widget.remove_css_class('battery-critical');
-    widget.remove_css_class('battery-low');
-    if (level < 20) widget.add_css_class('battery-critical');
-    else if (level < 50) widget.add_css_class('battery-low');
+    widget.remove_css_class('error');
+    widget.remove_css_class('warning');
+    if (level < 20) widget.add_css_class('error');
+    else if (level < 50) widget.add_css_class('warning');
 }
 
 export default () => {
@@ -161,7 +161,7 @@ export default () => {
         <Gtk.Button
             visible={visible}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            tooltipMarkup={tooltipText}
+            tooltipText={tooltipText}
             ref={self => {
                 iconBox = new Gtk.Box({spacing: 4});
                 self.set_child(iconBox);

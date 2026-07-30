@@ -6,7 +6,6 @@ import {app} from '../../apps/shell/App';
 import WindowManager from '../../lib/services/state/windowManager';
 import {Gdk2HyprMonitor, monitors} from '../../lib/services/monitoring/monitors';
 import {useSettings} from '../../lib/settings';
-import {useStyle} from '../../style/useStyle';
 import SystemIndicators from './systemIndicators';
 import SystemUsage from './systemUsage';
 import Workspaces from './workspaces';
@@ -18,10 +17,6 @@ import {WeatherButton} from './weather';
 import WindowTitle from './windowTitle';
 
 export default () => {
-    const barCenterboxStyle = useStyle({
-        'min-height': '0',
-        padding: '0 4px',
-    });
     const bar = useSettings().bar;
     const {position} = bar;
     const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
@@ -67,8 +62,7 @@ export default () => {
                     })}
                 >
                     <Gtk.CenterBox
-                        cssClasses={['bar-centerbox', barCenterboxStyle.class]}
-                        ref={barCenterboxStyle.$}
+                        cssClasses={['bar-centerbox']}
                         orientation={vertical.as(v =>
                             v
                                 ? Gtk.Orientation.VERTICAL

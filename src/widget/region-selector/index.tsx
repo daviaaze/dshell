@@ -79,6 +79,8 @@ export default () => {
         setWindows(getWindowGeometries());
     };
 
+    let daRef: Gtk.DrawingArea | null = null;
+
     // ── Drawing ──────────────────────────────────────────────────
 
     const draw = (
@@ -223,17 +225,16 @@ export default () => {
     const onDragBegin = (_g: Gtk.GestureDrag, sx: number, sy: number) => {
         setSelStart({x: sx, y: sy});
         setSelEnd({x: sx, y: sy});
+        daRef?.queue_draw();
     };
 
     const onDragUpdate = (_g: Gtk.GestureDrag, ox: number, oy: number) => {
         const s = selStart();
         if (s) setSelEnd({x: s.x + ox, y: s.y + oy});
+        daRef?.queue_draw();
     };
 
-    const onDragEnd = (_g: Gtk.GestureDrag, ox: number, oy: number) => {
-        const s = selStart();
-        if (s) setSelEnd({x: s.x + ox, y: s.y + oy});
-    };
+    const onDragEnd = onDragUpdate;
 
     const onClickPressed = (
         _g: Gtk.GestureClick,
@@ -261,6 +262,7 @@ export default () => {
                     x: win.x + win.width - o.x,
                     y: win.y + win.height - o.y,
                 });
+                daRef?.queue_draw();
                 return;
             }
         }
@@ -314,7 +316,10 @@ export default () => {
         >
             <Gtk.Overlay>
                 <Gtk.DrawingArea
-                    ref={self => self.set_draw_func(draw)}
+                    ref={self => {
+                        daRef = self;
+                        self.set_draw_func(draw);
+                    }}
                     hexpand
                     vexpand
                 >

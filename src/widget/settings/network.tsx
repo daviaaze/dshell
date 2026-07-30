@@ -77,7 +77,10 @@ export default () => {
     const wifi = bind(network, 'wifi');
     const wired = bind(network, 'wired');
     const [knownVersion, bumpKnown] = createState(0);
-    const knownNetworks = computed(() => getKnownNetworks(network.client));
+    const knownNetworks = computed(() => {
+        knownVersion(); // track dependency for recompute on bumpKnown
+        return getKnownNetworks(network.client);
+    });
 
     return (
         <>

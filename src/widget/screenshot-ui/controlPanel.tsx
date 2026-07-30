@@ -148,9 +148,10 @@ export const ControlPanel = ({
                 <Gtk.Separator />
 
                 {/* Audio + Boundary options (recording) */}
-                {ss.selectedMode === 'recording' && (
+                {bind(ss, 'selectedMode').as(m => m === 'recording') && (
                     <Gtk.Box spacing={12}>
-                        <Gtk.CheckButton active={bind(ss, 'overlayOpen')}>
+                        {/* Audio capture not yet implemented in the Screenshot service */}
+                        <Gtk.CheckButton active={false} sensitive={false}>
                             <Gtk.Label label="Audio" />
                         </Gtk.CheckButton>
                         <Gtk.CheckButton

@@ -1,14 +1,12 @@
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
 import {For, bind, createState, computed, effect, onCleanup} from 'gnim';
 import Notification from '../common/notification';
 import PopupWindow from '../common/PopupWindow';
 import WindowManager from '../../lib/services/state/windowManager';
-import {
-    getNotifdSafe,
-    watchNotifdInit,
-} from '../../lib/services/notifications/guard';
+import {useNotifd} from '../../lib/services/notifications/useNotifd';
+import {getExpireMs} from '../../lib/services/notifications/expire';
+import {DismissTimers} from '../../lib/services/notifications/dismissTimers';
 import {useSettings} from '../../lib/settings';
 import ShellState from '../../lib/services/state/shellState';
 import DndService from '../../lib/services/notifications/dnd';
@@ -26,68 +24,25 @@ const NotificationContent = ({
     const [notifications, setNotifications] = createState<
         Notifd.Notification[]
     >([]);
-    const timeouts = new Map<number, GLib.Source>();
+
+    // Count bookkeeping lives in one reactive place instead of being
+    // repeated inside every state updater.
+    effect(() => {
+        setNotificationCount(notifications().length);
+    });
+
+    function removeNotif(id: number) {
+        timers.cancel(id);
+        setNotifications(prev => prev.filter(x => x.id !== id));
+    }
+
+    const timers = new DismissTimers(removeNotif);
 
     const addNotification = (id: number) => {
         const n = notifd.get_notification(id);
         if (!n) return;
-        setNotifications(prev => {
-            const next = prev.concat(n);
-            setNotificationCount(next.length);
-            return next;
-        });
-        const expireMs = (() => {
-            if (n.expireTimeout > 0) return n.expireTimeout;
-            if (notifd.defaultTimeout > 0) return notifd.defaultTimeout;
-            return 5000;
-        })();
-        timeouts.set(
-            id,
-            setTimeout(() => {
-                setNotifications(prev => {
-                    const next = prev.filter(x => x.id !== id);
-                    setNotificationCount(next.length);
-                    return next;
-                });
-                timeouts.delete(id);
-            }, expireMs)
-        );
-    };
-
-    const removeNotif = (id: number) => {
-        const tid = timeouts.get(id);
-        if (tid) {
-            clearTimeout(tid);
-            timeouts.delete(id);
-        }
-        setNotifications(prev => {
-            const next = prev.filter(x => x.id !== id);
-            setNotificationCount(next.length);
-            return next;
-        });
-    };
-
-    const pauseDismiss = (id: number) => {
-        const tid = timeouts.get(id);
-        if (tid) {
-            clearTimeout(tid);
-            timeouts.delete(id);
-        }
-    };
-
-    const resumeDismiss = (id: number) => {
-        if (timeouts.has(id)) return;
-        timeouts.set(
-            id,
-            setTimeout(() => {
-                setNotifications(prev => {
-                    const next = prev.filter(x => x.id !== id);
-                    setNotificationCount(next.length);
-                    return next;
-                });
-                timeouts.delete(id);
-            }, 5000)
-        );
+        setNotifications(prev => prev.concat(n));
+        timers.schedule(id, getExpireMs(n, notifd));
     };
 
     return (
@@ -95,19 +50,24 @@ const NotificationContent = ({
             orientation={Gtk.Orientation.VERTICAL}
             spacing={4}
             ref={() => {
-                const _hn = {};
-                connectFor(_hn, notifd, 'notified', (_, id) =>
+                const node = {};
+                connectFor(node, notifd, 'notified', (_, id) =>
                     addNotification(id)
                 );
-                onCleanup(() => cleanupNode(_hn));
+                onCleanup(() => {
+                    cleanupNode(node);
+                    timers.clear();
+                });
             }}
         >
-            <For each={notifications.as(n => n.reverse())}>
+            <For each={notifications.as(n => [...n].reverse())}>
                 {(n: Notifd.Notification) => (
                     <Notification
                         closeAction={() => removeNotif(n.id)}
-                        pauseDismiss={() => pauseDismiss(n.id)}
-                        resumeDismiss={() => resumeDismiss(n.id)}
+                        pauseDismiss={() => timers.pause(n.id)}
+                        resumeDismiss={() =>
+                            timers.resume(n.id, getExpireMs(n, notifd))
+                        }
                         showProgress={showProgress}
                         notification={n}
                     />
@@ -118,56 +78,11 @@ const NotificationContent = ({
 };
 
 export default () => {
-    const [notifd, setNotifd] = createState<Notifd.Notifd | null>(null);
+    const notifd = useNotifd();
     const [notificationCount, setNotificationCount] = createState(0);
-    const [dontDisturb, setDontDisturb] = createState(false);
-    const dnd = DndService.get_default();
+    const dontDisturb = bind(DndService.get_default(), 'dnd');
     const settings = useSettings().general;
     const showProgress = settings.notificationShowProgress();
-
-    // Defer Notifd initialization — AstalNotifd blocks 25s if another
-    // notification daemon (dunst, mako) is already registered.
-    // Also add a timeout guard: if the D-Bus handshake hangs, log a warning
-    // after 15 seconds so we know the widget silently never initialized.
-    effect(() => {
-        const _hn = {};
-        let initialized = false;
-
-        // Check if Notifd is already cached from pre-init (services-init phase).
-        // If cached (either as instance or null), we're done immediately.
-        const cached = getNotifdSafe();
-        if (cached !== undefined) {
-            initialized = true;
-            if (cached) {
-                setNotifd(cached);
-                setDontDisturb(dnd.dnd);
-                connectFor(_hn, dnd, 'notify::dnd', () => {
-                    setDontDisturb(dnd.dnd);
-                });
-            }
-            onCleanup(() => cleanupNode(_hn));
-            return;
-        }
-
-        // Not cached yet — schedule async init
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            const n = getNotifdSafe();
-            initialized = true;
-            if (!n) {
-                return GLib.SOURCE_REMOVE;
-            }
-            setNotifd(n);
-            setDontDisturb(dnd.dnd);
-            connectFor(_hn, dnd, 'notify::dnd', () => {
-                setDontDisturb(dnd.dnd);
-            });
-            return GLib.SOURCE_REMOVE;
-        });
-
-        watchNotifdInit(() => initialized);
-        onCleanup(() => cleanupNode(_hn));
-    });
-
     const screenlocked = bind(ShellState.get_default(), 'screenlocked');
 
     return (
@@ -183,7 +98,8 @@ export default () => {
             )}
             ref={self => WindowManager.get_default().setNotifications(self)}
         >
-            <For each={notifd.as(n => (n ? [n] : ([] as Notifd.Notifd[])))}>
+            {/* Singleton-array For defers child evaluation until notifd is non-null. */}
+            <For each={notifd.as(n => (n ? [n] : []))}>
                 {(n: Notifd.Notifd) => (
                     <NotificationContent
                         notifd={n}

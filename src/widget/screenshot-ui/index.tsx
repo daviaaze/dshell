@@ -170,7 +170,7 @@ export default () => {
             application={app}
             layer={Astal.Layer.TOP}
             keymode={Astal.Keymode.EXCLUSIVE}
-            visible={isVisible()}
+            visible={isVisible}
             onNotifyVisible={self => {
                 if (self.visible) {
                     refreshMonOrigin();

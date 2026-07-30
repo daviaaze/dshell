@@ -4,7 +4,6 @@ import Gdk from 'gi://Gdk?version=4.0';
 import WindowManager from '../../lib/services/state/windowManager';
 import {FrecencyManager} from '../../lib/services/search/frecency';
 import {launchApp} from '../../lib/services/state/apps';
-import {useStyle} from '../../style/useStyle';
 
 export default ({
     application,
@@ -13,24 +12,10 @@ export default ({
     application: Apps.Application;
     onClicked?: () => void;
 }) => {
-    const appButtonStyle = useStyle({
-        padding: '6px',
-        'border-radius': '8px',
-        background: 'transparent',
-        '&:hover': {
-            background: 'var(--shade-hover-bg)',
-        },
-        '&:active': {
-            background: 'var(--shade-active-bg)',
-        },
-    });
     return (
         <Gtk.Button
-            ref={self => {
-                appButtonStyle.$(self);
-            }}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            cssClasses={['app-button', appButtonStyle.class]}
+            cssClasses={['app-button', 'flat']}}
             onClicked={() => {
                 // Record frecency before launching
                 const desktopId = application.entry ?? application.name;

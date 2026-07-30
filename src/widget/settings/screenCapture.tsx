@@ -1,6 +1,7 @@
 import Adw from 'gi://Adw?version=1';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import {onCleanup} from 'gnim';
 import {useSettings} from '../../lib/settings';
 
 const VIRTUAL_MONITOR_FPS_MIN = 1;
@@ -25,11 +26,13 @@ export default () => {
                         ref={self => {
                             const v = settings.recorderBackend.peek();
                             self.activeName = String(v ?? 2);
-                            settings.recorderBackend.subscribe(() => {
-                                self.activeName = String(
-                                    settings.recorderBackend.peek()
-                                );
-                            });
+                            onCleanup(
+                                settings.recorderBackend.subscribe(() => {
+                                    self.activeName = String(
+                                        settings.recorderBackend.peek()
+                                    );
+                                })
+                            );
                         }}
                     >
                         <Adw.Toggle
@@ -60,11 +63,13 @@ export default () => {
                         ref={self => {
                             const v = settings.recordingFormat.peek();
                             self.activeName = String(v ?? 0);
-                            settings.recordingFormat.subscribe(() => {
-                                self.activeName = String(
-                                    settings.recordingFormat.peek()
-                                );
-                            });
+                            onCleanup(
+                                settings.recordingFormat.subscribe(() => {
+                                    self.activeName = String(
+                                        settings.recordingFormat.peek()
+                                    );
+                                })
+                            );
                         }}
                     >
                         <Adw.Toggle
@@ -92,11 +97,13 @@ export default () => {
                         ref={self => {
                             const v = settings.recordingQuality.peek();
                             self.activeName = String(v ?? 1);
-                            settings.recordingQuality.subscribe(() => {
-                                self.activeName = String(
-                                    settings.recordingQuality.peek()
-                                );
-                            });
+                            onCleanup(
+                                settings.recordingQuality.subscribe(() => {
+                                    self.activeName = String(
+                                        settings.recordingQuality.peek()
+                                    );
+                                })
+                            );
                         }}
                     >
                         <Adw.Toggle name={'0'} label={'Low'} />
@@ -131,11 +138,13 @@ export default () => {
                         ref={self => {
                             const v = settings.screenshotFormat.peek();
                             self.activeName = String(v ?? 0);
-                            settings.screenshotFormat.subscribe(() => {
-                                self.activeName = String(
-                                    settings.screenshotFormat.peek()
-                                );
-                            });
+                            onCleanup(
+                                settings.screenshotFormat.subscribe(() => {
+                                    self.activeName = String(
+                                        settings.screenshotFormat.peek()
+                                    );
+                                })
+                            );
                         }}
                     >
                         <Adw.Toggle

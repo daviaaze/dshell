@@ -1,3 +1,4 @@
+import {createRoot} from 'gnim';
 import applauncher from './applauncher';
 import bar from './bar';
 import dock from './dock';
@@ -45,6 +46,8 @@ import logger, {perf} from '../lib/core/logger';
 
 // ── Settings window lifecycle ──
 
+let settingsDispose: (() => void) | null = null;
+
 export const openSettings = () => {
     const wm = WindowManager.get_default();
     const existing = wm.settings;
@@ -56,7 +59,13 @@ export const openSettings = () => {
         existing.close();
         wm.setSettings(null);
     }
-    const win = createSettingsWindow();
+    // Dispose previous scope — unsubscribes settings-page subscriptions
+    settingsDispose?.();
+    settingsDispose = null;
+    const win = createRoot(dispose => {
+        settingsDispose = dispose;
+        return createSettingsWindow();
+    });
     wm.setSettings(win);
     win.present();
 };

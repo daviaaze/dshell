@@ -1,10 +1,10 @@
-import GObject from 'gi://GObject?version=2.0';
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, createState, effect, onCleanup} from 'gnim';
-import {useStyle} from '../../style/useStyle';
 import Notification from '../common/notification';
-import {getNotifdSafe} from '../../lib/services/notifications/guard';
+import {useNotifd} from '../../lib/services/notifications/useNotifd';
+import {isNotifdResolved} from '../../lib/services/notifications/guard';
+import {connectFor, cleanupNode} from '../../lib/core/connectFor';
 import logger from '../../lib/core/logger';
 
 /**
@@ -21,22 +21,12 @@ import logger from '../../lib/core/logger';
 
 const MAX_NOTIFICATIONS = 20;
 
-export const LockscreenNotifications = () => {
-    const lockscreenStyle = useStyle({
-        padding: '8px',
-        background: 'var(--shade-bg)',
-        'border-radius': '12px',
-    });
-    const listStyle = useStyle({
-        spacing: '8px',
-    });
+const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
     const [notifications, setNotifications] = createState<
         Notifd.Notification[]
     >([]);
 
     const addNotification = (id: number) => {
-        const notifd = getNotifdSafe();
-        if (!notifd) return;
         const n = notifd.get_notification(id);
         if (!n) return;
 
@@ -49,61 +39,14 @@ export const LockscreenNotifications = () => {
         });
     };
 
-    const removeNotification = (notif: Notifd.Notification) => {
-        setNotifications(prev => prev.filter(x => x.id !== notif.id));
-    };
-
-    const closeAction = (notif: Notifd.Notification, _self: Gtk.Widget) => {
+    const closeAction = (notif: Notifd.Notification) => {
         try {
             notif.dismiss();
         } catch (e) {
             logger.warn('lockscreen', 'failed to dismiss notification:', e);
         }
-        removeNotification(notif);
+        setNotifications(prev => prev.filter(x => x.id !== notif.id));
     };
-
-    effect(() => {
-        const notifd = getNotifdSafe();
-        if (!notifd) {
-            logger.warn(
-                'lockscreen',
-                'Notifd unavailable — no notifications on lockscreen'
-            );
-            return;
-        }
-
-        // Seed with currently-active notifications (in case some arrived before lock)
-        try {
-            const active = notifd.get_notifications();
-            if (active && active.length > 0) {
-                setNotifications(active.slice(0, MAX_NOTIFICATIONS).reverse());
-            }
-        } catch (e) {
-            logger.warn('lockscreen', 'failed to seed notifications:', e);
-        }
-
-        const handlerId = notifd.connect('notified', (_, id: number) =>
-            addNotification(id)
-        );
-
-        const dismissedId = GObject.signal_connect(notifd, 'dismissed', (_source: Notifd.Notifd, ...args: unknown[]) => {
-            const id = args[0] as number;
-            setNotifications(prev => prev.filter(x => x.id !== id));
-        });
-
-        onCleanup(() => {
-            try {
-                notifd.disconnect(handlerId);
-            } catch {
-                /* already gone */
-            }
-            try {
-                notifd.disconnect(dismissedId);
-            } catch {
-                /* already gone */
-            }
-        });
-    });
 
     return (
         <Gtk.ScrolledWindow
@@ -112,14 +55,34 @@ export const LockscreenNotifications = () => {
             maxContentHeight={300}
             hscrollbarPolicy={Gtk.PolicyType.NEVER}
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-            cssClasses={['lockscreen-notifications', lockscreenStyle.class]}
-            ref={lockscreenStyle.$}
+            cssClasses={['card']}
+            ref={self => {
+                // Seed with currently-active notifications (some may have
+                // arrived before the screen locked)
+                try {
+                    const active = notifd.get_notifications();
+                    if (active && active.length > 0) {
+                        setNotifications(
+                            active.slice(0, MAX_NOTIFICATIONS).reverse()
+                        );
+                    }
+                } catch (e) {
+                    logger.warn('lockscreen', 'failed to seed notifications:', e);
+                }
+
+                const node = {};
+                connectFor(node, notifd, 'notified', (_, id) =>
+                    addNotification(id)
+                );
+                connectFor(node, notifd, 'dismissed', (_, id) =>
+                    setNotifications(prev => prev.filter(x => x.id !== id))
+                );
+                onCleanup(() => cleanupNode(node));
+            }}
         >
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
-                cssClasses={['lockscreen-notifications-list', listStyle.class]}
-                ref={listStyle.$}
             >
                 <For each={notifications}>
                     {(n: Notifd.Notification) => (
@@ -132,5 +95,24 @@ export const LockscreenNotifications = () => {
                 </For>
             </Gtk.Box>
         </Gtk.ScrolledWindow>
+    );
+};
+
+export const LockscreenNotifications = () => {
+    const notifd = useNotifd();
+
+    effect(() => {
+        if (isNotifdResolved() && notifd() === null) {
+            logger.warn(
+                'lockscreen',
+                'Notifd unavailable — no notifications on lockscreen'
+            );
+        }
+    });
+
+    return (
+        <For each={notifd.as(n => (n ? [n] : []))}>
+            {(n: Notifd.Notifd) => <LockscreenContent notifd={n} />}
+        </For>
     );
 };

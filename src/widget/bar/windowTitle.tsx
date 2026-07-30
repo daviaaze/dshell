@@ -38,7 +38,7 @@ export default ({visible: settingsVisible}: {visible: Accessor<boolean>}) => {
                 label={title}
                 maxWidthChars={40}
                 ellipsize={Pango.EllipsizeMode.END}
-                tooltipMarkup={title}
+                tooltipText={title}
             />
         </Gtk.Box>
     );

@@ -1,3 +1,4 @@
+import {onCleanup} from 'gnim';
 import WindowManager from '../../lib/services/state/windowManager';
 import {useSettings} from '../../lib/settings';
 import PaletteGenerator from '../../style/palette';
@@ -36,11 +37,14 @@ export default () => {
                             const v = settings.colorScheme.peek();
                             self.activeName =
                                 ['auto', 'light', 'dark'][v] ?? 'auto';
-                            settings.colorScheme.subscribe(() => {
-                                const cur = settings.colorScheme();
-                                self.activeName =
-                                    ['auto', 'light', 'dark'][cur] ?? 'auto';
-                            });
+                            onCleanup(
+                                settings.colorScheme.subscribe(() => {
+                                    const cur = settings.colorScheme();
+                                    self.activeName =
+                                        ['auto', 'light', 'dark'][cur] ??
+                                        'auto';
+                                })
+                            );
                         }}
                     >
                         <Adw.Toggle

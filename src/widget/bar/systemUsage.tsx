@@ -1,7 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Accessor} from 'gnim';
-import {useStyle} from '../../style/useStyle';
 import {useSettings} from '../../lib/settings';
 import SystemUsage from '../../lib/services/monitoring/systemUsage';
 
@@ -20,10 +19,6 @@ const Indicator = ({
     vertical: Accessor<boolean>;
     visible?: Accessor<boolean> | boolean;
 }) => {
-    const numeralStyle = useStyle({
-        'font-feature-settings': "'tnum'",
-        'font-variant-numeric': 'tabular-nums',
-    });
     return (
         <Gtk.Box
             visible={visible}
@@ -38,16 +33,10 @@ const Indicator = ({
             >
                 <Gtk.Label
                     label={label}
-                    cssClasses={[
-                        'caption-heading',
-                        'numeral',
-                        numeralStyle.class,
-                    ]}
-                    ref={numeralStyle.$}
+                    cssClasses={['caption-heading', 'numeric']}
                 />
                 <Gtk.Label
-                    cssClasses={['caption', 'numeral', numeralStyle.class]}
-                    ref={numeralStyle.$}
+                    cssClasses={['caption', 'numeric']}
                     label={value.as(v => (v * 100).toFixed(0).concat(unit))}
                 />
             </Gtk.Box>

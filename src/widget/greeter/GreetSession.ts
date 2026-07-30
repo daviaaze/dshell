@@ -20,9 +20,13 @@ export type GreetState =
     | 'authenticated'
     | 'error';
 
+// GObject notify signal names (kebab-case property names)
+const NOTIFY_ERROR_MSG = 'error-message';
+const NOTIFY_INFO_MSG = 'info-message';
+
 @register
 export class GreetSession extends Object {
-    static instance: GreetSession;
+    private static instance: GreetSession;
 
     static get_default() {
         if (!this.instance) this.instance = new GreetSession();
@@ -62,7 +66,7 @@ export class GreetSession extends Object {
 
     set errorMessage(v: string) {
         this.#errorMessage = v;
-        this.notify('error-message');
+        this.notify(NOTIFY_ERROR_MSG);
     }
 
     @property
@@ -72,7 +76,7 @@ export class GreetSession extends Object {
 
     set infoMessage(v: string) {
         this.#infoMessage = v;
-        this.notify('info-message');
+        this.notify(NOTIFY_INFO_MSG);
     }
 
     @property
@@ -102,7 +106,7 @@ export class GreetSession extends Object {
             this.#greeter = new Greet.Greeter();
         } catch (e) {
             this.#errorMessage = `Failed to connect to greetd: ${e}`;
-            this.notify('error-message');
+            this.notify(NOTIFY_ERROR_MSG);
             this.state = 'error';
             return;
         }
@@ -113,7 +117,7 @@ export class GreetSession extends Object {
                 'visible-request',
                 (_g: Greet.Greeter, msg: string) => {
                     this.#infoMessage = msg;
-                    this.notify('info-message');
+                    this.notify(NOTIFY_INFO_MSG);
                     this.state = 'awaiting-input';
                 }
             ),
@@ -122,7 +126,7 @@ export class GreetSession extends Object {
                 'secret-request',
                 (_g: Greet.Greeter, msg: string) => {
                     this.#infoMessage = msg || 'Password required';
-                    this.notify('info-message');
+                    this.notify(NOTIFY_INFO_MSG);
                     this.state = 'awaiting-input';
                 }
             ),
@@ -131,7 +135,7 @@ export class GreetSession extends Object {
                 'info-message',
                 (_g: Greet.Greeter, msg: string) => {
                     this.#infoMessage = msg;
-                    this.notify('info-message');
+                    this.notify(NOTIFY_INFO_MSG);
                 }
             ),
 
@@ -139,14 +143,14 @@ export class GreetSession extends Object {
                 'error-message',
                 (_g: Greet.Greeter, msg: string) => {
                     this.#errorMessage = msg;
-                    this.notify('error-message');
+                    this.notify(NOTIFY_ERROR_MSG);
                     this.state = 'error';
                 }
             ),
 
             this.#greeter.connect('cancelled', () => {
                 this.#errorMessage = 'Authentication cancelled';
-                this.notify('error-message');
+                this.notify(NOTIFY_ERROR_MSG);
                 this.state = 'idle';
                 // Retry: create session again
                 this.#greeter?.create_session(this.#username);
@@ -161,7 +165,7 @@ export class GreetSession extends Object {
             this.#greeter.create_session(username);
         } catch (e) {
             this.#errorMessage = `Failed to create session: ${e}`;
-            this.notify('error-message');
+            this.notify(NOTIFY_ERROR_MSG);
             this.state = 'error';
         }
     }
@@ -173,7 +177,7 @@ export class GreetSession extends Object {
         if (!this.#greeter) return;
         this.state = 'authenticating';
         this.#errorMessage = '';
-        this.notify('error-message');
+        this.notify(NOTIFY_ERROR_MSG);
         this.#greeter.post_auth(response);
     }
 
@@ -195,7 +199,7 @@ export class GreetSession extends Object {
                     this.#onSessionStarted?.();
                 } catch (e) {
                     this.#errorMessage = `Failed to start session: ${e}`;
-                    this.notify('error-message');
+                    this.notify(NOTIFY_ERROR_MSG);
                     this.state = 'error';
                 }
             }

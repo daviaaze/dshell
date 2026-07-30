@@ -1,7 +1,6 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor} from 'gnim';
-import {useStyle} from '../../style/useStyle';
 
 type SliderProps = {
     icon: Accessor<string> | string;
@@ -23,17 +22,13 @@ const SLIDER_SPACING = 4;
  * window snaps the handle back (flicker).
  */
 export const Slider = (props: SliderProps) => {
-    const sliderStyle = useStyle({
-        'min-width': '180px',
-    });
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
 
     return (
         <Gtk.Box
-            cssClasses={['slider', sliderStyle.class]}
+            cssClasses={['slider']}
             spacing={SLIDER_SPACING}
             visible={props.visible}
-            ref={sliderStyle.$}
         >
             {props.onIconClick ? (
                 <Gtk.Button onClicked={props.onIconClick}>
