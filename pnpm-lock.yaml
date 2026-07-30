@@ -15,9 +15,6 @@ importers:
         specifier: 2.0.0-beta.7
         version: 2.0.0-beta.7
     devDependencies:
-      prettier:
-        specifier: ^3.9.6
-        version: 3.9.6
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.4.1)
@@ -30,12 +27,96 @@ importers:
       eslint-plugin-sonarjs:
         specifier: ^4.1.0
         version: 4.1.0(eslint@10.4.1)
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       typescript-eslint:
         specifier: ^8.60.0
         version: 8.60.0(eslint@10.4.1)(typescript@6.0.3)
+
+  apps/greeter:
+    dependencies:
+      '@shade/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@shade/services':
+        specifier: workspace:*
+        version: link:../../packages/services
+      gnim:
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
+
+  apps/share-picker:
+    dependencies:
+      '@shade/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@shade/services':
+        specifier: workspace:*
+        version: link:../../packages/services
+      gnim:
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
+
+  apps/shell:
+    dependencies:
+      '@shade/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@shade/services':
+        specifier: workspace:*
+        version: link:../../packages/services
+      '@shade/style':
+        specifier: workspace:*
+        version: link:../../packages/style
+      '@shade/widgets':
+        specifier: workspace:*
+        version: link:../../packages/widgets
+      gnim:
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
+
+  packages/core:
+    dependencies:
+      gnim:
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
+
+  packages/services:
+    dependencies:
+      '@shade/core':
+        specifier: workspace:*
+        version: link:../core
+      gnim:
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
+
+  packages/style:
+    dependencies:
+      '@shade/core':
+        specifier: workspace:*
+        version: link:../core
+      gnim:
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
+
+  packages/widgets:
+    dependencies:
+      '@shade/core':
+        specifier: workspace:*
+        version: link:../core
+      '@shade/services':
+        specifier: workspace:*
+        version: link:../services
+      '@shade/style':
+        specifier: workspace:*
+        version: link:../style
+      gnim:
+        specifier: 2.0.0-beta.7
+        version: 2.0.0-beta.7
 
 packages:
 
