@@ -35,9 +35,13 @@ export function screenshot(ss: Screenshot, fullscreen: boolean) {
 
     Process.execAsync(`${GRIM_BIN} "${filename}"`)
         .then(() => {
-            copyImageToClipboard(filename);
-            notify('Screenshot saved', filename, 'camera-photo-symbolic');
-            bus.emit('capture:screenshot', true);
+            try {
+                copyImageToClipboard(filename);
+                notify('Screenshot saved', filename, 'camera-photo-symbolic');
+                bus.emit('capture:screenshot', true);
+            } catch (e) {
+                logger.error('screenshot', 'post-capture failed:', e);
+            }
         })
         .catch(e => logger.error('screenshot', 'grim failed:', e))
         .finally(() => ss.stopFreeze());

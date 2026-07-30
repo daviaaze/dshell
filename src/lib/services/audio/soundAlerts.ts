@@ -49,6 +49,8 @@ export default class SoundAlertService extends Object {
     #upowerInstance: AstalBattery.UPower | null = null;
     #lastBatteryPercentage = 1.0;
     #initialized = false;
+    /** null = unknown, true/false = canberra-gtk-play availability. */
+    #canberraAvailable: boolean | null = null;
     #shellState: {v?: import('../state/shellState').default} = {};
     #dndService: {v?: import('../notifications/dnd').default} = {};
 
@@ -252,10 +254,14 @@ export default class SoundAlertService extends Object {
     /**
      * Play a freedesktop.org sound theme event.
      * Silently fails if canberra-gtk-play is not available or the sound
-     * theme is missing — no sound is a valid state.
+     * theme is missing — no sound is a valid state. Never throws: play
+     * is invoked from bus emitters and GLib callbacks where an escaped
+     * exception would poison the caller's promise chain or crash the
+     * main loop.
      */
     play(soundId: string): void {
         if (!this.#enabled) return;
+        if (!this.#canberraUsable()) return;
 
         // Check category enable flags
         const category = this.#categorize(soundId);
@@ -267,13 +273,36 @@ export default class SoundAlertService extends Object {
         // Check DND
         if (this.#dnd.dnd) return;
 
-        Process.execAsync(`canberra-gtk-play --id=${soundId}`).catch(e => {
-            logger.debug(
-                'sound',
-                `canberra-gtk-play --id=${soundId} failed:`,
-                e
+        try {
+            Process.execAsync(`canberra-gtk-play --id=${soundId}`).catch(
+                e => {
+                    logger.debug(
+                        'sound',
+                        `canberra-gtk-play --id=${soundId} failed:`,
+                        e
+                    );
+                }
             );
-        });
+        } catch (e) {
+            // Gio.Subprocess construction throws synchronously when the
+            // binary vanishes between the availability check and spawn.
+            logger.debug('sound', `failed to spawn sound ${soundId}:`, e);
+        }
+    }
+
+    /** Cached binary check; logs a single warning when unavailable. */
+    #canberraUsable(): boolean {
+        if (this.#canberraAvailable === null) {
+            this.#canberraAvailable =
+                GLib.find_program_in_path('canberra-gtk-play') !== null;
+            if (!this.#canberraAvailable) {
+                logger.warn(
+                    'sound',
+                    'canberra-gtk-play not found in PATH — sound alerts disabled'
+                );
+            }
+        }
+        return this.#canberraAvailable;
     }
 
     #categorize(soundId: string): SoundCategory {

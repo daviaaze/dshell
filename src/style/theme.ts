@@ -172,8 +172,8 @@ export class Theme extends GObject {
         this.#styleManager = Adw.StyleManager.get_default();
         this.#isDark = this.#styleManager.dark;
 
-        // Apply default theme
-        this.#applyTheme(ADWAITA_COLORS);
+        // Apply the correct initial palette based on current dark mode
+        this.#reevaluate();
 
         // Watch dark mode changes
         this.#styleManager.connect('notify::dark', () => {
@@ -220,6 +220,14 @@ export class Theme extends GObject {
             this.#activeStylesheet = null;
             this.#reevaluate();
         }
+    }
+
+    /** Force re-evaluation of the current theme.
+     *  Useful when the system color scheme changes and the
+     *  StyleManager's `dark` property may not have changed yet. */
+    forceReevaluate(): void {
+        this.#isDark = this.#styleManager.dark;
+        this.#reevaluate();
     }
 
     /** Get the current resolved palette (for use in code, e.g. matugen). */

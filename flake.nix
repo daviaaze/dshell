@@ -77,6 +77,7 @@
         curl
         grim
         imagemagick
+        libcanberra-gtk3
         wl-screenrec
         wf-recorder
         wayfreeze
