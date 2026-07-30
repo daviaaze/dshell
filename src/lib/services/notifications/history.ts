@@ -27,32 +27,45 @@ function loadHistory(): HistoryEntry[] {
     }
 }
 
-let savePending = false;
+let saveSource = 0;
 
-function saveHistory(history: HistoryEntry[]) {
-    if (savePending) return;
-    savePending = true;
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-        savePending = false;
-        try {
-            const dir = Gio.File.new_for_path(CACHE_DIR);
-            if (!dir.query_exists(null)) {
-                dir.make_directory_with_parents(null);
-            }
-            GLib.file_set_contents(
-                HISTORY_FILE,
-                new TextEncoder().encode(JSON.stringify(history))
-            );
-        } catch (e) {
-            logger.error('history', 'save failed:', e);
+function writeHistoryFile(history: HistoryEntry[]) {
+    try {
+        const dir = Gio.File.new_for_path(CACHE_DIR);
+        if (!dir.query_exists(null)) {
+            dir.make_directory_with_parents(null);
         }
+        const raw = new TextEncoder().encode(JSON.stringify(history));
+        const file = Gio.File.new_for_path(HISTORY_FILE);
+        file.replace_contents(raw, null, false, Gio.FileCreateFlags.NONE, null);
+        // Set 0600 perms so notification data isn't world-readable
+        file.set_attribute_uint32(
+            'unix::mode',
+            0o600,
+            Gio.FileQueryInfoFlags.NONE,
+            null
+        );
+    } catch (e) {
+        logger.error('history', 'save failed:', e);
+    }
+}
+
+/**
+ * Coalescing save: rapid successive calls collapse into a single idle
+ * write of the latest history (last write wins).
+ */
+function saveHistory(history: HistoryEntry[]) {
+    if (saveSource) GLib.source_remove(saveSource);
+    saveSource = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        saveSource = 0;
+        writeHistoryFile(history);
         return GLib.SOURCE_REMOVE;
     });
 }
 
 @register
 export default class NotificationHistory extends Object {
-    static instance: NotificationHistory;
+    private static instance: NotificationHistory;
     static get_default() {
         if (!this.instance) this.instance = new NotificationHistory();
         return this.instance;

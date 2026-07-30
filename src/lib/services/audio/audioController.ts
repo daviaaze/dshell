@@ -11,7 +11,7 @@ import logger from '../../core/logger';
  */
 @register
 export default class AudioController extends Object {
-    static instance: AudioController;
+    private static instance: AudioController;
 
     static get_default(): AudioController {
         if (!this.instance) this.instance = new AudioController();

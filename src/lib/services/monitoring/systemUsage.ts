@@ -1,5 +1,6 @@
 import GTop from 'gi://GTop';
 
+/* eslint-disable camelcase -- wrapper names intentionally mirror the libgtop C API */
 // GIR does not capture these raw C functions — typed wrappers around them.
 const glibtop_get_cpu = (buffer: GTop.glibtop_cpu): void =>
     (GTop as unknown as {glibtop_get_cpu: (b: GTop.glibtop_cpu) => void}).glibtop_get_cpu(buffer);
@@ -62,7 +63,7 @@ function findCoretempPath(): string | null {
  * poll lives here in the service and widgets bind to the state accessors.
  */
 export default class SystemUsage {
-    static instance: SystemUsage;
+    private static instance: SystemUsage;
 
     static get_default(): SystemUsage {
         if (!this.instance) this.instance = new SystemUsage();
@@ -169,7 +170,7 @@ export default class SystemUsage {
         const sys = cpuTop.sys - this.#lastCpuTop.sys;
         const nice = cpuTop.nice - this.#lastCpuTop.nice;
         this.#lastCpuTop = cpuTop;
-        this.#setCpu((user + sys + nice) / total);
+        this.#setCpu((user + sys + nice) / (total || 1));
 
         const memTop = new GTop.glibtop_mem();
         glibtop_get_mem(memTop);

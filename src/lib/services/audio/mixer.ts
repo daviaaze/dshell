@@ -15,9 +15,20 @@ export interface AudioStream {
 
 // ── Shared pipewire stream parser ──
 
-function streamFromPwItem(item: any): AudioStream | null {
-    const info = item.info || {};
-    const props = info.props || {};
+/** Structural shape of one pw-dump item (only fields we read). */
+interface PwDumpItem {
+    id: number;
+    info?: {
+        props?: Record<string, string>;
+        params?: {
+            Props?: Array<{volume?: number; mute?: boolean}>;
+        };
+    };
+}
+
+function streamFromPwItem(item: PwDumpItem): AudioStream | null {
+    const info = item.info ?? {};
+    const props = info.props ?? {};
     const streamProps = info.params?.Props?.[0] || {};
 
     return {
@@ -104,7 +115,7 @@ function parseTargets(pwMetadata: string): Map<number, number> {
 
 @register
 export default class AppMixer extends Object {
-    static instance: AppMixer;
+    private static instance: AppMixer;
     static get_default() {
         if (!this.instance) this.instance = new AppMixer();
         return this.instance;
@@ -149,19 +160,26 @@ export default class AppMixer extends Object {
         });
     }
 
-    #fetchAndUpdate() {
+    #inFlight = false;
+
+    /** Async poll — sync exec blocked the main loop every 2s. */
+    async #fetchAndUpdate(): Promise<void> {
+        if (this.#inFlight) return; // skip overlapping polls
+        this.#inFlight = true;
         try {
             // Silence stderr: pw-dump writes harmless diagnostics
             // (e.g. "Spa:Enum:ParamId:IO failed") to stderr that clutter logs.
-            // NB: shell redirection (2>/dev/null) does NOT work here —
-            // Process.exec is not run through a shell.
-            const pwDump = Process.exec('pw-dump', {silenceStderr: true});
-            const pwMetadata = Process.exec('pw-metadata -n default', {
-                silenceStderr: true,
-            });
+            const [pwDump, pwMetadata] = await Promise.all([
+                Process.execAsync('pw-dump', {silenceStderr: true}),
+                Process.execAsync('pw-metadata -n default', {
+                    silenceStderr: true,
+                }),
+            ]);
             this.#update(pwDump, pwMetadata);
         } catch (e) {
             logger.error('audio', 'pw-dump or pw-metadata failed:', e);
+        } finally {
+            this.#inFlight = false;
         }
     }
 
@@ -221,39 +239,28 @@ export default class AppMixer extends Object {
 
     setVolume(id: number, volume: number) {
         const clamped = Math.max(0, Math.min(1, volume));
-        try {
-            Process.exec(`wpctl set-volume ${id} ${clamped.toFixed(2)}`);
-        } catch (e) {
-            logger.error('audio', 'setVolume wpctl failed:', e);
-            return;
-        }
         this.#optimisticUpdate(id, {volume: clamped});
+        Process.execAsync(`wpctl set-volume ${id} ${clamped.toFixed(2)}`).catch(
+            e => logger.error('audio', 'setVolume wpctl failed:', e)
+        );
     }
 
     setMute(id: number, muted: boolean) {
-        try {
-            Process.exec(`wpctl set-mute ${id} ${muted ? '1' : '0'}`);
-        } catch (e) {
-            logger.error('audio', 'setMute wpctl failed:', e);
-            return;
-        }
         this.#optimisticUpdate(id, {muted});
+        Process.execAsync(`wpctl set-mute ${id} ${muted ? '1' : '0'}`).catch(
+            e => logger.error('audio', 'setMute wpctl failed:', e)
+        );
     }
 
     setTargetNode(id: number, nodeId: number) {
-        try {
-            if (nodeId === -1) {
-                Process.exec(`pw-metadata -n default -d ${id} target.node`);
-            } else {
-                Process.exec(
-                    `pw-metadata -n default ${id} target.node ${nodeId}`
-                );
-            }
-        } catch (e) {
-            logger.error('audio', 'setTargetNode failed:', e);
-            return;
-        }
         this.#optimisticUpdate(id, {targetNode: nodeId === -1 ? null : nodeId});
+        const cmd =
+            nodeId === -1
+                ? `pw-metadata -n default -d ${id} target.node`
+                : `pw-metadata -n default ${id} target.node ${nodeId}`;
+        Process.execAsync(cmd).catch(e =>
+            logger.error('audio', 'setTargetNode failed:', e)
+        );
     }
 
     dispose() {

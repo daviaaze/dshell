@@ -153,7 +153,7 @@ export default class AuthSession extends Object {
             GObject.signal_connect(this.#fingerprint, 'verified', (_source: FingerprintAuth, ..._args: unknown[]) => {
                 onVerified();
             }),
-            GObject.signal_connect(this.#fingerprint, 'statusChanged', (_source: FingerprintAuth, ...args: unknown[]) => {
+            GObject.signal_connect(this.#fingerprint, 'status-changed', (_source: FingerprintAuth, ...args: unknown[]) => {
                 onStatus(_source, args.length > 0 ? String(args[0]) : '');
             }),
         ];
@@ -204,9 +204,7 @@ export default class AuthSession extends Object {
 
     /** Cancel/cleanup the auth session. Safe to call multiple times. */
     cancel(): void {
-        this.#disconnectPam();
-        this.#disconnectFingerprint();
-        this.#pamTimeout.cancel();
+        this.#complete();
         this.#restoreBrightness();
     }
 }

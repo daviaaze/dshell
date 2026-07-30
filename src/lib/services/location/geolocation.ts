@@ -1,12 +1,4 @@
-import {
-    Object,
-    register,
-    signal,
-    property,
-    Double,
-    VoidType,
-    Int,
-} from 'gnim/gobject';
+import {Object, register, signal, property} from 'gnim/gobject';
 import {Process} from '../../core/process';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
@@ -14,7 +6,7 @@ import logger from '../../core/logger';
 
 @register
 export default class Geolocation extends Object {
-    static instance: Geolocation;
+    private static instance: Geolocation;
 
     static get_default() {
         if (!this.instance) this.instance = new Geolocation();
@@ -122,22 +114,21 @@ export default class Geolocation extends Object {
         );
     }
 
-    #connectGeoClueLocationSignal(client: Gio.DBusProxy): {
-        signalId: number;
-        latestLocation: string | null;
-    } {
-        let latestLocation: string | null = null;
+    #connectGeoClueLocationSignal(
+        client: Gio.DBusProxy,
+        ref: {latestLocation: string | null}
+    ): number {
         const signalId = client.connect(
             'g-signal',
             (_proxy, _sender, signalName, params) => {
                 if (signalName === 'LocationUpdated') {
                     const newPath = params.get_child_value(1).get_string()?.[0];
                     logger.debug('geo', `LocationUpdated signal: ${newPath}`);
-                    if (newPath && newPath !== '/') latestLocation = newPath;
+                    if (newPath && newPath !== '/') ref.latestLocation = newPath;
                 }
             }
         );
-        return {signalId, latestLocation};
+        return signalId;
     }
 
     async #startGeoClueClient(client: Gio.DBusProxy): Promise<void> {
@@ -214,9 +205,8 @@ export default class Geolocation extends Object {
 
             this.#configureGeoClueClient(client, clientPath);
 
-            const {signalId, latestLocation} =
-                this.#connectGeoClueLocationSignal(client);
-            const latestLocationRef = {latestLocation};
+            const latestLocationRef: {latestLocation: string | null} = {latestLocation: null};
+            const signalId = this.#connectGeoClueLocationSignal(client, latestLocationRef);
 
             await this.#startGeoClueClient(client);
 

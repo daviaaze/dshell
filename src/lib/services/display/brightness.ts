@@ -20,7 +20,7 @@ import logger from '../../core/logger';
 
 @register
 export default class Brightness extends Object {
-    static instance: Brightness;
+    private static instance: Brightness;
 
     static get_default() {
         if (!this.instance) this.instance = new Brightness();

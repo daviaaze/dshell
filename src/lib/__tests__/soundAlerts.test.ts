@@ -8,7 +8,7 @@
  */
 
 import {describe, it, expect, run} from './test-runner';
-import ServiceRegistry from '../core/serviceRegistry';
+import ServiceRegistry, {type Service} from '../core/serviceRegistry';
 
 // ── Mock ShellState ───────────────────────────────────────────────
 
@@ -53,8 +53,8 @@ describe('SoundAlertService (DI override)', () => {
         const mockDnd = new MockDndService();
 
         // Register mocks BEFORE the service under test resolves them
-        reg.register({name: 'ShellState', service: mockShell as any});
-        reg.register({name: 'DndService', service: mockDnd as any});
+        reg.register({name: 'ShellState', service: mockShell as unknown as Service});
+        reg.register({name: 'DndService', service: mockDnd as unknown as Service});
 
         // Verify resolution works
         const resolvedShell = reg.resolve<MockShellState>('ShellState');
@@ -71,7 +71,7 @@ describe('SoundAlertService (DI override)', () => {
         // Override with a different mock
         const altMock = new MockDndService();
         altMock.dnd = true;
-        reg.override('DndService', altMock as any);
+        reg.override('DndService', altMock as unknown as Service);
         expect(reg.resolve<MockDndService>('DndService').dnd).toBe(true);
     });
 
@@ -94,7 +94,7 @@ describe('SoundAlertService (DI override)', () => {
         const mock = new MockDndService();
 
         // override() on an unregistered name logs a warning but still registers
-        reg.override('NeverRegistered', mock as any);
+        reg.override('NeverRegistered', mock as unknown as Service);
         expect(reg.resolve<MockDndService>('NeverRegistered')).toBe(mock);
 
         reg.reset();

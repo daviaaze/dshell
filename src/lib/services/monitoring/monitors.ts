@@ -91,7 +91,7 @@ function allGdkMonitors(): Gdk.Monitor[] {
 
 @register
 class MonitorService extends Object {
-    static instance: MonitorService;
+    private static instance: MonitorService;
 
     static get_default() {
         if (!this.instance) this.instance = new MonitorService();
@@ -101,6 +101,7 @@ class MonitorService extends Object {
     #monitors: Gdk.Monitor[] = [];
     #wlDisplay: AstalWl.Registry | null = null;
     #wlSignalIds: number[] = [];
+    #hyprlandSignalIds: number[] = [];
     #pendingSync = false;
 
     @property
@@ -219,7 +220,7 @@ class MonitorService extends Object {
         // Sync with Hyprland after AstalWl fires (allow Hyprland IPC to catch up)
         const hyprland = getHyprland();
         if (hyprland) {
-            this.#wlSignalIds.push(
+            this.#hyprlandSignalIds.push(
                 hyprland.connect('notify::monitors', () => {
                     if (this.#pendingSync) {
                         this.#pendingSync = false;
@@ -286,12 +287,17 @@ class MonitorService extends Object {
     // ── Cleanup ───────────────────────────────────────────────────────────
 
     dispose(): void {
-        if (this.#wlDisplay && this.#wlSignalIds.length > 0) {
+        if (this.#wlDisplay) {
             for (const id of this.#wlSignalIds) {
                 this.#wlDisplay.disconnect(id);
             }
             this.#wlSignalIds = [];
         }
+        for (const id of this.#hyprlandSignalIds) {
+            const hyprland = getHyprland();
+            if (hyprland) hyprland.disconnect(id);
+        }
+        this.#hyprlandSignalIds = [];
     }
 }
 

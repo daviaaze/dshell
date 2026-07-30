@@ -25,7 +25,7 @@ import logger from '../../core/logger';
  */
 @register
 export default class DndService extends Object {
-    static instance: DndService;
+    private static instance: DndService;
 
     static get_default() {
         if (!this.instance) this.instance = new DndService();

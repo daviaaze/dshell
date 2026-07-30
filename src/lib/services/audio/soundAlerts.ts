@@ -29,7 +29,7 @@ type SoundCategory = 'notification' | 'capture' | 'battery' | 'system';
  */
 @register
 export default class SoundAlertService extends Object {
-    static instance: SoundAlertService;
+    private static instance: SoundAlertService;
 
     static get_default() {
         if (!this.instance) this.instance = new SoundAlertService();
@@ -267,16 +267,13 @@ export default class SoundAlertService extends Object {
         // Check DND
         if (this.#dnd.dnd) return;
 
-        try {
-            Process.exec(`canberra-gtk-play --id=${soundId}`);
-        } catch (e) {
-            // Silently ignore — no sound theme is a valid state
+        Process.execAsync(`canberra-gtk-play --id=${soundId}`).catch(e => {
             logger.debug(
                 'sound',
                 `canberra-gtk-play --id=${soundId} failed:`,
                 e
             );
-        }
+        });
     }
 
     #categorize(soundId: string): SoundCategory {

@@ -6,7 +6,7 @@ import logger from '../../core/logger';
 
 @register
 export default class ShellState extends GObject {
-    static instance: ShellState;
+    private static instance: ShellState;
 
     static get_default() {
         if (!this.instance) this.instance = new ShellState();

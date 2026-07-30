@@ -11,7 +11,7 @@ import {formatTemp} from './weatherUtils';
 
 @register
 export default class Weather extends Object {
-    static instance: Weather;
+    private static instance: Weather;
 
     static get_default() {
         if (!this.instance) this.instance = new Weather();

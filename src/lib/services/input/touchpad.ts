@@ -1,11 +1,4 @@
-import {
-    Object,
-    register,
-    signal,
-    property,
-    Boolean,
-    VoidType,
-} from 'gnim/gobject';
+import {Object, register, signal, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
 import {bus} from '../../core/eventBus';
 import {Process} from '../../core/process';
@@ -25,7 +18,7 @@ signal.pause()
 
 @register
 export default class Touchpad extends Object {
-    static instance: Touchpad;
+    private static instance: Touchpad;
     static get_default() {
         if (!this.instance) this.instance = new Touchpad();
         return this.instance;

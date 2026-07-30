@@ -46,7 +46,7 @@ export type {VirtualMonitor, BoundaryGeometry} from './types';
  */
 @register
 export default class Screenshot extends Object {
-    static instance: Screenshot | undefined;
+    private static instance: Screenshot | undefined;
 
     static get_default() {
         if (!this.instance) this.instance = new Screenshot();

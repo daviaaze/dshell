@@ -8,7 +8,7 @@ import logger from '../../core/logger';
  */
 @register
 export default class SessionControl extends Object {
-    static instance: SessionControl;
+    private static instance: SessionControl;
 
     static get_default() {
         if (!this.instance) this.instance = new SessionControl();

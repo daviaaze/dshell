@@ -9,7 +9,7 @@ const IFACE = 'net.hadess.PowerProfiles';
 type Profile = 'power-saver' | 'balanced' | 'performance';
 
 export default class PowerProfiles {
-    static instance: PowerProfiles;
+    private static instance: PowerProfiles;
     static get_default() {
         if (!this.instance) this.instance = new PowerProfiles();
         return this.instance;
@@ -31,13 +31,22 @@ export default class PowerProfiles {
 
     set_active_profile(profile: Profile) {
         try {
-            this.#proxy?.call_sync(
-                'org.freedesktop.DBus.Properties.Set',
+            const conn = this.#proxy?.get_connection();
+            if (!conn) {
+                logger.warn('power-profiles', 'no DBus connection');
+                return;
+            }
+            conn.call_sync(
+                BUS_NAME,
+                OBJECT_PATH,
+                'org.freedesktop.DBus.Properties',
+                'Set',
                 new GLib.Variant('(ssv)', [
                     IFACE,
                     'ActiveProfile',
                     new GLib.Variant('s', profile),
                 ]),
+                null,
                 Gio.DBusCallFlags.NONE,
                 -1,
                 null

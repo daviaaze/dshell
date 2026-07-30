@@ -26,7 +26,7 @@ function windowCollection<T extends Astal.Window>(
 
 @register
 export default class WindowManager extends Object {
-    static instance: WindowManager;
+    private static instance: WindowManager;
 
     static get_default() {
         if (!this.instance) this.instance = new WindowManager();

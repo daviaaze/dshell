@@ -22,7 +22,7 @@ function parseLayoutName(fullName: string): string {
 
 @register
 export default class KeyboardLayout extends Object {
-    static instance: KeyboardLayout;
+    private static instance: KeyboardLayout;
 
     static get_default() {
         if (!this.instance) this.instance = new KeyboardLayout();
@@ -46,9 +46,14 @@ export default class KeyboardLayout extends Object {
     @signal
     layoutChanged() {}
 
-    #update() {
+    #inFlight = false;
+
+    /** Async poll — sync exec blocked the main loop every 2s. */
+    async #update(): Promise<void> {
+        if (this.#inFlight) return; // skip overlapping polls
+        this.#inFlight = true;
         try {
-            const out = Process.exec('hyprctl devices -j');
+            const out = await Process.execAsync('hyprctl devices -j');
             const data: HyprlandDevices = JSON.parse(out);
             const keyboards = data.keyboards || [];
             const mainKb = keyboards.find(
@@ -74,30 +79,31 @@ export default class KeyboardLayout extends Object {
             logger.error('keyboard', '#update failed:', e);
             this.#available = false;
             this.notify('available');
+        } finally {
+            this.#inFlight = false;
         }
     }
 
     cycle() {
-        try {
-            const out = Process.exec('hyprctl devices -j');
-            const data: HyprlandDevices = JSON.parse(out);
-            const keyboards = data.keyboards || [];
-            const mainKb = keyboards.find(
-                k =>
-                    k.name !== 'wlroots-keyboard-pointer' &&
-                    k.name !== 'wayland' &&
-                    k.name !== ''
-            );
-            if (mainKb) {
-                Process.execAsync(
-                    `hyprctl switchxkblayout "${mainKb.name}" next`
-                )
-                    .then(() => this.#update())
-                    .catch(e => logger.error('keyboard', 'cycle failed:', e));
-            }
-        } catch (e) {
-            logger.error('keyboard', 'Failed to cycle layout:', e);
-        }
+        Process.execAsync('hyprctl devices -j')
+            .then(out => {
+                const data: HyprlandDevices = JSON.parse(out);
+                const keyboards = data.keyboards || [];
+                const mainKb = keyboards.find(
+                    k =>
+                        k.name !== 'wlroots-keyboard-pointer' &&
+                        k.name !== 'wayland' &&
+                        k.name !== ''
+                );
+                if (mainKb) {
+                    return Process.execAsync(
+                        `hyprctl switchxkblayout "${mainKb.name}" next`
+                    );
+                }
+                return undefined;
+            })
+            .then(() => this.#update())
+            .catch(e => logger.error('keyboard', 'cycle failed:', e));
     }
 
     constructor() {

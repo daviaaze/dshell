@@ -13,7 +13,7 @@ export enum DarkModes {
 
 @register
 export class ColorScheme extends Object {
-    static instance: ColorScheme;
+    private static instance: ColorScheme;
     static get_default() {
         if (!this.instance) this.instance = new ColorScheme();
         return this.instance;
@@ -30,7 +30,6 @@ export class ColorScheme extends Object {
     } | null = null;
     #gsettings: {
         setColorScheme: Setter<string>;
-        setGtkTheme: Setter<string>;
     };
     #generalSettings: Gio.Settings;
 
@@ -62,12 +61,13 @@ export class ColorScheme extends Object {
         this.#colorScheme = c;
         if (c === DarkModes.AUTO)
             c = this.#daytime ? DarkModes.LIGHT : DarkModes.DARK;
+        // Only the portal-backed color-scheme key — never gtk-theme.
+        // A "-dark" theme suffix pins the variant and breaks both
+        // Adw.StyleManager dark switching and the GTK Inspector override.
         if (c === DarkModes.LIGHT) {
             this.#gsettings.setColorScheme('prefer-light');
-            this.#gsettings.setGtkTheme('Adwaita');
         } else {
             this.#gsettings.setColorScheme('prefer-dark');
-            this.#gsettings.setGtkTheme('Adwaita-dark');
         }
         this.notify('color-scheme');
         this.notify('color-scheme-name');
@@ -91,14 +91,12 @@ export class ColorScheme extends Object {
             this.#timerId = null;
         }
 
-        const msUntil = (unixTime: number) =>
-            Math.abs(
-                Number(
-                    GLib.DateTime.new_from_unix_local(unixTime)!
-                        .difference(GLib.DateTime.new_now_local()!)
-                        .valueOf()
-                )
-            );
+        const msUntil = (unixTime: number) => {
+            const diff = GLib.DateTime.new_from_unix_local(unixTime)!
+                .difference(GLib.DateTime.new_now_local()!);
+            const ms = Number(diff.valueOf());
+            return ms <= 0 ? 0 : ms;
+        };
 
         const sunrise = this.#generalSettings.get_double(
             'weather-sunrise-time'
@@ -196,9 +194,7 @@ export class ColorScheme extends Object {
             new Schema({
                 id: 'org.gnome.desktop.interface',
                 path: '/org/gnome/desktop/interface/',
-            })
-                .key('color-scheme', 's', {default: 'prefer-light'})
-                .key('gtk-theme', 's', {default: 'Adwaita'})
+            }).key('color-scheme', 's', {default: 'prefer-light'})
         );
     }
 }

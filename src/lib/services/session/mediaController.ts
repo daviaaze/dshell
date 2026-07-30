@@ -11,7 +11,7 @@ import {connectFor, cleanupNode} from '../../core/connectFor';
  */
 @register
 export default class MediaController extends Object {
-    static instance: MediaController;
+    private static instance: MediaController;
 
     static get_default(): MediaController {
         if (!this.instance) this.instance = new MediaController();
@@ -95,10 +95,32 @@ export default class MediaController extends Object {
         this.#setActivePlayer(p);
     }
 
+    #playerPropSignals: number[] = [];
+
     #setActivePlayer(player: Mpris.Player | null) {
-        // Old player cleanup happens via tracked HN if needed
+        // Drop old signal connections
+        for (const id of this.#playerPropSignals) {
+            try {
+                const old = this.#activePlayer;
+                if (old) old.disconnect(id);
+            } catch {/* ignore */}
+        }
+        this.#playerPropSignals = [];
+
         this.#activePlayer = player;
         this.notify('active-player');
+
+        // Wire notify signals on the new player so metadata updates
+        // are reflected in activeTitle / activeArtist / activeCoverArt
+        if (player) {
+            const ids = [
+                player.connect('notify::title', () => this.#syncActiveMetadata()),
+                player.connect('notify::artist', () => this.#syncActiveMetadata()),
+                player.connect('notify::cover-art', () => this.#syncActiveMetadata()),
+            ];
+            this.#playerPropSignals.push(...ids);
+        }
+
         this.#syncActiveMetadata();
     }
 

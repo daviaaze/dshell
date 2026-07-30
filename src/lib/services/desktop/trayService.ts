@@ -9,7 +9,7 @@ import logger from '../../core/logger';
  */
 @register
 export default class TrayService extends Object {
-    static instance: TrayService;
+    private static instance: TrayService;
 
     static get_default(): TrayService {
         if (!this.instance) this.instance = new TrayService();

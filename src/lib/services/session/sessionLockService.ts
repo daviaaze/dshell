@@ -13,7 +13,7 @@ import logger from '../../core/logger';
  */
 @register
 export default class SessionLockService extends Object {
-    static instance: SessionLockService;
+    private static instance: SessionLockService;
 
     static get_default() {
         if (!this.instance) this.instance = new SessionLockService();

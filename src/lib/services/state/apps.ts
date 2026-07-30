@@ -153,6 +153,7 @@ export function getDesktopFileForClient(
 
 const DESKTOP_DIRS = [
     `${GLib.get_home_dir()}/.local/share/applications`,
+    '/usr/share/applications',
     '/run/current-system/sw/share/applications',
     `${GLib.get_home_dir()}/.nix-profile/share/applications`,
 ];
@@ -207,6 +208,9 @@ export function launchDesktopFile(entry: string) {
  * Start watching desktop file directories for changes and auto-reload.
  * Call once during app initialization.
  */
+// Keep monitors rooted to prevent GJS from GC'ing them.
+const appMonitors = new Set<Gio.FileMonitor>();
+
 export function initAppWatcher() {
     for (const dir of DESKTOP_DIRS) {
         const file = Gio.File.new_for_path(dir);
@@ -217,6 +221,8 @@ export function initAppWatcher() {
                 Gio.FileMonitorFlags.WATCH_MOVES,
             null
         );
+        appMonitors.add(monitor);
+        monitor.connect('notify::cancelled', () => appMonitors.delete(monitor));
 
         monitor.connect('changed', (_mon, _file, _other, event) => {
             // Only reload on file creation/deletion, not on attribute changes

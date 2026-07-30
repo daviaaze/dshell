@@ -10,6 +10,8 @@ import {
 } from './hypridleConfig';
 
 type PropKey = keyof HypridleConfig | 'enabled';
+/** All hypridle props are either boolean toggles or second-based timeouts. */
+type PropValue = boolean | number;
 
 /**
  * Descriptor for a single hypridle property: its GObject notify name,
@@ -67,13 +69,13 @@ const PROPS: Record<string, PropDef> = {
 
 @register
 export default class Hypridle extends GObject {
-    static instance: Hypridle;
+    private static instance: Hypridle;
     static get_default() {
         if (!this.instance) this.instance = new Hypridle();
         return this.instance;
     }
 
-    #values: Record<PropKey, any> = {
+    #values: Record<PropKey, PropValue> = {
         enabled: true,
         idleTimeout: 300,
         dimTimeout: 240,
@@ -84,62 +86,62 @@ export default class Hypridle extends GObject {
         suspendEnabled: false,
     };
 
-    #settings: Record<string, (v: any) => void> | null = null;
+    #settings: Record<string, (v: PropValue) => void> | null = null;
     #process: Process | null = null;
 
     // ── GObject property accessors ────────────────────────────────────
 
     @property get enabled() {
-        return this.#values.enabled;
+        return this.#values.enabled as boolean;
     }
     set enabled(v) {
         this.#set('enabled', v);
     }
 
     @property get idleTimeout() {
-        return this.#values.idleTimeout;
+        return this.#values.idleTimeout as number;
     }
     set idleTimeout(v) {
         this.#set('idleTimeout', v);
     }
 
     @property get dimTimeout() {
-        return this.#values.dimTimeout;
+        return this.#values.dimTimeout as number;
     }
     set dimTimeout(v) {
         this.#set('dimTimeout', v);
     }
 
     @property get dimEnabled() {
-        return this.#values.dimEnabled;
+        return this.#values.dimEnabled as boolean;
     }
     set dimEnabled(v) {
         this.#set('dimEnabled', v);
     }
 
     @property get dpmsTimeout() {
-        return this.#values.dpmsTimeout;
+        return this.#values.dpmsTimeout as number;
     }
     set dpmsTimeout(v) {
         this.#set('dpmsTimeout', v);
     }
 
     @property get dpmsEnabled() {
-        return this.#values.dpmsEnabled;
+        return this.#values.dpmsEnabled as boolean;
     }
     set dpmsEnabled(v) {
         this.#set('dpmsEnabled', v);
     }
 
     @property get suspendTimeout() {
-        return this.#values.suspendTimeout;
+        return this.#values.suspendTimeout as number;
     }
     set suspendTimeout(v) {
         this.#set('suspendTimeout', v);
     }
 
     @property get suspendEnabled() {
-        return this.#values.suspendEnabled;
+        return this.#values.suspendEnabled as boolean;
     }
     set suspendEnabled(v) {
         this.#set('suspendEnabled', v);
@@ -152,7 +154,7 @@ export default class Hypridle extends GObject {
 
     // ── Centralised property write ────────────────────────────────────
 
-    #set(key: PropKey, value: any) {
+    #set(key: PropKey, value: PropValue) {
         const def = PROPS[key];
         if (!def) return;
 
@@ -219,13 +221,13 @@ export default class Hypridle extends GObject {
         const s = this.#settings; // local ref — always non-null after guard above
 
         // Wire each GSettings accessor → this.#set() on change
-        const link = <T>(
+        const link = <T extends PropValue>(
             acc: Accessor<T>,
             setterFn: (v: T) => void,
             key: PropKey
         ) => {
             const def = PROPS[key];
-            s[def.settingsKey] = setterFn;
+            s[def.settingsKey] = setterFn as (v: PropValue) => void;
             acc.subscribe(() => {
                 const v = acc();
                 if (this.#values[key] !== v) this.#set(key, v);
@@ -286,13 +288,13 @@ export default class Hypridle extends GObject {
 
     #writeConfig() {
         writeHypridleConfig({
-            dimEnabled: this.#values.dimEnabled,
-            dimTimeout: this.#values.dimTimeout,
-            idleTimeout: this.#values.idleTimeout,
-            dpmsEnabled: this.#values.dpmsEnabled,
-            dpmsTimeout: this.#values.dpmsTimeout,
-            suspendEnabled: this.#values.suspendEnabled,
-            suspendTimeout: this.#values.suspendTimeout,
+            dimEnabled: this.#values.dimEnabled as boolean,
+            dimTimeout: this.#values.dimTimeout as number,
+            idleTimeout: this.#values.idleTimeout as number,
+            dpmsEnabled: this.#values.dpmsEnabled as boolean,
+            dpmsTimeout: this.#values.dpmsTimeout as number,
+            suspendEnabled: this.#values.suspendEnabled as boolean,
+            suspendTimeout: this.#values.suspendTimeout as number,
         });
     }
 

@@ -6,7 +6,7 @@ import logger from '../../core/logger';
 
 @register
 export default class Inhibit extends Object {
-    static instance: Inhibit;
+    private static instance: Inhibit;
     static get_default() {
         if (!this.instance) this.instance = new Inhibit();
         return this.instance;

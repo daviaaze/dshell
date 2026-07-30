@@ -8,7 +8,7 @@ import {Accessor, createState} from 'gnim';
  * bind to `time` instead of each registering their own polling timer.
  */
 export default class Clock {
-    static instance: Clock;
+    private static instance: Clock;
 
     static get_default(): Clock {
         if (!this.instance) this.instance = new Clock();

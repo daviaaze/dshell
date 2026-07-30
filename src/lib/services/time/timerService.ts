@@ -9,7 +9,7 @@ export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 
 @register
 export default class TimerService extends Object {
-    static instance: TimerService;
+    private static instance: TimerService;
     static get_default() {
         if (!this.instance) this.instance = new TimerService();
         return this.instance;

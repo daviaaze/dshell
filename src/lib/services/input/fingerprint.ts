@@ -12,7 +12,7 @@ type FingerprintState = 'idle' | 'initializing' | 'verifying' | 'error';
 
 @register
 export default class FingerprintAuth extends Object {
-    static instance: FingerprintAuth;
+    private static instance: FingerprintAuth;
 
     static get_default() {
         if (!this.instance) this.instance = new FingerprintAuth();
@@ -27,6 +27,7 @@ export default class FingerprintAuth extends Object {
     #initialized = false;
     #claimed = false;
     #consecutiveFailures = 0;
+    #retryPending = false;
     #signalId = 0;
 
     @property
@@ -175,7 +176,10 @@ export default class FingerprintAuth extends Object {
         // already ended verification. Just release and restart.
         this.#setState('idle');
         this.#release();
+        this.#retryPending = true;
         await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
+        if (!this.#retryPending) return; // cancelled by stop() during delay
+        this.#retryPending = false;
         this.start();
     }
 
@@ -219,6 +223,7 @@ export default class FingerprintAuth extends Object {
     }
 
     stop() {
+        this.#retryPending = false;
         if (!this.#deviceProxy) return;
         // Only call VerifyStop if there's an active verification to cancel.
         // The VerifyStatus D-Bus signal with done=true already ended verification,

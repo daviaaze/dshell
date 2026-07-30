@@ -107,6 +107,15 @@ export function getNotifdSafe(): Notifd.Notifd | null {
 }
 
 /**
+ * Whether the singleton has been resolved (instance or failure).
+ * Widgets should check this before calling getNotifdSafe() synchronously —
+ * an unresolved get() runs the factory inline and can block on D-Bus.
+ */
+export function isNotifdResolved(): boolean {
+    return notifdSingleton.initialized;
+}
+
+/**
  * One-shot watchdog: warns if notifd init hasn't completed within 15s.
  * Lives here (not the widget layer) so widgets stay event-driven.
  */

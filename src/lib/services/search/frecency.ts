@@ -26,7 +26,7 @@ const SEARCH_BOOST = 0.5;
 
 @register
 export class FrecencyManager extends GObject {
-    static instance: FrecencyManager;
+    private static instance: FrecencyManager;
     static get_default() {
         if (!this.instance) this.instance = new FrecencyManager();
         return this.instance;
