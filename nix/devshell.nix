@@ -27,6 +27,7 @@
         nixfmt-rfc-style
         nix-output-monitor
         d-spy
+        graphviz          # dot, for scripts/deps-graph.sh rendering
         python3
         python3Packages.vncdo
         python3Packages.mcp
