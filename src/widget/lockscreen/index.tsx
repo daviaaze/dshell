@@ -6,7 +6,7 @@ import SessionLockService from '../../lib/services/session/sessionLockService';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, For, onCleanup} from 'gnim';
 import {render} from '@gnim-js/gtk4';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import WindowManager from '../../lib/services/state/windowManager';
 import ShellState from '../../lib/services/state/shellState';
 import Clock from '../../lib/services/time/clock';
@@ -79,7 +79,7 @@ const createLocks = (onUnlock: () => void) => {
                         }
                     }}
                     gdkmonitor={monitor}
-                    application={app}
+                    application={getApp()}
                     anchor={TOP | BOTTOM | LEFT | RIGHT}
                     visible
                     exclusivity={Astal.Exclusivity.IGNORE}
@@ -144,7 +144,7 @@ export const LockScreen = () => {
                             locked = false;
                             dispose();
                         }),
-                    app
+                    getApp()
                 );
             }
         })

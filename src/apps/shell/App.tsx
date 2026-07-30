@@ -15,6 +15,7 @@ import Touchpad from '../../lib/services/input/touchpad';
 import {registerServices, getWidgetDescriptors} from '../../widget';
 import ServiceRegistry from '../../lib/core/serviceRegistry';
 import logger, {perf} from '../../lib/core/logger';
+import {setApp} from '../../lib/services/appHandle';
 
 // gnim dev/bundle auto-registers a Gtk.CssProvider for each imported .css
 import './shade.css';
@@ -27,6 +28,7 @@ export class ShadeShell extends Adw.Application {
             version: import.meta.version,
             flags: Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
         });
+        setApp(this);
         GLib.set_prgname(import.meta.name);
         GLib.set_application_name(gettext('Shade Shell'));
         ShellState.get_default().registerCommands(this);

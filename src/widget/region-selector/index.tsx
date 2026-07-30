@@ -4,7 +4,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import {getHyprland} from '../../lib/hyprland';
 import Cairo from 'gi://cairo?version=1.0';
 import {bind, createState} from 'gnim';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import Screenshot from '../../lib/services/capture/screenshot';
 import {getWindowGeometries} from '../../lib/services/monitoring/windows';
 import type {WindowGeometry} from '../../lib/services/monitoring/windows';
@@ -288,7 +288,7 @@ export default () => {
     return (
         <Astal.Window
             name={'region-selector'}
-            application={app}
+            application={getApp()}
             layer={Astal.Layer.TOP}
             keymode={Astal.Keymode.EXCLUSIVE}
             visible={bind(ss, 'regionSelectorOpen')}

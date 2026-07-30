@@ -20,7 +20,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind, createState, JSX} from 'gnim';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import {useSettings} from '../../lib/settings';
 import {getHyprland} from '../../lib/hyprland';
 
@@ -156,7 +156,7 @@ export default (props: PopupWindowProps) => {
             name={name}
             namespace={name}
             visible={visibleAccessor}
-            application={app}
+            application={getApp()}
             layer={layer}
             keymode={Astal.Keymode.ON_DEMAND}
             anchor={anchorValue}

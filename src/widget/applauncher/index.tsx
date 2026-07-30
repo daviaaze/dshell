@@ -7,7 +7,7 @@ import {bind, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
 import {useSettings} from '../../lib/settings';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import WindowManager from '../../lib/services/state/windowManager';
 import ShellState from '../../lib/services/state/shellState';
 import logger from '../../lib/core/logger';
@@ -48,7 +48,7 @@ export default () => {
             valign={Gtk.Align.CENTER}
             name={'applauncher'}
             margin={12}
-            application={app}
+            application={getApp()}
             visible={bind(shellState, 'launcherOpen')}
             onNotifyVisible={self => {
                 logger.log(`applauncher visible -> ${self.visible}`);

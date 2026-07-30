@@ -2,7 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getHyprland} from '../../lib/hyprland';
 import {bind} from 'gnim';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import Screenshot from '../../lib/services/capture/screenshot';
 import {monitorIndexFromHyprland} from '../../lib/utils/monitors';
 
@@ -28,7 +28,7 @@ export default () => {
     return (
         <Astal.Window
             name={'recording-bar'}
-            application={app}
+            application={getApp()}
             layer={Astal.Layer.OVERLAY}
             margin={12}
             anchor={Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.RIGHT}

@@ -36,7 +36,7 @@ import BluetoothService from '../lib/services/bluetooth/bluetoothService';
 import {initAutoSwitch} from '../lib/services/audio/autoSwitch';
 import {initAppWatcher} from '../lib/services/state/apps';
 import {initClipboardHistory} from '../lib/services/clipboard/history';
-import {app} from '../apps/shell/App';
+import {getApp} from '../lib/services/appHandle';
 import ShellState from '../lib/services/state/shellState';
 import {useSettings} from '../lib/settings';
 import WindowManager from '../lib/services/state/windowManager';
@@ -96,7 +96,7 @@ export function registerServices(s: ReturnType<typeof useSettings>) {
         {
             name: 'Inhibit',
             service: Inhibit.get_default(),
-            initArgs: [app],
+            initArgs: [getApp()],
         },
         {
             name: 'NightLight',
@@ -169,7 +169,7 @@ export function registerServices(s: ReturnType<typeof useSettings>) {
             name: 'TimerService',
             service: TimerService.get_default(),
             initArgs: [
-                app,
+                getApp(),
                 s.timer.pomodoroWorkDuration(),
                 s.timer.pomodoroBreakDuration(),
                 s.timer.pomodoroLongBreakDuration(),

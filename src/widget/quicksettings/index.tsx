@@ -2,7 +2,7 @@ import {getHyprland} from '../../lib/hyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import WindowManager from '../../lib/services/state/windowManager';
 import {useSettings} from '../../lib/settings';
 import logger from '../../lib/core/logger';
@@ -33,7 +33,7 @@ export default () => {
                 self.connect('map', () => logger.log('quicksettings mapped'));
             }}
             margin={12}
-            application={app}
+            application={getApp()}
             name={'quicksettings'}
             visible={bind(shellState, 'qsOpen')}
             onNotifyVisible={self => {

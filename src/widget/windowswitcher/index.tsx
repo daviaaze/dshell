@@ -5,7 +5,7 @@ import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {getHyprland} from '../../lib/hyprland';
 import {bind, createState, For, onCleanup} from 'gnim';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import {toArray} from '../../lib/core/gjsUtils';
 import SwitcherItem from './item';
 import logger from '../../lib/core/logger';
@@ -194,7 +194,7 @@ export default () => {
                 });
             }}
             name={'windowswitcher'}
-            application={app}
+            application={getApp()}
             layer={Astal.Layer.OVERLAY}
             keymode={Astal.Keymode.EXCLUSIVE}
             visible={false}

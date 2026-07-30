@@ -10,14 +10,14 @@ import Network from './network';
 import ScreenCapture from './screenCapture';
 import Timer from './timer';
 import Debug from './debug';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 
 export const createSettingsWindow = (): Adw.PreferencesWindow => {
     return (
         <Adw.PreferencesWindow
             ref={self => WindowManager.get_default().setSettings(self)}
             hideOnClose={false}
-            application={app}
+            application={getApp()}
             name={'settings'}
             cssClasses={['background']}
             title={'Shade Settings'}

@@ -5,7 +5,7 @@ import {getHyprland} from '../../lib/hyprland';
 import {bind, For, computed, onCleanup} from 'gnim';
 import WindowManager from '../../lib/services/state/windowManager';
 import {useSettings} from '../../lib/settings';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import DockItem from './item';
 import {toArray} from '../../lib/core/gjsUtils';
 import {getDesktopFileForClient} from '../../lib/services/state/apps';
@@ -74,7 +74,7 @@ export default () => {
             visible={bar.dockEnabled}
             layer={Astal.Layer.TOP}
             anchor={BOTTOM | LEFT | RIGHT}
-            application={app}
+            application={getApp()}
             name="dock"
             exclusivity={Astal.Exclusivity.NORMAL}
             marginBottom={4}

@@ -2,7 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, onCleanup} from 'gnim';
-import {app} from '../../apps/shell/App';
+import {getApp} from '../../lib/services/appHandle';
 import WindowManager from '../../lib/services/state/windowManager';
 import {Gdk2HyprMonitor, monitors} from '../../lib/services/monitoring/monitors';
 import {useSettings} from '../../lib/settings';
@@ -50,7 +50,7 @@ export default () => {
                     marginRight={position.as(p =>
                         p === LEFT ? 0 : BAR_MARGIN
                     )}
-                    application={app}
+                    application={getApp()}
                     gdkmonitor={monitor}
                     name={`bar-${monitor.get_description()}`}
                     exclusivity={Astal.Exclusivity.EXCLUSIVE}
