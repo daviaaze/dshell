@@ -1,6 +1,6 @@
 import {Object, register, signal, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
-import {bus} from '../../core/eventBus';
+import {bus} from '../bus';
 import {Process} from '../../core/process';
 import logger from '../../core/logger';
 

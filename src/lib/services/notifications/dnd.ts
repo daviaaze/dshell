@@ -1,6 +1,6 @@
 import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
-import {bus} from '../../core/eventBus';
+import {bus} from '../bus';
 import {getNotifdSafe} from './guard';
 import logger from '../../core/logger';
 

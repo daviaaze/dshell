@@ -8,7 +8,7 @@
 import Quarrel from 'gi://Quarrel';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {bus} from '../../core/eventBus';
+import {bus} from '../bus';
 import logger, {perf} from '../../core/logger';
 import printOut from '../../core/stdout';
 

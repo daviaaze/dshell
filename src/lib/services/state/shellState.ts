@@ -1,6 +1,6 @@
 import {Object as GObject, register, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
-import {bus} from '../../core/eventBus';
+import {bus} from '../bus';
 import ServiceRegistry from '../../core/serviceRegistry';
 import logger from '../../core/logger';
 

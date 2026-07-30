@@ -1,7 +1,7 @@
 import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import AstalBattery from 'gi://AstalBattery';
-import {bus} from '../../core/eventBus';
+import {bus} from '../bus';
 import ServiceRegistry from '../../core/serviceRegistry';
 import {getNotifdSafe} from '../notifications/guard';
 import {Process} from '../../core/process';
