@@ -44,7 +44,7 @@ export interface ServiceRegistration {
  *   reg.reset(); // clear all for test isolation
  */
 export default class ServiceRegistry {
-    static instance: ServiceRegistry;
+    private static instance: ServiceRegistry;
 
     static get_default(): ServiceRegistry {
         if (!this.instance) this.instance = new ServiceRegistry();

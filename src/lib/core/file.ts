@@ -5,6 +5,14 @@ import logger from './logger';
 // Keeps Gio.FileMonitor instances alive so GJS doesn't GC them while
 // monitoring (monitors must stay referenced to keep delivering events).
 const monitorFiles = new Set<Gio.FileMonitor>();
+const monitoredPaths = new Set<string>();
+
+/** Cancel and release all active file monitors (called on shell shutdown). */
+export function disposeMonitors(): void {
+    for (const m of monitorFiles) m.cancel();
+    monitorFiles.clear();
+    monitoredPaths.clear();
+}
 
 export function readFile(file: string | Gio.File) {
     const f = typeof file === 'string' ? Gio.File.new_for_path(file) : file;
@@ -95,7 +103,12 @@ export function writeFileAsync(
 export function monitorFile(
     path: string,
     callback: (file: string, event: Gio.FileMonitorEvent) => void
-): Gio.FileMonitor {
+): Gio.FileMonitor | null {
+    if (monitoredPaths.has(path)) {
+        return null; // already watching this path
+    }
+    monitoredPaths.add(path);
+
     const monitoredFile = Gio.File.new_for_path(path);
 
     const mon = monitoredFile.monitor(
@@ -138,9 +151,11 @@ export function monitorFile(
                     .get_path();
                 if (filepath !== null) {
                     const m = monitorFile(filepath, callback);
-                    mon.connect('notify::cancelled', () => {
-                        m.cancel();
-                    });
+                    if (m) {
+                        mon.connect('notify::cancelled', () => {
+                            m.cancel();
+                        });
+                    }
                 }
             }
         }
@@ -149,6 +164,7 @@ export function monitorFile(
     monitorFiles.add(mon);
     mon.connect('notify::cancelled', () => {
         logger.debug('file', `monitor cancelled: ${path}`);
+        monitoredPaths.delete(path);
         monitorFiles.delete(mon);
     });
     return mon;

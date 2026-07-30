@@ -8,20 +8,20 @@ import {
 } from 'gnim/gobject';
 import logger from './logger';
 
-export namespace Process {
-    export interface SignalSignatures extends Object.SignalSignatures {
-        stdout: Process['stdout'];
-        stderr: Process['stderr'];
-        exit: Process['exit'];
-    }
-    export interface ConstructorProps extends GObjectConstructorProps<Process> {
-        argv: string[];
-    }
+export interface ProcessSignalSignatures extends Object.SignalSignatures {
+    stdout: Process['stdout'];
+    stderr: Process['stderr'];
+    exit: Process['exit'];
+}
+
+export interface ProcessConstructorProps
+    extends GObjectConstructorProps<Process> {
+    argv: string[];
 }
 
 @register
 export class Process extends Object {
-    declare readonly $signals: Process.SignalSignatures;
+    declare readonly $signals: ProcessSignalSignatures;
 
     @signal
     protected stdout(_out: string) {
@@ -92,7 +92,8 @@ export class Process extends Object {
                 null,
                 (_, res) => {
                     try {
-                        resolve(this.#inStream.write_all_finish(res));
+                        const bytes = this.#inStream.write_bytes_finish(res);
+                        resolve([true, bytes]);
                     } catch (error) {
                         reject(error);
                     }
@@ -124,7 +125,7 @@ export class Process extends Object {
         });
     }
 
-    constructor({argv}: Process.ConstructorProps) {
+    constructor({argv}: ProcessConstructorProps) {
         super();
         const process = (this.#process = Gio.Subprocess.new(
             argv,

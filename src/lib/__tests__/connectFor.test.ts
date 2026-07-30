@@ -8,16 +8,18 @@
  */
 
 import GObject from 'gi://GObject?version=2.0';
-import {connectFor, cleanupNode} from '../core/connectFor';
+import {connectFor, cleanupNode, type Connectable} from '../core/connectFor';
 import {describe, it, expect, run} from './test-runner';
+
+type Emitter = {emit(signal: string, ...args: unknown[]): void};
 
 class TestSignaler extends GObject.Object {
     fire() {
-        (this as any).emit('test-signal');
+        (this as unknown as Emitter).emit('test-signal');
     }
 
     fireWith(value: number) {
-        (this as any).emit('test-value', value);
+        (this as unknown as Emitter).emit('test-value', value);
     }
 }
 
@@ -39,7 +41,7 @@ describe('connectFor', () => {
         const node = {};
         let callCount = 0;
 
-        connectFor(node, signaler as any, 'test-signal', () => {
+        connectFor(node, signaler as unknown as Connectable, 'test-signal', () => {
             callCount++;
         });
 
@@ -58,10 +60,10 @@ describe('connectFor', () => {
         let countA = 0;
         let countB = 0;
 
-        connectFor(node, signaler as any, 'test-signal', () => {
+        connectFor(node, signaler as unknown as Connectable, 'test-signal', () => {
             countA++;
         });
-        connectFor(node, signaler as any, 'test-signal', () => {
+        connectFor(node, signaler as unknown as Connectable, 'test-signal', () => {
             countB++;
         });
 
@@ -80,9 +82,9 @@ describe('connectFor', () => {
         const signaler = new TestSignaler();
         const node = {};
 
-        connectFor(node, signaler as any, 'test-signal', () => {});
+        connectFor(node, signaler as unknown as Connectable, 'test-signal', () => {});
 
-        (signaler as any).run_dispose(); // Simulate object destruction
+        (signaler as unknown as {run_dispose(): void}).run_dispose(); // Simulate object destruction
         // cleanupNode should not throw
         let threw = false;
         try {
@@ -100,10 +102,10 @@ describe('connectFor', () => {
         let countA = 0;
         let countB = 0;
 
-        connectFor(nodeA, signaler as any, 'test-signal', () => {
+        connectFor(nodeA, signaler as unknown as Connectable, 'test-signal', () => {
             countA++;
         });
-        connectFor(nodeB, signaler as any, 'test-signal', () => {
+        connectFor(nodeB, signaler as unknown as Connectable, 'test-signal', () => {
             countB++;
         });
 
@@ -123,7 +125,7 @@ describe('connectFor', () => {
         const node = {};
         let received: number | null = null;
 
-        connectFor(node, signaler as any, 'test-value', (_, value: number) => {
+        connectFor(node, signaler as unknown as Connectable, 'test-value', (_, value: number) => {
             received = value;
         });
 
@@ -136,7 +138,7 @@ describe('connectFor', () => {
         const node = {};
         let callCount = 0;
 
-        connectFor(node, signaler as any, 'test-signal', () => {
+        connectFor(node, signaler as unknown as Connectable, 'test-signal', () => {
             callCount++;
         });
 

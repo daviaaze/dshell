@@ -18,7 +18,7 @@
  * `connect()` and manage the handler ID manually in `dispose()`.
  */
 
-interface Connectable {
+export interface Connectable {
     connect(signal: string, callback: (...args: unknown[]) => void): number;
     disconnect(handlerId: number): void;
 }
@@ -52,7 +52,9 @@ export function connectFor(
     node: object,
     obj: Connectable,
     signal: string,
-    // GObject signal handlers use variadic args
+    // GObject signal handlers are variadic with untyped GIR args —
+    // callers narrow via their own callback signatures.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     callback: (...args: any[]) => void
 ): number {
     const handlerId = obj.connect(signal, callback);

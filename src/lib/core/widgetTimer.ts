@@ -17,11 +17,23 @@ export function tickWhileAttached(
     intervalMs: number,
     tick: () => void | boolean
 ): void {
+    let active = true;
     const sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, intervalMs, () => {
-        if (!widget.get_parent()) return GLib.SOURCE_REMOVE;
-        return tick() === false ? GLib.SOURCE_REMOVE : GLib.SOURCE_CONTINUE;
+        if (!widget.get_parent()) {
+            active = false;
+            return GLib.SOURCE_REMOVE;
+        }
+        const result = tick();
+        if (result === false) {
+            active = false;
+            return GLib.SOURCE_REMOVE;
+        }
+        return GLib.SOURCE_CONTINUE;
     });
     widget.connect('destroy', () => {
-        GLib.source_remove(sourceId);
+        if (active) {
+            active = false;
+            GLib.source_remove(sourceId);
+        }
     });
 }
