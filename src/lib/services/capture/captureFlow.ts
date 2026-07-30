@@ -9,7 +9,7 @@ import {
     GRIM_BIN,
 } from './utils';
 import {grimToMagickGeometry, screenshotGeometry} from './stage';
-import type Screenshot from './screenshot';
+import type {ScreenshotHandle} from './types';
 
 /**
  * Capture flows — fullscreen/area screenshot entry points and the
@@ -21,7 +21,7 @@ import type Screenshot from './screenshot';
  * pending GTK events (including widget unmap) are processed.
  */
 
-export function screenshot(ss: Screenshot, fullscreen: boolean) {
+export function screenshot(ss: ScreenshotHandle, fullscreen: boolean) {
     if (!fullscreen) {
         ss.selectedMode = 'screenshot';
         ss.selectedTarget = 'area';
@@ -48,7 +48,7 @@ export function screenshot(ss: Screenshot, fullscreen: boolean) {
 }
 
 /** Live grim capture of a "x,y WxH" geometry, then unfreeze. */
-export function captureGeometry(ss: Screenshot, geometry: string) {
+export function captureGeometry(ss: ScreenshotHandle, geometry: string) {
     screenshotGeometry(geometry)
         .then(() => {
             ss.stopFreeze();
@@ -62,7 +62,7 @@ export function captureGeometry(ss: Screenshot, geometry: string) {
 
 /** Open the region-selector to pick an area for capture. */
 export function openRegionSelectorForCapture(
-    ss: Screenshot,
+    ss: ScreenshotHandle,
     mode: 'screenshot' | 'recording'
 ) {
     ss.selectedMode = mode;
@@ -76,7 +76,7 @@ export function openRegionSelectorForCapture(
  * Closes the overlay, then waits for an idle callback (after all
  * pending GTK events including the overlay unmap) before capturing.
  */
-export function captureArea(ss: Screenshot, geometry: string) {
+export function captureArea(ss: ScreenshotHandle, geometry: string) {
     // geometry is in grim format: "x,y WxH" (global coords).
     // captureGeometry uses grim -g which expects this format.
     // captureFromStage uses magick -crop which expects "WxH+X+Y" (local coords).
@@ -107,7 +107,7 @@ export function captureArea(ss: Screenshot, geometry: string) {
  * then start recording.
  */
 export function startRecordingAfterOverlayClose(
-    ss: Screenshot,
+    ss: ScreenshotHandle,
     target: string,
     geometry?: string | null
 ) {

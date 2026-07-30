@@ -6,7 +6,7 @@ import TrayService from '../../lib/services/desktop/trayService';
 import ShellState from '../../lib/services/state/shellState';
 import {PowerMenu} from '../common/powerMenu';
 import {IconButton, IconMenuButton} from '../common/iconButton';
-import {openSettings} from '..';
+import {openSettings} from '../settings/settingsOpen';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export const TrayBox = () => {

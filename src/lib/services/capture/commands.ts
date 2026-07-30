@@ -1,9 +1,9 @@
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import type Screenshot from './screenshot';
+import type {ScreenshotHandle} from './types';
 
 /** Register GAction commands for screenshot/recording. */
-export function registerCommands(ss: Screenshot, app: Gio.Application) {
+export function registerCommands(ss: ScreenshotHandle, app: Gio.Application) {
     const actions: Record<string, () => void> = {
         screenshot: () => ss.screenshot(true),
         'screenshot-area': () => ss.screenshot(false),

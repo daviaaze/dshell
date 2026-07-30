@@ -13,6 +13,7 @@ import recordingBar from './recording-bar';
 import recordingBoundary from './recording-boundary';
 import {toggleWindowSwitcher} from './windowswitcher';
 import {createSettingsWindow} from './settings';
+import {openSettings} from './settings/settingsOpen';
 import {Wallpaper} from './wallpaper';
 import Weather from '../lib/services/location/weather';
 import MediaController from '../lib/services/session/mediaController';
@@ -44,31 +45,7 @@ import ServiceRegistry from '../lib/core/serviceRegistry';
 import type {GnimNode} from 'gnim';
 import logger, {perf} from '../lib/core/logger';
 
-// ── Settings window lifecycle ──
-
-let settingsDispose: (() => void) | null = null;
-
-export const openSettings = () => {
-    const wm = WindowManager.get_default();
-    const existing = wm.settings;
-    if (existing && existing.visible) {
-        existing.present();
-        return;
-    }
-    if (existing) {
-        existing.close();
-        wm.setSettings(null);
-    }
-    // Dispose previous scope — unsubscribes settings-page subscriptions
-    settingsDispose?.();
-    settingsDispose = null;
-    const win = createRoot(dispose => {
-        settingsDispose = dispose;
-        return createSettingsWindow();
-    });
-    wm.setSettings(win);
-    win.present();
-};
+// openSettings moved to ./settings/settingsOpen.ts (breaks tray cycle)
 
 // ── Register services with lifecycle manager ──
 

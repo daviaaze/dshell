@@ -1,7 +1,7 @@
 import {getHyprland} from '../../hyprland';
 import logger from '../../core/logger';
 import {notify} from './utils';
-import type Screenshot from './screenshot';
+import type {ScreenshotHandle} from './types';
 
 const ICON_ERROR = 'dialog-error-symbolic';
 const MSG_RECORDING_FAILED = 'Recording failed';
@@ -13,12 +13,12 @@ const MSG_RECORDING_FAILED = 'Recording failed';
  * Extracted from the Screenshot service to keep it under the size budget;
  * each function takes the service instance and drives its public API.
  */
-export function recordArea(ss: Screenshot) {
+export function recordArea(ss: ScreenshotHandle) {
     if (ss.recording) return;
     ss.openRegionSelectorForCapture('recording');
 }
 
-export function recordOutput(ss: Screenshot, outputName?: string) {
+export function recordOutput(ss: ScreenshotHandle, outputName?: string) {
     if (ss.recording) return;
     if (!outputName) {
         const hyprland = getHyprland();
@@ -34,21 +34,21 @@ export function recordOutput(ss: Screenshot, outputName?: string) {
     ss.startRecording({output: outputName});
 }
 
-export function recordOutputVisual(ss: Screenshot) {
+export function recordOutputVisual(ss: ScreenshotHandle) {
     if (ss.recording) return;
     ss.selectedMode = 'recording';
     ss.selectedTarget = 'monitor';
     ss.overlayOpen = true;
 }
 
-export function recordWindowVisual(ss: Screenshot) {
+export function recordWindowVisual(ss: ScreenshotHandle) {
     if (ss.recording) return;
     ss.selectedMode = 'recording';
     ss.selectedTarget = 'window';
     ss.overlayOpen = true;
 }
 
-export function recordWindowByAddress(ss: Screenshot, address: string) {
+export function recordWindowByAddress(ss: ScreenshotHandle, address: string) {
     if (ss.recording) return;
     const hyprland = getHyprland();
     if (!hyprland) return;
@@ -64,7 +64,7 @@ export function recordWindowByAddress(ss: Screenshot, address: string) {
     ss.startRecording({geometry});
 }
 
-export function recordWindow(ss: Screenshot) {
+export function recordWindow(ss: ScreenshotHandle) {
     if (ss.recording) return;
     const hyprland = getHyprland();
     if (!hyprland) return;
