@@ -3,7 +3,8 @@ import Mpris from 'gi://AstalMpris';
 import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, bind} from 'gnim';
-import Adw from '../../../lib/services/session/mediaController';
+import Adw from 'gi://Adw?version=1';
+import MediaController from '../../../lib/services/session/mediaController';
 import {exactQuery} from '../../../lib/services/state/apps';
 
 function lengthStr(length: number) {

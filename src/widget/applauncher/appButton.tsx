@@ -15,7 +15,7 @@ export default ({
     return (
         <Gtk.Button
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            cssClasses={['app-button', 'flat']}}
+            cssClasses={['app-button', 'flat']}
             onClicked={() => {
                 // Record frecency before launching
                 const desktopId = application.entry ?? application.name;
