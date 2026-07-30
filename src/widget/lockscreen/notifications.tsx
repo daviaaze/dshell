@@ -56,7 +56,7 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
             hscrollbarPolicy={Gtk.PolicyType.NEVER}
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             cssClasses={['card']}
-            ref={self => {
+            ref={_self => {
                 // Seed with currently-active notifications (some may have
                 // arrived before the screen locked)
                 try {

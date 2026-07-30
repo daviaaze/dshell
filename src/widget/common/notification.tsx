@@ -22,7 +22,6 @@ export default ({
 }) => {
     const urgency = notification.urgency;
     const isCritical = urgency === Notifd.Urgency.CRITICAL;
-    const isLow = urgency === Notifd.Urgency.LOW;
 
     const expireMs = getExpireMs(notification, getNotifdSafe());
     const appName = notification.appName || '';
