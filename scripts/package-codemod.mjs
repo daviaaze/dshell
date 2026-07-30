@@ -199,7 +199,7 @@ function rewriteImportsInFile(filePath, oldAbsPath) {
   const importRegex = /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\}\s*from\s*|[\w\s*,{}\n]+\s+from\s*)['"]([^'"]+)['"];?/gm;
   const dynamicImportRegex = /import\(['"]([^'"]+)['"]\)/g;
 
-  let replacements = [];
+  const replacements = [];
 
   // Static imports/exports
   let match;

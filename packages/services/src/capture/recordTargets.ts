@@ -1,5 +1,5 @@
 import {getHyprland} from '../hyprland';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {notify} from './utils';
 import type {ScreenshotHandle} from './types';
 

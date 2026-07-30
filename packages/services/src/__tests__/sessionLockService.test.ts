@@ -8,7 +8,7 @@
  * contract and that the service instantiates without throwing.
  */
 
-import SessionLockService from '../services/session/sessionLockService';
+import SessionLockService from '../session/sessionLockService';
 import {describe, it, expect, run} from './test-runner';
 
 describe('SessionLockService singleton', () => {

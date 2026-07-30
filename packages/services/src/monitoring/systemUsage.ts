@@ -11,7 +11,7 @@ const glibtop_get_fsusage = (buffer: GTop.glibtop_fsusage, path: string): void =
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Accessor, createState} from 'gnim';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 
 const POLL_INTERVAL = 1000;

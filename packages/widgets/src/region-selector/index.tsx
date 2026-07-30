@@ -5,7 +5,7 @@ import {getHyprland} from '@shade/services/hyprland';
 import Cairo from 'gi://cairo?version=1.0';
 import {bind, createState} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
-import Screenshot from '../../lib/services/capture/screenshot';
+import Screenshot from '@shade/services/capture/screenshot';
 import {getWindowGeometries} from '@shade/services/monitoring/windows';
 import type {WindowGeometry} from '@shade/services/monitoring/windows';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';

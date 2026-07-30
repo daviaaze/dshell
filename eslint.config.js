@@ -5,7 +5,7 @@ import sonarjs from 'eslint-plugin-sonarjs';
                                                                                                    
 export default tseslint.config(
     // Ignore generated type definitions and build artifacts
-    {ignores: ['**/node_modules/**', '**/@girs/**', 'build/**', 'dist/**', '**/.gnim/**']},
+    {ignores: ['**/node_modules/**', '**/@girs/**', 'build/**', 'dist/**', '**/.gnim/**', 'scripts/**']},
 
     eslint.configs.recommended,
     ...tseslint.configs.recommended,

@@ -8,7 +8,6 @@
             "ES2024"
         ],
         "outDir": "dist",
-        "rootDir": "./src",
         "strict": true,
         "ignoreDeprecations": "6.0",
         "moduleResolution": "Bundler",

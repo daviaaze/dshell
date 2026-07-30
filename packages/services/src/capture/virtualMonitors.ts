@@ -1,5 +1,5 @@
 import GLib from 'gi://GLib?version=2.0';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {notify} from './utils';
 import type {VirtualMonitor} from './types';

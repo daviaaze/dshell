@@ -4,10 +4,10 @@ import Gdk from 'gi://Gdk?version=4.0';
 import {getHyprland} from '@shade/services/hyprland';
 import {bind, createState} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
-import Screenshot from '../../lib/services/capture/screenshot';
-import WindowManager from '../../lib/services/state/windowManager';
+import Screenshot from '@shade/services/capture/screenshot';
+import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import logger from '../../lib/core/logger';
+import logger from '@shade/core/logger';
 import {draw} from './drawing';
 import {ControlPanel} from './controlPanel';
 import {

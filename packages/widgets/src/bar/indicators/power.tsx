@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {createState, effect, onCleanup} from 'gnim';
-import PowerProfiles from '../../../lib/services/power/powerProfiles';
+import PowerProfiles from '@shade/services/power/powerProfiles';
 import {connectFor, cleanupNode} from '@shade/core/connectFor';
 
 export default () => {

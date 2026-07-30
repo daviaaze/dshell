@@ -8,7 +8,7 @@ import {Object as GObject, register, property} from 'gnim/gobject';
 import {Accessor} from 'gnim';
 import {Process} from '@shade/core/process';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '../lib/core/logger';
+import logger from '@shade/core/logger';
 import {Theme, Stylesheet, type ThemeColors} from './theme';
 
 // ── Material 3 → shade CSS variable mapping ──

@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Bar from './bar';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import Weather from './weather';
 import Appearance from './appearance';
 import Idle from './idle';

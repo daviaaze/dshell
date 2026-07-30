@@ -19,7 +19,7 @@
  * ```
  */
 import Adw from 'gi://Adw?version=1';
-import logger from '../lib/core/logger';
+import logger from '@shade/core/logger';
 import {Object as GObject, register, property} from 'gnim/gobject';
 import {registerStyleSheet, updateStyleSheet} from './useStyle';
 

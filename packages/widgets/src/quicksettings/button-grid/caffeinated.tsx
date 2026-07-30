@@ -1,4 +1,4 @@
-import Inhibit from '../../../lib/services/power/inhibit';
+import Inhibit from '@shade/services/power/inhibit';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';

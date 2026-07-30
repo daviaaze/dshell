@@ -16,8 +16,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {programArgs} from 'system';
 import './picker.css'; // auto-loaded as CssProvider by gnim dev/bundle
-import logger from '../../lib/core/logger';
-import printOut from '../../lib/core/stdout';
+import logger from '@shade/core/logger';
+import printOut from '@shade/core/stdout';
 import type {SelectFn} from './types';
 import {HYPRCTL_BIN, parseWindowList} from './protocol';
 import {buildSources} from './sources';

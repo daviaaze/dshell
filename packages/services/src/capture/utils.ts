@@ -3,7 +3,7 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Process} from '@shade/core/process';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {RecorderBackend, RecordingFormat} from './types';
 
 // ── Constants ─────────────────────────────────────────────────────

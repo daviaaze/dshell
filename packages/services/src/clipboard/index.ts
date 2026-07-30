@@ -12,7 +12,7 @@
  *   `ClipboardItem`           → `ClipboardEntry`
  */
 
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import Gdk from 'gi://Gdk?version=4.0';
 import {
     getHistory,

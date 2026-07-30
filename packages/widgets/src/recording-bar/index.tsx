@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {getHyprland} from '@shade/services/hyprland';
 import {bind} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
-import Screenshot from '../../lib/services/capture/screenshot';
+import Screenshot from '@shade/services/capture/screenshot';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 
 function formatDuration(seconds: number): string {

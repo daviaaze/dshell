@@ -1,8 +1,8 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Accessor, For, bind, computed} from 'gnim';
-import Clock from '../../lib/services/time/clock';
-import TimerService from '../../lib/services/time/timerService';
+import Clock from '@shade/services/time/clock';
+import TimerService from '@shade/services/time/timerService';
 import {useSettings} from '@shade/services/settings/index';
 import {fmtDuration, cityName, fmtOffset} from '@shade/core/time';
 import {TimerSection} from '../quicksettings/timer/TimerSection';

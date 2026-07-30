@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import ShellState from '../../lib/services/state/shellState';
-import SessionControl from '../../lib/services/power/sessionControl';
+import ShellState from '@shade/services/state/shellState';
+import SessionControl from '@shade/services/power/sessionControl';
 import {ActionButton} from './actionButton';
 
 export const PowerMenu = () => (

@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind, computed} from 'gnim';
-import WeatherLib from '../../lib/services/location/weather';
+import WeatherLib from '@shade/services/location/weather';
 import {
     formatTime,
     windDirectionLabel,

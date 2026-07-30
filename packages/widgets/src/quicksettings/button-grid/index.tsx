@@ -5,7 +5,7 @@ import ColorScheme from './colorScheme';
 import Bluetooth from './bluetooth';
 import Caffeinated from './caffeinated';
 import QuickTimerButton from '../timer/QuickTimerButton';
-import Network from '../network';
+import Network from '../network/index';
 import Screenshot from './screenshot';
 import NightLight from './nightLight';
 import Touchpad from './touchpad';

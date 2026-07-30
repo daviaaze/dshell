@@ -1,6 +1,6 @@
 import {Object, register, property} from 'gnim/gobject';
 import Mpris from 'gi://AstalMpris';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {connectFor, cleanupNode} from '@shade/core/connectFor';
 
 /**

@@ -1,6 +1,6 @@
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, signal, property} from 'gnim/gobject';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 
 interface KeyboardDevice {

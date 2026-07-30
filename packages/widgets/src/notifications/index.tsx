@@ -3,13 +3,13 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {For, bind, createState, computed, effect, onCleanup} from 'gnim';
 import Notification from '../common/notification';
 import PopupWindow from '../common/PopupWindow';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
 import {getExpireMs} from '@shade/services/notifications/expire';
 import {DismissTimers} from '@shade/services/notifications/dismissTimers';
 import {useSettings} from '@shade/services/settings/index';
-import ShellState from '../../lib/services/state/shellState';
-import DndService from '../../lib/services/notifications/dnd';
+import ShellState from '@shade/services/state/shellState';
+import DndService from '@shade/services/notifications/dnd';
 import {connectFor, cleanupNode} from '@shade/core/connectFor';
 
 const NotificationContent = ({

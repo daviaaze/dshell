@@ -1,6 +1,6 @@
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {readFile} from '@shade/core/file';
 import {Process} from '@shade/core/process';
 import {Accessor, createState} from 'gnim';

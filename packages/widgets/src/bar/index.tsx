@@ -3,7 +3,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, onCleanup} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import {Gdk2HyprMonitor, monitors} from '@shade/services/monitoring/monitors';
 import {useSettings} from '@shade/services/settings/index';
 import SystemIndicators from './systemIndicators';

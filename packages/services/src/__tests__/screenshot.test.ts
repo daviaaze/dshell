@@ -7,7 +7,7 @@
  * Run: gjs -m src/lib/__tests__/screenshot.test.ts
  */
 
-import Screenshot from '../services/capture/screenshot';
+import Screenshot from '../capture/screenshot';
 import {
     parseGrimGeometry,
     toGrimGeometry,

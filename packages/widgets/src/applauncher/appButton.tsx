@@ -1,7 +1,7 @@
 import Apps from 'gi://AstalApps';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import {FrecencyManager} from '@shade/services/search/frecency';
 import {launchApp} from '@shade/services/state/apps';
 

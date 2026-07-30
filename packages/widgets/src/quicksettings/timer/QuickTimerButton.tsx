@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';
-import TimerService from '../../../lib/services/time/timerService';
+import TimerService from '@shade/services/time/timerService';
 import {TimerSection} from './TimerSection';
 import type {QuickButton} from '../button-grid/quickButton';
 import {QuickToggleButton} from '../../common/quickToggleButton';

@@ -1,6 +1,6 @@
 import {getHyprland} from '../hyprland';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {getScreenCaptureSettings} from '../settings/screenCapture';
 import {RecorderBackend, RecordingFormat} from './types';

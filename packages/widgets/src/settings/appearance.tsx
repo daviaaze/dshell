@@ -1,7 +1,7 @@
 import {onCleanup} from 'gnim';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import {useSettings} from '@shade/services/settings/index';
-import PaletteGenerator from '../../style/palette';
+import PaletteGenerator from '@shade/style/palette';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {TEMP_MIN, TEMP_MAX} from '@shade/services/display/nightLight';

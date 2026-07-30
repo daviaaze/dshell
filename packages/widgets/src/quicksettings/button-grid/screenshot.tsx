@@ -1,4 +1,4 @@
-import Screenshot from '../../../lib/services/capture/screenshot';
+import Screenshot from '@shade/services/capture/screenshot';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';

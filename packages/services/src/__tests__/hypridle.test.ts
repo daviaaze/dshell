@@ -10,7 +10,7 @@
  * Run: gjs -m src/lib/__tests__/hypridle.test.ts
  */
 
-import Hypridle from '../services/power/hypridle';
+import Hypridle from '../power/hypridle';
 import {describe, it, expect, run} from './test-runner';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

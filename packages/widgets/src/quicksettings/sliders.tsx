@@ -1,6 +1,6 @@
 import {bind, createState} from 'gnim';
-import Brightness from '../../lib/services/display/brightness';
-import AudioController from '../../lib/services/audio/audioController';
+import Brightness from '@shade/services/display/brightness';
+import AudioController from '@shade/services/audio/audioController';
 import {AudioEndpointControl} from '../common/audioControl';
 import {Slider} from '../common/slider';
 import logger from '@shade/core/logger';

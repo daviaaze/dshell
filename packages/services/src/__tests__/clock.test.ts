@@ -4,7 +4,7 @@
  * Run: gjs -m src/lib/__tests__/clock.test.ts
  */
 
-import Clock from '../services/time/clock';
+import Clock from '../time/clock';
 import GLib from 'gi://GLib?version=2.0';
 import {describe, it, expect, run} from './test-runner';
 

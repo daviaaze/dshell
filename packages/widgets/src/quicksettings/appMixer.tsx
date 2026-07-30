@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, For} from 'gnim';
-import AudioController from '../../lib/services/audio/audioController';
-import AppMixer from '../../lib/services/audio/mixer';
+import AudioController from '@shade/services/audio/audioController';
+import AppMixer from '@shade/services/audio/mixer';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export default () => {

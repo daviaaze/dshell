@@ -1,4 +1,4 @@
-import Touchpad from '../../../lib/services/input/touchpad';
+import Touchpad from '@shade/services/input/touchpad';
 import {bind} from 'gnim';
 import type {QuickButton} from './quickButton';
 import {QuickToggleButton} from '../../common/quickToggleButton';

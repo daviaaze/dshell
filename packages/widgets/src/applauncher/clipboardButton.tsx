@@ -3,7 +3,7 @@ import {
     formatClipboardPreview,
     copyClipboardItem,
 } from '@shade/services/clipboard/index';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import {ClipboardEntry} from '@shade/services/clipboard/encryptedStore';
 
 export default ({item}: {item: ClipboardEntry}) => {

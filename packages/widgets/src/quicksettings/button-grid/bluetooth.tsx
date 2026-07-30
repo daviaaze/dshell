@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, createState, For} from 'gnim';
 import {QuickToggleButton} from '../../common/quickToggleButton';
 import type {QuickButton} from './quickButton';
-import logger from '../../../lib/core/logger';
+import logger from '@shade/core/logger';
 import {LinkedBox} from '../../common/linkedBox';
 import {toArray} from '@shade/core/gjsUtils';
 

@@ -2,7 +2,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import {getHyprland} from '../hyprland';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {
     ensureScreenshotDir,

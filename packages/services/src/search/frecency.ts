@@ -11,7 +11,7 @@
  *   finalSearchScore = fuzzyScore * (1 + boost * frecencyScore)
  */
 import {Object as GObject, register, signal, property} from 'gnim/gobject';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import {FrecencyStorage, type FrecencyEntry} from './storage';
 
 // ── Constants ──

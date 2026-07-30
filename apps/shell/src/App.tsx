@@ -9,11 +9,11 @@ import {register} from 'gnim/gobject';
 import {gettext} from 'gettext';
 import {SettingsContext, createAppSettings} from '@shade/services/settings/index';
 import {requestHandler} from '@shade/services/state/requestHandler';
-import ShellState from '../../lib/services/state/shellState';
-import Screenshot from '../../lib/services/capture/screenshot';
-import Touchpad from '../../lib/services/input/touchpad';
+import ShellState from '@shade/services/state/shellState';
+import Screenshot from '@shade/services/capture/screenshot';
+import Touchpad from '@shade/services/input/touchpad';
 import {registerServices, getWidgetDescriptors} from '@shade/widgets/index';
-import ServiceRegistry from '../../lib/core/serviceRegistry';
+import ServiceRegistry from '@shade/core/serviceRegistry';
 import logger, {perf} from '@shade/core/logger';
 import {setApp} from '@shade/services/appHandle';
 

@@ -4,7 +4,7 @@
  * Run via: pnpm test (or manually: gjs -m src/lib/__tests__/shellState.test.ts)
  */
 
-import ShellState from '../services/state/shellState';
+import ShellState from '../state/shellState';
 import {describe, it, expect, run} from './test-runner';
 
 describe('ShellState singleton', () => {

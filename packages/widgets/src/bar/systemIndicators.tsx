@@ -1,8 +1,8 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind} from 'gnim';
-import ShellState from '../../lib/services/state/shellState';
-import AudioController from '../../lib/services/audio/audioController';
+import ShellState from '@shade/services/state/shellState';
+import AudioController from '@shade/services/audio/audioController';
 import KeepAwakeIndicator from './indicators/keepAwake';
 import PowerIndicator from './indicators/power';
 import BluetoothIndicator from './indicators/bluetooth';

@@ -5,7 +5,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import {bind, computed, For, onCleanup} from 'gnim';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
 import {useSettings} from '@shade/services/settings/index';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import {monitors} from '@shade/services/monitoring/monitors';
 import {getApp} from '@shade/services/appHandle';
 

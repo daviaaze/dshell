@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {getHyprland} from '@shade/services/hyprland';
 import {bind, For, computed, onCleanup} from 'gnim';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import {useSettings} from '@shade/services/settings/index';
 import {getApp} from '@shade/services/appHandle';
 import DockItem from './item';

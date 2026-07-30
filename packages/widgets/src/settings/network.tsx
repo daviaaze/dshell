@@ -9,7 +9,7 @@ import {
     securityLabelFromKeyMgmt,
     deleteConnectionAsync,
 } from '../quicksettings/network/utils';
-import logger from '../../lib/core/logger';
+import logger from '@shade/core/logger';
 import {showConnectionEditor} from './connectionEditor';
 import {showHiddenNetworkDialog} from './hiddenNetworkDialog';
 

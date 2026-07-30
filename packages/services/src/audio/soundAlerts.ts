@@ -2,10 +2,10 @@ import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import AstalBattery from 'gi://AstalBattery';
 import {bus} from '../bus';
-import ServiceRegistry from '../../core/serviceRegistry';
+import ServiceRegistry from '@shade/core/serviceRegistry';
 import {getNotifdSafe} from '../notifications/guard';
 import {Process} from '@shade/core/process';
-import logger from '../../core/logger';
+import logger from '@shade/core/logger';
 import type {Accessor} from 'gnim';
 
 /** Fraction (0..1) at which low-battery warning sounds fire. */

@@ -1,5 +1,5 @@
 import {createRoot} from 'gnim';
-import WindowManager from '../../lib/services/state/windowManager';
+import WindowManager from '@shade/services/state/windowManager';
 import {createSettingsWindow} from './index';
 
 let settingsDispose: (() => void) | null = null;

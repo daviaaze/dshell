@@ -1,4 +1,4 @@
-import Weather from '../../lib/services/location/weather';
+import Weather from '@shade/services/location/weather';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind} from 'gnim';
