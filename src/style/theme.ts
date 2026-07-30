@@ -245,6 +245,18 @@ export class Theme extends GObject {
         }
     }
 
+    /** Map shade palette keys to Adwaita CSS variable names. */
+    static readonly ADWAITA_MAP: Record<string, string> = {
+        bg: '--window-bg-color',
+        fg: '--window-fg-color',
+        primary: '--accent-bg-color',
+        'on-primary': '--accent-fg-color',
+        error: '--error-bg-color',
+        'on-error': '--error-fg-color',
+        'outline-variant': '--border-color',
+        surface: '--card-bg-color',
+    };
+
     #applyTheme(colors: ThemeColors): void {
         const rules: string[] = [];
         for (const [key, value] of Object.entries(colors)) {
@@ -261,7 +273,17 @@ export class Theme extends GObject {
             }
             const varName = `--shade-${key}`;
             rules.push(`  ${varName}: ${value};`);
+
+            // Also set matching Adwaita variables so native widgets theme too
+            const adwaitaVar = Theme.ADWAITA_MAP[key];
+            if (adwaitaVar) {
+                rules.push(`  ${adwaitaVar}: ${value};`);
+            }
         }
+        // --accent-color is used by .accent style class on labels, buttons
+        const accent = colors['primary'] || 'var(--shade-primary)';
+        rules.push(`  --accent-color: ${accent};`);
+
         const css = `* {\n${rules.join('\n')}\n}`;
         updateStyleSheet(this.#paletteKey, css);
     }
