@@ -29,9 +29,17 @@ export default () => {
                                 light: 1,
                                 dark: 2,
                             };
-                            settings.setColorScheme(
-                                map[self.activeName ?? 'auto'] ?? 0
-                            );
+                            const newVal =
+                                map[self.activeName ?? 'auto'] ?? 0;
+                            // Guard: skip when the value hasn't changed.
+                            // Prevents a loop when ColorScheme.setter
+                            // writes back to shade GSettings, which
+                            // triggers the subscribe below to
+                            // programmatically set activeName, which
+                            // would fire notify::active-name again.
+                            if (newVal !== settings.colorScheme.peek()) {
+                                settings.setColorScheme(newVal);
+                            }
                         }}
                         ref={self => {
                             const v = settings.colorScheme.peek();

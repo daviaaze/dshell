@@ -158,6 +158,11 @@ export class Theme extends GObject {
     #activeStylesheet: Stylesheet | null = null;
     #themes: Map<string, Stylesheet> = new Map();
     #isDark = false;
+    /** Debounce id for #reevaluate() — merges rapid consecutive
+     *  calls (e.g. from both notify::dark AND notify::color-scheme
+     *  firing during a single preference change) into one CSS update. */
+    #reevaluateTimer: number | null = null;
+    #reevaluateQueued = false;
 
     /** Whether dark mode is active. */
     @property
@@ -179,14 +184,14 @@ export class Theme extends GObject {
         this.#styleManager.connect('notify::dark', () => {
             this.#isDark = this.#styleManager.dark;
             this.notify('dark');
-            this.#reevaluate();
+            this.#debouncedReevaluate();
         });
 
         // Also listen for color-scheme changes (system preference)
         this.#styleManager.connect('notify::color-scheme', () => {
             this.#isDark = this.#styleManager.dark;
             this.notify('dark');
-            this.#reevaluate();
+            this.#debouncedReevaluate();
         });
     }
 
@@ -240,6 +245,25 @@ export class Theme extends GObject {
     }
 
     // ── Internals ──
+
+    /** Debounced variant — merges multiple rapid calls into one.
+     *  Both notify::dark and notify::color-scheme fire when the
+     *  system colour preference changes; this avoids applying CSS
+     *  twice in the same microtask. */
+    #debouncedReevaluate(): void {
+        if (this.#reevaluateQueued) return;
+        this.#reevaluateQueued = true;
+        this.#reevaluateTimer = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            0,
+            () => {
+                this.#reevaluateQueued = false;
+                this.#reevaluateTimer = null;
+                this.#reevaluate();
+                return GLib.SOURCE_REMOVE;
+            }
+        );
+    }
 
     #reevaluate(): void {
         if (this.#activeStylesheet) {
