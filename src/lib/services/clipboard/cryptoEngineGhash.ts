@@ -58,7 +58,7 @@ export function buildAuthData(
     authData.set(aadPadded);
     authData.set(ctPadded, aadPadded.length);
     authData.set(
-        lenBlock(additionalData.length, ciphertext.length),
+        lenBlock(additionalData.length * 8, ciphertext.length * 8),
         aadPadded.length + ctPadded.length
     );
     return authData;

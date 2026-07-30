@@ -214,6 +214,10 @@ function secretServiceHasCollection(): boolean {
     }
 }
 
+export function isKeyPersistent(): boolean {
+    return keyringReady;
+}
+
 export function hasKey(): boolean {
     if (!keyringReady) return false;
     try {

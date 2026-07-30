@@ -21,7 +21,7 @@ import {Object, register, signal} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import {encrypt, decrypt} from './cryptoEngine';
-import {getKey, initKeyManager} from './keyManager';
+import {getKey, initKeyManager, isKeyPersistent} from './keyManager';
 import logger from '../../core/logger';
 
 export interface ClipboardEntry {
@@ -41,7 +41,7 @@ const HISTORY_FILE = `${DATA_DIR}/clipboard-history.enc`;
 const LEGACY_CLIPBOARD_DIR = `${DATA_DIR}/clipboard`;
 
 const MAGIC = 0x53484544; // "SHED" as uint32 LE
-const VERSION = 1;
+const VERSION = 2;
 const NONCE_SIZE = 12;
 const TAG_SIZE = 16;
 
@@ -52,7 +52,7 @@ const LEGACY_PNG_RE = /^clipboard-\d+\.png$/;
 
 @register
 export class EncryptedStore extends Object {
-    static instance: EncryptedStore;
+    private static instance: EncryptedStore;
 
     static get_default() {
         if (!this.instance) {
@@ -64,6 +64,7 @@ export class EncryptedStore extends Object {
     #entries: ClipboardEntry[] = [];
     #encryptionKey: Uint8Array | null = null;
     #ready = false;
+    #keyPersistent = false;
 
     /** Emitted after every mutation (add, delete, toggle, clear). */
     @signal
@@ -84,10 +85,13 @@ export class EncryptedStore extends Object {
 
         if (testKey) {
             this.#encryptionKey = testKey;
+            this.#keyPersistent = true;
         } else {
             initKeyManager();
             this.#encryptionKey = getKey();
+            this.#keyPersistent = isKeyPersistent();
         }
+        this.#migrateLegacyJson();
         this.#loadEncryptedFile();
         this.#migrateLegacyImages();
         this.#ready = true;
@@ -159,10 +163,11 @@ export class EncryptedStore extends Object {
 
         // Evict oldest unpinned entries if over limit
         if (this.#entries.length > MAX_HISTORY) {
-            const toEvict = this.#entries.length - MAX_HISTORY;
+            let toEvict = this.#entries.length - MAX_HISTORY;
             for (let i = this.#entries.length - 1; i >= 0 && toEvict > 0; i--) {
                 if (!this.#entries[i]!.pinned) {
                     this.#entries.splice(i, 1);
+                    toEvict--;
                 }
             }
         }
@@ -300,21 +305,27 @@ export class EncryptedStore extends Object {
         } catch (e) {
             logger.warn(
                 'clipboard',
-                'failed to load history, starting fresh:',
+                'failed to load history, backing up and starting fresh:',
                 e
             );
-            this.#entries = [];
+            // Back up the corrupted/wrong-key file before clearing
             try {
-                file.delete(null);
+                const bak = Gio.File.new_for_path(HISTORY_FILE + '.bak');
+                file.move(bak, Gio.FileCopyFlags.OVERWRITE, null, null);
             } catch {
-                /* ignore */
+                file.delete(null);
             }
+            this.#entries = [];
         }
     }
 
     #save(): void {
         if (!this.#encryptionKey) {
             logger.warn('clipboard', 'no encryption key, skipping save');
+            return;
+        }
+        if (!this.#keyPersistent) {
+            logger.debug('clipboard', 'ephemeral key, skipping persist');
             return;
         }
 
@@ -363,6 +374,30 @@ export class EncryptedStore extends Object {
     }
 
     // ── Legacy migration ──────────────────────────────────────────────────
+
+    /**
+     * Migrate or delete the legacy plaintext clipboard-history.json that
+     * was produced by an earlier (pre-encryption) version.  Nothing reads
+     * this file in the current codebase, but it could leak sensitive data.
+     */
+    #migrateLegacyJson(): void {
+        const legacyFile = Gio.File.new_for_path(
+            `${DATA_DIR}/clipboard-history.json`
+        );
+        if (!legacyFile.query_exists(null)) return;
+
+        const bakPath = `${DATA_DIR}/clipboard-history.json.migrated`;
+        try {
+            const bak = Gio.File.new_for_path(bakPath);
+            legacyFile.move(bak, Gio.FileCopyFlags.OVERWRITE, null, null);
+            logger.info(
+                'clipboard',
+                'legacy clipboard-history.json moved to .migrated'
+            );
+        } catch (e) {
+            logger.warn('clipboard', 'could not archive legacy JSON:', e);
+        }
+    }
 
     /**
      * Old format stored image bytes as separate PNG files referenced by

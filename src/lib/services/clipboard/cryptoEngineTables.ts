@@ -81,21 +81,31 @@ export function padTo16(data: Uint8Array): Uint8Array {
     return padded;
 }
 
-/** Create a 16-byte length block for GCM (big-endian 64-bit aLen || cLen). */
+/**
+ * Create a 16-byte length block for GCM (big-endian 64-bit aLen || cLen).
+ *
+ * JS bitwise operators truncate to 32 bits, but clipboard payloads are
+ * always < 4 GiB (2³² bits), so the high 32 bits of each 64-bit word
+ * are unconditionally zero.  If this assumption ever changes, use BigInt.
+ */
 export function lenBlock(aLen: number, cLen: number): Uint8Array {
     const block = new Uint8Array(16);
-    block[0] = (aLen >>> 56) & 0xff;
-    block[1] = (aLen >>> 48) & 0xff;
-    block[2] = (aLen >>> 40) & 0xff;
-    block[3] = (aLen >>> 32) & 0xff;
+    // High 32 bits of aLen (always 0 for clipboard data)
+    block[0] = 0;
+    block[1] = 0;
+    block[2] = 0;
+    block[3] = 0;
+    // Low 32 bits of aLen
     block[4] = (aLen >>> 24) & 0xff;
     block[5] = (aLen >>> 16) & 0xff;
     block[6] = (aLen >>> 8) & 0xff;
     block[7] = aLen & 0xff;
-    block[8] = (cLen >>> 56) & 0xff;
-    block[9] = (cLen >>> 48) & 0xff;
-    block[10] = (cLen >>> 40) & 0xff;
-    block[11] = (cLen >>> 32) & 0xff;
+    // High 32 bits of cLen (always 0 for clipboard data)
+    block[8] = 0;
+    block[9] = 0;
+    block[10] = 0;
+    block[11] = 0;
+    // Low 32 bits of cLen
     block[12] = (cLen >>> 24) & 0xff;
     block[13] = (cLen >>> 16) & 0xff;
     block[14] = (cLen >>> 8) & 0xff;

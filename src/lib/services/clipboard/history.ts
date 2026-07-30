@@ -49,8 +49,14 @@ function contentHash(data: Uint8Array): string {
     return GLib.compute_checksum_for_string(GLib.ChecksumType.SHA1, b64, -1) ?? '';
 }
 
+// Deterministic uniqueness — timestamp + monotonic counter, no PRNG needed
+// (IDs are collision-avoidance only, not security tokens).
+let idCounter = 0;
+
 function generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    return (
+        Date.now().toString(36) + (idCounter++).toString(36).padStart(4, '0')
+    );
 }
 
 // ── Watcher callback ─────────────────────────────────────────────────────────

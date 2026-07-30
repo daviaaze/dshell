@@ -190,7 +190,7 @@ describe('EncryptedStore', () => {
     it('entriesChanged signal fires on addEntry', () => {
         const store = freshStore();
         let signalFired = false;
-        (store as any).connect('entries-changed', () => {
+        (store as unknown as {connect(s: string, cb: () => void): number}).connect('entries-changed', () => {
             signalFired = true;
         });
         store.addEntry({
