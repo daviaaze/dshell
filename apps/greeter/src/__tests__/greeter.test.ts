@@ -5,7 +5,7 @@
  * (built via esbuild by the 'test' script in package.json)
  */
 
-import {GreetSession} from '@shade/widgets/greeter/GreetSession';
+import {GreetSession} from '../greeter-ui/GreetSession';
 import {describe, it, expect, run} from './test-runner';
 
 describe('GreetSession', () => {

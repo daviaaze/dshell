@@ -15,7 +15,7 @@ import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {programArgs, programInvocationName, exit} from 'system';
 import {render} from '@gnim-js/gtk4';
-import {Greeter} from '@shade/widgets/greeter/index';
+import {Greeter} from './greeter-ui/index';
 import logger from '@shade/core/logger';
 
 // ── Minimal Gtk application ──

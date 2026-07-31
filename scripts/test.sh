@@ -10,7 +10,8 @@ cd "$(dirname "$0")/.."
 export PATH="$PWD/node_modules/.bin:$PATH"
 
 failed=0
-for t in src/lib/__tests__/*.test.ts; do
+# Find all test files across the monorepo
+for t in $(find packages apps -path '*/__tests__/*.test.ts' -not -path '*/node_modules/*' | sort); do
     name=$(basename "$t")
     [ "$name" = "all.test.ts" ] && continue
     echo "=== $name ==="
