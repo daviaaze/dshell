@@ -172,13 +172,30 @@ export class GreetSession extends Object {
 
     /**
      * Submit a password (or other PAM response).
+     * Only valid while PAM is waiting for input (awaiting-input state).
+     * Posting at other times (e.g. during the pam_fprintd info wait) would
+     * throw in greetd — guard against it.
      */
     postAuth(response: string): void {
         if (!this.#greeter) return;
+        if (this.#state !== 'awaiting-input') {
+            logger.warn(
+                'greeter',
+                `postAuth ignored — no auth question pending (state=${this.#state})`
+            );
+            return;
+        }
         this.state = 'authenticating';
         this.#errorMessage = '';
         this.notify(NOTIFY_ERROR_MSG);
-        this.#greeter.post_auth(response);
+        try {
+            this.#greeter.post_auth(response);
+        } catch (e) {
+            logger.error('greeter', 'post_auth failed:', e);
+            this.#errorMessage = `Authentication error: ${e}`;
+            this.notify(NOTIFY_ERROR_MSG);
+            this.state = 'error';
+        }
     }
 
     /**
@@ -213,8 +230,18 @@ export class GreetSession extends Object {
         this.#disconnectAll();
         this.#greeter = null;
         this.state = 'idle';
-        this.#errorMessage = '';
-        this.#infoMessage = '';
+        this.errorMessage = '';
+        this.infoMessage = '';
+    }
+
+    /**
+     * Abort any in-flight auth and return to the initial (username) step.
+     * Keeps the entered username so the user can retry or correct it.
+     * AstalGreet has no cancel_session, so we drop the proxy — greetd
+     * times out the abandoned server-side session on its own.
+     */
+    reset(): void {
+        this.cancel();
     }
 
     #disconnectAll(): void {
