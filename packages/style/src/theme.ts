@@ -158,10 +158,6 @@ export class Theme extends GObject {
     #activeStylesheet: Stylesheet | null = null;
     #themes: Map<string, Stylesheet> = new Map();
     #isDark = false;
-    /** Debounce id for #reevaluate() — merges rapid consecutive
-     *  calls (e.g. from both notify::dark AND notify::color-scheme
-     *  firing during a single preference change) into one CSS update. */
-    #reevaluateTimer: number | null = null;
     #reevaluateQueued = false;
 
     /** Whether dark mode is active. */
@@ -253,12 +249,11 @@ export class Theme extends GObject {
     #debouncedReevaluate(): void {
         if (this.#reevaluateQueued) return;
         this.#reevaluateQueued = true;
-        this.#reevaluateTimer = GLib.timeout_add(
+        GLib.timeout_add(
             GLib.PRIORITY_DEFAULT,
             0,
             () => {
                 this.#reevaluateQueued = false;
-                this.#reevaluateTimer = null;
                 this.#reevaluate();
                 return GLib.SOURCE_REMOVE;
             }

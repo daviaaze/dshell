@@ -4,17 +4,17 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
+    "format": "prettier --write \"{packages,apps}/*/src/**/*.{ts,tsx,css,json}\"",
+    "format:check": "prettier --check \"{packages,apps}/*/src/**/*.{ts,tsx,css,json}\"",
     "types": "gnim types --alias",
     "check": "tsc --noEmit",
-    "check:all": "pnpm run types && pnpm run lint && pnpm run check && pnpm run deps:check",
+    "check:all": "pnpm run types && pnpm run lint && pnpm run check && pnpm run deps:check && pnpm run test",
     "deps:graph": "bash scripts/deps-graph.sh",
     "deps:check": "OUT_DIR=$(mktemp -d) bash scripts/deps-graph.sh",
     "test": "nix develop -c bash scripts/test.sh",
     "build": "nix build",
     "dev": "bash scripts/dev.sh",
-    "syntax": "mkdir -p /tmp/esbuild-check && esbuild src/apps/shell/main.ts --bundle --format=esm --external:gi://* --external:resource://* --external:system --external:gettext --external:gnim --external:gnim/* --external:gnim-schemas --outdir=/tmp/esbuild-check && rm -rf /tmp/esbuild-check"
+    "syntax": "mkdir -p /tmp/esbuild-check && esbuild apps/shell/src/main.ts --bundle --format=esm --external:gi://* --external:resource://* --external:system --external:gettext --external:gnim --external:gnim/* --external:gnim-schemas --outdir=/tmp/esbuild-check && rm -rf /tmp/esbuild-check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

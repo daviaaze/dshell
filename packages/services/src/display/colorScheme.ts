@@ -319,6 +319,7 @@ export class ColorScheme extends Object {
         const gtkSettings = Gtk.Settings.get_default();
         if (gtkSettings) {
             try {
+                // eslint-disable-next-line sonarjs/void-use
                 void (gtkSettings as unknown as Record<string, unknown>)[
                     'gtk_interface_color_scheme'
                 ];
