@@ -5,6 +5,7 @@ import {QuickToggleButton} from '../../common/quickToggleButton';
 import {LinkedBox} from '../../common/linkedBox';
 import WifiPopover from './wifiPopover';
 import {wifiIconName} from './utils';
+import {bus} from '@shade/services/bus';
 import NetworkService from '@shade/services/network/networkService';
 import AstalNetwork from 'gi://AstalNetwork?version=0.1';
 
@@ -80,7 +81,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
                 cssClasses={wifiCssClasses}
                 label={label}
                 onClick={() => {
-                    net.toggleWifi();
+                    bus.emit('network:wifi:toggle');
                     return true;
                 }}
                 popover={popover}
