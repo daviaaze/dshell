@@ -9,5 +9,9 @@
     "@shade/services": "workspace:*",
     "@shade/widgets": "workspace:*",
     "@shade/style": "workspace:*"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
   }
 }
