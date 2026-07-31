@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build devShell
+        run: nix develop --command true
+      - name: Install dependencies
+        run: nix develop -c pnpm install --frozen-lockfile
+      - name: Lint
+        run: nix develop -c pnpm run lint
+      - name: TypeScript check
+        run: nix develop -c pnpm run check
+      - name: Dependency cycle check
+        run: nix develop -c pnpm run deps:check
+      - name: Tests
+        run: nix develop -c pnpm run test
