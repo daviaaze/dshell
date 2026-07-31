@@ -2,7 +2,7 @@ import Apps from 'gi://AstalApps';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import WindowManager from '@shade/services/state/windowManager';
-import {FrecencyManager} from '@shade/services/search/frecency';
+import {bus} from '@shade/services/bus';
 import {launchApp} from '@shade/services/state/apps';
 
 export default ({
@@ -20,7 +20,7 @@ export default ({
                 // Record frecency before launching
                 const desktopId = application.entry ?? application.name;
                 if (desktopId) {
-                    FrecencyManager.get_default().recordLaunch(desktopId);
+                    bus.emit('search:frecency:record', desktopId);
                 }
                 if (onClicked) onClicked();
                 WindowManager.get_default().applauncher!.visible = false;

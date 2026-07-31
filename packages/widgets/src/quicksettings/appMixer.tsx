@@ -2,6 +2,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {bind, For} from 'gnim';
 import AudioController from '@shade/services/audio/audioController';
 import AppMixer from '@shade/services/audio/mixer';
+import {bus} from '@shade/services/bus';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export default () => {
@@ -146,9 +147,9 @@ export default () => {
                                         widthRequest={100}
                                         adjustment={adjustment}
                                         onValueChanged={self =>
-                                            mixer.setVolume(
-                                                id,
-                                                self.get_value()
+                                            bus.emit(
+                                                'audio:app-mixer:set-volume',
+                                                {id, value: self.get_value()}
                                             )
                                         }
                                     />

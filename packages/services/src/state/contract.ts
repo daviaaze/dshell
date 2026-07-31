@@ -11,6 +11,7 @@ export interface ShellEvents {
     'shell:lock': void;
     'shell:unlock': void;
     'shell:qs:close': void;
+    'shell:launcher:close': void;
 
     /** Commands — delegate to widget actions */
     'shell:clipboard:toggle': void;

@@ -11,6 +11,7 @@
  *   finalSearchScore = fuzzyScore * (1 + boost * frecencyScore)
  */
 import {Object as GObject, register, signal, property} from 'gnim/gobject';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 import {FrecencyStorage, type FrecencyEntry} from './storage';
 
@@ -34,6 +35,7 @@ export class FrecencyManager extends GObject {
 
     #storage: FrecencyStorage;
     #initialized = false;
+    #busInitialized = false;
 
     constructor() {
         super();
@@ -52,6 +54,13 @@ export class FrecencyManager extends GObject {
             'frecency',
             `loaded ${Object.keys(this.#storage.getAll()).length} frecency entries`
         );
+        this.#initBus();
+    }
+
+    #initBus(): void {
+        if (this.#busInitialized) return;
+        this.#busInitialized = true;
+        bus.on('search:frecency:record', desktopId => this.recordLaunch(desktopId));
     }
 
     /**

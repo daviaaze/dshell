@@ -1,6 +1,7 @@
 import {Process} from '@shade/core/process';
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 
 export interface AudioStream {
@@ -117,14 +118,24 @@ function parseTargets(pwMetadata: string): Map<number, number> {
 export default class AppMixer extends Object {
     private static instance: AppMixer;
     static get_default() {
-        if (!this.instance) this.instance = new AppMixer();
+        if (!this.instance) {
+            this.instance = new AppMixer();
+            this.instance.#initBus();
+        }
         return this.instance;
+    }
+
+    #initBus(): void {
+        if (this.#busInitialized) return;
+        this.#busInitialized = true;
+        bus.on('audio:app-mixer:set-volume', ({id, value}) => this.setVolume(id, value));
     }
 
     #streams: AudioStream[] = [];
     #captureStreams: AudioStream[] = [];
     #timer: number | null = null;
     #lastModified = new Map<number, number>();
+    #busInitialized = false;
     static readonly MODIFY_GRACE_MS = 3000;
 
     @property

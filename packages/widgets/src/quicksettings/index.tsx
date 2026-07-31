@@ -5,6 +5,7 @@ import {bind} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
 import {useSettings} from '@shade/services/settings/index';
+import {bus} from '@shade/services/bus';
 import logger from '@shade/core/logger';
 import {NotificationList} from './notificationList';
 import {TrayBox} from './tray';
@@ -44,7 +45,7 @@ export default () => {
                     self.visible &&
                     ShellState.get_default().launcherOpen
                 )
-                    shellState.closeLauncher();
+                    bus.emit('shell:launcher:close');
                 shellState.qsOpen = self.visible;
             }}
             cssClasses={['card', 'frame', 'background']}

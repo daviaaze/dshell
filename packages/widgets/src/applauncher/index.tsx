@@ -70,7 +70,7 @@ export default () => {
                 } else {
                     entryRef?.set_text('');
                     setMode('apps');
-                    shellState.closeLauncher();
+                    bus.emit('shell:launcher:close');
                 }
             }}
             cssClasses={['card', 'frame', 'background']}

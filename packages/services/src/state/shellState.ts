@@ -143,6 +143,9 @@ export default class ShellState extends GObject {
         this.#busSubscriptions.push(
             bus.on('shell:qs:close', () => this.closeQuickSettings())
         );
+        this.#busSubscriptions.push(
+            bus.on('shell:launcher:close', () => this.closeLauncher())
+        );
     }
 
     #onToggleSettings: (() => void) | null = null;
