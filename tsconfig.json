@@ -1,19 +1,44 @@
 {
-  "compilerOptions": {
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "target": "ES2022",
-    "module": "ES2022",
-    "lib": ["ES2024"],
-    "outDir": "dist",
-    "rootDir": "./src",
-    "strict": true,
-    "moduleResolution": "Bundler",
-    "skipLibCheck": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "gnim",
-    "types": ["gi", "gnim"],
-    "typeRoots": ["./.gnim/types"]
-  },
-  "include": ["./src/**/*"]
+    "compilerOptions": {
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "target": "ES2022",
+        "module": "ES2022",
+        "lib": [
+            "ES2024"
+        ],
+        "outDir": "dist",
+        "strict": true,
+        "ignoreDeprecations": "6.0",
+        "moduleResolution": "Bundler",
+        "skipLibCheck": true,
+        "jsx": "react-jsx",
+        "jsxImportSource": "gnim",
+        "types": [
+            "gi",
+            "gnim"
+        ],
+        "typeRoots": [
+            "./.gnim/types"
+        ],
+        "baseUrl": ".",
+        "paths": {
+            "@shade/core/*": [
+                "packages/core/src/*"
+            ],
+            "@shade/services/*": [
+                "packages/services/src/*"
+            ],
+            "@shade/widgets/*": [
+                "packages/widgets/src/*"
+            ],
+            "@shade/style/*": [
+                "packages/style/src/*"
+            ]
+        }
+    },
+    "include": [
+        "packages/*/src/**/*",
+        "apps/*/src/**/*"
+    ]
 }

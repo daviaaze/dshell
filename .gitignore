@@ -14,3 +14,7 @@ test-output/
 .vscode
 # Indexed documentation cache
 Knowledge-Base/
+
+# Dependency graph regenerable artifacts (scripts/deps-graph.sh)
+docs/deps/deps.json
+docs/deps/deps.png
