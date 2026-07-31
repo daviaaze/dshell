@@ -1,5 +1,6 @@
 import {Object, register, property} from 'gnim/gobject';
 import Wireplumber from 'gi://AstalWp';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 
 /**
@@ -48,10 +49,20 @@ export default class AudioController extends Object {
 
     // ── Lifecycle ──
 
+    #busSubscriptions: (() => void)[] = [];
+
     /** Initialize the Wireplumber D-Bus proxy. Call once during boot. */
     init() {
         if (this.#initialized) return;
         this.#initialized = true;
+
+        // Subscribe to bus commands from widgets
+        this.#busSubscriptions.push(
+            bus.on('audio:set-volume', ({device, value}) => this.setVolume(device as Wireplumber.Endpoint, value))
+        );
+        this.#busSubscriptions.push(
+            bus.on('audio:toggle-mute', ({device}) => this.toggleMute(device as Wireplumber.Endpoint))
+        );
 
         try {
             this.#audio = Wireplumber.get_default()!.audio;

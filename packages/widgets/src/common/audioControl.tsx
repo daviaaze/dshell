@@ -3,8 +3,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind, createState, For, With} from 'gnim';
 import {Slider} from './slider';
 import {getVolumeIcon} from '@shade/services/audio/icons';
+import {bus} from '@shade/services/bus';
 import AppMixer from '../quicksettings/appMixer';
-import AudioController from '@shade/services/audio/audioController';
 
 export {getVolumeIcon};
 
@@ -123,15 +123,13 @@ export const AudioEndpointControl = ({
                                 max={100}
                                 value={bind(device, 'volume').as(v => v * 100)}
                                 setValue={value =>
-                                    AudioController.get_default().setVolume(
+                                    bus.emit('audio:set-volume', {
                                         device,
-                                        value / 100
-                                    )
+                                        value: value / 100,
+                                    })
                                 }
                                 onIconClick={() =>
-                                    AudioController.get_default().toggleMute(
-                                        device
-                                    )
+                                    bus.emit('audio:toggle-mute', {device})
                                 }
                             />
                         ) : null

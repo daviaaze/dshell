@@ -7,7 +7,8 @@ import type {ShellEvents} from './state/contract';
 import type {CaptureEvents} from './capture/contract';
 import type {SystemEvents} from './notifications/contract';
 import type {InputEvents} from './input/contract';
+import type {AudioEvents} from './audio/contract';
 
-export type AppEventMap = ShellEvents & CaptureEvents & SystemEvents & InputEvents;
+export type AppEventMap = ShellEvents & CaptureEvents & SystemEvents & InputEvents & AudioEvents;
 
 export const bus: EventBus<AppEventMap> = createBus<AppEventMap>();
