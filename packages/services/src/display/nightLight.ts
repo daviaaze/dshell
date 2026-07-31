@@ -4,6 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
 import logger from '@shade/core/logger';
 import {Accessor} from 'gnim';
+import {bus} from '../bus';
 
 export const TEMP_MIN = 2000;
 export const TEMP_MAX = 6500;
@@ -33,6 +34,7 @@ export default class NightLight extends Object {
     #pollTimer: number | null = null;
     #initialized = false;
     #generalHandlerId = 0;
+    #busSubscriptions: (() => void)[] = [];
     #generalSettings: Gio.Settings;
     #settings: {
         nightLightEnabled: Accessor<boolean>;
@@ -144,6 +146,17 @@ export default class NightLight extends Object {
 
         this.#sync();
         this.#startPoll();
+
+        // Listen for commands from widgets via the bus
+        this.#busSubscriptions.push(
+            bus.on('display:nightlight:enabled', v => { this.enabled = v; })
+        );
+        this.#busSubscriptions.push(
+            bus.on('display:nightlight:temperature', v => { this.temperature = v; })
+        );
+        this.#busSubscriptions.push(
+            bus.on('display:nightlight:schedule', v => { this.autoSchedule = v; })
+        );
     }
 
     #sync() {

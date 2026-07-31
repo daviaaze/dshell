@@ -9,6 +9,7 @@ import ClipboardButton from './clipboardButton';
 import {useSettings} from '@shade/services/settings/index';
 import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
+import {bus} from '@shade/services/bus';
 import ShellState from '@shade/services/state/shellState';
 import logger from '@shade/core/logger';
 import {launcherSearch} from '@shade/services/search/launcher';
@@ -58,7 +59,7 @@ export default () => {
                     self.visible &&
                     ShellState.get_default().qsOpen
                 )
-                    ShellState.get_default().closeQuickSettings();
+                    bus.emit('shell:qs:close');
                 if (self.visible) {
                     const query = ShellState.get_default().launcherQuery;
                     if (query && entryRef) {

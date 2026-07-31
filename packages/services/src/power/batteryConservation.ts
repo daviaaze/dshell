@@ -4,6 +4,7 @@ import logger from '@shade/core/logger';
 import {readFile} from '@shade/core/file';
 import {Process} from '@shade/core/process';
 import {Accessor, createState} from 'gnim';
+import {bus} from '../bus';
 
 const PATH =
     '/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode';
@@ -124,3 +125,22 @@ export function startConservationMonitor(): void {
 export function refreshConservation(): void {
     setEnabledState(isConservationEnabled());
 }
+
+/**
+ * Unified toggle: direct sysfs write first, fall back to pkexec.
+ * Keeps the async fallback out of widgets.
+ */
+export async function toggleConservationUnified(): Promise<void> {
+    const ok = toggleConservation();
+    if (ok) {
+        refreshConservation();
+    } else {
+        await toggleConservationAsync();
+        refreshConservation();
+    }
+}
+
+// Subscribe to bus toggle commands (module-level, no init() needed)
+bus.on('power:conservation:toggle', () => {
+    void toggleConservationUnified();
+});

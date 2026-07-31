@@ -1,5 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, effect} from 'gnim';
+import {bus} from '@shade/services/bus';
 import type {QuickButton} from './quickButton';
 import {QuickToggleButton} from '../../common/quickToggleButton';
 import NightLight, {
@@ -37,9 +38,7 @@ export default (): QuickButton => {
                                 roundDigits={0}
                                 adjustment={adjustment}
                                 onValueChanged={self =>
-                                    (nightLight.temperature = Math.round(
-                                        self.get_value()
-                                    ))
+                                    bus.emit('display:nightlight:temperature', Math.round(self.get_value()))
                                 }
                             />
                         );
@@ -57,7 +56,7 @@ export default (): QuickButton => {
                     <Gtk.Switch
                         active={bind(nightLight, 'autoSchedule')}
                         onNotifyActive={self =>
-                            (nightLight.autoSchedule = self.active)
+                            bus.emit('display:nightlight:schedule', self.active)
                         }
                     />
                 </Gtk.Box>
@@ -75,7 +74,7 @@ export default (): QuickButton => {
                     e ? 'night-light-symbolic' : 'night-light-disabled-symbolic'
                 )}
                 label="Night Light"
-                onClick={() => (nightLight.enabled = !nightLight.enabled)}
+                onClick={() => bus.emit('display:nightlight:enabled', !nightLight.enabled)}
                 popover={popover}
             />
         ),

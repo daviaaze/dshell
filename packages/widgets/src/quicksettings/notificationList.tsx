@@ -7,6 +7,7 @@ import {bind, createState, For} from 'gnim';
 import Notification from '../common/notification';
 import NotificationHistory from '@shade/services/notifications/history';
 import DndService from '@shade/services/notifications/dnd';
+import {bus} from '@shade/services/bus';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
 import type {HistoryEntry} from '@shade/services/notifications/history';
 import {useSettings} from '@shade/services/settings/index';
@@ -89,7 +90,7 @@ const NotificationListContent = ({
                 />
             </Gtk.Button>
             <Gtk.ToggleButton
-                onClicked={self => (dnd.dnd = self.active)}
+                onClicked={self => bus.emit('system:dnd:set', self.active)}
                 active={bind(dnd, 'dnd')}
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
                 iconName={'notifications-disabled-symbolic'}

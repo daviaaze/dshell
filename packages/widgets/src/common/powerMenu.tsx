@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import ShellState from '@shade/services/state/shellState';
+import {bus} from '@shade/services/bus';
 import SessionControl from '@shade/services/power/sessionControl';
 import {ActionButton} from './actionButton';
 
@@ -14,7 +14,7 @@ export const PowerMenu = () => (
                 iconName="system-lock-screen-symbolic"
                 label="Lock"
                 onClicked={() => {
-                    ShellState.get_default().lock();
+                    bus.emit('shell:lock');
                 }}
             />
             <ActionButton

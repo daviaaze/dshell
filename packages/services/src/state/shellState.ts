@@ -17,6 +17,7 @@ export default class ShellState extends GObject {
     #launcherQuery = '';
     #qsOpen = false;
     #screenlocked = false;
+    #busSubscriptions: (() => void)[] = [];
 
     @property
     get launcherOpen() {
@@ -128,6 +129,20 @@ export default class ShellState extends GObject {
     toggleWindowSwitcher() {
         this.#onToggleWindowSwitcher?.();
         bus.emit('shell:windowswitcher:toggle');
+    }
+
+    /** Subscribe to command events from widgets. Called once at boot. */
+    init() {
+        if (this.#busSubscriptions.length > 0) return;
+        this.#busSubscriptions.push(
+            bus.on('shell:lock', () => this.lock())
+        );
+        this.#busSubscriptions.push(
+            bus.on('shell:unlock', () => this.unlock())
+        );
+        this.#busSubscriptions.push(
+            bus.on('shell:qs:close', () => this.closeQuickSettings())
+        );
     }
 
     #onToggleSettings: (() => void) | null = null;

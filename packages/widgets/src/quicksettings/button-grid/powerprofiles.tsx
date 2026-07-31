@@ -5,6 +5,7 @@ import PowerProfiles, {
     profileLabel,
     nextProfile,
 } from '@shade/services/power/powerProfiles';
+import {bus} from '@shade/services/bus';
 import type {QuickButton} from './quickButton';
 import {QuickToggleButton} from '../../common/quickToggleButton';
 import {LinkedBox} from '../../common/linkedBox';
@@ -34,7 +35,7 @@ export default (): QuickButton => {
     });
 
     const setProfile = (p: 'power-saver' | 'balanced' | 'performance') => {
-        pp.set_active_profile(p);
+        bus.emit('power:profile:set', p);
     };
 
     const popover = (

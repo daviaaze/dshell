@@ -3,6 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {register, Object, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
+import {bus} from '../bus';
 import {createSettings, Schema} from 'gnim/schema';
 import {Accessor, Setter} from 'gnim';
 import logger from '@shade/core/logger';
@@ -31,6 +32,7 @@ export class ColorScheme extends Object {
     #initialized = false;
     #timerId: GLib.Source | null = null;
     #generalHandlerId = 0;
+    #busSubscriptions: (() => void)[] = [];
     #timeHandlerIds: number[] = [];
     #styleManagerHandlerIds: number[] = [];
     #shadeSettings: {
@@ -332,6 +334,11 @@ export class ColorScheme extends Object {
                 this.#gtkSettings = null;
             }
         }
+
+        // Listen for color scheme commands from widgets via the bus
+        this.#busSubscriptions.push(
+            bus.on('display:colorscheme:set', v => { this.colorScheme = v; })
+        );
     }
 
     dispose() {

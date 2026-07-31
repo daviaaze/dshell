@@ -1,4 +1,5 @@
 import Screenshot from '@shade/services/capture/screenshot';
+import {bus} from '@shade/services/bus';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
@@ -35,7 +36,7 @@ export default (): QuickButton => {
                     cssClasses={['title-4']}
                 />
                 <LinkedBox>
-                    <Gtk.Button onClicked={() => screenshot.screenshot(true)}>
+                    <Gtk.Button onClicked={() => bus.emit('capture:cmd:screenshot', true)}>
                         <Adw.ButtonContent
                             iconName="camera-photo-symbolic"
                             label="Fullscreen"
@@ -43,7 +44,7 @@ export default (): QuickButton => {
                     </Gtk.Button>
                     <Gtk.Button
                         onClicked={dismissAnd(() =>
-                            screenshot.screenshot(false)
+                            bus.emit('capture:cmd:screenshot', false)
                         )}
                     >
                         <Adw.ButtonContent
@@ -62,14 +63,14 @@ export default (): QuickButton => {
                     cssClasses={['title-4']}
                 />
                 <LinkedBox>
-                    <Gtk.Button onClicked={() => screenshot.toggleRecording()}>
+                    <Gtk.Button onClicked={() => bus.emit('capture:cmd:recording:toggle')}>
                         <Adw.ButtonContent
                             iconName="camera-video-symbolic"
                             label="Fullscreen"
                         />
                     </Gtk.Button>
                     <Gtk.Button
-                        onClicked={dismissAnd(() => screenshot.recordArea())}
+                        onClicked={dismissAnd(() => bus.emit('capture:cmd:recording:area'))}
                     >
                         <Adw.ButtonContent
                             iconName="selection-mode-symbolic"
@@ -78,7 +79,7 @@ export default (): QuickButton => {
                     </Gtk.Button>
                     <Gtk.Button
                         onClicked={dismissAnd(() =>
-                            screenshot.recordOutputVisual()
+                            bus.emit('capture:cmd:recording:output-visual')
                         )}
                     >
                         <Adw.ButtonContent
@@ -88,7 +89,7 @@ export default (): QuickButton => {
                     </Gtk.Button>
                     <Gtk.Button
                         onClicked={dismissAnd(() =>
-                            screenshot.recordWindowVisual()
+                            bus.emit('capture:cmd:recording:window-visual')
                         )}
                     >
                         <Adw.ButtonContent
@@ -109,7 +110,7 @@ export default (): QuickButton => {
                     <Gtk.CheckButton
                         active={bind(screenshot.prefs, 'audio')}
                         onNotifyActive={({active}) => {
-                            screenshot.prefs.audio = active;
+                            bus.emit('capture:cmd:prefs:audio', active);
                         }}
                     />
                     <Gtk.Label label="Record Audio" />
@@ -131,7 +132,7 @@ export default (): QuickButton => {
                 <Gtk.Button
                     onClicked={() => {
                         if (screenshot.virtualMonitors.length > 0) {
-                            screenshot.removeVirtualMonitors();
+                            bus.emit('capture:cmd:virtual-monitors:remove');
                         } else {
                             screenshot.createVirtualMonitor(
                                 captureSettings.virtualMonitorResolution(),
@@ -167,7 +168,7 @@ export default (): QuickButton => {
                 label={bind(screenshot, 'recording').as(rec =>
                     rec ? 'Stop' : 'Record'
                 )}
-                onClick={() => screenshot.toggleRecording()}
+                onClick={() => bus.emit('capture:cmd:recording:toggle')}
                 popover={popover}
             />
         ),

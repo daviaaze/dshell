@@ -3,7 +3,7 @@ import {bind, For} from 'gnim';
 import {useSettings} from '@shade/services/settings/index';
 import Tray from 'gi://AstalTray';
 import TrayService from '@shade/services/desktop/trayService';
-import ShellState from '@shade/services/state/shellState';
+import {bus} from '@shade/services/bus';
 import {PowerMenu} from '../common/powerMenu';
 import {IconButton, IconMenuButton} from '../common/iconButton';
 import {openSettings} from '../settings/settingsOpen';
@@ -16,7 +16,7 @@ export const TrayBox = () => {
         <IconButton
             icon="system-lock-screen-symbolic"
             onClicked={() => {
-                ShellState.get_default().lock();
+                bus.emit('shell:lock');
             }}
         />
     );
@@ -48,7 +48,7 @@ export const TrayBox = () => {
             icon="preferences-system-symbolic"
             onClicked={() => {
                 openSettings();
-                ShellState.get_default().closeQuickSettings();
+                bus.emit('shell:qs:close');
             }}
         />
     );

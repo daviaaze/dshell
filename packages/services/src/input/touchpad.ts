@@ -30,6 +30,7 @@ export default class Touchpad extends Object {
     #eventPath: string | null = null;
     #process: Process | null = null;
     #initialized = false;
+    #busSubscriptions: (() => void)[] = [];
 
     @property
     get enabled() {
@@ -59,7 +60,6 @@ export default class Touchpad extends Object {
         );
         this.enabled = !this.#enabled;
         logger.info('touchpad', `toggle() done, new enabled=${this.#enabled}`);
-        bus.emit('input:touchpad:toggle');
     }
 
     init() {
@@ -85,6 +85,11 @@ export default class Touchpad extends Object {
         logger.info(
             'touchpad',
             `initialized, mode=${mode}, enabled=${this.#enabled}`
+        );
+
+        // Listen for toggle commands from widgets via the bus
+        this.#busSubscriptions.push(
+            bus.on('input:touchpad:toggle', () => this.toggle())
         );
     }
 

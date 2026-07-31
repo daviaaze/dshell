@@ -7,6 +7,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {bind, For, onCleanup} from 'gnim';
 import {render} from '@gnim-js/gtk4';
 import {getApp} from '@shade/services/appHandle';
+import {bus} from '@shade/services/bus';
 import WindowManager from '@shade/services/state/windowManager';
 import ShellState from '@shade/services/state/shellState';
 import Clock from '@shade/services/time/clock';
@@ -42,7 +43,7 @@ const createLocks = (onUnlock: () => void) => {
         cleanupAll();
         lockService.unlock();
         WindowManager.get_default().lockscreens.forEach(w => w.close());
-        ShellState.get_default().unlock();
+        bus.emit('shell:unlock');
         onUnlock();
     };
 

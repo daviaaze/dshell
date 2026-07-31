@@ -1,5 +1,6 @@
 import {bind, createState} from 'gnim';
 import Brightness from '@shade/services/display/brightness';
+import {bus} from '@shade/services/bus';
 import AudioController from '@shade/services/audio/audioController';
 import {AudioEndpointControl} from '../common/audioControl';
 import {Slider} from '../common/slider';
@@ -60,7 +61,7 @@ export const BrightnessSlider = () => {
         const next = (presetIndex() + 1) % BRIGHTNESS_PRESETS.length;
         setPresetIndex(next);
         const value = BRIGHTNESS_PRESETS[next];
-        brightness.set({screen: value});
+        bus.emit('display:brightness:set', {screen: value});
     };
 
     logger.debug('brightness', 'BrightnessSlider: done');
@@ -72,7 +73,7 @@ export const BrightnessSlider = () => {
             max={BRIGHTNESS_PCT_MAX}
             value={bind(brightness, 'screen').as(v => v * BRIGHTNESS_PCT_MAX)}
             setValue={value =>
-                brightness.set({screen: value / BRIGHTNESS_PCT_MAX})
+                bus.emit('display:brightness:set', {screen: value / BRIGHTNESS_PCT_MAX})
             }
             onIconClick={cycleBrightness}
         />

@@ -2,6 +2,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import {Object, register} from 'gnim/gobject';
 import {property} from '@shade/core/decorators';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 import {
     RecorderBackend,
@@ -49,9 +50,14 @@ export default class Screenshot extends Object {
     private static instance: Screenshot | undefined;
 
     static get_default() {
-        if (!this.instance) this.instance = new Screenshot();
+        if (!this.instance) {
+            this.instance = new Screenshot();
+            this.instance.#initBus();
+        }
         return this.instance;
     }
+
+    #busSubscriptions: (() => void)[] = [];
 
     #recorder = new Recorder({
         getAudioSettings: () => this.#prefs.snapshot(),
@@ -384,6 +390,46 @@ export default class Screenshot extends Object {
     /** Register GAction commands for screenshot/recording. */
     registerCommands(app: Gio.Application) {
         registerCommands(this, app);
+    }
+
+    #initBus() {
+        if (this.#busSubscriptions.length > 0) return;
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:screenshot', fullScreen => this.screenshot(fullScreen))
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:recording:stop', () => this.stopRecording())
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:recording:toggle', () => this.toggleRecording())
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:recording:area', () => this.recordArea())
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:recording:output-visual', () => this.recordOutputVisual())
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:recording:window-visual', () => this.recordWindowVisual())
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:prefs:audio', v => { this.prefs.audio = v; })
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:virtual-monitors:remove', () => this.removeVirtualMonitors())
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:capture-area', geometry => this.captureArea(geometry))
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:region-selector:close', () => { this.regionSelectorOpen = false; })
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:capture-from-stage', geometry => this.captureFromStage(geometry))
+        );
+        this.#busSubscriptions.push(
+            bus.on('capture:cmd:start-recording-after-overlay', ({target, geometry}) => this.startRecordingAfterOverlayClose(target, geometry))
+        );
     }
 
     dispose() {

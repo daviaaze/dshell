@@ -1,5 +1,6 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 
 const BUS_NAME = 'net.hadess.PowerProfiles';
@@ -11,11 +12,15 @@ type Profile = 'power-saver' | 'balanced' | 'performance';
 export default class PowerProfiles {
     private static instance: PowerProfiles;
     static get_default() {
-        if (!this.instance) this.instance = new PowerProfiles();
+        if (!this.instance) {
+            this.instance = new PowerProfiles();
+            this.instance.#initBus();
+        }
         return this.instance;
     }
 
     #proxy: Gio.DBusProxy | null = null;
+    #busSubscriptions: (() => void)[] = [];
     #listeners = new Map<number, () => void>();
     #nextId = 0;
 
@@ -59,6 +64,13 @@ export default class PowerProfiles {
                     e.message
                 );
         }
+    }
+
+    #initBus() {
+        if (this.#busSubscriptions.length > 0) return;
+        this.#busSubscriptions.push(
+            bus.on('power:profile:set', profile => this.set_active_profile(profile as Profile))
+        );
     }
 
     connect(_signal: string, callback: () => void) {

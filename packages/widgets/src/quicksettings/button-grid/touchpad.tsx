@@ -1,5 +1,6 @@
 import Touchpad from '@shade/services/input/touchpad';
 import {bind} from 'gnim';
+import {bus} from '@shade/services/bus';
 import type {QuickButton} from './quickButton';
 import {QuickToggleButton} from '../../common/quickToggleButton';
 
@@ -17,7 +18,7 @@ export default (): QuickButton => {
                 label={bind(touchpad, 'enabled').as(enabled =>
                     enabled ? 'Touchpad' : 'Touchpad Off'
                 )}
-                onClick={() => touchpad.toggle()}
+                onClick={() => bus.emit('input:touchpad:toggle')}
             />
         ),
     };

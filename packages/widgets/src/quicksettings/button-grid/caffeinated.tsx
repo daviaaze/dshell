@@ -1,4 +1,5 @@
 import Inhibit from '@shade/services/power/inhibit';
+import {bus} from '@shade/services/bus';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';
@@ -29,25 +30,25 @@ export default (): QuickButton => {
     const popover = (
         <Gtk.Popover cssClasses={[]}>
             <LinkedBox>
-                <Gtk.Button onClicked={() => inhibit.setDuration(0)}>
+                <Gtk.Button onClicked={() => bus.emit('power:inhibit:set-duration', 0)}>
                     <Adw.ButtonContent
                         iconName="weather-clear-symbolic"
                         label="Indefinitely"
                     />
                 </Gtk.Button>
-                <Gtk.Button onClicked={() => inhibit.setDuration(5)}>
+                <Gtk.Button onClicked={() => bus.emit('power:inhibit:set-duration', 5)}>
                     <Adw.ButtonContent
                         iconName="preferences-system-time-symbolic"
                         label="5 minutes"
                     />
                 </Gtk.Button>
-                <Gtk.Button onClicked={() => inhibit.setDuration(15)}>
+                <Gtk.Button onClicked={() => bus.emit('power:inhibit:set-duration', 15)}>
                     <Adw.ButtonContent
                         iconName="preferences-system-time-symbolic"
                         label="15 minutes"
                     />
                 </Gtk.Button>
-                <Gtk.Button onClicked={() => inhibit.setDuration(60)}>
+                <Gtk.Button onClicked={() => bus.emit('power:inhibit:set-duration', 60)}>
                     <Adw.ButtonContent
                         iconName="preferences-system-time-symbolic"
                         label="1 hour"
@@ -56,7 +57,7 @@ export default (): QuickButton => {
                 <Gtk.Separator visible={bind(inhibit, 'idle')} />
                 <Gtk.Button
                     visible={bind(inhibit, 'idle')}
-                    onClicked={() => (inhibit.idle = false)}
+                    onClicked={() => bus.emit('power:inhibit:set-idle', false)}
                 >
                     <Adw.ButtonContent
                         iconName="window-close-symbolic"
@@ -74,8 +75,8 @@ export default (): QuickButton => {
                 icon={icon}
                 label={label}
                 onClick={() => {
-                    if (inhibit.idle) inhibit.idle = false;
-                    else inhibit.setDuration(0);
+                    if (inhibit.idle) bus.emit('power:inhibit:set-idle', false);
+                    else bus.emit('power:inhibit:set-duration', 0);
                 }}
                 popover={popover}
             />

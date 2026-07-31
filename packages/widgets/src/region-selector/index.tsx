@@ -5,6 +5,7 @@ import {getHyprland} from '@shade/services/hyprland';
 import Cairo from 'gi://cairo?version=1.0';
 import {bind, createState} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
+import {bus} from '@shade/services/bus';
 import Screenshot from '@shade/services/capture/screenshot';
 import {getWindowGeometries} from '@shade/services/monitoring/windows';
 import type {WindowGeometry} from '@shade/services/monitoring/windows';
@@ -64,13 +65,13 @@ export default () => {
         if (!sel) return;
         const o = monOrigin();
         const geometry = `${sel.x + o.x},${sel.y + o.y} ${sel.width}x${sel.height}`;
-        ss.captureArea(geometry);
+        bus.emit('capture:cmd:capture-area', geometry);
     };
 
     const cancelSelection = () => {
         setSelStart(null);
         setSelEnd(null);
-        ss.regionSelectorOpen = false;
+        bus.emit('capture:cmd:region-selector:close');
     };
 
     // ── Window discovery ─────────────────────────────────────────

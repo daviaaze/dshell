@@ -2,6 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 
 @register
@@ -18,6 +19,7 @@ export default class Inhibit extends Object {
     #duration = 0;
     #elapsed = 0;
     #timerId: number | null = null;
+    #busSubscriptions: (() => void)[] = [];
     #initialized = false;
 
     @property
@@ -111,6 +113,14 @@ export default class Inhibit extends Object {
         }
         this.#initialized = true;
         this.#app = app;
+
+        // Listen for inhibit commands from widgets via the bus
+        this.#busSubscriptions.push(
+            bus.on('power:inhibit:set-duration', v => this.setDuration(v))
+        );
+        this.#busSubscriptions.push(
+            bus.on('power:inhibit:set-idle', v => { this.idle = v; })
+        );
     }
 
     constructor() {

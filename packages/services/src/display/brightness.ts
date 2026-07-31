@@ -16,9 +16,11 @@
  */
 import AstalBrightness from 'gi://AstalBrightness';
 import {Object, register, property} from 'gnim/gobject';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 
 @register
+
 export default class Brightness extends Object {
     private static instance: Brightness;
 
@@ -30,8 +32,10 @@ export default class Brightness extends Object {
     #screenDev: AstalBrightness.Device | null = null;
     #kbdDev: AstalBrightness.Device | null = null;
     #ready = false;
+    #busSubscriptions: (() => void)[] = [];
 
     @property
+
     get ready() {
         return this.#ready;
     }
@@ -98,6 +102,13 @@ export default class Brightness extends Object {
             // Force initial sync so bindings pick up the real value
             this.notify('screen');
             this.notify('kbd');
+
+            // Listen for brightness set commands from widgets
+            this.#busSubscriptions.push(
+                bus.on('display:brightness:set', ({screen}) => {
+                    if (screen !== undefined) this.screen = screen;
+                })
+            );
         } catch (e) {
             logger.error(
                 'brightness',

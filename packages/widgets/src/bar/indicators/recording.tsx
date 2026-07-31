@@ -1,6 +1,7 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
+import {bus} from '@shade/services/bus';
 import Screenshot from '@shade/services/capture/screenshot';
 
 function formatDuration(seconds: number): string {
@@ -17,7 +18,7 @@ export default () => {
     return (
         <Gtk.Button
             visible={bind(screenshot, 'recording')}
-            onClicked={() => screenshot.stopRecording()}
+            onClicked={() => bus.emit('capture:cmd:recording:stop')}
             cssClasses={['flat']}
             tooltipText="Click to stop recording"
         >

@@ -4,6 +4,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import {getHyprland} from '@shade/services/hyprland';
 import {bind, createState} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
+import {bus} from '@shade/services/bus';
 import Screenshot from '@shade/services/capture/screenshot';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
@@ -121,7 +122,7 @@ export default () => {
         keyval: number
     ): boolean => {
         if (keyval === Gdk.KEY_Escape) {
-            ss.overlayOpen = false;
+            bus.emit('capture:cmd:region-selector:close');
             return true;
         }
         if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
@@ -150,9 +151,9 @@ export default () => {
         );
 
         if (mode === 'screenshot') {
-            ss.captureFromStage(geometry);
+            bus.emit('capture:cmd:capture-from-stage', geometry);
         } else {
-            ss.startRecordingAfterOverlayClose(target, geometry);
+            bus.emit('capture:cmd:start-recording-after-overlay', {target, geometry});
         }
     }
 
