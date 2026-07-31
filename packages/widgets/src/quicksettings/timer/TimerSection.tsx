@@ -1,6 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import {bind, computed, createState} from 'gnim';
+import {bus} from '@shade/services/bus';
 import TimerService from '@shade/services/time/timerService';
 
 function fmtRemaining(ms: number): string {
@@ -52,7 +53,7 @@ export const TimerSection = () => {
             const m = spins[1]!.get_value_as_int();
             const s = spins[2]!.get_value_as_int();
             const ms = (h * 3600 + m * 60 + s) * 1000;
-            if (ms > 0) timer.startCountdown(ms);
+            if (ms > 0) bus.emit('timer:cmd:start-countdown', ms);
         }
     };
 
@@ -92,15 +93,15 @@ export const TimerSection = () => {
                         )}
                         tooltipText={running.as(r => (r ? 'Pause' : 'Resume'))}
                         onClicked={() => {
-                            if (timer.running) timer.pause();
-                            else timer.resume();
+                            if (timer.running) bus.emit('timer:cmd:pause');
+                            else bus.emit('timer:cmd:resume');
                         }}
                     />
                     <Gtk.Button
                         cssClasses={['circular']}
                         iconName={'media-playback-stop-symbolic'}
                         tooltipText="Stop"
-                        onClicked={() => timer.cancel()}
+                        onClicked={() => bus.emit('timer:cmd:cancel')}
                     />
                 </Gtk.Box>
             </Gtk.Box>
@@ -158,7 +159,7 @@ export const TimerSection = () => {
                                 });
                                 btn.set_child(label);
                                 btn.connect('clicked', () =>
-                                    timer.startCountdown(min * 60 * 1000)
+                                    bus.emit('timer:cmd:start-countdown', min * 60 * 1000)
                                 );
                                 self.attach(
                                     btn,
@@ -242,7 +243,7 @@ export const TimerSection = () => {
                         cssClasses={['raised', 'suggested-action']}
                         halign={Gtk.Align.FILL}
                         hexpand
-                        onClicked={() => timer.startPomodoro()}
+                        onClicked={() => bus.emit('timer:cmd:start-pomodoro')}
                     >
                         <Adw.ButtonContent
                             iconName="media-playback-start-symbolic"

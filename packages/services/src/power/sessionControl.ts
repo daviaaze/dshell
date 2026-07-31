@@ -1,5 +1,6 @@
 import {Object, register} from 'gnim/gobject';
 import {Process} from '@shade/core/process';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 
 /**
@@ -9,10 +10,29 @@ import logger from '@shade/core/logger';
 @register
 export default class SessionControl extends Object {
     private static instance: SessionControl;
+    #busSubscriptions: (() => void)[] = [];
 
     static get_default() {
-        if (!this.instance) this.instance = new SessionControl();
+        if (!this.instance) {
+            this.instance = new SessionControl();
+            this.instance.#initBus();
+        }
         return this.instance;
+    }
+
+    #initBus() {
+        this.#busSubscriptions.push(
+            bus.on('power:cmd:logout', () => this.logout())
+        );
+        this.#busSubscriptions.push(
+            bus.on('power:cmd:suspend', () => this.suspend())
+        );
+        this.#busSubscriptions.push(
+            bus.on('power:cmd:reboot', () => this.reboot())
+        );
+        this.#busSubscriptions.push(
+            bus.on('power:cmd:poweroff', () => this.powerOff())
+        );
     }
 
     /** Log out the current session via logind. */

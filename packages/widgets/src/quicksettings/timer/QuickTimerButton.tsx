@@ -1,5 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';
+import {bus} from '@shade/services/bus';
 import TimerService from '@shade/services/time/timerService';
 import {TimerSection} from './TimerSection';
 import type {QuickButton} from '../button-grid/quickButton';
@@ -51,7 +52,7 @@ export default (): QuickButton => {
                 label={label}
                 popover={popover}
                 onClick={() => {
-                    if (timer.remaining >= 0) timer.cancel();
+                    if (timer.remaining >= 0) bus.emit('timer:cmd:cancel');
                 }}
             />
         ),

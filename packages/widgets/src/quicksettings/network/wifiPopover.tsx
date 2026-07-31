@@ -2,6 +2,7 @@ import Network from 'gi://AstalNetwork';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, Accessor} from 'gnim';
+import {bus} from '@shade/services/bus';
 import ApList from './apList';
 import logger from '@shade/core/logger';
 
@@ -45,7 +46,7 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
                             'network',
                             `wifi ${wifi.enabled ? 'disabled' : 'enabled'}`
                         );
-                        wifi.enabled = !wifi.enabled;
+                        bus.emit('network:wifi:toggle');
                     }}
                 >
                     <Adw.ButtonContent

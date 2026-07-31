@@ -6,6 +6,7 @@
  */
 import {Object, register, property} from 'gnim/gobject';
 import Network from 'gi://AstalNetwork';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 
 let _instance: NetworkService | null = null;
@@ -16,6 +17,7 @@ export default class NetworkService extends Object {
     #wifi: Network.Wifi | null = null;
     #wifiSignalIds: number[] = [];
     #initialized = false;
+    #busInitialized = false;
 
     static get_default(): NetworkService {
         if (!_instance) _instance = new NetworkService();
@@ -63,6 +65,13 @@ export default class NetworkService extends Object {
     init(): void {
         if (this.#initialized) return;
         this.#initialized = true;
+        this.#initBus();
+    }
+
+    #initBus(): void {
+        if (this.#busInitialized) return;
+        this.#busInitialized = true;
+        bus.on('network:wifi:toggle', () => this.toggleWifi());
 
         try {
             this.#network = Network.get_default();

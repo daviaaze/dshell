@@ -18,6 +18,7 @@ export interface CaptureEvents {
     'capture:cmd:recording:output-visual': void;
     'capture:cmd:recording:window-visual': void;
     'capture:cmd:prefs:audio': boolean;
+    'capture:cmd:virtual-monitors:create': {resolution: string; fps: number};
     'capture:cmd:virtual-monitors:remove': void;
     'capture:cmd:capture-area': string; // geometry
     'capture:cmd:region-selector:close': void;

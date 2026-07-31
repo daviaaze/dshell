@@ -419,6 +419,9 @@ export default class Screenshot extends Object {
             bus.on('capture:cmd:virtual-monitors:remove', () => this.removeVirtualMonitors())
         );
         this.#busSubscriptions.push(
+            bus.on('capture:cmd:virtual-monitors:create', ({resolution, fps}) => this.createVirtualMonitor(resolution, fps))
+        );
+        this.#busSubscriptions.push(
             bus.on('capture:cmd:capture-area', geometry => this.captureArea(geometry))
         );
         this.#busSubscriptions.push(

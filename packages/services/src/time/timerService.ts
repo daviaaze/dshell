@@ -2,6 +2,7 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
+import {bus} from '../bus';
 import logger from '@shade/core/logger';
 import {fmtDuration} from '@shade/core/time';
 
@@ -11,8 +12,29 @@ export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 export default class TimerService extends Object {
     private static instance: TimerService;
     static get_default() {
-        if (!this.instance) this.instance = new TimerService();
+        if (!this.instance) {
+            this.instance = new TimerService();
+            this.instance.#initBus();
+        }
         return this.instance;
+    }
+
+    #initBus() {
+        this.#busSubscriptions.push(
+            bus.on('timer:cmd:start-countdown', ms => this.startCountdown(ms))
+        );
+        this.#busSubscriptions.push(
+            bus.on('timer:cmd:start-pomodoro', () => this.startPomodoro())
+        );
+        this.#busSubscriptions.push(
+            bus.on('timer:cmd:pause', () => this.pause())
+        );
+        this.#busSubscriptions.push(
+            bus.on('timer:cmd:resume', () => this.resume())
+        );
+        this.#busSubscriptions.push(
+            bus.on('timer:cmd:cancel', () => this.cancel())
+        );
     }
 
     // ── GObject properties ──
@@ -29,6 +51,7 @@ export default class TimerService extends Object {
     #app: Adw.Application | null = null;
     #initialized = false;
     #notificationId = 0;
+    #busSubscriptions: (() => void)[] = [];
 
     /** Timer tick interval in milliseconds. */
     static readonly TICK_MS = 1000;

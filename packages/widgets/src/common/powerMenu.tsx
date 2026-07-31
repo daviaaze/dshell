@@ -1,6 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
-import SessionControl from '@shade/services/power/sessionControl';
 import {ActionButton} from './actionButton';
 
 export const PowerMenu = () => (
@@ -21,21 +20,21 @@ export const PowerMenu = () => (
                 iconName="system-log-out-symbolic"
                 label="Log Out"
                 onClicked={() => {
-                    SessionControl.get_default().logout();
+                    bus.emit('power:cmd:logout');
                 }}
             />
             <ActionButton
                 iconName="media-playback-pause-symbolic"
                 label="Suspend"
                 onClicked={() => {
-                    SessionControl.get_default().suspend();
+                    bus.emit('power:cmd:suspend');
                 }}
             />
             <ActionButton
                 iconName="system-reboot-symbolic"
                 label="Reboot"
                 onClicked={() => {
-                    SessionControl.get_default().reboot();
+                    bus.emit('power:cmd:reboot');
                 }}
             />
             <ActionButton
@@ -43,7 +42,7 @@ export const PowerMenu = () => (
                 label="Power Off"
                 destructive
                 onClicked={() => {
-                    SessionControl.get_default().powerOff();
+                    bus.emit('power:cmd:poweroff');
                 }}
             />
         </Gtk.Box>

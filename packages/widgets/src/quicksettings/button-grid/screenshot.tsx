@@ -134,10 +134,10 @@ export default (): QuickButton => {
                         if (screenshot.virtualMonitors.length > 0) {
                             bus.emit('capture:cmd:virtual-monitors:remove');
                         } else {
-                            screenshot.createVirtualMonitor(
-                                captureSettings.virtualMonitorResolution(),
-                                captureSettings.virtualMonitorFps()
-                            );
+                            bus.emit('capture:cmd:virtual-monitors:create', {
+                                resolution: captureSettings.virtualMonitorResolution(),
+                                fps: captureSettings.virtualMonitorFps()
+                            });
                         }
                     }}
                 >
