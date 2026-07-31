@@ -99,7 +99,14 @@ in
           pkgs.playerctl
           pkgs.pwvucontrol
         ];
-        security.pam.services.astal-auth = {};
+        security.pam.services.astal-auth = {
+          # The lockscreen runs its own FingerprintAuth (fprintd D-Bus claim) in
+          # parallel with PAM. Leaving fprintAuth enabled injects pam_fprintd.so
+          # into this stack, which blocks the password prompt (~30s scan wait,
+          # longer than the shell's 10s PAM timeout) and fights the shell for the
+          # exclusive fprintd device claim — breaking both unlock paths.
+          fprintAuth = false;
+        };
 
         # Polkit is required for the battery-conservation pkexec action
         # (shipped in the package's share/polkit-1/actions).
