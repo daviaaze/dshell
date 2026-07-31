@@ -10,6 +10,8 @@ import {Process} from '@shade/core/process';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Theme, Stylesheet, type ThemeColors} from './theme';
+import {defineService} from '@shade/core/define';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 
 // ── Material 3 → shade CSS variable mapping ──
 
@@ -259,3 +261,5 @@ export default class PaletteGenerator extends GObject {
         logger.debug('palette', 'PaletteGenerator disposed');
     }
 }
+
+defineService({name: 'PaletteGenerator', service: PaletteGenerator.get_default(), initArgs: () => [generalSettings()]});

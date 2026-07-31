@@ -2,7 +2,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {onCleanup} from 'gnim';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import {
     getAppList,
     exactQuery,
@@ -19,7 +19,7 @@ interface DockItemProps {
 }
 
 export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
-    const {bar} = useSettings();
+    const bar = barSettings();
 
     const app =
         getAppList().find(a => a.entry === desktopFile) ||

@@ -4,7 +4,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import {bus} from '@shade/services/bus';
 import logger from '@shade/core/logger';
 import {NotificationList} from './notificationList';
@@ -18,7 +18,7 @@ const QUICKSETTINGS_WIDTH = 420;
 const QUICKSETTINGS_SPACING = 8;
 
 export default () => {
-    const barCfg = useSettings().bar;
+    const barCfg = barSettings();
     const hyprland = getHyprland();
     if (!hyprland) return null;
     const shellState = ShellState.get_default();

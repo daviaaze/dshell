@@ -5,7 +5,7 @@ import {For, onCleanup} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
 import {Gdk2HyprMonitor, monitors} from '@shade/services/monitoring/monitors';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import SystemIndicators from './systemIndicators';
 import SystemUsage from './systemUsage';
 import Workspaces from './workspaces';
@@ -17,7 +17,7 @@ import {WeatherButton} from './weather';
 import WindowTitle from './windowTitle';
 
 export default () => {
-    const bar = useSettings().bar;
+    const bar = barSettings();
     const {position} = bar;
     const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
     const vertical = position.as(p => p === LEFT || p === RIGHT);

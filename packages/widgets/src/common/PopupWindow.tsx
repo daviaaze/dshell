@@ -21,7 +21,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, bind, createState, JSX} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import {getHyprland} from '@shade/services/hyprland';
 
 // ── Types ──
@@ -127,7 +127,7 @@ export default (props: PopupWindowProps) => {
         children,
     } = props;
 
-    const barCfg = useSettings().bar;
+    const barCfg = barSettings();
     const hyprland = getHyprland();
     if (!hyprland) return null;
     const defaultMon = bind(hyprland, 'focused-monitor').as(m => m.id);
@@ -164,7 +164,7 @@ export default (props: PopupWindowProps) => {
             monitor={resolvedMonitor}
             widthRequest={widthRequest}
             heightRequest={heightRequest}
-            cssClasses={['card', 'frame', ...(cssClasses ?? [])]}
+            cssClasses={['frame', ...(cssClasses ?? [])]}
             onNotifyVisible={(self: Astal.Window) => {
                 if (onVisibleChange) onVisibleChange(self.visible);
             }}

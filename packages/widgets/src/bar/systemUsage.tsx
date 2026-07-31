@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Accessor} from 'gnim';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import SystemUsage from '@shade/services/monitoring/systemUsage';
 
 const LEVEL_BAR_SIZE = 50;
@@ -62,7 +62,7 @@ export default ({
     vertical: Accessor<boolean>;
     visible?: boolean | Accessor<boolean>;
 }) => {
-    const settings = useSettings();
+    const settings = barSettings();
     const usage = SystemUsage.get_default();
 
     return (
@@ -70,7 +70,7 @@ export default ({
             visible={visible}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             onClicked={() => {
-                const monitor = settings.bar.systemMonitor();
+                const monitor = settings.systemMonitor();
                 if (monitor) usage.launchMonitor(monitor);
             }}
         >
@@ -101,7 +101,7 @@ export default ({
                 />
                 <Indicator
                     vertical={vertical}
-                    visible={settings.bar.showDiskUsage}
+                    visible={settings.showDiskUsage}
                     value={usage.disk}
                     label="DISK"
                     unit="%"

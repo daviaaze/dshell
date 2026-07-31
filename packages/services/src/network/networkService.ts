@@ -8,6 +8,7 @@ import {Object, register, property} from 'gnim/gobject';
 import Network from 'gi://AstalNetwork';
 import {bus} from '../bus';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 let _instance: NetworkService | null = null;
 
@@ -130,3 +131,5 @@ export default class NetworkService extends Object {
         this.#wifiSignalIds = [];
     }
 }
+
+defineService({name: 'NetworkService', service: NetworkService.get_default()});

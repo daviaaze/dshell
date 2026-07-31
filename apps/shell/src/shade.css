@@ -21,3 +21,13 @@
 .popover-padded-lg {
     margin: 12px;
 }
+
+/* Notification urgency accents. The card itself stays a plain .card;
+ * urgency adds a single visual cue via box-shadow inset so layout is
+ * unaffected. */
+.notification-critical {
+    box-shadow: inset 3px 0 0 0 var(--shade-error);
+}
+.notification-low {
+    opacity: 0.7;
+}

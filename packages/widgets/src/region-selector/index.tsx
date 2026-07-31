@@ -292,6 +292,7 @@ export default () => {
             application={getApp()}
             layer={Astal.Layer.TOP}
             keymode={Astal.Keymode.EXCLUSIVE}
+            exclusivity={Astal.Exclusivity.IGNORE}
             visible={bind(ss, 'regionSelectorOpen')}
             onNotifyVisible={self => {
                 if (self.visible) {

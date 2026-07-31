@@ -5,6 +5,8 @@ import {Object, register, property} from 'gnim/gobject';
 import {bus} from '../bus';
 import logger from '@shade/core/logger';
 import {fmtDuration} from '@shade/core/time';
+import {defineService} from '@shade/core/define';
+import {timerSettings} from './timer.gschema';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 
@@ -280,3 +282,15 @@ export default class TimerService extends Object {
         this.notify('pomodoro-is-break');
     }
 }
+
+defineService({
+    name: 'TimerService',
+    service: TimerService.get_default(),
+    initArgs: (ctx) => [
+        ctx.app,
+        timerSettings().pomodoroWorkDuration(),
+        timerSettings().pomodoroBreakDuration(),
+        timerSettings().pomodoroLongBreakDuration(),
+        timerSettings().pomodoroSessionsBeforeLongBreak(),
+    ],
+});

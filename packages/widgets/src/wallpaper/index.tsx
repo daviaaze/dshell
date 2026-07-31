@@ -4,13 +4,13 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {bind, computed, For, onCleanup} from 'gnim';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
-import {useSettings} from '@shade/services/settings/index';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitors} from '@shade/services/monitoring/monitors';
 import {getApp} from '@shade/services/appHandle';
 
 export const Wallpaper = () => {
-    const settings = useSettings().general;
+    const settings = generalSettings();
     const color = bind(ColorScheme.get_default(), 'colorScheme');
     const daytime = bind(ColorScheme.get_default(), 'daytime');
     const wp = computed(() => {

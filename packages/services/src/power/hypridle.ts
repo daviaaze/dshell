@@ -8,6 +8,8 @@ import {
     deleteHypridleConfig,
     type HypridleConfig,
 } from './hypridleConfig';
+import {defineService} from '@shade/core/define';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 
 type PropKey = keyof HypridleConfig | 'enabled';
 /** All hypridle props are either boolean toggles or second-based timeouts. */
@@ -344,3 +346,5 @@ export default class Hypridle extends GObject {
         this.#stop();
     }
 }
+
+defineService({name: 'Hypridle', service: Hypridle.get_default(), initArgs: () => [generalSettings()]});

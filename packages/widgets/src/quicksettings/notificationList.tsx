@@ -10,7 +10,7 @@ import DndService from '@shade/services/notifications/dnd';
 import {bus} from '@shade/services/bus';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
 import type {HistoryEntry} from '@shade/services/notifications/history';
-import {useSettings} from '@shade/services/settings/index';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 
 const HISTORY_VISIBLE_COUNT = 20;
 
@@ -38,6 +38,36 @@ function dismissAll(notifications: Notifd.Notification[]): void {
         for (const n of notifications) n.dismiss();
         return GLib.SOURCE_REMOVE;
     });
+}
+
+/**
+ * Short timestamp for history rows:
+ *   today         -> "14:30"
+ *   this week     -> "Mon 14:30"
+ *   otherwise     -> "12 Mar"
+ */
+function historyTime(unix: number): string {
+    const dt = GLib.DateTime.new_from_unix_local(unix)!;
+    const now = GLib.DateTime.new_now_local()!;
+    const startOfDay = GLib.DateTime.new_local(
+        now.get_year(),
+        now.get_month(),
+        now.get_day_of_month(),
+        0,
+        0,
+        0
+    )!;
+    // Compare via unix timestamps to avoid add_days nullability noise.
+    const startOfDayUnix = startOfDay.to_unix();
+    const weekStartUnix = startOfDayUnix - (startOfDay.get_day_of_week() - 1) * 86400;
+    const dtUnix = dt.to_unix();
+    if (dtUnix >= startOfDayUnix) {
+        return dt.format('%H:%M') || '';
+    }
+    if (dtUnix >= weekStartUnix) {
+        return dt.format('%a %H:%M') || '';
+    }
+    return dt.format('%d %b') || '';
 }
 
 /**
@@ -80,15 +110,11 @@ const NotificationListContent = ({
                 )}
             />
             <Gtk.Button
-                halign={Gtk.Align.END}
-                cursor={Gdk.Cursor.new_from_name('pointer', null)}
+                cssClasses={['flat']}
+                iconName={'edit-clear-all-symbolic'}
+                tooltipText={'Clear all notifications'}
                 onClicked={() => dismissAll(notifd.get_notifications())}
-            >
-                <Adw.ButtonContent
-                    iconName={'edit-clear-all-symbolic'}
-                    label={'Clear'}
-                />
-            </Gtk.Button>
+            />
             <Gtk.ToggleButton
                 onClicked={self => bus.emit('system:dnd:set', self.active)}
                 active={bind(dnd, 'dnd')}
@@ -108,60 +134,69 @@ const NotificationListContent = ({
             orientation={Gtk.Orientation.VERTICAL}
             spacing={6}
         >
-            <Gtk.Box spacing={8} cssClasses={['toolbar']}>
-                <Gtk.Label
-                    hexpand
-                    label="Recent Notifications"
-                    cssClasses={['caption-heading']}
-                />
-                <Gtk.Button
-                    cssClasses={['flat']}
-                    label="Clear History"
-                    onClicked={() => history.clear()}
-                />
-            </Gtk.Box>
-            <For
-                each={bind(history, 'history').as(h =>
-                    h.slice(0, HISTORY_VISIBLE_COUNT)
-                )}
+            <Gtk.ListBox
+                cssClasses={['boxed-list']}
+                visible={bind(history, 'history').as(h => h.length > 0)}
+                selectionMode={Gtk.SelectionMode.NONE}
             >
-                {(entry: HistoryEntry) => <HistoryItem entry={entry} />}
-            </For>
+                <For
+                    each={bind(history, 'history').as(h =>
+                        h.slice(0, HISTORY_VISIBLE_COUNT)
+                    )}
+                >
+                    {(entry: HistoryEntry) => <HistoryItem entry={entry} />}
+                </For>
+            </Gtk.ListBox>
+            <Gtk.Label
+                visible={bind(history, 'history').as(
+                    h => h.length > HISTORY_VISIBLE_COUNT
+                )}
+                cssClasses={['caption', 'dim-label']}
+                label={bind(history, 'history').as(
+                    h =>
+                        `Showing ${HISTORY_VISIBLE_COUNT} of ${h.length} notifications`
+                )}
+                halign={Gtk.Align.CENTER}
+            />
             <Adw.StatusPage
                 visible={bind(history, 'history').as(h => h.length === 0)}
                 vexpand
                 cssClasses={['compact']}
-                title="No History"
+                title="No history"
                 description="Notification history is empty"
-                iconName="user-offline-symbolic"
+                iconName="notification-symbolic"
             />
         </Gtk.Box>
     );
 
     const HistoryItem = ({entry}: {entry: HistoryEntry}) => (
-        <Gtk.Box cssClasses={['card']} spacing={8} marginBottom={4}>
+        <Adw.ActionRow
+            title={entry.summary}
+            subtitle={`${entry.appName} — ${entry.body || ''}`}
+            subtitleLines={1}
+            cssClasses={['notification-history-row']}
+        >
+            <Gtk.Label
+                cssClasses={['caption', 'numeric']}
+                label={historyTime(entry.time)}
+                valign={Gtk.Align.CENTER}
+                slot='prefix'
+            />
             <Gtk.Image
                 pixelSize={24}
                 iconName={entry.appIcon || 'dialog-information-symbolic'}
+                valign={Gtk.Align.CENTER}
+                slot='prefix'
             />
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
-                <Gtk.Label
-                    halign={Gtk.Align.START}
-                    cssClasses={['title-4']}
-                    label={entry.summary}
-                />
-                <Gtk.Label
-                    halign={Gtk.Align.START}
-                    cssClasses={['caption']}
-                    label={`${entry.appName} — ${GLib.DateTime.new_from_unix_local(entry.time)!.format('%H:%M') || ''}`}
-                />
-            </Gtk.Box>
             <Gtk.Button
                 cssClasses={['flat', 'circular']}
                 iconName={'edit-delete-symbolic'}
+                valign={Gtk.Align.CENTER}
+                tooltipText={'Delete from history'}
                 onClicked={() => history.remove(entry.id)}
+                slot='suffix'
             />
-        </Gtk.Box>
+        </Adw.ActionRow>
     );
 
     const NotificationGroup = ({
@@ -180,7 +215,11 @@ const NotificationListContent = ({
                 >
                     <Gtk.Box>
                         <Gtk.Image iconName={notifications[0]?.appIcon} />
-                        <Gtk.Label label={notifications[0]?.appName} hexpand />
+                        <Gtk.Label
+                            label={notifications[0]?.appName}
+                            hexpand
+                            cssClasses={['caption-heading']}
+                        />
                         <Gtk.Image
                             iconName={visible.as(v =>
                                 v ? 'go-up-symbolic' : 'go-down-symbolic'
@@ -192,6 +231,7 @@ const NotificationListContent = ({
                     iconName={'edit-clear-all-symbolic'}
                     valign={Gtk.Align.END}
                     tooltipText={'Dismiss this group'}
+                    cssClasses={['flat']}
                     onClicked={() => dismissAll(notifications)}
                 />
             </Gtk.Box>
@@ -202,6 +242,7 @@ const NotificationListContent = ({
                 <Heading />
                 <Notification
                     notification={notifications[0]!}
+                    variant="list"
                     showProgress={showProgress}
                     closeAction={n => n.dismiss()}
                 />
@@ -212,6 +253,7 @@ const NotificationListContent = ({
                         {notifications.slice(1).map(notif => (
                             <Notification
                                 notification={notif}
+                                variant="list"
                                 showProgress={showProgress}
                                 closeAction={n => n.dismiss()}
                             />
@@ -235,6 +277,7 @@ const NotificationListContent = ({
                             closeAction={n => n.dismiss()}
                             showProgress={showProgress}
                             notification={group[0]!}
+                            variant="list"
                         />
                     ) : (
                         <NotificationGroup notifications={group} />
@@ -245,9 +288,9 @@ const NotificationListContent = ({
                 visible={bind(notifd, 'notifications').as(n => n.length < 1)}
                 vexpand
                 cssClasses={['compact']}
-                title={'No new Notifications'}
+                title={'No new notifications'}
                 description={"You're up-to-date"}
-                iconName={'user-offline-symbolic'}
+                iconName={'notification-symbolic'}
             />
         </Gtk.Box>
     );
@@ -265,7 +308,7 @@ export const NotificationList = () => {
     const notifd = useNotifd();
     const history = NotificationHistory.get_default();
     const [showHistory, setShowHistory] = createState(false);
-    const settings = useSettings().general;
+    const settings = generalSettings();
     const showProgress = settings.notificationShowProgress();
 
     return (

@@ -14,6 +14,7 @@ import {Object as GObject, register, signal, property} from 'gnim/gobject';
 import {bus} from '../bus';
 import logger from '@shade/core/logger';
 import {FrecencyStorage, type FrecencyEntry} from './storage';
+import {defineService} from '@shade/core/define';
 
 // ── Constants ──
 
@@ -182,3 +183,5 @@ export class FrecencyManager extends GObject {
         return recency * normalizedFreq;
     }
 }
+
+defineService({name: 'FrecencyManager', service: FrecencyManager.get_default()});

@@ -5,7 +5,7 @@
 ## Overview
 
 - **Source**: `src/widget/osd/` (entry: `index.tsx`, `popup.tsx`, `slider.tsx`, `touchpad.tsx`)
-- **Dependencies**: `AstalWp`, `Brightness`, `Touchpad`
+- **Dependencies**: domain services own their OSD reveal state — `AudioController.speakerOsdVisible`/`micOsdVisible`, `Brightness.screenOsdVisible`/`kbdOsdVisible`, `Touchpad.osdVisible` (backed by `services/utils/osdTimer.ts` debounce). Any widget (osd, bar, quicksettings) binds to the same source.
 - **Type**: `PopupWindow` (Astal.Window), anchored to bottom, layer OVERLAY; contains multiple `Gtk.Revealer` popups keyed to service signals
 
 ## Functional
@@ -59,6 +59,6 @@
 
 ## Test plan
 
-- **Unit**: extract and test icon selection logic (muted vs active icons), volume clamping and percentage formatting, timer reset logic
+- **Unit**: `OsdTimer` debounce behavior and service OSD props (covered in `services/__tests__/osd.test.ts`); icon selection logic (muted vs active icons), volume clamping and percentage formatting
 - **Compliance linter**: no expected violations
 - **Visual/manual**: screenshots of each OSD type, test simultaneous display

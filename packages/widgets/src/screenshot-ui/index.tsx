@@ -1,6 +1,7 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
+import GLib from 'gi://GLib?version=2.0';
 import {getHyprland} from '@shade/services/hyprland';
 import {bind, createState} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
@@ -41,6 +42,7 @@ export default () => {
     let daRef: Gtk.DrawingArea | null = null;
 
     function getSelectionState(): SelectionState {
+        const mon = hyprland?.focusedMonitor;
         return {
             dragStart: dragStart(),
             dragEnd: dragEnd(),
@@ -48,6 +50,9 @@ export default () => {
             selectedWindow: selectedWindow(),
             windows: windows(),
             monOrigin: monOrigin(),
+            focusedMonitor: mon
+                ? {x: mon.x, y: mon.y, width: mon.width, height: mon.height}
+                : null,
         };
     }
 
@@ -171,6 +176,7 @@ export default () => {
             application={getApp()}
             layer={Astal.Layer.TOP}
             keymode={Astal.Keymode.EXCLUSIVE}
+            exclusivity={Astal.Exclusivity.IGNORE}
             visible={isVisible}
             onNotifyVisible={self => {
                 if (self.visible) {
@@ -221,6 +227,31 @@ export default () => {
                                 monOrigin: monOrigin(),
                             })
                         );
+                        // Debug: verify the drawing area actually gets mapped
+                        // and allocated inside the overlay window.
+                        self.connect('map', (w) => {
+                            GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+                                const a = w.get_allocation();
+                                const parent = w.get_parent();
+                                const pa = parent?.get_allocation();
+                                // log every sibling's allocation to find who
+                                // gets space and who doesn't
+                                let sib = parent?.get_first_child();
+                                const sibs: string[] = [];
+                                while (sib) {
+                                    const sa = sib.get_allocation();
+                                    sibs.push(
+                                        `${sib.constructor.name}=${sa.width}x${sa.height}`
+                                    );
+                                    sib = sib.get_next_sibling();
+                                }
+                                logger.info(
+                                    'screenshot-ui',
+                                    `DA alloc=${a.width}x${a.height} parent=${parent ? parent.constructor.name : 'null'} palloc=${pa?.width}x${pa?.height} sibs=[${sibs.join(', ')}]`
+                                );
+                                return GLib.SOURCE_REMOVE;
+                            });
+                        });
                     }}
                     hexpand
                     vexpand

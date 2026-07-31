@@ -17,6 +17,7 @@
 import AstalBrightness from 'gi://AstalBrightness';
 import {Object, register, property} from 'gnim/gobject';
 import {bus} from '../bus';
+import OsdTimer from '../utils/osdTimer';
 import logger from '@shade/core/logger';
 
 @register
@@ -33,6 +34,23 @@ export default class Brightness extends Object {
     #kbdDev: AstalBrightness.Device | null = null;
     #ready = false;
     #busSubscriptions: (() => void)[] = [];
+
+    // ── OSD state (owned here so osd/bar/quicksettings share one source) ──
+
+    #screenOsd = new OsdTimer(() => this.notify('screen-osd-visible'));
+    #kbdOsd = new OsdTimer(() => this.notify('kbd-osd-visible'));
+
+    /** True while the screen brightness OSD should be revealed. */
+    @property
+    get screenOsdVisible(): boolean {
+        return this.#screenOsd.visible;
+    }
+
+    /** True while the keyboard brightness OSD should be revealed. */
+    @property
+    get kbdOsdVisible(): boolean {
+        return this.#kbdOsd.visible;
+    }
 
     @property
 
@@ -83,9 +101,11 @@ export default class Brightness extends Object {
             // Device.brightness fires notify::brightness when the percentage changes.
             screenDev?.connect('notify::brightness', () => {
                 this.notify('screen');
+                this.#screenOsd.trigger();
             });
             kbdDev?.connect('notify::brightness', () => {
                 this.notify('kbd');
+                this.#kbdOsd.trigger();
             });
 
             // Also listen to the service-level convenience signal
@@ -132,6 +152,9 @@ export default class Brightness extends Object {
     }
 
     dispose(): void {
-        // Cleanup handled by AstalBrightness
+        this.#screenOsd.dispose();
+        this.#kbdOsd.dispose();
+        for (const unsub of this.#busSubscriptions) unsub();
+        this.#busSubscriptions = [];
     }
 }

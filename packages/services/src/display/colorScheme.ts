@@ -7,6 +7,8 @@ import {bus} from '../bus';
 import {createSettings, Schema} from 'gnim/schema';
 import {Accessor, Setter} from 'gnim';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 
 export enum DarkModes {
     AUTO,
@@ -413,3 +415,5 @@ export class ColorScheme extends Object {
         );
     }
 }
+
+defineService({name: 'ColorScheme', service: ColorScheme.get_default(), initArgs: () => [generalSettings()]});

@@ -2,10 +2,10 @@ import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For, onCleanup} from 'gnim';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 
 export default () => {
-    const {bar} = useSettings();
+    const bar = barSettings();
     const {TOP, LEFT, RIGHT, BOTTOM} = Astal.WindowAnchor;
 
     return (

@@ -3,6 +3,7 @@ import Gio from 'gi://Gio?version=2.0';
 import {bus} from '../bus';
 import ServiceRegistry from '@shade/core/serviceRegistry';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 @register
 export default class ShellState extends GObject {
@@ -189,3 +190,5 @@ export default class ShellState extends GObject {
         }
     }
 }
+
+defineService({name: 'ShellState', service: ShellState.get_default()});

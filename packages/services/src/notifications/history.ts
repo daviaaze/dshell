@@ -5,6 +5,8 @@ import logger from '@shade/core/logger';
 import {getNotifdSafe} from './guard';
 import {readFile} from '@shade/core/file';
 import {Accessor} from 'gnim';
+import {defineService} from '@shade/core/define';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 
 const CACHE_DIR = `${GLib.get_user_cache_dir()}/shade`;
 const HISTORY_FILE = `${CACHE_DIR}/notifications.json`;
@@ -184,3 +186,5 @@ export default class NotificationHistory extends Object {
         }
     }
 }
+
+defineService({name: 'NotificationHistory', service: NotificationHistory.get_default(), initArgs: () => [generalSettings()]});

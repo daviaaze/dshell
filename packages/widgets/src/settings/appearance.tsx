@@ -1,13 +1,13 @@
 import {onCleanup} from 'gnim';
 import WindowManager from '@shade/services/state/windowManager';
-import {useSettings} from '@shade/services/settings/index';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 import PaletteGenerator from '@shade/style/palette';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {TEMP_MIN, TEMP_MAX} from '@shade/services/display/nightLight';
 
 export default () => {
-    const settings = useSettings().general;
+    const settings = generalSettings();
     const fileDialog = Gtk.FileDialog.new();
     const paletteGen = PaletteGenerator.get_default();
     fileDialog.set_default_filter(new Gtk.FileFilter({mimeTypes: ['image/*']}));

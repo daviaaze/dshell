@@ -2,6 +2,7 @@ import Wireplumber from 'gi://AstalWp';
 import GLib from 'gi://GLib?version=2.0';
 import {bind} from 'gnim';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 export function initAutoSwitch() {
     // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
@@ -37,3 +38,5 @@ export function initAutoSwitch() {
         return GLib.SOURCE_REMOVE;
     });
 }
+
+defineService({name: 'AudioAutoSwitch', service: {init: () => initAutoSwitch()}});

@@ -7,6 +7,7 @@ import {Object, register, property} from 'gnim/gobject';
 import Bluetooth from 'gi://AstalBluetooth';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 let _instance: BluetoothService | null = null;
 
@@ -84,3 +85,5 @@ export default class BluetoothService extends Object {
         });
     }
 }
+
+defineService({name: 'BluetoothService', service: BluetoothService.get_default()});

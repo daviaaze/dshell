@@ -4,6 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 import {Object, register, property} from 'gnim/gobject';
 import {bus} from '../bus';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 @register
 export default class Inhibit extends Object {
@@ -130,3 +131,5 @@ export default class Inhibit extends Object {
         this.#initialized = false;
     }
 }
+
+defineService({name: 'Inhibit', service: Inhibit.get_default(), initArgs: (ctx) => [ctx.app]});

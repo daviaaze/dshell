@@ -6,7 +6,7 @@ import Adw from 'gi://Adw?version=1';
 import {bind, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
 import {bus} from '@shade/services/bus';
@@ -21,7 +21,7 @@ import AstalApps from 'gi://AstalApps?version=0.1';
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
 export default () => {
-    const barCfg = useSettings().bar;
+    const barCfg = barSettings();
     const hyprland = getHyprland();
     if (!hyprland) return null;
     const shellState = ShellState.get_default();

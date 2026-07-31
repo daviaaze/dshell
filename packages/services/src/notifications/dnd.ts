@@ -3,6 +3,7 @@ import GLib from 'gi://GLib?version=2.0';
 import {bus} from '../bus';
 import {getNotifdSafe} from './guard';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 /**
  * Centralized Do Not Disturb service.
@@ -94,3 +95,5 @@ export default class DndService extends Object {
         this.#initialized = false;
     }
 }
+
+defineService({name: 'DndService', service: DndService.get_default()});

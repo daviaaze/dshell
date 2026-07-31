@@ -1,7 +1,9 @@
 import {Object, register, property} from 'gnim/gobject';
 import Wireplumber from 'gi://AstalWp';
 import {bus} from '../bus';
+import OsdTimer from '../utils/osdTimer';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 /**
  * AudioController — semantic command layer over AstalWp.
@@ -21,6 +23,25 @@ export default class AudioController extends Object {
 
     #audio: Wireplumber.Audio | null = null;
     #initialized = false;
+
+    // ── OSD state (owned here so osd/bar/quicksettings share one source) ──
+
+    #speakerOsd = new OsdTimer(() => this.notify('speaker-osd-visible'));
+    #micOsd = new OsdTimer(() => this.notify('mic-osd-visible'));
+    #speakerOsdConns: {obj: Wireplumber.Endpoint; id: number}[] = [];
+    #micOsdConns: {obj: Wireplumber.Endpoint; id: number}[] = [];
+
+    /** True while the speaker volume/mute OSD should be revealed. */
+    @property
+    get speakerOsdVisible(): boolean {
+        return this.#speakerOsd.visible;
+    }
+
+    /** True while the microphone volume/mute OSD should be revealed. */
+    @property
+    get micOsdVisible(): boolean {
+        return this.#micOsd.visible;
+    }
 
     @property
     get audio(): Wireplumber.Audio | null {
@@ -74,9 +95,11 @@ export default class AudioController extends Object {
         // Forward property notifications so widgets can bind
         this.#audio.connect('notify::default-speaker', () => {
             this.notify('default-speaker');
+            this.#wireOsd('speaker');
         });
         this.#audio.connect('notify::default-microphone', () => {
             this.notify('default-microphone');
+            this.#wireOsd('mic');
         });
         this.#audio.connect('notify::speakers', () => {
             this.notify('speakers');
@@ -90,6 +113,42 @@ export default class AudioController extends Object {
         this.#audio.connect('microphone-removed', () => {
             this.notify('microphones');
         });
+
+        // OSD triggers on the current default devices
+        this.#wireOsd('speaker');
+        this.#wireOsd('mic');
+    }
+
+    /** (Re)subscribe OSD triggers to the current default endpoint. */
+    #wireOsd(kind: 'speaker' | 'mic') {
+        const conns = kind === 'speaker' ? this.#speakerOsdConns : this.#micOsdConns;
+        for (const {obj, id} of conns) obj.disconnect(id);
+        conns.length = 0;
+
+        const endpoint =
+            kind === 'speaker' ? this.defaultSpeaker : this.defaultMicrophone;
+        if (!endpoint) return;
+
+        const osd = kind === 'speaker' ? this.#speakerOsd : this.#micOsd;
+        const connectable = endpoint as unknown as {
+            connect(signal: string, cb: () => void): number;
+        };
+        for (const signal of ['notify::volume', 'notify::mute']) {
+            conns.push({obj: endpoint, id: connectable.connect(signal, () => osd.trigger())});
+        }
+    }
+
+    dispose() {
+        this.#speakerOsd.dispose();
+        this.#micOsd.dispose();
+        for (const {obj, id} of [...this.#speakerOsdConns, ...this.#micOsdConns]) {
+            obj.disconnect(id);
+        }
+        this.#speakerOsdConns = [];
+        this.#micOsdConns = [];
+        for (const unsub of this.#busSubscriptions) unsub();
+        this.#busSubscriptions = [];
+        this.#initialized = false;
     }
 
     // ── Semantic command methods ──
@@ -120,3 +179,5 @@ export default class AudioController extends Object {
         speaker.set_volume(newVol);
     }
 }
+
+defineService({name: 'AudioController', service: AudioController.get_default()});

@@ -88,8 +88,10 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
                     {(n: Notifd.Notification) => (
                         <Notification
                             notification={n}
+                            variant="lockscreen"
                             closeAction={closeAction}
                             showProgress={false}
+                            showActions={false}
                         />
                     )}
                 </For>

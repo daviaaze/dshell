@@ -1,4 +1,4 @@
-import {useSettings} from '@shade/services/settings/index';
+import {timerSettings} from '@shade/services/time/timer.gschema';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 
@@ -6,7 +6,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 const DEFAULT_COUNTDOWN_PRESETS = [1, 5, 10, 15, 30, 60];
 
 export default () => {
-    const settings = useSettings().timer;
+    const settings = timerSettings();
 
     return (
         <>

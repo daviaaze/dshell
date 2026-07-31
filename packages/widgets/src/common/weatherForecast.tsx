@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {Accessor, For} from 'gnim';
-import {formatTemp} from '@shade/services/location/weatherUtils';
+import {formatTemp, formatTime} from '@shade/services/location/weatherUtils';
 
 interface HourlyItem {
     time: number;
@@ -13,11 +13,6 @@ interface DailyItem {
     tempMax: number;
     tempMin: number;
     iconName: string;
-}
-
-function formatTime(unixTs: number): string {
-    const dt = new Date(unixTs * 1000);
-    return dt.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 }
 
 export const HourlyForecastSection = ({

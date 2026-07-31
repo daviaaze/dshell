@@ -4,15 +4,13 @@ import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import {render} from '@gnim-js/gtk4';
 import {register} from 'gnim/gobject';
 import {gettext} from 'gettext';
-import {SettingsContext, createAppSettings} from '@shade/services/settings/index';
 import {requestHandler} from '@shade/services/state/requestHandler';
 import ShellState from '@shade/services/state/shellState';
 import Screenshot from '@shade/services/capture/screenshot';
 import Touchpad from '@shade/services/input/touchpad';
-import {registerServices, getWidgetDescriptors} from '@shade/widgets/index';
+import {boot} from '@shade/widgets/index';
 import ServiceRegistry from '@shade/core/serviceRegistry';
 import logger, {perf} from '@shade/core/logger';
 import {setApp} from '@shade/services/appHandle';
@@ -63,42 +61,13 @@ export class ShadeShell extends Adw.Application {
         return 0;
     }
 
-    /** Mount all widgets inside the SettingsProvider context. */
+    /** Mount all widgets. The composition root (boot) handles settings,
+     *  services, action wiring, and per-widget mounting with error isolation. */
     private bootstrapUi() {
         perf.start('widgets-mount', 'mount');
         this.initIcons();
 
-        const settings = createAppSettings();
-        this.#rootDisposers = [];
-
-        // Register and init services (no context needed — settings passed directly)
-        registerServices(settings);
-        const ok = ServiceRegistry.get_default().initAll();
-        if (!ok) {
-            logger.error('mount', 'Some services failed to init — continuing');
-        }
-
-        // Mount each widget with its own render() for error isolation
-        for (const {name, mount: W} of getWidgetDescriptors()) {
-            if (name === 'settings') continue; // created lazily by openSettings()
-            try {
-                perf.start(`widget-${name}`, 'mount');
-                this.#rootDisposers.push(
-                    render(
-                        () => (
-                            <SettingsContext value={settings}>
-                                <W/>
-                            </SettingsContext>
-                        ),
-                        this,
-                    )
-                );
-                const elapsed = perf.stop(`widget-${name}`, 'mount');
-                logger.info('mount', `${name} mounted in ${elapsed.toFixed(1)}ms`);
-            } catch (e) {
-                logger.error('mount', `Widget ${name} FAILED to mount:`, e);
-            }
-        }
+        this.#rootDisposers = boot(this);
 
         GObject.signal_connect(this, 'shutdown', () => this.#teardown());
         perf.stop('widgets-mount', 'mount');

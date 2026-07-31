@@ -1,11 +1,11 @@
-import {useSettings} from '@shade/services/settings/index';
+import {weatherSettings} from '@shade/services/location/weather.gschema';
 import Weather from '@shade/services/location/weather';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
 
 export default () => {
-    const settings = useSettings().weather;
+    const settings = weatherSettings();
     const weather = Weather.get_default();
 
     return (

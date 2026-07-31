@@ -2,6 +2,7 @@ import Astal from 'gi://Astal?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import {Object, register} from 'gnim/gobject';
 import {property} from '@shade/core/decorators';
+import {defineService} from '@shade/core/define';
 
 // ── Generic window collection for multi-window types (bars, wallpapers, lockscreens) ──
 function windowCollection<T extends Astal.Window>(
@@ -167,3 +168,5 @@ export default class WindowManager extends Object {
         // Reserved for overlay window tracking
     }
 }
+
+defineService({name: 'WindowManager', service: WindowManager.get_default()});

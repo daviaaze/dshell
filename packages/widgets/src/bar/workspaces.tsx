@@ -56,12 +56,11 @@ export default ({
                                     ? Gtk.Orientation.VERTICAL
                                     : Gtk.Orientation.HORIZONTAL
                             )}
+                            cssClasses={['flat']}
                             spacing={4}
                         >
                             <For
-                                each={bind(ws, 'clients').as(clients =>
-                                    toArray<Hyprland.Client>(clients)
-                                )}
+                                each={bind(ws, 'clients')}
                             >
                                 {(client: Hyprland.Client) => (
                                     <Gtk.ToggleButton
@@ -82,25 +81,14 @@ export default ({
                             </For>
                             {/* show empty dot when ws is empty */}
                             <With
-                                value={bind(ws, 'clients').as(
-                                    clients =>
-                                        toArray<Hyprland.Client>(clients)
-                                            .length < 1
-                                )}
+                                value={bind(ws, 'clients').as(clients => clients.length < 1)}
                             >
                                 {(isEmpty: boolean) =>
                                     isEmpty ? (
                                         <Gtk.ToggleButton
                                             active={false}
                                             cssClasses={['flat']}
-                                        >
-                                            <Gtk.Image
-                                                iconName={
-                                                    'window-minimize-symbolic'
-                                                }
-                                                pixelSize={8}
-                                            />
-                                        </Gtk.ToggleButton>
+                                        ></Gtk.ToggleButton>
                                     ) : null
                                 }
                             </With>

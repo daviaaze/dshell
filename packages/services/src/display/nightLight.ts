@@ -5,6 +5,8 @@ import Gio from 'gi://Gio?version=2.0';
 import logger from '@shade/core/logger';
 import {Accessor} from 'gnim';
 import {bus} from '../bus';
+import {defineService} from '@shade/core/define';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 
 export const TEMP_MIN = 2000;
 export const TEMP_MAX = 6500;
@@ -230,3 +232,5 @@ export default class NightLight extends Object {
         this.#stopProcess();
     }
 }
+
+defineService({name: 'NightLight', service: NightLight.get_default(), initArgs: () => [generalSettings()]});

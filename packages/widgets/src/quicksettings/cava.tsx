@@ -1,10 +1,10 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import AstalCava from 'gi://AstalCava?version=0.1';
-import {useSettings} from '@shade/services/settings/index';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 import {tickWhileAttached} from '@shade/core/widgetTimer';
 
 export default () => {
-    const settings = useSettings().general;
+    const settings = generalSettings();
 
     if (!AstalCava) {
         return <Gtk.Box visible={false} />;

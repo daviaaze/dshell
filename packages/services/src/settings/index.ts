@@ -1,48 +1,14 @@
-import Gio from 'gi://Gio';
-import {createSettings, Schema} from 'gnim/schema';
-import {createContext} from 'gnim';
-import {
-    barSchema,
-    generalSchema,
-    weatherSchema,
-    timerSchema,
-    screenCaptureSchema,
-} from './schema.gschema';
+/**
+ * Settings barrel — re-exports the per-domain settings accessors.
+ *
+ * Each service/widget imports its own slice directly (e.g. barSettings(),
+ * generalSettings()) instead of reaching through a god-object. The old
+ * createAppSettings()/useSettings()/SettingsContext machinery is gone —
+ * accessors work globally once initSettingsRoot() runs at boot.
+ */
 
-// ── Helper: create a settings group from a schema ──
-
-function createSettingsGroup<S extends Schema>(schema: S) {
-    const settings = new Gio.Settings({schemaId: schema.id});
-    return {
-        raw: settings,
-        ...createSettings(settings, schema),
-    };
-}
-
-// ── App settings ──
-
-type Settings = ReturnType<typeof createAppSettings>;
-
-const SettingsContext = createContext<Settings | null>(null);
-
-export {SettingsContext};
-
-export function createAppSettings() {
-    return {
-        bar: createSettingsGroup(barSchema),
-        general: createSettingsGroup(generalSchema),
-        weather: createSettingsGroup(weatherSchema),
-        timer: createSettingsGroup(timerSchema),
-        screenCapture: createSettingsGroup(screenCaptureSchema),
-    };
-}
-
-export function SettingsProvider<T>(fn: () => T) {
-    return SettingsContext.provide(createAppSettings(), fn);
-}
-
-export function useSettings() {
-    const settings = SettingsContext.use();
-    if (!settings) throw Error('settings not in scope');
-    return settings;
-}
+export {barSettings} from './bar.gschema';
+export {generalSettings} from '@shade/core/settings/general.gschema';
+export {weatherSettings} from '../location/weather.gschema';
+export {timerSettings} from '../time/timer.gschema';
+export {screenCaptureSettings} from './screenCapture.gschema';

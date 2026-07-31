@@ -1,6 +1,7 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import {Object, register} from 'gnim/gobject';
+import {defineService} from '@shade/core/define';
 import {property} from '@shade/core/decorators';
 import {bus} from '../bus';
 import logger from '@shade/core/logger';
@@ -440,3 +441,5 @@ export default class Screenshot extends Object {
         this.#recorder.dispose();
     }
 }
+
+defineService({name: 'Screenshot', service: Screenshot.get_default()});

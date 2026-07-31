@@ -1,12 +1,12 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
 import {For} from 'gnim';
-import {useSettings} from '@shade/services/settings/index';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 import {fmtOffset, cityName} from '@shade/core/time';
 import Clock from '@shade/services/time/clock';
 
 export const WorldClock = () => {
-    const {general} = useSettings();
+    const general = generalSettings();
     const time = Clock.get_default().time;
 
     const localTz = GLib.TimeZone.new_local();

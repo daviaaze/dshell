@@ -2,7 +2,7 @@ import Bluetooth from 'gi://AstalBluetooth';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {computed, createState, onCleanup, effect} from 'gnim';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import {getDeviceBatteryPercentage} from '@shade/services/monitoring/bluetoothBattery';
 import {connectFor, cleanupNode} from '@shade/core/connectFor';
 
@@ -41,7 +41,7 @@ function applyColorCss(widget: Gtk.Widget, level: number | null) {
 
 export default () => {
     const bluetooth = Bluetooth.get_default();
-    const {bar} = useSettings();
+    const bar = barSettings();
 
     const [deviceInfo, setDeviceInfo] = createState<
         {name: string; icon: string; battery: number | null}[]

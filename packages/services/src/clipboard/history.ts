@@ -27,6 +27,7 @@ import {
     clearHistory as storeClearHistory,
     type ClipboardEntry,
 } from './encryptedStore';
+import {defineService} from '@shade/core/define';
 export type {ClipboardEntry};
 import {startClipboardWatcher, stopClipboardWatcher} from './clipboardWatcher';
 import logger from '@shade/core/logger';
@@ -199,3 +200,5 @@ export function togglePin(id: string): void {
 export function clearHistory(): void {
     storeClearHistory();
 }
+
+defineService({name: 'ClipboardHistory', service: {init: () => initClipboardHistory()}});

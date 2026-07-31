@@ -1,4 +1,6 @@
 import GTop from 'gi://GTop';
+import {defineService} from '@shade/core/define';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 
 /* eslint-disable camelcase -- wrapper names intentionally mirror the libgtop C API */
 // GIR does not capture these raw C functions — typed wrappers around them.
@@ -197,3 +199,5 @@ export default class SystemUsage {
         }
     }
 }
+
+defineService({name: 'SystemUsage', service: SystemUsage.get_default(), initArgs: () => [barSettings().tempPath()]});

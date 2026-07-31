@@ -8,6 +8,8 @@ import logger from '@shade/core/logger';
 import {Accessor} from 'gnim';
 import {toArray} from '@shade/core/gjsUtils';
 import {formatTemp} from './weatherUtils';
+import {defineService} from '@shade/core/define';
+import {weatherSettings} from './weather.gschema';
 
 @register
 export default class Weather extends Object {
@@ -513,3 +515,5 @@ export default class Weather extends Object {
         }
     }
 }
+
+defineService({name: 'Weather', service: Weather.get_default(), initArgs: () => [weatherSettings()]});

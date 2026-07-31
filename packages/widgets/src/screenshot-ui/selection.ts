@@ -26,6 +26,13 @@ export interface SelectionState {
     selectedWindow: WinInfo | null;
     windows: WinInfo[];
     monOrigin: Point;
+    /** Focused monitor geometry in global compositor coordinates. */
+    focusedMonitor?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    } | null;
 }
 
 /** Normalize two points into a {x, y, width, height} rect. */
@@ -54,20 +61,31 @@ export function buildGeometry(
     target: string,
     sel: SelectionState
 ): string | null {
-    if (target === 'fullscreen' || target === 'monitor') return null;
+    if (target === 'fullscreen') return null;
+
+    // Capture commands (magick -crop on the global stage, grim/wl-screenrec
+    // -g) all operate in GLOBAL compositor coordinates. Drag/click coords are
+    // local to the overlay window (which covers one monitor), so area rects
+    // must be offset by the monitor origin; window rects are already global.
+    const origin = sel.monOrigin;
+
+    if (target === 'monitor') {
+        const mon = sel.focusedMonitor;
+        if (!mon) return null;
+        return `${mon.width}x${mon.height}+${mon.x}+${mon.y}`;
+    }
 
     if (target === 'area') {
         if (!sel.selActive || !sel.dragStart || !sel.dragEnd) return null;
         const rect = normalizeRect(sel.dragStart, sel.dragEnd);
         if (rect.width < 5 || rect.height < 5) return null;
-        return `${rect.width}x${rect.height}+${rect.x}+${rect.y}`;
+        return `${rect.width}x${rect.height}+${origin.x + rect.x}+${origin.y + rect.y}`;
     }
 
     if (target === 'window') {
         if (!sel.selectedWindow) return null;
-        const origin = sel.monOrigin;
         const w = sel.selectedWindow;
-        return `${w.width}x${w.height}+${w.x - origin.x}+${w.y - origin.y}`;
+        return `${w.width}x${w.height}+${w.x}+${w.y}`;
     }
 
     return null;

@@ -1,10 +1,10 @@
-import {useSettings} from '@shade/services/settings/index';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {For} from 'gnim';
 
 export default () => {
-    const settings = useSettings().general;
+    const settings = generalSettings();
 
     return (
         <>

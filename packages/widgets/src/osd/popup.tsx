@@ -1,53 +1,40 @@
-import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
 import {connectFor, cleanupNode} from '@shade/core/connectFor';
-import {JSX, onCleanup} from 'gnim';
+import {Accessor, JSX, onCleanup} from 'gnim';
 
-const TIMEOUT_MS = 2000;
+const REVEAL_SIGNAL = 'notify::reveal-child';
+const HIDE_DELAY_MS = 200; // let the slide-up animation finish before hiding
+
+/**
+ * Generic OSD popup revealer — pure UI. Visibility is driven entirely by the
+ * `reveal` accessor (owned by OsdState); no signal wiring or timers here.
+ */
 export default ({
     widget,
-    connectable,
-    signals,
-    revealerRef,
+    reveal,
 }: {
     widget: JSX.Element;
-    connectable: GObject.Object | null;
-    signals: string[];
-    revealerRef?: (revealer: Gtk.Revealer) => void;
+    reveal: Accessor<boolean>;
 }) => (
     <Gtk.Revealer
         transitionDuration={200}
-        revealChild={false}
+        revealChild={reveal}
         visible={false}
         transitionType={Gtk.RevealerTransitionType.SLIDE_UP}
         ref={self => {
-            revealerRef?.(self);
             onCleanup(() => cleanupNode(self));
-            let timeout: GLib.Source | null = null;
-            let visibilityTimeout: GLib.Source | null = null;
-            const hide = () => {
-                self.visible = false;
-            };
-
-            const showPopup = () => {
-                if (timeout) clearTimeout(timeout);
-                if (visibilityTimeout) clearTimeout(visibilityTimeout);
-                self.visible = true;
-                self.revealChild = true;
-                timeout = setTimeout(() => {
-                    self.revealChild = false;
-                    visibilityTimeout = setTimeout(hide, 200);
-                }, TIMEOUT_MS);
-            };
-            // Defer signal connections so OSD widget creation doesn't block
-            // the main thread with Wireplumber/Brightness singleton init.
-            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-                if (!connectable) return GLib.SOURCE_REMOVE;
-                for (const signal of signals) {
-                    connectFor(self, connectable, signal, showPopup);
+            let hideTimeout: ReturnType<typeof setTimeout> | null = null;
+            // Keep `visible` in sync with `revealChild`: show instantly,
+            // hide only after the slide-up animation finishes.
+            connectFor(self, self, REVEAL_SIGNAL, () => {
+                if (hideTimeout) clearTimeout(hideTimeout);
+                if (self.revealChild) {
+                    self.visible = true;
+                } else {
+                    hideTimeout = setTimeout(() => {
+                        self.visible = false;
+                    }, HIDE_DELAY_MS);
                 }
-                return GLib.SOURCE_REMOVE;
             });
         }}
     >

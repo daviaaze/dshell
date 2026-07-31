@@ -49,10 +49,12 @@ export const AudioEndpointControl = ({
             <Slider
                 min={0}
                 max={100}
-                onIconClick={() => device.set_mute(!device.get_mute())}
+                onIconClick={() => bus.emit('audio:toggle-mute', {device})}
                 icon={getVolumeIcon(device, mutedIcon)}
                 value={bind(device, 'volume').as(v => v * 100)}
-                setValue={value => device.set_volume(value / 100)}
+                setValue={value =>
+                    bus.emit('audio:set-volume', {device, value: value / 100})
+                }
             />
         </Gtk.Box>
     );

@@ -110,11 +110,14 @@ pkgs.stdenv.mkDerivation {
 
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList mkEntryCommands entries)}
 
-    node "$PWD/node_modules/gnim/dist/bin/gnim.js" schemas packages/services/src/settings \
-      -o schema-out \
-      ${mkDefine "import.meta.domain" domain} \
-      ${mkDefine "import.meta.datadir" "$out/share"} \
-      ${mkDefine "import.meta.bindir" "$out/bin"}
+    for dir in packages/core/src/settings packages/services/src/settings \
+             packages/services/src/location packages/services/src/time; do
+      node "$PWD/node_modules/gnim/dist/bin/gnim.js" schemas "$dir" \
+        -o schema-out \
+        ${mkDefine "import.meta.domain" domain} \
+        ${mkDefine "import.meta.datadir" "$out/share"} \
+        ${mkDefine "import.meta.bindir" "$out/bin"}
+    done
 
     runHook postBuild
   '';
@@ -128,8 +131,8 @@ pkgs.stdenv.mkDerivation {
 
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList mkInstallCommands entries)}
 
-    install -Dm644 schema-out/schema.gschema.xml \
-      $out/share/glib-2.0/schemas/${domain}.gschema.xml
+    install -Dm644 schema-out/*.gschema.xml \
+      -t $out/share/glib-2.0/schemas/
     glib-compile-schemas $out/share/glib-2.0/schemas
 
     substitute data/desktop.in.desktop $out/share/applications/${domain}.desktop \

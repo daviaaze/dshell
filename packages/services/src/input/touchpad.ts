@@ -1,8 +1,10 @@
 import {Object, register, signal, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
 import {bus} from '../bus';
+import OsdTimer from '../utils/osdTimer';
 import {Process} from '@shade/core/process';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 logger.info('touchpad', 'module loaded');
 
@@ -32,6 +34,16 @@ export default class Touchpad extends Object {
     #initialized = false;
     #busSubscriptions: (() => void)[] = [];
 
+    // ── OSD state (owned here so osd/bar/quicksettings share one source) ──
+
+    #osd = new OsdTimer(() => this.notify('osd-visible'));
+
+    /** True while the touchpad toggle OSD should be revealed. */
+    @property
+    get osdVisible(): boolean {
+        return this.#osd.visible;
+    }
+
     @property
     get enabled() {
         return this.#enabled;
@@ -43,6 +55,7 @@ export default class Touchpad extends Object {
         this.#apply();
         this.notify('enabled');
         this.toggled(v);
+        this.#osd.trigger();
     }
 
     @property
@@ -185,5 +198,8 @@ export default class Touchpad extends Object {
 
     dispose() {
         this.#stopProcess();
+        this.#osd.dispose();
     }
 }
+
+defineService({name: 'Touchpad', service: Touchpad.get_default(), critical: false});

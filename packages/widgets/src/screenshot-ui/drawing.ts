@@ -1,6 +1,7 @@
 import Cairo from 'gi://cairo?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getHyprland} from '@shade/services/hyprland';
+import logger from '@shade/core/logger';
 import type Screenshot from '@shade/services/capture/screenshot';
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -55,6 +56,38 @@ function drawDimRect(
  * selection rectangle, and hint text.
  */
 export function draw(
+    _da: Gtk.DrawingArea,
+    cr: Cairo.Context,
+    width: number,
+    height: number,
+    params: {
+        ss: Screenshot;
+        selActive: boolean;
+        dragStart: Point | null;
+        dragEnd: Point | null;
+        selectedWindow: WinInfo | null;
+        windows: WinInfo[];
+        monOrigin: Point;
+    }
+) {
+    // Surface draw failures to the log instead of silently painting nothing.
+    try {
+        drawImpl(_da, cr, width, height, params);
+        if (!drawLogged) {
+            drawLogged = true;
+            logger.info(
+                'screenshot-ui',
+                `overlay draw: first paint ${width}x${height}`
+            );
+        }
+    } catch (e) {
+        logger.error('screenshot-ui', `overlay draw failed: ${e}`);
+    }
+}
+
+let drawLogged = false;
+
+function drawImpl(
     _da: Gtk.DrawingArea,
     cr: Cairo.Context,
     width: number,

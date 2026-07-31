@@ -7,6 +7,8 @@ import {getNotifdSafe} from '../notifications/guard';
 import {Process} from '@shade/core/process';
 import logger from '@shade/core/logger';
 import type {Accessor} from 'gnim';
+import {defineService} from '@shade/core/define';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 
 /** Fraction (0..1) at which low-battery warning sounds fire. */
 const LOW_BATTERY_THRESHOLD = 0.15;
@@ -374,3 +376,5 @@ export default class SoundAlertService extends Object {
         this.#initialized = false;
     }
 }
+
+defineService({name: 'SoundAlerts', service: SoundAlertService.get_default(), initArgs: () => [generalSettings()]});

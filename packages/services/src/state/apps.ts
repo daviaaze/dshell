@@ -4,6 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Hyprland from 'gi://AstalHyprland';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
+import {defineService} from '@shade/core/define';
 
 const apps = new Apps.Apps({
     nameMultiplier: 4,
@@ -252,3 +253,5 @@ export function initAppWatcher() {
         logger.info('apps', `Watching ${dir} for new desktop files`);
     }
 }
+
+defineService({name: 'AppWatcher', service: {init: () => initAppWatcher()}});

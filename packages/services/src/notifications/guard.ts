@@ -3,6 +3,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Notifd from 'gi://AstalNotifd';
 import logger from '@shade/core/logger';
 import {DeferredSingleton} from '@shade/core/deferredSingleton';
+import {defineService} from '@shade/core/define';
 
 const NOTIF_BUS_NAME = 'org.freedesktop.Notifications';
 const NOTIF_OBJECT_PATH = '/org/freedesktop/Notifications';
@@ -130,3 +131,5 @@ export function watchNotifdInit(isDone: () => boolean): void {
         return GLib.SOURCE_REMOVE;
     });
 }
+
+defineService({name: 'Notifd (pre-init)', service: {init: () => getNotifdSafe()}});

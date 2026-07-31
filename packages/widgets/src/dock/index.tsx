@@ -4,7 +4,7 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {getHyprland} from '@shade/services/hyprland';
 import {bind, For, computed, onCleanup} from 'gnim';
 import WindowManager from '@shade/services/state/windowManager';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import {getApp} from '@shade/services/appHandle';
 import DockItem from './item';
 import {toArray} from '@shade/core/gjsUtils';
@@ -13,7 +13,7 @@ import {getDesktopFileForClient} from '@shade/services/state/apps';
 export default () => {
     const hyprland = getHyprland();
     if (!hyprland) return null;
-    const {bar} = useSettings();
+    const bar = barSettings();
     const {BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
     const clients = bind(hyprland, 'clients').as(c =>

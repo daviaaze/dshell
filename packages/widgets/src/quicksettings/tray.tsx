@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, For} from 'gnim';
-import {useSettings} from '@shade/services/settings/index';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import Tray from 'gi://AstalTray';
 import TrayService from '@shade/services/desktop/trayService';
 import {bus} from '@shade/services/bus';
@@ -31,7 +31,7 @@ export const TrayBox = () => {
     );
 
     const RotateButton = () => {
-        const barCfg = useSettings().bar;
+        const barCfg = barSettings();
         return (
             <IconButton
                 icon="object-rotate-right-symbolic"

@@ -2,6 +2,7 @@ import {Object, register, property} from 'gnim/gobject';
 import Mpris from 'gi://AstalMpris';
 import logger from '@shade/core/logger';
 import {connectFor, cleanupNode} from '@shade/core/connectFor';
+import {defineService} from '@shade/core/define';
 
 /**
  * MediaController — semantic command layer over AstalMpris.
@@ -169,3 +170,5 @@ export default class MediaController extends Object {
         this.#activePlayer = null;
     }
 }
+
+defineService({name: 'MediaController', service: MediaController.get_default()});

@@ -1,4 +1,4 @@
-import {useSettings} from '@shade/services/settings/index';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
@@ -6,7 +6,7 @@ import {createState, For} from 'gnim';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export default () => {
-    const {general} = useSettings();
+    const general = generalSettings();
 
     const [PRESET_TIMEZONES] = createState([
         'UTC',
