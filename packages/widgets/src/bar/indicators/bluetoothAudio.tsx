@@ -27,6 +27,14 @@ const ICON_MAP: Record<string, string> = {
     tv: 'tv-symbolic',
 };
 
+interface DeviceInfo {
+    name: string;
+    icon: string;
+    battery: number | null;
+}
+
+type BluetoothService = ReturnType<typeof Bluetooth.get_default>;
+
 function deviceIcon(icon: string): string {
     return ICON_MAP[icon] || 'bluetooth-symbolic';
 }
@@ -39,104 +47,113 @@ function applyColorCss(widget: Gtk.Widget, level: number | null) {
     else if (level < 50) widget.add_css_class('warning');
 }
 
+/** Replace the icon box children with one image per connected device. */
+function updateIcons(iconBox: Gtk.Box | null, devices: DeviceInfo[]) {
+    const box = iconBox;
+    if (!box) return;
+
+    // Remove old icon widgets
+    let child = box.get_first_child();
+    while (child) {
+        const next = child.get_next_sibling();
+        box.remove(child);
+        child = next;
+    }
+
+    // Add icon for each connected device
+    for (const d of devices) {
+        const img = new Gtk.Image({iconName: d.icon, pixelSize: 18});
+        applyColorCss(img, d.battery);
+        box.append(img);
+    }
+}
+
+/** Recompute connected-device info and sync battery signal handlers. */
+function refreshDevices(
+    bluetooth: BluetoothService,
+    batterySignals: Map<string, number>,
+    setDeviceInfo: (v: DeviceInfo[]) => void,
+    update: (devices: DeviceInfo[]) => void
+) {
+    if (!bluetooth.isConnected) {
+        setDeviceInfo([]);
+        return;
+    }
+    const list = bluetooth.devices;
+    if (!list) {
+        setDeviceInfo([]);
+        return;
+    }
+    // Disconnect battery signals for devices no longer connected
+    for (const [addr, id] of batterySignals) {
+        if (!list.some(d => d.address === addr && d.connected)) {
+            const dev = list.find(d => d.address === addr);
+            if (dev) dev.disconnect(id);
+            batterySignals.delete(addr);
+        }
+    }
+
+    // Connect battery signals for newly connected devices
+    for (const d of list) {
+        if (d.connected && !batterySignals.has(d.address)) {
+            const id = d.connect('notify::battery-percentage', () =>
+                refreshDevices(bluetooth, batterySignals, setDeviceInfo, update)
+            );
+            batterySignals.set(d.address, id);
+        }
+    }
+
+    const devices = list
+        .filter(d => d.connected)
+        .map(d => ({
+            name: d.name || 'Device',
+            icon: deviceIcon(d.icon || ''),
+            battery: getDeviceBatteryPercentage(d),
+        }));
+
+    setDeviceInfo(devices);
+    update(devices);
+}
+
+/** Disconnect all per-device battery-percentage handlers. */
+function disconnectBatterySignals(
+    bluetooth: BluetoothService,
+    batterySignals: Map<string, number>
+) {
+    for (const [addr, id] of batterySignals) {
+        try {
+            const dev = bluetooth.devices.find(d => d.address === addr);
+            if (dev) dev.disconnect(id);
+        } catch {
+            /* ignore */
+        }
+    }
+    batterySignals.clear();
+}
+
 export default () => {
     const bluetooth = Bluetooth.get_default();
     const bar = barSettings();
 
-    const [deviceInfo, setDeviceInfo] = createState<
-        {name: string; icon: string; battery: number | null}[]
-    >([]);
+    const [deviceInfo, setDeviceInfo] = createState<DeviceInfo[]>([]);
 
     // Container box created once via $ callback to avoid
     // gtk_button_set_child assertion when Gnim re-renders <For> children.
     // Children are managed imperatively in refresh() instead.
     let iconBox: Gtk.Box | null = null;
 
-    function updateIcons(
-        devices: {name: string; icon: string; battery: number | null}[]
-    ) {
-        const box = iconBox;
-        if (!box) return;
-
-        // Remove old icon widgets
-        let child = box.get_first_child();
-        while (child) {
-            const next = child.get_next_sibling();
-            box.remove(child);
-            child = next;
-        }
-
-        // Add icon for each connected device
-        for (const d of devices) {
-            const img = new Gtk.Image({
-                iconName: d.icon,
-                pixelSize: 18,
-            });
-            applyColorCss(img, d.battery);
-            box.append(img);
-        }
-    }
-
     effect(() => {
         const _hn = {};
         const batterySignals = new Map<string, number>();
-
-        function refresh() {
-            if (!bluetooth.isConnected) {
-                setDeviceInfo([]);
-                return;
-            }
-            const list = bluetooth.devices;
-            if (!list) {
-                setDeviceInfo([]);
-                return;
-            }
-            // Disconnect battery signals for devices no longer connected
-            for (const [addr, id] of batterySignals) {
-                if (!list.some(d => d.address === addr && d.connected)) {
-                    const dev = list.find(d => d.address === addr);
-                    if (dev) dev.disconnect(id);
-                    batterySignals.delete(addr);
-                }
-            }
-
-            // Connect battery signals for newly connected devices
-            for (const d of list) {
-                if (d.connected && !batterySignals.has(d.address)) {
-                    const id = d.connect('notify::battery-percentage', refresh);
-                    batterySignals.set(d.address, id);
-                }
-            }
-
-            const devices = list
-                .filter(d => d.connected)
-                .map(d => ({
-                    name: d.name || 'Device',
-                    icon: deviceIcon(d.icon || ''),
-                    battery: getDeviceBatteryPercentage(d),
-                }));
-
-            setDeviceInfo(devices);
-            updateIcons(devices);
-        }
+        const update = (devices: DeviceInfo[]) => updateIcons(iconBox, devices);
+        const refresh = () =>
+            refreshDevices(bluetooth, batterySignals, setDeviceInfo, update);
 
         connectFor(_hn, bluetooth, 'notify::is-connected', refresh);
         connectFor(_hn, bluetooth, 'notify::devices', refresh);
         refresh();
         onCleanup(() => {
-            // Disconnect per-device battery signals
-            for (const [, id] of batterySignals) {
-                try {
-                    const dev = bluetooth.devices.find(
-                        d => d.address
-                    );
-                    if (dev) dev.disconnect(id);
-                } catch {
-                    /* ignore */
-                }
-            }
-            batterySignals.clear();
-            // Clean up bluetooth-level connects
+            disconnectBatterySignals(bluetooth, batterySignals);
             cleanupNode(_hn);
         });
     });

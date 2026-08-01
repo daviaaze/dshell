@@ -18,51 +18,68 @@ interface DockItemProps {
     pinned: boolean;
 }
 
-export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
-    const bar = barSettings();
+/** Shared handle so the button ref can parent/popdown the popover. */
+interface PopoverHolder {
+    current: Gtk.Popover | null;
+}
 
-    const app =
-        getAppList().find(a => a.entry === desktopFile) ||
-        exactQuery(desktopFile.replace('.desktop', ''))?.[0];
+function handleLeftClick(
+    desktopFile: string,
+    clients: AstalHyprland.Client[],
+    pinned: boolean,
+    running: boolean
+) {
+    if (running) {
+        logger.debug('dock', `focus: ${desktopFile}`);
+        clients[0].focus();
+    } else if (pinned) {
+        logger.debug('dock', `launch: ${desktopFile}`);
+        launchDesktopFile(desktopFile);
+    }
+}
 
-    const iconName = app?.iconName || 'application-x-executable-symbolic';
-    const running = clients.length > 0;
+function handleClose(desktopFile: string, clients: AstalHyprland.Client[]) {
+    logger.debug('dock', `close: ${desktopFile} (${clients.length} windows)`);
+    for (const client of clients) {
+        client.kill();
+    }
+}
 
-    const handleLeftClick = () => {
-        if (running) {
-            logger.debug('dock', `focus: ${desktopFile}`);
-            clients[0].focus();
-        } else if (pinned) {
-            logger.debug('dock', `launch: ${desktopFile}`);
-            launchDesktopFile(desktopFile);
-        }
-    };
+function handlePinToggle(
+    bar: ReturnType<typeof barSettings>,
+    desktopFile: string,
+    pinned: boolean
+) {
+    logger.info('dock', `${pinned ? 'unpin' : 'pin'}: ${desktopFile}`);
+    const current = bar.dockPinnedApps();
+    if (pinned) {
+        bar.setDockPinnedApps(current.filter(d => d !== desktopFile));
+    } else {
+        bar.setDockPinnedApps([...current, desktopFile]);
+    }
+}
 
-    const handleClose = () => {
-        logger.debug(
-            'dock',
-            `close: ${desktopFile} (${clients.length} windows)`
-        );
-        for (const client of clients) {
-            client.kill();
-        }
-    };
-
-    const handlePinToggle = () => {
-        logger.info('dock', `${pinned ? 'unpin' : 'pin'}: ${desktopFile}`);
-        const current = bar.dockPinnedApps();
-        if (pinned) {
-            bar.setDockPinnedApps(current.filter(d => d !== desktopFile));
-        } else {
-            bar.setDockPinnedApps([...current, desktopFile]);
-        }
-    };
-
-    let popoverWidget: Gtk.Popover | null = null;
-
-    const popoverNode = (
+/** Right-click context menu: focus/close (when running) + pin toggle. */
+function DockPopover({
+    running,
+    pinned,
+    holder,
+    onFocus,
+    onClose,
+    onPinToggle,
+}: {
+    running: boolean;
+    pinned: boolean;
+    holder: PopoverHolder;
+    onFocus: () => void;
+    onClose: () => void;
+    onPinToggle: () => void;
+}) {
+    return (
         <Gtk.Popover
-            ref={self => { popoverWidget = self; }}
+            ref={self => {
+                holder.current = self;
+            }}
             cssClasses={['menu']}
             hasArrow={false}
         >
@@ -76,8 +93,8 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     label="Focus"
                     visible={running}
                     onClicked={() => {
-                        handleLeftClick();
-                        popoverWidget?.popdown();
+                        onFocus();
+                        holder.current?.popdown();
                     }}
                 />
                 <ActionButton
@@ -85,8 +102,8 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     label="Close"
                     visible={running}
                     onClicked={() => {
-                        handleClose();
-                        popoverWidget?.popdown();
+                        onClose();
+                        holder.current?.popdown();
                     }}
                 />
                 <ActionButton
@@ -95,13 +112,31 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     }
                     label={pinned ? 'Unpin' : 'Pin'}
                     onClicked={() => {
-                        handlePinToggle();
-                        popoverWidget?.popdown();
+                        onPinToggle();
+                        holder.current?.popdown();
                     }}
                 />
             </Gtk.Box>
         </Gtk.Popover>
     );
+}
+
+export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
+    const bar = barSettings();
+
+    const app =
+        getAppList().find(a => a.entry === desktopFile) ||
+        exactQuery(desktopFile.replace('.desktop', ''))?.[0];
+
+    const iconName = app?.iconName || 'application-x-executable-symbolic';
+    const running = clients.length > 0;
+
+    const onFocus = () =>
+        handleLeftClick(desktopFile, clients, pinned, running);
+    const onClose = () => handleClose(desktopFile, clients);
+    const onPinToggle = () => handlePinToggle(bar, desktopFile, pinned);
+
+    const holder: PopoverHolder = {current: null};
 
     let statusCssClasses: string[] = [];
     if (active) statusCssClasses = ['status-active'];
@@ -110,8 +145,9 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
     return (
         <Gtk.Button
             ref={self => {
-                if (!popoverWidget) return;
-                popoverWidget.set_parent(self);
+                const popover = holder.current;
+                if (!popover) return;
+                popover.set_parent(self);
                 bar.dockIconSize.subscribe(() => {
                     const firstChild = self.get_first_child();
                     if (firstChild instanceof Gtk.Image) {
@@ -123,13 +159,13 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                     firstChild.pixelSize = bar.dockIconSize();
                 }
                 onCleanup(() => {
-                    popoverWidget?.popdown();
-                    popoverWidget?.unparent();
+                    popover.popdown();
+                    popover.unparent();
                 });
             }}
             cssClasses={['flat', 'circular']}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            onClicked={handleLeftClick}
+            onClicked={onFocus}
             tooltipText={app?.name || desktopFile.replace('.desktop', '')}
         >
             <Gtk.Box
@@ -138,21 +174,25 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 halign={Gtk.Align.CENTER}
                 valign={Gtk.Align.CENTER}
             >
-                <Gtk.Image
-                    iconName={iconName}
-                    pixelSize={bar.dockIconSize()}
-                />
+                <Gtk.Image iconName={iconName} pixelSize={bar.dockIconSize()} />
                 <Gtk.Box
                     cssClasses={statusCssClasses}
                     visible={active || running}
                 />
             </Gtk.Box>
-            {popoverNode}
+            <DockPopover
+                running={running}
+                pinned={pinned}
+                holder={holder}
+                onFocus={onFocus}
+                onClose={onClose}
+                onPinToggle={onPinToggle}
+            />
             <Gtk.GestureClick
                 ref={self => {
                     self.set_button(Gdk.BUTTON_SECONDARY);
                     self.connect('pressed', () => {
-                        if (popoverWidget) popoverWidget.popup();
+                        holder.current?.popup();
                     });
                 }}
             />
