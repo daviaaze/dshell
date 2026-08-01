@@ -4,6 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import {Process} from '@shade/core/process';
 import logger from '@shade/core/logger';
+import {bus} from '../bus';
 import {RecorderBackend, RecordingFormat} from './types';
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -196,6 +197,34 @@ export function notify(
     ]).catch(e => logger.warn('screenshot', 'notify-send failed:', e));
 }
 
+// ── Post-capture pipeline ──────────────────────────────────────
+
+/** A fresh timestamped filename inside the screenshot directory. */
+export function freshScreenshotFilename(ext = 'png'): string {
+    const dir = ensureScreenshotDir();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return `${dir}/${timestamp}.${ext}`;
+}
+
+/**
+ * The single post-capture pipeline every screenshot path funnels through:
+ * clipboard copy, notification, and the sound-alert bus event.
+ */
+export function finalizeImage(filename: string, area: boolean): void {
+    copyImageToClipboard(filename);
+    notify('Screenshot saved', filename, 'camera-photo-symbolic');
+    if (area) {
+        bus.emit('capture:screenshot:area');
+    } else {
+        bus.emit('capture:screenshot', true);
+    }
+}
+
+/** Shared failure notification for capture paths. */
+export function notifyCaptureFailed(detail: string): void {
+    notify('Screenshot failed', detail, 'dialog-error-symbolic');
+}
+
 // ── Image clipboard copy ─────────────────────────────────────────
 
 /**
@@ -205,8 +234,7 @@ export function notify(
  * Uses Gio.Subprocess with stdin pipe instead of shell redirect
  * because GLib.shell_parse_argv does not handle shell operators like <.
  */
-export function copyImageToClipboard(filename: string): void {
-    try {
+export function copyImageToClipboard(filename: string): void {    try {
         const wlCopy = Process.findBinary('wl-copy');
         if (wlCopy !== 'wl-copy') {
             const file = Gio.File.new_for_path(filename);

@@ -3,123 +3,85 @@ import logger from '@shade/core/logger';
 import {bus} from '../bus';
 import {Process} from '@shade/core/process';
 import {
-    ensureScreenshotDir,
-    notify,
-    copyImageToClipboard,
+    finalizeImage,
+    freshScreenshotFilename,
     GRIM_BIN,
 } from './utils';
-import {grimToMagickGeometry, screenshotGeometry} from './stage';
+import {toGrimGeometry} from './geometry';
+import type {BoundaryGeometry} from './types';
 import type {ScreenshotHandle} from './types';
 
 /**
- * Capture flows — fullscreen/area screenshot entry points and the
- * region-selector confirm path. Extracted from the Screenshot service;
- * each function drives the service's public API.
+ * Capture flows — fullscreen/area screenshot entry points and the overlay
+ * confirm paths. Each function drives the service's public API.
  *
- * Instead of a fixed delay for overlay close (which causes races on
- * slow hardware), capture uses `GLib.idle_add` which runs after all
- * pending GTK events (including widget unmap) are processed.
+ * With the frozen stage as the single freeze mechanism there is no
+ * unfreeze choreography: screenshots crop the already-captured stage
+ * (no race), and only recording starts need the idle callback so the
+ * overlay window has unmapped before the recorder grabs live frames.
  */
 
-export function screenshot(ss: ScreenshotHandle, fullscreen: boolean) {
-    if (!fullscreen) {
-        ss.selectedMode = 'screenshot';
-        ss.selectedTarget = 'area';
-        ss.overlayOpen = true;
-        return;
-    }
-
-    const dir = ensureScreenshotDir();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${dir}/${timestamp}.png`;
+/** Fullscreen live screenshot (grim, no stage). */
+export function screenshotFullscreen() {
+    const filename = freshScreenshotFilename();
 
     Process.execAsync(`${GRIM_BIN} "${filename}"`)
         .then(() => {
             try {
-                copyImageToClipboard(filename);
-                notify('Screenshot saved', filename, 'camera-photo-symbolic');
-                bus.emit('capture:screenshot', true);
+                finalizeImage(filename, false);
             } catch (e) {
                 logger.error('screenshot', 'post-capture failed:', e);
             }
         })
-        .catch(e => logger.error('screenshot', 'grim failed:', e))
-        .finally(() => ss.stopFreeze());
+        .catch(e => logger.error('screenshot', 'grim failed:', e));
 }
 
-/** Live grim capture of a "x,y WxH" geometry, then unfreeze. */
-export function captureGeometry(ss: ScreenshotHandle, geometry: string) {
-    screenshotGeometry(geometry)
-        .then(() => {
-            ss.stopFreeze();
-            bus.emit('capture:screenshot:area');
-        })
-        .catch(e => {
-            logger.error('screenshot', 'grim failed:', e);
-            ss.stopFreeze();
-        });
-}
-
-/** Open the region-selector to pick an area for capture. */
-export function openRegionSelectorForCapture(
-    ss: ScreenshotHandle,
-    mode: 'screenshot' | 'recording'
-) {
-    ss.selectedMode = mode;
-    ss.selectedTarget = 'area';
-    ss.regionSelectorOpen = true;
+/** Live grim capture of a global-compositor geometry (no stage frame). */
+export function captureGeometryLive(geometry: BoundaryGeometry) {
+    const filename = freshScreenshotFilename();
+    Process.execAsync(
+        `${GRIM_BIN} -g "${toGrimGeometry(geometry)}" "${filename}"`
+    )
+        .then(() => finalizeImage(filename, true))
+        .catch(e => logger.error('screenshot', 'grim failed:', e));
 }
 
 /**
- * Called by region-selector when the user confirms a selection.
- *
- * Closes the overlay, then waits for an idle callback (after all
- * pending GTK events including the overlay unmap) before capturing.
+ * Quick-select confirm (replaces the old region-selector flow): crop the
+ * stage for screenshots, or close the overlay and start recording.
  */
-export function captureArea(ss: ScreenshotHandle, geometry: string) {
-    // geometry is in grim format: "x,y WxH" (global coords).
-    // captureGeometry uses grim -g which expects this format.
-    // captureFromStage uses magick -crop which expects "WxH+X+Y" (local coords).
-    ss.pendingCaptureGeometry = geometry;
-    ss.setFreezeCapturePending(true);
-    ss.regionSelectorOpen = false;
-
-    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-        ss.setFreezeCapturePending(false);
-        if (ss.selectedMode === 'screenshot') {
-            if (ss.stageHasFrame) {
-                ss.captureFromStage(grimToMagickGeometry(geometry));
-                bus.emit('capture:screenshot:area');
-            } else {
-                captureGeometry(ss, geometry);
-            }
+export function confirmArea(ss: ScreenshotHandle, geometry: BoundaryGeometry) {
+    if (ss.selectedMode === 'screenshot') {
+        if (ss.stageHasFrame) {
+            // captureCrop localizes to stage coords and emits the event
+            ss.captureFromStage(geometry);
         } else {
-            ss.startRecording({geometry});
-            ss.stopFreeze();
-            bus.emit('capture:record:area');
+            ss.overlayOpen = false;
+            captureGeometryLive(geometry);
         }
-        return GLib.SOURCE_REMOVE;
-    });
+        return;
+    }
+
+    startRecordingAfterOverlayClose(ss, geometry);
 }
 
 /**
  * Close the overlay, wait for an idle callback (after widget unmap),
- * then start recording.
+ * then start recording. Only recording needs this: the recorder grabs
+ * live frames, so the overlay window must be gone first.
  */
 export function startRecordingAfterOverlayClose(
     ss: ScreenshotHandle,
-    target: string,
-    geometry?: string | null
+    geometry: BoundaryGeometry | null
 ) {
     ss.overlayOpen = false;
     GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-        if (target === 'fullscreen' && !geometry) {
+        if (geometry) {
+            ss.startRecording({geometry});
+            bus.emit('capture:record:area');
+        } else {
             ss.toggleRecording();
             bus.emit('capture:record');
-        } else if (geometry) {
-            ss.startRecording({geometry});
-            ss.stopFreeze();
-            bus.emit('capture:record:area');
         }
         return GLib.SOURCE_REMOVE;
     });

@@ -3,7 +3,8 @@ import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {getScreenCaptureSettings} from '../settings/screenCapture';
-import {RecorderBackend, RecordingFormat} from './types';
+import {RecorderBackend, RecordingFormat, type BoundaryGeometry} from './types';
+import {toGrimGeometry} from './geometry';
 import {
     buildRecordingArgs,
     resolveBackend,
@@ -18,8 +19,8 @@ const MSG_RECORDING_FAILED = 'Recording failed';
 export interface RecorderHooks {
     /** Current audio settings from the Screenshot service. */
     getAudioSettings(): {audio: boolean; input: number; quality: number};
-    /** Show the recording boundary for a "x,y WxH" geometry string. */
-    showBoundary(geometry: string): void;
+    /** Show the recording boundary for a global-compositor geometry. */
+    showBoundary(geometry: BoundaryGeometry): void;
     hideBoundary(): void;
     /** Fired whenever `recording` or `elapsed` changes (GObject notify). */
     notifyState(): void;
@@ -69,7 +70,7 @@ export class Recorder {
     }
 
     start(
-        options: {geometry?: string; output?: string} = {},
+        options: {geometry?: BoundaryGeometry; output?: string} = {},
         forceBackend?: RecorderBackend
     ) {
         if (this.#recording) return;
@@ -92,7 +93,7 @@ export class Recorder {
         const {args, backendName} = buildRecordingArgs(
             backend,
             filename,
-            options.geometry,
+            options.geometry ? toGrimGeometry(options.geometry) : undefined,
             effectiveOutput,
             audio,
             format,
@@ -210,7 +211,7 @@ export class Recorder {
 
     #onExit(
         proc: Process,
-        options: {geometry?: string; output?: string},
+        options: {geometry?: BoundaryGeometry; output?: string},
         backend: RecorderBackend,
         pref: RecorderBackend
     ) {

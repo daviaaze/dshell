@@ -2,6 +2,9 @@
  * ── Types and enums for capture (screenshot/recording) services ──
  */
 
+export type CaptureMode = 'screenshot' | 'recording';
+export type CaptureTarget = 'fullscreen' | 'area' | 'window' | 'monitor';
+
 export enum RecorderBackend {
     WL_SCREENREC = 0,
     WF_RECORDER = 1,
@@ -127,14 +130,17 @@ export function parseColor(hex: string): {r: number; g: number; b: number; a: nu
  * modules (captureFlow, commands, recordTargets).  Defined here as
  * an interface so helpers never import the Screenshot class directly,
  * eliminating the type-only circular dependency.
+ *
+ * Geometry is typed (`BoundaryGeometry`) end-to-end; grim/magick strings
+ * exist only at process boundaries (see geometry.ts).
  */
 export interface ScreenshotHandle {
     // ── Bindable properties ──
-    selectedMode: 'screenshot' | 'recording';
-    selectedTarget: 'fullscreen' | 'area' | 'window' | 'monitor';
+    selectedMode: CaptureMode;
+    selectedTarget: CaptureTarget;
     overlayOpen: boolean;
-    regionSelectorOpen: boolean;
-    pendingCaptureGeometry: string;
+    /** Quick-select mode: minimal UI, confirm-on-click (was region-selector). */
+    overlayQuick: boolean;
     recording: boolean;
     stageHasFrame: boolean;
 
@@ -142,14 +148,11 @@ export interface ScreenshotHandle {
     screenshot(fullscreen: boolean): void;
     toggleOverlay(): void;
     toggleRecording(): void;
-    stopFreeze(): void;
-    setFreezeCapturePending(v: boolean): void;
-    captureFromStage(geometry: string | null): Promise<void>;
+    captureFromStage(geometry: BoundaryGeometry | null): Promise<void>;
     startRecording(
-        options?: {geometry?: string; output?: string},
+        options?: {geometry?: BoundaryGeometry; output?: string},
         forceBackend?: RecorderBackend
     ): void;
-    openRegionSelectorForCapture(mode: 'screenshot' | 'recording'): void;
     recordArea(): void;
     recordWindow(): void;
     recordOutput(outputName?: string): void;

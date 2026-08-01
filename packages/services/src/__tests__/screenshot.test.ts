@@ -12,7 +12,7 @@ import {
     parseGrimGeometry,
     toGrimGeometry,
     toMagickGeometry,
-} from '../capture/stage';
+} from '../capture/geometry';
 import {describe, it, expect, run} from './test-runner';
 
 describe('Screenshot singleton', () => {

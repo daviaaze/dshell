@@ -3,22 +3,20 @@ import Gio from 'gi://Gio?version=2.0';
 import {Object, register} from 'gnim/gobject';
 import {defineService} from '@shade/core/define';
 import {property} from '@shade/core/decorators';
-import {bus} from '../bus';
 import logger from '@shade/core/logger';
 import {
     RecorderBackend,
+    type CaptureMode,
+    type CaptureTarget,
     type VirtualMonitor,
     type BoundaryGeometry,
 } from './types';
 import {Recorder} from './recorder';
 import RecordingPrefs from './prefs';
-import {Freeze} from './freeze';
 import {Stage} from './stage';
 import {
-    screenshot,
-    captureGeometry,
-    openRegionSelectorForCapture,
-    captureArea,
+    screenshotFullscreen,
+    confirmArea as confirmAreaFlow,
     startRecordingAfterOverlayClose,
 } from './captureFlow';
 import {registerCommands} from './commands';
@@ -39,12 +37,15 @@ export type {VirtualMonitor, BoundaryGeometry} from './types';
  * Screen capture service — GObject facade that owns all bindable state and
  * delegates work to focused collaborators:
  * - `recorder.ts`        recording pipeline (process lifecycle, backends)
- * - `stage.ts`           frozen-frame capture/crop
- * - `freeze.ts`          wayfreeze process
- * - `captureFlow.ts`     screenshot/region-selector confirm flows
+ * - `stage.ts`           frozen-frame capture/crop (single freeze mechanism)
+ * - `captureFlow.ts`     fullscreen/confirm capture flows
  * - `recordTargets.ts`   "record area/output/window" entry points
+ * - `geometry.ts`        typed geometry parsing/conversion
  * - `virtualMonitors.ts` headless output management
  * - `commands.ts`        GAction registration
+ *
+ * Geometry is typed (`BoundaryGeometry`) across the whole domain; grim and
+ * magick strings are produced only at process boundaries.
  */
 @register
 export default class Screenshot extends Object {
@@ -53,21 +54,13 @@ export default class Screenshot extends Object {
     static get_default() {
         if (!this.instance) {
             this.instance = new Screenshot();
-            this.instance.#initBus();
         }
         return this.instance;
     }
 
-    #busSubscriptions: (() => void)[] = [];
-
     #recorder = new Recorder({
         getAudioSettings: () => this.#prefs.snapshot(),
-        showBoundary: geometry => {
-            const [pos, size] = geometry.split(' ');
-            const [x, y] = pos!.split(',').map(Number);
-            const [w, h] = size!.split('x').map(Number);
-            this.showBoundary({x, y, width: w, height: h});
-        },
+        showBoundary: geometry => this.showBoundary(geometry),
         hideBoundary: () => this.hideBoundary(),
         notifyState: () => {
             this.notify('recording');
@@ -75,32 +68,21 @@ export default class Screenshot extends Object {
         },
     });
 
-    #freeze = new Freeze(active => {
-        this.freezeActive = active;
-    });
-
     #stage = new Stage(() => this.notify('stage-texture'));
 
     #prefs = new RecordingPrefs();
 
-    // ── Overlay state ────────────────────────────────────────────────
+    // ── Overlay state ────────────────────────────────────────────
     #overlayOpen = false;
-    #selectedMode: 'screenshot' | 'recording' = 'screenshot';
-    #selectedTarget: 'fullscreen' | 'area' | 'window' | 'monitor' =
-        'fullscreen';
-    #regionSelectorOpen = false;
-    #pendingCaptureGeometry: string | null = null;
-
-    #freezeActive = false;
-    // prevent regionSelectorOpen setter from unfreezing when selector closes on confirm
-    #freezeCapturePending = false;
-    #freezeKeepAlive = false;
+    #overlayQuick = false;
+    #selectedMode: CaptureMode = 'screenshot';
+    #selectedTarget: CaptureTarget = 'fullscreen';
 
     #boundaryVisible = false;
     #boundaryGeometry: BoundaryGeometry | null = null;
     #virtualMonitors: VirtualMonitor[] = [];
 
-    // ── Getters / Setters ────────────────────────────────────────────
+    // ── Recording ────────────────────────────────────────────────
 
     @property
     get recordingElapsed() {
@@ -117,7 +99,7 @@ export default class Screenshot extends Object {
         return this.#prefs;
     }
 
-    // ── Overlay state ─────────────────────────────────────────────────
+    // ── Overlay state ─────────────────────────────────────────────
 
     @property
     get overlayOpen() {
@@ -142,7 +124,23 @@ export default class Screenshot extends Object {
 
         if (!v) {
             this.#stage.cleanup();
+            this.#overlayQuick = false;
         }
+    }
+
+    /**
+     * Quick-select mode (replaces the old region-selector): minimal UI —
+     * no control panel, click/Enter confirms immediately.
+     */
+    @property
+    get overlayQuick() {
+        return this.#overlayQuick;
+    }
+
+    set overlayQuick(v: boolean) {
+        if (this.#overlayQuick === v) return;
+        this.#overlayQuick = v;
+        this.notify('overlay-quick');
     }
 
     @property
@@ -150,7 +148,7 @@ export default class Screenshot extends Object {
         return this.#selectedMode;
     }
 
-    set selectedMode(v: 'screenshot' | 'recording') {
+    set selectedMode(v: CaptureMode) {
         this.#selectedMode = v;
         this.notify('selected-mode');
     }
@@ -160,37 +158,9 @@ export default class Screenshot extends Object {
         return this.#selectedTarget;
     }
 
-    set selectedTarget(v: 'fullscreen' | 'area' | 'window' | 'monitor') {
+    set selectedTarget(v: CaptureTarget) {
         this.#selectedTarget = v;
         this.notify('selected-target');
-    }
-
-    // ── Region selector ───────────────────────────────────────────────
-
-    @property
-    get regionSelectorOpen() {
-        return this.#regionSelectorOpen;
-    }
-
-    set regionSelectorOpen(v: boolean) {
-        if (this.#regionSelectorOpen === v) return;
-        this.#regionSelectorOpen = v;
-        this.notify('region-selector-open');
-        if (v) {
-            this.startFreeze();
-        } else if (this.#freezeActive && !this.#freezeCapturePending) {
-            this.stopFreeze();
-        }
-    }
-
-    @property
-    get pendingCaptureGeometry(): string {
-        return this.#pendingCaptureGeometry || '';
-    }
-
-    set pendingCaptureGeometry(v: string | null) {
-        this.#pendingCaptureGeometry = v;
-        this.notify('pending-capture-geometry');
     }
 
     /** @internal — used by captureFlow */
@@ -198,32 +168,11 @@ export default class Screenshot extends Object {
         return this.#stage.pixPath !== null;
     }
 
-    /** @internal — used by captureFlow */
-    setFreezeCapturePending(v: boolean) {
-        this.#freezeCapturePending = v;
-    }
-
-    // ── Stage / freeze ────────────────────────────────────────────────
+    // ── Stage ─────────────────────────────────────────────────────
 
     @property
     get stageTexture(): Gdk.Texture | null {
         return this.#stage.texture;
-    }
-
-    @property
-    get freezeActive() {
-        return this.#freezeActive;
-    }
-
-    set freezeActive(v: boolean) {
-        if (this.#freezeActive === v) return;
-        this.#freezeActive = v;
-        this.notify('freeze-active');
-    }
-
-    @property
-    get freezeKeepAlive() {
-        return this.#freezeKeepAlive;
     }
 
     // ── Boundary ───────────────────────────────────────────────────────
@@ -263,27 +212,45 @@ export default class Screenshot extends Object {
 
     // ── Capture flows ──────────────────────────────────────────────────
 
+    /** Fullscreen grim capture (button/CLI path). */
     screenshot(fullscreen: boolean) {
-        screenshot(this, fullscreen);
+        if (!fullscreen) {
+            this.#selectedMode = 'screenshot';
+            this.#selectedTarget = 'area';
+            this.notify('selected-mode');
+            this.notify('selected-target');
+            this.overlayOpen = true;
+            return;
+        }
+        screenshotFullscreen();
     }
 
-    /** Open the region-selector to pick an area for capture */
-    openRegionSelectorForCapture(mode: 'screenshot' | 'recording') {
-        openRegionSelectorForCapture(this, mode);
+    /**
+     * Quick-select confirm: the user picked an area in the unified overlay.
+     * Screenshots crop the frozen stage; recordings start after close.
+     */
+    confirmArea(geometry: BoundaryGeometry) {
+        confirmAreaFlow(this, geometry);
     }
 
-    /** Called by region-selector when the user confirms a selection */
-    captureArea(geometry: string) {
-        captureArea(this, geometry);
+    /**
+     * Overlay panel confirm: crop from the stage (screenshot) or close the
+     * overlay and start recording. `geometry` is null for fullscreen.
+     */
+    confirmOverlay(
+        target: 'fullscreen' | 'area' | 'window' | 'monitor',
+        geometry: BoundaryGeometry | null
+    ) {
+        if (this.#selectedMode === 'screenshot') {
+            this.captureFromStage(geometry);
+        } else {
+            startRecordingAfterOverlayClose(this, geometry);
+        }
     }
 
-    async captureFromStage(geometry: string | null) {
+    async captureFromStage(geometry: BoundaryGeometry | null) {
         const ok = await this.#stage.captureCrop(geometry);
         if (ok) this.overlayOpen = false;
-    }
-
-    screenshotGeometry(geometry: string) {
-        captureGeometry(this, geometry);
     }
 
     // ── Recording ──────────────────────────────────────────────────────
@@ -293,7 +260,7 @@ export default class Screenshot extends Object {
     }
 
     startRecording(
-        options: {geometry?: string; output?: string} = {},
+        options: {geometry?: BoundaryGeometry; output?: string} = {},
         forceBackend?: RecorderBackend
     ) {
         this.#recorder.start(options, forceBackend);
@@ -301,10 +268,6 @@ export default class Screenshot extends Object {
 
     stopRecording() {
         this.#recorder.stop();
-    }
-
-    startRecordingAfterOverlayClose(target: string, geometry?: string | null) {
-        startRecordingAfterOverlayClose(this, target, geometry);
     }
 
     recordArea() {
@@ -331,7 +294,7 @@ export default class Screenshot extends Object {
         recordWindow(this);
     }
 
-    // ── Overlay & freeze ───────────────────────────────────────────────
+    // ── Overlay ────────────────────────────────────────────────────────
 
     toggleOverlay() {
         this.overlayOpen = !this.#overlayOpen;
@@ -341,15 +304,6 @@ export default class Screenshot extends Object {
     }
     hideOverlay() {
         this.overlayOpen = false;
-    }
-    setFreezeKeepAlive(v: boolean) {
-        this.#freezeKeepAlive = v;
-    }
-    startFreeze() {
-        this.#freeze.start();
-    }
-    stopFreeze() {
-        this.#freeze.stop();
     }
 
     // ── Recording boundary ─────────────────────────────────────────────
@@ -393,52 +347,9 @@ export default class Screenshot extends Object {
         registerCommands(this, app);
     }
 
-    #initBus() {
-        if (this.#busSubscriptions.length > 0) return;
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:screenshot', fullScreen => this.screenshot(fullScreen))
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:recording:stop', () => this.stopRecording())
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:recording:toggle', () => this.toggleRecording())
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:recording:area', () => this.recordArea())
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:recording:output-visual', () => this.recordOutputVisual())
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:recording:window-visual', () => this.recordWindowVisual())
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:prefs:audio', v => { this.prefs.audio = v; })
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:virtual-monitors:remove', () => this.removeVirtualMonitors())
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:virtual-monitors:create', ({resolution, fps}) => this.createVirtualMonitor(resolution, fps))
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:capture-area', geometry => this.captureArea(geometry))
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:region-selector:close', () => { this.regionSelectorOpen = false; })
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:capture-from-stage', geometry => this.captureFromStage(geometry))
-        );
-        this.#busSubscriptions.push(
-            bus.on('capture:cmd:start-recording-after-overlay', ({target, geometry}) => this.startRecordingAfterOverlayClose(target, geometry))
-        );
-    }
-
     dispose() {
-        this.#freeze.stop();
         this.#recorder.dispose();
+        this.#stage.cleanup();
     }
 }
 
