@@ -8,6 +8,165 @@ import {getExpireMs} from '@shade/services/notifications/expire';
 import {getNotifdSafe} from '@shade/services/notifications/guard';
 
 /**
+ * Shared notification card header — app icon, summary, timestamp and close.
+ */
+function CardHeader({
+    notification,
+    appName,
+    isCritical,
+    onClose,
+}: {
+    notification: Notifd.Notification;
+    appName: string;
+    isCritical: boolean;
+    onClose: () => void;
+}) {
+    return (
+        <Gtk.Box spacing={8}>
+            <Gtk.Image
+                pixelSize={24}
+                visible={!!notification.appIcon}
+                iconName={notification.appIcon}
+            />
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand spacing={2}>
+                <Gtk.Box spacing={6}>
+                    <Gtk.Label
+                        wrap
+                        hexpand
+                        cssClasses={['title-4']}
+                        label={notification.summary || ''}
+                        xalign={0}
+                    />
+                    <Gtk.Label
+                        cssClasses={['caption', 'numeric']}
+                        label={relativeTime(notification.time)}
+                        valign={Gtk.Align.CENTER}
+                    />
+                </Gtk.Box>
+                {appName ? (
+                    <Gtk.Label
+                        cssClasses={['caption', 'dim-label']}
+                        label={appName}
+                        xalign={0}
+                    />
+                ) : null}
+            </Gtk.Box>
+            <Gtk.Button
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.START}
+                // Libadwaita: circular + flat is the standard toast close
+                // button style.
+                cssClasses={[
+                    'circular',
+                    'flat',
+                    isCritical ? 'destructive-action' : '',
+                ].filter(Boolean)}
+                onClicked={onClose}
+                iconName={'window-close-symbolic'}
+            />
+        </Gtk.Box>
+    );
+}
+
+/**
+ * Card body — optional image next to the body text.
+ */
+function CardBody({
+    notification,
+    imagePixelSize,
+    maxChars,
+    useMarkup,
+    bodyText,
+}: {
+    notification: Notifd.Notification;
+    imagePixelSize: number;
+    maxChars: number;
+    useMarkup: boolean;
+    bodyText: string;
+}) {
+    return (
+        <Gtk.Box spacing={8}>
+            {notification.image ? (
+                <Gtk.Image
+                    file={notification.image}
+                    pixelSize={imagePixelSize}
+                    valign={Gtk.Align.START}
+                />
+            ) : null}
+            <Gtk.Label
+                wrap
+                hexpand
+                maxWidthChars={maxChars}
+                // Libadwait .body class: increased line height for legible text.
+                cssClasses={['body']}
+                useMarkup={useMarkup}
+                label={bodyText}
+                xalign={0}
+            />
+        </Gtk.Box>
+    );
+}
+
+/**
+ * Optional countdown progress bar for timed notifications.
+ */
+function CardProgress({
+    showProgress,
+    expireMs,
+}: {
+    showProgress: boolean;
+    expireMs: number;
+}) {
+    return (
+        <Gtk.ProgressBar
+            visible={showProgress}
+            fraction={1}
+            ref={self => {
+                if (!showProgress) return;
+                let elapsed = 0;
+                const interval = 50;
+                tickWhileAttached(self, interval, () => {
+                    elapsed += interval;
+                    const remaining = Math.max(
+                        0,
+                        (expireMs - elapsed) / expireMs
+                    );
+                    self.set_fraction(remaining);
+                    return remaining > 0;
+                });
+            }}
+        />
+    );
+}
+
+/**
+ * Optional notification action buttons, filtered to non-empty labels.
+ */
+function CardActions({
+    notification,
+}: {
+    notification: Notifd.Notification;
+}) {
+    return (
+        <Gtk.Box spacing={4}>
+            <For
+                each={bind(notification, 'actions').as(actions =>
+                    actions.filter(a => a.label && a.label.trim() !== '')
+                )}
+            >
+                {(action: Notifd.Action) => (
+                    <Gtk.Button
+                        cssClasses={['flat']}
+                        onClicked={() => notification.invoke(action.id)}
+                        label={action.label}
+                    />
+                )}
+            </For>
+        </Gtk.Box>
+    );
+}
+
+/**
  * Shared notification card — used by popup, quicksettings list, and
  * lockscreen. Visual differences are driven by props, not by forking
  * the component.
@@ -56,11 +215,14 @@ export default ({
     const maxChars = hasImage ? 20 : 30;
 
     // Urgency drives a single extra class; styling lives in shade.css.
-    const urgencyClass = isCritical
-        ? 'notification-critical'
-        : isLow
-          ? 'notification-low'
-          : '';
+    let urgencyClass = '';
+    if (isCritical) {
+        urgencyClass = 'notification-critical';
+    } else if (isLow) {
+        urgencyClass = 'notification-low';
+    }
+
+    const handleClose = () => closeAction(notification, card);
 
     return (
         <Adw.Clamp widthRequest={clampWidth}>
@@ -85,119 +247,21 @@ export default ({
                     }
                 }}
             >
-                {/* Header: app icon + summary + timestamp + close */}
-                <Gtk.Box spacing={8}>
-                    <Gtk.Image
-                        pixelSize={24}
-                        visible={!!notification.appIcon}
-                        iconName={notification.appIcon}
-                    />
-                    <Gtk.Box
-                        orientation={Gtk.Orientation.VERTICAL}
-                        hexpand
-                        spacing={2}
-                    >
-                        <Gtk.Box spacing={6}>
-                            <Gtk.Label
-                                wrap
-                                hexpand
-                                cssClasses={['title-4']}
-                                label={notification.summary || ''}
-                                xalign={0}
-                            />
-                            <Gtk.Label
-                                cssClasses={['caption', 'numeric']}
-                                label={relativeTime(notification.time)}
-                                valign={Gtk.Align.CENTER}
-                            />
-                        </Gtk.Box>
-                        {appName ? (
-                            <Gtk.Label
-                                cssClasses={['caption', 'dim-label']}
-                                label={appName}
-                                xalign={0}
-                            />
-                        ) : null}
-                    </Gtk.Box>
-                    <Gtk.Button
-                        halign={Gtk.Align.END}
-                        valign={Gtk.Align.START}
-                        // Libadwaita: circular + flat is the standard toast
-                        // close button style.
-                        cssClasses={[
-                            'circular',
-                            'flat',
-                            isCritical ? 'destructive-action' : '',
-                        ].filter(Boolean)}
-                        onClicked={() => closeAction(notification, card)}
-                        iconName={'window-close-symbolic'}
-                    />
-                </Gtk.Box>
-
-                {/* Body + optional image */}
-                <Gtk.Box spacing={8}>
-                    {hasImage ? (
-                        <Gtk.Image
-                            file={notification.image}
-                            pixelSize={imagePixelSize}
-                            valign={Gtk.Align.START}
-                        />
-                    ) : null}
-                    <Gtk.Label
-                        wrap
-                        hexpand
-                        maxWidthChars={maxChars}
-                        // Libadwaita .body class: increased line height for
-                        // legible text.
-                        cssClasses={['body']}
-                        useMarkup={useMarkup}
-                        label={bodyText}
-                        xalign={0}
-                    />
-                </Gtk.Box>
-
-                {/* Progress bar (optional, off by default) */}
-                <Gtk.ProgressBar
-                    visible={showProgress}
-                    fraction={1}
-                    ref={self => {
-                        if (!showProgress) return;
-                        let elapsed = 0;
-                        const interval = 50;
-                        tickWhileAttached(self, interval, () => {
-                            elapsed += interval;
-                            const remaining = Math.max(
-                                0,
-                                (expireMs - elapsed) / expireMs
-                            );
-                            self.set_fraction(remaining);
-                            return remaining > 0;
-                        });
-                    }}
+                <CardHeader
+                    notification={notification}
+                    appName={appName}
+                    isCritical={isCritical}
+                    onClose={handleClose}
                 />
-
-                {/* Action buttons */}
-                {hasActions ? (
-                    <Gtk.Box spacing={4}>
-                        <For
-                            each={bind(notification, 'actions').as(actions =>
-                                actions.filter(
-                                    a => a.label && a.label.trim() !== ''
-                                )
-                            )}
-                        >
-                            {(action: Notifd.Action) => (
-                                <Gtk.Button
-                                    cssClasses={['flat']}
-                                    onClicked={() =>
-                                        notification.invoke(action.id)
-                                    }
-                                    label={action.label}
-                                />
-                            )}
-                        </For>
-                    </Gtk.Box>
-                ) : null}
+                <CardBody
+                    notification={notification}
+                    imagePixelSize={imagePixelSize}
+                    maxChars={maxChars}
+                    useMarkup={useMarkup}
+                    bodyText={bodyText}
+                />
+                <CardProgress showProgress={showProgress} expireMs={expireMs} />
+                {hasActions ? <CardActions notification={notification} /> : null}
             </Gtk.Box>
         </Adw.Clamp>
     );

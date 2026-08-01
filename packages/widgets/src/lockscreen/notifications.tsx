@@ -39,13 +39,16 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
         });
     };
 
+    const removeNotification = (id: number) =>
+        setNotifications(prev => prev.filter(x => x.id !== id));
+
     const closeAction = (notif: Notifd.Notification) => {
         try {
             notif.dismiss();
         } catch (e) {
             logger.warn('lockscreen', 'failed to dismiss notification:', e);
         }
-        setNotifications(prev => prev.filter(x => x.id !== notif.id));
+        removeNotification(notif.id);
     };
 
     return (
@@ -75,7 +78,7 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
                     addNotification(id)
                 );
                 connectFor(node, notifd, 'dismissed', (_, id) =>
-                    setNotifications(prev => prev.filter(x => x.id !== id))
+                    removeNotification(id)
                 );
                 onCleanup(() => cleanupNode(node));
             }}
