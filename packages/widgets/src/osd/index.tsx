@@ -1,4 +1,4 @@
-import {bind, computed, createState} from 'gnim';
+import {bind, computed} from 'gnim';
 import Brightness from '@shade/services/display/brightness';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
@@ -12,7 +12,6 @@ import Popup from './popup';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';
-const REVEAL_SIGNAL = 'notify::reveal-child';
 const OSD_WIDTH = 250;
 const OSD_MARGIN = 24;
 const OSD_SPACING = 12;
@@ -37,70 +36,57 @@ export default () => {
               'audio-input-microphone-symbolic')
     );
 
-    const [v0, s0] = createState(false);
-    const [v1, s1] = createState(false);
-    const [v2, s2] = createState(false);
-    const [v3, s3] = createState(false);
-    const [v4, s4] = createState(false);
+    // Each OSD popup's reveal is owned by its domain service (AudioController,
+    // Brightness, Touchpad) via an OsdTimer, so the popups stay pure UI.
+    const speakerReveal = bind(audioCtrl, 'speakerOsdVisible');
+    const screenReveal = bind(brightness, 'screenOsdVisible');
+    const kbdReveal = bind(brightness, 'kbdOsdVisible');
+    const micReveal = bind(audioCtrl, 'micOsdVisible');
+    const touchpadReveal = bind(touchpad, 'osdVisible');
 
-    const anyVisible = computed(() => v0() || v1() || v2() || v3() || v4());
+    const anyVisible = computed(
+        () =>
+            speakerReveal() ||
+            screenReveal() ||
+            kbdReveal() ||
+            micReveal() ||
+            touchpadReveal()
+    );
 
     const popupList = [
         <Popup
-            connectable={audioCtrl.defaultSpeaker}
-            signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: speakerIcon,
-                value: computed(
-                    () => audioCtrl.defaultSpeaker?.volume ?? 0
-                ),
+                value: computed(() => audioCtrl.defaultSpeaker?.volume ?? 0),
             })}
-            revealerRef={r =>
-                r.connect(REVEAL_SIGNAL, () => s0(r.revealChild))
-            }
+            reveal={speakerReveal}
         />,
         <Popup
-            connectable={brightness}
-            signals={['notify::screen']}
             widget={Slider({
                 iconName: 'display-brightness-symbolic',
                 value: bind(brightness, 'screen'),
             })}
-            revealerRef={r =>
-                r.connect(REVEAL_SIGNAL, () => s1(r.revealChild))
-            }
+            reveal={screenReveal}
         />,
         <Popup
-            connectable={brightness}
-            signals={['notify::kbd']}
             widget={Slider({
                 iconName: 'keyboard-brightness-symbolic',
                 value: computed(() => brightness.kbd),
             })}
-            revealerRef={r =>
-                r.connect(REVEAL_SIGNAL, () => s2(r.revealChild))
-            }
+            reveal={kbdReveal}
         />,
         <Popup
-            connectable={audioCtrl.defaultMicrophone}
-            signals={['notify::volume', 'notify::mute']}
             widget={Slider({
                 iconName: micIcon,
                 value: computed(
                     () => audioCtrl.defaultMicrophone?.volume ?? 0
                 ),
             })}
-            revealerRef={r =>
-                r.connect(REVEAL_SIGNAL, () => s3(r.revealChild))
-            }
+            reveal={micReveal}
         />,
         <Popup
-            connectable={touchpad}
-            signals={['toggled']}
             widget={<TouchpadOsd />}
-            revealerRef={r =>
-                r.connect(REVEAL_SIGNAL, () => s4(r.revealChild))
-            }
+            reveal={touchpadReveal}
         />,
     ];
 
