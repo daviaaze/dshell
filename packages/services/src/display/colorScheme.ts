@@ -173,12 +173,14 @@ export class ColorScheme extends Object {
             ]
         );
         if (v === 0) return; // unsupported — nothing to follow
-        const mode =
-            v === 1
-                ? DarkModes.AUTO
-                : v === 2
-                  ? DarkModes.DARK
-                  : DarkModes.LIGHT;
+        let mode: DarkModes;
+        if (v === 1) {
+            mode = DarkModes.AUTO;
+        } else if (v === 2) {
+            mode = DarkModes.DARK;
+        } else {
+            mode = DarkModes.LIGHT;
+        }
         if (mode === this.#colorScheme) return;
         if (this.#colorScheme === DarkModes.AUTO) {
             const resolved = this.#daytime ? DarkModes.LIGHT : DarkModes.DARK;
