@@ -2,7 +2,7 @@ import Network from 'gi://AstalNetwork';
 import NM from 'gi://NM?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, computed, createState, With, For} from 'gnim';
+import {Accessor, bind, computed, createState, With, For} from 'gnim';
 import {toArray} from '@shade/core/gjsUtils';
 import {
     strengthFraction,
@@ -72,6 +72,207 @@ function getKnownNetworks(client: NM.Client): {
 
 // ── Main Settings Page ─────────────────────────────────────────────
 
+interface KnownNetwork {
+    ssid: string;
+    secure: boolean;
+    secLabel: string;
+    connections: NM.RemoteConnection[];
+}
+
+type NetworkService = ReturnType<typeof Network.get_default>;
+
+/** Wi-Fi group: enable switch, signal level, hidden-network entry. */
+function WifiGroup({
+    wifi,
+}: {
+    wifi: Accessor<Network.Wifi | null>;
+}) {
+    return (
+        <Adw.PreferencesGroup
+            title="Wi-Fi"
+            description="Wireless network connections"
+        >
+            <With value={wifi}>
+                {w =>
+                    w ? (
+                        <Adw.SwitchRow
+                            title="Wi-Fi"
+                            subtitle={bind(w, 'ssid').as(ssid =>
+                                ssid
+                                    ? `Connected to ${ssid}`
+                                    : 'Not connected'
+                            )}
+                            active={bind(w, 'enabled')}
+                            onNotifyActive={self => {
+                                w.enabled = self.active;
+                            }}
+                        />
+                    ) : null
+                }
+            </With>
+            <With value={wifi}>
+                {w =>
+                    w ? (
+                        <Adw.ActionRow
+                            title="Signal Strength"
+                            subtitle={bind(w, 'strength').as(s => `${s}%`)}
+                        >
+                            <Gtk.LevelBar
+                                valign={Gtk.Align.CENTER}
+                                value={bind(w, 'strength').as(s =>
+                                    strengthFraction(s)
+                                )}
+                                widthRequest={NET_SIGNAL_BAR_WIDTH}
+                            />
+                        </Adw.ActionRow>
+                    ) : null
+                }
+            </With>
+            <Adw.ActionRow
+                title="Connect to Hidden Network…"
+                activatable
+                onActivated={self => showHiddenNetworkDialog(self)}
+            >
+                <Gtk.Image
+                    iconName="network-wireless-symbolic"
+                    pixelSize={NET_ICON_PREFIX}
+                />
+            </Adw.ActionRow>
+        </Adw.PreferencesGroup>
+    );
+}
+
+/** One saved-network row: opens the editor, with a forget button. */
+function KnownNetworkRow({
+    net,
+    onChanged,
+}: {
+    net: KnownNetwork;
+    onChanged: () => void;
+}) {
+    return (
+        <Adw.ActionRow
+            title={net.ssid}
+            subtitle={net.secLabel}
+            activatable
+            onActivated={self =>
+                showConnectionEditor(net.ssid, net.connections, self, onChanged)
+            }
+        >
+            <Gtk.Image
+                iconName={
+                    net.secure
+                        ? 'network-wireless-encrypted-symbolic'
+                        : 'network-wireless-signal-none-symbolic'
+                }
+                pixelSize={NET_ICON_PREFIX}
+            />
+            <Gtk.Button
+                cssClasses={['flat', 'circular']}
+                onClicked={() => {
+                    const first = net.connections[0];
+                    if (!first) return;
+                    deleteConnectionAsync(first)
+                        .then(onChanged)
+                        .catch((e: Error) =>
+                            logger.error(
+                                'settings-network',
+                                'forget failed:',
+                                e.message
+                            )
+                        );
+                }}
+                tooltipText="Forget Network"
+            >
+                <Gtk.Image
+                    iconName="user-trash-symbolic"
+                    pixelSize={NET_ICON_SUFFIX}
+                />
+            </Gtk.Button>
+        </Adw.ActionRow>
+    );
+}
+
+/** Wired group: ethernet state row. */
+function WiredGroup({wired}: {wired: Accessor<Network.Wired | null>}) {
+    return (
+        <Adw.PreferencesGroup title="Wired" description="Ethernet connection">
+            <With value={wired}>
+                {w =>
+                    w ? (
+                        <Adw.ActionRow
+                            title="Wired Connection"
+                            subtitle={bind(w, 'state').as(s =>
+                                s === Network.DeviceState.ACTIVATED
+                                    ? 'Connected'
+                                    : 'Disconnected'
+                            )}
+                        >
+                            <Gtk.Image iconName={bind(w, 'icon-name')} />
+                        </Adw.ActionRow>
+                    ) : null
+                }
+            </With>
+        </Adw.PreferencesGroup>
+    );
+}
+
+/** Hotspot group: share internet over Wi-Fi (toggle stub). */
+function HotspotGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
+    return (
+        <Adw.PreferencesGroup
+            title="Hotspot"
+            description="Share your internet connection over Wi-Fi"
+            visible={wifi.as(w => w !== null)}
+        >
+            <With value={wifi}>
+                {w =>
+                    w ? (
+                        <Adw.ActionRow
+                            title="Hotspot"
+                            subtitle={bind(w, 'is-hotspot').as(h =>
+                                h ? 'Active' : 'Inactive'
+                            )}
+                        >
+                            <Gtk.Switch
+                                valign={Gtk.Align.CENTER}
+                                active={bind(w, 'is-hotspot')}
+                                onNotifyActive={() =>
+                                    logger.info(
+                                        'settings-network',
+                                        'Hotspot toggle not yet implemented'
+                                    )
+                                }
+                            />
+                        </Adw.ActionRow>
+                    ) : null
+                }
+            </With>
+        </Adw.PreferencesGroup>
+    );
+}
+
+/** Connectivity group: internet access status. */
+function ConnectivityGroup({network}: {network: NetworkService}) {
+    return (
+        <Adw.PreferencesGroup
+            title="Connectivity"
+            description="Internet access status"
+        >
+            <Adw.ActionRow
+                title="Connectivity"
+                subtitle={bind(network, 'connectivity').as(c => {
+                    if (c === Network.Connectivity.FULL)
+                        return 'Full internet access';
+                    if (c === Network.Connectivity.LIMITED)
+                        return 'Limited connectivity';
+                    return 'No connectivity';
+                })}
+            />
+        </Adw.PreferencesGroup>
+    );
+}
+
 export default () => {
     const network = Network.get_default();
     const wifi = bind(network, 'wifi');
@@ -81,196 +282,28 @@ export default () => {
         knownVersion(); // track dependency for recompute on bumpKnown
         return getKnownNetworks(network.client);
     });
+    const onKnownChanged = () => bumpKnown(knownVersion() + 1);
 
     return (
         <>
-            {wifi() && (
-                <Adw.PreferencesGroup
-                    title="Wi-Fi"
-                    description="Wireless network connections"
-                >
-                    <With value={wifi}>
-                        {w =>
-                            w ? (
-                                <Adw.SwitchRow
-                                    title="Wi-Fi"
-                                    subtitle={bind(w, 'ssid').as(ssid =>
-                                        ssid
-                                            ? `Connected to ${ssid}`
-                                            : 'Not connected'
-                                    )}
-                                    active={bind(w, 'enabled')}
-                                    onNotifyActive={self => {
-                                        w.enabled = self.active;
-                                    }}
-                                />
-                            ) : null
-                        }
-                    </With>
-                    <With value={wifi}>
-                        {w =>
-                            w ? (
-                                <Adw.ActionRow
-                                    title="Signal Strength"
-                                    subtitle={bind(w, 'strength').as(
-                                        s => `${s}%`
-                                    )}
-                                >
-                                    <Gtk.LevelBar
-                                        valign={Gtk.Align.CENTER}
-                                        value={bind(w, 'strength').as(s =>
-                                            strengthFraction(s)
-                                        )}
-                                        widthRequest={NET_SIGNAL_BAR_WIDTH}
-                                    />
-                                </Adw.ActionRow>
-                            ) : null
-                        }
-                    </With>
-                    <Adw.ActionRow
-                        title="Connect to Hidden Network…"
-                        activatable
-                        onActivated={self => showHiddenNetworkDialog(self)}
-                    >
-                        <Gtk.Image
-                            iconName="network-wireless-symbolic"
-                            pixelSize={NET_ICON_PREFIX}
-                        />
-                    </Adw.ActionRow>
-                </Adw.PreferencesGroup>
-            )}
-
+            {wifi() && <WifiGroup wifi={wifi} />}
             <Adw.PreferencesGroup
                 title="Known Networks"
                 description="Saved Wi-Fi networks"
                 visible={wifi.as(w => w !== null)}
             >
                 <For each={knownNetworks}>
-                    {(net: {
-                        ssid: string;
-                        secure: boolean;
-                        secLabel: string;
-                        connections: NM.RemoteConnection[];
-                    }) => (
-                        <Adw.ActionRow
-                            title={net.ssid}
-                            subtitle={net.secLabel}
-                            activatable
-                            onActivated={self =>
-                                showConnectionEditor(
-                                    net.ssid,
-                                    net.connections,
-                                    self,
-                                    () => bumpKnown(knownVersion() + 1)
-                                )
-                            }
-                        >
-                            <Gtk.Image
-                                iconName={
-                                    net.secure
-                                        ? 'network-wireless-encrypted-symbolic'
-                                        : 'network-wireless-signal-none-symbolic'
-                                }
-                                pixelSize={NET_ICON_PREFIX}
-                            />
-                            <Gtk.Button
-                                cssClasses={['flat', 'circular']}
-                                onClicked={() => {
-                                    const first = net.connections[0];
-                                    if (!first) return;
-                                    deleteConnectionAsync(first)
-                                        .then(() =>
-                                            bumpKnown(knownVersion() + 1)
-                                        )
-                                        .catch((e: Error) =>
-                                            logger.error(
-                                                'settings-network',
-                                                'forget failed:',
-                                                e.message
-                                            )
-                                        );
-                                }}
-                                tooltipText="Forget Network"
-                            >
-                                <Gtk.Image
-                                    iconName="user-trash-symbolic"
-                                    pixelSize={NET_ICON_SUFFIX}
-                                />
-                            </Gtk.Button>
-                        </Adw.ActionRow>
+                    {(net: KnownNetwork) => (
+                        <KnownNetworkRow
+                            net={net}
+                            onChanged={onKnownChanged}
+                        />
                     )}
                 </For>
             </Adw.PreferencesGroup>
-
-            <Adw.PreferencesGroup
-                title="Wired"
-                description="Ethernet connection"
-            >
-                <With value={wired}>
-                    {w =>
-                        w ? (
-                            <Adw.ActionRow
-                                title="Wired Connection"
-                                subtitle={bind(w, 'state').as(s =>
-                                    s === Network.DeviceState.ACTIVATED
-                                        ? 'Connected'
-                                        : 'Disconnected'
-                                )}
-                            >
-                                <Gtk.Image
-                                    iconName={bind(w, 'icon-name')}
-                                />
-                            </Adw.ActionRow>
-                        ) : null
-                    }
-                </With>
-            </Adw.PreferencesGroup>
-
-            <Adw.PreferencesGroup
-                title="Hotspot"
-                description="Share your internet connection over Wi-Fi"
-                visible={wifi.as(w => w !== null)}
-            >
-                <With value={wifi}>
-                    {w =>
-                        w ? (
-                            <Adw.ActionRow
-                                title="Hotspot"
-                                subtitle={bind(w, 'is-hotspot').as(h =>
-                                    h ? 'Active' : 'Inactive'
-                                )}
-                            >
-                                <Gtk.Switch
-                                    valign={Gtk.Align.CENTER}
-                                    active={bind(w, 'is-hotspot')}
-                                    onNotifyActive={() =>
-                                        logger.info(
-                                            'settings-network',
-                                            'Hotspot toggle not yet implemented'
-                                        )
-                                    }
-                                />
-                            </Adw.ActionRow>
-                        ) : null
-                    }
-                </With>
-            </Adw.PreferencesGroup>
-
-            <Adw.PreferencesGroup
-                title="Connectivity"
-                description="Internet access status"
-            >
-                <Adw.ActionRow
-                    title="Connectivity"
-                    subtitle={bind(network, 'connectivity').as(c => {
-                        if (c === Network.Connectivity.FULL)
-                            return 'Full internet access';
-                        if (c === Network.Connectivity.LIMITED)
-                            return 'Limited connectivity';
-                        return 'No connectivity';
-                    })}
-                />
-            </Adw.PreferencesGroup>
+            <WiredGroup wired={wired} />
+            <HotspotGroup wifi={wifi} />
+            <ConnectivityGroup network={network} />
         </>
     );
 };

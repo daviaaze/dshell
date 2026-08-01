@@ -1,7 +1,7 @@
 import NM from 'gi://NM?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {createState, onCleanup} from 'gnim';
+import {Accessor, createState, onCleanup} from 'gnim';
 import {render} from '@gnim-js/gtk4';
 import {
     securityLabelFromKeyMgmt,
@@ -11,6 +11,174 @@ import {
 import logger from '@shade/core/logger';
 
 const NET_ICON_PREFIX = 16;
+
+/** Password entry with a visibility toggle. */
+function SecurityGroup({
+    showPassword,
+    setShowPassword,
+    setPassword,
+}: {
+    showPassword: Accessor<boolean>;
+    setShowPassword: (v: boolean) => void;
+    setPassword: (v: string) => void;
+}) {
+    return (
+        <Adw.PreferencesGroup title="Security">
+            <Adw.EntryRow title="Password">
+                <Gtk.Entry
+                    placeholderText="WiFi password"
+                    ref={entry => {
+                        entry.visibility = !showPassword();
+                        onCleanup(
+                            showPassword.subscribe(() => {
+                                entry.visibility = !showPassword();
+                            })
+                        );
+                        entry.connect('notify::text', () =>
+                            setPassword(entry.get_text())
+                        );
+                    }}
+                />
+                <Gtk.Button
+                    slot="suffix"
+                    cssClasses={['flat']}
+                    onClicked={() => setShowPassword(!showPassword())}
+                >
+                    <Gtk.Image
+                        iconName={showPassword.as(v =>
+                            v
+                                ? 'eye-not-looking-symbolic'
+                                : 'eye-open-negative-filled-symbolic'
+                        )}
+                        pixelSize={NET_ICON_PREFIX}
+                    />
+                </Gtk.Button>
+            </Adw.EntryRow>
+        </Adw.PreferencesGroup>
+    );
+}
+
+/** Save / forget buttons plus the error label. */
+function ActionsBox({
+    saving,
+    errorMsg,
+    onSave,
+    onForget,
+}: {
+    saving: Accessor<boolean>;
+    errorMsg: Accessor<string | null>;
+    onSave: () => void;
+    onForget: () => void;
+}) {
+    return (
+        <>
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <Gtk.Button
+                    hexpand
+                    cssClasses={['suggested-action']}
+                    label={saving.as(s => (s ? 'Saving…' : 'Save Changes'))}
+                    sensitive={saving.as(s => !s)}
+                    onClicked={onSave}
+                />
+                <Gtk.Button
+                    hexpand
+                    cssClasses={['destructive-action']}
+                    label="Forget Network"
+                    onClicked={onForget}
+                />
+            </Gtk.Box>
+
+            <Gtk.Label
+                label={errorMsg.as(e => e ?? '')}
+                cssClasses={['error', 'caption']}
+                visible={errorMsg.as(e => e !== null)}
+                wrap
+                marginStart={12}
+                marginEnd={12}
+                marginBottom={12}
+            />
+        </>
+    );
+}
+
+/** Full dialog body: header, connection group, security, actions. */
+function EditorContent({
+    ssid,
+    settingSecurity,
+    isSecureConn,
+    autoConnect,
+    setAutoConnect,
+    showPassword,
+    setShowPassword,
+    setPassword,
+    saving,
+    errorMsg,
+    onSave,
+    onForget,
+}: {
+    ssid: string;
+    settingSecurity: NM.SettingWirelessSecurity | null;
+    isSecureConn: boolean;
+    autoConnect: Accessor<boolean>;
+    setAutoConnect: (v: boolean) => void;
+    showPassword: Accessor<boolean>;
+    setShowPassword: (v: boolean) => void;
+    setPassword: (v: string) => void;
+    saving: Accessor<boolean>;
+    errorMsg: Accessor<string | null>;
+    onSave: () => void;
+    onForget: () => void;
+}) {
+    return (
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
+            <Adw.HeaderBar
+                ref={self => {
+                    self.titleWidget = new Adw.WindowTitle({
+                        title: ssid,
+                        cssClasses: ['title-3'],
+                    });
+                }}
+                showEndTitleButtons={false}
+            />
+            <Gtk.ScrolledWindow
+                propagateNaturalHeight
+                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+            >
+                <Adw.PreferencesPage>
+                    <Adw.PreferencesGroup
+                        title="Connection"
+                        description={securityLabelFromKeyMgmt(
+                            settingSecurity?.get_key_mgmt() ?? null
+                        )}
+                    >
+                        <Adw.SwitchRow
+                            title="Connect automatically"
+                            active={autoConnect}
+                            onNotifyActive={self =>
+                                setAutoConnect(self.active)
+                            }
+                        />
+                    </Adw.PreferencesGroup>
+
+                    {isSecureConn && (
+                        <SecurityGroup
+                            showPassword={showPassword}
+                            setShowPassword={setShowPassword}
+                            setPassword={setPassword}
+                        />
+                    )}
+
+                    <ActionsBox
+                        saving={saving}
+                        errorMsg={errorMsg}
+                        onSave={onSave}
+                        onForget={onForget}
+                    />
+                </Adw.PreferencesPage>
+            </Gtk.ScrolledWindow>
+        </Gtk.Box>
+    );
+}
 
 export function showConnectionEditor(
     ssid: string,
@@ -88,107 +256,20 @@ export function showConnectionEditor(
 
     const disposeDialog = render(
         () => (
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
-                <Adw.HeaderBar
-                    ref={self => {
-                        self.titleWidget = new Adw.WindowTitle({
-                            title: ssid,
-                            cssClasses: ['title-3'],
-                        });
-                    }}
-                    showEndTitleButtons={false}
-                />
-                <Gtk.ScrolledWindow
-                    propagateNaturalHeight
-                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                >
-                    <Adw.PreferencesPage>
-                        <Adw.PreferencesGroup
-                            title="Connection"
-                            description={securityLabelFromKeyMgmt(
-                                settingSecurity?.get_key_mgmt() ?? null
-                            )}
-                        >
-                            <Adw.SwitchRow
-                                title="Connect automatically"
-                                active={autoConnect}
-                                onNotifyActive={self =>
-                                    setAutoConnect(self.active)
-                                }
-                            />
-                        </Adw.PreferencesGroup>
-
-                        {isSecureConn && (
-                            <Adw.PreferencesGroup title="Security">
-                                <Adw.EntryRow title="Password">
-                                    <Gtk.Entry
-                                        placeholderText="WiFi password"
-                                        ref={entry => {
-                                            entry.visibility = !showPassword();
-                                            onCleanup(
-                                                showPassword.subscribe(() => {
-                                                    entry.visibility =
-                                                        !showPassword();
-                                                })
-                                            );
-                                            entry.connect('notify::text', () =>
-                                                setPassword(entry.get_text())
-                                            );
-                                        }}
-                                    />
-                                    <Gtk.Button
-                                        slot="suffix"
-                                        cssClasses={['flat']}
-                                        onClicked={() =>
-                                            setShowPassword(!showPassword())
-                                        }
-                                    >
-                                        <Gtk.Image
-                                            iconName={showPassword.as(v =>
-                                                v
-                                                    ? 'eye-not-looking-symbolic'
-                                                    : 'eye-open-negative-filled-symbolic'
-                                            )}
-                                            pixelSize={NET_ICON_PREFIX}
-                                        />
-                                    </Gtk.Button>
-                                </Adw.EntryRow>
-                            </Adw.PreferencesGroup>
-                        )}
-
-                        <Gtk.Box
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={8}
-                        >
-                            <Gtk.Button
-                                hexpand
-                                cssClasses={['suggested-action']}
-                                label={saving.as(s =>
-                                    s ? 'Saving…' : 'Save Changes'
-                                )}
-                                sensitive={saving.as(s => !s)}
-                                onClicked={saveChanges}
-                            />
-                            <Gtk.Button
-                                hexpand
-                                cssClasses={['destructive-action']}
-                                label="Forget Network"
-                                onClicked={forgetNetwork}
-                            />
-                        </Gtk.Box>
-
-                        <Gtk.Label
-                            label={errorMsg.as(e => e ?? '')}
-                            cssClasses={['error', 'caption']}
-                            visible={errorMsg.as(e => e !== null)}
-                            wrap
-                            marginStart={12}
-                            marginEnd={12}
-                            marginBottom={12}
-                        />
-                    </Adw.PreferencesPage>
-                </Gtk.ScrolledWindow>
-            </Gtk.Box>
+            <EditorContent
+                ssid={ssid}
+                settingSecurity={settingSecurity}
+                isSecureConn={isSecureConn}
+                autoConnect={autoConnect}
+                setAutoConnect={setAutoConnect}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                setPassword={setPassword}
+                saving={saving}
+                errorMsg={errorMsg}
+                onSave={saveChanges}
+                onForget={forgetNetwork}
+            />
         ),
         dialog
     );
