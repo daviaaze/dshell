@@ -4,7 +4,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import {getHyprland} from '@shade/services/hyprland';
-import {bind, createState, For, onCleanup} from 'gnim';
+import {Accessor, bind, createState, For, onCleanup, Setter} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
 import {toArray} from '@shade/core/gjsUtils';
 import SwitcherItem from './item';
@@ -37,6 +37,124 @@ const getSortedClients = (
     return [...sorted, ...newClients];
 };
 
+/** Mutable switcher state shared by the keyboard handlers. */
+interface SwitcherState {
+    clientsList: Accessor<AstalHyprland.Client[]>;
+    selectedIndex: Accessor<number>;
+    setSelectedIndex: Setter<number>;
+    superReleased: boolean;
+    boxRef: {current: Gtk.Box | null};
+}
+
+function closeSwitcher(state: SwitcherState) {
+    if (switcherWindow) {
+        switcherWindow.visible = false;
+    }
+    state.superReleased = false;
+}
+
+function doFocus(state: SwitcherState, client: AstalHyprland.Client) {
+    client.focus();
+    closeSwitcher(state);
+}
+
+/** Flat key → action lookup, built from grouped key bindings. */
+function buildKeyActions(
+    state: SwitcherState
+): Record<number, () => boolean> {
+    const clients = state.clientsList() ?? [];
+
+    const keyGroups: [number[], () => boolean][] = [
+        [
+            [Gdk.KEY_Tab, Gdk.KEY_Right],
+            () => {
+                if (clients.length > 0)
+                    state.setSelectedIndex(i => (i + 1) % clients.length);
+                return true;
+            },
+        ],
+        [
+            [Gdk.KEY_ISO_Left_Tab, Gdk.KEY_Left],
+            () => {
+                if (clients.length > 0)
+                    state.setSelectedIndex(
+                        i => (i - 1 + clients.length) % clients.length
+                    );
+                return true;
+            },
+        ],
+        [
+            [Gdk.KEY_Return, Gdk.KEY_KP_Enter],
+            () => {
+                if (clients[state.selectedIndex()])
+                    doFocus(state, clients[state.selectedIndex()]);
+                return true;
+            },
+        ],
+        [
+            [Gdk.KEY_Escape],
+            () => {
+                closeSwitcher(state);
+                return true;
+            },
+        ],
+        [
+            [Gdk.KEY_q, Gdk.KEY_Q],
+            () => {
+                if (clients[state.selectedIndex()])
+                    clients[state.selectedIndex()].kill();
+                return true;
+            },
+        ],
+        [
+            [
+                Gdk.KEY_Super_L,
+                Gdk.KEY_Super_R,
+                Gdk.KEY_Meta_L,
+                Gdk.KEY_Meta_R,
+            ],
+            () => false,
+        ],
+    ];
+
+    const keyActions: Record<number, () => boolean> = {};
+    for (const [keys, action] of keyGroups) {
+        for (const key of keys) keyActions[key] = action;
+    }
+    return keyActions;
+}
+
+function handleKeyPressed(state: SwitcherState, keyval: number): boolean {
+    const action = buildKeyActions(state)[keyval];
+    return action ? action() : false;
+}
+
+function handleKeyReleased(state: SwitcherState, keyval: number): boolean {
+    const isSuper =
+        keyval === Gdk.KEY_Super_L ||
+        keyval === Gdk.KEY_Super_R ||
+        keyval === Gdk.KEY_Meta_L ||
+        keyval === Gdk.KEY_Meta_R;
+    if (isSuper && !state.superReleased) {
+        state.superReleased = true;
+        const clients = state.clientsList() ?? [];
+        if (clients[state.selectedIndex()]) {
+            doFocus(state, clients[state.selectedIndex()]);
+        } else {
+            closeSwitcher(state);
+        }
+        return true;
+    }
+    return false;
+}
+
+function onOpen(state: SwitcherState) {
+    const clients = state.clientsList() ?? [];
+    state.setSelectedIndex(clients.length > 1 ? 1 : 0);
+    state.superReleased = false;
+    state.boxRef.current?.grab_focus();
+}
+
 export default () => {
     const hyprland = getHyprland();
     if (!hyprland) return null;
@@ -66,121 +184,12 @@ export default () => {
         }
     });
 
-    let superReleased = false;
-
-    const closeSwitcher = () => {
-        if (switcherWindow) {
-            switcherWindow.visible = false;
-        }
-        superReleased = false;
-    };
-
-    const doFocus = (client: AstalHyprland.Client) => {
-        client.focus();
-        closeSwitcher();
-    };
-
-    const handleKeyPressed = (
-        _: Gtk.EventControllerKey,
-        keyval: number
-    ): boolean => {
-        const clients = clientsList() ?? [];
-
-        // Group keys by action, then build a flat lookup table
-        const keyGroups: [number[], () => boolean][] = [
-            [
-                [Gdk.KEY_Tab, Gdk.KEY_Right],
-                () => {
-                    if (clients.length > 0)
-                        setSelectedIndex(i => (i + 1) % clients.length);
-                    return true;
-                },
-            ],
-            [
-                [Gdk.KEY_ISO_Left_Tab, Gdk.KEY_Left],
-                () => {
-                    if (clients.length > 0)
-                        setSelectedIndex(
-                            i => (i - 1 + clients.length) % clients.length
-                        );
-                    return true;
-                },
-            ],
-            [
-                [Gdk.KEY_Return, Gdk.KEY_KP_Enter],
-                () => {
-                    if (clients[selectedIndex()])
-                        doFocus(clients[selectedIndex()]);
-                    return true;
-                },
-            ],
-            [
-                [Gdk.KEY_Escape],
-                () => {
-                    closeSwitcher();
-                    return true;
-                },
-            ],
-            [
-                [Gdk.KEY_q, Gdk.KEY_Q],
-                () => {
-                    if (clients[selectedIndex()])
-                        clients[selectedIndex()].kill();
-                    return true;
-                },
-            ],
-            [
-                [
-                    Gdk.KEY_Super_L,
-                    Gdk.KEY_Super_R,
-                    Gdk.KEY_Meta_L,
-                    Gdk.KEY_Meta_R,
-                ],
-                () => {
-                    return false;
-                },
-            ],
-        ];
-
-        const keyActions: Record<number, () => boolean> = {};
-        for (const [keys, action] of keyGroups) {
-            for (const key of keys) keyActions[key] = action;
-        }
-
-        const action = keyActions[keyval];
-        return action ? action() : false;
-    };
-
-    const handleKeyReleased = (
-        _: Gtk.EventControllerKey,
-        keyval: number
-    ): boolean => {
-        if (
-            (keyval === Gdk.KEY_Super_L ||
-                keyval === Gdk.KEY_Super_R ||
-                keyval === Gdk.KEY_Meta_L ||
-                keyval === Gdk.KEY_Meta_R) &&
-            !superReleased
-        ) {
-            superReleased = true;
-            const clients = clientsList() ?? [];
-            if (clients[selectedIndex()]) {
-                doFocus(clients[selectedIndex()]);
-            } else {
-                closeSwitcher();
-            }
-            return true;
-        }
-        return false;
-    };
-
-    let boxRef: Gtk.Box | null = null;
-
-    const onOpen = () => {
-        const clients = clientsList() ?? [];
-        setSelectedIndex(clients.length > 1 ? 1 : 0);
-        superReleased = false;
-        boxRef?.grab_focus();
+    const state: SwitcherState = {
+        clientsList,
+        selectedIndex,
+        setSelectedIndex,
+        superReleased: false,
+        boxRef: {current: null},
     };
 
     return (
@@ -199,7 +208,7 @@ export default () => {
             keymode={Astal.Keymode.EXCLUSIVE}
             visible={false}
             onNotifyVisible={self => {
-                if (self.visible) onOpen();
+                if (self.visible) onOpen(state);
             }}
             anchor={
                 Astal.WindowAnchor.TOP |
@@ -212,7 +221,7 @@ export default () => {
         >
             <Gtk.Box
                 ref={self => {
-                    boxRef = self;
+                    state.boxRef.current = self;
                 }}
                 focusable
                 halign={Gtk.Align.CENTER}
@@ -223,8 +232,12 @@ export default () => {
             >
                 <Gtk.EventControllerKey
                     ref={self => {
-                        self.connect('key-pressed', handleKeyPressed);
-                        self.connect('key-released', handleKeyReleased);
+                        self.connect('key-pressed', (_c, keyval) =>
+                            handleKeyPressed(state, keyval)
+                        );
+                        self.connect('key-released', (_c, keyval) =>
+                            handleKeyReleased(state, keyval)
+                        );
                     }}
                 />
                 <For each={clientsList}>
