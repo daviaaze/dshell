@@ -21,6 +21,7 @@ export type GreetState =
     | 'error';
 
 // GObject notify signal names (kebab-case property names)
+const STATE_AWAITING_INPUT = 'awaiting-input';
 const NOTIFY_ERROR_MSG = 'error-message';
 const NOTIFY_INFO_MSG = 'info-message';
 
@@ -118,7 +119,7 @@ export class GreetSession extends Object {
                 (_g: Greet.Greeter, msg: string) => {
                     this.#infoMessage = msg;
                     this.notify(NOTIFY_INFO_MSG);
-                    this.state = 'awaiting-input';
+                    this.state = STATE_AWAITING_INPUT;
                 }
             ),
 
@@ -127,7 +128,7 @@ export class GreetSession extends Object {
                 (_g: Greet.Greeter, msg: string) => {
                     this.#infoMessage = msg || 'Password required';
                     this.notify(NOTIFY_INFO_MSG);
-                    this.state = 'awaiting-input';
+                    this.state = STATE_AWAITING_INPUT;
                 }
             ),
 
@@ -178,7 +179,7 @@ export class GreetSession extends Object {
      */
     postAuth(response: string): void {
         if (!this.#greeter) return;
-        if (this.#state !== 'awaiting-input') {
+        if (this.#state !== STATE_AWAITING_INPUT) {
             logger.warn(
                 'greeter',
                 `postAuth ignored — no auth question pending (state=${this.#state})`

@@ -3,6 +3,7 @@ import Gio from 'gi://Gio?version=2.0';
 import logger from '@shade/core/logger';
 
 const CONFIG_PATH = `${GLib.get_user_config_dir()}/hypr/hypridle.conf`;
+const LISTENER_OPEN = 'listener {';
 
 export interface HypridleConfig {
     dimEnabled: boolean;
@@ -31,7 +32,7 @@ export function buildHypridleConfigLines(cfg: HypridleConfig): string[] {
     if (cfg.dimEnabled && cfg.dimTimeout < cfg.idleTimeout) {
         lines.push(
             '',
-            'listener {',
+            LISTENER_OPEN,
             `  timeout = ${cfg.dimTimeout}`,
             "  on-timeout = sh -c 'brightnessctl get > /tmp/shade-brightness-resume && brightnessctl set 10%'",
             "  on-resume = sh -c '[ -f /tmp/shade-brightness-resume ] && brightnessctl set $(cat /tmp/shade-brightness-resume) && rm -f /tmp/shade-brightness-resume'",
@@ -42,7 +43,7 @@ export function buildHypridleConfigLines(cfg: HypridleConfig): string[] {
     // Tier 2: lock screen
     lines.push(
         '',
-        'listener {',
+        LISTENER_OPEN,
         `  timeout = ${cfg.idleTimeout}`,
         '  on-timeout = shade-shell lockscreen',
         '}'
@@ -52,7 +53,7 @@ export function buildHypridleConfigLines(cfg: HypridleConfig): string[] {
     if (cfg.dpmsEnabled && cfg.dpmsTimeout > cfg.idleTimeout) {
         lines.push(
             '',
-            'listener {',
+            LISTENER_OPEN,
             `  timeout = ${cfg.dpmsTimeout}`,
             '  on-timeout = hyprctl dispatch dpms off',
             '  on-resume = hyprctl dispatch dpms on',
@@ -64,7 +65,7 @@ export function buildHypridleConfigLines(cfg: HypridleConfig): string[] {
     if (cfg.suspendEnabled && cfg.suspendTimeout > cfg.dpmsTimeout) {
         lines.push(
             '',
-            'listener {',
+            LISTENER_OPEN,
             `  timeout = ${cfg.suspendTimeout}`,
             '  on-timeout = systemctl suspend',
             '}'

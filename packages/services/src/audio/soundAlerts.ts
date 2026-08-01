@@ -13,6 +13,12 @@ import {generalSettings} from '@shade/core/settings/general.gschema';
 /** Fraction (0..1) at which low-battery warning sounds fire. */
 const LOW_BATTERY_THRESHOLD = 0.15;
 
+// freedesktop sound-theme event ids used by play()
+const SND_SCREEN_CAPTURE = 'screen-capture';
+const SND_RECORD = 'service-login';
+const SIG_DEVICE_ADDED = 'device-added';
+const SIG_DEVICE_REMOVED = 'device-removed';
+
 type SoundCategory = 'notification' | 'capture' | 'battery' | 'system';
 
 /**
@@ -119,24 +125,24 @@ export default class SoundAlertService extends Object {
         // ── Bus events ──
 
         this.#busUnsubs.push(
-            bus.on('capture:screenshot', () => this.play('screen-capture'))
+            bus.on('capture:screenshot', () => this.play(SND_SCREEN_CAPTURE))
         );
         this.#busUnsubs.push(
-            bus.on('capture:screenshot:area', () => this.play('screen-capture'))
+            bus.on('capture:screenshot:area', () => this.play(SND_SCREEN_CAPTURE))
         );
         this.#busUnsubs.push(
             bus.on('capture:screenshot:overlay', () =>
-                this.play('screen-capture')
+                this.play(SND_SCREEN_CAPTURE)
             )
         );
         this.#busUnsubs.push(
-            bus.on('capture:record', () => this.play('service-login'))
+            bus.on('capture:record', () => this.play(SND_RECORD))
         );
         this.#busUnsubs.push(
-            bus.on('capture:record:area', () => this.play('service-login'))
+            bus.on('capture:record:area', () => this.play(SND_RECORD))
         );
         this.#busUnsubs.push(
-            bus.on('capture:record:window', () => this.play('service-login'))
+            bus.on('capture:record:window', () => this.play(SND_RECORD))
         );
         this.#busUnsubs.push(
             bus.on('capture:record:output', () => this.play('service-logout'))
@@ -214,13 +220,13 @@ export default class SoundAlertService extends Object {
 
                 // Device added/removed
                 this.#upowerHandlerIds.push(
-                    upower.connect('device-added', () =>
-                        this.play('device-added')
+                    upower.connect(SIG_DEVICE_ADDED, () =>
+                        this.play(SIG_DEVICE_ADDED)
                     )
                 );
                 this.#upowerHandlerIds.push(
-                    upower.connect('device-removed', () =>
-                        this.play('device-removed')
+                    upower.connect(SIG_DEVICE_REMOVED, () =>
+                        this.play(SIG_DEVICE_REMOVED)
                     )
                 );
 
@@ -317,8 +323,8 @@ export default class SoundAlertService extends Object {
             case 'screen-unlock':
             case 'power-plug':
             case 'power-unplug':
-            case 'device-added':
-            case 'device-removed':
+            case SIG_DEVICE_ADDED:
+            case SIG_DEVICE_REMOVED:
                 return 'system';
             default:
                 return 'capture';

@@ -23,6 +23,8 @@ import {
     type SelectionState,
 } from './selection';
 
+const LOG_TAG = 'screenshot-ui';
+
 // ── State ─────────────────────────────────────────────────────────
 
 type Hyprland = NonNullable<ReturnType<typeof getHyprland>>;
@@ -126,7 +128,7 @@ function executeCapture(state: OverlayState) {
         return;
 
     logger.info(
-        'screenshot-ui',
+        LOG_TAG,
         `capture: mode=${mode}, target=${target}, geom=${geometry ?? 'full'}`
     );
 
@@ -191,7 +193,7 @@ function debugAllocation(w: Gtk.DrawingArea) {
             sib = sib.get_next_sibling();
         }
         logger.info(
-            'screenshot-ui',
+            LOG_TAG,
             `DA alloc=${a.width}x${a.height} parent=${parent ? parent.constructor.name : 'null'} palloc=${pa?.width}x${pa?.height} sibs=[${sibs.join(', ')}]`
         );
         return GLib.SOURCE_REMOVE;
@@ -255,7 +257,8 @@ export default () => {
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
     const [selActive, setSelActive] = createState(false);
-    const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(
+
+const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(
         null
     );
     const [windows, setWindows] = createState<WinInfo[]>([]);
@@ -282,7 +285,7 @@ export default () => {
     return (
         <Astal.Window
             ref={self => WindowManager.get_default().setOverlay(self)}
-            name={'screenshot-ui'}
+            name={LOG_TAG}
             application={getApp()}
             layer={Astal.Layer.TOP}
             keymode={Astal.Keymode.EXCLUSIVE}

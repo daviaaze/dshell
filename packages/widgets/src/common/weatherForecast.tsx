@@ -15,6 +15,8 @@ interface DailyItem {
     iconName: string;
 }
 
+const CAPTION_HEADING = 'caption-heading';
+
 export const HourlyForecastSection = ({
     hourlyForecast,
 }: {
@@ -26,7 +28,7 @@ export const HourlyForecastSection = ({
             cssClasses={['p-8', 'weather-section']}
         >
             <Gtk.Label
-                cssClasses={['caption-heading', 'dimmed']}
+                cssClasses={[CAPTION_HEADING, 'dimmed']}
                 label="Hourly"
                 halign={Gtk.Align.START}
             />
@@ -71,7 +73,7 @@ export const DailyForecastSection = ({
             cssClasses={['p-8', 'weather-section']}
         >
             <Gtk.Label
-                cssClasses={['caption-heading', 'dimmed']}
+                cssClasses={[CAPTION_HEADING, 'dimmed']}
                 label="5-Day Forecast"
                 halign={Gtk.Align.START}
             />
@@ -90,7 +92,7 @@ export const DailyForecastSection = ({
                             <Gtk.Image iconName={d.iconName} pixelSize={18} />
                             <Gtk.Label
                                 label={`${formatTemp(d.tempMax)} / ${formatTemp(d.tempMin)}`}
-                                cssClasses={['caption-heading']}
+                                cssClasses={[CAPTION_HEADING]}
                             />
                         </Gtk.Box>
                     )}

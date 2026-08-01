@@ -11,6 +11,7 @@ import {
 import logger from '@shade/core/logger';
 
 const NET_ICON_PREFIX = 16;
+const LOG_TAG = 'settings-network';
 
 /** Password entry with a visibility toggle. */
 function SecurityGroup({
@@ -229,7 +230,7 @@ export function showConnectionEditor(
                 })
                 .catch((e: Error) => {
                     logger.error(
-                        'settings-network',
+                        LOG_TAG,
                         'commit failed:',
                         e.message
                     );
@@ -237,7 +238,7 @@ export function showConnectionEditor(
                     setSaving(false);
                 });
         } catch (e) {
-            logger.error('settings-network', 'save error:', e);
+            logger.error(LOG_TAG, 'save error:', e);
             setErrorMsg(String(e));
             setSaving(false);
         }
@@ -250,7 +251,7 @@ export function showConnectionEditor(
                 onForgotten?.();
             })
             .catch((e: Error) =>
-                logger.error('settings-network', 'forget failed:', e.message)
+                logger.error(LOG_TAG, 'forget failed:', e.message)
             );
     };
 

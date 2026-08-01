@@ -4,6 +4,9 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import logger from '@shade/core/logger';
 
+const GEOCLUE_BUS = 'org.freedesktop.GeoClue2';
+const GEOCLUE_CLIENT_IFACE = 'org.freedesktop.GeoClue2.Client';
+
 @register
 export default class Geolocation extends Object {
     private static instance: Geolocation;
@@ -91,7 +94,7 @@ export default class Geolocation extends Object {
         const conn = client.get_connection();
         const setProp = (iface: string, prop: string, value: GLib.Variant) => {
             conn.call_sync(
-                'org.freedesktop.GeoClue2',
+                GEOCLUE_BUS,
                 clientPath,
                 'org.freedesktop.DBus.Properties',
                 'Set',
@@ -103,12 +106,12 @@ export default class Geolocation extends Object {
             );
         };
         setProp(
-            'org.freedesktop.GeoClue2.Client',
+            GEOCLUE_CLIENT_IFACE,
             'DesktopId',
             new GLib.Variant('s', 'com.caioasmuniz.shade_shell')
         );
         setProp(
-            'org.freedesktop.GeoClue2.Client',
+            GEOCLUE_CLIENT_IFACE,
             'RequestedAccuracyLevel',
             new GLib.Variant('u', 4)
         );
@@ -183,7 +186,7 @@ export default class Geolocation extends Object {
         try {
             const manager = await this.#createDbusProxy(
                 Gio.BusType.SYSTEM,
-                'org.freedesktop.GeoClue2',
+                GEOCLUE_BUS,
                 '/org/freedesktop/GeoClue2/Manager',
                 'org.freedesktop.GeoClue2.Manager',
                 'Manager proxy failed'
@@ -197,9 +200,9 @@ export default class Geolocation extends Object {
 
             client = await this.#createDbusProxy(
                 Gio.BusType.SYSTEM,
-                'org.freedesktop.GeoClue2',
+                GEOCLUE_BUS,
                 clientPath,
-                'org.freedesktop.GeoClue2.Client',
+                GEOCLUE_CLIENT_IFACE,
                 'Client proxy failed'
             );
 
@@ -225,7 +228,7 @@ export default class Geolocation extends Object {
             logger.debug('geo', `Creating Location proxy for ${locationPath}`);
             const location = await this.#createDbusProxy(
                 Gio.BusType.SYSTEM,
-                'org.freedesktop.GeoClue2',
+                GEOCLUE_BUS,
                 locationPath,
                 'org.freedesktop.GeoClue2.Location',
                 'Location proxy failed'

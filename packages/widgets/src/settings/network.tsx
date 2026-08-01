@@ -55,14 +55,14 @@ function getKnownNetworks(client: NM.Client): {
                 }
             } catch (connErr) {
                 logger.debug(
-                    'settings-network',
+                    LOG_TAG,
                     'Skipping connection:',
                     connErr
                 );
             }
         }
     } catch (e) {
-        logger.error('settings-network', 'getKnownNetworks error:', e);
+        logger.error(LOG_TAG, 'getKnownNetworks error:', e);
     }
 
     return Array.from(bySsid.entries())
@@ -176,7 +176,7 @@ function KnownNetworkRow({
                         .then(onChanged)
                         .catch((e: Error) =>
                             logger.error(
-                                'settings-network',
+                                LOG_TAG,
                                 'forget failed:',
                                 e.message
                             )
@@ -239,7 +239,7 @@ function HotspotGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
                                 active={bind(w, 'is-hotspot')}
                                 onNotifyActive={() =>
                                     logger.info(
-                                        'settings-network',
+                                        LOG_TAG,
                                         'Hotspot toggle not yet implemented'
                                     )
                                 }
@@ -272,6 +272,8 @@ function ConnectivityGroup({network}: {network: NetworkService}) {
         </Adw.PreferencesGroup>
     );
 }
+
+const LOG_TAG = 'settings-network';
 
 export default () => {
     const network = Network.get_default();

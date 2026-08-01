@@ -7,6 +7,9 @@ const BUS_NAME = 'net.hadess.PowerProfiles';
 const OBJECT_PATH = '/net/hadess/PowerProfiles';
 const IFACE = 'net.hadess.PowerProfiles';
 
+const LOG_TAG = 'power-profiles';
+const PROFILE_POWER_SAVER = 'power-saver';
+
 type Profile = 'power-saver' | 'balanced' | 'performance';
 
 export default class PowerProfiles {
@@ -38,7 +41,7 @@ export default class PowerProfiles {
         try {
             const conn = this.#proxy?.get_connection();
             if (!conn) {
-                logger.warn('power-profiles', 'no DBus connection');
+                logger.warn(LOG_TAG, 'no DBus connection');
                 return;
             }
             conn.call_sync(
@@ -59,7 +62,7 @@ export default class PowerProfiles {
         } catch (e) {
             if (e instanceof Error)
                 logger.warn(
-                    'power-profiles',
+                    LOG_TAG,
                     'set_active_profile failed:',
                     e.message
                 );
@@ -118,7 +121,7 @@ export default class PowerProfiles {
         } catch (e) {
             if (e instanceof Error)
                 logger.warn(
-                    'power-profiles',
+                    LOG_TAG,
                     'failed to connect to system bus:',
                     e.message
                 );
@@ -128,7 +131,7 @@ export default class PowerProfiles {
 
 export function profileLabel(p: string): string {
     switch (p) {
-        case 'power-saver':
+        case PROFILE_POWER_SAVER:
             return 'Power Saver';
         case 'balanced':
             return 'Balanced';
@@ -141,11 +144,11 @@ export function profileLabel(p: string): string {
 
 export function nextProfile(p: string): Profile {
     switch (p) {
-        case 'power-saver':
+        case PROFILE_POWER_SAVER:
             return 'balanced';
         case 'balanced':
             return 'performance';
         default:
-            return 'power-saver';
+            return PROFILE_POWER_SAVER;
     }
 }

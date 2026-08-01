@@ -38,6 +38,15 @@ function activateWithString(
     }
 }
 
+// CLI subcommand names (shared by declaration and dispatch)
+const CMD_SCREENSHOT_AREA = 'screenshot-area';
+const CMD_SCREENSHOT_OVERLAY = 'screenshot-overlay';
+const CMD_RECORD_AREA = 'record-area';
+const CMD_RECORD_WINDOW = 'record-window';
+const CMD_RECORD_WINDOW_ADDRESS = 'record-window-address';
+const CMD_RECORD_OUTPUT = 'record-output';
+const CMD_OPEN_CLIPBOARD = 'open-clipboard';
+
 // ── Build command tree ──
 
 function buildCLI(_app: Gio.Application): Quarrel.Command {
@@ -54,11 +63,11 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .about('Take a fullscreen screenshot')
         .opt(help);
 
-    const screenshotArea = new Quarrel.Command({name: 'screenshot-area'})
+    const screenshotArea = new Quarrel.Command({name: CMD_SCREENSHOT_AREA})
         .about('Take a screensho of a selected area')
         .opt(help);
 
-    const screenshotOverlay = new Quarrel.Command({name: 'screenshot-overlay'})
+    const screenshotOverlay = new Quarrel.Command({name: CMD_SCREENSHOT_OVERLAY})
         .about('Open the screenshot/recording overlay UI')
         .opt(help);
 
@@ -66,22 +75,22 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .about('Start recording fullscreen')
         .opt(help);
 
-    const recordArea = new Quarrel.Command({name: 'record-area'})
+    const recordArea = new Quarrel.Command({name: CMD_RECORD_AREA})
         .about('Record a selected area')
         .opt(help);
 
-    const recordWindow = new Quarrel.Command({name: 'record-window'})
+    const recordWindow = new Quarrel.Command({name: CMD_RECORD_WINDOW})
         .about('Record the focused window')
         .opt(help);
 
     const recordWindowAddr = new Quarrel.Command({
-        name: 'record-window-address',
+        name: CMD_RECORD_WINDOW_ADDRESS,
     })
         .about('Record a window by its Hyprland address')
         .arg('ADDRESS', 'Hyprland window address (e.g. 0x12345678)')
         .opt(help);
 
-    const recordOutput = new Quarrel.Command({name: 'record-output'})
+    const recordOutput = new Quarrel.Command({name: CMD_RECORD_OUTPUT})
         .about('Record the focused monitor output')
         .opt(help);
 
@@ -93,7 +102,7 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .about('Open launcher in clipboard mode')
         .opt(help);
 
-    const openClipboard = new Quarrel.Command({name: 'open-clipboard'})
+    const openClipboard = new Quarrel.Command({name: CMD_OPEN_CLIPBOARD})
         .about('Open clipboard history directly')
         .opt(help);
 
@@ -144,36 +153,36 @@ function dispatch(command: Quarrel.Command, app: Gio.Application): boolean {
             activate(app, 'screenshot');
             return true;
 
-        case 'screenshot-area':
-            activate(app, 'screenshot-area');
+        case CMD_SCREENSHOT_AREA:
+            activate(app, CMD_SCREENSHOT_AREA);
             return true;
 
-        case 'screenshot-overlay':
-            activate(app, 'screenshot-overlay');
+        case CMD_SCREENSHOT_OVERLAY:
+            activate(app, CMD_SCREENSHOT_OVERLAY);
             return true;
 
         case 'record':
             activate(app, 'record');
             return true;
 
-        case 'record-area':
-            activate(app, 'record-area');
+        case CMD_RECORD_AREA:
+            activate(app, CMD_RECORD_AREA);
             return true;
 
-        case 'record-window':
-            activate(app, 'record-window');
+        case CMD_RECORD_WINDOW:
+            activate(app, CMD_RECORD_WINDOW);
             return true;
 
-        case 'record-window-address': {
+        case CMD_RECORD_WINDOW_ADDRESS: {
             const addr = command.get_args()[0];
             if (addr) {
-                activateWithString(app, 'record-window-address', addr);
+                activateWithString(app, CMD_RECORD_WINDOW_ADDRESS, addr);
             }
             return true;
         }
 
-        case 'record-output':
-            activate(app, 'record-output');
+        case CMD_RECORD_OUTPUT:
+            activate(app, CMD_RECORD_OUTPUT);
             return true;
 
         case 'lockscreen':
@@ -184,8 +193,8 @@ function dispatch(command: Quarrel.Command, app: Gio.Application): boolean {
             activate(app, 'toggle-clipboard');
             return true;
 
-        case 'open-clipboard':
-            activate(app, 'open-clipboard');
+        case CMD_OPEN_CLIPBOARD:
+            activate(app, CMD_OPEN_CLIPBOARD);
             return true;
 
         case 'toggle-dnd':

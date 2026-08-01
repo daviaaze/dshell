@@ -65,6 +65,8 @@ function resolveAudioInputName(audioInputId: number): string | undefined {
     return mic?.name ?? undefined;
 }
 
+const WL_SCREENREC = 'wl-screenrec';
+
 function buildWlScreenrecArgs(
     filename: string,
     geometry: string | undefined,
@@ -74,7 +76,7 @@ function buildWlScreenrecArgs(
     audioInputId: number,
     quality: number
 ): RecordingArgs {
-    const args = ['wl-screenrec', '-f', filename];
+    const args = [WL_SCREENREC, '-f', filename];
     if (geometry) args.push('-g', geometry);
     if (output) args.push('-o', output);
     if (audio) args.push('--audio');
@@ -85,7 +87,7 @@ function buildWlScreenrecArgs(
     args.push('--quality', String(resolveQualityWlScreenrec(quality)));
     if (isWebm) args.push('--codec', 'vp9');
 
-    return {args, backendName: 'wl-screenrec'};
+    return {args, backendName: WL_SCREENREC};
 }
 
 function buildWfRecorderArgs(
@@ -155,7 +157,7 @@ export function resolveBackend(pref: RecorderBackend): RecorderBackend {
         // Prefer wl-screenrec (GPU/vaapi) when installed; otherwise fall
         // back to wf-recorder. wl-screenrec also gets a runtime fallback
         // in the exit handler if it dies fast (e.g. no vaapi on NVIDIA).
-        return Process.findBinary('wl-screenrec') !== 'wl-screenrec'
+        return Process.findBinary(WL_SCREENREC) !== WL_SCREENREC
             ? RecorderBackend.WL_SCREENREC
             : RecorderBackend.WF_RECORDER;
     }

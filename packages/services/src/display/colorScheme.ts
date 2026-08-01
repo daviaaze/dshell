@@ -21,6 +21,8 @@ const TIME_HANDLER_KEYS: Array<'changed::weather-sunrise-time' | 'changed::weath
     'changed::weather-sunset-time',
 ]
 
+const COLOR_SCHEME_KEY = 'color-scheme';
+
 @register
 export class ColorScheme extends Object {
     private static instance: ColorScheme;
@@ -114,13 +116,13 @@ export class ColorScheme extends Object {
             const targetKey =
                 c === DarkModes.LIGHT ? 'prefer-light' : 'prefer-dark';
             if (
-                this.#systemSettings.get_string('color-scheme') !==
+                this.#systemSettings.get_string(COLOR_SCHEME_KEY) !==
                 targetKey
             ) {
                 this.#pushSystemScheme(targetKey);
             }
 
-            this.notify('color-scheme');
+            this.notify(COLOR_SCHEME_KEY);
             this.notify('color-scheme-name');
             this.notify('icon-name');
 
@@ -413,7 +415,7 @@ export class ColorScheme extends Object {
             new Schema({
                 id: 'org.gnome.desktop.interface',
                 path: '/org/gnome/desktop/interface/',
-            }).key('color-scheme', 's', {default: 'prefer-light'})
+            }).key(COLOR_SCHEME_KEY, 's', {default: 'prefer-light'})
         );
     }
 }

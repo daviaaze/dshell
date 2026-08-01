@@ -37,20 +37,22 @@ export function parseExec(exec: string): string[] {
 }
 
 /** Read a desktop file, returning null if unusable. */
+const DESKTOP_ENTRY_GROUP = 'Desktop Entry';
+
 function readDesktopFile(path: string): {name: string; exec: string} | null {
     try {
         const kf = new GLib.KeyFile();
         kf.load_from_file(path, GLib.KeyFileFlags.NONE);
         const bool = (key: string): boolean => {
             try {
-                return kf.get_boolean('Desktop Entry', key);
+                return kf.get_boolean(DESKTOP_ENTRY_GROUP, key);
             } catch {
                 return false;
             }
         };
         if (bool('NoDisplay') || bool('Hidden')) return null;
-        const name = kf.get_string('Desktop Entry', 'Name');
-        const exec = kf.get_string('Desktop Entry', 'Exec');
+        const name = kf.get_string(DESKTOP_ENTRY_GROUP, 'Name');
+        const exec = kf.get_string(DESKTOP_ENTRY_GROUP, 'Exec');
         if (!name || !exec) return null;
         return {name, exec};
     } catch {
