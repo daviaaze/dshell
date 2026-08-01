@@ -3,7 +3,6 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {getHyprland} from '@shade/services/hyprland';
 import {bind} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
-import {bus} from '@shade/services/bus';
 import Screenshot from '@shade/services/capture/screenshot';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 
@@ -80,7 +79,7 @@ export default () => {
 
                 {/* Stop button */}
                 <Gtk.Button
-                    onClicked={() => bus.emit('capture:cmd:recording:stop')}
+                    onClicked={() => ss.stopRecording()}
                     cssClasses={['circular', 'destructive-action']}
                     css={'min-width: 24px; min-height: 24px; padding: 0;'}
                     tooltipText="Stop recording"

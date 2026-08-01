@@ -1,11 +1,9 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
 import {getHyprland} from '@shade/services/hyprland';
 import {Accessor, bind, createState} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
-import {bus} from '@shade/services/bus';
 import Screenshot from '@shade/services/capture/screenshot';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
@@ -16,6 +14,7 @@ import {
     normalizeRect,
     isScreenshotMode,
     buildGeometry,
+    windowAt,
     loadWindows,
     getMonitorOrigin,
     type Point,
@@ -97,29 +96,37 @@ function onDragEnd(state: OverlayState) {
     state.daRef.current?.queue_draw();
 }
 
+/**
+ * Click behavior unified across targets:
+ * - hit a window → area mode selects its rect; window mode selects the window.
+ * - miss in quick mode with an existing selection → confirm immediately
+ *   (this is the region-selector's click-outside-to-confirm behavior).
+ */
 function onClickPressed(state: OverlayState, cx: number, cy: number) {
-    if (state.ss.selectedTarget !== 'window') return;
-    const origin = state.monOrigin();
-    const winList = state.windows();
-    for (let i = winList.length - 1; i >= 0; i--) {
-        const w = winList[i]!;
-        if (
-            cx + origin.x >= w.x &&
-            cx + origin.x <= w.x + w.width &&
-            cy + origin.y >= w.y &&
-            cy + origin.y <= w.y + w.height
-        ) {
-            state.setSelectedWindow(w);
-            state.daRef.current?.queue_draw();
-            return;
+    const hit = windowAt(state.windows(), cx, cy, state.monOrigin());
+    if (hit) {
+        if (state.ss.selectedTarget === 'window') {
+            state.setSelectedWindow(hit);
+        } else if (state.ss.selectedTarget === 'area') {
+            state.setDragStart({x: hit.x - state.monOrigin().x, y: hit.y - state.monOrigin().y});
+            state.setDragEnd({x: hit.x + hit.width - state.monOrigin().x, y: hit.y + hit.height - state.monOrigin().y});
+            state.setSelActive(true);
+            state.setSelectedWindow(null);
         }
+        state.daRef.current?.queue_draw();
+        return;
+    }
+
+    if (state.ss.overlayQuick) {
+        const geom = buildGeometry(state.ss.selectedTarget, getSelectionState(state));
+        if (geom) state.ss.confirmOverlay('area', geom);
     }
 }
 
+/** Confirm the current selection: crop from stage (screenshot) or record. */
 function executeCapture(state: OverlayState) {
-    const mode = state.ss.selectedMode;
     const target = state.ss.selectedTarget;
-    const geometry = buildGeometry(target, getSelectionState(state));
+    const geom = buildGeometry(target, getSelectionState(state));
 
     if (
         (target === 'area' && !state.selActive()) ||
@@ -127,24 +134,20 @@ function executeCapture(state: OverlayState) {
     )
         return;
 
+    const geomLabel = geom
+        ? `${geom.width}x${geom.height}+${geom.x}+${geom.y}`
+        : 'full';
     logger.info(
         LOG_TAG,
-        `capture: mode=${mode}, target=${target}, geom=${geometry ?? 'full'}`
+        `capture: mode=${state.ss.selectedMode}, target=${target}, geom=${geomLabel}`
     );
 
-    if (mode === 'screenshot') {
-        bus.emit('capture:cmd:capture-from-stage', geometry);
-    } else {
-        bus.emit('capture:cmd:start-recording-after-overlay', {
-            target,
-            geometry,
-        });
-    }
+    state.ss.confirmOverlay(target, geom);
 }
 
 function handleKey(state: OverlayState, keyval: number): boolean {
     if (keyval === Gdk.KEY_Escape) {
-        bus.emit('capture:cmd:region-selector:close');
+        state.ss.hideOverlay();
         return true;
     }
     if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
@@ -155,7 +158,7 @@ function handleKey(state: OverlayState, keyval: number): boolean {
 }
 
 function handleTargetChange(state: OverlayState, value: string) {
-    if (value === 'window') {
+    if (value === 'window' || value === 'area') {
         state.setWindows(loadWindows(state.hyprland.get_clients()));
     }
     state.daRef.current?.queue_draw();
@@ -163,41 +166,27 @@ function handleTargetChange(state: OverlayState, value: string) {
 
 // ── Sub-widgets ───────────────────────────────────────────────────
 
-/** Frozen background picture in screenshot mode, else a transparent box. */
+/**
+ * Frozen background picture in screenshot mode (reactive), else a
+ * transparent box. Reads `stageTexture` via bind so the backdrop appears
+ * once the stage capture lands.
+ */
 function OverlayBackground({ss}: {ss: Screenshot}) {
-    return isScreenshotMode(ss.selectedMode) && ss.stageTexture ? (
-        <Gtk.Picture
-            paintable={ss.stageTexture}
-            hexpand
-            vexpand
-            canShrink={false}
-            contentFit={Gtk.ContentFit.FILL}
-        />
-    ) : (
-        <Gtk.Box hexpand vexpand />
+    // Stage texture is the reactive trigger (arrives after captureSync on
+    // overlay open); mode is peeked for the screenshot/recording switch.
+    return bind(ss, 'stageTexture').as(tex =>
+        tex && isScreenshotMode(ss.selectedMode) ? (
+            <Gtk.Picture
+                paintable={tex}
+                hexpand
+                vexpand
+                canShrink={false}
+                contentFit={Gtk.ContentFit.FILL}
+            />
+        ) : (
+            <Gtk.Box hexpand vexpand />
+        )
     );
-}
-
-/** Debug: verify the drawing area gets mapped and allocated in the overlay. */
-function debugAllocation(w: Gtk.DrawingArea) {
-    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-        const a = w.get_allocation();
-        const parent = w.get_parent();
-        const pa = parent?.get_allocation();
-        // log every sibling's allocation to find who gets space and who doesn't
-        let sib = parent?.get_first_child();
-        const sibs: string[] = [];
-        while (sib) {
-            const sa = sib.get_allocation();
-            sibs.push(`${sib.constructor.name}=${sa.width}x${sa.height}`);
-            sib = sib.get_next_sibling();
-        }
-        logger.info(
-            LOG_TAG,
-            `DA alloc=${a.width}x${a.height} parent=${parent ? parent.constructor.name : 'null'} palloc=${pa?.width}x${pa?.height} sibs=[${sibs.join(', ')}]`
-        );
-        return GLib.SOURCE_REMOVE;
-    });
 }
 
 /** DrawingArea overlay with drag/click gestures for region selection. */
@@ -217,7 +206,6 @@ function SelectionArea({state}: {state: OverlayState}) {
                         monOrigin: state.monOrigin(),
                     })
                 );
-                self.connect('map', debugAllocation);
             }}
             hexpand
             vexpand
@@ -257,8 +245,7 @@ export default () => {
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
     const [selActive, setSelActive] = createState(false);
-
-const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(
+    const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(
         null
     );
     const [windows, setWindows] = createState<WinInfo[]>([]);
@@ -313,13 +300,18 @@ const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(
                 <OverlayBackground ss={ss} />
                 <SelectionArea state={state} />
 
-                {/* Control panel */}
-                <ControlPanel
-                    ss={ss}
-                    onCapture={() => executeCapture(state)}
-                    onReset={() => resetSelection(state)}
-                    onTargetChange={v => handleTargetChange(state, v)}
-                />
+                {/* Control panel — hidden in quick-select mode */}
+                {bind(ss, 'overlayQuick').as(
+                    q =>
+                        !q && (
+                            <ControlPanel
+                                ss={ss}
+                                onCapture={() => executeCapture(state)}
+                                onReset={() => resetSelection(state)}
+                                onTargetChange={v => handleTargetChange(state, v)}
+                            />
+                        )
+                )}
 
                 {/* Keyboard handler */}
                 <Gtk.EventControllerKey

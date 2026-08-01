@@ -5,6 +5,8 @@
  * and to keep the widget focused on rendering and event handling.
  */
 
+import type {BoundaryGeometry} from '@shade/services/capture/types';
+
 export interface Point {
     x: number;
     y: number;
@@ -54,40 +56,68 @@ export function isScreenshotMode(selectedMode: string): boolean {
 }
 
 /**
- * Build a grim-format geometry string from the current selection state.
- * Returns null if no valid selection exists.
+ * Build a typed global-compositor geometry from the current selection
+ * state. Returns null if no valid selection exists (fullscreen → null,
+ * meaning "no crop").
+ *
+ * Drag/click coords are local to the overlay window (which covers one
+ * monitor), so area rects must be offset by the monitor origin; window
+ * and monitor rects are already global.
  */
 export function buildGeometry(
     target: string,
     sel: SelectionState
-): string | null {
+): BoundaryGeometry | null {
     if (target === 'fullscreen') return null;
 
-    // Capture commands (magick -crop on the global stage, grim/wl-screenrec
-    // -g) all operate in GLOBAL compositor coordinates. Drag/click coords are
-    // local to the overlay window (which covers one monitor), so area rects
-    // must be offset by the monitor origin; window rects are already global.
     const origin = sel.monOrigin;
 
     if (target === 'monitor') {
         const mon = sel.focusedMonitor;
         if (!mon) return null;
-        return `${mon.width}x${mon.height}+${mon.x}+${mon.y}`;
+        return {x: mon.x, y: mon.y, width: mon.width, height: mon.height};
     }
 
     if (target === 'area') {
         if (!sel.selActive || !sel.dragStart || !sel.dragEnd) return null;
         const rect = normalizeRect(sel.dragStart, sel.dragEnd);
         if (rect.width < 5 || rect.height < 5) return null;
-        return `${rect.width}x${rect.height}+${origin.x + rect.x}+${origin.y + rect.y}`;
+        return {
+            x: origin.x + rect.x,
+            y: origin.y + rect.y,
+            width: rect.width,
+            height: rect.height,
+        };
     }
 
     if (target === 'window') {
         if (!sel.selectedWindow) return null;
         const w = sel.selectedWindow;
-        return `${w.width}x${w.height}+${w.x}+${w.y}`;
+        return {x: w.x, y: w.y, width: w.width, height: w.height};
     }
 
+    return null;
+}
+
+/**
+ * Topmost window under a point. `cx`/`cy` are overlay-local coordinates;
+ * windows are in global compositor coordinates. Iterates the list back to
+ * front so later (higher-stacked) windows win.
+ */
+export function windowAt(
+    windows: WinInfo[],
+    cx: number,
+    cy: number,
+    origin: Point
+): WinInfo | null {
+    const gx = cx + origin.x;
+    const gy = cy + origin.y;
+    for (let i = windows.length - 1; i >= 0; i--) {
+        const w = windows[i]!;
+        if (gx >= w.x && gx <= w.x + w.width && gy >= w.y && gy <= w.y + w.height) {
+            return w;
+        }
+    }
     return null;
 }
 

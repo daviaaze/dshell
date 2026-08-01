@@ -1,5 +1,4 @@
 import Screenshot from '@shade/services/capture/screenshot';
-import {bus} from '@shade/services/bus';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind} from 'gnim';
@@ -19,7 +18,7 @@ const dismissAnd =
     };
 
 /** Fullscreen + area screenshot buttons. */
-function ScreenshotSection() {
+function ScreenshotSection({ss}: {ss: Screenshot}) {
     return (
         <>
             <Gtk.Label
@@ -28,19 +27,13 @@ function ScreenshotSection() {
                 cssClasses={['title-4']}
             />
             <LinkedBox>
-                <Gtk.Button
-                    onClicked={() => bus.emit('capture:cmd:screenshot', true)}
-                >
+                <Gtk.Button onClicked={() => ss.screenshot(true)}>
                     <Adw.ButtonContent
                         iconName="camera-photo-symbolic"
                         label="Fullscreen"
                     />
                 </Gtk.Button>
-                <Gtk.Button
-                    onClicked={dismissAnd(() =>
-                        bus.emit('capture:cmd:screenshot', false)
-                    )}
-                >
+                <Gtk.Button onClicked={dismissAnd(() => ss.screenshot(false))}>
                     <Adw.ButtonContent
                         iconName="selection-mode-symbolic"
                         label="Area"
@@ -52,7 +45,7 @@ function ScreenshotSection() {
 }
 
 /** Recording mode buttons: fullscreen, area, output, window. */
-function RecordingSection() {
+function RecordingSection({ss}: {ss: Screenshot}) {
     return (
         <>
             <Gtk.Label
@@ -61,39 +54,25 @@ function RecordingSection() {
                 cssClasses={['title-4']}
             />
             <LinkedBox>
-                <Gtk.Button
-                    onClicked={() => bus.emit('capture:cmd:recording:toggle')}
-                >
+                <Gtk.Button onClicked={() => ss.toggleRecording()}>
                     <Adw.ButtonContent
                         iconName="camera-video-symbolic"
                         label="Fullscreen"
                     />
                 </Gtk.Button>
-                <Gtk.Button
-                    onClicked={dismissAnd(() =>
-                        bus.emit('capture:cmd:recording:area')
-                    )}
-                >
+                <Gtk.Button onClicked={dismissAnd(() => ss.recordArea())}>
                     <Adw.ButtonContent
                         iconName="selection-mode-symbolic"
                         label="Area"
                     />
                 </Gtk.Button>
-                <Gtk.Button
-                    onClicked={dismissAnd(() =>
-                        bus.emit('capture:cmd:recording:output-visual')
-                    )}
-                >
+                <Gtk.Button onClicked={dismissAnd(() => ss.recordOutputVisual())}>
                     <Adw.ButtonContent
                         iconName="video-display-symbolic"
                         label="Output"
                     />
                 </Gtk.Button>
-                <Gtk.Button
-                    onClicked={dismissAnd(() =>
-                        bus.emit('capture:cmd:recording:window-visual')
-                    )}
-                >
+                <Gtk.Button onClicked={dismissAnd(() => ss.recordWindowVisual())}>
                     <Adw.ButtonContent
                         iconName="focus-windows-symbolic"
                         label="Window"
@@ -121,7 +100,7 @@ function PrefsSection({
             <Gtk.CheckButton
                 active={bind(screenshot.prefs, 'audio')}
                 onNotifyActive={({active}) => {
-                    bus.emit('capture:cmd:prefs:audio', active);
+                    screenshot.prefs.audio = active;
                 }}
             />
             <Gtk.Label label="Record Audio" />
@@ -151,12 +130,12 @@ function VirtualMonitorButton({
         <Gtk.Button
             onClicked={() => {
                 if (screenshot.virtualMonitors.length > 0) {
-                    bus.emit('capture:cmd:virtual-monitors:remove');
+                    screenshot.removeVirtualMonitors();
                 } else {
-                    bus.emit('capture:cmd:virtual-monitors:create', {
-                        resolution: captureSettings.virtualMonitorResolution(),
-                        fps: captureSettings.virtualMonitorFps(),
-                    });
+                    screenshot.createVirtualMonitor(
+                        captureSettings.virtualMonitorResolution(),
+                        captureSettings.virtualMonitorFps()
+                    );
                 }
             }}
         >
@@ -183,9 +162,9 @@ export default (): QuickButton => {
                 spacing={8}
                 cssClasses={['popover-padded']}
             >
-                <ScreenshotSection />
+                <ScreenshotSection ss={screenshot} />
                 <Gtk.Separator />
-                <RecordingSection />
+                <RecordingSection ss={screenshot} />
                 <Gtk.Separator />
                 <PrefsSection
                     screenshot={screenshot}
@@ -211,7 +190,7 @@ export default (): QuickButton => {
                 label={bind(screenshot, 'recording').as(rec =>
                     rec ? 'Stop' : 'Record'
                 )}
-                onClick={() => bus.emit('capture:cmd:recording:toggle')}
+                onClick={() => screenshot.toggleRecording()}
                 popover={popover}
             />
         ),

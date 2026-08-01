@@ -55,7 +55,6 @@ import './quicksettings/widget';
 import './lockscreen/widget';
 import './windowswitcher/widget';
 import './screenshot-ui/widget';
-import './region-selector/widget';
 import './recording-bar/widget';
 import './recording-boundary/widget';
 import './notifications/widget';

@@ -1,25 +1,21 @@
 import Cairo from 'gi://cairo?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getHyprland} from '@shade/services/hyprland';
-import logger from '@shade/core/logger';
+import type {BoundaryGeometry} from '@shade/services/capture/types';
 import type Screenshot from '@shade/services/capture/screenshot';
+import logger from '@shade/core/logger';
 
 // ── Constants ─────────────────────────────────────────────────────
 
 const DIM_COLOR = {r: 0, g: 0, b: 0, a: 0.35};
+const ACCENT = {r: 0.3, g: 0.6, b: 1, a: 0.9};
 const MIN_SELECTION = 5;
+const HANDLE_SIZE = 8;
+const WINDOW_HINT_COLOR = {r: 1, g: 1, b: 1, a: 0.15};
 
-interface Point {
-    x: number;
-    y: number;
-}
+interface Point { x: number; y: number }
 
-interface Geom {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+type Geom = BoundaryGeometry;
 
 interface WinInfo {
     address: string;
@@ -120,6 +116,41 @@ function drawDimOverlay(
     }
 }
 
+function drawCornerHandles(cr: Cairo.Context, sel: Geom) {
+    cr.setSourceRGBA(ACCENT.r, ACCENT.g, ACCENT.b, ACCENT.a);
+    const hs = HANDLE_SIZE;
+    const corners = [
+        {x: sel.x - hs / 2, y: sel.y - hs / 2},
+        {x: sel.x + sel.width - hs / 2, y: sel.y - hs / 2},
+        {x: sel.x - hs / 2, y: sel.y + sel.height - hs / 2},
+        {x: sel.x + sel.width - hs / 2, y: sel.y + sel.height - hs / 2},
+    ];
+    for (const c of corners) {
+        cr.rectangle(c.x, c.y, hs, hs);
+    }
+    cr.fill();
+}
+
+function drawWindowHints(
+    cr: Cairo.Context,
+    wins: WinInfo[],
+    origin: Point
+) {
+    cr.setSourceRGBA(
+        WINDOW_HINT_COLOR.r,
+        WINDOW_HINT_COLOR.g,
+        WINDOW_HINT_COLOR.b,
+        WINDOW_HINT_COLOR.a
+    );
+    cr.setLineWidth(1);
+    for (const win of wins) {
+        const lx = win.x - origin.x;
+        const ly = win.y - origin.y;
+        cr.rectangle(lx, ly, win.width, win.height);
+        cr.stroke();
+    }
+}
+
 /** Draws window outlines and the selected window's highlight + title. */
 function drawWindowOutlines(
     cr: Cairo.Context,
@@ -128,6 +159,11 @@ function drawWindowOutlines(
     winL: WinInfo[],
     monOrigin: Point
 ) {
+    if (target === 'area') {
+        // Window snap hints in area mode (was region-selector behavior)
+        drawWindowHints(cr, winL, monOrigin);
+        return;
+    }
     if (target !== 'window') return;
     const origin = monOrigin;
     cr.setLineWidth(2);
@@ -142,7 +178,7 @@ function drawWindowOutlines(
     const lx = sWin.x - origin.x;
     const ly = sWin.y - origin.y;
     cr.setLineWidth(4);
-    cr.setSourceRGBA(0.3, 0.6, 1, 0.9);
+    cr.setSourceRGBA(ACCENT.r, ACCENT.g, ACCENT.b, ACCENT.a);
     cr.rectangle(lx, ly, sWin.width, sWin.height);
     cr.stroke();
 
@@ -155,7 +191,7 @@ function drawWindowOutlines(
     cr.showText(sWin.title.substring(0, 40));
 }
 
-/** Draws the selection rectangle and its size label. */
+/** Draws the selection rectangle, corner handles and its size label. */
 function drawSelection(
     cr: Cairo.Context,
     target: string,
@@ -164,9 +200,11 @@ function drawSelection(
     if (target !== 'area' || !sel || sel.width < MIN_SELECTION) return;
 
     cr.setLineWidth(2);
-    cr.setSourceRGBA(0.3, 0.6, 1, 0.9);
+    cr.setSourceRGBA(ACCENT.r, ACCENT.g, ACCENT.b, ACCENT.a);
     cr.rectangle(sel.x, sel.y, sel.width, sel.height);
     cr.stroke();
+
+    drawCornerHandles(cr, sel);
 
     const label = `${sel.width}×${sel.height}`;
     const labelX = sel.x + 4;
@@ -195,6 +233,34 @@ function drawCenteredText(
     cr.showText(text);
 }
 
+/** Text with a translucent backing box, centered at (cx, y). */
+function drawLabel(
+    cr: Cairo.Context,
+    text: string,
+    cx: number,
+    y: number,
+    weight: Cairo.FontWeight,
+    bgAlpha: number,
+    fgAlpha: number
+) {
+    cr.selectFontFace('sans-serif', Cairo.FontSlant.NORMAL, weight);
+    cr.setFontSize(weight === Cairo.FontWeight.BOLD ? 13 : 12);
+    const ext = cr.textExtents(text);
+    const pad = 4;
+    const tx = cx - ext.width / 2;
+    cr.rectangle(
+        tx - pad,
+        y - ext.height + pad,
+        ext.width + pad * 2,
+        ext.height + pad
+    );
+    cr.setSourceRGBA(0, 0, 0, bgAlpha);
+    cr.fill();
+    cr.moveTo(tx, y);
+    cr.setSourceRGBA(1, 1, 1, fgAlpha);
+    cr.showText(text);
+}
+
 /** Draws contextual hint text for unsold area/window targets. */
 function drawHints(
     cr: Cairo.Context,
@@ -209,6 +275,18 @@ function drawHints(
     }
     if (!sWin && target === 'window') {
         drawCenteredText(cr, width, height, 'Click a window to select it');
+    }
+    // Quick-select hint (matches the old region-selector footer)
+    if (target === 'area') {
+        drawLabel(
+            cr,
+            'Drag to select · Click a window to snap · Enter to confirm · Esc to cancel',
+            width / 2,
+            height - 32,
+            Cairo.FontWeight.NORMAL,
+            0.5,
+            0.7
+        );
     }
 }
 
@@ -226,19 +304,10 @@ export function draw(
     // Surface draw failures to the log instead of silently painting nothing.
     try {
         drawImpl(_da, cr, width, height, params);
-        if (!drawLogged) {
-            drawLogged = true;
-            logger.info(
-                'screenshot-ui',
-                `overlay draw: first paint ${width}x${height}`
-            );
-        }
     } catch (e) {
         logger.error('screenshot-ui', `overlay draw failed: ${e}`);
     }
 }
-
-let drawLogged = false;
 
 function drawImpl(
     _da: Gtk.DrawingArea,
