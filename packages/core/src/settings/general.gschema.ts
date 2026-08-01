@@ -1,5 +1,5 @@
 import {defineSettings, getRegisteredSchema} from '../settingsRegistry';
-import {defineSchemaList} from 'gnim/schema';
+import {defineSchemaList, Schema} from 'gnim/schema';
 
 /**
  * General shell settings (shell-core).
@@ -12,9 +12,25 @@ import {defineSchemaList} from 'gnim/schema';
  * Lives in @shade/core (not @shade/services) because it is imported by both
  * services and the style layer — and the ESLint DAG forbids style→services.
  * It is pure schema data with no gi dependency at import time.
+ *
+ * The schema chain is split into per-group helpers. The key tuples MUST be
+ * threaded as explicit generic params (`Schema<T, E, F>`): writing
+ * `<S extends Schema>(s: S)` would resolve `.key()` against the constraint's
+ * default `Schema<[], [], []>` and silently erase all previously accumulated
+ * keys from the resulting settings type.
  */
-export const generalSettings = defineSettings('general', s => {
-    const datadir = import.meta.datadir || '@datadir@';
+
+// Structural stand-ins for gnim's non-exported TypedKey/EnumKey/FlagsKey.
+type TypedKeyLike = {name: string; type: string};
+type EnumKeyLike = {name: string; enum: never; aliases: never};
+type FlagsKeyLike = {name: string; flag: never};
+
+/** Color scheme and wallpaper selection. */
+function appearanceKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>, datadir: string) {
     return s
         .key('color-scheme', 'i', {
             default: 0,
@@ -24,11 +40,28 @@ export const generalSettings = defineSettings('general', s => {
         })
         .key('wallpaper-night', 's', {
             default: `${datadir}/shade-shell/wp-night.jpg`,
-        })
-        .key('timezones', 'as', {
-            default: ['America/Sao_Paulo', 'Australia/Sydney'],
-            summary: 'List of IANA timezone identifiers for the world clock',
-        })
+        });
+}
+
+/** World-clock timezones. */
+function clockKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>) {
+    return s.key('timezones', 'as', {
+        default: ['America/Sao_Paulo', 'Australia/Sydney'],
+        summary: 'List of IANA timezone identifiers for the world clock',
+    });
+}
+
+/** Blue-light filter (hyprsunset). */
+function nightLightKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>) {
+    return s
         .key('night-light-enabled', 'b', {
             default: false,
             summary: 'Enable blue light filter (hyprsunset)',
@@ -42,8 +75,16 @@ export const generalSettings = defineSettings('general', s => {
             default: false,
             summary:
                 'Automatically enable night light at sunset and disable at sunrise',
-        })
-        // ── Sound Alerts ────────────────────────────────────────────────────
+        });
+}
+
+/** Sound alert toggles. */
+function soundAlertKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>) {
+    return s
         .key('sound-alerts-enabled', 'b', {
             default: true,
             summary: 'Master toggle for all sound alerts',
@@ -63,12 +104,20 @@ export const generalSettings = defineSettings('general', s => {
         .key('sound-alert-system', 'b', {
             default: true,
             summary: 'Play sound on system events (lock/unlock, power, devices)',
-        })
+        });
+}
 
-        // ── Idle Management (Hypridle) ─────────────────────────────────────
-        // These keys are consumed by Hypridle which generates a hypridle.conf.
-        // The timeout chain must satisfy: dim < idle < dpms < suspend.
-        // If a key violates this ordering, Hypridle clamps it automatically.
+/**
+ * Idle management (Hypridle). Consumed by Hypridle which generates a
+ * hypridle.conf. The timeout chain must satisfy: dim < idle < dpms < suspend.
+ * If a key violates this ordering, Hypridle clamps it automatically.
+ */
+function idleKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>) {
+    return s
         .key('auto-lock-enabled', 'b', {
             default: true,
             summary:
@@ -118,7 +167,16 @@ export const generalSettings = defineSettings('general', s => {
             summary:
                 'Seconds of inactivity before system suspend. Valid range: (dpms-timeout + 10) to 7200.',
             range: {min: 80, max: 7200},
-        })
+        });
+}
+
+/** Notification history and filtering. */
+function notificationKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>) {
+    return s
         .key('notification-history-limit', 'i', {
             default: 100,
             summary: 'Maximum number of notifications to keep in history',
@@ -132,7 +190,16 @@ export const generalSettings = defineSettings('general', s => {
         .key('notification-ignored-apps', 'as', {
             default: [],
             summary: 'List of app names to ignore for notifications',
-        })
+        });
+}
+
+/** Dynamic theming and debug logging. */
+function themingKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>) {
+    return s
         .key('dynamic-theming-enabled', 'b', {
             default: false,
             summary: 'Extract accent colors from wallpaper using matugen',
@@ -145,9 +212,16 @@ export const generalSettings = defineSettings('general', s => {
             default: [],
             summary:
                 'Debug categories to enable (empty = all). Categories: mount, state, theme, dbus, exec, perf, memory',
-        })
+        });
+}
 
-        // ── Audio Visualizer (Cava) ──────────────────────────────────────
+/** Audio visualizer (Cava). */
+function cavaKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>) {
+    return s
         .key('cava-enabled', 'b', {
             default: false,
             summary: 'Show audio visualizer in quick settings',
@@ -161,9 +235,19 @@ export const generalSettings = defineSettings('general', s => {
             default: 60,
             summary: 'Frame rate of the audio visualizer',
             range: {min: 15, max: 120},
-        })
+        });
+}
 
-        // ── Weather-derived state (set by Weather service, consumed by ColorScheme, NightLight) ──
+/**
+ * Weather-derived state (written by the Weather service, consumed by
+ * ColorScheme and NightLight for day/night detection) plus experiments.
+ */
+function weatherKeys<
+    T extends TypedKeyLike[],
+    E extends EnumKeyLike[],
+    F extends FlagsKeyLike[],
+>(s: Schema<T, E, F>) {
+    return s
         .key('weather-is-daytime', 'b', {
             default: true,
             summary: 'Whether it is currently daytime (set by Weather service)',
@@ -185,6 +269,19 @@ export const generalSettings = defineSettings('general', s => {
                 'Wayland-native monitor enumeration. The monitors array and all widget ' +
                 'interfaces remain unchanged. Disable to instantly revert to Gdk tracking.',
         });
+}
+
+export const generalSettings = defineSettings('general', s => {
+    const datadir = import.meta.datadir || '@datadir@';
+    const s1 = appearanceKeys(s, datadir);
+    const s2 = clockKeys(s1);
+    const s3 = nightLightKeys(s2);
+    const s4 = soundAlertKeys(s3);
+    const s5 = idleKeys(s4);
+    const s6 = notificationKeys(s5);
+    const s7 = themingKeys(s6);
+    const s8 = cavaKeys(s7);
+    return weatherKeys(s8);
 });
 
 export default defineSchemaList([getRegisteredSchema('general')]);
