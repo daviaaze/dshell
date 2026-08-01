@@ -144,11 +144,6 @@ export default class AppMixer extends Object {
     }
 
     @property
-    get captureStreams() {
-        return this.#captureStreams;
-    }
-
-    @property
     get microphoneInUse() {
         return this.#captureStreams.length > 0;
     }

@@ -179,11 +179,6 @@ export default class ServiceRegistry {
         return this.#registrations.some(r => r.name === name);
     }
 
-    /** Number of registered services. */
-    get size(): number {
-        return this.#registrations.length;
-    }
-
     /** Resolve init order via topological sort (respects dependsOn + order). */
     #topologicalSort(): ServiceRegistration[] {
         const visited = new Set<string>();
