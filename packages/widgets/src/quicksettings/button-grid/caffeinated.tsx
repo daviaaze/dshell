@@ -7,6 +7,8 @@ import type {QuickButton} from './quickButton';
 import {QuickToggleButton} from '../../common/quickToggleButton';
 import {LinkedBox} from '../../common/linkedBox';
 
+const SET_DURATION = 'power:inhibit:set-duration';
+
 export default (): QuickButton => {
     const inhibit = Inhibit.get_default();
     const idle = bind(inhibit, 'idle');
@@ -30,25 +32,25 @@ export default (): QuickButton => {
     const popover = (
         <Gtk.Popover cssClasses={[]}>
             <LinkedBox>
-                <Gtk.Button onClicked={() => bus.emit('power:inhibit:set-duration', 0)}>
+                <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 0)}>
                     <Adw.ButtonContent
                         iconName="weather-clear-symbolic"
                         label="Indefinitely"
                     />
                 </Gtk.Button>
-                <Gtk.Button onClicked={() => bus.emit('power:inhibit:set-duration', 5)}>
+                <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 5)}>
                     <Adw.ButtonContent
                         iconName="preferences-system-time-symbolic"
                         label="5 minutes"
                     />
                 </Gtk.Button>
-                <Gtk.Button onClicked={() => bus.emit('power:inhibit:set-duration', 15)}>
+                <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 15)}>
                     <Adw.ButtonContent
                         iconName="preferences-system-time-symbolic"
                         label="15 minutes"
                     />
                 </Gtk.Button>
-                <Gtk.Button onClicked={() => bus.emit('power:inhibit:set-duration', 60)}>
+                <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 60)}>
                     <Adw.ButtonContent
                         iconName="preferences-system-time-symbolic"
                         label="1 hour"
@@ -76,7 +78,7 @@ export default (): QuickButton => {
                 label={label}
                 onClick={() => {
                     if (inhibit.idle) bus.emit('power:inhibit:set-idle', false);
-                    else bus.emit('power:inhibit:set-duration', 0);
+                    else bus.emit(SET_DURATION, 0);
                 }}
                 popover={popover}
             />

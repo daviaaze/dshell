@@ -7,33 +7,29 @@ import {LinkedBox} from '../../common/linkedBox';
 import {bus} from '@shade/services/bus';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
 
+const SET_SCHEME = 'display:colorscheme:set';
+
 export default (): QuickButton => {
     const colorScheme = ColorScheme.get_default();
 
     const popover = (
         <Gtk.Popover cssClasses={[]}>
             <LinkedBox>
-                <Gtk.Button
-                    onClicked={() => bus.emit('display:colorscheme:set', DarkModes.AUTO)}
-                >
+                <Gtk.Button onClicked={() => bus.emit(SET_SCHEME, DarkModes.AUTO)}>
                     <Adw.ButtonContent
                         iconName="night-light-symbolic"
                         label="Automatic"
                     />
                 </Gtk.Button>
                 <Gtk.Button
-                    onClicked={() =>
-                        bus.emit('display:colorscheme:set', DarkModes.LIGHT)
-                    }
+                    onClicked={() => bus.emit(SET_SCHEME, DarkModes.LIGHT)}
                 >
                     <Adw.ButtonContent
                         iconName="weather-clear-symbolic"
                         label="Light Mode"
                     />
                 </Gtk.Button>
-                <Gtk.Button
-                    onClicked={() => bus.emit('display:colorscheme:set', DarkModes.DARK)}
-                >
+                <Gtk.Button onClicked={() => bus.emit(SET_SCHEME, DarkModes.DARK)}>
                     <Adw.ButtonContent
                         iconName="weather-clear-night-symbolic"
                         label="Dark Mode"
@@ -54,13 +50,13 @@ export default (): QuickButton => {
                 })}
                 onClick={() => {
                     if (colorScheme.colorScheme === DarkModes.LIGHT) {
-                        bus.emit('display:colorscheme:set', DarkModes.DARK);
+                        bus.emit(SET_SCHEME, DarkModes.DARK);
                     } else if (colorScheme.colorScheme === DarkModes.DARK) {
-                        bus.emit('display:colorscheme:set', DarkModes.LIGHT);
+                        bus.emit(SET_SCHEME, DarkModes.LIGHT);
                     } else if (colorScheme.daytime) {
-                        bus.emit('display:colorscheme:set', DarkModes.DARK);
+                        bus.emit(SET_SCHEME, DarkModes.DARK);
                     } else {
-                        bus.emit('display:colorscheme:set', DarkModes.LIGHT);
+                        bus.emit(SET_SCHEME, DarkModes.LIGHT);
                     }
                 }}
                 popover={popover}

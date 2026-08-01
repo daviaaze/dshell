@@ -8,19 +8,173 @@ import {QuickToggleButton} from '../../common/quickToggleButton';
 import {LinkedBox} from '../../common/linkedBox';
 import {getScreenCaptureSettings} from '@shade/services/settings/screenCapture';
 
+// Dismiss the popover and run `fn` shortly after, so the selector/overlay
+// that follows gets a clean input grab instead of fighting the popover.
+const dismissAnd =
+    (fn: () => void, delay = 150) =>
+    (btn: Gtk.Button) => {
+        const root = btn.get_root();
+        if (root instanceof Gtk.Popover) root.popdown();
+        setTimeout(fn, delay);
+    };
+
+/** Fullscreen + area screenshot buttons. */
+function ScreenshotSection() {
+    return (
+        <>
+            <Gtk.Label
+                label="Screenshot"
+                halign={Gtk.Align.START}
+                cssClasses={['title-4']}
+            />
+            <LinkedBox>
+                <Gtk.Button
+                    onClicked={() => bus.emit('capture:cmd:screenshot', true)}
+                >
+                    <Adw.ButtonContent
+                        iconName="camera-photo-symbolic"
+                        label="Fullscreen"
+                    />
+                </Gtk.Button>
+                <Gtk.Button
+                    onClicked={dismissAnd(() =>
+                        bus.emit('capture:cmd:screenshot', false)
+                    )}
+                >
+                    <Adw.ButtonContent
+                        iconName="selection-mode-symbolic"
+                        label="Area"
+                    />
+                </Gtk.Button>
+            </LinkedBox>
+        </>
+    );
+}
+
+/** Recording mode buttons: fullscreen, area, output, window. */
+function RecordingSection() {
+    return (
+        <>
+            <Gtk.Label
+                label="Recording"
+                halign={Gtk.Align.START}
+                cssClasses={['title-4']}
+            />
+            <LinkedBox>
+                <Gtk.Button
+                    onClicked={() => bus.emit('capture:cmd:recording:toggle')}
+                >
+                    <Adw.ButtonContent
+                        iconName="camera-video-symbolic"
+                        label="Fullscreen"
+                    />
+                </Gtk.Button>
+                <Gtk.Button
+                    onClicked={dismissAnd(() =>
+                        bus.emit('capture:cmd:recording:area')
+                    )}
+                >
+                    <Adw.ButtonContent
+                        iconName="selection-mode-symbolic"
+                        label="Area"
+                    />
+                </Gtk.Button>
+                <Gtk.Button
+                    onClicked={dismissAnd(() =>
+                        bus.emit('capture:cmd:recording:output-visual')
+                    )}
+                >
+                    <Adw.ButtonContent
+                        iconName="video-display-symbolic"
+                        label="Output"
+                    />
+                </Gtk.Button>
+                <Gtk.Button
+                    onClicked={dismissAnd(() =>
+                        bus.emit('capture:cmd:recording:window-visual')
+                    )}
+                >
+                    <Adw.ButtonContent
+                        iconName="focus-windows-symbolic"
+                        label="Window"
+                    />
+                </Gtk.Button>
+            </LinkedBox>
+        </>
+    );
+}
+
+/** Record-audio checkbox and WebM/MP4 format toggle. */
+function PrefsSection({
+    screenshot,
+    captureSettings,
+}: {
+    screenshot: Screenshot;
+    captureSettings: ReturnType<typeof getScreenCaptureSettings>;
+}) {
+    return (
+        <Gtk.Box
+            spacing={12}
+            orientation={Gtk.Orientation.HORIZONTAL}
+            marginStart={4}
+        >
+            <Gtk.CheckButton
+                active={bind(screenshot.prefs, 'audio')}
+                onNotifyActive={({active}) => {
+                    bus.emit('capture:cmd:prefs:audio', active);
+                }}
+            />
+            <Gtk.Label label="Record Audio" />
+
+            {/* WebM (VP9). Unchecked = MP4 (H.264), the default. */}
+            <Gtk.CheckButton
+                active={captureSettings.recordingFormat() === 1}
+                onNotifyActive={({active}) => {
+                    captureSettings.setRecordingFormat(active ? 1 : 0);
+                }}
+            />
+            <Gtk.Label label="WebM" />
+        </Gtk.Box>
+    );
+}
+
+/** Virtual monitor: headless output for OBS/camera capture.
+ *  Reads resolution/fps from gschema; toggles create/remove. */
+function VirtualMonitorButton({
+    screenshot,
+    captureSettings,
+}: {
+    screenshot: Screenshot;
+    captureSettings: ReturnType<typeof getScreenCaptureSettings>;
+}) {
+    return (
+        <Gtk.Button
+            onClicked={() => {
+                if (screenshot.virtualMonitors.length > 0) {
+                    bus.emit('capture:cmd:virtual-monitors:remove');
+                } else {
+                    bus.emit('capture:cmd:virtual-monitors:create', {
+                        resolution: captureSettings.virtualMonitorResolution(),
+                        fps: captureSettings.virtualMonitorFps(),
+                    });
+                }
+            }}
+        >
+            <Adw.ButtonContent
+                iconName={bind(screenshot, 'virtualMonitorActive').as(active =>
+                    active ? 'user-trash-symbolic' : 'video-display-symbolic'
+                )}
+                label={bind(screenshot, 'virtualMonitorActive').as(active =>
+                    active ? 'Remove VM' : 'Add VM'
+                )}
+            />
+        </Gtk.Button>
+    );
+}
+
 export default (): QuickButton => {
     const screenshot = Screenshot.get_default();
     const captureSettings = getScreenCaptureSettings();
-
-    // Dismiss the popover and run `fn` shortly after, so the selector/overlay
-    // that follows gets a clean input grab instead of fighting the popover.
-    const dismissAnd =
-        (fn: () => void, delay = 150) =>
-        (btn: Gtk.Button) => {
-            const root = btn.get_root();
-            if (root instanceof Gtk.Popover) root.popdown();
-            setTimeout(fn, delay);
-        };
 
     const popover = (
         <Gtk.Popover cssClasses={[]}>
@@ -29,130 +183,19 @@ export default (): QuickButton => {
                 spacing={8}
                 cssClasses={['popover-padded']}
             >
-                {/* Screenshot section */}
-                <Gtk.Label
-                    label="Screenshot"
-                    halign={Gtk.Align.START}
-                    cssClasses={['title-4']}
+                <ScreenshotSection />
+                <Gtk.Separator />
+                <RecordingSection />
+                <Gtk.Separator />
+                <PrefsSection
+                    screenshot={screenshot}
+                    captureSettings={captureSettings}
                 />
-                <LinkedBox>
-                    <Gtk.Button onClicked={() => bus.emit('capture:cmd:screenshot', true)}>
-                        <Adw.ButtonContent
-                            iconName="camera-photo-symbolic"
-                            label="Fullscreen"
-                        />
-                    </Gtk.Button>
-                    <Gtk.Button
-                        onClicked={dismissAnd(() =>
-                            bus.emit('capture:cmd:screenshot', false)
-                        )}
-                    >
-                        <Adw.ButtonContent
-                            iconName="selection-mode-symbolic"
-                            label="Area"
-                        />
-                    </Gtk.Button>
-                </LinkedBox>
-
                 <Gtk.Separator />
-
-                {/* Recording section */}
-                <Gtk.Label
-                    label="Recording"
-                    halign={Gtk.Align.START}
-                    cssClasses={['title-4']}
+                <VirtualMonitorButton
+                    screenshot={screenshot}
+                    captureSettings={captureSettings}
                 />
-                <LinkedBox>
-                    <Gtk.Button onClicked={() => bus.emit('capture:cmd:recording:toggle')}>
-                        <Adw.ButtonContent
-                            iconName="camera-video-symbolic"
-                            label="Fullscreen"
-                        />
-                    </Gtk.Button>
-                    <Gtk.Button
-                        onClicked={dismissAnd(() => bus.emit('capture:cmd:recording:area'))}
-                    >
-                        <Adw.ButtonContent
-                            iconName="selection-mode-symbolic"
-                            label="Area"
-                        />
-                    </Gtk.Button>
-                    <Gtk.Button
-                        onClicked={dismissAnd(() =>
-                            bus.emit('capture:cmd:recording:output-visual')
-                        )}
-                    >
-                        <Adw.ButtonContent
-                            iconName="video-display-symbolic"
-                            label="Output"
-                        />
-                    </Gtk.Button>
-                    <Gtk.Button
-                        onClicked={dismissAnd(() =>
-                            bus.emit('capture:cmd:recording:window-visual')
-                        )}
-                    >
-                        <Adw.ButtonContent
-                            iconName="focus-windows-symbolic"
-                            label="Window"
-                        />
-                    </Gtk.Button>
-                </LinkedBox>
-
-                <Gtk.Separator />
-
-                {/* Audio + recording format toggles */}
-                <Gtk.Box
-                    spacing={12}
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    marginStart={4}
-                >
-                    <Gtk.CheckButton
-                        active={bind(screenshot.prefs, 'audio')}
-                        onNotifyActive={({active}) => {
-                            bus.emit('capture:cmd:prefs:audio', active);
-                        }}
-                    />
-                    <Gtk.Label label="Record Audio" />
-
-                    {/* WebM (VP9). Unchecked = MP4 (H.264), the default. */}
-                    <Gtk.CheckButton
-                        active={captureSettings.recordingFormat() === 1}
-                        onNotifyActive={({active}) => {
-                            captureSettings.setRecordingFormat(active ? 1 : 0);
-                        }}
-                    />
-                    <Gtk.Label label="WebM" />
-                </Gtk.Box>
-
-                <Gtk.Separator />
-
-                {/* Virtual monitor: headless output for OBS/camera capture.
-                     Reads resolution/fps from gschema; toggles create/remove. */}
-                <Gtk.Button
-                    onClicked={() => {
-                        if (screenshot.virtualMonitors.length > 0) {
-                            bus.emit('capture:cmd:virtual-monitors:remove');
-                        } else {
-                            bus.emit('capture:cmd:virtual-monitors:create', {
-                                resolution: captureSettings.virtualMonitorResolution(),
-                                fps: captureSettings.virtualMonitorFps()
-                            });
-                        }
-                    }}
-                >
-                    <Adw.ButtonContent
-                        iconName={bind(screenshot, 'virtualMonitorActive').as(
-                            active =>
-                                active
-                                    ? 'user-trash-symbolic'
-                                    : 'video-display-symbolic'
-                        )}
-                        label={bind(screenshot, 'virtualMonitorActive').as(
-                            active => (active ? 'Remove VM' : 'Add VM')
-                        )}
-                    />
-                </Gtk.Button>
             </Gtk.Box>
         </Gtk.Popover>
     );
