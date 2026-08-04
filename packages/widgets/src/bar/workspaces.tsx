@@ -28,7 +28,11 @@ export default ({
             )}
             spacing={8}
         >
-            <For each={bind(hyprland, 'workspaces')}>
+            <For
+                each={bind(hyprland, 'workspaces').as((ws) =>
+                    ws.filter((ws) => ws.get_monitor() === monitor).sort((a, b) => a.id - b.id)
+                )}
+            >
                 {(ws: Hyprland.Workspace) => {
                     // Guard against race condition: only set activeName if the
                     // client toggle actually exists in this workspace's group.

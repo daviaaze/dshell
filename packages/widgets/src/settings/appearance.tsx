@@ -102,7 +102,11 @@ function ThemingGroup({settings}: {settings: Settings}) {
                 onNotifyActive={(self) => settings.setDynamicThemingEnabled(self.active)}
             />
             <Gtk.Button
-                cssClasses={['suggested-action', 'popover-padded']}
+                cssClasses={['suggested-action']}
+                marginTop={8}
+                marginBottom={8}
+                marginStart={8}
+                marginEnd={8}
                 halign={Gtk.Align.CENTER}
                 label="Regenerate from Wallpaper"
                 onClicked={() => paletteGen.regenerate()}

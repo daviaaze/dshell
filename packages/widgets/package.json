@@ -1,16 +1,16 @@
 {
-  "name": "@shade/widgets",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "gnim": "2.0.0-beta.7",
-    "@shade/core": "workspace:*",
-    "@shade/services": "workspace:*",
-    "@shade/style": "workspace:*"
-  },
-  "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*"
-  }
+    "name": "@shade/widgets",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "dependencies": {
+        "gnim": "2.0.0-beta.7",
+        "@shade/core": "workspace:*",
+        "@shade/services": "workspace:*",
+        "@shade/style": "workspace:*"
+    },
+    "exports": {
+        ".": "./src/index.ts",
+        "./*": "./src/*"
+    }
 }
