@@ -38,7 +38,7 @@ export default () => {
             css={'background-color: transparent;'}
         >
             <Gtk.Box
-                cssClasses={['card', 'frame', 'background']}
+                cssClasses={['background']}
                 spacing={8}
                 css={'padding: 6px 12px;'}
             >

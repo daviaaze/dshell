@@ -16,7 +16,6 @@ export interface AudioStream {
 
 // ── Shared pipewire stream parser ──
 
-/** Structural shape of one pw-dump item (only fields we read). */
 interface PwDumpItem {
     id: number;
     info?: {
@@ -25,19 +24,6 @@ interface PwDumpItem {
             Props?: Array<{volume?: number; mute?: boolean}>;
         };
     };
-}
-
-/**
- * Compute volume from channel volumes (pw-dump reports a misleading
- * `volume` field that is often 1.0 even when channels are lower).
- */
-function extractVolume(streamProps: {volume?: number; channelVolumes?: number[]}): number {
-    const channels = streamProps.channelVolumes;
-    if (channels && channels.length > 0) {
-        const sum = channels.reduce((a, b) => a + b, 0);
-        return sum / channels.length;
-    }
-    return streamProps.volume ?? 1.0;
 }
 
 function streamFromPwItem(item: PwDumpItem): AudioStream | null {
@@ -50,7 +36,7 @@ function streamFromPwItem(item: PwDumpItem): AudioStream | null {
         name: props['node.name'] || 'Unknown',
         appName: props['application.name'] || props['node.name'] || 'Unknown',
         iconName: props['application.icon-name'] || 'audio-x-generic-symbolic',
-        volume: extractVolume(streamProps),
+        volume: streamProps.volume ?? 1.0,
         muted: streamProps.mute ?? false,
         targetNode: null,
     };
@@ -62,8 +48,6 @@ function parseAudioStreams(
     errorLabel: string
 ): AudioStream[] {
     if (!pwDump.trim()) {
-        // Empty output — PipeWire may not be running.
-        // Log at debug to avoid spamming every 2s.
         logger.debug('audio', `${errorLabel}: pw-dump returned empty (PipeWire not running?)`);
         return [];
     }
@@ -73,7 +57,6 @@ function parseAudioStreams(
         for (const item of data) {
             const props = item.info?.props || {};
             if (!predicate(props['media.class'] || '')) continue;
-
             const stream = streamFromPwItem(item);
             if (stream) streams.push(stream);
         }
@@ -92,27 +75,6 @@ function parseStreams(pwDump: string): AudioStream[] {
     );
 }
 
-/**
- * Sinks (output devices) — filtered by media.class = 'Audio/Sink'.
- * These carry the real volume/mute state of each output device, unlike
- * AstalWp which can report stale values.
- */
-function parseSinks(pwDump: string): AudioStream[] {
-    return parseAudioStreams(pwDump, (mc) => mc === 'Audio/Sink', 'sinks');
-}
-
-/**
- * Sources (input devices) — filtered by media.class = 'Audio/Source'.
- * Excludes internal sources (e.g. Bluetooth loopback).
- */
-function parseSources(pwDump: string): AudioStream[] {
-    return parseAudioStreams(
-        pwDump,
-        (mc) => mc === 'Audio/Source' && !mc.includes('Internal'),
-        'sources'
-    );
-}
-
 function parseCaptureStreams(pwDump: string): AudioStream[] {
     return parseAudioStreams(
         pwDump,
@@ -123,29 +85,6 @@ function parseCaptureStreams(pwDump: string): AudioStream[] {
             !mc.includes('Internal'),
         'capture streams'
     );
-}
-
-function parseDefaultDeviceNames(pwMetadata: string): {
-    sink: string | null;
-    source: string | null;
-} {
-    let sink: string | null = null;
-    let source: string | null = null;
-    try {
-        for (const line of pwMetadata.split('\n')) {
-            const sinkMatch = line.match(/key:'default\.audio\.sink'\s+value:'(.+?)'/);
-            if (sinkMatch) {
-                sink = JSON.parse(sinkMatch[1]!).name as string;
-            }
-            const srcMatch = line.match(/key:'default\.audio\.source'\s+value:'(.+?)'/);
-            if (srcMatch) {
-                source = JSON.parse(srcMatch[1]!).name as string;
-            }
-        }
-    } catch (e) {
-        logger.error('audio', 'failed to parse default device names:', e);
-    }
-    return {sink, source};
 }
 
 function parseTargets(pwMetadata: string): Map<number, number> {
@@ -182,10 +121,6 @@ export default class AppMixer extends Object {
 
     #streams: AudioStream[] = [];
     #captureStreams: AudioStream[] = [];
-    #sinks: AudioStream[] = [];
-    #sources: AudioStream[] = [];
-    #defaultSinkName: string | null = null;
-    #defaultSourceName: string | null = null;
     #timer: number | null = null;
     #lastModified = new Map<number, number>();
     #busInitialized = false;
@@ -194,16 +129,6 @@ export default class AppMixer extends Object {
     @property
     get streams() {
         return this.#streams;
-    }
-
-    @property
-    get sinks() {
-        return this.#sinks;
-    }
-
-    @property
-    get sources() {
-        return this.#sources;
     }
 
     @property
@@ -216,18 +141,8 @@ export default class AppMixer extends Object {
         return this.#streams.length > 0;
     }
 
-    /**
-     * Signal property — fires when the default audio device changes.
-     * Bind to this to re-read getDefaultDeviceState().
-     */
-    @property
-    get defaultDeviceState(): boolean {
-        return false;
-    }
-
     constructor() {
         super();
-        // Initial fetch on next idle cycle to avoid blocking constructor
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this.#fetchAndUpdate();
             return GLib.SOURCE_REMOVE;
@@ -240,13 +155,10 @@ export default class AppMixer extends Object {
 
     #inFlight = false;
 
-    /** Async poll — sync exec blocked the main loop every 2s. */
     async #fetchAndUpdate(): Promise<void> {
-        if (this.#inFlight) return; // skip overlapping polls
+        if (this.#inFlight) return;
         this.#inFlight = true;
         try {
-            // Silence stderr: pw-dump writes harmless diagnostics
-            // (e.g. "Spa:Enum:ParamId:IO failed") to stderr that clutter logs.
             const [pwDump, pwMetadata] = await Promise.all([
                 Process.execAsync('pw-dump', {silenceStderr: true}),
                 Process.execAsync('pw-metadata -n default', {
@@ -264,10 +176,7 @@ export default class AppMixer extends Object {
     #update(pwDump: string, pwMetadata: string) {
         const newStreams = parseStreams(pwDump);
         const newCaptureStreams = parseCaptureStreams(pwDump);
-        const newSinks = parseSinks(pwDump);
-        const newSources = parseSources(pwDump);
         const targets = parseTargets(pwMetadata);
-        const {sink: newSinkName, source: newSourceName} = parseDefaultDeviceNames(pwMetadata);
         const now = Date.now();
 
         for (const s of newStreams) {
@@ -306,23 +215,6 @@ export default class AppMixer extends Object {
         if (hadCapture !== newCaptureStreams.length > 0) {
             this.notify('microphone-in-use');
         }
-        const sinksChanged = JSON.stringify(newSinks) !== JSON.stringify(this.#sinks);
-        if (sinksChanged) {
-            this.#sinks = newSinks;
-            this.notify('sinks');
-        }
-        const sourcesChanged = JSON.stringify(newSources) !== JSON.stringify(this.#sources);
-        if (sourcesChanged) {
-            this.#sources = newSources;
-            this.notify('sources');
-        }
-        const nameChanged =
-            newSinkName !== this.#defaultSinkName || newSourceName !== this.#defaultSourceName;
-        this.#defaultSinkName = newSinkName;
-        this.#defaultSourceName = newSourceName;
-        // Always notify on every poll cycle so the binding re-evaluates.
-        // pw-dump can return cached data; sinksChanged alone may miss updates.
-        this.notify('default-device-state');
     }
 
     #optimisticUpdate(id: number, patch: Partial<AudioStream>) {
@@ -359,19 +251,6 @@ export default class AppMixer extends Object {
                 ? `pw-metadata -n default -d ${id} target.node`
                 : `pw-metadata -n default ${id} target.node ${nodeId}`;
         Process.execAsync(cmd).catch((e) => logger.error('audio', 'setTargetNode failed:', e));
-    }
-
-    /**
-     * Volume/mute state of the default audio device, sourced from pw-dump
-     * (which is accurate — unlike AstalWp, which can report stale values).
-     */
-    getDefaultDeviceState(kind: 'speaker' | 'microphone'): {volume: number; muted: boolean} | null {
-        const defaultName = kind === 'speaker' ? this.#defaultSinkName : this.#defaultSourceName;
-        if (!defaultName) return null;
-        const devices = kind === 'speaker' ? this.#sinks : this.#sources;
-        const match = devices.find((s) => s.name === defaultName);
-        if (!match) return null;
-        return {volume: match.volume, muted: match.muted};
     }
 
     dispose() {

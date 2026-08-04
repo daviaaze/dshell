@@ -3,12 +3,6 @@ import AudioController from '@shade/services/audio/audioController';
 import AppMixer from '@shade/services/audio/mixer';
 import {bind, computed} from 'gnim';
 
-type AppMixerLike = AppMixer & {
-    'default-device-state': null;
-    sinks: AppMixer['sinks'];
-    sources: AppMixer['sources'];
-};
-
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';
 
@@ -17,56 +11,70 @@ function volumeTooltip(vol: number): string {
 }
 
 /**
- * Speaker icon — volume/mute state from AppMixer (pw-dump, accurate),
- * icon name from AudioController (AstalWp provides volumeIcon).
+ * Speaker icon — real-time volume/mute state from AstalWp (WirePlumber).
+ * Uses bind(audioCtrl, 'defaultSpeaker', 'volume') / bind(endpoint, 'mute')
+ * so the icon updates on every endpoint change, not just when the default
+ * speaker changes.
  */
 export const SpeakerIndicator = () => {
     const audioCtrl = AudioController.get_default();
     const mixer = AppMixer.get_default();
     const speaker = bind(audioCtrl, 'defaultSpeaker');
-    const speakerState = bind(mixer as AppMixerLike, 'default-device-state').as(() =>
-        mixer.getDefaultDeviceState('speaker')
-    );
-    const speakerIcon = computed(() => speaker()?.volumeIcon ?? MUTED_SPEAKER_ICON);
 
-    const resolveIcon = (state: {muted: boolean; volume: number} | null) =>
-        state && (state.muted || state.volume === 0)
-            ? MUTED_SPEAKER_ICON
-            : (speakerIcon() ?? MUTED_SPEAKER_ICON);
+    // Real-time volume and mute from the endpoint itself.
+    // bind() with chained props uses computed({equals:()=>false}) internally,
+    // so it re-evaluates on every notify: re-renders on every volume/mute change.
+    // Use type assertions since the gnim type for chained bind is limited.
+    const speakerVol = bind(audioCtrl as any, 'defaultSpeaker', 'volume');
+    const speakerMute = bind(audioCtrl as any, 'defaultSpeaker', 'mute');
+    const speakerIcon = bind(audioCtrl as any, 'defaultSpeaker', 'volumeIcon');
+
+    const iconName = computed(() => {
+        const vol = speakerVol() as number | undefined;
+        const mute = speakerMute() as boolean | undefined;
+        if (vol !== undefined && (mute || vol === 0)) return MUTED_SPEAKER_ICON;
+        return (speakerIcon() as string | undefined) ?? MUTED_SPEAKER_ICON;
+    });
 
     return (
         <Gtk.Image
             visible={bind(mixer, 'speakerInUse')}
-            iconName={speakerState.as(resolveIcon)}
-            tooltipMarkup={speakerState.as((state) => (state ? volumeTooltip(state.volume) : ''))}
+            iconName={iconName}
+            tooltipMarkup={computed(() => {
+                const vol = speakerVol() as number | undefined;
+                return vol !== undefined ? volumeTooltip(vol) : '';
+            })}
             pixelSize={18}
         />
     );
 };
 
 /**
- * Microphone icon — volume/mute state from AppMixer (pw-dump, accurate),
- * icon name from AudioController (AstalWp provides volumeIcon).
+ * Microphone icon — real-time volume/mute state from AstalWp.
  */
 export const MicrophoneIndicator = () => {
     const audioCtrl = AudioController.get_default();
     const mixer = AppMixer.get_default();
-    const mic = bind(audioCtrl, 'defaultMicrophone');
-    const micState = bind(mixer as AppMixerLike, 'default-device-state').as(() =>
-        mixer.getDefaultDeviceState('microphone')
-    );
-    const micIcon = computed(() => mic()?.volumeIcon ?? MUTED_MIC_ICON);
 
-    const resolveIcon = (state: {muted: boolean; volume: number} | null) =>
-        state && (state.muted || state.volume === 0)
-            ? MUTED_MIC_ICON
-            : (micIcon() ?? MUTED_MIC_ICON);
+    const micVol = bind(audioCtrl as any, 'defaultMicrophone', 'volume');
+    const micMute = bind(audioCtrl as any, 'defaultMicrophone', 'mute');
+    const micIcon = bind(audioCtrl as any, 'defaultMicrophone', 'volumeIcon');
+
+    const iconName = computed(() => {
+        const vol = micVol() as number | undefined;
+        const mute = micMute() as boolean | undefined;
+        if (vol !== undefined && (mute || vol === 0)) return MUTED_MIC_ICON;
+        return (micIcon() as string | undefined) ?? MUTED_MIC_ICON;
+    });
 
     return (
         <Gtk.Image
             visible={bind(mixer, 'microphoneInUse')}
-            iconName={micState.as(resolveIcon)}
-            tooltipMarkup={micState.as((state) => (state ? volumeTooltip(state.volume) : ''))}
+            iconName={iconName}
+            tooltipMarkup={computed(() => {
+                const vol = micVol() as number | undefined;
+                return vol !== undefined ? volumeTooltip(vol) : '';
+            })}
             pixelSize={18}
         />
     );
