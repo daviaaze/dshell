@@ -100,8 +100,8 @@ function BarWindow({
                 });
             }}
             visible
-            cssClasses={['background']}
-            css={'box-shadow: none; border-radius: 0;'}
+            cssClasses={['card', 'background']}
+            css={'box-shadow: none;'}
             marginTop={position.as((p) => (p === BOTTOM ? 0 : BAR_MARGIN))}
             marginLeft={position.as((p) => (p === RIGHT ? 0 : BAR_MARGIN))}
             marginBottom={position.as((p) => (p === TOP ? 0 : BAR_MARGIN))}

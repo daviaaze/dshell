@@ -38,9 +38,9 @@ export default () => {
             css={'background-color: transparent;'}
         >
             <Gtk.Box
-                cssClasses={['background']}
+                cssClasses={['card', 'background']}
                 spacing={8}
-                css={'padding: 6px 12px;'}
+                css={'box-shadow: none; padding: 6px 12px;'}
             >
                 {/* Red recording dot */}
                 <Gtk.Image
