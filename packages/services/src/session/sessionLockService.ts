@@ -1,8 +1,8 @@
+import type Gdk from 'gi://Gdk?version=4.0';
+import type Gtk from 'gi://Gtk?version=4.0';
 import SessionLock from 'gi://Gtk4SessionLock';
-import Gdk from 'gi://Gdk?version=4.0';
-import Gtk from 'gi://Gtk?version=4.0';
-import {Object, register, signal} from 'gnim/gobject';
 import logger from '@shade/core/logger';
+import {Object, register, signal} from 'gnim/gobject';
 
 /**
  * Encapsulates the Gtk4SessionLock lifecycle so widgets don't import
@@ -16,8 +16,8 @@ export default class SessionLockService extends Object {
     private static instance: SessionLockService;
 
     static get_default() {
-        if (!this.instance) this.instance = new SessionLockService();
-        return this.instance;
+        if (!SessionLockService.instance) SessionLockService.instance = new SessionLockService();
+        return SessionLockService.instance;
     }
 
     #lock: SessionLock.Instance;

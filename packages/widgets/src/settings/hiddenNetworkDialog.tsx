@@ -1,10 +1,10 @@
 import Adw from 'gi://Adw?version=1';
-import Gtk from 'gi://Gtk?version=4.0';
 import Network from 'gi://AstalNetwork';
-import {Accessor, createState} from 'gnim';
+import Gtk from 'gi://Gtk?version=4.0';
 import {render} from '@gnim-js/gtk4';
-import {createNMConnection} from '../quicksettings/network/utils';
 import logger from '@shade/core/logger';
+import {type Accessor, createState} from 'gnim';
+import {createNMConnection} from '../quicksettings/network/utils';
 
 interface DialogState {
     ssid: Accessor<string>;
@@ -34,11 +34,7 @@ async function connectHidden(state: DialogState, onSuccess: () => void) {
     }
 
     try {
-        const connection = createNMConnection(
-            name,
-            state.password().trim() || undefined,
-            true
-        );
+        const connection = createNMConnection(name, state.password().trim() || undefined, true);
         await new Promise<void>((resolve, reject) => {
             network.client.add_and_activate_connection_async(
                 connection,
@@ -60,11 +56,7 @@ async function connectHidden(state: DialogState, onSuccess: () => void) {
                 onSuccess();
             })
             .catch((e: Error) => {
-                logger.error(
-                    'settings-network',
-                    'hidden connect failed:',
-                    e.message
-                );
+                logger.error('settings-network', 'hidden connect failed:', e.message);
                 state.setErrorMsg(e.message || 'Connection failed');
                 state.setConnecting(false);
             });
@@ -92,7 +84,7 @@ function DialogContent({
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
             <Adw.HeaderBar
-                ref={self => {
+                ref={(self) => {
                     self.titleWidget = new Adw.WindowTitle({
                         title: 'Hidden Network',
                         cssClasses: ['title-3'],
@@ -105,10 +97,8 @@ function DialogContent({
                     <Adw.EntryRow title="Network Name">
                         <Gtk.Entry
                             placeholderText="SSID"
-                            ref={entry =>
-                                entry.connect('notify::text', () =>
-                                    setSsid(entry.get_text())
-                                )
+                            ref={(entry) =>
+                                entry.connect('notify::text', () => setSsid(entry.get_text()))
                             }
                         />
                     </Adw.EntryRow>
@@ -116,10 +106,8 @@ function DialogContent({
                         <Gtk.Entry
                             placeholderText="Password (optional)"
                             visibility={false}
-                            ref={entry =>
-                                entry.connect('notify::text', () =>
-                                    setPassword(entry.get_text())
-                                )
+                            ref={(entry) =>
+                                entry.connect('notify::text', () => setPassword(entry.get_text()))
                             }
                         />
                     </Adw.EntryRow>
@@ -129,19 +117,17 @@ function DialogContent({
                     <Gtk.Button
                         hexpand
                         cssClasses={['suggested-action']}
-                        label={state.connecting.as(c =>
-                            c ? 'Connecting…' : 'Connect'
-                        )}
-                        sensitive={state.connecting.as(c => !c)}
+                        label={state.connecting.as((c) => (c ? 'Connecting…' : 'Connect'))}
+                        sensitive={state.connecting.as((c) => !c)}
                         onClicked={onConnect}
                     />
                     <Gtk.Button hexpand label="Cancel" onClicked={onCancel} />
                 </Gtk.Box>
 
                 <Gtk.Label
-                    label={state.errorMsg.as(e => e ?? '')}
+                    label={state.errorMsg.as((e) => e ?? '')}
                     cssClasses={['error', 'caption']}
-                    visible={state.errorMsg.as(e => e !== null)}
+                    visible={state.errorMsg.as((e) => e !== null)}
                     wrap
                     marginStart={12}
                     marginEnd={12}

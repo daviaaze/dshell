@@ -2,9 +2,9 @@
  * Round-robin live polling of monitor captures via grim.
  */
 import GLib from 'gi://GLib?version=2.0';
-import Gtk from 'gi://Gtk?version=4.0';
+import type Gtk from 'gi://Gtk?version=4.0';
+import {captureMonitor, POLL_INTERVAL_MS} from './capture';
 import type {MonitorState} from './types';
-import {POLL_INTERVAL_MS, captureMonitor} from './capture';
 
 export class MonitorPoller {
     private timer = 0;
@@ -29,11 +29,7 @@ export class MonitorPoller {
     start(): void {
         if (this.running) return;
         this.index = 0;
-        this.timer = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            POLL_INTERVAL_MS,
-            this.tick
-        );
+        this.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_INTERVAL_MS, this.tick);
     }
 
     stop(): void {

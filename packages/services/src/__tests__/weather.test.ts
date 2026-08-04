@@ -7,13 +7,8 @@
  * existing test constructs it directly. The pure format/astro helpers are
  * the honest unit-testable surface of this domain.
  */
-import {
-    formatTemp,
-    windDirectionLabel,
-    sunAngle,
-    isDaytime,
-} from '../location/weatherUtils';
-import {describe, it, expect, run} from './test-runner';
+import {formatTemp, isDaytime, sunAngle, windDirectionLabel} from '../location/weatherUtils';
+import {describe, expect, it, run} from './test-runner';
 
 describe('weatherUtils', () => {
     it('formatTemp appends the degree symbol and rounds', () => {

@@ -1,14 +1,8 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, bind, computed} from 'gnim';
 import WeatherLib from '@shade/services/location/weather';
-import {
-    formatTime,
-    windDirectionLabel,
-} from '@shade/services/location/weatherUtils';
-import {
-    HourlyForecastSection,
-    DailyForecastSection,
-} from './weatherForecast';
+import {formatTime, windDirectionLabel} from '@shade/services/location/weatherUtils';
+import {type Accessor, bind, computed} from 'gnim';
+import {DailyForecastSection, HourlyForecastSection} from './weatherForecast';
 
 /**
  * Weather icon + temp summary, suitable for a compact indicator.
@@ -18,13 +12,11 @@ export const WeatherIcon = () => {
     return (
         <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
             <Gtk.Image
-                iconName={bind(weather, 'info').as(
-                    w => w?.get_icon_name() ?? ''
-                )}
+                iconName={bind(weather, 'info').as((w) => w?.get_icon_name() ?? '')}
                 pixelSize={20}
             />
             <Gtk.Label
-                label={bind(weather, 'info').as(w =>
+                label={bind(weather, 'info').as((w) =>
                     w?.is_valid() ? w.get_temp_summary() : '—'
                 )}
             />
@@ -50,38 +42,19 @@ const SunMoonRow = ({
     } | null>;
 }) => {
     return (
-        <Gtk.Box
-            spacing={16}
-            halign={Gtk.Align.CENTER}
-            cssClasses={['weather-sun-moon-row']}
-        >
+        <Gtk.Box spacing={16} halign={Gtk.Align.CENTER} cssClasses={['weather-sun-moon-row']}>
             <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
-                <Gtk.Image
-                    iconName={'daytime-sunrise-symbolic'}
-                    pixelSize={14}
-                />
-                <Gtk.Label
-                    label={sunrise.as(s => formatTime(s))}
-                    cssClasses={['caption']}
-                />
+                <Gtk.Image iconName={'daytime-sunrise-symbolic'} pixelSize={14} />
+                <Gtk.Label label={sunrise.as((s) => formatTime(s))} cssClasses={['caption']} />
             </Gtk.Box>
             <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
-                <Gtk.Image
-                    iconName={'daytime-sunset-symbolic'}
-                    pixelSize={14}
-                />
-                <Gtk.Label
-                    label={sunset.as(s => formatTime(s))}
-                    cssClasses={['caption']}
-                />
+                <Gtk.Image iconName={'daytime-sunset-symbolic'} pixelSize={14} />
+                <Gtk.Label label={sunset.as((s) => formatTime(s))} cssClasses={['caption']} />
             </Gtk.Box>
             <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
-                <Gtk.Image
-                    iconName={moonPhase.as(m => m?.iconName ?? '')}
-                    pixelSize={14}
-                />
+                <Gtk.Image iconName={moonPhase.as((m) => m?.iconName ?? '')} pixelSize={14} />
                 <Gtk.Label
-                    label={moonPhase.as(m => m?.phaseName ?? '')}
+                    label={moonPhase.as((m) => m?.phaseName ?? '')}
                     cssClasses={['caption']}
                 />
             </Gtk.Box>
@@ -148,19 +121,11 @@ export const WeatherWidget = () => {
     });
 
     return (
-        <Gtk.Box
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={0}
-            cssClasses={['weather-widget']}
-        >
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={['weather-widget']}>
             {/* ── Header: icon + temp/location + refresh ── */}
             <Gtk.Box spacing={12} cssClasses={['p-12']}>
                 <Gtk.Image iconName={iconName} pixelSize={36} />
-                <Gtk.Box
-                    orientation={Gtk.Orientation.VERTICAL}
-                    hexpand
-                    spacing={0}
-                >
+                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand spacing={0}>
                     <Gtk.Label
                         cssClasses={['weather-temp', 'title-1']}
                         label={tempSummary}
@@ -190,11 +155,7 @@ export const WeatherWidget = () => {
             <Gtk.Separator />
 
             {/* ── Sun/Moon Row ── */}
-            <SunMoonRow
-                sunrise={sunrise}
-                sunset={sunset}
-                moonPhase={moonPhase}
-            />
+            <SunMoonRow sunrise={sunrise} sunset={sunset} moonPhase={moonPhase} />
 
             {/* ── Separator ── */}
             <Gtk.Separator />

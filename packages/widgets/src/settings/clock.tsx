@@ -1,7 +1,7 @@
-import {generalSettings} from '@shade/core/settings/general.gschema';
 import Adw from 'gi://Adw?version=1';
-import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
+import Gtk from 'gi://Gtk?version=4.0';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 import {createState, For} from 'gnim';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 
@@ -34,13 +34,10 @@ export default () => {
         <Adw.PreferencesGroup title="Clock" description="World clock timezones">
             <Adw.ActionRow
                 title="Timezones"
-                subtitle={general.timezones.as(tzs => tzs.join(', '))}
+                subtitle={general.timezones.as((tzs) => tzs.join(', '))}
             >
                 <Gtk.MenuButton slot="suffix" ref={usePopoverCleanup}>
-                    <Gtk.Button
-                        cssClasses={['circular']}
-                        iconName="list-add-symbolic"
-                    />
+                    <Gtk.Button cssClasses={['circular']} iconName="list-add-symbolic" />
                     <Gtk.Popover>
                         <Gtk.ScrolledWindow
                             maxContentHeight={TZ_POPOVER_MAX_HEIGHT}
@@ -56,13 +53,9 @@ export default () => {
                                         <Gtk.Button
                                             label={tz.replaceAll('_', ' ')}
                                             onClicked={() => {
-                                                const current =
-                                                    general.timezones();
+                                                const current = general.timezones();
                                                 if (!current.includes(tz)) {
-                                                    general.setTimezones([
-                                                        ...current,
-                                                        tz,
-                                                    ]);
+                                                    general.setTimezones([...current, tz]);
                                                 }
                                             }}
                                         />
@@ -89,9 +82,7 @@ export default () => {
                             iconName="list-remove-symbolic"
                             onClicked={() => {
                                 const current = general.timezones();
-                                general.setTimezones(
-                                    current.filter(t => t !== tz)
-                                );
+                                general.setTimezones(current.filter((t) => t !== tz));
                             }}
                         />
                     </Adw.ActionRow>

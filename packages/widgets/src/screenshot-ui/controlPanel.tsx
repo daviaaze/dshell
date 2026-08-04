@@ -1,8 +1,8 @@
-import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import {bind} from 'gnim';
+import Gtk from 'gi://Gtk?version=4.0';
 import type Screenshot from '@shade/services/capture/screenshot';
 import {getScreenCaptureSettings} from '@shade/services/settings/screenCapture';
+import {bind} from 'gnim';
 import {LinkedBox} from '../common/linkedBox';
 
 interface ModeTabProps {
@@ -31,8 +31,8 @@ interface ControlPanelProps {
 
 const ModeTab = ({label, value, icon, ss, onReset}: ModeTabProps) => (
     <Gtk.ToggleButton
-        active={bind(ss, 'selectedMode').as(m => m === value)}
-        onToggled={btn => {
+        active={bind(ss, 'selectedMode').as((m) => m === value)}
+        onToggled={(btn) => {
             if (btn.active) {
                 onReset();
                 ss.selectedMode = value;
@@ -44,17 +44,10 @@ const ModeTab = ({label, value, icon, ss, onReset}: ModeTabProps) => (
     </Gtk.ToggleButton>
 );
 
-const TargetButton = ({
-    label,
-    value,
-    icon,
-    ss,
-    onReset,
-    onTargetChange,
-}: TargetButtonProps) => (
+const TargetButton = ({label, value, icon, ss, onReset, onTargetChange}: TargetButtonProps) => (
     <Gtk.ToggleButton
-        active={bind(ss, 'selectedTarget').as(t => t === value)}
-        onToggled={btn => {
+        active={bind(ss, 'selectedTarget').as((t) => t === value)}
+        onToggled={(btn) => {
             if (btn.active) {
                 onReset();
                 ss.selectedTarget = value;
@@ -67,12 +60,7 @@ const TargetButton = ({
     </Gtk.ToggleButton>
 );
 
-export const ControlPanel = ({
-    ss,
-    onCapture,
-    onReset,
-    onTargetChange,
-}: ControlPanelProps) => {
+export const ControlPanel = ({ss, onCapture, onReset, onTargetChange}: ControlPanelProps) => {
     const captureSettings = getScreenCaptureSettings();
 
     return (
@@ -148,7 +136,7 @@ export const ControlPanel = ({
                 <Gtk.Separator />
 
                 {/* Audio + Boundary options (recording) */}
-                {bind(ss, 'selectedMode').as(m => m === 'recording') && (
+                {bind(ss, 'selectedMode').as((m) => m === 'recording') && (
                     <Gtk.Box spacing={12}>
                         {/* Audio capture not yet implemented in the Screenshot service */}
                         <Gtk.CheckButton active={false} sensitive={false}>
@@ -157,9 +145,7 @@ export const ControlPanel = ({
                         <Gtk.CheckButton
                             active={captureSettings.showRecordingBoundary}
                             onNotifyActive={({active}) => {
-                                captureSettings.setShowRecordingBoundary(
-                                    active
-                                );
+                                captureSettings.setShowRecordingBoundary(active);
                             }}
                         >
                             <Gtk.Label label="Boundary" />
@@ -170,21 +156,13 @@ export const ControlPanel = ({
                 <Gtk.Separator />
 
                 {/* Capture button */}
-                <Gtk.Button
-                    onClicked={onCapture}
-                    cssClasses={['suggested-action']}
-                    hexpand
-                >
+                <Gtk.Button onClicked={onCapture} cssClasses={['suggested-action']} hexpand>
                     <Adw.ButtonContent
-                        iconName={bind(ss, 'selectedMode').as(m =>
-                            m === 'screenshot'
-                                ? 'camera-photo-symbolic'
-                                : 'camera-video-symbolic'
+                        iconName={bind(ss, 'selectedMode').as((m) =>
+                            m === 'screenshot' ? 'camera-photo-symbolic' : 'camera-video-symbolic'
                         )}
-                        label={bind(ss, 'selectedMode').as(m =>
-                            m === 'screenshot'
-                                ? 'Take Screenshot'
-                                : 'Start Recording'
+                        label={bind(ss, 'selectedMode').as((m) =>
+                            m === 'screenshot' ? 'Take Screenshot' : 'Start Recording'
                         )}
                     />
                 </Gtk.Button>

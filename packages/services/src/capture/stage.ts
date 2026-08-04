@@ -1,8 +1,10 @@
 import Gdk from 'gi://Gdk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
+import {localizeForStage, toMagickGeometry} from './geometry';
+import type {BoundaryGeometry} from './types';
 import {
     finalizeImage,
     freshScreenshotFilename,
@@ -10,8 +12,6 @@ import {
     MAGICK_BIN,
     notifyCaptureFailed,
 } from './utils';
-import {localizeForStage, toMagickGeometry} from './geometry';
-import type {BoundaryGeometry} from './types';
 
 /**
  * Frozen-frame "stage": a full-desktop grim capture taken when the overlay

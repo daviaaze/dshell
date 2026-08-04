@@ -1,14 +1,14 @@
-import NM from 'gi://NM?version=1.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, createState, onCleanup} from 'gnim';
+import type NM from 'gi://NM?version=1.0';
 import {render} from '@gnim-js/gtk4';
+import logger from '@shade/core/logger';
+import {type Accessor, createState, onCleanup} from 'gnim';
 import {
-    securityLabelFromKeyMgmt,
     commitChangesAsync,
     deleteConnectionAsync,
+    securityLabelFromKeyMgmt,
 } from '../quicksettings/network/utils';
-import logger from '@shade/core/logger';
 
 const NET_ICON_PREFIX = 16;
 const LOG_TAG = 'settings-network';
@@ -28,16 +28,14 @@ function SecurityGroup({
             <Adw.EntryRow title="Password">
                 <Gtk.Entry
                     placeholderText="WiFi password"
-                    ref={entry => {
+                    ref={(entry) => {
                         entry.visibility = !showPassword();
                         onCleanup(
                             showPassword.subscribe(() => {
                                 entry.visibility = !showPassword();
                             })
                         );
-                        entry.connect('notify::text', () =>
-                            setPassword(entry.get_text())
-                        );
+                        entry.connect('notify::text', () => setPassword(entry.get_text()));
                     }}
                 />
                 <Gtk.Button
@@ -46,10 +44,8 @@ function SecurityGroup({
                     onClicked={() => setShowPassword(!showPassword())}
                 >
                     <Gtk.Image
-                        iconName={showPassword.as(v =>
-                            v
-                                ? 'eye-not-looking-symbolic'
-                                : 'eye-open-negative-filled-symbolic'
+                        iconName={showPassword.as((v) =>
+                            v ? 'eye-not-looking-symbolic' : 'eye-open-negative-filled-symbolic'
                         )}
                         pixelSize={NET_ICON_PREFIX}
                     />
@@ -77,8 +73,8 @@ function ActionsBox({
                 <Gtk.Button
                     hexpand
                     cssClasses={['suggested-action']}
-                    label={saving.as(s => (s ? 'Saving…' : 'Save Changes'))}
-                    sensitive={saving.as(s => !s)}
+                    label={saving.as((s) => (s ? 'Saving…' : 'Save Changes'))}
+                    sensitive={saving.as((s) => !s)}
                     onClicked={onSave}
                 />
                 <Gtk.Button
@@ -90,9 +86,9 @@ function ActionsBox({
             </Gtk.Box>
 
             <Gtk.Label
-                label={errorMsg.as(e => e ?? '')}
+                label={errorMsg.as((e) => e ?? '')}
                 cssClasses={['error', 'caption']}
-                visible={errorMsg.as(e => e !== null)}
+                visible={errorMsg.as((e) => e !== null)}
                 wrap
                 marginStart={12}
                 marginEnd={12}
@@ -133,7 +129,7 @@ function EditorContent({
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
             <Adw.HeaderBar
-                ref={self => {
+                ref={(self) => {
                     self.titleWidget = new Adw.WindowTitle({
                         title: ssid,
                         cssClasses: ['title-3'],
@@ -141,10 +137,7 @@ function EditorContent({
                 }}
                 showEndTitleButtons={false}
             />
-            <Gtk.ScrolledWindow
-                propagateNaturalHeight
-                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-            >
+            <Gtk.ScrolledWindow propagateNaturalHeight vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                 <Adw.PreferencesPage>
                     <Adw.PreferencesGroup
                         title="Connection"
@@ -155,9 +148,7 @@ function EditorContent({
                         <Adw.SwitchRow
                             title="Connect automatically"
                             active={autoConnect}
-                            onNotifyActive={self =>
-                                setAutoConnect(self.active)
-                            }
+                            onNotifyActive={(self) => setAutoConnect(self.active)}
                         />
                     </Adw.PreferencesGroup>
 
@@ -204,12 +195,8 @@ export function showConnectionEditor(
         cssClasses: ['background'],
     });
 
-    const [autoConnect, setAutoConnect] = createState(
-        settingConn ? settingConn.autoconnect : true
-    );
-    const [password, setPassword] = createState(
-        isSecureConn ? (settingSecurity?.psk ?? '') : ''
-    );
+    const [autoConnect, setAutoConnect] = createState(settingConn ? settingConn.autoconnect : true);
+    const [password, setPassword] = createState(isSecureConn ? (settingSecurity?.psk ?? '') : '');
     const [showPassword, setShowPassword] = createState(false);
     const [saving, setSaving] = createState(false);
     const [errorMsg, setErrorMsg] = createState<string | null>(null);
@@ -229,11 +216,7 @@ export function showConnectionEditor(
                     dialog.close();
                 })
                 .catch((e: Error) => {
-                    logger.error(
-                        LOG_TAG,
-                        'commit failed:',
-                        e.message
-                    );
+                    logger.error(LOG_TAG, 'commit failed:', e.message);
                     setErrorMsg(e.message || 'Failed to save');
                     setSaving(false);
                 });
@@ -250,9 +233,7 @@ export function showConnectionEditor(
                 dialog.close();
                 onForgotten?.();
             })
-            .catch((e: Error) =>
-                logger.error(LOG_TAG, 'forget failed:', e.message)
-            );
+            .catch((e: Error) => logger.error(LOG_TAG, 'forget failed:', e.message));
     };
 
     const disposeDialog = render(

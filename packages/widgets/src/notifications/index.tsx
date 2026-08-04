@@ -1,16 +1,16 @@
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
-import {For, bind, createState, effect, onCleanup} from 'gnim';
+import {cleanupNode, connectFor} from '@shade/core/connectFor';
+import {generalSettings} from '@shade/core/settings/general.gschema';
+import {DismissTimers} from '@shade/services/notifications/dismissTimers';
+import DndService from '@shade/services/notifications/dnd';
+import {getExpireMs} from '@shade/services/notifications/expire';
+import {useNotifd} from '@shade/services/notifications/useNotifd';
+import ShellState from '@shade/services/state/shellState';
+import WindowManager from '@shade/services/state/windowManager';
+import {bind, createState, effect, For, onCleanup} from 'gnim';
 import Notification from '../common/notification';
 import PopupWindow from '../common/PopupWindow';
-import WindowManager from '@shade/services/state/windowManager';
-import {useNotifd} from '@shade/services/notifications/useNotifd';
-import {getExpireMs} from '@shade/services/notifications/expire';
-import {DismissTimers} from '@shade/services/notifications/dismissTimers';
-import {generalSettings} from '@shade/core/settings/general.gschema';
-import ShellState from '@shade/services/state/shellState';
-import DndService from '@shade/services/notifications/dnd';
-import {connectFor, cleanupNode} from '@shade/core/connectFor';
 
 /** Max toasts visible simultaneously; older ones go to the QS list. */
 const POPUP_CAP = 3;
@@ -24,9 +24,7 @@ const NotificationContent = ({
     setNotificationCount: (n: number) => void;
     showProgress: boolean;
 }) => {
-    const [notifications, setNotifications] = createState<
-        Notifd.Notification[]
-    >([]);
+    const [notifications, setNotifications] = createState<Notifd.Notification[]>([]);
 
     // Count bookkeeping lives in one reactive place.
     effect(() => {
@@ -35,7 +33,7 @@ const NotificationContent = ({
 
     function removeNotif(id: number) {
         timers.cancel(id);
-        setNotifications(prev => prev.filter(x => x.id !== id));
+        setNotifications((prev) => prev.filter((x) => x.id !== id));
     }
 
     const timers = new DismissTimers(removeNotif);
@@ -43,9 +41,9 @@ const NotificationContent = ({
     const addNotification = (id: number) => {
         const n = notifd.get_notification(id);
         if (!n) return;
-        setNotifications(prev => {
+        setNotifications((prev) => {
             // De-duplicate by id (notified can fire for updates).
-            const filtered = prev.filter(x => x.id !== id);
+            const filtered = prev.filter((x) => x.id !== id);
             const next = filtered.concat(n);
             // Keep only the newest POPUP_CAP visible as toasts.
             return next.slice(-POPUP_CAP);
@@ -65,11 +63,9 @@ const NotificationContent = ({
         <Gtk.Box
             spacing={8}
             orientation={Gtk.Orientation.VERTICAL}
-            ref={_self => {
+            ref={(_self) => {
                 const node = {};
-                connectFor(node, notifd, 'notified', (_, id) =>
-                    addNotification(id)
-                );
+                connectFor(node, notifd, 'notified', (_, id) => addNotification(id));
                 onCleanup(() => {
                     cleanupNode(node);
                     timers.clear();
@@ -83,9 +79,7 @@ const NotificationContent = ({
                         variant="popup"
                         closeAction={(_notif, _card) => removeNotif(n.id)}
                         pauseDismiss={() => timers.pause(n.id)}
-                        resumeDismiss={() =>
-                            timers.resume(n.id, getExpireMs(n, notifd))
-                        }
+                        resumeDismiss={() => timers.resume(n.id, getExpireMs(n, notifd))}
                         showProgress={showProgress}
                         onDefaultAction={invokeDefault(n)}
                     />
@@ -108,15 +102,12 @@ export default () => {
             name="notifications"
             margin={12}
             visible={
-                notifd() !== null &&
-                notificationCount() > 0 &&
-                !dontDisturb() &&
-                !screenlocked()
+                notifd() !== null && notificationCount() > 0 && !dontDisturb() && !screenlocked()
             }
-            ref={self => WindowManager.get_default().setNotifications(self)}
+            ref={(self) => WindowManager.get_default().setNotifications(self)}
         >
             {/* Singleton-array For defers child evaluation until notifd is non-null. */}
-            <For each={notifd.as(n => (n ? [n] : []))}>
+            <For each={notifd.as((n) => (n ? [n] : []))}>
                 {(n: Notifd.Notifd) => (
                     <NotificationContent
                         notifd={n}

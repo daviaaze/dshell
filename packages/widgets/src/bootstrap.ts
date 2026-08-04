@@ -1,15 +1,10 @@
-import {render} from '@gnim-js/gtk4';
 import type Adw from 'gi://Adw?version=1';
-import {initSettingsRoot} from '@shade/core/settingsRegistry';
-import {
-    AppContext,
-    getWidgetActions,
-    getWidgetDefs,
-    initServices,
-} from '@shade/core/define';
-import ServiceRegistry from '@shade/core/serviceRegistry';
-import ShellState from '@shade/services/state/shellState';
+import {render} from '@gnim-js/gtk4';
+import {type AppContext, getWidgetActions, getWidgetDefs, initServices} from '@shade/core/define';
 import logger, {perf} from '@shade/core/logger';
+import ServiceRegistry from '@shade/core/serviceRegistry';
+import {initSettingsRoot} from '@shade/core/settingsRegistry';
+import ShellState from '@shade/services/state/shellState';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Side-effect imports — importing registers every built-in service + widget.

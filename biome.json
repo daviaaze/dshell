@@ -1,0 +1,319 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.5.6/schema.json",
+    "files": {
+        "includes": [
+            "**",
+            "!**/node_modules",
+            "!**/@girs",
+            "!**/build",
+            "!**/dist",
+            "!**/.gnim",
+            "!**/scripts",
+            "!**/*.css",
+            "!result",
+            "!**/*.svg"
+        ]
+    },
+
+    "formatter": {
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 100
+    },
+
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "single",
+            "bracketSpacing": false,
+            "arrowParentheses": "always",
+            "trailingCommas": "es5"
+        }
+    },
+
+    "linter": {
+        "rules": {
+            "preset": "recommended",
+
+            "style": {
+                "useConst": "error",
+                "noNonNullAssertion": "warn",
+                "noRestrictedGlobals": {
+                    "level": "error",
+                    "options": {
+                        "deniedGlobals": {
+                            "log": "Use console.log() instead of log()",
+                            "logError": "Use console.warn() instead of logError()"
+                        }
+                    }
+                },
+                "noNestedTernary": "error"
+            },
+
+            "complexity": {
+                "noExcessiveCognitiveComplexity": {
+                    "level": "warn",
+                    "options": { "maxAllowedComplexity": 20 }
+                },
+                "noExcessiveLinesPerFunction": {
+                    "level": "warn",
+                    "options": { "maxLines": 120 }
+                }
+            },
+
+            "suspicious": {
+                "noExplicitAny": "error",
+                "noDoubleEquals": "error",
+                "useDefaultSwitchClauseLast": "error",
+                "noAssignInExpressions": "warn",
+                "noAsyncPromiseExecutor": "error",
+                "noVar": "error",
+                "noShadowRestrictedNames": "warn",
+                "useIterableCallbackReturn": "off"
+            }
+        }
+    },
+
+    "overrides": [
+        {
+            "includes": ["packages/core/src/**"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "patterns": [
+                                    {
+                                        "group": ["@shade/*"],
+                                        "message": "@shade/core is the leaf package and cannot import any @shade/* packages"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["packages/services/src/**"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "patterns": [
+                                    {
+                                        "group": ["@shade/widgets/*"],
+                                        "message": "@shade/services cannot depend on @shade/widgets"
+                                    },
+                                    {
+                                        "group": ["@shade/style/*"],
+                                        "message": "@shade/services cannot depend on @shade/style"
+                                    },
+                                    {
+                                        "group": [
+                                            "@shade/shell/*",
+                                            "@shade/greeter/*",
+                                            "@shade/share-picker/*"
+                                        ],
+                                        "message": "@shade/services cannot import apps"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["packages/style/src/**"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "patterns": [
+                                    {
+                                        "group": ["@shade/services/*"],
+                                        "message": "@shade/style cannot depend on @shade/services"
+                                    },
+                                    {
+                                        "group": ["@shade/widgets/*"],
+                                        "message": "@shade/style cannot depend on @shade/widgets"
+                                    },
+                                    {
+                                        "group": [
+                                            "@shade/shell/*",
+                                            "@shade/greeter/*",
+                                            "@shade/share-picker/*"
+                                        ],
+                                        "message": "@shade/style cannot import apps"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["apps/greeter/src/**"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "patterns": [
+                                    {
+                                        "group": ["@shade/widgets/*", "@shade/style/*"],
+                                        "message": "@shade/greeter cannot depend on @shade/widgets or @shade/style"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["apps/share-picker/src/**"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "patterns": [
+                                    {
+                                        "group": ["@shade/widgets/*", "@shade/style/*"],
+                                        "message": "@shade/share-picker cannot depend on @shade/widgets or @shade/style"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["packages/widgets/src/**"],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "patterns": [
+                                    {
+                                        "group": [
+                                            "@shade/shell/*",
+                                            "@shade/greeter/*",
+                                            "@shade/share-picker/*"
+                                        ],
+                                        "message": "@shade/widgets cannot import apps"
+                                    },
+                                    {
+                                        "group": ["gi://AstalAuth*"],
+                                        "message": "Widgets must not import AstalAuth directly. Use the AuthSession service instead."
+                                    },
+                                    {
+                                        "group": ["gi://Gtk4SessionLock*"],
+                                        "message": "Widgets must not import Gtk4SessionLock directly. Use the AuthSession service instead."
+                                    },
+                                    {
+                                        "group": ["gi://GWeather*"],
+                                        "message": "Widgets must not import GWeather directly. Use the Weather service getters instead."
+                                    },
+                                    {
+                                        "group": ["gi://cairo*"],
+                                        "message": "Widgets must not import Cairo directly. Encapsulate drawing logic behind a service method."
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "nursery": {
+                        "noJsRestrictedProperties": {
+                            "level": "error",
+                            "options": {
+                                "entries": [
+                                    {
+                                        "object": "GLib",
+                                        "property": "spawn_command_line_async",
+                                        "message": "Widgets must not execute shell commands directly. Call a service method instead."
+                                    },
+                                    {
+                                        "object": "GLib",
+                                        "property": "spawn_async",
+                                        "message": "Widgets must not execute shell commands directly. Call a service method instead."
+                                    },
+                                    {
+                                        "object": "GLib",
+                                        "property": "spawn_command_line",
+                                        "message": "Widgets must not execute shell commands directly. Call a service method instead."
+                                    },
+                                    {
+                                        "object": "Lang",
+                                        "property": "bind",
+                                        "message": "Use arrow functions instead of Lang.bind()"
+                                    },
+                                    {
+                                        "object": "Lang",
+                                        "property": "copyProperties",
+                                        "message": "Use Object.assign() or spread instead of Lang.copyProperties()"
+                                    },
+                                    {
+                                        "object": "Lang",
+                                        "property": "Class",
+                                        "message": "Use ES6 classes instead of Lang.Class"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "includes": [
+                "packages/widgets/src/recording-boundary/**",
+                "packages/widgets/src/region-selector/**",
+                "packages/widgets/src/screenshot-ui/**"
+            ],
+            "linter": {
+                "rules": {
+                    "style": {
+                        "noRestrictedImports": {
+                            "level": "error",
+                            "options": {
+                                "patterns": [
+                                    {
+                                        "group": [
+                                            "@shade/shell/*",
+                                            "@shade/greeter/*",
+                                            "@shade/share-picker/*"
+                                        ],
+                                        "message": "@shade/widgets cannot import apps"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["**/__tests__/**"],
+            "linter": {
+                "rules": {
+                    "complexity": {
+                        "noExcessiveLinesPerFunction": "off"
+                    }
+                }
+            }
+        }
+    ]
+}

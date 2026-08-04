@@ -1,9 +1,9 @@
+import Notifd from 'gi://AstalNotifd';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
-import Notifd from 'gi://AstalNotifd';
-import logger from '@shade/core/logger';
 import {DeferredSingleton} from '@shade/core/deferredSingleton';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
 
 const NOTIF_BUS_NAME = 'org.freedesktop.Notifications';
 const NOTIF_OBJECT_PATH = '/org/freedesktop/Notifications';
@@ -55,12 +55,7 @@ function checkNotifdDaemon(): boolean {
             );
 
             if (infoResult) {
-                const unpacked = infoResult.deepUnpack() as [
-                    string,
-                    string,
-                    string,
-                    string,
-                ];
+                const unpacked = infoResult.deepUnpack() as [string, string, string, string];
                 const [name, vendor] = unpacked;
                 if (vendor === 'astal') return true;
                 logger.warn(
@@ -89,11 +84,10 @@ function checkNotifdDaemon(): boolean {
 
 const notifdSingleton = new DeferredSingleton<Notifd.Notifd>(
     () => {
-        if (!canInitNotifd())
-            throw new Error('Foreign notification daemon detected');
+        if (!canInitNotifd()) throw new Error('Foreign notification daemon detected');
         return Notifd.get_default();
     },
-    e => logger.error('notifd', 'get_default() failed:', e)
+    (e) => logger.error('notifd', 'get_default() failed:', e)
 );
 
 /**

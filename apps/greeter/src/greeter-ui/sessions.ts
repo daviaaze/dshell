@@ -4,8 +4,9 @@
  * Scans wayland-sessions and xsessions desktop files across XDG data dirs
  * (first occurrence of a desktop file name wins, mirroring XDG precedence).
  */
-import GLib from 'gi://GLib?version=2.0';
+
 import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 
 export interface SessionEntry {
@@ -22,10 +23,7 @@ const FIELD_CODES = /%[a-zA-Z%]/g;
 
 /** Parse a desktop-file Exec line into argv, stripping field codes. */
 export function parseExec(exec: string): string[] {
-    const cleaned = exec
-        .replace(FIELD_CODES, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    const cleaned = exec.replace(FIELD_CODES, '').replace(/\s+/g, ' ').trim();
     if (!cleaned) return [];
     try {
         const [ok, argv] = GLib.shell_parse_argv(cleaned);
@@ -66,12 +64,10 @@ function readDesktopFile(path: string): {name: string; exec: string} | null {
  *                 plus $XDG_DATA_DIRS.
  */
 export function discoverSessions(dataDirs?: string[]): SessionEntry[] {
-    const dirs =
-        dataDirs ??
-        [
-            ...GLib.get_system_data_dirs(),
-            ...(GLib.getenv('XDG_DATA_DIRS')?.split(':') ?? []),
-        ];
+    const dirs = dataDirs ?? [
+        ...GLib.get_system_data_dirs(),
+        ...(GLib.getenv('XDG_DATA_DIRS')?.split(':') ?? []),
+    ];
 
     const seen = new Set<string>();
     const sessions: SessionEntry[] = [];
@@ -92,8 +88,7 @@ export function discoverSessions(dataDirs?: string[]): SessionEntry[] {
             let info: Gio.FileInfo | null;
             while ((info = enumerator.next_file(null)) !== null) {
                 const fileName = info.get_name();
-                if (!fileName.endsWith('.desktop') || seen.has(fileName))
-                    continue;
+                if (!fileName.endsWith('.desktop') || seen.has(fileName)) continue;
                 seen.add(fileName);
                 const entry = readDesktopFile(`${dirPath}/${fileName}`);
                 if (!entry) continue;

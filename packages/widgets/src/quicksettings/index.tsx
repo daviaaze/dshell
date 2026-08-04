@@ -1,18 +1,18 @@
-import {getHyprland} from '@shade/services/hyprland';
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind} from 'gnim';
-import {getApp} from '@shade/services/appHandle';
-import WindowManager from '@shade/services/state/windowManager';
-import {barSettings} from '@shade/services/settings/bar.gschema';
-import {bus} from '@shade/services/bus';
 import logger from '@shade/core/logger';
-import {NotificationList} from './notificationList';
-import {TrayBox} from './tray';
-import {AudioConfig, BrightnessSlider, MicConfig} from './sliders';
+import {getApp} from '@shade/services/appHandle';
+import {bus} from '@shade/services/bus';
+import {getHyprland} from '@shade/services/hyprland';
+import {barSettings} from '@shade/services/settings/bar.gschema';
+import ShellState from '@shade/services/state/shellState';
+import WindowManager from '@shade/services/state/windowManager';
+import {bind} from 'gnim';
 import {ButtonGrid} from './button-grid/index';
 import {Expander} from './expander/index';
-import ShellState from '@shade/services/state/shellState';
+import {NotificationList} from './notificationList';
+import {AudioConfig, BrightnessSlider, MicConfig} from './sliders';
+import {TrayBox} from './tray';
 
 const QUICKSETTINGS_WIDTH = 420;
 const QUICKSETTINGS_SPACING = 8;
@@ -26,22 +26,19 @@ export default () => {
 
     return (
         <Astal.Window
-            ref={self => {
+            ref={(self) => {
                 WindowManager.get_default().setQuicksettings(self);
-                self.connect('realize', () =>
-                    logger.log('quicksettings realized')
-                );
+                self.connect('realize', () => logger.log('quicksettings realized'));
                 self.connect('map', () => logger.log('quicksettings mapped'));
             }}
             margin={12}
             application={getApp()}
             name={'quicksettings'}
             visible={bind(shellState, 'qsOpen')}
-            onNotifyVisible={self => {
+            onNotifyVisible={(self) => {
                 logger.log(`quicksettings visible -> ${self.visible}`);
                 if (
-                    (barCfg.position() === LEFT ||
-                        barCfg.position() === RIGHT) &&
+                    (barCfg.position() === LEFT || barCfg.position() === RIGHT) &&
                     self.visible &&
                     ShellState.get_default().launcherOpen
                 )
@@ -49,11 +46,9 @@ export default () => {
                 shellState.qsOpen = self.visible;
             }}
             cssClasses={['card', 'frame', 'background']}
-            anchor={barCfg.position.as(
-                p => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM
-            )}
+            anchor={barCfg.position.as((p) => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM)}
             widthRequest={QUICKSETTINGS_WIDTH}
-            monitor={bind(hyprland, 'focused-monitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
         >
             <Gtk.ScrolledWindow
                 propagateNaturalHeight

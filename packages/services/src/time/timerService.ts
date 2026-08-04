@@ -1,11 +1,11 @@
-import Adw from 'gi://Adw';
+import type Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
-import {Object, register, property} from 'gnim/gobject';
-import {bus} from '../bus';
+import {defineService} from '@shade/core/define';
 import logger from '@shade/core/logger';
 import {fmtDuration} from '@shade/core/time';
-import {defineService} from '@shade/core/define';
+import {Object, property, register} from 'gnim/gobject';
+import {bus} from '../bus';
 import {timerSettings} from './timer.gschema';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
@@ -14,29 +14,21 @@ export type TimerMode = 'none' | 'countdown' | 'pomodoro';
 export default class TimerService extends Object {
     private static instance: TimerService;
     static get_default() {
-        if (!this.instance) {
-            this.instance = new TimerService();
-            this.instance.#initBus();
+        if (!TimerService.instance) {
+            TimerService.instance = new TimerService();
+            TimerService.instance.#initBus();
         }
-        return this.instance;
+        return TimerService.instance;
     }
 
     #initBus() {
         this.#busSubscriptions.push(
-            bus.on('timer:cmd:start-countdown', ms => this.startCountdown(ms))
+            bus.on('timer:cmd:start-countdown', (ms) => this.startCountdown(ms))
         );
-        this.#busSubscriptions.push(
-            bus.on('timer:cmd:start-pomodoro', () => this.startPomodoro())
-        );
-        this.#busSubscriptions.push(
-            bus.on('timer:cmd:pause', () => this.pause())
-        );
-        this.#busSubscriptions.push(
-            bus.on('timer:cmd:resume', () => this.resume())
-        );
-        this.#busSubscriptions.push(
-            bus.on('timer:cmd:cancel', () => this.cancel())
-        );
+        this.#busSubscriptions.push(bus.on('timer:cmd:start-pomodoro', () => this.startPomodoro()));
+        this.#busSubscriptions.push(bus.on('timer:cmd:pause', () => this.pause()));
+        this.#busSubscriptions.push(bus.on('timer:cmd:resume', () => this.resume()));
+        this.#busSubscriptions.push(bus.on('timer:cmd:cancel', () => this.cancel()));
     }
 
     // ── GObject properties ──
@@ -69,8 +61,7 @@ export default class TimerService extends Object {
     // ── Pomodoro settings ──
     #workDuration = TimerService.DEFAULT_WORK_MIN * TimerService.MS_PER_MIN;
     #breakDuration = TimerService.DEFAULT_BREAK_MIN * TimerService.MS_PER_MIN;
-    #longBreakDuration =
-        TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
+    #longBreakDuration = TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
     #sessionsBeforeLongBreak = TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
 
     @property
@@ -177,24 +168,20 @@ export default class TimerService extends Object {
         this.#stopTick();
         this.#running = true;
         this.notify('running');
-        this.#tickId = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            TimerService.TICK_MS,
-            () => {
-                this.#remaining -= TimerService.TICK_MS;
-                if (this.#remaining <= 0) {
-                    this.#remaining = 0;
-                    this.notify('remaining');
-                    this.#stopTick();
-                    this.#running = false;
-                    this.notify('running');
-                    this.#onComplete();
-                    return GLib.SOURCE_REMOVE;
-                }
+        this.#tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TimerService.TICK_MS, () => {
+            this.#remaining -= TimerService.TICK_MS;
+            if (this.#remaining <= 0) {
+                this.#remaining = 0;
                 this.notify('remaining');
-                return GLib.SOURCE_CONTINUE;
+                this.#stopTick();
+                this.#running = false;
+                this.notify('running');
+                this.#onComplete();
+                return GLib.SOURCE_REMOVE;
             }
-        );
+            this.notify('remaining');
+            return GLib.SOURCE_CONTINUE;
+        });
     }
 
     #stopTick() {
@@ -213,13 +200,9 @@ export default class TimerService extends Object {
         const isPomodoro = this.#mode === 'pomodoro';
         const title = (() => {
             if (!isPomodoro) return 'Timer finished!';
-            return this.#pomodoroIsBreak
-                ? 'Break over! Back to work.'
-                : 'Work session complete!';
+            return this.#pomodoroIsBreak ? 'Break over! Back to work.' : 'Work session complete!';
         })();
-        const body = isPomodoro
-            ? `Session ${this.#pomodoroSession} complete.`
-            : this.#label;
+        const body = isPomodoro ? `Session ${this.#pomodoroSession} complete.` : this.#label;
 
         this.#sendNotification(title, body);
 
@@ -234,11 +217,8 @@ export default class TimerService extends Object {
             } else {
                 // Work done → break
                 this.#pomodoroIsBreak = true;
-                const isLong =
-                    this.#pomodoroSession % this.#sessionsBeforeLongBreak === 0;
-                this.#remaining = isLong
-                    ? this.#longBreakDuration
-                    : this.#breakDuration;
+                const isLong = this.#pomodoroSession % this.#sessionsBeforeLongBreak === 0;
+                this.#remaining = isLong ? this.#longBreakDuration : this.#breakDuration;
                 this.#total = this.#remaining;
                 this.#label = isLong ? 'Long Break' : 'Break';
             }

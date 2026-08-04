@@ -1,8 +1,8 @@
-import GObject from 'gi://GObject?version=2.0';
 import AstalAuth from 'gi://AstalAuth?version=0.1';
-import {Object, register, signal, property} from 'gnim/gobject';
-import {Timeout} from '@shade/core/timeout';
+import GObject from 'gi://GObject?version=2.0';
 import logger from '@shade/core/logger';
+import {Timeout} from '@shade/core/timeout';
+import {Object, property, register, signal} from 'gnim/gobject';
 import Brightness from '../display/brightness';
 import FingerprintAuth from '../input/fingerprint';
 
@@ -141,21 +141,26 @@ export default class AuthSession extends Object {
         const onStatus = (_fp: FingerprintAuth, status: string) => {
             if (status === 'verify-no-match') {
                 this.authStatus = 'Fingerprint did not match, retrying...';
-            } else if (
-                status === 'verify-retry' ||
-                status === 'verify-swipe-too-short'
-            ) {
+            } else if (status === 'verify-retry' || status === 'verify-swipe-too-short') {
                 this.authStatus = 'Try again...';
             }
         };
 
         this.#fpSignalIds = [
-            GObject.signal_connect(this.#fingerprint, 'verified', (_source: FingerprintAuth, ..._args: unknown[]) => {
-                onVerified();
-            }),
-            GObject.signal_connect(this.#fingerprint, 'status-changed', (_source: FingerprintAuth, ...args: unknown[]) => {
-                onStatus(_source, args.length > 0 ? String(args[0]) : '');
-            }),
+            GObject.signal_connect(
+                this.#fingerprint,
+                'verified',
+                (_source: FingerprintAuth, ..._args: unknown[]) => {
+                    onVerified();
+                }
+            ),
+            GObject.signal_connect(
+                this.#fingerprint,
+                'status-changed',
+                (_source: FingerprintAuth, ...args: unknown[]) => {
+                    onStatus(_source, args.length > 0 ? String(args[0]) : '');
+                }
+            ),
         ];
     }
 

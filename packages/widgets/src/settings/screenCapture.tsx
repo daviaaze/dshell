@@ -1,8 +1,8 @@
 import Adw from 'gi://Adw?version=1';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, JSX, onCleanup} from 'gnim';
 import {screenCaptureSettings} from '@shade/services/settings/screenCapture.gschema';
+import {type Accessor, type JSX, onCleanup} from 'gnim';
 
 const VIRTUAL_MONITOR_FPS_MIN = 1;
 const VIRTUAL_MONITOR_FPS_MAX = 144;
@@ -28,8 +28,8 @@ function EnumToggleRow({
             <Adw.ToggleGroup
                 cssClasses={['round']}
                 valign={Gtk.Align.CENTER}
-                onNotifyActiveName={self => setter(Number(self.activeName))}
-                ref={self => {
+                onNotifyActiveName={(self) => setter(Number(self.activeName))}
+                ref={(self) => {
                     self.activeName = String(value.peek() ?? fallback);
                     onCleanup(
                         value.subscribe(() => {
@@ -55,48 +55,28 @@ function RecordingGroup({settings}: {settings: Settings}) {
                 title={'Backend'}
                 value={settings.recorderBackend}
                 fallback={2}
-                setter={v => settings.setRecorderBackend(v)}
+                setter={(v) => settings.setRecorderBackend(v)}
             >
-                <Adw.Toggle
-                    name={'0'}
-                    label={'wl-screenrec'}
-                    iconName={'media-record-symbolic'}
-                />
-                <Adw.Toggle
-                    name={'1'}
-                    label={'wf-recorder'}
-                    iconName={'media-record-symbolic'}
-                />
-                <Adw.Toggle
-                    name={'2'}
-                    label={'Auto'}
-                    iconName={'emblem-system-symbolic'}
-                />
+                <Adw.Toggle name={'0'} label={'wl-screenrec'} iconName={'media-record-symbolic'} />
+                <Adw.Toggle name={'1'} label={'wf-recorder'} iconName={'media-record-symbolic'} />
+                <Adw.Toggle name={'2'} label={'Auto'} iconName={'emblem-system-symbolic'} />
             </EnumToggleRow>
 
             <EnumToggleRow
                 title={'Container Format'}
                 value={settings.recordingFormat}
                 fallback={0}
-                setter={v => settings.setRecordingFormat(v)}
+                setter={(v) => settings.setRecordingFormat(v)}
             >
-                <Adw.Toggle
-                    name={'0'}
-                    label={'MP4'}
-                    iconName={'video-x-generic-symbolic'}
-                />
-                <Adw.Toggle
-                    name={'1'}
-                    label={'WebM'}
-                    iconName={'video-x-generic-symbolic'}
-                />
+                <Adw.Toggle name={'0'} label={'MP4'} iconName={'video-x-generic-symbolic'} />
+                <Adw.Toggle name={'1'} label={'WebM'} iconName={'video-x-generic-symbolic'} />
             </EnumToggleRow>
 
             <EnumToggleRow
                 title={'Quality'}
                 value={settings.recordingQuality}
                 fallback={1}
-                setter={v => settings.setRecordingQuality(v)}
+                setter={(v) => settings.setRecordingQuality(v)}
             >
                 <Adw.Toggle name={'0'} label={'Low'} />
                 <Adw.Toggle name={'1'} label={'Medium'} />
@@ -107,7 +87,7 @@ function RecordingGroup({settings}: {settings: Settings}) {
                 title={'Record Audio'}
                 subtitle={'Capture system audio by default'}
                 active={settings.recordAudio}
-                onNotifyActive={self => settings.setRecordAudio(self.active)}
+                onNotifyActive={(self) => settings.setRecordAudio(self.active)}
             />
         </Adw.PreferencesGroup>
     );
@@ -116,26 +96,15 @@ function RecordingGroup({settings}: {settings: Settings}) {
 /** Screenshot group: PNG/JPEG format. */
 function ScreenshotGroup({settings}: {settings: Settings}) {
     return (
-        <Adw.PreferencesGroup
-            title={'Screenshot'}
-            description={'Screenshot image format'}
-        >
+        <Adw.PreferencesGroup title={'Screenshot'} description={'Screenshot image format'}>
             <EnumToggleRow
                 title={'Image Format'}
                 value={settings.screenshotFormat}
                 fallback={0}
-                setter={v => settings.setScreenshotFormat(v)}
+                setter={(v) => settings.setScreenshotFormat(v)}
             >
-                <Adw.Toggle
-                    name={'0'}
-                    label={'PNG'}
-                    iconName={'image-x-generic-symbolic'}
-                />
-                <Adw.Toggle
-                    name={'1'}
-                    label={'JPEG'}
-                    iconName={'image-x-generic-symbolic'}
-                />
+                <Adw.Toggle name={'0'} label={'PNG'} iconName={'image-x-generic-symbolic'} />
+                <Adw.Toggle name={'1'} label={'JPEG'} iconName={'image-x-generic-symbolic'} />
             </EnumToggleRow>
         </Adw.PreferencesGroup>
     );
@@ -152,26 +121,19 @@ function BoundaryGroup({settings}: {settings: Settings}) {
                 title={'Show Recording Boundary'}
                 subtitle={'Red border around recorded/shared area'}
                 active={settings.showRecordingBoundary}
-                onNotifyActive={self =>
-                    settings.setShowRecordingBoundary(self.active)
-                }
+                onNotifyActive={(self) => settings.setShowRecordingBoundary(self.active)}
             />
-            <Adw.ActionRow
-                title={'Boundary Color'}
-                subtitle={settings.recordingBoundaryColor}
-            >
+            <Adw.ActionRow title={'Boundary Color'} subtitle={settings.recordingBoundaryColor}>
                 <Gtk.ColorDialogButton
                     valign={Gtk.Align.CENTER}
                     dialog={new Gtk.ColorDialog()}
-                    ref={self => {
+                    ref={(self) => {
                         const c = new Gdk.RGBA();
                         c.parse(settings.recordingBoundaryColor());
                         self.rgba = c;
                     }}
-                    onNotifyRgba={self => {
-                        settings.setRecordingBoundaryColor(
-                            self.rgba.to_string()
-                        );
+                    onNotifyRgba={(self) => {
+                        settings.setRecordingBoundaryColor(self.rgba.to_string());
                     }}
                 />
             </Adw.ActionRow>
@@ -182,25 +144,18 @@ function BoundaryGroup({settings}: {settings: Settings}) {
 /** Overlay group: freeze screen + preview thumbnails. */
 function OverlayGroup({settings}: {settings: Settings}) {
     return (
-        <Adw.PreferencesGroup
-            title={'Overlay'}
-            description={'Capture overlay behavior'}
-        >
+        <Adw.PreferencesGroup title={'Overlay'} description={'Capture overlay behavior'}>
             <Adw.SwitchRow
                 title={'Freeze Screen'}
                 subtitle={'Pause screen when opening capture overlay'}
                 active={settings.overlayFreezeEnabled}
-                onNotifyActive={self =>
-                    settings.setOverlayFreezeEnabled(self.active)
-                }
+                onNotifyActive={(self) => settings.setOverlayFreezeEnabled(self.active)}
             />
             <Adw.SwitchRow
                 title={'Preview Thumbnails'}
                 subtitle={'Show live previews in capture overlay'}
                 active={settings.previewThumbnailsEnabled}
-                onNotifyActive={self =>
-                    settings.setPreviewThumbnailsEnabled(self.active)
-                }
+                onNotifyActive={(self) => settings.setPreviewThumbnailsEnabled(self.active)}
             />
         </Adw.PreferencesGroup>
     );
@@ -217,12 +172,10 @@ function VirtualMonitorGroup({settings}: {settings: Settings}) {
                 title={'Resolution'}
                 showApplyButton
                 text={settings.virtualMonitorResolution}
-                onApply={self =>
-                    settings.setVirtualMonitorResolution(self.text)
-                }
+                onApply={(self) => settings.setVirtualMonitorResolution(self.text)}
             />
             <Adw.SpinRow
-                ref={self => {
+                ref={(self) => {
                     self.adjustment = new Gtk.Adjustment({
                         lower: VIRTUAL_MONITOR_FPS_MIN,
                         upper: VIRTUAL_MONITOR_FPS_MAX,
@@ -232,7 +185,7 @@ function VirtualMonitorGroup({settings}: {settings: Settings}) {
                 }}
                 title={'Refresh Rate'}
                 subtitle={'Frames per second'}
-                onNotifyValue={self => settings.setVirtualMonitorFps(self.value)}
+                onNotifyValue={(self) => settings.setVirtualMonitorFps(self.value)}
             />
         </Adw.PreferencesGroup>
     );

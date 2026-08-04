@@ -1,15 +1,15 @@
 import {computed} from 'gnim';
-import Powerprofiles from './powerprofiles';
-import Conservation from './conservation';
-import ColorScheme from './colorScheme';
+import Network from '../network/index';
+import QuickTimerButton from '../timer/QuickTimerButton';
 import Bluetooth from './bluetooth';
 import Caffeinated from './caffeinated';
-import QuickTimerButton from '../timer/QuickTimerButton';
-import Network from '../network/index';
-import Screenshot from './screenshot';
+import ColorScheme from './colorScheme';
+import Conservation from './conservation';
 import NightLight from './nightLight';
-import Touchpad from './touchpad';
+import Powerprofiles from './powerprofiles';
 import {ReactiveGrid} from './reactiveGrid';
+import Screenshot from './screenshot';
+import Touchpad from './touchpad';
 
 export const ButtonGrid = ({cols = 2}: {cols?: number}) => {
     const items = computed(() => [

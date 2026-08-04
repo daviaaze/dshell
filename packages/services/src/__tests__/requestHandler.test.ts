@@ -6,7 +6,7 @@
  * Run: pnpm run test:compile && nix develop -c gjs -m build/test/requestHandler.test.js
  */
 
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 // ── Action resolver (mirrors requestHandler logic) ──────────────────────────
 
@@ -20,8 +20,7 @@ function resolveAction(args: string[]): string | null {
     else if (args[1] === 'record') return 'record';
     else if (args[1] === 'record-area') return 'record-area';
     else if (args[1] === 'record-window') return 'record-window';
-    else if (args[1] === 'record-window-address')
-        return 'record-window-address';
+    else if (args[1] === 'record-window-address') return 'record-window-address';
     else if (args[1] === 'record-output') return 'record-output';
     else if (args[1] === 'touchpad') return 'toggle-touchpad';
     return null;
@@ -35,15 +34,11 @@ describe('requestHandler action resolution', () => {
     });
 
     it('maps toggle applauncher', () => {
-        expect(resolveAction(['', 'toggle', 'applauncher'])).toBe(
-            'toggle-applauncher'
-        );
+        expect(resolveAction(['', 'toggle', 'applauncher'])).toBe('toggle-applauncher');
     });
 
     it('maps toggle quicksettings', () => {
-        expect(resolveAction(['', 'toggle', 'quicksettings'])).toBe(
-            'toggle-quicksettings'
-        );
+        expect(resolveAction(['', 'toggle', 'quicksettings'])).toBe('toggle-quicksettings');
     });
 
     it('maps toggle bar', () => {
@@ -51,21 +46,15 @@ describe('requestHandler action resolution', () => {
     });
 
     it('maps toggle windowswitcher', () => {
-        expect(resolveAction(['', 'toggle', 'windowswitcher'])).toBe(
-            'toggle-windowswitcher'
-        );
+        expect(resolveAction(['', 'toggle', 'windowswitcher'])).toBe('toggle-windowswitcher');
     });
 
     it('maps toggle settings', () => {
-        expect(resolveAction(['', 'toggle', 'settings'])).toBe(
-            'toggle-settings'
-        );
+        expect(resolveAction(['', 'toggle', 'settings'])).toBe('toggle-settings');
     });
 
     it('maps toggle touchpad to toggle-touchpad', () => {
-        expect(resolveAction(['', 'toggle', 'touchpad'])).toBe(
-            'toggle-touchpad'
-        );
+        expect(resolveAction(['', 'toggle', 'touchpad'])).toBe('toggle-touchpad');
     });
 
     it('maps clipboard to toggle-clipboard', () => {

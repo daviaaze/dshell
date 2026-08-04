@@ -1,40 +1,54 @@
-import {bind, computed} from 'gnim';
+import Astal from 'gi://Astal?version=4.0';
+import Gtk from 'gi://Gtk?version=4.0';
+import AudioController from '@shade/services/audio/audioController';
+import AppMixer from '@shade/services/audio/mixer';
 import Brightness from '@shade/services/display/brightness';
+import Touchpad from '@shade/services/input/touchpad';
+import WindowManager from '@shade/services/state/windowManager';
+import {bind, computed} from 'gnim';
+import PopupWindow from '../common/PopupWindow';
+import Popup from './popup';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
-import Touchpad from '@shade/services/input/touchpad';
-import Gtk from 'gi://Gtk?version=4.0';
-import Astal from 'gi://Astal?version=4.0';
-import PopupWindow from '../common/PopupWindow';
-import WindowManager from '@shade/services/state/windowManager';
-import AudioController from '@shade/services/audio/audioController';
-import Popup from './popup';
+
+type AppMixerLike = AppMixer & {
+    'default-device-state': null;
+};
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';
+const DEFAULT_SPEAKER_ICON = 'audio-volume-high-symbolic';
+const DEFAULT_MIC_ICON = 'audio-input-microphone-symbolic';
 const OSD_WIDTH = 250;
 const OSD_MARGIN = 24;
 const OSD_SPACING = 12;
 
 export default () => {
     const audioCtrl = AudioController.get_default();
+    const mixer = AppMixer.get_default();
     const brightness = Brightness.get_default();
     const touchpad = Touchpad.get_default();
 
-    const speakerIcon = computed(() =>
-        audioCtrl.defaultSpeaker?.mute || audioCtrl.defaultSpeaker?.volume === 0
-            ? MUTED_SPEAKER_ICON
-            : (audioCtrl.defaultSpeaker?.volumeIcon ??
-              'audio-volume-high-symbolic')
+    // Volume/mute state from AppMixer (pw-dump, accurate) — AstalWp
+    // (audioCtrl.defaultSpeaker) reports stale volume/mute values.
+    const speakerState = bind(mixer as AppMixerLike, 'default-device-state').as(() =>
+        mixer.getDefaultDeviceState('speaker')
+    );
+    const micState = bind(mixer as AppMixerLike, 'default-device-state').as(() =>
+        mixer.getDefaultDeviceState('microphone')
     );
 
-    const micIcon = computed(() =>
-        audioCtrl.defaultMicrophone?.mute ||
-        audioCtrl.defaultMicrophone?.volume === 0
-            ? MUTED_MIC_ICON
-            : (audioCtrl.defaultMicrophone?.volumeIcon ??
-              'audio-input-microphone-symbolic')
-    );
+    const speakerIcon = computed(() => {
+        const state = speakerState();
+        if (state && (state.muted || state.volume === 0)) return MUTED_SPEAKER_ICON;
+        return audioCtrl.defaultSpeaker?.volumeIcon ?? DEFAULT_SPEAKER_ICON;
+    });
+
+    const micIcon = computed(() => {
+        const state = micState();
+        if (state && (state.muted || state.volume === 0)) return MUTED_MIC_ICON;
+        return audioCtrl.defaultMicrophone?.volumeIcon ?? DEFAULT_MIC_ICON;
+    });
 
     // Each OSD popup's reveal is owned by its domain service (AudioController,
     // Brightness, Touchpad) via an OsdTimer, so the popups stay pure UI.
@@ -45,19 +59,14 @@ export default () => {
     const touchpadReveal = bind(touchpad, 'osdVisible');
 
     const anyVisible = computed(
-        () =>
-            speakerReveal() ||
-            screenReveal() ||
-            kbdReveal() ||
-            micReveal() ||
-            touchpadReveal()
+        () => speakerReveal() || screenReveal() || kbdReveal() || micReveal() || touchpadReveal()
     );
 
     const popupList = [
         <Popup
             widget={Slider({
                 iconName: speakerIcon,
-                value: computed(() => audioCtrl.defaultSpeaker?.volume ?? 0),
+                value: computed(() => speakerState()?.volume ?? 0),
             })}
             reveal={speakerReveal}
         />,
@@ -78,16 +87,11 @@ export default () => {
         <Popup
             widget={Slider({
                 iconName: micIcon,
-                value: computed(
-                    () => audioCtrl.defaultMicrophone?.volume ?? 0
-                ),
+                value: computed(() => micState()?.volume ?? 0),
             })}
             reveal={micReveal}
         />,
-        <Popup
-            widget={<TouchpadOsd />}
-            reveal={touchpadReveal}
-        />,
+        <Popup widget={<TouchpadOsd />} reveal={touchpadReveal} />,
     ];
 
     return (
@@ -98,7 +102,7 @@ export default () => {
             anchor={Astal.WindowAnchor.BOTTOM}
             layer={Astal.Layer.OVERLAY}
             visible={anyVisible}
-            ref={self => WindowManager.get_default().setOsd(self)}
+            ref={(self) => WindowManager.get_default().setOsd(self)}
         >
             <Gtk.Box
                 cssClasses={['linked', 'card', 'background']}

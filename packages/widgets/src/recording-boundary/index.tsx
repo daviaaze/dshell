@@ -1,17 +1,17 @@
 import Astal from 'gi://Astal?version=4.0';
+import type Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import Gdk from 'gi://Gdk?version=4.0';
-import {bind, onCleanup} from 'gnim';
+import {toArray} from '@shade/core/gjsUtils';
 import {getApp} from '@shade/services/appHandle';
-import {monitors} from '@shade/services/monitoring/monitors';
 import Screenshot from '@shade/services/capture/screenshot';
 import {
     type BoundaryGeometry,
     parseColor,
     visibleBoundaryEdges,
 } from '@shade/services/capture/types';
+import {monitors} from '@shade/services/monitoring/monitors';
 import {getScreenCaptureSettings} from '@shade/services/settings/screenCapture';
-import {toArray} from '@shade/core/gjsUtils';
+import {bind, onCleanup} from 'gnim';
 
 export default () => {
     const ss = Screenshot.get_default();
@@ -22,9 +22,9 @@ export default () => {
     const monList = toArray<Gdk.Monitor>(monitors.peek());
 
     const windowRefs: Astal.Window[] = [];
-    const windows = monList.map(monitor => (
+    const windows = monList.map((monitor) => (
         <Astal.Window
-            ref={self => {
+            ref={(self) => {
                 if (self) windowRefs.push(self);
             }}
             application={getApp()}
@@ -42,14 +42,11 @@ export default () => {
             <Gtk.DrawingArea
                 hexpand
                 vexpand
-                ref={self => {
+                ref={(self) => {
                     self.set_draw_func((_area, cr, _w, _h) => {
                         if (!ss.boundaryGeometry) return;
                         const geom = ss.boundaryGeometry as BoundaryGeometry;
-                        const edges = visibleBoundaryEdges(
-                            geom,
-                            monitor.geometry
-                        );
+                        const edges = visibleBoundaryEdges(geom, monitor.geometry);
                         if (edges.length === 0) return;
 
                         cr.setSourceRGBA(

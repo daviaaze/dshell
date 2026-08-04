@@ -1,9 +1,10 @@
 /**
  * Smoke tests for input services — verify module loads and singletons.
  */
-import Touchpad from '../input/touchpad';
+
 import KeyboardLayout from '../input/keyboard';
-import {describe, it, expect, run} from './test-runner';
+import Touchpad from '../input/touchpad';
+import {describe, expect, it, run} from './test-runner';
 
 describe('Touchpad', () => {
     it('get_default returns same instance', () => {

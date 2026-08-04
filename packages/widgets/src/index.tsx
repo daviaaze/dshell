@@ -9,5 +9,5 @@
  * @see ./bootstrap.ts for the full boot sequence.
  */
 
-export {boot, createAppContext} from './bootstrap';
 export type {AppContext} from '@shade/core/define';
+export {boot, createAppContext} from './bootstrap';

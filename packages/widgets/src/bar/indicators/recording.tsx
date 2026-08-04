@@ -1,14 +1,12 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind} from 'gnim';
 import Screenshot from '@shade/services/capture/screenshot';
+import {bind} from 'gnim';
 
 function formatDuration(seconds: number): string {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return m > 0
-        ? `${m}:${s.toString().padStart(2, '0')}`
-        : `0:${s.toString().padStart(2, '0')}`;
+    return m > 0 ? `${m}:${s.toString().padStart(2, '0')}` : `0:${s.toString().padStart(2, '0')}`;
 }
 
 export default () => {
@@ -23,9 +21,7 @@ export default () => {
         >
             <Adw.ButtonContent
                 iconName="media-record-symbolic"
-                label={bind(screenshot, 'recordingElapsed').as(sec =>
-                    formatDuration(sec ?? 0)
-                )}
+                label={bind(screenshot, 'recordingElapsed').as((sec) => formatDuration(sec ?? 0))}
             />
         </Gtk.Button>
     );

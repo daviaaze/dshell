@@ -11,14 +11,15 @@
  * The monitors array still returns Gdk.Monitor[] for backward compatibility
  * with Astal.Window.gdkmonitor and all existing widgets.
  */
-import {getHyprland, type AstalHyprland} from '../hyprland';
+
 import AstalWl from 'gi://AstalWl';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {Object, register, property} from 'gnim/gobject';
-import {bind} from 'gnim';
 import logger from '@shade/core/logger';
+import {bind} from 'gnim';
+import {Object, property, register} from 'gnim/gobject';
+import {type AstalHyprland, getHyprland} from '../hyprland';
 
 // ── Gdk → Hyprland monitor mapper ────────────────────────────────────────
 
@@ -31,9 +32,7 @@ import logger from '@shade/core/logger';
  *
  * Falls back to description matching and then to geometry matching.
  */
-const Gdk2HyprMonitor = (
-    GMonitor: Gdk.Monitor
-): AstalHyprland.Monitor | null => {
+const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor | null => {
     const hyprland = getHyprland();
     if (!hyprland) return null;
 
@@ -42,24 +41,19 @@ const Gdk2HyprMonitor = (
     if (connector) {
         const found = hyprland.get_monitor_by_name(connector);
         if (found) return found;
-        logger.warn(
-            'monitors',
-            `Hyprland monitor not found for connector: ${connector}`
-        );
+        logger.warn('monitors', `Hyprland monitor not found for connector: ${connector}`);
     }
 
     // Fallback: match by description (includes connector info in some setups)
     const desc = GMonitor.description;
     if (desc) {
-        const found = hyprland.get_monitors().find(m => m.description === desc);
+        const found = hyprland.get_monitors().find((m) => m.description === desc);
         if (found) return found;
     }
 
     // Last resort: find the first monitor with matching geometry
     const geo = GMonitor.geometry;
-    const found = hyprland
-        .get_monitors()
-        .find(m => m.x === geo.x && m.y === geo.y);
+    const found = hyprland.get_monitors().find((m) => m.x === geo.x && m.y === geo.y);
     return found ?? hyprland.get_monitor(0);
 };
 
@@ -94,8 +88,8 @@ class MonitorService extends Object {
     private static instance: MonitorService;
 
     static get_default() {
-        if (!this.instance) this.instance = new MonitorService();
-        return this.instance;
+        if (!MonitorService.instance) MonitorService.instance = new MonitorService();
+        return MonitorService.instance;
     }
 
     #monitors: Gdk.Monitor[] = [];
@@ -176,11 +170,7 @@ class MonitorService extends Object {
         try {
             this.#wlDisplay = AstalWl.Registry.get_default();
         } catch (e) {
-            logger.warn(
-                'monitors',
-                'AstalWl unavailable, falling back to Gdk:',
-                e
-            );
+            logger.warn('monitors', 'AstalWl unavailable, falling back to Gdk:', e);
             this.#initGdk(display);
             return;
         }
@@ -235,15 +225,13 @@ class MonitorService extends Object {
 
     #addMonitor(monitor: Gdk.Monitor): void {
         // Avoid duplicates
-        if (this.#monitors.some(m => m.connector === monitor.connector)) return;
+        if (this.#monitors.some((m) => m.connector === monitor.connector)) return;
         this.#monitors = [...this.#monitors, monitor];
         this.#scheduleHyprlandSync();
     }
 
     #removeMonitor(monitor: Gdk.Monitor): void {
-        this.#monitors = this.#monitors.filter(
-            m => m.connector !== monitor.connector
-        );
+        this.#monitors = this.#monitors.filter((m) => m.connector !== monitor.connector);
         this.notify('monitors');
     }
 
@@ -255,10 +243,7 @@ class MonitorService extends Object {
         if (hyprland) {
             if (hyprland.get_monitors().length !== this.#monitors.length) {
                 this.#pendingSync = true;
-                logger.debug(
-                    'monitors',
-                    'Monitor counts differ, deferring notify'
-                );
+                logger.debug('monitors', 'Monitor counts differ, deferring notify');
             } else {
                 this.#pendingSync = false;
             }
@@ -273,10 +258,7 @@ class MonitorService extends Object {
         if (hyprland) {
             if (hyprland.get_monitors().length !== this.#monitors.length) {
                 this.#pendingSync = true;
-                logger.debug(
-                    'monitors',
-                    'Monitor counts differ, deferring notify'
-                );
+                logger.debug('monitors', 'Monitor counts differ, deferring notify');
             } else {
                 this.#pendingSync = false;
                 this.notify('monitors');

@@ -1,7 +1,7 @@
-import {Object, register} from 'gnim/gobject';
-import {Process} from '@shade/core/process';
-import {bus} from '../bus';
 import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
+import {Object, register} from 'gnim/gobject';
+import {bus} from '../bus';
 
 /**
  * Encapsulates power/session shell commands.
@@ -13,26 +13,18 @@ export default class SessionControl extends Object {
     #busSubscriptions: (() => void)[] = [];
 
     static get_default() {
-        if (!this.instance) {
-            this.instance = new SessionControl();
-            this.instance.#initBus();
+        if (!SessionControl.instance) {
+            SessionControl.instance = new SessionControl();
+            SessionControl.instance.#initBus();
         }
-        return this.instance;
+        return SessionControl.instance;
     }
 
     #initBus() {
-        this.#busSubscriptions.push(
-            bus.on('power:cmd:logout', () => this.logout())
-        );
-        this.#busSubscriptions.push(
-            bus.on('power:cmd:suspend', () => this.suspend())
-        );
-        this.#busSubscriptions.push(
-            bus.on('power:cmd:reboot', () => this.reboot())
-        );
-        this.#busSubscriptions.push(
-            bus.on('power:cmd:poweroff', () => this.powerOff())
-        );
+        this.#busSubscriptions.push(bus.on('power:cmd:logout', () => this.logout()));
+        this.#busSubscriptions.push(bus.on('power:cmd:suspend', () => this.suspend()));
+        this.#busSubscriptions.push(bus.on('power:cmd:reboot', () => this.reboot()));
+        this.#busSubscriptions.push(bus.on('power:cmd:poweroff', () => this.powerOff()));
     }
 
     /** Log out the current session via logind. */

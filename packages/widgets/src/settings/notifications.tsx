@@ -1,8 +1,8 @@
-import {generalSettings} from '@shade/core/settings/general.gschema';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {For} from 'gnim';
 import logger from '@shade/core/logger';
+import {generalSettings} from '@shade/core/settings/general.gschema';
+import {For} from 'gnim';
 
 type Settings = ReturnType<typeof generalSettings>;
 
@@ -24,22 +24,18 @@ function NotificationsGroup({settings}: {settings: Settings}) {
                 title={'Show Progress Bar'}
                 subtitle={'Countdown timer on notification popups'}
                 active={settings.notificationShowProgress}
-                onNotifyActive={self =>
-                    settings.setNotificationShowProgress(self.active)
-                }
+                onNotifyActive={(self) => settings.setNotificationShowProgress(self.active)}
             />
             <Adw.SpinRow
                 title={'History Limit'}
                 subtitle={'Maximum notifications to keep in history'}
                 adjustment={historyLimitAdjustment}
-                onNotifyValue={self =>
-                    settings.setNotificationHistoryLimit(self.value)
-                }
+                onNotifyValue={(self) => settings.setNotificationHistoryLimit(self.value)}
             />
             <Adw.EntryRow
                 title={'Ignore App'}
                 showApplyButton
-                onApply={self => {
+                onApply={(self) => {
                     const name = self.text.trim();
                     if (!name) return;
                     const current = settings.notificationIgnoredApps();
@@ -57,14 +53,10 @@ function NotificationsGroup({settings}: {settings: Settings}) {
                             cssClasses={['circular', 'destructive-action']}
                             iconName="list-remove-symbolic"
                             onClicked={() => {
-                                const current =
-                                    settings.notificationIgnoredApps();
-                                logger.info(
-                                    'settings',
-                                    `ignore app removed: ${app}`
-                                );
+                                const current = settings.notificationIgnoredApps();
+                                logger.info('settings', `ignore app removed: ${app}`);
                                 settings.setNotificationIgnoredApps(
-                                    current.filter(a => a !== app)
+                                    current.filter((a) => a !== app)
                                 );
                             }}
                         />
@@ -86,45 +78,35 @@ function SoundAlertsGroup({settings}: {settings: Settings}) {
                 title={'Enable Sound Alerts'}
                 subtitle={'Master toggle for all alert sounds'}
                 active={settings.soundAlertsEnabled}
-                onNotifyActive={self =>
-                    settings.setSoundAlertsEnabled(self.active)
-                }
+                onNotifyActive={(self) => settings.setSoundAlertsEnabled(self.active)}
             />
             <Adw.SwitchRow
                 title={'Notification Sound'}
                 subtitle={'Play sound on notification arrival'}
                 active={settings.soundAlertNotification}
                 sensitive={settings.soundAlertsEnabled}
-                onNotifyActive={self =>
-                    settings.setSoundAlertNotification(self.active)
-                }
+                onNotifyActive={(self) => settings.setSoundAlertNotification(self.active)}
             />
             <Adw.SwitchRow
                 title={'Capture Sound'}
                 subtitle={'Play sound on screenshot/recording'}
                 active={settings.soundAlertCapture}
                 sensitive={settings.soundAlertsEnabled}
-                onNotifyActive={self =>
-                    settings.setSoundAlertCapture(self.active)
-                }
+                onNotifyActive={(self) => settings.setSoundAlertCapture(self.active)}
             />
             <Adw.SwitchRow
                 title={'Battery Warning Sound'}
                 subtitle={'Play sound on low battery'}
                 active={settings.soundAlertBattery}
                 sensitive={settings.soundAlertsEnabled}
-                onNotifyActive={self =>
-                    settings.setSoundAlertBattery(self.active)
-                }
+                onNotifyActive={(self) => settings.setSoundAlertBattery(self.active)}
             />
             <Adw.SwitchRow
                 title={'System Sounds'}
                 subtitle={'Lock/unlock, power plug, device add/remove'}
                 active={settings.soundAlertSystem}
                 sensitive={settings.soundAlertsEnabled}
-                onNotifyActive={self =>
-                    settings.setSoundAlertSystem(self.active)
-                }
+                onNotifyActive={(self) => settings.setSoundAlertSystem(self.active)}
             />
         </Adw.PreferencesGroup>
     );

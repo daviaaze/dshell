@@ -5,8 +5,9 @@
  *   Env: XDPH_WINDOW_SHARING_LIST = "ID[HC>]CLASS[HT>]TITLE[HE>]..."
  *   Stdout: [SELECTION][r]/screen:NAME  or  [SELECTION][r]/window:ID
  */
-import GLib from 'gi://GLib?version=2.0';
+
 import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import type {HyprClient, HyprMonitor, XDPHWindow} from './types';
 
@@ -43,19 +44,13 @@ function runSync(cmd: string[]): {ok: boolean; out: string; err: string} {
  */
 export function parseWindowList(env: string | null): XDPHWindow[] {
     if (!env) {
-        logger.info(
-            CAT,
-            'XDPH_WINDOW_SHARING_LIST not set — no portal windows available'
-        );
+        logger.info(CAT, 'XDPH_WINDOW_SHARING_LIST not set — no portal windows available');
         return [];
     }
     const result: XDPHWindow[] = [];
 
-    const entries = env.split('[HE>]').filter(e => e.trim().length > 0);
-    logger.info(
-        CAT,
-        `parsing XDPH_WINDOW_SHARING_LIST: ${entries.length} entries`
-    );
+    const entries = env.split('[HE>]').filter((e) => e.trim().length > 0);
+    logger.info(CAT, `parsing XDPH_WINDOW_SHARING_LIST: ${entries.length} entries`);
 
     for (const entry of entries) {
         const idSep = entry.indexOf('[HC>]');
@@ -90,13 +85,9 @@ export function parseWindowList(env: string | null): XDPHWindow[] {
 export function getHyprMonitors(): HyprMonitor[] {
     const {ok, out, err} = runSync([HYPRCTL_BIN, '-j', 'monitors']);
     logger.info(CAT, `hyprctl -j monitors ok=${ok} outLen=${out.length}`);
-    if (err)
-        logger.warn(CAT, `hyprctl monitors stderr: ${err.substring(0, 200)}`);
+    if (err) logger.warn(CAT, `hyprctl monitors stderr: ${err.substring(0, 200)}`);
     if (!ok) {
-        logger.warn(
-            CAT,
-            'hyprctl monitors failed — are you running on Hyprland?'
-        );
+        logger.warn(CAT, 'hyprctl monitors failed — are you running on Hyprland?');
         return [];
     }
     try {
@@ -107,7 +98,7 @@ export function getHyprMonitors(): HyprMonitor[] {
         }
         type RawJson = Record<string, unknown>;
         const entries = raw as RawJson[];
-        return entries.map(m => ({
+        return entries.map((m) => ({
             name: m.name ?? 'Unknown',
             description: m.description ?? m.name ?? '',
             x: m.x ?? 0,
@@ -116,11 +107,7 @@ export function getHyprMonitors(): HyprMonitor[] {
             height: m.height ?? 0,
         })) as HyprMonitor[];
     } catch (e) {
-        logger.error(
-            CAT,
-            `getHyprMonitors: JSON parse failed. out=${out.substring(0, 200)}`,
-            e
-        );
+        logger.error(CAT, `getHyprMonitors: JSON parse failed. out=${out.substring(0, 200)}`, e);
         return [];
     }
 }
@@ -128,8 +115,7 @@ export function getHyprMonitors(): HyprMonitor[] {
 export function getHyprClients(): HyprClient[] {
     const {ok, out, err} = runSync([HYPRCTL_BIN, '-j', 'clients']);
     logger.info(CAT, `hyprctl -j clients ok=${ok} outLen=${out.length}`);
-    if (err)
-        logger.warn(CAT, `hyprctl clients stderr: ${err.substring(0, 200)}`);
+    if (err) logger.warn(CAT, `hyprctl clients stderr: ${err.substring(0, 200)}`);
     if (!ok) {
         logger.warn(CAT, 'hyprctl clients failed — window list will be empty');
         return [];
@@ -142,7 +128,7 @@ export function getHyprClients(): HyprClient[] {
         }
         type RawJson = Record<string, unknown>;
         const clients = raw as RawJson[];
-        return clients.map(c => ({
+        return clients.map((c) => ({
             address: c.address ?? '',
             class: c.class ?? c.initialClass ?? '',
             title: c.title ?? '',
@@ -152,11 +138,7 @@ export function getHyprClients(): HyprClient[] {
             hidden: c.hidden ?? false,
         })) as HyprClient[];
     } catch (e) {
-        logger.error(
-            CAT,
-            `getHyprClients: JSON parse failed. out=${out.substring(0, 200)}`,
-            e
-        );
+        logger.error(CAT, `getHyprClients: JSON parse failed. out=${out.substring(0, 200)}`, e);
         return [];
     }
 }
@@ -165,18 +147,12 @@ export function getHyprClients(): HyprClient[] {
  * Match an XDPH window to a hyprctl client.
  * Priority: 1) address match (if XDPH provides [HA>]), 2) class+title fuzzy match.
  */
-export function matchXDPHToHyprctl(
-    xdphWin: XDPHWindow,
-    clients: HyprClient[]
-): HyprClient | null {
+export function matchXDPHToHyprctl(xdphWin: XDPHWindow, clients: HyprClient[]): HyprClient | null {
     // Direct address match (only works if XDPH provides [HA>])
     if (xdphWin.address) {
-        const byAddr = clients.find(c => c.address === xdphWin.address);
+        const byAddr = clients.find((c) => c.address === xdphWin.address);
         if (byAddr) {
-            logger.debug(
-                CAT,
-                `matched XDPH window ${xdphWin.id} by address ${xdphWin.address}`
-            );
+            logger.debug(CAT, `matched XDPH window ${xdphWin.id} by address ${xdphWin.address}`);
             return byAddr;
         }
     }
@@ -185,10 +161,7 @@ export function matchXDPHToHyprctl(
     if (!xdphWin.clazz) return null;
 
     const candidates = clients.filter(
-        c =>
-            c.mapped &&
-            !c.hidden &&
-            c.class.toLowerCase() === xdphWin.clazz.toLowerCase()
+        (c) => c.mapped && !c.hidden && c.class.toLowerCase() === xdphWin.clazz.toLowerCase()
     );
 
     const first = candidates[0];
@@ -197,12 +170,12 @@ export function matchXDPHToHyprctl(
 
     // Multiple windows with same class — match by title
     const xdphTitle = xdphWin.title.toLowerCase();
-    const byTitle = candidates.find(c => c.title.toLowerCase() === xdphTitle);
+    const byTitle = candidates.find((c) => c.title.toLowerCase() === xdphTitle);
     if (byTitle) return byTitle;
 
     // Title prefix match
     const byPrefix = candidates.find(
-        c =>
+        (c) =>
             c.title.toLowerCase().startsWith(xdphTitle) ||
             xdphTitle.startsWith(c.title.toLowerCase())
     );

@@ -1,14 +1,14 @@
-import {Object, register, property} from 'gnim/gobject';
-import GLib from 'gi://GLib?version=2.0';
 import AstalBattery from 'gi://AstalBattery';
-import {bus} from '../bus';
-import ServiceRegistry from '@shade/core/serviceRegistry';
-import {getNotifdSafe} from '../notifications/guard';
-import {Process} from '@shade/core/process';
-import logger from '@shade/core/logger';
-import type {Accessor} from 'gnim';
+import GLib from 'gi://GLib?version=2.0';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
+import ServiceRegistry from '@shade/core/serviceRegistry';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import type {Accessor} from 'gnim';
+import {Object, property, register} from 'gnim/gobject';
+import {bus} from '../bus';
+import {getNotifdSafe} from '../notifications/guard';
 
 /** Fraction (0..1) at which low-battery warning sounds fire. */
 const LOW_BATTERY_THRESHOLD = 0.15;
@@ -40,8 +40,8 @@ export default class SoundAlertService extends Object {
     private static instance: SoundAlertService;
 
     static get_default() {
-        if (!this.instance) this.instance = new SoundAlertService();
-        return this.instance;
+        if (!SoundAlertService.instance) SoundAlertService.instance = new SoundAlertService();
+        return SoundAlertService.instance;
     }
 
     #enabled = true;
@@ -124,46 +124,26 @@ export default class SoundAlertService extends Object {
 
         // ── Bus events ──
 
-        this.#busUnsubs.push(
-            bus.on('capture:screenshot', () => this.play(SND_SCREEN_CAPTURE))
-        );
+        this.#busUnsubs.push(bus.on('capture:screenshot', () => this.play(SND_SCREEN_CAPTURE)));
         this.#busUnsubs.push(
             bus.on('capture:screenshot:area', () => this.play(SND_SCREEN_CAPTURE))
         );
         this.#busUnsubs.push(
-            bus.on('capture:screenshot:overlay', () =>
-                this.play(SND_SCREEN_CAPTURE)
-            )
+            bus.on('capture:screenshot:overlay', () => this.play(SND_SCREEN_CAPTURE))
         );
-        this.#busUnsubs.push(
-            bus.on('capture:record', () => this.play(SND_RECORD))
-        );
-        this.#busUnsubs.push(
-            bus.on('capture:record:area', () => this.play(SND_RECORD))
-        );
-        this.#busUnsubs.push(
-            bus.on('capture:record:window', () => this.play(SND_RECORD))
-        );
-        this.#busUnsubs.push(
-            bus.on('capture:record:output', () => this.play('service-logout'))
-        );
-        this.#busUnsubs.push(
-            bus.on('shell:lockscreen', () => this.play('screen-lock'))
-        );
+        this.#busUnsubs.push(bus.on('capture:record', () => this.play(SND_RECORD)));
+        this.#busUnsubs.push(bus.on('capture:record:area', () => this.play(SND_RECORD)));
+        this.#busUnsubs.push(bus.on('capture:record:window', () => this.play(SND_RECORD)));
+        this.#busUnsubs.push(bus.on('capture:record:output', () => this.play('service-logout')));
+        this.#busUnsubs.push(bus.on('shell:lockscreen', () => this.play('screen-lock')));
 
         // ── Screen unlock — listen to ShellState ──
 
-        this.#shellStateHandlerId = this.#shell.connect(
-            'notify',
-            (_source, pspec) => {
-                if (
-                    pspec.get_name() === 'screenlocked' &&
-                    !this.#shell.screenlocked
-                ) {
-                    this.play('screen-unlock');
-                }
+        this.#shellStateHandlerId = this.#shell.connect('notify', (_source, pspec) => {
+            if (pspec.get_name() === 'screenlocked' && !this.#shell.screenlocked) {
+                this.play('screen-unlock');
             }
-        );
+        });
 
         // ── External services (deferred) ──
 
@@ -188,25 +168,17 @@ export default class SoundAlertService extends Object {
             try {
                 const battery = AstalBattery.get_default();
                 this.#lastBatteryPercentage = battery.percentage;
-                this.#batteryHandlerId = battery.connect(
-                    'notify::percentage',
-                    () => {
-                        const pct = battery.percentage;
-                        const wasAbove =
-                            this.#lastBatteryPercentage > LOW_BATTERY_THRESHOLD;
-                        const isNowBelow = pct <= LOW_BATTERY_THRESHOLD;
-                        this.#lastBatteryPercentage = pct;
-                        if (wasAbove && isNowBelow && battery.isPresent) {
-                            this.play('dialog-warning');
-                        }
+                this.#batteryHandlerId = battery.connect('notify::percentage', () => {
+                    const pct = battery.percentage;
+                    const wasAbove = this.#lastBatteryPercentage > LOW_BATTERY_THRESHOLD;
+                    const isNowBelow = pct <= LOW_BATTERY_THRESHOLD;
+                    this.#lastBatteryPercentage = pct;
+                    if (wasAbove && isNowBelow && battery.isPresent) {
+                        this.play('dialog-warning');
                     }
-                );
+                });
             } catch (e) {
-                logger.warn(
-                    'sound',
-                    'AstalBattery not available, skipping battery alerts:',
-                    e
-                );
+                logger.warn('sound', 'AstalBattery not available, skipping battery alerts:', e);
             }
             return GLib.SOURCE_REMOVE;
         });
@@ -220,14 +192,10 @@ export default class SoundAlertService extends Object {
 
                 // Device added/removed
                 this.#upowerHandlerIds.push(
-                    upower.connect(SIG_DEVICE_ADDED, () =>
-                        this.play(SIG_DEVICE_ADDED)
-                    )
+                    upower.connect(SIG_DEVICE_ADDED, () => this.play(SIG_DEVICE_ADDED))
                 );
                 this.#upowerHandlerIds.push(
-                    upower.connect(SIG_DEVICE_REMOVED, () =>
-                        this.play(SIG_DEVICE_REMOVED)
-                    )
+                    upower.connect(SIG_DEVICE_REMOVED, () => this.play(SIG_DEVICE_REMOVED))
                 );
 
                 // Power plug/unplug — find the LINE_POWER device
@@ -282,15 +250,9 @@ export default class SoundAlertService extends Object {
         if (this.#dnd.dnd) return;
 
         try {
-            Process.execAsync(`canberra-gtk-play --id=${soundId}`).catch(
-                e => {
-                    logger.debug(
-                        'sound',
-                        `canberra-gtk-play --id=${soundId} failed:`,
-                        e
-                    );
-                }
-            );
+            Process.execAsync(`canberra-gtk-play --id=${soundId}`).catch((e) => {
+                logger.debug('sound', `canberra-gtk-play --id=${soundId} failed:`, e);
+            });
         } catch (e) {
             // Gio.Subprocess construction throws synchronously when the
             // binary vanishes between the availability check and spawn.
@@ -301,13 +263,9 @@ export default class SoundAlertService extends Object {
     /** Cached binary check; logs a single warning when unavailable. */
     #canberraUsable(): boolean {
         if (this.#canberraAvailable === null) {
-            this.#canberraAvailable =
-                GLib.find_program_in_path('canberra-gtk-play') !== null;
+            this.#canberraAvailable = GLib.find_program_in_path('canberra-gtk-play') !== null;
             if (!this.#canberraAvailable) {
-                logger.warn(
-                    'sound',
-                    'canberra-gtk-play not found in PATH — sound alerts disabled'
-                );
+                logger.warn('sound', 'canberra-gtk-play not found in PATH — sound alerts disabled');
             }
         }
         return this.#canberraAvailable;
@@ -383,4 +341,8 @@ export default class SoundAlertService extends Object {
     }
 }
 
-defineService({name: 'SoundAlerts', service: SoundAlertService.get_default(), initArgs: () => [generalSettings()]});
+defineService({
+    name: 'SoundAlerts',
+    service: SoundAlertService.get_default(),
+    initArgs: () => [generalSettings()],
+});

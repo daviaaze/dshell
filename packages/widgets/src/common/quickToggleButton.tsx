@@ -1,6 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, computed, effect, isAccessor, type GnimNode} from 'gnim';
+import {type Accessor, computed, effect, type GnimNode, isAccessor} from 'gnim';
 import {usePopoverCleanup} from './popoverCleanup';
 
 interface QuickToggleButtonProps {
@@ -14,9 +14,7 @@ interface QuickToggleButtonProps {
     active?: Accessor<boolean> | boolean;
 }
 
-export const QuickToggleButton = (
-    props: QuickToggleButtonProps
-): GnimNode => {
+export const QuickToggleButton = (props: QuickToggleButtonProps): GnimNode => {
     // Neither Gtk.Button nor Adw.SplitButton expose an `active` state that
     // fits a toggle — reflect `active` through the 'active' css class.
     // Narrow via local consts so instanceof narrowing holds inside the closure.
@@ -47,24 +45,31 @@ export const QuickToggleButton = (
             }
         });
 
-        return <Adw.SplitButton
+        return (
+            <Adw.SplitButton
                 visible={props.visible ?? true}
                 cssClasses={mergedCss}
                 hexpand={props.hexpand ?? true}
-                ref={self => { splitButton = self; usePopoverCleanup(self); }}
+                ref={(self) => {
+                    splitButton = self;
+                    usePopoverCleanup(self);
+                }}
                 onClicked={props.onClick}
             >
                 {popoverNode}
                 <Adw.ButtonContent iconName={props.icon} label={props.label} />
-            </Adw.SplitButton>;
+            </Adw.SplitButton>
+        );
     }
 
-    return <Gtk.Button
+    return (
+        <Gtk.Button
             visible={props.visible ?? true}
             cssClasses={mergedCss}
             hexpand={props.hexpand ?? true}
             onClicked={props.onClick}
         >
             <Adw.ButtonContent iconName={props.icon} label={props.label} />
-        </Gtk.Button>;
+        </Gtk.Button>
+    );
 };

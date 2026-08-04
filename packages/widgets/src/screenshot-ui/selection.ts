@@ -64,10 +64,7 @@ export function isScreenshotMode(selectedMode: string): boolean {
  * monitor), so area rects must be offset by the monitor origin; window
  * and monitor rects are already global.
  */
-export function buildGeometry(
-    target: string,
-    sel: SelectionState
-): BoundaryGeometry | null {
+export function buildGeometry(target: string, sel: SelectionState): BoundaryGeometry | null {
     if (target === 'fullscreen') return null;
 
     const origin = sel.monOrigin;
@@ -152,10 +149,6 @@ export function loadWindows(
 }
 
 /** Get the origin of the currently focused monitor. */
-export function getMonitorOrigin(
-    focusedMonitor: {x: number; y: number} | null
-): Point {
-    return focusedMonitor
-        ? {x: focusedMonitor.x, y: focusedMonitor.y}
-        : {x: 0, y: 0};
+export function getMonitorOrigin(focusedMonitor: {x: number; y: number} | null): Point {
+    return focusedMonitor ? {x: focusedMonitor.x, y: focusedMonitor.y} : {x: 0, y: 0};
 }

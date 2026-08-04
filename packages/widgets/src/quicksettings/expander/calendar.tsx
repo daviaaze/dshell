@@ -1,5 +1,5 @@
-import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib';
+import Gtk from 'gi://Gtk?version=4.0';
 import {IconInfoRow} from '../../common/iconInfoRow';
 
 function updateCalendar(calendar: Gtk.Calendar) {
@@ -10,10 +10,7 @@ function updateCalendar(calendar: Gtk.Calendar) {
 }
 
 export const Calendar = () => (
-    <Gtk.Calendar
-        cssClasses={['card', 'p-12']}
-        ref={self => updateCalendar(self)}
-    />
+    <Gtk.Calendar cssClasses={['card', 'p-12']} ref={(self) => updateCalendar(self)} />
 );
 
 export const CalendarIcon = () => {

@@ -9,7 +9,7 @@
  */
 
 import SessionLockService from '../session/sessionLockService';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('SessionLockService singleton', () => {
     it('get_default returns the same instance', () => {

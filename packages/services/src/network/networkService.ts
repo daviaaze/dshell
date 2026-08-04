@@ -4,11 +4,12 @@
  * Handles the lazy D-Bus initialization of the wifi device proxy
  * so widgets only need to bind to reactive properties.
  */
-import {Object, register, property} from 'gnim/gobject';
+
 import Network from 'gi://AstalNetwork';
-import {bus} from '../bus';
-import logger from '@shade/core/logger';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Object, property, register} from 'gnim/gobject';
+import {bus} from '../bus';
 
 let _instance: NetworkService | null = null;
 
@@ -103,13 +104,9 @@ export default class NetworkService extends Object {
             };
 
             this.#wifiSignalIds.push(w.connect('notify::state', onPropChanged));
-            this.#wifiSignalIds.push(
-                w.connect('notify::strength', onPropChanged)
-            );
+            this.#wifiSignalIds.push(w.connect('notify::strength', onPropChanged));
             this.#wifiSignalIds.push(w.connect('notify::ssid', onPropChanged));
-            this.#wifiSignalIds.push(
-                w.connect('notify::enabled', onPropChanged)
-            );
+            this.#wifiSignalIds.push(w.connect('notify::enabled', onPropChanged));
         }
 
         this.notify('wifi-ssid');

@@ -1,5 +1,5 @@
 import GLib from 'gi://GLib?version=2.0';
-import Gtk from 'gi://Gtk?version=4.0';
+import type Gtk from 'gi://Gtk?version=4.0';
 
 /**
  * Run `tick` every `intervalMs` for as long as `widget` stays attached to the

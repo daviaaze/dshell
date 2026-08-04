@@ -1,10 +1,10 @@
-import Wireplumber from 'gi://AstalWp';
+import type Wireplumber from 'gi://AstalWp';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, bind, createState, For, With} from 'gnim';
-import {Slider} from './slider';
 import {getVolumeIcon} from '@shade/services/audio/icons';
 import {bus} from '@shade/services/bus';
+import {type Accessor, bind, createState, For, With} from 'gnim';
 import AppMixer from '../quicksettings/appMixer';
+import {Slider} from './slider';
 
 export {getVolumeIcon};
 
@@ -51,52 +51,42 @@ export const AudioEndpointControl = ({
                 max={100}
                 onIconClick={() => bus.emit('audio:toggle-mute', {device})}
                 icon={getVolumeIcon(device, mutedIcon)}
-                value={bind(device, 'volume').as(v => v * 100)}
-                setValue={value =>
-                    bus.emit('audio:set-volume', {device, value: value / 100})
-                }
+                value={bind(device, 'volume').as((v) => v * 100)}
+                setValue={(value) => bus.emit('audio:set-volume', {device, value: value / 100})}
             />
         </Gtk.Box>
     );
 
     const DevicesList = () => (
-        <Gtk.Box
-            cssClasses={['p-12']}
-            spacing={12}
-            orientation={Gtk.Orientation.VERTICAL}
-        >
-            <For each={devices}>{d => <DeviceWidget device={d} />}</For>
+        <Gtk.Box cssClasses={['p-12']} spacing={12} orientation={Gtk.Orientation.VERTICAL}>
+            <For each={devices}>{(d) => <DeviceWidget device={d} />}</For>
         </Gtk.Box>
     );
 
     const TabbedContent = () => (
         <Gtk.Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-            <Gtk.Box
-                spacing={0}
-                halign={Gtk.Align.CENTER}
-                cssClasses={['linked']}
-            >
+            <Gtk.Box spacing={0} halign={Gtk.Align.CENTER} cssClasses={['linked']}>
                 <Gtk.ToggleButton
-                    active={tab.as(t => t === 'devices')}
+                    active={tab.as((t) => t === 'devices')}
                     onClicked={() => setTab('devices')}
                     label="Devices"
                 />
                 <Gtk.ToggleButton
-                    active={tab.as(t => t === 'apps')}
+                    active={tab.as((t) => t === 'apps')}
                     onClicked={() => setTab('apps')}
                     label="Applications"
                 />
             </Gtk.Box>
             <Gtk.Box
-                visible={tab.as(t => t === 'devices')}
+                visible={tab.as((t) => t === 'devices')}
                 cssClasses={['popover-padded']}
                 spacing={12}
                 orientation={Gtk.Orientation.VERTICAL}
             >
-                <For each={devices}>{d => <DeviceWidget device={d} />}</For>
+                <For each={devices}>{(d) => <DeviceWidget device={d} />}</For>
             </Gtk.Box>
             <Gtk.Box
-                visible={tab.as(t => t === 'apps')}
+                visible={tab.as((t) => t === 'apps')}
                 cssClasses={['popover-padded', 'p-12']}
                 spacing={12}
                 orientation={Gtk.Orientation.VERTICAL}
@@ -110,38 +100,32 @@ export const AudioEndpointControl = ({
         <Gtk.Box
             visible={visible}
             spacing={4}
-            cssClasses={revealed.as(r =>
-                r ? ['card', 'audio-config'] : ['audio-config']
-            )}
+            cssClasses={revealed.as((r) => (r ? ['card', 'audio-config'] : ['audio-config']))}
             orientation={Gtk.Orientation.VERTICAL}
         >
             <Gtk.Box spacing={4}>
                 <With value={defaultDevice}>
-                    {device =>
+                    {(device) =>
                         device ? (
                             <Slider
                                 icon={getVolumeIcon(device, mutedIcon)}
                                 min={0}
                                 max={100}
-                                value={bind(device, 'volume').as(v => v * 100)}
-                                setValue={value =>
+                                value={bind(device, 'volume').as((v) => v * 100)}
+                                setValue={(value) =>
                                     bus.emit('audio:set-volume', {
                                         device,
                                         value: value / 100,
                                     })
                                 }
-                                onIconClick={() =>
-                                    bus.emit('audio:toggle-mute', {device})
-                                }
+                                onIconClick={() => bus.emit('audio:toggle-mute', {device})}
                             />
                         ) : null
                     }
                 </With>
                 <Gtk.Button
                     onClicked={() => setRevealed(!revealed())}
-                    iconName={revealed.as(v =>
-                        v ? 'go-up-symbolic' : 'go-down-symbolic'
-                    )}
+                    iconName={revealed.as((v) => (v ? 'go-up-symbolic' : 'go-down-symbolic'))}
                 />
             </Gtk.Box>
             <Gtk.Revealer revealChild={revealed}>

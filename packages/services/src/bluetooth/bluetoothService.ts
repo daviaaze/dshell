@@ -3,11 +3,12 @@
  *
  * Handles lazy D-Bus initialization so widgets only bind to reactive properties.
  */
-import {Object, register, property} from 'gnim/gobject';
+
 import Bluetooth from 'gi://AstalBluetooth';
+import {defineService} from '@shade/core/define';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
-import {defineService} from '@shade/core/define';
+import {Object, property, register} from 'gnim/gobject';
 
 let _instance: BluetoothService | null = null;
 
@@ -40,17 +41,15 @@ export default class BluetoothService extends Object {
     @property
     get connectedDeviceNames(): string {
         return this.devices
-            .filter(d => d.connected)
-            .map(d => d.name)
+            .filter((d) => d.connected)
+            .map((d) => d.name)
             .join(', ');
     }
 
     @property
     get iconName(): string {
         if (!this.isPowered) return 'bluetooth-disconnected-symbolic';
-        return this.isConnected
-            ? 'bluetooth-active-symbolic'
-            : 'bluetooth-disconnected-symbolic';
+        return this.isConnected ? 'bluetooth-active-symbolic' : 'bluetooth-disconnected-symbolic';
     }
 
     /** Initialize the AstalBluetooth D-Bus proxy. Call once during boot. */
@@ -61,11 +60,7 @@ export default class BluetoothService extends Object {
         try {
             this.#bt = Bluetooth.get_default();
         } catch (e) {
-            logger.error(
-                'bluetoothService',
-                'Failed to init AstalBluetooth:',
-                e
-            );
+            logger.error('bluetoothService', 'Failed to init AstalBluetooth:', e);
             return;
         }
 

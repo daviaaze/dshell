@@ -3,7 +3,7 @@
  * bindable items property default before init().
  */
 import TrayService from '../desktop/trayService';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('TrayService', () => {
     it('returns the same singleton on repeated get_default()', () => {

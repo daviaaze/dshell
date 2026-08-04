@@ -1,5 +1,5 @@
-import {createRoot} from 'gnim';
 import WindowManager from '@shade/services/state/windowManager';
+import {createRoot} from 'gnim';
 import {createSettingsWindow} from './index';
 
 let settingsDispose: (() => void) | null = null;
@@ -24,7 +24,7 @@ export function openSettings() {
     // Dispose previous scope — unsubscribes settings-page subscriptions
     settingsDispose?.();
     settingsDispose = null;
-    const win = createRoot(dispose => {
+    const win = createRoot((dispose) => {
         settingsDispose = dispose;
         return createSettingsWindow();
     });

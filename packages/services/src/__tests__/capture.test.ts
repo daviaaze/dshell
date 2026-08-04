@@ -2,7 +2,7 @@
  * Smoke tests for capture services — verify module loads and singleton.
  */
 import Screenshot from '../capture/screenshot';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('Screenshot', () => {
     it('get_default returns same instance', () => {

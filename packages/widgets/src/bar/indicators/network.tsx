@@ -1,8 +1,8 @@
 import Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
+import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import {createState, effect, onCleanup} from 'gnim';
 import {wifiIconName} from '../../quicksettings/network/utils';
-import {connectFor, cleanupNode} from '@shade/core/connectFor';
 
 export default () => {
     const network = Network.get_default();
@@ -52,9 +52,7 @@ export default () => {
                 setIconName(wifiIconName(w.strength, w.enabled, w.state));
             } else if (primary === Network.Primary.WIRED) {
                 const wired = network.wired;
-                setIconName(
-                    wired?.iconName || 'network-wired-offline-symbolic'
-                );
+                setIconName(wired?.iconName || 'network-wired-offline-symbolic');
             } else {
                 setIconName('network-no-route-symbolic');
             }

@@ -1,37 +1,37 @@
-import Gdk from 'gi://Gdk?version=4.0';
-import Gio from 'gi://Gio?version=2.0';
-import {Object, register} from 'gnim/gobject';
-import {defineService} from '@shade/core/define';
+import type Gdk from 'gi://Gdk?version=4.0';
+import type Gio from 'gi://Gio?version=2.0';
 import {property} from '@shade/core/decorators';
+import {defineService} from '@shade/core/define';
 import logger from '@shade/core/logger';
+import {Object, register} from 'gnim/gobject';
 import {
-    RecorderBackend,
-    type CaptureMode,
-    type CaptureTarget,
-    type VirtualMonitor,
-    type BoundaryGeometry,
-} from './types';
-import {Recorder} from './recorder';
-import RecordingPrefs from './prefs';
-import {Stage} from './stage';
-import {
-    screenshotFullscreen,
     confirmArea as confirmAreaFlow,
+    screenshotFullscreen,
     startRecordingAfterOverlayClose,
 } from './captureFlow';
 import {registerCommands} from './commands';
+import RecordingPrefs from './prefs';
+import {Recorder} from './recorder';
 import {
     recordArea,
     recordOutput,
     recordOutputVisual,
-    recordWindowVisual,
-    recordWindowByAddress,
     recordWindow,
+    recordWindowByAddress,
+    recordWindowVisual,
 } from './recordTargets';
+import {Stage} from './stage';
+import type {
+    BoundaryGeometry,
+    CaptureMode,
+    CaptureTarget,
+    RecorderBackend,
+    VirtualMonitor,
+} from './types';
 import {createVirtualMonitor, removeVirtualMonitors} from './virtualMonitors';
 
+export type {BoundaryGeometry, VirtualMonitor} from './types';
 export {RecorderBackend, RecordingFormat} from './types';
-export type {VirtualMonitor, BoundaryGeometry} from './types';
 
 /**
  * Screen capture service — GObject facade that owns all bindable state and
@@ -52,15 +52,15 @@ export default class Screenshot extends Object {
     private static instance: Screenshot | undefined;
 
     static get_default() {
-        if (!this.instance) {
-            this.instance = new Screenshot();
+        if (!Screenshot.instance) {
+            Screenshot.instance = new Screenshot();
         }
-        return this.instance;
+        return Screenshot.instance;
     }
 
     #recorder = new Recorder({
         getAudioSettings: () => this.#prefs.snapshot(),
-        showBoundary: geometry => this.showBoundary(geometry),
+        showBoundary: (geometry) => this.showBoundary(geometry),
         hideBoundary: () => this.hideBoundary(),
         notifyState: () => {
             this.notify('recording');
@@ -112,10 +112,7 @@ export default class Screenshot extends Object {
         if (v) {
             this.#stage.captureSync();
             if (!this.#stage.pixPath) {
-                logger.warn(
-                    'screenshot',
-                    'stage capture failed, overlay will show live screen'
-                );
+                logger.warn('screenshot', 'stage capture failed, overlay will show live screen');
             }
         }
 
@@ -320,15 +317,8 @@ export default class Screenshot extends Object {
 
     // ── Virtual monitors ──────────────────────────────────────────────
 
-    async createVirtualMonitor(
-        resolution = '1920x1080',
-        fps = 60
-    ): Promise<VirtualMonitor | null> {
-        const vm = await createVirtualMonitor(
-            this.#virtualMonitors,
-            resolution,
-            fps
-        );
+    async createVirtualMonitor(resolution = '1920x1080', fps = 60): Promise<VirtualMonitor | null> {
+        const vm = await createVirtualMonitor(this.#virtualMonitors, resolution, fps);
         if (vm) {
             this.notify('virtual-monitors');
             this.notify('virtual-monitor-active');

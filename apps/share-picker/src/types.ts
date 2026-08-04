@@ -1,4 +1,4 @@
-import Gdk from 'gi://Gdk?version=4.0';
+import type Gdk from 'gi://Gdk?version=4.0';
 
 export interface XDPHWindow {
     id: string;

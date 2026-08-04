@@ -1,8 +1,8 @@
 import Wireplumber from 'gi://AstalWp';
 import GLib from 'gi://GLib?version=2.0';
-import {bind} from 'gnim';
-import logger from '@shade/core/logger';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {bind} from 'gnim';
 
 export function initAutoSwitch() {
     // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
@@ -14,7 +14,7 @@ export function initAutoSwitch() {
         binding.subscribe(() => {
             const speakers = binding();
             if (!speakers) return;
-            const currentIds = new Set(speakers.map(s => s.id));
+            const currentIds = new Set(speakers.map((s) => s.id));
 
             for (const speaker of speakers) {
                 // Skip devices we already knew about

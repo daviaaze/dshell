@@ -12,14 +12,15 @@
  *  - power off / reboot via systemd-logind
  *  - PAM fingerprint prompts (pam_fprintd info messages) shown inline
  */
-import Gtk from 'gi://Gtk?version=4.0';
-import Gdk from 'gi://Gdk?version=4.0';
+
 import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
+import Gdk from 'gi://Gdk?version=4.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import {bind, createState, onCleanup} from 'gnim';
 import {GreetSession} from './GreetSession';
-import {buildSessionList} from './sessions';
 import {powerOff, reboot} from './power';
+import {buildSessionList} from './sessions';
 
 export const Greeter = ({application}: {application: Gtk.Application}) => {
     const greeter = GreetSession.get_default();
@@ -102,7 +103,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
         >
             {/* Escape anywhere → back to username step */}
             <Gtk.EventControllerKey
-                ref={self => {
+                ref={(self) => {
                     self.connect('key-pressed', (_, keyval) => {
                         if (keyval === Gdk.KEY_Escape && showPassword()) {
                             goBack();
@@ -114,12 +115,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
             />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} vexpand>
                 {/* Power actions, top-right corner */}
-                <Gtk.Box
-                    halign={Gtk.Align.END}
-                    marginTop={16}
-                    marginEnd={16}
-                    spacing={8}
-                >
+                <Gtk.Box halign={Gtk.Align.END} marginTop={16} marginEnd={16} spacing={8}>
                     <Gtk.Button
                         iconName="system-reboot-symbolic"
                         tooltipText="Restart"
@@ -160,10 +156,10 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                     >
                         {/* Username entry (shown before password) */}
                         <Gtk.Entry
-                            visible={showPassword.as(v => !v)}
+                            visible={showPassword.as((v) => !v)}
                             placeholderText="Username"
                             text={username}
-                            onNotifyText={self => setUsername(self.text)}
+                            onNotifyText={(self) => setUsername(self.text)}
                             onActivate={() => handleLogin()}
                         />
 
@@ -172,7 +168,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                             visible={showPassword}
                             placeholderText="Password"
                             showPeekIcon
-                            ref={self => {
+                            ref={(self) => {
                                 passwordEntry = self;
                             }}
                             onActivate={() => handleLogin()}
@@ -180,7 +176,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
 
                         {/* Error message */}
                         <Gtk.Label
-                            visible={errorBinding.as(msg => msg.length > 0)}
+                            visible={errorBinding.as((msg) => msg.length > 0)}
                             cssClasses={['caption', 'error']}
                             wrap
                             label={errorBinding}
@@ -188,7 +184,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
 
                         {/* Info message (e.g. pam_fprintd "Place your finger...") */}
                         <Gtk.Label
-                            visible={infoBinding.as(msg => msg.length > 0)}
+                            visible={infoBinding.as((msg) => msg.length > 0)}
                             cssClasses={['caption']}
                             wrap
                             label={infoBinding}
@@ -197,9 +193,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                         {/* Loading indicator */}
                         <Adw.Spinner
                             visible={stateBinding.as(
-                                s =>
-                                    s === 'authenticating' ||
-                                    s === 'creating-session'
+                                (s) => s === 'authenticating' || s === 'creating-session'
                             )}
                         />
 
@@ -207,9 +201,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                         <Gtk.Button
                             cssClasses={['suggested-action']}
                             hexpand
-                            label={showPassword.as(v =>
-                                v ? 'Log In' : 'Continue'
-                            )}
+                            label={showPassword.as((v) => (v ? 'Log In' : 'Continue'))}
                             onClicked={() => handleLogin()}
                         />
 
@@ -231,7 +223,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                                 hexpand
                                 model={sessionNames}
                                 selected={0}
-                                ref={self => {
+                                ref={(self) => {
                                     sessionDropDown = self;
                                 }}
                             />

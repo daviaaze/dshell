@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {createState, effect, onCleanup} from 'gnim';
+import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import PowerProfiles from '@shade/services/power/powerProfiles';
-import {connectFor, cleanupNode} from '@shade/core/connectFor';
+import {createState, effect, onCleanup} from 'gnim';
 
 export default () => {
     const [visible, setVisible] = createState(false);
@@ -23,11 +23,6 @@ export default () => {
     });
 
     return (
-        <Gtk.Image
-            visible={visible}
-            iconName={iconName}
-            tooltipMarkup={tooltip}
-            pixelSize={18}
-        />
+        <Gtk.Image visible={visible} iconName={iconName} tooltipMarkup={tooltip} pixelSize={18} />
     );
 };

@@ -1,11 +1,11 @@
-import Inhibit from '@shade/services/power/inhibit';
-import {bus} from '@shade/services/bus';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
+import {bus} from '@shade/services/bus';
+import Inhibit from '@shade/services/power/inhibit';
 import {bind, computed} from 'gnim';
-import type {QuickButton} from './quickButton';
-import {QuickToggleButton} from '../../common/quickToggleButton';
 import {LinkedBox} from '../../common/linkedBox';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import type {QuickButton} from './quickButton';
 
 const SET_DURATION = 'power:inhibit:set-duration';
 
@@ -25,18 +25,13 @@ export default (): QuickButton => {
         idle() ? 'weather-clear-symbolic' : 'weather-clear-night-symbolic'
     );
 
-    const cssClasses = computed(() =>
-        idle() ? ['raised', 'suggested-action'] : ['raised']
-    );
+    const cssClasses = computed(() => (idle() ? ['raised', 'suggested-action'] : ['raised']));
 
     const popover = (
         <Gtk.Popover cssClasses={[]}>
             <LinkedBox>
                 <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 0)}>
-                    <Adw.ButtonContent
-                        iconName="weather-clear-symbolic"
-                        label="Indefinitely"
-                    />
+                    <Adw.ButtonContent iconName="weather-clear-symbolic" label="Indefinitely" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 5)}>
                     <Adw.ButtonContent
@@ -51,20 +46,14 @@ export default (): QuickButton => {
                     />
                 </Gtk.Button>
                 <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 60)}>
-                    <Adw.ButtonContent
-                        iconName="preferences-system-time-symbolic"
-                        label="1 hour"
-                    />
+                    <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="1 hour" />
                 </Gtk.Button>
                 <Gtk.Separator visible={bind(inhibit, 'idle')} />
                 <Gtk.Button
                     visible={bind(inhibit, 'idle')}
                     onClicked={() => bus.emit('power:inhibit:set-idle', false)}
                 >
-                    <Adw.ButtonContent
-                        iconName="window-close-symbolic"
-                        label="Turn Off"
-                    />
+                    <Adw.ButtonContent iconName="window-close-symbolic" label="Turn Off" />
                 </Gtk.Button>
             </LinkedBox>
         </Gtk.Popover>

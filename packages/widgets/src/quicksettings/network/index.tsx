@@ -1,13 +1,13 @@
+import type AstalNetwork from 'gi://AstalNetwork?version=0.1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, computed, createState, With} from 'gnim';
-import type {QuickButton} from '../button-grid/quickButton';
-import {QuickToggleButton} from '../../common/quickToggleButton';
-import {LinkedBox} from '../../common/linkedBox';
-import WifiPopover from './wifiPopover';
-import {wifiIconName} from './utils';
 import {bus} from '@shade/services/bus';
 import NetworkService from '@shade/services/network/networkService';
-import AstalNetwork from 'gi://AstalNetwork?version=0.1';
+import {bind, computed, createState, With} from 'gnim';
+import {LinkedBox} from '../../common/linkedBox';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import type {QuickButton} from '../button-grid/quickButton';
+import {wifiIconName} from './utils';
+import WifiPopover from './wifiPopover';
 
 const WifiQuicksettingsButton = (): QuickButton => {
     const net = NetworkService.get_default();
@@ -42,8 +42,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
         const ssid = wifiSsid();
         const enabled = wifiEnabled();
 
-        if (!ssid || ssid === '...' || ssid.trim() === '')
-            return enabled ? 'WiFi' : 'WiFi Off';
+        if (!ssid || ssid === '...' || ssid.trim() === '') return enabled ? 'WiFi' : 'WiFi Off';
         return ssid.length > 24 ? ssid.slice(0, 24) + '…' : ssid;
     });
 
@@ -61,11 +60,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
                         ) : (
                             <Gtk.Label
                                 cssClasses={['popover-padded-lg']}
-                                label={
-                                    net.wifiReady
-                                        ? 'No WiFi device'
-                                        : 'Loading…'
-                                }
+                                label={net.wifiReady ? 'No WiFi device' : 'Loading…'}
                             />
                         )
                     }

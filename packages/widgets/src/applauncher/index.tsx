@@ -1,22 +1,22 @@
-import {getHyprland} from '@shade/services/hyprland';
-import Astal from 'gi://Astal?version=4.0';
-import Gtk from 'gi://Gtk?version=4.0';
-import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import {bind, createState, For, Accessor} from 'gnim';
+import Astal from 'gi://Astal?version=4.0';
+import type AstalApps from 'gi://AstalApps?version=0.1';
+import Gdk from 'gi://Gdk?version=4.0';
+import Gtk from 'gi://Gtk?version=4.0';
+import logger from '@shade/core/logger';
+import {getApp} from '@shade/services/appHandle';
+import {bus} from '@shade/services/bus';
+import type {ClipboardEntry} from '@shade/services/clipboard/encryptedStore';
+import {getHyprland} from '@shade/services/hyprland';
+import type {LauncherMode, ListItem} from '@shade/services/search/launcher';
+import {launcherSearch} from '@shade/services/search/launcher';
+import {barSettings} from '@shade/services/settings/bar.gschema';
+import {fuzzyQuery} from '@shade/services/state/apps';
+import ShellState from '@shade/services/state/shellState';
+import WindowManager from '@shade/services/state/windowManager';
+import {type Accessor, bind, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
-import {barSettings} from '@shade/services/settings/bar.gschema';
-import {getApp} from '@shade/services/appHandle';
-import WindowManager from '@shade/services/state/windowManager';
-import {bus} from '@shade/services/bus';
-import ShellState from '@shade/services/state/shellState';
-import logger from '@shade/core/logger';
-import {launcherSearch} from '@shade/services/search/launcher';
-import type {LauncherMode, ListItem} from '@shade/services/search/launcher';
-import {fuzzyQuery} from '@shade/services/state/apps';
-import {ClipboardEntry} from '@shade/services/clipboard/encryptedStore';
-import AstalApps from 'gi://AstalApps?version=0.1';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
@@ -39,16 +39,14 @@ function SearchEntry({
         <Gtk.Entry
             hexpand
             css={'margin-right:4px;'}
-            placeholderText={mode.as(m =>
-                m === 'clipboard'
-                    ? 'Search clipboard history...'
-                    : 'Search your apps'
+            placeholderText={mode.as((m) =>
+                m === 'clipboard' ? 'Search clipboard history...' : 'Search your apps'
             )}
-            ref={self => {
+            ref={(self) => {
                 holder.current = self;
             }}
-            onNotifyText={self => updateSearch(self.text)}
-            onActivate={self => {
+            onNotifyText={(self) => updateSearch(self.text)}
+            onActivate={(self) => {
                 WindowManager.get_default().applauncher!.visible = false;
                 if (mode() === 'apps') {
                     const results = fuzzyQuery(self.text);
@@ -57,11 +55,10 @@ function SearchEntry({
             }}
         >
             <Gtk.EventControllerKey
-                ref={self => {
+                ref={(self) => {
                     self.connect('key-pressed', (_, keyval) => {
                         if (keyval === Gdk.KEY_Escape) {
-                            WindowManager.get_default().applauncher!.visible =
-                                false;
+                            WindowManager.get_default().applauncher!.visible = false;
                             return true;
                         }
                         return false;
@@ -87,18 +84,18 @@ function HintLabel({
     return (
         <>
             <Gtk.Label
-                visible={mode.as(m => m === 'clipboard')}
+                visible={mode.as((m) => m === 'clipboard')}
                 halign={Gtk.Align.START}
                 marginStart={4}
                 cssClasses={['caption']}
                 label="Clipboard History — type &gt; to search"
             />
             <Gtk.Label
-                visible={mode.as(m => m === 'apps')}
+                visible={mode.as((m) => m === 'apps')}
                 halign={Gtk.Align.START}
                 marginStart={4}
                 cssClasses={['caption']}
-                label={list.as(l => {
+                label={list.as((l) => {
                     if (!frecencyHasData() || l.length === 0) return '';
                     return holder.current?.text
                         ? 'Search results (boosted by usage)'
@@ -110,13 +107,7 @@ function HintLabel({
 }
 
 /** Scrollable results — app/clipboard buttons plus the empty state. */
-function ResultsList({
-    mode,
-    list,
-}: {
-    mode: Accessor<LauncherMode>;
-    list: Accessor<ListItem[]>;
-}) {
+function ResultsList({mode, list}: {mode: Accessor<LauncherMode>; list: Accessor<ListItem[]>}) {
     return (
         <Gtk.ScrolledWindow
             css={'padding-right:0px;'}
@@ -133,25 +124,21 @@ function ResultsList({
                         mode() === 'clipboard' ? (
                             <ClipboardButton item={item as ClipboardEntry} />
                         ) : (
-                            <AppButton
-                                application={item as AstalApps.Application}
-                            />
+                            <AppButton application={item as AstalApps.Application} />
                         )
                     }
                 </For>
                 <Adw.StatusPage
-                    visible={list.as(l => l.length === 0)}
-                    iconName={mode.as(m =>
-                        m === 'clipboard'
-                            ? 'edit-paste-symbolic'
-                            : 'system-search-symbolic'
+                    visible={list.as((l) => l.length === 0)}
+                    iconName={mode.as((m) =>
+                        m === 'clipboard' ? 'edit-paste-symbolic' : 'system-search-symbolic'
                     )}
-                    title={mode.as(m =>
+                    title={mode.as((m) =>
                         m === 'clipboard'
                             ? 'Nenhum resultado no histórico'
                             : 'Nenhum aplicativo encontrado'
                     )}
-                    description={mode.as(m =>
+                    description={mode.as((m) =>
                         m === 'clipboard'
                             ? 'Copie algo para aparecer aqui'
                             : 'Tente um termo de busca diferente'
@@ -181,11 +168,9 @@ export default () => {
 
     return (
         <Astal.Window
-            ref={self => {
+            ref={(self) => {
                 WindowManager.get_default().setApplauncher(self);
-                self.connect('realize', () =>
-                    logger.log('applauncher realized')
-                );
+                self.connect('realize', () => logger.log('applauncher realized'));
                 self.connect('map', () => logger.log('applauncher mapped'));
             }}
             valign={Gtk.Align.CENTER}
@@ -193,11 +178,10 @@ export default () => {
             margin={12}
             application={getApp()}
             visible={bind(shellState, 'launcherOpen')}
-            onNotifyVisible={self => {
+            onNotifyVisible={(self) => {
                 logger.log(`applauncher visible -> ${self.visible}`);
                 if (
-                    (barCfg.position() === LEFT ||
-                        barCfg.position() === RIGHT) &&
+                    (barCfg.position() === LEFT || barCfg.position() === RIGHT) &&
                     self.visible &&
                     ShellState.get_default().qsOpen
                 )
@@ -218,21 +202,15 @@ export default () => {
             cssClasses={['card', 'frame', 'background']}
             css={'padding-right:0px;'}
             keymode={Astal.Keymode.ON_DEMAND}
-            monitor={bind(hyprland, 'focused-monitor').as(m => m.id)}
-            anchor={barCfg.position.as(
-                p => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM
-            )}
+            monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
+            anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}
         >
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 cssClasses={['applauncher-body']}
                 spacing={8}
             >
-                <SearchEntry
-                    mode={mode}
-                    holder={holder}
-                    updateSearch={updateSearch}
-                />
+                <SearchEntry mode={mode} holder={holder} updateSearch={updateSearch} />
                 <HintLabel
                     mode={mode}
                     list={list}

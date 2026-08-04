@@ -25,10 +25,7 @@ export class EventBus<E> {
         };
     }
 
-    emit<K extends keyof E>(
-        event: K,
-        ...args: E[K] extends void ? [] : [payload: E[K]]
-    ): void {
+    emit<K extends keyof E>(event: K, ...args: E[K] extends void ? [] : [payload: E[K]]): void {
         const key = event as string;
         const fns = this.#listeners.get(key);
         if (!fns) return;

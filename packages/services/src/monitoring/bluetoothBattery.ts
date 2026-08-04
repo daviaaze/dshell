@@ -28,10 +28,7 @@ export function getBlueZBatteryPercentage(address: string): number | null {
 
 export function getDeviceBatteryPercentage(device: unknown): number | null {
     const d = device as {battery_percentage?: number; address?: string};
-    if (
-        typeof d.battery_percentage === 'number' &&
-        d.battery_percentage >= 0
-    ) {
+    if (typeof d.battery_percentage === 'number' && d.battery_percentage >= 0) {
         return d.battery_percentage * 100;
     }
     return d.address ? getBlueZBatteryPercentage(d.address) : null;

@@ -1,8 +1,8 @@
-import {Object, register, property} from 'gnim/gobject';
 import Mpris from 'gi://AstalMpris';
-import logger from '@shade/core/logger';
-import {connectFor, cleanupNode} from '@shade/core/connectFor';
+import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Object, property, register} from 'gnim/gobject';
 
 /**
  * MediaController — semantic command layer over AstalMpris.
@@ -15,8 +15,8 @@ export default class MediaController extends Object {
     private static instance: MediaController;
 
     static get_default(): MediaController {
-        if (!this.instance) this.instance = new MediaController();
-        return this.instance;
+        if (!MediaController.instance) MediaController.instance = new MediaController();
+        return MediaController.instance;
     }
 
     #mpris: Mpris.Mpris | null = null;
@@ -104,7 +104,9 @@ export default class MediaController extends Object {
             try {
                 const old = this.#activePlayer;
                 if (old) old.disconnect(id);
-            } catch {/* ignore */}
+            } catch {
+                /* ignore */
+            }
         }
         this.#playerPropSignals = [];
 

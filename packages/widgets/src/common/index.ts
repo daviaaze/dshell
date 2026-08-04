@@ -64,15 +64,15 @@
  * - **Reactive ready**: Accept `Accessor<T>` for any prop that should be reactive
  */
 
-// Re-export all components for convenience
-export {QuickToggleButton} from './quickToggleButton';
+export {ActionButton} from './actionButton';
+export {AudioEndpointControl, getVolumeIcon} from './audioControl';
 export {IconButton, IconMenuButton} from './iconButton';
 export {IconInfoRow} from './iconInfoRow';
 export {LinkedBox} from './linkedBox';
-export {Slider} from './slider';
-export {ActionButton} from './actionButton';
-export {PowerMenu} from './powerMenu';
-export {AudioEndpointControl, getVolumeIcon} from './audioControl';
-export {WeatherWidget, WeatherIcon} from './weatherWidget';
-export {usePopoverCleanup} from './popoverCleanup';
 export {default as Notification} from './notification';
+export {usePopoverCleanup} from './popoverCleanup';
+export {PowerMenu} from './powerMenu';
+// Re-export all components for convenience
+export {QuickToggleButton} from './quickToggleButton';
+export {Slider} from './slider';
+export {WeatherIcon, WeatherWidget} from './weatherWidget';

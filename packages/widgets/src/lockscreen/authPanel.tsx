@@ -1,12 +1,13 @@
-import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
-import {Accessor, bind, createState, effect} from 'gnim';
-import AuthSession from '@shade/services/session/authSession';
-import FingerprintAuth from '@shade/services/input/fingerprint';
+import Gtk from 'gi://Gtk?version=4.0';
+import type FingerprintAuth from '@shade/services/input/fingerprint';
+import type AuthSession from '@shade/services/session/authSession';
+import {type Accessor, bind, createState} from 'gnim';
 import {LockscreenWidgets} from './widgets';
 
 interface AuthPanelProps {
+    slot?: string;
     authSession: AuthSession;
     fingerprint: FingerprintAuth;
     fpStateBinding: Accessor<string>;
@@ -36,28 +37,33 @@ export const LockscreenAuthPanel = ({
             <Adw.Avatar size={AVATAR_SIZE} />
             <Gtk.Label label={GLib.get_real_name()} cssClasses={['title-3']} />
             <Gtk.PasswordEntry
-                ref={self => effect(() => self.grab_focus())}
+                ref={(self) => {
+                    self.connect('map', () => {
+                        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                            self.grab_focus();
+                            return GLib.SOURCE_REMOVE;
+                        });
+                    });
+                }}
                 placeholderText={'password'}
                 showPeekIcon
-                onActivate={self => {
+                onActivate={(self) => {
                     authSession.submitPassword(self.get_text());
                     setPassword('');
                 }}
             />
             <Gtk.Label
-                visible={bind(authSession, 'authStatus').as(s => s.length > 0)}
+                visible={bind(authSession, 'authStatus').as((s) => s.length > 0)}
                 cssClasses={['caption']}
                 label={bind(authSession, 'authStatus')}
             />
             <Gtk.Spinner
-                visible={fpStateBinding.as(
-                    s => s === 'verifying' || s === 'initializing'
-                )}
+                visible={fpStateBinding.as((s) => s === 'verifying' || s === 'initializing')}
                 spinning
             />
             <Gtk.Button
-                visible={fpStateBinding.as(s => s === 'error')}
-                label={fpErrorBinding.as(msg => msg ?? 'Retry fingerprint')}
+                visible={fpStateBinding.as((s) => s === 'error')}
+                label={fpErrorBinding.as((msg) => msg ?? 'Retry fingerprint')}
                 cssClasses={['flat']}
                 onClicked={() => fingerprint.retry()}
             />

@@ -1,7 +1,7 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import ShellState from '@shade/services/state/shellState';
-import {Accessor, bind} from 'gnim';
+import {type Accessor, bind} from 'gnim';
 
 export default ({visible = true}: {visible?: boolean | Accessor<boolean>}) => {
     const shellState = ShellState.get_default();

@@ -7,8 +7,8 @@
  * Run: gjs -m src/lib/__tests__/soundAlerts.test.ts
  */
 
-import {describe, it, expect, run} from './test-runner';
 import ServiceRegistry, {type Service} from '@shade/core/serviceRegistry';
+import {describe, expect, it, run} from './test-runner';
 
 // ── Mock ShellState ───────────────────────────────────────────────
 

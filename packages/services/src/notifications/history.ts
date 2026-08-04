@@ -1,12 +1,12 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib?version=2.0';
-import {Object, register, property} from 'gnim/gobject';
-import logger from '@shade/core/logger';
-import {getNotifdSafe} from './guard';
-import {readFile} from '@shade/core/file';
-import {Accessor} from 'gnim';
 import {defineService} from '@shade/core/define';
+import {readFile} from '@shade/core/file';
+import logger from '@shade/core/logger';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import type {Accessor} from 'gnim';
+import {Object, property, register} from 'gnim/gobject';
+import {getNotifdSafe} from './guard';
 
 const CACHE_DIR = `${GLib.get_user_cache_dir()}/shade`;
 const HISTORY_FILE = `${CACHE_DIR}/notifications.json`;
@@ -41,12 +41,7 @@ function writeHistoryFile(history: HistoryEntry[]) {
         const file = Gio.File.new_for_path(HISTORY_FILE);
         file.replace_contents(raw, null, false, Gio.FileCreateFlags.NONE, null);
         // Set 0600 perms so notification data isn't world-readable
-        file.set_attribute_uint32(
-            'unix::mode',
-            0o600,
-            Gio.FileQueryInfoFlags.NONE,
-            null
-        );
+        file.set_attribute_uint32('unix::mode', 0o600, Gio.FileQueryInfoFlags.NONE, null);
     } catch (e) {
         logger.error('history', 'save failed:', e);
     }
@@ -69,8 +64,8 @@ function saveHistory(history: HistoryEntry[]) {
 export default class NotificationHistory extends Object {
     private static instance: NotificationHistory;
     static get_default() {
-        if (!this.instance) this.instance = new NotificationHistory();
-        return this.instance;
+        if (!NotificationHistory.instance) NotificationHistory.instance = new NotificationHistory();
+        return NotificationHistory.instance;
     }
 
     #history: HistoryEntry[] = [];
@@ -88,8 +83,7 @@ export default class NotificationHistory extends Object {
         notificationIgnoredApps: Accessor<string[]>;
     }) {
         this.#limit = settings.notificationHistoryLimit() || 100;
-        this.#ignoredApps =
-            settings.notificationIgnoredApps()?.map(a => a.toLowerCase()) || [];
+        this.#ignoredApps = settings.notificationIgnoredApps()?.map((a) => a.toLowerCase()) || [];
 
         settings.notificationHistoryLimit.subscribe(() => {
             const newLimit = settings.notificationHistoryLimit();
@@ -99,9 +93,7 @@ export default class NotificationHistory extends Object {
         });
 
         settings.notificationIgnoredApps.subscribe(() => {
-            const newApps =
-                settings.notificationIgnoredApps()?.map(a => a.toLowerCase()) ||
-                [];
+            const newApps = settings.notificationIgnoredApps()?.map((a) => a.toLowerCase()) || [];
             this.#ignoredApps = newApps;
         });
     }
@@ -138,7 +130,7 @@ export default class NotificationHistory extends Object {
 
     add(entry: HistoryEntry) {
         // Avoid duplicates by ID
-        this.#history = this.#history.filter(h => h.id !== entry.id);
+        this.#history = this.#history.filter((h) => h.id !== entry.id);
         this.#history.unshift(entry);
         if (this.#history.length > this.#limit) {
             this.#history = this.#history.slice(0, this.#limit);
@@ -154,7 +146,7 @@ export default class NotificationHistory extends Object {
     }
 
     remove(id: number) {
-        this.#history = this.#history.filter(h => h.id !== id);
+        this.#history = this.#history.filter((h) => h.id !== id);
         saveHistory(this.#history);
         this.notify('history');
     }
@@ -169,7 +161,7 @@ export default class NotificationHistory extends Object {
     }
 
     setIgnoredApps(apps: string[]) {
-        this.#ignoredApps = apps.map(a => a.toLowerCase());
+        this.#ignoredApps = apps.map((a) => a.toLowerCase());
     }
 
     dispose() {
@@ -187,4 +179,8 @@ export default class NotificationHistory extends Object {
     }
 }
 
-defineService({name: 'NotificationHistory', service: NotificationHistory.get_default(), initArgs: () => [generalSettings()]});
+defineService({
+    name: 'NotificationHistory',
+    service: NotificationHistory.get_default(),
+    initArgs: () => [generalSettings()],
+});

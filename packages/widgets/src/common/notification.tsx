@@ -1,11 +1,11 @@
+import Adw from 'gi://Adw?version=1';
 import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
-import Adw from 'gi://Adw?version=1';
-import {For, bind} from 'gnim';
-import {tickWhileAttached} from '@shade/core/widgetTimer';
 import {relativeTime} from '@shade/core/time';
+import {tickWhileAttached} from '@shade/core/widgetTimer';
 import {getExpireMs} from '@shade/services/notifications/expire';
 import {getNotifdSafe} from '@shade/services/notifications/guard';
+import {bind, For} from 'gnim';
 
 /**
  * Shared notification card header — app icon, summary, timestamp and close.
@@ -44,11 +44,7 @@ function CardHeader({
                     />
                 </Gtk.Box>
                 {appName ? (
-                    <Gtk.Label
-                        cssClasses={['caption', 'dim-label']}
-                        label={appName}
-                        xalign={0}
-                    />
+                    <Gtk.Label cssClasses={['caption', 'dim-label']} label={appName} xalign={0} />
                 ) : null}
             </Gtk.Box>
             <Gtk.Button
@@ -56,11 +52,9 @@ function CardHeader({
                 valign={Gtk.Align.START}
                 // Libadwaita: circular + flat is the standard toast close
                 // button style.
-                cssClasses={[
-                    'circular',
-                    'flat',
-                    isCritical ? 'destructive-action' : '',
-                ].filter(Boolean)}
+                cssClasses={['circular', 'flat', isCritical ? 'destructive-action' : ''].filter(
+                    Boolean
+                )}
                 onClicked={onClose}
                 iconName={'window-close-symbolic'}
             />
@@ -110,27 +104,18 @@ function CardBody({
 /**
  * Optional countdown progress bar for timed notifications.
  */
-function CardProgress({
-    showProgress,
-    expireMs,
-}: {
-    showProgress: boolean;
-    expireMs: number;
-}) {
+function CardProgress({showProgress, expireMs}: {showProgress: boolean; expireMs: number}) {
     return (
         <Gtk.ProgressBar
             visible={showProgress}
             fraction={1}
-            ref={self => {
+            ref={(self) => {
                 if (!showProgress) return;
                 let elapsed = 0;
                 const interval = 50;
                 tickWhileAttached(self, interval, () => {
                     elapsed += interval;
-                    const remaining = Math.max(
-                        0,
-                        (expireMs - elapsed) / expireMs
-                    );
+                    const remaining = Math.max(0, (expireMs - elapsed) / expireMs);
                     self.set_fraction(remaining);
                     return remaining > 0;
                 });
@@ -142,16 +127,12 @@ function CardProgress({
 /**
  * Optional notification action buttons, filtered to non-empty labels.
  */
-function CardActions({
-    notification,
-}: {
-    notification: Notifd.Notification;
-}) {
+function CardActions({notification}: {notification: Notifd.Notification}) {
     return (
         <Gtk.Box spacing={4}>
             <For
-                each={bind(notification, 'actions').as(actions =>
-                    actions.filter(a => a.label && a.label.trim() !== '')
+                each={bind(notification, 'actions').as((actions) =>
+                    actions.filter((a) => a.label && a.label.trim() !== '')
                 )}
             >
                 {(action: Notifd.Action) => (
@@ -231,7 +212,7 @@ export default ({
                 cssClasses={['card', 'p-12', urgencyClass].filter(Boolean)}
                 spacing={8}
                 orientation={Gtk.Orientation.VERTICAL}
-                ref={self => {
+                ref={(self) => {
                     card = self;
                     // Clicking the card body invokes the default action.
                     if (onDefaultAction) {

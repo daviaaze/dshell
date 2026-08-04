@@ -32,10 +32,7 @@ export function toArray<T>(list: unknown): T[] {
         }
     }
     if (totalCount > 0 && skippedCount > 0) {
-        logger.debug(
-            'gir',
-            `toArray: ${skippedCount}/${totalCount} items skipped`
-        );
+        logger.debug('gir', `toArray: ${skippedCount}/${totalCount} items skipped`);
     }
     return arr;
 }

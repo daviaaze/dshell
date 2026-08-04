@@ -1,11 +1,11 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind} from 'gnim';
-import type {QuickButton} from './quickButton';
-import {QuickToggleButton} from '../../common/quickToggleButton';
-import {LinkedBox} from '../../common/linkedBox';
 import {bus} from '@shade/services/bus';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
+import {bind} from 'gnim';
+import {LinkedBox} from '../../common/linkedBox';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import type {QuickButton} from './quickButton';
 
 const SET_SCHEME = 'display:colorscheme:set';
 
@@ -16,24 +16,13 @@ export default (): QuickButton => {
         <Gtk.Popover cssClasses={[]}>
             <LinkedBox>
                 <Gtk.Button onClicked={() => bus.emit(SET_SCHEME, DarkModes.AUTO)}>
-                    <Adw.ButtonContent
-                        iconName="night-light-symbolic"
-                        label="Automatic"
-                    />
+                    <Adw.ButtonContent iconName="night-light-symbolic" label="Automatic" />
                 </Gtk.Button>
-                <Gtk.Button
-                    onClicked={() => bus.emit(SET_SCHEME, DarkModes.LIGHT)}
-                >
-                    <Adw.ButtonContent
-                        iconName="weather-clear-symbolic"
-                        label="Light Mode"
-                    />
+                <Gtk.Button onClicked={() => bus.emit(SET_SCHEME, DarkModes.LIGHT)}>
+                    <Adw.ButtonContent iconName="weather-clear-symbolic" label="Light Mode" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={() => bus.emit(SET_SCHEME, DarkModes.DARK)}>
-                    <Adw.ButtonContent
-                        iconName="weather-clear-night-symbolic"
-                        label="Dark Mode"
-                    />
+                    <Adw.ButtonContent iconName="weather-clear-night-symbolic" label="Dark Mode" />
                 </Gtk.Button>
             </LinkedBox>
         </Gtk.Popover>
@@ -43,7 +32,7 @@ export default (): QuickButton => {
         widget: (
             <QuickToggleButton
                 icon={bind(colorScheme, 'iconName')}
-                label={bind(colorScheme, 'colorScheme').as(c => {
+                label={bind(colorScheme, 'colorScheme').as((c) => {
                     if (c === DarkModes.AUTO) return 'Auto';
                     if (c === DarkModes.LIGHT) return 'Light Mode';
                     return 'Dark Mode';

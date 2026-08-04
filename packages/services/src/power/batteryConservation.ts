@@ -1,13 +1,12 @@
-import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import logger from '@shade/core/logger';
+import GLib from 'gi://GLib?version=2.0';
 import {readFile} from '@shade/core/file';
+import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
-import {Accessor, createState} from 'gnim';
+import {type Accessor, createState} from 'gnim';
 import {bus} from '../bus';
 
-const PATH =
-    '/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode';
+const PATH = '/sys/bus/platform/drivers/ideapad_acpi/VPC2004:00/conservation_mode';
 
 /**
  * Check if the sysfs file exists and is readable.
@@ -28,11 +27,7 @@ function isWritable(): boolean {
     try {
         const file = Gio.File.new_for_path(PATH);
         if (!file.query_exists(null)) return false;
-        const info = file.query_info(
-            'access::can-write',
-            Gio.FileQueryInfoFlags.NONE,
-            null
-        );
+        const info = file.query_info('access::can-write', Gio.FileQueryInfoFlags.NONE, null);
         return info.get_attribute_boolean('access::can-write');
     } catch {
         return false;
@@ -91,11 +86,7 @@ export const toggleConservationAsync = async (): Promise<boolean> => {
         await Process.pkexecAsync(`shade-conservation-toggle ${value}`);
         return true;
     } catch (err) {
-        logger.error(
-            'battery',
-            'Failed to toggle conservation via pkexec:',
-            err
-        );
+        logger.error('battery', 'Failed to toggle conservation via pkexec:', err);
         return false;
     }
 };

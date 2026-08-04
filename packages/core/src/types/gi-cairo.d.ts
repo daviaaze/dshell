@@ -20,13 +20,7 @@ declare module 'gi://cairo?version=1.0' {
         namespace cairo {
             interface Context {
                 $dispose(): void;
-                arc(
-                    xc: number,
-                    yc: number,
-                    radius: number,
-                    angle1: number,
-                    angle2: number
-                ): void;
+                arc(xc: number, yc: number, radius: number, angle1: number, angle2: number): void;
                 arcNegative(
                     xc: number,
                     yc: number,
@@ -82,12 +76,7 @@ declare module 'gi://cairo?version=1.0' {
                 popGroupToSource(): void;
                 pushGroup(): void;
                 pushGroupWithContent(content: Content): void;
-                rectangle(
-                    x: number,
-                    y: number,
-                    width: number,
-                    height: number
-                ): void;
+                rectangle(x: number, y: number, width: number, height: number): void;
                 relCurveTo(
                     dx1: number,
                     dy1: number,
@@ -103,11 +92,7 @@ declare module 'gi://cairo?version=1.0' {
                 rotate(angle: number): void;
                 save(): void;
                 scale(sx: number, sy: number): void;
-                selectFontFace(
-                    family: string,
-                    slant: number,
-                    weight: number
-                ): void;
+                selectFontFace(family: string, slant: number, weight: number): void;
                 setAntialias(antialias: Antialias): void;
                 setDash(dashes: number[], offset: number): void;
                 setFontSize(size: number): void;
@@ -119,17 +104,8 @@ declare module 'gi://cairo?version=1.0' {
                 setOperator(op: Operator): void;
                 setSource(pattern: Pattern): void;
                 setSourceRGB(red: number, green: number, blue: number): void;
-                setSourceRGBA(
-                    red: number,
-                    green: number,
-                    blue: number,
-                    alpha: number
-                ): void;
-                setSourceSurface(
-                    surface: Surface,
-                    x: number,
-                    y: number
-                ): void;
+                setSourceRGBA(red: number, green: number, blue: number, alpha: number): void;
+                setSourceSurface(surface: Surface, x: number, y: number): void;
                 setTolerance(tolerance: number): void;
                 showPage(): void;
                 showText(utf8: string): void;

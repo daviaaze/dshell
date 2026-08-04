@@ -21,7 +21,7 @@
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
-import {Object as GObject, register, property} from 'gnim/gobject';
+import {Object as GObject, property, register} from 'gnim/gobject';
 import {registerStyleSheet, updateStyleSheet} from './useStyle';
 
 // ── CSS custom property names ──
@@ -150,8 +150,8 @@ export class Theme extends GObject {
     private static instance: Theme;
 
     static get_default(): Theme {
-        if (!this.instance) this.instance = new Theme();
-        return this.instance;
+        if (!Theme.instance) Theme.instance = new Theme();
+        return Theme.instance;
     }
 
     #paletteKey: string;
@@ -250,15 +250,11 @@ export class Theme extends GObject {
     #debouncedReevaluate(): void {
         if (this.#reevaluateQueued) return;
         this.#reevaluateQueued = true;
-        GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            0,
-            () => {
-                this.#reevaluateQueued = false;
-                this.#reevaluate();
-                return GLib.SOURCE_REMOVE;
-            }
-        );
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0, () => {
+            this.#reevaluateQueued = false;
+            this.#reevaluate();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     #reevaluate(): void {
@@ -267,9 +263,7 @@ export class Theme extends GObject {
             const colors = this.#isDark ? sheet.dark : sheet.light;
             this.#applyTheme(colors);
         } else {
-            this.#applyTheme(
-                this.#isDark ? ADWAITA_COLORS : ADWAITA_COLORS_LIGHT
-            );
+            this.#applyTheme(this.#isDark ? ADWAITA_COLORS : ADWAITA_COLORS_LIGHT);
         }
     }
 
@@ -288,15 +282,8 @@ export class Theme extends GObject {
     #applyTheme(colors: ThemeColors): void {
         const rules: string[] = [];
         for (const [key, value] of Object.entries(colors)) {
-            if (
-                value === undefined ||
-                value === null ||
-                value === 'undefined'
-            ) {
-                logger.warn(
-                    'theme',
-                    `skipping undefined color: --shade-${key}`
-                );
+            if (value === undefined || value === null || value === 'undefined') {
+                logger.warn('theme', `skipping undefined color: --shade-${key}`);
                 continue;
             }
             const varName = `--shade-${key}`;

@@ -11,41 +11,30 @@
  *   Stdout: [SELECTION][r]/screen:NAME  or  [SELECTION][r]/window:ID
  */
 
+import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
 import {programArgs} from 'system';
 import './picker.css'; // auto-loaded as CssProvider by gnim dev/bundle
 import logger from '@shade/core/logger';
 import printOut from '@shade/core/stdout';
-import type {
-    MonitorState,
-    WindowState,
-    SelectFn,
-    XDPHWindow,
-} from './types';
-import {HYPRCTL_BIN, parseWindowList} from './protocol';
-import {buildSources} from './sources';
 import {
-    GRIM_BIN,
-    ensureTempDir,
-    cleanTempDir,
-    monPath,
-    winPath,
-    windowAddr,
-    runCapture,
-    loadTexture,
     captureMonitorSync,
     captureWindow,
+    cleanTempDir,
+    ensureTempDir,
+    GRIM_BIN,
+    loadTexture,
+    monPath,
+    runCapture,
+    windowAddr,
+    winPath,
 } from './capture';
 import {MonitorPoller} from './poller';
-import {
-    buildScreensTab,
-    buildWindowsTab,
-    buildCombinedTab,
-    type Tab,
-    type CombinedTab,
-} from './ui';
+import {HYPRCTL_BIN, parseWindowList} from './protocol';
+import {buildSources} from './sources';
+import type {MonitorState, SelectFn, WindowState, XDPHWindow} from './types';
+import {buildCombinedTab, buildScreensTab, buildWindowsTab, type CombinedTab, type Tab} from './ui';
 
 const CAT = 'share-picker';
 const APP_ID = 'com.caioasmuniz.shade_shell.share_picker';
@@ -78,14 +67,8 @@ function makeSelectFn(app: Gtk.Application, token: TokenState): SelectFn {
     };
 }
 
-function logSources(
-    monitors: MonitorState[],
-    windows: WindowState[]
-): void {
-    logger.info(
-        CAT,
-        `${monitors.length} monitors loaded, ${windows.length} windows loaded`
-    );
+function logSources(monitors: MonitorState[], windows: WindowState[]): void {
+    logger.info(CAT, `${monitors.length} monitors loaded, ${windows.length} windows loaded`);
     for (const m of monitors) {
         logger.info(
             CAT,
@@ -93,9 +76,7 @@ function logSources(
         );
     }
     for (const w of windows) {
-        const geo = w.geometry
-            ? `${w.geometry.width}x${w.geometry.height}`
-            : 'none';
+        const geo = w.geometry ? `${w.geometry.width}x${w.geometry.height}` : 'none';
         logger.info(CAT, `  window: ${w.info.clazz} geo=${geo}`);
     }
 }
@@ -173,19 +154,14 @@ function buildPicker(
     return {win, notebook, screensTab, windowsTab, combinedTab};
 }
 
-function captureAllWindows(
-    windows: WindowState[],
-    screens: Tab,
-    combined: CombinedTab
-): void {
+function captureAllWindows(windows: WindowState[], screens: Tab, combined: CombinedTab): void {
     windows.forEach((state, i) => {
         if (!state.geometry) return;
         const pic = screens.pics[i];
         if (pic) captureWindow(state, [pic]);
         // Also fill combined tab from the previous capture file
         const combinedPic = combined.windowPics[i];
-        if (combinedPic)
-            loadTexture(winPath(windowAddr(state)), combinedPic);
+        if (combinedPic) loadTexture(winPath(windowAddr(state)), combinedPic);
     });
 }
 
@@ -198,12 +174,9 @@ function captureCombinedOnce(
         const pic = combined.monitorPics[i];
         if (!pic) return;
         const path = monPath(state.info.name);
-        runCapture(
-            [GRIM_BIN, '-s', '0.25', '-o', state.info.name, path],
-            ok => {
-                if (ok) loadTexture(path, pic);
-            }
-        );
+        runCapture([GRIM_BIN, '-s', '0.25', '-o', state.info.name, path], (ok) => {
+            if (ok) loadTexture(path, pic);
+        });
     });
     windows.forEach((state, i) => {
         const pic = combined.windowPics[i];
@@ -211,15 +184,8 @@ function captureCombinedOnce(
         if (!pic || !g) return;
         const path = winPath(windowAddr(state));
         runCapture(
-            [
-                GRIM_BIN,
-                '-s',
-                '0.25',
-                '-g',
-                `${g.x},${g.y} ${g.width}x${g.height}`,
-                path,
-            ],
-            ok => {
+            [GRIM_BIN, '-s', '0.25', '-g', `${g.x},${g.y} ${g.width}x${g.height}`, path],
+            (ok) => {
                 if (ok) loadTexture(path, pic);
             }
         );
@@ -264,17 +230,12 @@ function onActivate(
 
     logger.debug(
         CAT,
-        'XDPH_WINDOW_SHARING_LIST=' +
-            (GLib.getenv('XDPH_WINDOW_SHARING_LIST') || '(null)')
+        'XDPH_WINDOW_SHARING_LIST=' + (GLib.getenv('XDPH_WINDOW_SHARING_LIST') || '(null)')
     );
     logger.debug(CAT, `GRIM_BIN=${GRIM_BIN}, HYPRCTL_BIN=${HYPRCTL_BIN}`);
-    if (!GRIM_BIN.includes('/'))
-        logger.warn(CAT, 'grim not found in PATH, previews will be blank');
+    if (!GRIM_BIN.includes('/')) logger.warn(CAT, 'grim not found in PATH, previews will be blank');
     if (!HYPRCTL_BIN.includes('/'))
-        logger.warn(
-            CAT,
-            'hyprctl not found in PATH, monitors/windows will be empty'
-        );
+        logger.warn(CAT, 'hyprctl not found in PATH, monitors/windows will be empty');
 
     const {monitors, windows} = buildSources(xdphWindows);
     logSources(monitors, windows);
@@ -286,9 +247,7 @@ function onActivate(
 
 function main() {
     const allowTokenDefault = programArgs.includes('--allow-token');
-    const xdphWindows = parseWindowList(
-        GLib.getenv('XDPH_WINDOW_SHARING_LIST')
-    );
+    const xdphWindows = parseWindowList(GLib.getenv('XDPH_WINDOW_SHARING_LIST'));
 
     const app = new Gtk.Application({applicationId: APP_ID, flags: 0});
     const token: TokenState = {value: allowTokenDefault};

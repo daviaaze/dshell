@@ -1,10 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {
-    formatClipboardPreview,
-    copyClipboardItem,
-} from '@shade/services/clipboard/index';
+import type {ClipboardEntry} from '@shade/services/clipboard/encryptedStore';
+import {copyClipboardItem, formatClipboardPreview} from '@shade/services/clipboard/index';
 import WindowManager from '@shade/services/state/windowManager';
-import {ClipboardEntry} from '@shade/services/clipboard/encryptedStore';
 
 export default ({item}: {item: ClipboardEntry}) => {
     const preview = formatClipboardPreview(item.content);
@@ -20,21 +17,12 @@ export default ({item}: {item: ClipboardEntry}) => {
             <Gtk.Box spacing={12} valign={Gtk.Align.CENTER}>
                 <Gtk.Image
                     iconName={
-                        item.type === 'image'
-                            ? 'image-x-generic-symbolic'
-                            : 'edit-paste-symbolic'
+                        item.type === 'image' ? 'image-x-generic-symbolic' : 'edit-paste-symbolic'
                     }
                     pixelSize={32}
                 />
-                <Gtk.Box
-                    orientation={Gtk.Orientation.VERTICAL}
-                    valign={Gtk.Align.CENTER}
-                >
-                    <Gtk.Label
-                        cssClasses={['title-2']}
-                        halign={Gtk.Align.START}
-                        label={preview}
-                    />
+                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER}>
+                    <Gtk.Label cssClasses={['title-2']} halign={Gtk.Align.START} label={preview} />
                     <Gtk.Label
                         halign={Gtk.Align.START}
                         label={`ID: ${item.id}`}

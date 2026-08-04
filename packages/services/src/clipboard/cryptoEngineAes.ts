@@ -5,9 +5,7 @@ import {KEY_SIZE, SBOX, xtime} from './cryptoEngineTables';
  */
 export function expandKey(key: Uint8Array): Uint8Array {
     if (key.length !== KEY_SIZE) {
-        throw new Error(
-            `AES-256 requires ${KEY_SIZE}-byte key, got ${key.length}`
-        );
+        throw new Error(`AES-256 requires ${KEY_SIZE}-byte key, got ${key.length}`);
     }
 
     const w = new Uint32Array(60);

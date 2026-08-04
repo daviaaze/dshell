@@ -3,8 +3,9 @@
  *
  * Run: gjs -m src/lib/__tests__/deferredSingleton.test.ts
  */
-import {describe, it, expect, run} from './test-runner';
+
 import {DeferredSingleton} from '@shade/core/deferredSingleton';
+import {describe, expect, it, run} from './test-runner';
 
 describe('DeferredSingleton', () => {
     it('returns the factory result on first get()', () => {
@@ -51,7 +52,7 @@ describe('DeferredSingleton', () => {
             () => {
                 throw new Error('fail');
             },
-            e => {
+            (e) => {
                 errorCaught = e;
             }
         );

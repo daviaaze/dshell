@@ -7,8 +7,8 @@
  * accessors work globally once initSettingsRoot() runs at boot.
  */
 
-export {barSettings} from './bar.gschema';
 export {generalSettings} from '@shade/core/settings/general.gschema';
 export {weatherSettings} from '../location/weather.gschema';
 export {timerSettings} from '../time/timer.gschema';
+export {barSettings} from './bar.gschema';
 export {screenCaptureSettings} from './screenCapture.gschema';

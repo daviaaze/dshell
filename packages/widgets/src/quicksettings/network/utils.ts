@@ -1,7 +1,7 @@
-import Gio from 'gi://Gio?version=2.0';
+import Network from 'gi://AstalNetwork';
+import type Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import NM from 'gi://NM?version=1.0';
-import Network from 'gi://AstalNetwork';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 
@@ -30,9 +30,7 @@ export function bytesToString(value: unknown): string | null {
         }
         if (len === 0) return '';
         try {
-            return new TextDecoder('utf-8', {fatal: false}).decode(
-                value.subarray(0, len)
-            );
+            return new TextDecoder('utf-8', {fatal: false}).decode(value.subarray(0, len));
         } catch {
             return null;
         }
@@ -73,11 +71,7 @@ export function bssidEquals(a: unknown, b: unknown): boolean {
  * Compute the correct WiFi icon name from device state.
  * Does NOT use AstalNetwork's unreliable `iconName` property.
  */
-export function wifiIconName(
-    strength: number,
-    enabled: boolean,
-    state: number
-): string {
+export function wifiIconName(strength: number, enabled: boolean, state: number): string {
     if (!enabled) return 'network-wireless-offline-symbolic';
 
     switch (state) {
@@ -89,8 +83,7 @@ export function wifiIconName(
         case Network.DeviceState.PREPARE:
             return 'network-wireless-acquiring-symbolic';
         case Network.DeviceState.ACTIVATED:
-            if (strength >= 75)
-                return 'network-wireless-signal-excellent-symbolic';
+            if (strength >= 75) return 'network-wireless-signal-excellent-symbolic';
             if (strength >= 50) return 'network-wireless-signal-good-symbolic';
             if (strength >= 25) return 'network-wireless-signal-ok-symbolic';
             return 'network-wireless-signal-weak-symbolic';
@@ -148,10 +141,7 @@ export function securityLabel(ap: Network.AccessPoint): string {
 
         // WPA1: WPA flags present with PSK or 802.1X
         if (wpa !== 0) {
-            if (
-                wpa & NM_AP_SEC_KEY_MGMT_PSK ||
-                wpa & NM_AP_SEC_KEY_MGMT_802_1X
-            ) {
+            if (wpa & NM_AP_SEC_KEY_MGMT_PSK || wpa & NM_AP_SEC_KEY_MGMT_802_1X) {
                 return 'WPA1';
             }
             // Some partial WPA support
@@ -256,9 +246,7 @@ export function findLiveAp(
             try {
                 const apBssid = bssidOf(ap);
                 if (apBssid && bssidEquals(apBssid, bssid)) return ap;
-            } catch {
-                continue;
-            }
+            } catch {}
         }
     }
 
@@ -268,9 +256,7 @@ export function findLiveAp(
             try {
                 const apSsid = ssidOf(ap);
                 if (apSsid === ssid) return ap;
-            } catch {
-                continue;
-            }
+            } catch {}
         }
     }
 
@@ -328,31 +314,22 @@ export function securityLabelFromKeyMgmt(keyMgmt: string | null): string {
 }
 
 /** Async wrapper for NM.RemoteConnection.commit_changes_async. */
-export function commitChangesAsync(
-    conn: NM.RemoteConnection,
-    saveToDisk: boolean
-): Promise<void> {
+export function commitChangesAsync(conn: NM.RemoteConnection, saveToDisk: boolean): Promise<void> {
     return new Promise((resolve, reject) => {
-        conn.commit_changes_async(
-            saveToDisk,
-            null,
-            (_source: unknown, res: Gio.AsyncResult) => {
-                try {
-                    conn.commit_changes_finish(res);
-                    resolve();
-                } catch (e) {
-                    logger.warn('network', 'commit_changes failed:', e);
-                    reject(e);
-                }
+        conn.commit_changes_async(saveToDisk, null, (_source: unknown, res: Gio.AsyncResult) => {
+            try {
+                conn.commit_changes_finish(res);
+                resolve();
+            } catch (e) {
+                logger.warn('network', 'commit_changes failed:', e);
+                reject(e);
             }
-        );
+        });
     });
 }
 
 /** Async wrapper for NM.RemoteConnection.delete_async. */
-export function deleteConnectionAsync(
-    conn: NM.RemoteConnection
-): Promise<void> {
+export function deleteConnectionAsync(conn: NM.RemoteConnection): Promise<void> {
     return new Promise((resolve, reject) => {
         conn.delete_async(null, (_source: unknown, res: Gio.AsyncResult) => {
             try {

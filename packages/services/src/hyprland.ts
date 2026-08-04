@@ -5,10 +5,11 @@
  * doesn't match the (possibly stale) $HYPRLAND_INSTANCE_SIGNATURE env var.
  * This module provides a safe wrapper that checks the socket file first.
  */
-import GLib from 'gi://GLib?version=2.0';
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 
-let cached: AstalHyprland.Hyprland | null | undefined = undefined;
+import AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import GLib from 'gi://GLib?version=2.0';
+
+let cached: AstalHyprland.Hyprland | null | undefined;
 
 /** Return the Hyprland singleton, or null if unavailable. Never crashes. */
 export function getHyprland(): AstalHyprland.Hyprland | null {

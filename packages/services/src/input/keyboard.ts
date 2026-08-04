@@ -1,7 +1,7 @@
 import GLib from 'gi://GLib?version=2.0';
-import {Object, register, signal, property} from 'gnim/gobject';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
+import {Object, property, register, signal} from 'gnim/gobject';
 
 interface KeyboardDevice {
     name: string;
@@ -25,8 +25,8 @@ export default class KeyboardLayout extends Object {
     private static instance: KeyboardLayout;
 
     static get_default() {
-        if (!this.instance) this.instance = new KeyboardLayout();
-        return this.instance;
+        if (!KeyboardLayout.instance) KeyboardLayout.instance = new KeyboardLayout();
+        return KeyboardLayout.instance;
     }
 
     #layout = '';
@@ -57,10 +57,8 @@ export default class KeyboardLayout extends Object {
             const data: HyprlandDevices = JSON.parse(out);
             const keyboards = data.keyboards || [];
             const mainKb = keyboards.find(
-                k =>
-                    k.name !== 'wlroots-keyboard-pointer' &&
-                    k.name !== 'wayland' &&
-                    k.name !== ''
+                (k) =>
+                    k.name !== 'wlroots-keyboard-pointer' && k.name !== 'wayland' && k.name !== ''
             );
             if (mainKb) {
                 const layout = parseLayoutName(mainKb.active_keymap);
@@ -86,24 +84,22 @@ export default class KeyboardLayout extends Object {
 
     cycle() {
         Process.execAsync('hyprctl devices -j')
-            .then(out => {
+            .then((out) => {
                 const data: HyprlandDevices = JSON.parse(out);
                 const keyboards = data.keyboards || [];
                 const mainKb = keyboards.find(
-                    k =>
+                    (k) =>
                         k.name !== 'wlroots-keyboard-pointer' &&
                         k.name !== 'wayland' &&
                         k.name !== ''
                 );
                 if (mainKb) {
-                    return Process.execAsync(
-                        `hyprctl switchxkblayout "${mainKb.name}" next`
-                    );
+                    return Process.execAsync(`hyprctl switchxkblayout "${mainKb.name}" next`);
                 }
                 return undefined;
             })
             .then(() => this.#update())
-            .catch(e => logger.error('keyboard', 'cycle failed:', e));
+            .catch((e) => logger.error('keyboard', 'cycle failed:', e));
     }
 
     constructor() {

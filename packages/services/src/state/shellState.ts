@@ -1,17 +1,17 @@
-import {Object as GObject, register, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
-import {bus} from '../bus';
-import ServiceRegistry from '@shade/core/serviceRegistry';
-import logger from '@shade/core/logger';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import ServiceRegistry from '@shade/core/serviceRegistry';
+import {Object as GObject, property, register} from 'gnim/gobject';
+import {bus} from '../bus';
 
 @register
 export default class ShellState extends GObject {
     private static instance: ShellState;
 
     static get_default() {
-        if (!this.instance) this.instance = new ShellState();
-        return this.instance;
+        if (!ShellState.instance) ShellState.instance = new ShellState();
+        return ShellState.instance;
     }
 
     #launcherOpen = false;
@@ -36,10 +36,7 @@ export default class ShellState extends GObject {
     }
 
     set launcherOpen(v: boolean) {
-        logger.debug(
-            'state',
-            `ShellState.launcherOpen ${this.#launcherOpen} -> ${v}`
-        );
+        logger.debug('state', `ShellState.launcherOpen ${this.#launcherOpen} -> ${v}`);
         this.#launcherOpen = v;
         this.notify('launcher-open');
     }
@@ -61,10 +58,7 @@ export default class ShellState extends GObject {
     }
 
     set screenlocked(v: boolean) {
-        logger.info(
-            'state',
-            `ShellState.screenlocked ${this.#screenlocked} -> ${v}`
-        );
+        logger.info('state', `ShellState.screenlocked ${this.#screenlocked} -> ${v}`);
         this.#screenlocked = v;
         this.notify('screenlocked');
         if (v) bus.emit('shell:lockscreen');
@@ -121,10 +115,10 @@ export default class ShellState extends GObject {
 
     toggleBar() {
         const wm =
-            ServiceRegistry.get_default().resolve<
-                import('./windowManager').default
-            >('WindowManager');
-        wm.bars.forEach(bar => (bar.visible = !bar.visible));
+            ServiceRegistry.get_default().resolve<import('./windowManager').default>(
+                'WindowManager'
+            );
+        wm.bars.forEach((bar) => (bar.visible = !bar.visible));
     }
 
     toggleWindowSwitcher() {
@@ -135,18 +129,10 @@ export default class ShellState extends GObject {
     /** Subscribe to command events from widgets. Called once at boot. */
     init() {
         if (this.#busSubscriptions.length > 0) return;
-        this.#busSubscriptions.push(
-            bus.on('shell:lock', () => this.lock())
-        );
-        this.#busSubscriptions.push(
-            bus.on('shell:unlock', () => this.unlock())
-        );
-        this.#busSubscriptions.push(
-            bus.on('shell:qs:close', () => this.closeQuickSettings())
-        );
-        this.#busSubscriptions.push(
-            bus.on('shell:launcher:close', () => this.closeLauncher())
-        );
+        this.#busSubscriptions.push(bus.on('shell:lock', () => this.lock()));
+        this.#busSubscriptions.push(bus.on('shell:unlock', () => this.unlock()));
+        this.#busSubscriptions.push(bus.on('shell:qs:close', () => this.closeQuickSettings()));
+        this.#busSubscriptions.push(bus.on('shell:launcher:close', () => this.closeLauncher()));
     }
 
     #onToggleSettings: (() => void) | null = null;
@@ -161,10 +147,8 @@ export default class ShellState extends GObject {
         onToggleSettings?: () => void;
         onToggleWindowSwitcher?: () => void;
     }) {
-        if (opts.onToggleSettings)
-            this.#onToggleSettings = opts.onToggleSettings;
-        if (opts.onToggleWindowSwitcher)
-            this.#onToggleWindowSwitcher = opts.onToggleWindowSwitcher;
+        if (opts.onToggleSettings) this.#onToggleSettings = opts.onToggleSettings;
+        if (opts.onToggleWindowSwitcher) this.#onToggleWindowSwitcher = opts.onToggleWindowSwitcher;
     }
 
     toggleSettings() {

@@ -47,8 +47,8 @@ export default class ServiceRegistry {
     private static instance: ServiceRegistry;
 
     static get_default(): ServiceRegistry {
-        if (!this.instance) this.instance = new ServiceRegistry();
-        return this.instance;
+        if (!ServiceRegistry.instance) ServiceRegistry.instance = new ServiceRegistry();
+        return ServiceRegistry.instance;
     }
 
     #registrations: ServiceRegistration[] = [];
@@ -57,9 +57,7 @@ export default class ServiceRegistry {
     /** Register one or more services. Idempotent for the same name. */
     register(...regs: ServiceRegistration[]) {
         for (const reg of regs) {
-            const existing = this.#registrations.findIndex(
-                r => r.name === reg.name
-            );
+            const existing = this.#registrations.findIndex((r) => r.name === reg.name);
             if (existing >= 0) {
                 this.#registrations[existing] = reg;
             } else {
@@ -73,7 +71,7 @@ export default class ServiceRegistry {
      * Does not re-init; the caller must manage mock lifecycle.
      */
     override(name: string, mockService: Service) {
-        const existing = this.#registrations.findIndex(r => r.name === name);
+        const existing = this.#registrations.findIndex((r) => r.name === name);
         if (existing >= 0) {
             this.#registrations[existing]!.service = mockService;
         } else {
@@ -106,10 +104,7 @@ export default class ServiceRegistry {
             perf.start(`service-${label}`, 'init');
             try {
                 if (typeof reg.service.init !== 'function') {
-                    logger.debug(
-                        'serviceRegistry',
-                        `${label} — no init method, skipping`
-                    );
+                    logger.debug('serviceRegistry', `${label} — no init method, skipping`);
                 } else if (reg.initArgs && reg.initArgs.length > 0) {
                     reg.service.init(...reg.initArgs);
                     logger.info('serviceRegistry', `${label} initialized`);
@@ -124,10 +119,7 @@ export default class ServiceRegistry {
                     e instanceof Error ? e.message : String(e)
                 );
                 if (reg.critical) {
-                    logger.error(
-                        'serviceRegistry',
-                        `${label} is critical — aborting`
-                    );
+                    logger.error('serviceRegistry', `${label} is critical — aborting`);
                     return false;
                 }
                 allOk = false;
@@ -162,12 +154,12 @@ export default class ServiceRegistry {
 
     /** Resolve a registered service by name (typed convenience). */
     resolve<T>(name: string): T {
-        const reg = this.#registrations.find(r => r.name === name);
+        const reg = this.#registrations.find((r) => r.name === name);
         if (!reg) {
             throw new Error(
                 `ServiceRegistry: "${name}" not registered. ` +
                     'Available: ' +
-                    this.#registrations.map(r => `"${r.name}"`).join(', ') +
+                    this.#registrations.map((r) => `"${r.name}"`).join(', ') +
                     '.'
             );
         }
@@ -176,7 +168,7 @@ export default class ServiceRegistry {
 
     /** Check if a name is registered. */
     has(name: string): boolean {
-        return this.#registrations.some(r => r.name === name);
+        return this.#registrations.some((r) => r.name === name);
     }
 
     /** Resolve init order via topological sort (respects dependsOn + order). */
@@ -188,14 +180,11 @@ export default class ServiceRegistry {
         const visit = (name: string) => {
             if (visited.has(name)) return;
             if (visiting.has(name)) {
-                logger.warn(
-                    'serviceRegistry',
-                    `circular dependency detected involving "${name}"`
-                );
+                logger.warn('serviceRegistry', `circular dependency detected involving "${name}"`);
                 return;
             }
             visiting.add(name);
-            const reg = this.#registrations.find(r => r.name === name);
+            const reg = this.#registrations.find((r) => r.name === name);
             if (reg?.dependsOn) {
                 for (const dep of reg.dependsOn) {
                     visit(dep);

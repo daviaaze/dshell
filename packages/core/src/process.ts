@@ -1,10 +1,10 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {
+    type ConstructorProps as GObjectConstructorProps,
     Object,
     register,
     signal,
-    ConstructorProps as GObjectConstructorProps,
 } from 'gnim/gobject';
 import logger from './logger';
 
@@ -14,8 +14,7 @@ export interface ProcessSignalSignatures extends Object.SignalSignatures {
     exit: Process['exit'];
 }
 
-export interface ProcessConstructorProps
-    extends GObjectConstructorProps<Process> {
+export interface ProcessConstructorProps extends GObjectConstructorProps<Process> {
     argv: string[];
 }
 
@@ -191,9 +190,7 @@ export class Process extends Object {
     static execv(cmd: string[], silenceStderr = false) {
         const process = Gio.Subprocess.new(
             cmd,
-            (silenceStderr
-                ? Gio.SubprocessFlags.STDERR_SILENCE
-                : Gio.SubprocessFlags.STDERR_PIPE) |
+            (silenceStderr ? Gio.SubprocessFlags.STDERR_SILENCE : Gio.SubprocessFlags.STDERR_PIPE) |
                 Gio.SubprocessFlags.STDOUT_PIPE
         );
 
@@ -201,9 +198,7 @@ export class Process extends Object {
         if (process.get_successful()) {
             return (out ?? '').trim();
         } else {
-            throw new Error(
-                err ?? `exited with status ${process.get_exit_status()}`
-            );
+            throw new Error(err ?? `exited with status ${process.get_exit_status()}`);
         }
     }
 
@@ -230,9 +225,7 @@ export class Process extends Object {
     static execAsyncv(cmd: string[], silenceStderr = false): Promise<string> {
         const process = Gio.Subprocess.new(
             cmd,
-            (silenceStderr
-                ? Gio.SubprocessFlags.STDERR_SILENCE
-                : Gio.SubprocessFlags.STDERR_PIPE) |
+            (silenceStderr ? Gio.SubprocessFlags.STDERR_SILENCE : Gio.SubprocessFlags.STDERR_PIPE) |
                 Gio.SubprocessFlags.STDOUT_PIPE
         );
 
@@ -245,8 +238,7 @@ export class Process extends Object {
                     } else {
                         reject(
                             new Error(
-                                err?.trim() ??
-                                    `exited with status ${process.get_exit_status()}`
+                                err?.trim() ?? `exited with status ${process.get_exit_status()}`
                             )
                         );
                     }
@@ -328,9 +320,7 @@ export function subprocess(
         out: args ? onOut : argsOrCmd.out || onOut,
     };
 
-    const proc = Array.isArray(cmd)
-        ? Process.subprocessv(cmd)
-        : Process.subprocess(cmd);
+    const proc = Array.isArray(cmd) ? Process.subprocessv(cmd) : Process.subprocess(cmd);
     proc.connect('stdout', (_, stdout: string) => out(stdout));
     proc.connect('stderr', (_, stderr: string) => err(stderr));
     return proc;

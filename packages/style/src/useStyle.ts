@@ -17,8 +17,9 @@
  * <Box cssClasses={["card", styles.class]} ref={styles.$}>
  * ```
  */
-import Gtk from 'gi://Gtk?version=4.0';
+
 import Gdk from 'gi://Gdk?version=4.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import {onCleanup} from 'gnim';
 
 // ── Types ──
@@ -74,8 +75,8 @@ function ensureGlobalProvider(): boolean {
 function rebuildAllCSS(): void {
     if (!globalProvider) return;
     const allCSS = [
-        ...[...cssRegistry.values()].map(e => e.css),
-        ...[...scopedRegistry.values()].map(e => e.css),
+        ...[...cssRegistry.values()].map((e) => e.css),
+        ...[...scopedRegistry.values()].map((e) => e.css),
     ].join('\n');
     globalProvider.load_from_string(allCSS);
 }
@@ -147,18 +148,10 @@ function flattenStyles(className: string, styles: StyleObject): string {
 
     for (const [key, value] of Object.entries(styles)) {
         if (key.startsWith('&')) {
-            if (
-                typeof value === 'object' &&
-                value !== null &&
-                !Array.isArray(value)
-            ) {
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
                 nestedSelectors.push([key, value as StyleObject]);
             }
-        } else if (
-            typeof value === 'object' &&
-            value !== null &&
-            !Array.isArray(value)
-        ) {
+        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
             // Treat any non-& object as a nested rule too (e.g., @media)
             nestedSelectors.push([key, value as StyleObject]);
         } else {
@@ -185,11 +178,7 @@ function flattenStyles(className: string, styles: StyleObject): string {
 function flattenSubSelector(selector: string, styles: StyleObject): string {
     const rules: string[] = [];
     for (const [key, value] of Object.entries(styles)) {
-        if (
-            typeof value === 'object' &&
-            value !== null &&
-            !Array.isArray(value)
-        ) {
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
             continue; // skip deeper nesting for simplicity
         }
         const prop = toKebab(key);

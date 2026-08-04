@@ -1,8 +1,8 @@
 import type Adw from 'gi://Adw?version=1';
 import type {GnimNode} from 'gnim';
+import logger, {perf} from './logger';
 import type ServiceRegistry from './serviceRegistry';
 import type {Service} from './serviceRegistry';
-import logger, {perf} from './logger';
 
 /**
  * Self-registration layer for services and widgets.
@@ -71,7 +71,7 @@ export function defineService(spec: ServiceSpec): void {
 
 /** Declare a widget. Re-declaring a name replaces the previous def. */
 export function defineWidget(def: WidgetDef): void {
-    const i = widgetDefs.findIndex(w => w.name === def.name);
+    const i = widgetDefs.findIndex((w) => w.name === def.name);
     if (i >= 0) widgetDefs[i] = def;
     else widgetDefs.push(def);
 }

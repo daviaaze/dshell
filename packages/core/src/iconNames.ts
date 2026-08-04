@@ -122,8 +122,7 @@ export const IconNames = {
     networkWirelessDisabled: 'network-wireless-disabled-symbolic',
     networkWirelessEncrypted: 'network-wireless-encrypted-symbolic',
     networkWirelessOffline: 'network-wireless-offline-symbolic',
-    networkWirelessSignalExcellent:
-        'network-wireless-signal-excellent-symbolic',
+    networkWirelessSignalExcellent: 'network-wireless-signal-excellent-symbolic',
     networkWirelessSignalGood: 'network-wireless-signal-good-symbolic',
     networkWirelessSignalNone: 'network-wireless-signal-none-symbolic',
     networkWirelessSignalOk: 'network-wireless-signal-ok-symbolic',

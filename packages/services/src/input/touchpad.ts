@@ -1,10 +1,10 @@
-import {Object, register, signal, property} from 'gnim/gobject';
 import Gio from 'gi://Gio?version=2.0';
+import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
+import {Object, property, register, signal} from 'gnim/gobject';
 import {bus} from '../bus';
 import OsdTimer from '../utils/osdTimer';
-import {Process} from '@shade/core/process';
-import logger from '@shade/core/logger';
-import {defineService} from '@shade/core/define';
 
 logger.info('touchpad', 'module loaded');
 
@@ -22,8 +22,8 @@ signal.pause()
 export default class Touchpad extends Object {
     private static instance: Touchpad;
     static get_default() {
-        if (!this.instance) this.instance = new Touchpad();
-        return this.instance;
+        if (!Touchpad.instance) Touchpad.instance = new Touchpad();
+        return Touchpad.instance;
     }
 
     #enabled = true;
@@ -67,20 +67,14 @@ export default class Touchpad extends Object {
     toggled(_enabled: boolean): void {}
 
     toggle() {
-        logger.info(
-            'touchpad',
-            `toggle() called, current enabled=${this.#enabled}`
-        );
+        logger.info('touchpad', `toggle() called, current enabled=${this.#enabled}`);
         this.enabled = !this.#enabled;
         logger.info('touchpad', `toggle() done, new enabled=${this.#enabled}`);
     }
 
     init() {
         if (this.#initialized) {
-            logger.warn(
-                'touchpad',
-                'init() called but already initialized — skipping'
-            );
+            logger.warn('touchpad', 'init() called but already initialized — skipping');
             return;
         }
         this.#initialized = true;
@@ -95,15 +89,10 @@ export default class Touchpad extends Object {
             return;
         }
         const mode = this.#useEc ? 'EC hardware toggle' : 'EVIOCGRAB fallback';
-        logger.info(
-            'touchpad',
-            `initialized, mode=${mode}, enabled=${this.#enabled}`
-        );
+        logger.info('touchpad', `initialized, mode=${mode}, enabled=${this.#enabled}`);
 
         // Listen for toggle commands from widgets via the bus
-        this.#busSubscriptions.push(
-            bus.on('input:touchpad:toggle', () => this.toggle())
-        );
+        this.#busSubscriptions.push(bus.on('input:touchpad:toggle', () => this.toggle()));
     }
 
     #detectDevice() {
@@ -152,10 +141,7 @@ export default class Touchpad extends Object {
 
     #applyEc() {
         const value = this.#enabled ? '1' : '0';
-        logger.info(
-            'touchpad',
-            `applyEc: writing ${value} to ${EC_TOUCHPAD_PATH}`
-        );
+        logger.info('touchpad', `applyEc: writing ${value} to ${EC_TOUCHPAD_PATH}`);
         try {
             // Sysfs files need direct write via /bin/sh -c, not GLib atomic file IO
             Process.exec(`/bin/sh -c 'echo ${value} > ${EC_TOUCHPAD_PATH}'`);

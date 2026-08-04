@@ -1,19 +1,13 @@
 import Network from 'gi://AstalNetwork';
-import NM from 'gi://NM?version=1.0';
-import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import Gio from 'gi://Gio?version=2.0';
+import type Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {computed, createState, Accessor} from 'gnim';
+import Gtk from 'gi://Gtk?version=4.0';
+import type NM from 'gi://NM?version=1.0';
 import {toArray} from '@shade/core/gjsUtils';
-import {
-    ApSnapshot,
-    findLiveAp,
-    isSaved,
-    signalIconName,
-    createNMConnection,
-} from './utils';
 import logger from '@shade/core/logger';
+import {type Accessor, computed, createState} from 'gnim';
+import {type ApSnapshot, createNMConnection, findLiveAp, isSaved, signalIconName} from './utils';
 
 const AP_ICON_SIZE = 16;
 const AP_TRASH_ICON_SIZE = 14;
@@ -34,15 +28,11 @@ async function connectViaNM(
     secure: boolean,
     password?: string
 ): Promise<void> {
-    if (!apSsid || apSsid === 'Hidden Network')
-        throw new Error('Network not found');
+    if (!apSsid || apSsid === 'Hidden Network') throw new Error('Network not found');
 
     if (!wifi.device) throw new Error('No WiFi device');
 
-    const connection = createNMConnection(
-        apSsid,
-        secure ? password : undefined
-    );
+    const connection = createNMConnection(apSsid, secure ? password : undefined);
     const client = Network.get_default().client as NM.Client;
 
     return new Promise((resolve, reject) => {
@@ -127,11 +117,7 @@ function createDoConnect(
     };
 }
 
-function createDoForget(
-    wifi: Network.Wifi,
-    apBssid: string | null,
-    apSsid: string
-) {
+function createDoForget(wifi: Network.Wifi, apBssid: string | null, apSsid: string) {
     return () => {
         const liveAp = findLiveAp(wifi, apBssid, apSsid);
         if (!liveAp) {
@@ -142,20 +128,17 @@ function createDoForget(
             const conns = liveAp.get_connections();
             if (!conns) return;
             for (const conn of toArray<NM.RemoteConnection>(conns)) {
-                conn.delete_async(
-                    null,
-                    (_source: unknown, res: Gio.AsyncResult) => {
-                        try {
-                            conn.delete_finish(res);
-                        } catch (e) {
-                            logger.error(
-                                'network',
-                                'forget failed:',
-                                e instanceof Error ? e.message : String(e)
-                            );
-                        }
+                conn.delete_async(null, (_source: unknown, res: Gio.AsyncResult) => {
+                    try {
+                        conn.delete_finish(res);
+                    } catch (e) {
+                        logger.error(
+                            'network',
+                            'forget failed:',
+                            e instanceof Error ? e.message : String(e)
+                        );
                     }
-                );
+                });
             }
         } catch (e) {
             logger.error('network', 'forget error:', e);
@@ -165,22 +148,14 @@ function createDoForget(
 
 // ── ApRow component ──
 
-function ApRow({
-    snap,
-    wifi,
-    isActive,
-    isConnecting,
-    setConnectingAp,
-}: ApRowProps) {
+function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps) {
     const apSsid = snap.ssid;
     const apBssid = snap.bssid;
     const secure = snap.secure;
     const secLabel = snap.secLabel;
 
     const [showPassword, setShowPassword] = createState(false);
-    const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(
-        null
-    );
+    const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(null);
     const [passwordError, setPasswordError] = createState<string | null>(null);
 
     const connectState: ConnectState = {
@@ -191,13 +166,7 @@ function ApRow({
         setPasswordError,
     };
 
-    const doConnect = createDoConnect(
-        wifi,
-        apBssid,
-        apSsid,
-        secure,
-        connectState
-    );
+    const doConnect = createDoConnect(wifi, apBssid, apSsid, secure, connectState);
     const doForget = createDoForget(wifi, apBssid, apSsid);
 
     const notActive = computed(() => !isActive());
@@ -235,10 +204,7 @@ function ApRow({
                     }}
                 >
                     <Gtk.Box spacing={12}>
-                        <Gtk.Image
-                            iconName={prefixIcon}
-                            pixelSize={AP_ICON_SIZE}
-                        />
+                        <Gtk.Image iconName={prefixIcon} pixelSize={AP_ICON_SIZE} />
 
                         <Gtk.Box
                             hexpand
@@ -270,7 +236,7 @@ function ApRow({
                             iconName={signalIconName(snap.strength)}
                             pixelSize={AP_ICON_SIZE}
                             valign={Gtk.Align.CENTER}
-                            visible={notActive.as(na => na && !secure)}
+                            visible={notActive.as((na) => na && !secure)}
                             tooltipText={`${snap.strength}%`}
                         />
 
@@ -290,10 +256,7 @@ function ApRow({
                     tooltipText="Forget Network"
                     valign={Gtk.Align.CENTER}
                 >
-                    <Gtk.Image
-                        iconName="user-trash-symbolic"
-                        pixelSize={AP_TRASH_ICON_SIZE}
-                    />
+                    <Gtk.Image iconName="user-trash-symbolic" pixelSize={AP_TRASH_ICON_SIZE} />
                 </Gtk.Button>
             </Gtk.Box>
 
@@ -301,18 +264,12 @@ function ApRow({
                 revealChild={showPassword}
                 transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
             >
-                <Gtk.Box
-                    spacing={4}
-                    marginStart={28}
-                    marginEnd={4}
-                    marginTop={4}
-                    marginBottom={4}
-                >
+                <Gtk.Box spacing={4} marginStart={28} marginEnd={4} marginTop={4} marginBottom={4}>
                     <Gtk.Entry
                         placeholderText="Password"
                         visibility={false}
                         hexpand
-                        ref={self => {
+                        ref={(self) => {
                             setPasswordEntry(self);
                             GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
                                 self.grab_focus();
@@ -320,19 +277,13 @@ function ApRow({
                             });
 
                             const controller = new Gtk.EventControllerKey();
-                            controller.connect(
-                                'key-pressed',
-                                (_ctrl, keyval) => {
-                                    if (
-                                        keyval === Gdk.KEY_Return ||
-                                        keyval === Gdk.KEY_KP_Enter
-                                    ) {
-                                        doConnect(self.get_text() || undefined);
-                                        return true;
-                                    }
-                                    return false;
+                            controller.connect('key-pressed', (_ctrl, keyval) => {
+                                if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
+                                    doConnect(self.get_text() || undefined);
+                                    return true;
                                 }
-                            );
+                                return false;
+                            });
                             self.add_controller(controller);
                         }}
                     />
@@ -352,11 +303,11 @@ function ApRow({
             </Gtk.Revealer>
 
             <Gtk.Label
-                label={passwordError.as(e => e ?? '')}
+                label={passwordError.as((e) => e ?? '')}
                 cssClasses={['error', 'caption']}
                 marginStart={28}
                 marginBottom={4}
-                visible={passwordError.as(e => e !== null)}
+                visible={passwordError.as((e) => e !== null)}
                 wrap
             />
         </Gtk.Box>

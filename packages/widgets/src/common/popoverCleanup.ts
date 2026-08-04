@@ -8,9 +8,7 @@ import {logger} from '@shade/core/logger';
  * Prevents GTK warnings about popovers with stale parent references.
  * Usage: `<Adw.SplitButton ref={usePopoverCleanup} ... />`
  */
-export function usePopoverCleanup(
-    self: Adw.SplitButton | Gtk.MenuButton | Gtk.Widget
-) {
+export function usePopoverCleanup(self: Adw.SplitButton | Gtk.MenuButton | Gtk.Widget) {
     GObject.signal_connect(self, 'destroy', () => {
         const popover =
             (self instanceof Adw.SplitButton ? self.popover : null) ??

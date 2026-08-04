@@ -1,25 +1,25 @@
-import {getHyprland} from '@shade/services/hyprland';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango?version=1.0';
-import {Accessor, bind, computed} from 'gnim';
+import {getHyprland} from '@shade/services/hyprland';
 import {getAppIcon} from '@shade/services/state/apps';
+import {type Accessor, bind, computed} from 'gnim';
 
 export default ({visible: settingsVisible}: {visible: Accessor<boolean>}) => {
     const hyprland = getHyprland();
     if (!hyprland) return null;
     const client = bind(hyprland, 'focused-client');
 
-    const title = client.as(c => {
+    const title = client.as((c) => {
         if (!c || c.address === '0x0') return '';
         return c.title || c.class || '';
     });
 
-    const appIcon = client.as(c => {
+    const appIcon = client.as((c) => {
         if (!c || c.address === '0x0') return '';
         return getAppIcon(c);
     });
 
-    const clientExists = client.as(c => c && c.address !== '0x0');
+    const clientExists = client.as((c) => c && c.address !== '0x0');
 
     // Only visible when both settings say "show" AND a client exists
     const visible = computed(() => settingsVisible() && clientExists());

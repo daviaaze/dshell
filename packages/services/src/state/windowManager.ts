@@ -1,8 +1,8 @@
-import Astal from 'gi://Astal?version=4.0';
-import Adw from 'gi://Adw?version=1';
-import {Object, register} from 'gnim/gobject';
+import type Adw from 'gi://Adw?version=1';
+import type Astal from 'gi://Astal?version=4.0';
 import {property} from '@shade/core/decorators';
 import {defineService} from '@shade/core/define';
+import {Object, register} from 'gnim/gobject';
 
 // ── Generic window collection for multi-window types (bars, wallpapers, lockscreens) ──
 function windowCollection<T extends Astal.Window>(
@@ -30,8 +30,8 @@ export default class WindowManager extends Object {
     private static instance: WindowManager;
 
     static get_default() {
-        if (!this.instance) this.instance = new WindowManager();
-        return this.instance;
+        if (!WindowManager.instance) WindowManager.instance = new WindowManager();
+        return WindowManager.instance;
     }
 
     // Multi-window collections (one per monitor)

@@ -1,13 +1,13 @@
 import Astal from 'gi://Astal?version=4.0';
+import type Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import Gdk from 'gi://Gdk?version=4.0';
-import {bind, computed, For, onCleanup} from 'gnim';
-import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
 import {generalSettings} from '@shade/core/settings/general.gschema';
-import WindowManager from '@shade/services/state/windowManager';
-import {monitors} from '@shade/services/monitoring/monitors';
 import {getApp} from '@shade/services/appHandle';
+import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
+import {monitors} from '@shade/services/monitoring/monitors';
+import WindowManager from '@shade/services/state/windowManager';
+import {bind, computed, For, onCleanup} from 'gnim';
 
 export const Wallpaper = () => {
     const settings = generalSettings();
@@ -18,8 +18,7 @@ export const Wallpaper = () => {
             return Gio.File.new_for_path(
                 daytime() ? settings.wallpaperDay() : settings.wallpaperNight()
             );
-        if (color() === DarkModes.LIGHT)
-            return Gio.File.new_for_path(settings.wallpaperDay());
+        if (color() === DarkModes.LIGHT) return Gio.File.new_for_path(settings.wallpaperDay());
         else return Gio.File.new_for_path(settings.wallpaperNight());
     });
 
@@ -27,12 +26,10 @@ export const Wallpaper = () => {
         <For each={monitors}>
             {(monitor: Gdk.Monitor) => (
                 <Astal.Window
-                    ref={self => {
+                    ref={(self) => {
                         WindowManager.get_default().registerWallpaper(self);
                         onCleanup(() => {
-                            WindowManager.get_default().unregisterWallpaper(
-                                self
-                            );
+                            WindowManager.get_default().unregisterWallpaper(self);
                             self.close();
                         });
                     }}

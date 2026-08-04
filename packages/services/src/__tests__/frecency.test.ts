@@ -6,7 +6,7 @@
  * a bare harness. The singleton check is the meaningful smoke test here.
  */
 import {FrecencyManager} from '../search/frecency';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('FrecencyManager', () => {
     it('returns the same singleton on repeated get_default()', () => {

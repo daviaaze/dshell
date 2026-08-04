@@ -1,7 +1,7 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {bus} from '../bus';
 import logger from '@shade/core/logger';
+import {bus} from '../bus';
 
 const BUS_NAME = 'net.hadess.PowerProfiles';
 const OBJECT_PATH = '/net/hadess/PowerProfiles';
@@ -15,11 +15,11 @@ type Profile = 'power-saver' | 'balanced' | 'performance';
 export default class PowerProfiles {
     private static instance: PowerProfiles;
     static get_default() {
-        if (!this.instance) {
-            this.instance = new PowerProfiles();
-            this.instance.#initBus();
+        if (!PowerProfiles.instance) {
+            PowerProfiles.instance = new PowerProfiles();
+            PowerProfiles.instance.#initBus();
         }
-        return this.instance;
+        return PowerProfiles.instance;
     }
 
     #proxy: Gio.DBusProxy | null = null;
@@ -49,30 +49,21 @@ export default class PowerProfiles {
                 OBJECT_PATH,
                 'org.freedesktop.DBus.Properties',
                 'Set',
-                new GLib.Variant('(ssv)', [
-                    IFACE,
-                    'ActiveProfile',
-                    new GLib.Variant('s', profile),
-                ]),
+                new GLib.Variant('(ssv)', [IFACE, 'ActiveProfile', new GLib.Variant('s', profile)]),
                 null,
                 Gio.DBusCallFlags.NONE,
                 -1,
                 null
             );
         } catch (e) {
-            if (e instanceof Error)
-                logger.warn(
-                    LOG_TAG,
-                    'set_active_profile failed:',
-                    e.message
-                );
+            if (e instanceof Error) logger.warn(LOG_TAG, 'set_active_profile failed:', e.message);
         }
     }
 
     #initBus() {
         if (this.#busSubscriptions.length > 0) return;
         this.#busSubscriptions.push(
-            bus.on('power:profile:set', profile => this.set_active_profile(profile as Profile))
+            bus.on('power:profile:set', (profile) => this.set_active_profile(profile as Profile))
         );
     }
 
@@ -108,11 +99,7 @@ export default class PowerProfiles {
             );
             this.#proxy.connect(
                 'g-properties-changed',
-                (
-                    _proxy: Gio.DBusProxy,
-                    changed: GLib.Variant,
-                    _invalidated: string[]
-                ) => {
+                (_proxy: Gio.DBusProxy, changed: GLib.Variant, _invalidated: string[]) => {
                     if (changed.lookup_value('ActiveProfile', null) !== null) {
                         for (const cb of this.#listeners.values()) cb();
                     }
@@ -120,11 +107,7 @@ export default class PowerProfiles {
             );
         } catch (e) {
             if (e instanceof Error)
-                logger.warn(
-                    LOG_TAG,
-                    'failed to connect to system bus:',
-                    e.message
-                );
+                logger.warn(LOG_TAG, 'failed to connect to system bus:', e.message);
         }
     }
 }

@@ -1,24 +1,21 @@
-import Astal from 'gi://Astal?version=4.0';
-import Gtk from 'gi://Gtk?version=4.0';
-import Gdk from 'gi://Gdk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {getHyprland} from '@shade/services/hyprland';
-import {Accessor, bind, createState, For, onCleanup, Setter} from 'gnim';
-import {getApp} from '@shade/services/appHandle';
+import Astal from 'gi://Astal?version=4.0';
+import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import Gdk from 'gi://Gdk?version=4.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
-import SwitcherItem from './item';
 import logger from '@shade/core/logger';
+import {getApp} from '@shade/services/appHandle';
+import {getHyprland} from '@shade/services/hyprland';
+import {type Accessor, bind, createState, For, onCleanup, type Setter} from 'gnim';
+import SwitcherItem from './item';
 
 let switcherWindow: Astal.Window | null = null;
 
 export const toggleWindowSwitcher = () => {
     if (switcherWindow) {
         const nextVisible = !switcherWindow.visible;
-        logger.debug(
-            'wm',
-            `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`
-        );
+        logger.debug('wm', `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`);
         switcherWindow.visible = nextVisible;
     } else {
         logger.debug('wm', 'windowSwitcher toggled (no window yet)');
@@ -31,9 +28,9 @@ const getSortedClients = (
 ): AstalHyprland.Client[] => {
     const arr = toArray<AstalHyprland.Client>(clients);
     const sorted = mru
-        .map(addr => arr.find(c => c.address === addr))
+        .map((addr) => arr.find((c) => c.address === addr))
         .filter((c): c is AstalHyprland.Client => c !== undefined);
-    const newClients = arr.filter(c => !mru.includes(c.address));
+    const newClients = arr.filter((c) => !mru.includes(c.address));
     return [...sorted, ...newClients];
 };
 
@@ -59,17 +56,14 @@ function doFocus(state: SwitcherState, client: AstalHyprland.Client) {
 }
 
 /** Flat key → action lookup, built from grouped key bindings. */
-function buildKeyActions(
-    state: SwitcherState
-): Record<number, () => boolean> {
+function buildKeyActions(state: SwitcherState): Record<number, () => boolean> {
     const clients = state.clientsList() ?? [];
 
     const keyGroups: [number[], () => boolean][] = [
         [
             [Gdk.KEY_Tab, Gdk.KEY_Right],
             () => {
-                if (clients.length > 0)
-                    state.setSelectedIndex(i => (i + 1) % clients.length);
+                if (clients.length > 0) state.setSelectedIndex((i) => (i + 1) % clients.length);
                 return true;
             },
         ],
@@ -77,17 +71,14 @@ function buildKeyActions(
             [Gdk.KEY_ISO_Left_Tab, Gdk.KEY_Left],
             () => {
                 if (clients.length > 0)
-                    state.setSelectedIndex(
-                        i => (i - 1 + clients.length) % clients.length
-                    );
+                    state.setSelectedIndex((i) => (i - 1 + clients.length) % clients.length);
                 return true;
             },
         ],
         [
             [Gdk.KEY_Return, Gdk.KEY_KP_Enter],
             () => {
-                if (clients[state.selectedIndex()])
-                    doFocus(state, clients[state.selectedIndex()]);
+                if (clients[state.selectedIndex()]) doFocus(state, clients[state.selectedIndex()]);
                 return true;
             },
         ],
@@ -101,20 +92,11 @@ function buildKeyActions(
         [
             [Gdk.KEY_q, Gdk.KEY_Q],
             () => {
-                if (clients[state.selectedIndex()])
-                    clients[state.selectedIndex()].kill();
+                if (clients[state.selectedIndex()]) clients[state.selectedIndex()].kill();
                 return true;
             },
         ],
-        [
-            [
-                Gdk.KEY_Super_L,
-                Gdk.KEY_Super_R,
-                Gdk.KEY_Meta_L,
-                Gdk.KEY_Meta_R,
-            ],
-            () => false,
-        ],
+        [[Gdk.KEY_Super_L, Gdk.KEY_Super_R, Gdk.KEY_Meta_L, Gdk.KEY_Meta_R], () => false],
     ];
 
     const keyActions: Record<number, () => boolean> = {};
@@ -164,7 +146,7 @@ export default () => {
 
     const updateMru = (client: AstalHyprland.Client | null) => {
         if (!client || client.address === '0x0') return;
-        mru = mru.filter(addr => addr !== client.address);
+        mru = mru.filter((addr) => addr !== client.address);
         mru.unshift(client.address);
     };
 
@@ -175,7 +157,7 @@ export default () => {
     });
 
     const clientsBinding = bind(hyprland, 'clients');
-    const clientsList = clientsBinding.as(c => getSortedClients(c, mru));
+    const clientsList = clientsBinding.as((c) => getSortedClients(c, mru));
 
     const clampUnsubscribe = clientsList.subscribe(() => {
         const len = clientsList()?.length ?? 0;
@@ -194,7 +176,7 @@ export default () => {
 
     return (
         <Astal.Window
-            ref={self => {
+            ref={(self) => {
                 switcherWindow = self;
                 onCleanup(() => {
                     switcherWindow = null;
@@ -207,7 +189,7 @@ export default () => {
             layer={Astal.Layer.OVERLAY}
             keymode={Astal.Keymode.EXCLUSIVE}
             visible={false}
-            onNotifyVisible={self => {
+            onNotifyVisible={(self) => {
                 if (self.visible) onOpen(state);
             }}
             anchor={
@@ -216,11 +198,11 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={bind(hyprland, 'focused-monitor').as(m => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
             css={'background-color: transparent;'}
         >
             <Gtk.Box
-                ref={self => {
+                ref={(self) => {
                     state.boxRef.current = self;
                 }}
                 focusable
@@ -231,7 +213,7 @@ export default () => {
                 widthRequest={500}
             >
                 <Gtk.EventControllerKey
-                    ref={self => {
+                    ref={(self) => {
                         self.connect('key-pressed', (_c, keyval) =>
                             handleKeyPressed(state, keyval)
                         );
@@ -244,7 +226,7 @@ export default () => {
                     {(client: AstalHyprland.Client) => (
                         <SwitcherItem
                             client={client}
-                            selected={selectedIndex.as(idx => {
+                            selected={selectedIndex.as((idx) => {
                                 const clients = clientsList() ?? [];
                                 return clients[idx]?.address === client.address;
                             })}
@@ -252,7 +234,7 @@ export default () => {
                     )}
                 </For>
                 <Adw.StatusPage
-                    visible={clientsList.as(l => l.length === 0)}
+                    visible={clientsList.as((l) => l.length === 0)}
                     vexpand
                     cssClasses={['compact']}
                     title="No Open Windows"

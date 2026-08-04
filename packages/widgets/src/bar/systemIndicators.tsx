@@ -1,15 +1,15 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, bind} from 'gnim';
-import ShellState from '@shade/services/state/shellState';
 import AudioController from '@shade/services/audio/audioController';
-import KeepAwakeIndicator from './indicators/keepAwake';
-import PowerIndicator from './indicators/power';
-import BluetoothIndicator from './indicators/bluetooth';
-import NetworkIndicator from './indicators/network';
+import ShellState from '@shade/services/state/shellState';
+import {type Accessor, bind} from 'gnim';
+import {MicrophoneIndicator, SpeakerIndicator} from './indicators/audio';
 import BatteryIndicator from './indicators/battery';
-import {SpeakerIndicator, MicrophoneIndicator} from './indicators/audio';
+import BluetoothIndicator from './indicators/bluetooth';
 import DNDIndicator from './indicators/dnd';
+import KeepAwakeIndicator from './indicators/keepAwake';
+import NetworkIndicator from './indicators/network';
+import PowerIndicator from './indicators/power';
 
 export default ({
     vertical,
@@ -26,7 +26,7 @@ export default ({
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             active={bind(shellState, 'qsOpen')}
             onClicked={() => shellState.toggleQuickSettings()}
-            ref={self => {
+            ref={(self) => {
                 const scrollCtrl = new Gtk.EventControllerScroll({
                     flags: Gtk.EventControllerScrollFlags.VERTICAL,
                 });
@@ -39,7 +39,7 @@ export default ({
         >
             <Gtk.Box
                 spacing={4}
-                orientation={vertical.as(v =>
+                orientation={vertical.as((v) =>
                     v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                 )}
             >

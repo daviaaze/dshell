@@ -1,16 +1,16 @@
 import Adw from 'gi://Adw?version=1';
-import Notifd from 'gi://AstalNotifd';
-import Gtk from 'gi://Gtk?version=4.0';
+import type Notifd from 'gi://AstalNotifd';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
+import {generalSettings} from '@shade/core/settings/general.gschema';
+import {bus} from '@shade/services/bus';
+import DndService from '@shade/services/notifications/dnd';
+import type {HistoryEntry} from '@shade/services/notifications/history';
+import NotificationHistory from '@shade/services/notifications/history';
+import {useNotifd} from '@shade/services/notifications/useNotifd';
 import {bind, createState, For} from 'gnim';
 import Notification from '../common/notification';
-import NotificationHistory from '@shade/services/notifications/history';
-import DndService from '@shade/services/notifications/dnd';
-import {bus} from '@shade/services/bus';
-import {useNotifd} from '@shade/services/notifications/useNotifd';
-import type {HistoryEntry} from '@shade/services/notifications/history';
-import {generalSettings} from '@shade/core/settings/general.gschema';
 
 const HISTORY_VISIBLE_COUNT = 20;
 
@@ -19,13 +19,11 @@ const HISTORY_VISIBLE_COUNT = 20;
  * the order in which each app's most recent notification appeared.
  * Does not mutate the input array.
  */
-function groupByApp(
-    notifications: Notifd.Notification[]
-): Notifd.Notification[][] {
+function groupByApp(notifications: Notifd.Notification[]): Notifd.Notification[][] {
     const groups: Notifd.Notification[][] = [];
     const sorted = [...notifications].sort((a, b) => b.time - a.time);
     for (const notif of sorted) {
-        const group = groups.find(g => g[0]!.appName === notif.appName);
+        const group = groups.find((g) => g[0]!.appName === notif.appName);
         if (group) group.push(notif);
         else groups.push([notif]);
     }
@@ -93,21 +91,17 @@ const NotificationListContent = ({
     const Header = () => (
         <Gtk.Box cssClasses={['toolbar']}>
             <Gtk.Label
-                label={showHistory.as(h => (h ? 'History' : 'Notifications'))}
+                label={showHistory.as((h) => (h ? 'History' : 'Notifications'))}
                 cssClasses={['title-1']}
                 hexpand
             />
             <Gtk.Button
                 cssClasses={['flat']}
-                iconName={showHistory.as(h =>
-                    h
-                        ? 'go-previous-symbolic'
-                        : 'document-open-recent-symbolic'
+                iconName={showHistory.as((h) =>
+                    h ? 'go-previous-symbolic' : 'document-open-recent-symbolic'
                 )}
                 onClicked={() => setShowHistory(!showHistory())}
-                tooltipText={showHistory.as(h =>
-                    h ? 'Back to notifications' : 'View history'
-                )}
+                tooltipText={showHistory.as((h) => (h ? 'Back to notifications' : 'View history'))}
             />
             <Gtk.Button
                 cssClasses={['flat']}
@@ -116,12 +110,12 @@ const NotificationListContent = ({
                 onClicked={() => dismissAll(notifd.get_notifications())}
             />
             <Gtk.ToggleButton
-                onClicked={self => bus.emit('system:dnd:set', self.active)}
+                onClicked={(self) => bus.emit('system:dnd:set', self.active)}
                 active={bind(dnd, 'dnd')}
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
                 iconName={'notifications-disabled-symbolic'}
                 tooltipText={'Do Not Disturb'}
-                cssClasses={bind(dnd, 'dnd').as(d =>
+                cssClasses={bind(dnd, 'dnd').as((d) =>
                     d ? ['suggested-action', 'warning'] : ['flat']
                 )}
             />
@@ -129,37 +123,26 @@ const NotificationListContent = ({
     );
 
     const HistoryView = () => (
-        <Gtk.Box
-            visible={showHistory}
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={6}
-        >
+        <Gtk.Box visible={showHistory} orientation={Gtk.Orientation.VERTICAL} spacing={6}>
             <Gtk.ListBox
                 cssClasses={['boxed-list']}
-                visible={bind(history, 'history').as(h => h.length > 0)}
+                visible={bind(history, 'history').as((h) => h.length > 0)}
                 selectionMode={Gtk.SelectionMode.NONE}
             >
-                <For
-                    each={bind(history, 'history').as(h =>
-                        h.slice(0, HISTORY_VISIBLE_COUNT)
-                    )}
-                >
+                <For each={bind(history, 'history').as((h) => h.slice(0, HISTORY_VISIBLE_COUNT))}>
                     {(entry: HistoryEntry) => <HistoryItem entry={entry} />}
                 </For>
             </Gtk.ListBox>
             <Gtk.Label
-                visible={bind(history, 'history').as(
-                    h => h.length > HISTORY_VISIBLE_COUNT
-                )}
+                visible={bind(history, 'history').as((h) => h.length > HISTORY_VISIBLE_COUNT)}
                 cssClasses={['caption', 'dim-label']}
                 label={bind(history, 'history').as(
-                    h =>
-                        `Showing ${HISTORY_VISIBLE_COUNT} of ${h.length} notifications`
+                    (h) => `Showing ${HISTORY_VISIBLE_COUNT} of ${h.length} notifications`
                 )}
                 halign={Gtk.Align.CENTER}
             />
             <Adw.StatusPage
-                visible={bind(history, 'history').as(h => h.length === 0)}
+                visible={bind(history, 'history').as((h) => h.length === 0)}
                 vexpand
                 cssClasses={['compact']}
                 title="No history"
@@ -180,13 +163,13 @@ const NotificationListContent = ({
                 cssClasses={['caption', 'numeric']}
                 label={historyTime(entry.time)}
                 valign={Gtk.Align.CENTER}
-                slot='prefix'
+                slot="prefix"
             />
             <Gtk.Image
                 pixelSize={24}
                 iconName={entry.appIcon || 'dialog-information-symbolic'}
                 valign={Gtk.Align.CENTER}
-                slot='prefix'
+                slot="prefix"
             />
             <Gtk.Button
                 cssClasses={['flat', 'circular']}
@@ -194,16 +177,12 @@ const NotificationListContent = ({
                 valign={Gtk.Align.CENTER}
                 tooltipText={'Delete from history'}
                 onClicked={() => history.remove(entry.id)}
-                slot='suffix'
+                slot="suffix"
             />
         </Adw.ActionRow>
     );
 
-    const NotificationGroup = ({
-        notifications,
-    }: {
-        notifications: Notifd.Notification[];
-    }) => {
+    const NotificationGroup = ({notifications}: {notifications: Notifd.Notification[]}) => {
         const [visible, setVisible] = createState(false);
 
         const Heading = () => (
@@ -221,7 +200,7 @@ const NotificationListContent = ({
                             cssClasses={['caption-heading']}
                         />
                         <Gtk.Image
-                            iconName={visible.as(v =>
+                            iconName={visible.as((v) =>
                                 v ? 'go-up-symbolic' : 'go-down-symbolic'
                             )}
                         />
@@ -244,18 +223,18 @@ const NotificationListContent = ({
                     notification={notifications[0]!}
                     variant="list"
                     showProgress={showProgress}
-                    closeAction={n => n.dismiss()}
+                    closeAction={(n) => n.dismiss()}
                 />
                 <Gtk.Revealer revealChild={visible}>
                     <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
                         {/* Static slice — the parent For recreates this group
                             whenever membership changes, so plain map is safe. */}
-                        {notifications.slice(1).map(notif => (
+                        {notifications.slice(1).map((notif) => (
                             <Notification
                                 notification={notif}
                                 variant="list"
                                 showProgress={showProgress}
-                                closeAction={n => n.dismiss()}
+                                closeAction={(n) => n.dismiss()}
                             />
                         ))}
                     </Gtk.Box>
@@ -266,7 +245,7 @@ const NotificationListContent = ({
 
     const ActiveView = () => (
         <Gtk.Box
-            visible={showHistory.as(v => !v)}
+            visible={showHistory.as((v) => !v)}
             orientation={Gtk.Orientation.VERTICAL}
             spacing={6}
         >
@@ -274,7 +253,7 @@ const NotificationListContent = ({
                 {(group: Notifd.Notification[]) =>
                     group.length === 1 ? (
                         <Notification
-                            closeAction={n => n.dismiss()}
+                            closeAction={(n) => n.dismiss()}
                             showProgress={showProgress}
                             notification={group[0]!}
                             variant="list"
@@ -285,7 +264,7 @@ const NotificationListContent = ({
                 }
             </For>
             <Adw.StatusPage
-                visible={bind(notifd, 'notifications').as(n => n.length < 1)}
+                visible={bind(notifd, 'notifications').as((n) => n.length < 1)}
                 vexpand
                 cssClasses={['compact']}
                 title={'No new notifications'}
@@ -315,7 +294,7 @@ export const NotificationList = () => {
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
             {/* Loading placeholder shown until Notifd is ready */}
             <Gtk.Box
-                visible={notifd.as(n => n === null)}
+                visible={notifd.as((n) => n === null)}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={12}
                 valign={Gtk.Align.CENTER}
@@ -323,14 +302,11 @@ export const NotificationList = () => {
                 vexpand
             >
                 <Gtk.Spinner spinning cssClasses={['suggested-action']} />
-                <Gtk.Label
-                    cssClasses={['caption']}
-                    label="Loading notifications…"
-                />
+                <Gtk.Label cssClasses={['caption']} label="Loading notifications…" />
             </Gtk.Box>
             {/* Singleton-array For defers child evaluation until notifd is
                 non-null (gnim does not support nested For inside With). */}
-            <For each={notifd.as(n => (n ? [n] : []))}>
+            <For each={notifd.as((n) => (n ? [n] : []))}>
                 {(n: Notifd.Notifd) => (
                     <NotificationListContent
                         notifd={n}

@@ -1,15 +1,11 @@
-import Gtk from 'gi://Gtk?version=4.0';
+import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Gdk from 'gi://Gdk?version=4.0';
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
-import {onCleanup} from 'gnim';
-import {barSettings} from '@shade/services/settings/bar.gschema';
-import {
-    getAppList,
-    exactQuery,
-    launchDesktopFile,
-} from '@shade/services/state/apps';
-import {ActionButton} from '../common/actionButton';
+import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
+import {barSettings} from '@shade/services/settings/bar.gschema';
+import {exactQuery, getAppList, launchDesktopFile} from '@shade/services/state/apps';
+import {onCleanup} from 'gnim';
+import {ActionButton} from '../common/actionButton';
 
 interface DockItemProps {
     desktopFile: string;
@@ -53,7 +49,7 @@ function handlePinToggle(
     logger.info('dock', `${pinned ? 'unpin' : 'pin'}: ${desktopFile}`);
     const current = bar.dockPinnedApps();
     if (pinned) {
-        bar.setDockPinnedApps(current.filter(d => d !== desktopFile));
+        bar.setDockPinnedApps(current.filter((d) => d !== desktopFile));
     } else {
         bar.setDockPinnedApps([...current, desktopFile]);
     }
@@ -77,17 +73,13 @@ function DockPopover({
 }) {
     return (
         <Gtk.Popover
-            ref={self => {
+            ref={(self) => {
                 holder.current = self;
             }}
             cssClasses={['menu']}
             hasArrow={false}
         >
-            <Gtk.Box
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={4}
-                css={'padding: 8px;'}
-            >
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} css={'padding: 8px;'}>
                 <ActionButton
                     iconName="focus-windows-symbolic"
                     label="Focus"
@@ -107,9 +99,7 @@ function DockPopover({
                     }}
                 />
                 <ActionButton
-                    iconName={
-                        pinned ? 'edit-delete-symbolic' : 'list-add-symbolic'
-                    }
+                    iconName={pinned ? 'edit-delete-symbolic' : 'list-add-symbolic'}
                     label={pinned ? 'Unpin' : 'Pin'}
                     onClicked={() => {
                         onPinToggle();
@@ -125,14 +115,13 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
     const bar = barSettings();
 
     const app =
-        getAppList().find(a => a.entry === desktopFile) ||
+        getAppList().find((a) => a.entry === desktopFile) ||
         exactQuery(desktopFile.replace('.desktop', ''))?.[0];
 
     const iconName = app?.iconName || 'application-x-executable-symbolic';
     const running = clients.length > 0;
 
-    const onFocus = () =>
-        handleLeftClick(desktopFile, clients, pinned, running);
+    const onFocus = () => handleLeftClick(desktopFile, clients, pinned, running);
     const onClose = () => handleClose(desktopFile, clients);
     const onPinToggle = () => handlePinToggle(bar, desktopFile, pinned);
 
@@ -144,7 +133,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
 
     return (
         <Gtk.Button
-            ref={self => {
+            ref={(self) => {
                 const popover = holder.current;
                 if (!popover) return;
                 popover.set_parent(self);
@@ -175,10 +164,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 valign={Gtk.Align.CENTER}
             >
                 <Gtk.Image iconName={iconName} pixelSize={bar.dockIconSize()} />
-                <Gtk.Box
-                    cssClasses={statusCssClasses}
-                    visible={active || running}
-                />
+                <Gtk.Box cssClasses={statusCssClasses} visible={active || running} />
             </Gtk.Box>
             <DockPopover
                 running={running}
@@ -189,7 +175,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 onPinToggle={onPinToggle}
             />
             <Gtk.GestureClick
-                ref={self => {
+                ref={(self) => {
                     self.set_button(Gdk.BUTTON_SECONDARY);
                     self.connect('pressed', () => {
                         holder.current?.popup();

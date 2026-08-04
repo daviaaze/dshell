@@ -1,7 +1,7 @@
-import {Object, register, property} from 'gnim/gobject';
 import Tray from 'gi://AstalTray';
-import logger from '@shade/core/logger';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Object, property, register} from 'gnim/gobject';
 
 /**
  * TrayService — reactive wrapper around AstalTray D-Bus proxy.
@@ -13,8 +13,8 @@ export default class TrayService extends Object {
     private static instance: TrayService;
 
     static get_default(): TrayService {
-        if (!this.instance) this.instance = new TrayService();
-        return this.instance;
+        if (!TrayService.instance) TrayService.instance = new TrayService();
+        return TrayService.instance;
     }
 
     #tray: Tray.Tray | null = null;

@@ -15,16 +15,16 @@
  * @module cryptoEngine
  */
 
-import {expandKey, encryptBlock} from './cryptoEngineAes';
-import {ghash, buildAuthData, ctrCrypt} from './cryptoEngineGhash';
+import {encryptBlock, expandKey} from './cryptoEngineAes';
+import {buildAuthData, ctrCrypt, ghash} from './cryptoEngineGhash';
 import {
+    gcmInitCounter,
+    getRandomBytes,
+    incCounter,
     KEY_SIZE,
     NONCE_SIZE,
     TAG_SIZE,
     xor,
-    getRandomBytes,
-    gcmInitCounter,
-    incCounter,
 } from './cryptoEngineTables';
 
 export {bytesToHex, hexToBytes} from './cryptoEngineTables';
@@ -95,9 +95,7 @@ export function decrypt(
     let diff = 0;
     for (let i = 0; i < TAG_SIZE; i++) diff |= tag[i]! ^ expectedTag[i]!;
     if (diff !== 0) {
-        throw new Error(
-            'AES-256-GCM authentication failed: data may be tampered or wrong key'
-        );
+        throw new Error('AES-256-GCM authentication failed: data may be tampered or wrong key');
     }
 
     // Decrypt (CTR mode)

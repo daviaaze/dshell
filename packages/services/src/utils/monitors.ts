@@ -1,5 +1,5 @@
+import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Gdk from 'gi://Gdk?version=4.0';
-import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 
 /**
  * Map an AstalHyprland monitor to the matching GDK monitor index by
@@ -8,9 +8,7 @@ import AstalHyprland from 'gi://AstalHyprland?version=0.1';
  * differ from that index after displays are added/removed. This helper
  * returns the correct integer index for the currently focused monitor.
  */
-export function monitorIndexFromHyprland(
-    hyprMon: AstalHyprland.Monitor | null
-): number {
+export function monitorIndexFromHyprland(hyprMon: AstalHyprland.Monitor | null): number {
     if (!hyprMon) return 0;
     const display = Gdk.Display.get_default();
     if (!display) return 0;

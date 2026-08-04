@@ -1,5 +1,5 @@
-import Gtk from 'gi://Gtk?version=4.0';
 import AstalCava from 'gi://AstalCava?version=0.1';
+import Gtk from 'gi://Gtk?version=4.0';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {tickWhileAttached} from '@shade/core/widgetTimer';
 
@@ -18,7 +18,7 @@ export default () => {
             halign={Gtk.Align.CENTER}
             valign={Gtk.Align.END}
             cssClasses={['popover-padded']}
-            ref={self => {
+            ref={(self) => {
                 if (!settings.cavaEnabled()) return;
                 const cava = new AstalCava.Cava();
                 cava.bars = settings.cavaBars() || 16;
@@ -44,11 +44,7 @@ export default () => {
                 tickWhileAttached(self, 1000 / cava.framerate, () => {
                     const values = cava.get_values();
                     if (!values || !values.length) return;
-                    for (
-                        let i = 0;
-                        i < Math.min(bars.length, values.length);
-                        i++
-                    ) {
+                    for (let i = 0; i < Math.min(bars.length, values.length); i++) {
                         bars[i].set_value(Math.min(1, Math.max(0, values[i])));
                     }
                 });

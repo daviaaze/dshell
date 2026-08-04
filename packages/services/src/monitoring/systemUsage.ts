@@ -9,12 +9,15 @@ const glibtop_get_cpu = (buffer: GTop.glibtop_cpu): void =>
 const glibtop_get_mem = (buffer: GTop.glibtop_mem): void =>
     (GTop as unknown as {glibtop_get_mem: (b: GTop.glibtop_mem) => void}).glibtop_get_mem(buffer);
 const glibtop_get_fsusage = (buffer: GTop.glibtop_fsusage, path: string): void =>
-    (GTop as unknown as {glibtop_get_fsusage: (b: GTop.glibtop_fsusage, p: string) => void}).glibtop_get_fsusage(buffer, path);
+    (
+        GTop as unknown as {glibtop_get_fsusage: (b: GTop.glibtop_fsusage, p: string) => void}
+    ).glibtop_get_fsusage(buffer, path);
+
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {Accessor, createState} from 'gnim';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
+import {type Accessor, createState} from 'gnim';
 
 const POLL_INTERVAL = 1000;
 /** hwmon temp1_input is millidegrees. Divide by 1000 for °C, then 100 maps to 0..1. */
@@ -25,21 +28,14 @@ function findCoretempPath(): string | null {
     const hwmonDir = Gio.File.new_for_path('/sys/class/hwmon');
     let iter: Gio.FileEnumerator | null = null;
     try {
-        iter = hwmonDir.enumerate_children(
-            'standard::name',
-            Gio.FileQueryInfoFlags.NONE,
-            null
-        );
+        iter = hwmonDir.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
         let info: Gio.FileInfo | null;
         while ((info = iter.next_file(null)) !== null) {
             const hwmonName = info.get_name();
             const nameFile = iter.get_child(info).get_child('name');
             try {
                 const [ok, contents] = nameFile.load_contents(null);
-                if (
-                    ok &&
-                    new TextDecoder().decode(contents).trim() === 'coretemp'
-                ) {
+                if (ok && new TextDecoder().decode(contents).trim() === 'coretemp') {
                     return `/sys/class/hwmon/${hwmonName}/temp1_input`;
                 }
             } catch {
@@ -68,8 +64,8 @@ export default class SystemUsage {
     private static instance: SystemUsage;
 
     static get_default(): SystemUsage {
-        if (!this.instance) this.instance = new SystemUsage();
-        return this.instance;
+        if (!SystemUsage.instance) SystemUsage.instance = new SystemUsage();
+        return SystemUsage.instance;
     }
 
     #lastCpuTop = new GTop.glibtop_cpu();
@@ -117,7 +113,7 @@ export default class SystemUsage {
      * Widgets call this instead of Process.execAsync directly.
      */
     launchMonitor(cmd: string): void {
-        Process.execAsync(cmd).catch(e =>
+        Process.execAsync(cmd).catch((e) =>
             logger.error('systemUsage', 'failed to launch monitor:', e)
         );
     }
@@ -139,8 +135,7 @@ export default class SystemUsage {
         this.#started = true;
 
         this.#tempPath =
-            (userTempPath &&
-            Gio.File.new_for_path(userTempPath).query_exists(null)
+            (userTempPath && Gio.File.new_for_path(userTempPath).query_exists(null)
                 ? userTempPath
                 : null) ?? findCoretempPath();
 
@@ -200,4 +195,8 @@ export default class SystemUsage {
     }
 }
 
-defineService({name: 'SystemUsage', service: SystemUsage.get_default(), initArgs: () => [barSettings().tempPath()]});
+defineService({
+    name: 'SystemUsage',
+    service: SystemUsage.get_default(),
+    initArgs: () => [barSettings().tempPath()],
+});

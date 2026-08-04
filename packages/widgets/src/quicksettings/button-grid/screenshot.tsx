@@ -1,11 +1,11 @@
-import Screenshot from '@shade/services/capture/screenshot';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind} from 'gnim';
-import type {QuickButton} from './quickButton';
-import {QuickToggleButton} from '../../common/quickToggleButton';
-import {LinkedBox} from '../../common/linkedBox';
+import Screenshot from '@shade/services/capture/screenshot';
 import {getScreenCaptureSettings} from '@shade/services/settings/screenCapture';
+import {bind} from 'gnim';
+import {LinkedBox} from '../../common/linkedBox';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import type {QuickButton} from './quickButton';
 
 // Dismiss the popover and run `fn` shortly after, so the selector/overlay
 // that follows gets a clean input grab instead of fighting the popover.
@@ -21,23 +21,13 @@ const dismissAnd =
 function ScreenshotSection({ss}: {ss: Screenshot}) {
     return (
         <>
-            <Gtk.Label
-                label="Screenshot"
-                halign={Gtk.Align.START}
-                cssClasses={['title-4']}
-            />
+            <Gtk.Label label="Screenshot" halign={Gtk.Align.START} cssClasses={['title-4']} />
             <LinkedBox>
                 <Gtk.Button onClicked={() => ss.screenshot(true)}>
-                    <Adw.ButtonContent
-                        iconName="camera-photo-symbolic"
-                        label="Fullscreen"
-                    />
+                    <Adw.ButtonContent iconName="camera-photo-symbolic" label="Fullscreen" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={dismissAnd(() => ss.screenshot(false))}>
-                    <Adw.ButtonContent
-                        iconName="selection-mode-symbolic"
-                        label="Area"
-                    />
+                    <Adw.ButtonContent iconName="selection-mode-symbolic" label="Area" />
                 </Gtk.Button>
             </LinkedBox>
         </>
@@ -48,35 +38,19 @@ function ScreenshotSection({ss}: {ss: Screenshot}) {
 function RecordingSection({ss}: {ss: Screenshot}) {
     return (
         <>
-            <Gtk.Label
-                label="Recording"
-                halign={Gtk.Align.START}
-                cssClasses={['title-4']}
-            />
+            <Gtk.Label label="Recording" halign={Gtk.Align.START} cssClasses={['title-4']} />
             <LinkedBox>
                 <Gtk.Button onClicked={() => ss.toggleRecording()}>
-                    <Adw.ButtonContent
-                        iconName="camera-video-symbolic"
-                        label="Fullscreen"
-                    />
+                    <Adw.ButtonContent iconName="camera-video-symbolic" label="Fullscreen" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={dismissAnd(() => ss.recordArea())}>
-                    <Adw.ButtonContent
-                        iconName="selection-mode-symbolic"
-                        label="Area"
-                    />
+                    <Adw.ButtonContent iconName="selection-mode-symbolic" label="Area" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={dismissAnd(() => ss.recordOutputVisual())}>
-                    <Adw.ButtonContent
-                        iconName="video-display-symbolic"
-                        label="Output"
-                    />
+                    <Adw.ButtonContent iconName="video-display-symbolic" label="Output" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={dismissAnd(() => ss.recordWindowVisual())}>
-                    <Adw.ButtonContent
-                        iconName="focus-windows-symbolic"
-                        label="Window"
-                    />
+                    <Adw.ButtonContent iconName="focus-windows-symbolic" label="Window" />
                 </Gtk.Button>
             </LinkedBox>
         </>
@@ -92,11 +66,7 @@ function PrefsSection({
     captureSettings: ReturnType<typeof getScreenCaptureSettings>;
 }) {
     return (
-        <Gtk.Box
-            spacing={12}
-            orientation={Gtk.Orientation.HORIZONTAL}
-            marginStart={4}
-        >
+        <Gtk.Box spacing={12} orientation={Gtk.Orientation.HORIZONTAL} marginStart={4}>
             <Gtk.CheckButton
                 active={bind(screenshot.prefs, 'audio')}
                 onNotifyActive={({active}) => {
@@ -140,10 +110,10 @@ function VirtualMonitorButton({
             }}
         >
             <Adw.ButtonContent
-                iconName={bind(screenshot, 'virtualMonitorActive').as(active =>
+                iconName={bind(screenshot, 'virtualMonitorActive').as((active) =>
                     active ? 'user-trash-symbolic' : 'video-display-symbolic'
                 )}
-                label={bind(screenshot, 'virtualMonitorActive').as(active =>
+                label={bind(screenshot, 'virtualMonitorActive').as((active) =>
                     active ? 'Remove VM' : 'Add VM'
                 )}
             />
@@ -166,15 +136,9 @@ export default (): QuickButton => {
                 <Gtk.Separator />
                 <RecordingSection ss={screenshot} />
                 <Gtk.Separator />
-                <PrefsSection
-                    screenshot={screenshot}
-                    captureSettings={captureSettings}
-                />
+                <PrefsSection screenshot={screenshot} captureSettings={captureSettings} />
                 <Gtk.Separator />
-                <VirtualMonitorButton
-                    screenshot={screenshot}
-                    captureSettings={captureSettings}
-                />
+                <VirtualMonitorButton screenshot={screenshot} captureSettings={captureSettings} />
             </Gtk.Box>
         </Gtk.Popover>
     );
@@ -182,14 +146,10 @@ export default (): QuickButton => {
     return {
         widget: (
             <QuickToggleButton
-                icon={bind(screenshot, 'recording').as(rec =>
-                    rec
-                        ? 'media-playback-stop-symbolic'
-                        : 'camera-video-symbolic'
+                icon={bind(screenshot, 'recording').as((rec) =>
+                    rec ? 'media-playback-stop-symbolic' : 'camera-video-symbolic'
                 )}
-                label={bind(screenshot, 'recording').as(rec =>
-                    rec ? 'Stop' : 'Record'
-                )}
+                label={bind(screenshot, 'recording').as((rec) => (rec ? 'Stop' : 'Record'))}
                 onClick={() => screenshot.toggleRecording()}
                 popover={popover}
             />

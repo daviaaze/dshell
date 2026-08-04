@@ -1,9 +1,9 @@
-import {Object, register, property} from 'gnim/gobject';
 import Wireplumber from 'gi://AstalWp';
+import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Object, property, register} from 'gnim/gobject';
 import {bus} from '../bus';
 import OsdTimer from '../utils/osdTimer';
-import logger from '@shade/core/logger';
-import {defineService} from '@shade/core/define';
 
 /**
  * AudioController — semantic command layer over AstalWp.
@@ -17,8 +17,8 @@ export default class AudioController extends Object {
     private static instance: AudioController;
 
     static get_default(): AudioController {
-        if (!this.instance) this.instance = new AudioController();
-        return this.instance;
+        if (!AudioController.instance) AudioController.instance = new AudioController();
+        return AudioController.instance;
     }
 
     #audio: Wireplumber.Audio | null = null;
@@ -79,10 +79,14 @@ export default class AudioController extends Object {
 
         // Subscribe to bus commands from widgets
         this.#busSubscriptions.push(
-            bus.on('audio:set-volume', ({device, value}) => this.setVolume(device as Wireplumber.Endpoint, value))
+            bus.on('audio:set-volume', ({device, value}) =>
+                this.setVolume(device as Wireplumber.Endpoint, value)
+            )
         );
         this.#busSubscriptions.push(
-            bus.on('audio:toggle-mute', ({device}) => this.toggleMute(device as Wireplumber.Endpoint))
+            bus.on('audio:toggle-mute', ({device}) =>
+                this.toggleMute(device as Wireplumber.Endpoint)
+            )
         );
 
         try {
@@ -92,15 +96,19 @@ export default class AudioController extends Object {
             return;
         }
 
-        // Forward property notifications so widgets can bind
+        // Forward property notifications so widgets can bind.
+        // Emit initial notify so bindings pick up the current value
+        // (AstalWp only fires notify on *change*, not on first read).
         this.#audio.connect('notify::default-speaker', () => {
             this.notify('default-speaker');
             this.#wireOsd('speaker');
         });
+        this.notify('default-speaker');
         this.#audio.connect('notify::default-microphone', () => {
             this.notify('default-microphone');
             this.#wireOsd('mic');
         });
+        this.notify('default-microphone');
         this.#audio.connect('notify::speakers', () => {
             this.notify('speakers');
         });
@@ -125,8 +133,7 @@ export default class AudioController extends Object {
         for (const {obj, id} of conns) obj.disconnect(id);
         conns.length = 0;
 
-        const endpoint =
-            kind === 'speaker' ? this.defaultSpeaker : this.defaultMicrophone;
+        const endpoint = kind === 'speaker' ? this.defaultSpeaker : this.defaultMicrophone;
         if (!endpoint) return;
 
         const osd = kind === 'speaker' ? this.#speakerOsd : this.#micOsd;

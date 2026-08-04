@@ -30,14 +30,10 @@ export const BatteryIcon = () => {
         <IconInfoRow
             visible={bind(battery, 'is-present')}
             icon={bind(battery, 'icon-name')}
-            primary={bind(battery, 'percentage').as(
-                (p: number) => (p * 100).toFixed(0) + '%'
-            )}
-            secondary={timeTo.as(t => {
+            primary={bind(battery, 'percentage').as((p: number) => (p * 100).toFixed(0) + '%')}
+            secondary={timeTo.as((t) => {
                 if (t === 0) return 'Full';
-                const suffix = battery.get_charging()
-                    ? ' to full'
-                    : ' to empty';
+                const suffix = battery.get_charging() ? ' to full' : ' to empty';
                 return fmtDuration(t) + suffix;
             })}
         />
@@ -51,13 +47,9 @@ export const Battery = () => {
     const timeToFull = bind(battery, 'time-to-full');
     const timeTo = computed(() => (charging() ? timeToFull() : timeToEmpty()));
 
-    const chargingLabel = charging.as((c: boolean) =>
-        c ? 'Charged in:' : 'Discharged in:'
-    );
+    const chargingLabel = charging.as((c: boolean) => (c ? 'Charged in:' : 'Discharged in:'));
 
-    const rateLabel = charging.as((c: boolean) =>
-        c ? 'Rate of Charge:' : 'Rate of discharge:'
-    );
+    const rateLabel = charging.as((c: boolean) => (c ? 'Rate of Charge:' : 'Rate of discharge:'));
 
     return (
         <Gtk.Box
@@ -66,41 +58,26 @@ export const Battery = () => {
             spacing={4}
             visible={bind(battery, 'is-present')}
         >
-            <Gtk.Label
-                cssClasses={['title-3']}
-                label={'Battery Info'}
-                halign={Gtk.Align.CENTER}
-            />
+            <Gtk.Label cssClasses={['title-3']} label={'Battery Info'} halign={Gtk.Align.CENTER} />
             <Gtk.Box spacing={8} halign={Gtk.Align.START}>
                 <Gtk.Label cssClasses={['heading']} label={chargingLabel} />
-                <Gtk.Label label={timeTo.as(t => fmtDurationHMS(t))} />
+                <Gtk.Label label={timeTo.as((t) => fmtDurationHMS(t))} />
             </Gtk.Box>
             <Gtk.Box spacing={8} halign={Gtk.Align.START}>
                 <Gtk.Label cssClasses={['heading']} label={rateLabel} />
-                <Gtk.Label
-                    label={bind(battery, 'energy-rate').as(
-                        r => `${r.toFixed(2)}W`
-                    )}
-                />
+                <Gtk.Label label={bind(battery, 'energy-rate').as((r) => `${r.toFixed(2)}W`)} />
             </Gtk.Box>
             <Gtk.Box spacing={8} halign={Gtk.Align.START}>
                 <Gtk.Label cssClasses={['heading']} label={'Energy:'} />
                 <Gtk.Label
                     label={bind(battery, 'energy').as(
-                        e =>
-                            `${e.toFixed(2)}/${battery.energyFull.toFixed(0)}Wh`
+                        (e) => `${e.toFixed(2)}/${battery.energyFull.toFixed(0)}Wh`
                     )}
                 />
             </Gtk.Box>
-            <Gtk.LevelBar
-                value={bind(battery, 'percentage')}
-                widthRequest={100}
-                heightRequest={50}
-            >
+            <Gtk.LevelBar value={bind(battery, 'percentage')} widthRequest={100} heightRequest={50}>
                 <Gtk.Label
-                    label={bind(battery, 'percentage').as(
-                        p => `${(p * 100).toFixed(0)}%`
-                    )}
+                    label={bind(battery, 'percentage').as((p) => `${(p * 100).toFixed(0)}%`)}
                 />
             </Gtk.LevelBar>
         </Gtk.Box>

@@ -3,7 +3,7 @@
  */
 import AudioController from '../audio/audioController';
 import SoundAlerts from '../audio/soundAlerts';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('AudioController', () => {
     it('get_default returns same instance', () => {

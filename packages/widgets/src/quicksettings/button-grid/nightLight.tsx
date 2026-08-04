@@ -1,12 +1,9 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, effect} from 'gnim';
 import {bus} from '@shade/services/bus';
-import type {QuickButton} from './quickButton';
+import NightLight, {TEMP_MAX, TEMP_MIN} from '@shade/services/display/nightLight';
+import {bind, effect} from 'gnim';
 import {QuickToggleButton} from '../../common/quickToggleButton';
-import NightLight, {
-    TEMP_MIN,
-    TEMP_MAX,
-} from '@shade/services/display/nightLight';
+import type {QuickButton} from './quickButton';
 
 export default (): QuickButton => {
     const nightLight = NightLight.get_default();
@@ -37,8 +34,11 @@ export default (): QuickButton => {
                                 digits={0}
                                 roundDigits={0}
                                 adjustment={adjustment}
-                                onValueChanged={self =>
-                                    bus.emit('display:nightlight:temperature', Math.round(self.get_value()))
+                                onValueChanged={(self) =>
+                                    bus.emit(
+                                        'display:nightlight:temperature',
+                                        Math.round(self.get_value())
+                                    )
                                 }
                             />
                         );
@@ -46,7 +46,7 @@ export default (): QuickButton => {
                     <Gtk.Label
                         widthRequest={56}
                         xalign={1}
-                        label={bind(nightLight, 'temperature').as(t => `${t}K`)}
+                        label={bind(nightLight, 'temperature').as((t) => `${t}K`)}
                         cssClasses={['caption']}
                     />
                 </Gtk.Box>
@@ -55,7 +55,7 @@ export default (): QuickButton => {
                     <Gtk.Label label="Auto Schedule" hexpand />
                     <Gtk.Switch
                         active={bind(nightLight, 'autoSchedule')}
-                        onNotifyActive={self =>
+                        onNotifyActive={(self) =>
                             bus.emit('display:nightlight:schedule', self.active)
                         }
                     />
@@ -67,10 +67,10 @@ export default (): QuickButton => {
     return {
         widget: (
             <QuickToggleButton
-                cssClasses={bind(nightLight, 'enabled').as(e =>
+                cssClasses={bind(nightLight, 'enabled').as((e) =>
                     e ? ['raised', 'suggested-action'] : ['raised']
                 )}
-                icon={bind(nightLight, 'enabled').as(e =>
+                icon={bind(nightLight, 'enabled').as((e) =>
                     e ? 'night-light-symbolic' : 'night-light-disabled-symbolic'
                 )}
                 label="Night Light"

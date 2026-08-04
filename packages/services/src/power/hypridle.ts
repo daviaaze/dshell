@@ -1,15 +1,11 @@
-import {Object as GObject, register, property} from 'gnim/gobject';
-import {Process} from '@shade/core/process';
 import GLib from 'gi://GLib?version=2.0';
-import logger from '@shade/core/logger';
-import {Accessor} from 'gnim';
-import {
-    writeHypridleConfig,
-    deleteHypridleConfig,
-    type HypridleConfig,
-} from './hypridleConfig';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import type {Accessor} from 'gnim';
+import {Object as GObject, property, register} from 'gnim/gobject';
+import {deleteHypridleConfig, type HypridleConfig, writeHypridleConfig} from './hypridleConfig';
 
 type PropKey = keyof HypridleConfig | 'enabled';
 /** All hypridle props are either boolean toggles or second-based timeouts. */
@@ -26,10 +22,7 @@ interface PropDef {
     /** Compute clamped value from raw input + current props. Return raw value if no change needed. */
     clamp?: (raw: number, current: Record<PropKey, number>) => number;
     /** Called after the value is set; return overrides for dependent props. */
-    cascade?: (
-        val: number,
-        current: Record<PropKey, number>
-    ) => Partial<Record<PropKey, number>>;
+    cascade?: (val: number, current: Record<PropKey, number>) => Partial<Record<PropKey, number>>;
 }
 
 const PROPS: Record<string, PropDef> = {
@@ -49,16 +42,14 @@ const PROPS: Record<string, PropDef> = {
         notify: 'dim-timeout',
         settingsKey: 'screenDimTimeout',
         clamp: (v, cur) => Math.max(30, Math.min(v, cur.idleTimeout - 10)),
-        cascade: (v, cur) =>
-            v >= cur.idleTimeout ? {idleTimeout: v + 10} : {},
+        cascade: (v, cur) => (v >= cur.idleTimeout ? {idleTimeout: v + 10} : {}),
     },
     dimEnabled: {notify: 'dim-enabled', settingsKey: 'screenDimEnabled'},
     dpmsTimeout: {
         notify: 'dpms-timeout',
         settingsKey: 'dpmsTimeout',
         clamp: (v, cur) => Math.max(cur.idleTimeout + 10, Math.min(v, 3600)),
-        cascade: (v, cur) =>
-            cur.suspendTimeout <= v ? {suspendTimeout: v + 10} : {},
+        cascade: (v, cur) => (cur.suspendTimeout <= v ? {suspendTimeout: v + 10} : {}),
     },
     dpmsEnabled: {notify: 'dpms-enabled', settingsKey: 'dpmsEnabled'},
     suspendTimeout: {
@@ -73,8 +64,8 @@ const PROPS: Record<string, PropDef> = {
 export default class Hypridle extends GObject {
     private static instance: Hypridle;
     static get_default() {
-        if (!this.instance) this.instance = new Hypridle();
-        return this.instance;
+        if (!Hypridle.instance) Hypridle.instance = new Hypridle();
+        return Hypridle.instance;
     }
 
     #values: Record<PropKey, PropValue> = {
@@ -212,10 +203,7 @@ export default class Hypridle extends GObject {
         setSuspendTimeout: (v: number) => void;
     }) {
         if (this.#settings) {
-            logger.warn(
-                'hypridle',
-                'init() called but already initialized — skipping'
-            );
+            logger.warn('hypridle', 'init() called but already initialized — skipping');
             return;
         }
 
@@ -238,28 +226,12 @@ export default class Hypridle extends GObject {
 
         link(settings.autoLockEnabled, settings.setAutoLockEnabled, 'enabled');
         link(settings.idleTimeout, settings.setIdleTimeout, 'idleTimeout');
-        link(
-            settings.screenDimEnabled,
-            settings.setScreenDimEnabled,
-            'dimEnabled'
-        );
-        link(
-            settings.screenDimTimeout,
-            settings.setScreenDimTimeout,
-            'dimTimeout'
-        );
+        link(settings.screenDimEnabled, settings.setScreenDimEnabled, 'dimEnabled');
+        link(settings.screenDimTimeout, settings.setScreenDimTimeout, 'dimTimeout');
         link(settings.dpmsEnabled, settings.setDpmsEnabled, 'dpmsEnabled');
         link(settings.dpmsTimeout, settings.setDpmsTimeout, 'dpmsTimeout');
-        link(
-            settings.suspendEnabled,
-            settings.setSuspendEnabled,
-            'suspendEnabled'
-        );
-        link(
-            settings.suspendTimeout,
-            settings.setSuspendTimeout,
-            'suspendTimeout'
-        );
+        link(settings.suspendEnabled, settings.setSuspendEnabled, 'suspendEnabled');
+        link(settings.suspendTimeout, settings.setSuspendTimeout, 'suspendTimeout');
 
         // Load initial values
         this.#set('enabled', settings.autoLockEnabled());
@@ -312,11 +284,7 @@ export default class Hypridle extends GObject {
         try {
             Process.exec('pkill -x hypridle');
         } catch (e) {
-            logger.debug(
-                'hypridle',
-                'pkill skipped (hypridle not running):',
-                e
-            );
+            logger.debug('hypridle', 'pkill skipped (hypridle not running):', e);
         }
         try {
             this.#process = Process.subprocessv(['hypridle']);
@@ -347,4 +315,8 @@ export default class Hypridle extends GObject {
     }
 }
 
-defineService({name: 'Hypridle', service: Hypridle.get_default(), initArgs: () => [generalSettings()]});
+defineService({
+    name: 'Hypridle',
+    service: Hypridle.get_default(),
+    initArgs: () => [generalSettings()],
+});

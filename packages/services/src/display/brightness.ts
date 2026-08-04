@@ -15,19 +15,18 @@
  * The service also emits `brightness-changed(device)` on any change.
  */
 import AstalBrightness from 'gi://AstalBrightness';
-import {Object, register, property} from 'gnim/gobject';
+import logger from '@shade/core/logger';
+import {Object, property, register} from 'gnim/gobject';
 import {bus} from '../bus';
 import OsdTimer from '../utils/osdTimer';
-import logger from '@shade/core/logger';
 
 @register
-
 export default class Brightness extends Object {
     private static instance: Brightness;
 
     static get_default() {
-        if (!this.instance) this.instance = new Brightness();
-        return this.instance;
+        if (!Brightness.instance) Brightness.instance = new Brightness();
+        return Brightness.instance;
     }
 
     #screenDev: AstalBrightness.Device | null = null;
@@ -53,7 +52,6 @@ export default class Brightness extends Object {
     }
 
     @property
-
     get ready() {
         return this.#ready;
     }
@@ -130,11 +128,7 @@ export default class Brightness extends Object {
                 })
             );
         } catch (e) {
-            logger.error(
-                'brightness',
-                'failed to initialize AstalBrightness:',
-                e
-            );
+            logger.error('brightness', 'failed to initialize AstalBrightness:', e);
         }
     }
 

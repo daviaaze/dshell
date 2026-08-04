@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, computed} from 'gnim';
 import Inhibit from '@shade/services/power/inhibit';
+import {bind, computed} from 'gnim';
 
 export default () => {
     const inhibit = Inhibit.get_default();
@@ -9,9 +9,7 @@ export default () => {
 
     const tooltip = computed(() => {
         if (!idle()) return '';
-        return remaining()
-            ? `Keep Awake — ${remaining()} remaining`
-            : 'Keep Awake';
+        return remaining() ? `Keep Awake — ${remaining()} remaining` : 'Keep Awake';
     });
 
     return (

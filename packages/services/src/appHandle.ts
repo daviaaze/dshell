@@ -1,4 +1,4 @@
-import Adw from 'gi://Adw?version=1';
+import type Adw from 'gi://Adw?version=1';
 
 let _app: Adw.Application | null = null;
 

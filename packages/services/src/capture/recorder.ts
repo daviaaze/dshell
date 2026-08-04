@@ -1,17 +1,11 @@
-import {getHyprland} from '../hyprland';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
+import {getHyprland} from '../hyprland';
 import {getScreenCaptureSettings} from '../settings/screenCapture';
-import {RecorderBackend, RecordingFormat, type BoundaryGeometry} from './types';
 import {toGrimGeometry} from './geometry';
-import {
-    buildRecordingArgs,
-    resolveBackend,
-    formatDuration,
-    notify,
-    RECORDING_DIR,
-} from './utils';
+import {type BoundaryGeometry, RecorderBackend, RecordingFormat} from './types';
+import {buildRecordingArgs, formatDuration, notify, RECORDING_DIR, resolveBackend} from './utils';
 
 const ICON_ERROR = 'dialog-error-symbolic';
 const MSG_RECORDING_FAILED = 'Recording failed';
@@ -76,18 +70,14 @@ export class Recorder {
         if (this.#recording) return;
 
         const settings = getScreenCaptureSettings();
-        const pref =
-            forceBackend ?? (settings.recorderBackend() as RecorderBackend);
+        const pref = forceBackend ?? (settings.recorderBackend() as RecorderBackend);
         const backend = resolveBackend(pref);
         const format = settings.recordingFormat() as RecordingFormat;
         const ext = format === RecordingFormat.WEBM ? 'webm' : 'mp4';
 
         const filename = this.#resolveFilename(ext);
         const effectiveOutput =
-            options.output ??
-            (options.geometry
-                ? undefined
-                : getHyprland()?.focusedMonitor?.name);
+            options.output ?? (options.geometry ? undefined : getHyprland()?.focusedMonitor?.name);
 
         const {audio, input, quality} = this.#hooks.getAudioSettings();
         const {args, backendName} = buildRecordingArgs(
@@ -101,10 +91,7 @@ export class Recorder {
             quality
         );
 
-        logger.info(
-            'screenshot',
-            `starting ${backendName} with args: ${args.join(' ')}`
-        );
+        logger.info('screenshot', `starting ${backendName} with args: ${args.join(' ')}`);
 
         const proc = this.#spawn(args, backendName);
         if (!proc) return;
@@ -196,17 +183,11 @@ export class Recorder {
     }
 
     #startDurationTimer() {
-        this.#durationTimer = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            1000,
-            () => {
-                this.#elapsed = Math.floor(
-                    (Date.now() - this.#startTime) / 1000
-                );
-                this.#hooks.notifyState();
-                return this.#recording;
-            }
-        );
+        this.#durationTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            this.#elapsed = Math.floor((Date.now() - this.#startTime) / 1000);
+            this.#hooks.notifyState();
+            return this.#recording;
+        });
     }
 
     #onExit(
@@ -235,10 +216,7 @@ export class Recorder {
             return;
         }
 
-        logger.info(
-            'screenshot',
-            `${name} exited after ${durationStr} (${durationMs}ms)`
-        );
+        logger.info('screenshot', `${name} exited after ${durationStr} (${durationMs}ms)`);
 
         if (success) {
             notify(

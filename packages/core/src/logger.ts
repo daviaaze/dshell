@@ -1,5 +1,5 @@
-import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib?version=2.0';
 
 // ── Log Levels ───────────────────────────────────────────────────────────────
 export enum LogLevel {
@@ -40,15 +40,13 @@ function formatTime(): string {
 
 function shouldLog(level: LogLevel, category?: string): boolean {
     if (level < globalLevel) return false;
-    if (category && debugCategories.size > 0 && !debugCategories.has(category))
-        return false;
+    if (category && debugCategories.size > 0 && !debugCategories.has(category)) return false;
     return true;
 }
 
 function formatArgs(args: unknown[]): unknown[] {
-    return args.map(a => {
-        if (a instanceof Error)
-            return `${a.message}\n${a.stack || '(no stack)'}`;
+    return args.map((a) => {
+        if (a instanceof Error) return `${a.message}\n${a.stack || '(no stack)'}`;
         if (typeof a === 'object' && a !== null) {
             try {
                 const json = JSON.stringify(a);
@@ -112,21 +110,14 @@ function logAt(level: LogLevel, category: string, ...args: unknown[]): void {
     if (!shouldLog(level, category)) return;
     const label = LEVEL_LABELS[level];
     const fn = LEVEL_METHODS[level];
-    fn(
-        `${PREFIX} [${label}] [${category}] ${formatTime()} -`,
-        ...formatArgs(args)
-    );
+    fn(`${PREFIX} [${label}] [${category}] ${formatTime()} -`, ...formatArgs(args));
 }
 
 export const logger = {
-    debug: (cat: string, ...args: unknown[]) =>
-        logAt(LogLevel.DEBUG, cat, ...args),
-    info: (cat: string, ...args: unknown[]) =>
-        logAt(LogLevel.INFO, cat, ...args),
-    warn: (cat: string, ...args: unknown[]) =>
-        logAt(LogLevel.WARN, cat, ...args),
-    error: (cat: string, ...args: unknown[]) =>
-        logAt(LogLevel.ERROR, cat, ...args),
+    debug: (cat: string, ...args: unknown[]) => logAt(LogLevel.DEBUG, cat, ...args),
+    info: (cat: string, ...args: unknown[]) => logAt(LogLevel.INFO, cat, ...args),
+    warn: (cat: string, ...args: unknown[]) => logAt(LogLevel.WARN, cat, ...args),
+    error: (cat: string, ...args: unknown[]) => logAt(LogLevel.ERROR, cat, ...args),
 
     // Convenience: backward-compatible with old logger API (no category = "general")
     log: (...args: unknown[]) => logAt(LogLevel.INFO, 'general', ...args),
@@ -169,11 +160,7 @@ export const perf = {
     },
 
     /** Time an async operation. Returns the result of the operation. */
-    async measure<T>(
-        label: string,
-        fn: () => Promise<T>,
-        category: string = 'perf'
-    ): Promise<T> {
+    async measure<T>(label: string, fn: () => Promise<T>, category: string = 'perf'): Promise<T> {
         perf.start(label, category);
         try {
             return await fn();
@@ -198,11 +185,7 @@ export const perf = {
  * Wrap a function with try/catch that logs errors with the given category.
  * Use for widget mount, signal handlers, and async operations.
  */
-export function safeTry<T>(
-    category: string,
-    label: string,
-    fn: () => T
-): T | undefined {
+export function safeTry<T>(category: string, label: string, fn: () => T): T | undefined {
     try {
         return fn();
     } catch (e) {

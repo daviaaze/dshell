@@ -1,5 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {JSX} from 'gnim';
+import type {JSX} from 'gnim';
 
 interface LinkedBoxProps {
     children: JSX.Element | JSX.Element[];

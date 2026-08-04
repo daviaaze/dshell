@@ -17,12 +17,12 @@
  * @module encryptedStore
  */
 
-import {Object, register, signal} from 'gnim/gobject';
-import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import {encrypt, decrypt} from './cryptoEngine';
-import {getKey, initKeyManager, isKeyPersistent} from './keyManager';
+import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
+import {Object, register, signal} from 'gnim/gobject';
+import {decrypt, encrypt} from './cryptoEngine';
+import {getKey, initKeyManager, isKeyPersistent} from './keyManager';
 
 export interface ClipboardEntry {
     id: string;
@@ -55,10 +55,10 @@ export class EncryptedStore extends Object {
     private static instance: EncryptedStore;
 
     static get_default() {
-        if (!this.instance) {
-            this.instance = new EncryptedStore();
+        if (!EncryptedStore.instance) {
+            EncryptedStore.instance = new EncryptedStore();
         }
-        return this.instance;
+        return EncryptedStore.instance;
     }
 
     #entries: ClipboardEntry[] = [];
@@ -95,10 +95,7 @@ export class EncryptedStore extends Object {
         this.#loadEncryptedFile();
         this.#migrateLegacyImages();
         this.#ready = true;
-        logger.info(
-            'clipboard',
-            `store initialised (${this.#entries.length} entries)`
-        );
+        logger.info('clipboard', `store initialised (${this.#entries.length} entries)`);
     }
 
     /** True after `init()` has been called successfully. */
@@ -118,16 +115,13 @@ export class EncryptedStore extends Object {
         if (!query) return [...this.#entries].slice(0, 20);
         const lower = query.toLowerCase();
         return this.#entries
-            .filter(
-                e =>
-                    e.type === 'text' && e.content.toLowerCase().includes(lower)
-            )
+            .filter((e) => e.type === 'text' && e.content.toLowerCase().includes(lower))
             .slice(0, 20);
     }
 
     /** Find a single entry by id. */
     getEntry(id: string): ClipboardEntry | null {
-        return this.#entries.find(e => e.id === id) ?? null;
+        return this.#entries.find((e) => e.id === id) ?? null;
     }
 
     // ── Mutations ─────────────────────────────────────────────────────────
@@ -146,7 +140,7 @@ export class EncryptedStore extends Object {
 
         // Move-to-front dedup — find matching content of the same type
         const dupIdx = this.#entries.findIndex(
-            e => e.type === entry.type && e.content === entry.content
+            (e) => e.type === entry.type && e.content === entry.content
         );
 
         if (dupIdx !== -1) {
@@ -178,7 +172,7 @@ export class EncryptedStore extends Object {
     /** Remove an entry by id. */
     deleteEntry(id: string): void {
         this.#ensureReady();
-        const idx = this.#entries.findIndex(e => e.id === id);
+        const idx = this.#entries.findIndex((e) => e.id === id);
         if (idx === -1) return;
         this.#entries.splice(idx, 1);
         this.#save();
@@ -187,7 +181,7 @@ export class EncryptedStore extends Object {
     /** Toggle pinned state. */
     togglePin(id: string): void {
         this.#ensureReady();
-        const entry = this.#entries.find(e => e.id === id);
+        const entry = this.#entries.find((e) => e.id === id);
         if (!entry) return;
         entry.pinned = !entry.pinned;
         this.#save();
@@ -196,7 +190,7 @@ export class EncryptedStore extends Object {
     /** Remove all unpinned entries. */
     clearHistory(): void {
         this.#ensureReady();
-        this.#entries = this.#entries.filter(e => e.pinned);
+        this.#entries = this.#entries.filter((e) => e.pinned);
         this.#save();
     }
 
@@ -230,9 +224,7 @@ export class EncryptedStore extends Object {
 
     #ensureReady(): void {
         if (!this.#ready) {
-            throw new Error(
-                'EncryptedStore not initialised — call init() first'
-            );
+            throw new Error('EncryptedStore not initialised — call init() first');
         }
     }
 
@@ -259,37 +251,27 @@ export class EncryptedStore extends Object {
             const data = new Uint8Array(contents);
 
             // Verify magic
-            const magic =
-                (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
+            const magic = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
             if (magic !== MAGIC) {
                 logger.warn('clipboard', 'invalid magic in encrypted file');
                 return;
             }
 
             // Verify version
-            const version =
-                (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
+            const version = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
             if (version !== VERSION) {
-                logger.warn(
-                    'clipboard',
-                    `unsupported file version: ${version}`
-                );
+                logger.warn('clipboard', `unsupported file version: ${version}`);
                 // Don't clear — old version might still be readable
                 return;
             }
 
             // Parse layout
             const nonce = data.subarray(8, 8 + NONCE_SIZE);
-            const ciphertext = data.subarray(
-                8 + NONCE_SIZE,
-                data.length - TAG_SIZE
-            );
+            const ciphertext = data.subarray(8 + NONCE_SIZE, data.length - TAG_SIZE);
             const tag = data.subarray(data.length - TAG_SIZE);
 
             // Reconstruct [nonce][ciphertext][tag] for decrypt
-            const decryptInput = new Uint8Array(
-                NONCE_SIZE + ciphertext.length + TAG_SIZE
-            );
+            const decryptInput = new Uint8Array(NONCE_SIZE + ciphertext.length + TAG_SIZE);
             decryptInput.set(nonce);
             decryptInput.set(ciphertext, NONCE_SIZE);
             decryptInput.set(tag, NONCE_SIZE + ciphertext.length);
@@ -297,17 +279,11 @@ export class EncryptedStore extends Object {
             const decrypted = decrypt(this.#encryptionKey!, decryptInput);
 
             const decoder = new TextDecoder();
-            const parsed: {entries: ClipboardEntry[]} = JSON.parse(
-                decoder.decode(decrypted)
-            );
+            const parsed: {entries: ClipboardEntry[]} = JSON.parse(decoder.decode(decrypted));
             this.#entries = parsed.entries || [];
             logger.info('clipboard', `loaded ${this.#entries.length} entries`);
         } catch (e) {
-            logger.warn(
-                'clipboard',
-                'failed to load history, backing up and starting fresh:',
-                e
-            );
+            logger.warn('clipboard', 'failed to load history, backing up and starting fresh:', e);
             // Back up the corrupted/wrong-key file before clearing
             try {
                 const bak = Gio.File.new_for_path(HISTORY_FILE + '.bak');
@@ -333,22 +309,15 @@ export class EncryptedStore extends Object {
             GLib.mkdir_with_parents(DATA_DIR, 0o755);
 
             const encoder = new TextEncoder();
-            const jsonBytes = encoder.encode(
-                JSON.stringify({entries: this.#entries})
-            );
+            const jsonBytes = encoder.encode(JSON.stringify({entries: this.#entries}));
 
             const encrypted = encrypt(this.#encryptionKey!, jsonBytes);
 
             const nonce = encrypted.subarray(0, NONCE_SIZE);
-            const ciphertext = encrypted.subarray(
-                NONCE_SIZE,
-                encrypted.length - TAG_SIZE
-            );
+            const ciphertext = encrypted.subarray(NONCE_SIZE, encrypted.length - TAG_SIZE);
             const tag = encrypted.subarray(encrypted.length - TAG_SIZE);
 
-            const output = new Uint8Array(
-                4 + 4 + NONCE_SIZE + ciphertext.length + TAG_SIZE
-            );
+            const output = new Uint8Array(4 + 4 + NONCE_SIZE + ciphertext.length + TAG_SIZE);
             // Magic
             output[0] = (MAGIC >>> 24) & 0xff;
             output[1] = (MAGIC >>> 16) & 0xff;
@@ -381,19 +350,14 @@ export class EncryptedStore extends Object {
      * this file in the current codebase, but it could leak sensitive data.
      */
     #migrateLegacyJson(): void {
-        const legacyFile = Gio.File.new_for_path(
-            `${DATA_DIR}/clipboard-history.json`
-        );
+        const legacyFile = Gio.File.new_for_path(`${DATA_DIR}/clipboard-history.json`);
         if (!legacyFile.query_exists(null)) return;
 
         const bakPath = `${DATA_DIR}/clipboard-history.json.migrated`;
         try {
             const bak = Gio.File.new_for_path(bakPath);
             legacyFile.move(bak, Gio.FileCopyFlags.OVERWRITE, null, null);
-            logger.info(
-                'clipboard',
-                'legacy clipboard-history.json moved to .migrated'
-            );
+            logger.info('clipboard', 'legacy clipboard-history.json moved to .migrated');
         } catch (e) {
             logger.warn('clipboard', 'could not archive legacy JSON:', e);
         }
@@ -414,11 +378,7 @@ export class EncryptedStore extends Object {
             const filePath = `${LEGACY_CLIPBOARD_DIR}/${entry.content}`;
             const file = Gio.File.new_for_path(filePath);
             if (!file.query_exists(null)) {
-                logger.warn(
-                    'clipboard',
-                    'legacy image file missing, skipping:',
-                    filePath
-                );
+                logger.warn('clipboard', 'legacy image file missing, skipping:', filePath);
                 continue;
             }
 
@@ -430,20 +390,12 @@ export class EncryptedStore extends Object {
                     migrated++;
                 }
             } catch (e) {
-                logger.warn(
-                    'clipboard',
-                    'failed to migrate legacy image:',
-                    filePath,
-                    e
-                );
+                logger.warn('clipboard', 'failed to migrate legacy image:', filePath, e);
             }
         }
 
         if (migrated > 0) {
-            logger.info(
-                'clipboard',
-                `migrated ${migrated} legacy image(s) to inline base64`
-            );
+            logger.info('clipboard', `migrated ${migrated} legacy image(s) to inline base64`);
             this.#save();
 
             // Clean up legacy directory
@@ -453,11 +405,7 @@ export class EncryptedStore extends Object {
                     dir.delete(null);
                 }
             } catch (e) {
-                logger.warn(
-                    'clipboard',
-                    'could not remove legacy clipboard dir:',
-                    e
-                );
+                logger.warn('clipboard', 'could not remove legacy clipboard dir:', e);
             }
         }
     }

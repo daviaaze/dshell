@@ -1,8 +1,8 @@
-import Network from 'gi://AstalNetwork';
+import type Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, For} from 'gnim';
-import {bssidOf, bssidEquals, ApSnapshot, snapshotAp} from './utils';
 import ApRow from './apRow';
+import {type ApSnapshot, bssidEquals, bssidOf, snapshotAp} from './utils';
 
 interface ApListProps {
     wifi: Network.Wifi;
@@ -13,13 +13,9 @@ interface ApListProps {
 function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
     return [...aps].sort((a, b) => {
         const aActive =
-            a.bssid !== null &&
-            activeBssid !== null &&
-            bssidEquals(a.bssid, activeBssid);
+            a.bssid !== null && activeBssid !== null && bssidEquals(a.bssid, activeBssid);
         const bActive =
-            b.bssid !== null &&
-            activeBssid !== null &&
-            bssidEquals(b.bssid, activeBssid);
+            b.bssid !== null && activeBssid !== null && bssidEquals(b.bssid, activeBssid);
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
         return b.strength - a.strength;
@@ -27,15 +23,13 @@ function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
 }
 
 export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
-    const activeBssid = bind(wifi, 'active-access-point').as(active => {
+    const activeBssid = bind(wifi, 'active-access-point').as((active) => {
         if (!active) return null;
         return bssidOf(active);
     });
     const aps = bind(wifi, 'access-points');
 
-    const sortedAps = computed(() =>
-        sortAps(aps().map(snapshotAp), activeBssid())
-    );
+    const sortedAps = computed(() => sortAps(aps().map(snapshotAp), activeBssid()));
 
     return (
         <Gtk.Box
@@ -44,7 +38,7 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
             hexpand
             cssClasses={['network-list']}
         >
-            <For each={sortedAps} id={snap => snap.bssid ?? snap.ssid}>
+            <For each={sortedAps} id={(snap) => snap.bssid ?? snap.ssid}>
                 {(snap: ApSnapshot) => {
                     const apBssid = snap.bssid;
 
@@ -55,10 +49,7 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
                     });
 
                     const isConnecting = connectingAp.as(
-                        c =>
-                            apBssid !== null &&
-                            c !== null &&
-                            bssidEquals(c, apBssid)
+                        (c) => apBssid !== null && c !== null && bssidEquals(c, apBssid)
                     );
 
                     return (

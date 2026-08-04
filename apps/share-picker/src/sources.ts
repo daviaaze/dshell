@@ -3,8 +3,8 @@
  * XDPH windows to hyprctl client geometries.
  */
 import logger from '@shade/core/logger';
+import {getHyprClients, getHyprMonitors, matchXDPHToHyprctl} from './protocol';
 import type {MonitorState, WindowState, XDPHWindow} from './types';
-import {getHyprMonitors, getHyprClients, matchXDPHToHyprctl} from './protocol';
 
 const CAT = 'share-picker';
 
@@ -23,7 +23,7 @@ export function buildSources(xdphWindows: XDPHWindow[]): Sources {
             `${xdphWindows.length} XDPH windows`
     );
 
-    const monitors: MonitorState[] = hyprMonitors.map(m => ({
+    const monitors: MonitorState[] = hyprMonitors.map((m) => ({
         kind: 'monitor' as const,
         info: m,
         texture: null,
@@ -31,7 +31,7 @@ export function buildSources(xdphWindows: XDPHWindow[]): Sources {
     }));
 
     let matched = 0;
-    const windows: WindowState[] = xdphWindows.map(w => {
+    const windows: WindowState[] = xdphWindows.map((w) => {
         const client = matchXDPHToHyprctl(w, hyprClients);
         if (!client) {
             logger.debug(
@@ -62,10 +62,7 @@ export function buildSources(xdphWindows: XDPHWindow[]): Sources {
             capturing: false,
         };
     });
-    logger.info(
-        CAT,
-        `matched ${matched}/${xdphWindows.length} XDPH windows to hyprctl clients`
-    );
+    logger.info(CAT, `matched ${matched}/${xdphWindows.length} XDPH windows to hyprctl clients`);
 
     return {monitors, windows, matched};
 }

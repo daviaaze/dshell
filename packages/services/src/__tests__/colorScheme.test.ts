@@ -3,7 +3,7 @@
  * bindable colorSchemeName property is accessible before init().
  */
 import {ColorScheme} from '../display/colorScheme';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('ColorScheme', () => {
     it('returns the same singleton on repeated get_default()', () => {

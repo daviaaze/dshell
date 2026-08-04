@@ -31,9 +31,7 @@ function createSettingsGroup<S extends Schema>(schema: S) {
     return {raw: settings, ...createSettings(settings, schema)};
 }
 
-export type SettingsGroup<S extends Schema> = ReturnType<
-    typeof createSettingsGroup<S>
->;
+export type SettingsGroup<S extends Schema> = ReturnType<typeof createSettingsGroup<S>>;
 
 const schemas = new Map<string, Schema>();
 const groups = new Map<string, unknown>();
@@ -49,16 +47,12 @@ export function defineSettings<S extends Schema>(
     if (schemas.has(name)) {
         throw new Error(`settings '${name}' already defined`);
     }
-    const schema = build(
-        new Schema({id: `${baseId}.${name}`, path: `${basePath}${name}/`})
-    );
+    const schema = build(new Schema({id: `${baseId}.${name}`, path: `${basePath}${name}/`}));
     schemas.set(name, schema);
     return () => {
         const group = groups.get(name);
         if (!group) {
-            throw new Error(
-                `settings '${name}' accessed before initSettingsRoot()`
-            );
+            throw new Error(`settings '${name}' accessed before initSettingsRoot()`);
         }
         return group as SettingsGroup<S>;
     };
@@ -83,7 +77,7 @@ export function getRegisteredSchema(name: string): Schema {
  * any accessor is called. `factory` is injectable for tests.
  */
 export function initSettingsRoot(
-    factory: (schema: Schema) => unknown = s => createSettingsGroup(s)
+    factory: (schema: Schema) => unknown = (s) => createSettingsGroup(s)
 ): void {
     for (const [name, schema] of schemas) {
         if (!groups.has(name)) groups.set(name, factory(schema));

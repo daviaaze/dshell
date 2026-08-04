@@ -1,19 +1,19 @@
-import GObject from 'gi://GObject?version=2.0';
 import Adw from 'gi://Adw?version=1';
-import Gio from 'gi://Gio?version=2.0';
-import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
+import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {register} from 'gnim/gobject';
-import {gettext} from 'gettext';
-import {requestHandler} from '@shade/services/state/requestHandler';
-import ShellState from '@shade/services/state/shellState';
+import GObject from 'gi://GObject?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
+import logger, {perf} from '@shade/core/logger';
+import ServiceRegistry from '@shade/core/serviceRegistry';
+import {setApp} from '@shade/services/appHandle';
 import Screenshot from '@shade/services/capture/screenshot';
 import Touchpad from '@shade/services/input/touchpad';
+import {requestHandler} from '@shade/services/state/requestHandler';
+import ShellState from '@shade/services/state/shellState';
 import {boot} from '@shade/widgets/index';
-import ServiceRegistry from '@shade/core/serviceRegistry';
-import logger, {perf} from '@shade/core/logger';
-import {setApp} from '@shade/services/appHandle';
+import {gettext} from 'gettext';
+import {register} from 'gnim/gobject';
 
 // gnim dev/bundle auto-registers a Gtk.CssProvider for each imported .css
 import './shade.css';
@@ -38,11 +38,7 @@ export class ShadeShell extends Adw.Application {
         const display = Gdk.Display.get_default();
         if (!display) return;
         const iconTheme = Gtk.IconTheme.get_for_display(display);
-        const iconDir = GLib.build_filenamev([
-            import.meta.datadir,
-            'shade-shell',
-            'icons',
-        ]);
+        const iconDir = GLib.build_filenamev([import.meta.datadir, 'shade-shell', 'icons']);
         if (GLib.file_test(iconDir, GLib.FileTest.IS_DIR)) {
             iconTheme.add_search_path(iconDir);
             logger.debug('app', `icon search path added: ${iconDir}`);
@@ -81,7 +77,7 @@ export class ShadeShell extends Adw.Application {
     #teardown(): void {
         if (this.#disposed) return;
         this.#disposed = true;
-        this.#rootDisposers.forEach(d => d());
+        this.#rootDisposers.forEach((d) => d());
         this.#rootDisposers = [];
         ServiceRegistry.get_default().disposeAll();
     }

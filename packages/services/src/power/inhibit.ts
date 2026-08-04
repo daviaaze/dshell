@@ -1,17 +1,17 @@
-import Adw from 'gi://Adw?version=1';
-import Gtk from 'gi://Gtk?version=4.0';
+import type Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
-import {Object, register, property} from 'gnim/gobject';
-import {bus} from '../bus';
-import logger from '@shade/core/logger';
+import Gtk from 'gi://Gtk?version=4.0';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Object, property, register} from 'gnim/gobject';
+import {bus} from '../bus';
 
 @register
 export default class Inhibit extends Object {
     private static instance: Inhibit;
     static get_default() {
-        if (!this.instance) this.instance = new Inhibit();
-        return this.instance;
+        if (!Inhibit.instance) Inhibit.instance = new Inhibit();
+        return Inhibit.instance;
     }
 
     #idle: boolean;
@@ -31,10 +31,7 @@ export default class Inhibit extends Object {
     @property
     get remaining() {
         if (!this.#idle || this.#duration <= 0) return '';
-        const secs = Math.max(
-            0,
-            Math.round((this.#duration - this.#elapsed) / 1000)
-        );
+        const secs = Math.max(0, Math.round((this.#duration - this.#elapsed) / 1000));
         const min = Math.floor(secs / 60);
         const sec = secs % 60;
         return `${min}:${sec.toString().padStart(2, '0')}`;
@@ -106,10 +103,7 @@ export default class Inhibit extends Object {
 
     init(app: Adw.Application) {
         if (this.#initialized) {
-            logger.warn(
-                'inhibit',
-                'init() called but already initialized — skipping'
-            );
+            logger.warn('inhibit', 'init() called but already initialized — skipping');
             return;
         }
         this.#initialized = true;
@@ -117,10 +111,12 @@ export default class Inhibit extends Object {
 
         // Listen for inhibit commands from widgets via the bus
         this.#busSubscriptions.push(
-            bus.on('power:inhibit:set-duration', v => this.setDuration(v))
+            bus.on('power:inhibit:set-duration', (v) => this.setDuration(v))
         );
         this.#busSubscriptions.push(
-            bus.on('power:inhibit:set-idle', v => { this.idle = v; })
+            bus.on('power:inhibit:set-idle', (v) => {
+                this.idle = v;
+            })
         );
     }
 

@@ -1,8 +1,8 @@
-import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
-import {bind, computed, createState} from 'gnim';
+import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import TimerService from '@shade/services/time/timerService';
+import {bind, computed, createState} from 'gnim';
 
 function fmtRemaining(ms: number): string {
     if (ms < 0) return '--:--';
@@ -10,8 +10,7 @@ function fmtRemaining(ms: number): string {
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
     const s = totalSec % 60;
-    if (h > 0)
-        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
@@ -35,9 +34,7 @@ export const TimerSection = () => {
         return rem >= 0 && tot > 0 ? 1 - rem / tot : 0;
     });
 
-    const [selectedMode, setSelectedMode] = createState<
-        'countdown' | 'pomodoro'
-    >('countdown');
+    const [selectedMode, setSelectedMode] = createState<'countdown' | 'pomodoro'>('countdown');
 
     const readCustom = (self: Gtk.Button) => {
         const box = self.get_parent();
@@ -58,11 +55,7 @@ export const TimerSection = () => {
     };
 
     return (
-        <Gtk.Box
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={8}
-            halign={Gtk.Align.FILL}
-        >
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.FILL}>
             {/* ── Running state ── */}
             <Gtk.Box
                 visible={isActive}
@@ -72,7 +65,7 @@ export const TimerSection = () => {
                 cssClasses={['card', 'p-12']}
             >
                 <Gtk.Label
-                    label={remaining.as(r => fmtRemaining(r))}
+                    label={remaining.as((r) => fmtRemaining(r))}
                     cssClasses={['timer-display', 'numeric']}
                     halign={Gtk.Align.CENTER}
                 />
@@ -80,18 +73,16 @@ export const TimerSection = () => {
                     label={label}
                     cssClasses={['timer-label']}
                     halign={Gtk.Align.CENTER}
-                    visible={label.as(l => l.length > 0)}
+                    visible={label.as((l) => l.length > 0)}
                 />
                 <Gtk.ProgressBar fraction={fraction} hexpand />
                 <Gtk.Box spacing={8} halign={Gtk.Align.CENTER} hexpand={false}>
                     <Gtk.Button
                         cssClasses={['circular']}
-                        iconName={running.as(r =>
-                            r
-                                ? 'media-playback-pause-symbolic'
-                                : 'media-playback-start-symbolic'
+                        iconName={running.as((r) =>
+                            r ? 'media-playback-pause-symbolic' : 'media-playback-start-symbolic'
                         )}
-                        tooltipText={running.as(r => (r ? 'Pause' : 'Resume'))}
+                        tooltipText={running.as((r) => (r ? 'Pause' : 'Resume'))}
                         onClicked={() => {
                             if (timer.running) bus.emit('timer:cmd:pause');
                             else bus.emit('timer:cmd:resume');
@@ -108,7 +99,7 @@ export const TimerSection = () => {
 
             {/* ── Idle state ── */}
             <Gtk.Box
-                visible={isActive.as(a => !a)}
+                visible={isActive.as((a) => !a)}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
                 halign={Gtk.Align.FILL}
@@ -116,14 +107,14 @@ export const TimerSection = () => {
                 {/* Mode tabs */}
                 <Gtk.Box cssClasses={['linked']} halign={Gtk.Align.CENTER}>
                     <Gtk.ToggleButton
-                        active={selectedMode.as(m => m === 'countdown')}
+                        active={selectedMode.as((m) => m === 'countdown')}
                         cssClasses={[]}
                         onClicked={() => setSelectedMode('countdown')}
                     >
                         <Gtk.Label label="Timer" />
                     </Gtk.ToggleButton>
                     <Gtk.ToggleButton
-                        active={selectedMode.as(m => m === 'pomodoro')}
+                        active={selectedMode.as((m) => m === 'pomodoro')}
                         cssClasses={[]}
                         onClicked={() => setSelectedMode('pomodoro')}
                     >
@@ -133,7 +124,7 @@ export const TimerSection = () => {
 
                 {/* Countdown — presets + custom */}
                 <Gtk.Box
-                    visible={selectedMode.as(m => m === 'countdown')}
+                    visible={selectedMode.as((m) => m === 'countdown')}
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={8}
                     halign={Gtk.Align.FILL}
@@ -144,7 +135,7 @@ export const TimerSection = () => {
                         rowSpacing={4}
                         columnHomogeneous
                         hexpand
-                        ref={self => {
+                        ref={(self) => {
                             const flat = PRESETS.flat();
                             flat.forEach((min, i) => {
                                 const btn = new Gtk.Button({
@@ -152,22 +143,13 @@ export const TimerSection = () => {
                                     hexpand: true,
                                 });
                                 const label = new Gtk.Label({
-                                    label:
-                                        min >= 60
-                                            ? `${min / 60}h`
-                                            : `${min}m`,
+                                    label: min >= 60 ? `${min / 60}h` : `${min}m`,
                                 });
                                 btn.set_child(label);
                                 btn.connect('clicked', () =>
                                     bus.emit('timer:cmd:start-countdown', min * 60 * 1000)
                                 );
-                                self.attach(
-                                    btn,
-                                    i % 3,
-                                    Math.floor(i / 3),
-                                    1,
-                                    1
-                                );
+                                self.attach(btn, i % 3, Math.floor(i / 3), 1, 1);
                             });
                         }}
                     ></Gtk.Grid>
@@ -180,30 +162,21 @@ export const TimerSection = () => {
                             valign={Gtk.Align.CENTER}
                             widthRequest={52}
                         />
-                        <Gtk.Label
-                            label="h"
-                            cssClasses={['caption', 'dim-label']}
-                        />
+                        <Gtk.Label label="h" cssClasses={['caption', 'dim-label']} />
                         <Gtk.SpinButton
                             adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
                             digits={0}
                             valign={Gtk.Align.CENTER}
                             widthRequest={52}
                         />
-                        <Gtk.Label
-                            label="m"
-                            cssClasses={['caption', 'dim-label']}
-                        />
+                        <Gtk.Label label="m" cssClasses={['caption', 'dim-label']} />
                         <Gtk.SpinButton
                             adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
                             digits={0}
                             valign={Gtk.Align.CENTER}
                             widthRequest={52}
                         />
-                        <Gtk.Label
-                            label="s"
-                            cssClasses={['caption', 'dim-label']}
-                        />
+                        <Gtk.Label label="s" cssClasses={['caption', 'dim-label']} />
                         <Gtk.Button
                             cssClasses={['circular']}
                             iconName="media-playback-start-symbolic"
@@ -215,7 +188,7 @@ export const TimerSection = () => {
 
                 {/* Pomodoro */}
                 <Gtk.Box
-                    visible={selectedMode.as(m => m === 'pomodoro')}
+                    visible={selectedMode.as((m) => m === 'pomodoro')}
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={8}
                     halign={Gtk.Align.FILL}

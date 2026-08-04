@@ -1,5 +1,5 @@
-import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
 import type {ScreenshotHandle} from './types';
 
 /** Register GAction commands for screenshot/recording. */
@@ -20,10 +20,7 @@ export function registerCommands(ss: ScreenshotHandle, app: Gio.Application) {
     }
 
     // record-window-address takes a string parameter (window address)
-    const addressAction = Gio.SimpleAction.new(
-        'record-window-address',
-        GLib.VariantType.new('s')
-    );
+    const addressAction = Gio.SimpleAction.new('record-window-address', GLib.VariantType.new('s'));
     addressAction.connect('activate', (_action, param) => {
         const address = param?.get_string()[0];
         if (address) ss.recordWindowByAddress(address);

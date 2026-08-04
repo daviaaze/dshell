@@ -1,5 +1,5 @@
-import Gtk from 'gi://Gtk?version=4.0';
 import Adw from 'gi://Adw?version=1';
+import Gtk from 'gi://Gtk?version=4.0';
 
 /**
  * A button with an icon and label, styled as a flat menu item.
@@ -21,9 +21,7 @@ export const ActionButton = (props: {
 }) => (
     <Gtk.Button
         visible={props.visible ?? true}
-        cssClasses={
-            props.destructive ? ['flat', 'destructive-action'] : ['flat']
-        }
+        cssClasses={props.destructive ? ['flat', 'destructive-action'] : ['flat']}
         onClicked={props.onClicked}
     >
         <Adw.ButtonContent iconName={props.iconName} label={props.label} />

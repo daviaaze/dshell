@@ -1,10 +1,10 @@
 import Bluetooth from 'gi://AstalBluetooth';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {computed, createState, onCleanup, effect} from 'gnim';
-import {barSettings} from '@shade/services/settings/bar.gschema';
+import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import {getDeviceBatteryPercentage} from '@shade/services/monitoring/bluetoothBattery';
-import {connectFor, cleanupNode} from '@shade/core/connectFor';
+import {barSettings} from '@shade/services/settings/bar.gschema';
+import {computed, createState, effect, onCleanup} from 'gnim';
 
 const ICON_MAP: Record<string, string> = {
     'audio-headset': 'audio-headset-symbolic',
@@ -86,8 +86,8 @@ function refreshDevices(
     }
     // Disconnect battery signals for devices no longer connected
     for (const [addr, id] of batterySignals) {
-        if (!list.some(d => d.address === addr && d.connected)) {
-            const dev = list.find(d => d.address === addr);
+        if (!list.some((d) => d.address === addr && d.connected)) {
+            const dev = list.find((d) => d.address === addr);
             if (dev) dev.disconnect(id);
             batterySignals.delete(addr);
         }
@@ -104,8 +104,8 @@ function refreshDevices(
     }
 
     const devices = list
-        .filter(d => d.connected)
-        .map(d => ({
+        .filter((d) => d.connected)
+        .map((d) => ({
             name: d.name || 'Device',
             icon: deviceIcon(d.icon || ''),
             battery: getDeviceBatteryPercentage(d),
@@ -122,7 +122,7 @@ function disconnectBatterySignals(
 ) {
     for (const [addr, id] of batterySignals) {
         try {
-            const dev = bluetooth.devices.find(d => d.address === addr);
+            const dev = bluetooth.devices.find((d) => d.address === addr);
             if (dev) dev.disconnect(id);
         } catch {
             /* ignore */
@@ -146,8 +146,7 @@ export default () => {
         const _hn = {};
         const batterySignals = new Map<string, number>();
         const update = (devices: DeviceInfo[]) => updateIcons(iconBox, devices);
-        const refresh = () =>
-            refreshDevices(bluetooth, batterySignals, setDeviceInfo, update);
+        const refresh = () => refreshDevices(bluetooth, batterySignals, setDeviceInfo, update);
 
         connectFor(_hn, bluetooth, 'notify::is-connected', refresh);
         connectFor(_hn, bluetooth, 'notify::devices', refresh);
@@ -158,18 +157,12 @@ export default () => {
         });
     });
 
-    const visible = computed(
-        () => deviceInfo().length > 0 && bar.showBluetoothBattery()
-    );
+    const visible = computed(() => deviceInfo().length > 0 && bar.showBluetoothBattery());
 
-    const tooltipText = deviceInfo.as(arr =>
+    const tooltipText = deviceInfo.as((arr) =>
         arr.length > 0
             ? arr
-                  .map(d =>
-                      d.battery !== null
-                          ? `${d.name}: ${d.battery.toFixed(0)}%`
-                          : d.name
-                  )
+                  .map((d) => (d.battery !== null ? `${d.name}: ${d.battery.toFixed(0)}%` : d.name))
                   .join('\n')
             : ''
     );
@@ -179,7 +172,7 @@ export default () => {
             visible={visible}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             tooltipText={tooltipText}
-            ref={self => {
+            ref={(self) => {
                 iconBox = new Gtk.Box({spacing: 4});
                 self.set_child(iconBox);
                 onCleanup(() => {

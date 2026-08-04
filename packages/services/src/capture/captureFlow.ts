@@ -1,15 +1,10 @@
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
-import {bus} from '../bus';
 import {Process} from '@shade/core/process';
-import {
-    finalizeImage,
-    freshScreenshotFilename,
-    GRIM_BIN,
-} from './utils';
+import {bus} from '../bus';
 import {toGrimGeometry} from './geometry';
-import type {BoundaryGeometry} from './types';
-import type {ScreenshotHandle} from './types';
+import type {BoundaryGeometry, ScreenshotHandle} from './types';
+import {finalizeImage, freshScreenshotFilename, GRIM_BIN} from './utils';
 
 /**
  * Capture flows — fullscreen/area screenshot entry points and the overlay
@@ -33,17 +28,15 @@ export function screenshotFullscreen() {
                 logger.error('screenshot', 'post-capture failed:', e);
             }
         })
-        .catch(e => logger.error('screenshot', 'grim failed:', e));
+        .catch((e) => logger.error('screenshot', 'grim failed:', e));
 }
 
 /** Live grim capture of a global-compositor geometry (no stage frame). */
 export function captureGeometryLive(geometry: BoundaryGeometry) {
     const filename = freshScreenshotFilename();
-    Process.execAsync(
-        `${GRIM_BIN} -g "${toGrimGeometry(geometry)}" "${filename}"`
-    )
+    Process.execAsync(`${GRIM_BIN} -g "${toGrimGeometry(geometry)}" "${filename}"`)
         .then(() => finalizeImage(filename, true))
-        .catch(e => logger.error('screenshot', 'grim failed:', e));
+        .catch((e) => logger.error('screenshot', 'grim failed:', e));
 }
 
 /**

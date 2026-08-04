@@ -4,14 +4,15 @@
  *
  * Replaces the old `Theming` service (3-color accent → full palette).
  */
-import {Object as GObject, register, property} from 'gnim/gobject';
-import {Accessor} from 'gnim';
-import {Process} from '@shade/core/process';
+
 import GLib from 'gi://GLib?version=2.0';
-import logger from '@shade/core/logger';
-import {Theme, Stylesheet, type ThemeColors} from './theme';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import type {Accessor} from 'gnim';
+import {Object as GObject, property, register} from 'gnim/gobject';
+import {Stylesheet, Theme, type ThemeColors} from './theme';
 
 // ── Material 3 → shade CSS variable mapping ──
 
@@ -51,8 +52,8 @@ export default class PaletteGenerator extends GObject {
     private static instance: PaletteGenerator;
 
     static get_default() {
-        if (!this.instance) this.instance = new PaletteGenerator();
-        return this.instance;
+        if (!PaletteGenerator.instance) PaletteGenerator.instance = new PaletteGenerator();
+        return PaletteGenerator.instance;
     }
 
     #enabled = false;
@@ -84,10 +85,7 @@ export default class PaletteGenerator extends GObject {
         wallpaperNight: Accessor<string>;
     }) {
         if (this.#initialized) {
-            logger.warn(
-                'palette',
-                'init() called but already initialized — skipping'
-            );
+            logger.warn('palette', 'init() called but already initialized — skipping');
             return;
         }
         this.#initialized = true;
@@ -107,12 +105,8 @@ export default class PaletteGenerator extends GObject {
             }
         });
 
-        const unsubDay = settings.wallpaperDay.subscribe(() =>
-            this.#onWallpaperChange()
-        );
-        const unsubNight = settings.wallpaperNight.subscribe(() =>
-            this.#onWallpaperChange()
-        );
+        const unsubDay = settings.wallpaperDay.subscribe(() => this.#onWallpaperChange());
+        const unsubNight = settings.wallpaperNight.subscribe(() => this.#onWallpaperChange());
 
         this.#unsubs = [unsubEnabled, unsubDay, unsubNight];
 
@@ -157,29 +151,24 @@ export default class PaletteGenerator extends GObject {
         }
 
         Process.execAsyncv(['matugen', 'image', wallpaper, '--json', 'hex'])
-            .then(out => {
+            .then((out) => {
                 const palette = this.#parseMatugenJson(out);
                 if (palette) {
                     this.#applyPalette(palette);
                 }
             })
-            .catch(e => {
+            .catch((e) => {
                 logger.error('palette', 'matugen execution failed:', e);
             });
     }
 
-    #parseMatugenJson(
-        json: string
-    ): {dark: ThemeColors; light: ThemeColors} | null {
+    #parseMatugenJson(json: string): {dark: ThemeColors; light: ThemeColors} | null {
         try {
             const data: MatugenJson = JSON.parse(json);
             const rawDark = data.colors?.dark;
             const rawLight = data.colors?.light;
             if (!rawDark || !rawLight) {
-                logger.warn(
-                    'palette',
-                    'matugen JSON missing colors.dark or colors.light'
-                );
+                logger.warn('palette', 'matugen JSON missing colors.dark or colors.light');
                 return null;
             }
 
@@ -227,10 +216,7 @@ export default class PaletteGenerator extends GObject {
         sheet.activate();
         this.#activeStylesheet = sheet;
 
-        logger.debug(
-            'palette',
-            `applied palette — primary: ${palette.dark.primary ?? 'unknown'}`
-        );
+        logger.debug('palette', `applied palette — primary: ${palette.dark.primary ?? 'unknown'}`);
     }
 
     #clearActiveStylesheet(): void {
@@ -262,4 +248,8 @@ export default class PaletteGenerator extends GObject {
     }
 }
 
-defineService({name: 'PaletteGenerator', service: PaletteGenerator.get_default(), initArgs: () => [generalSettings()]});
+defineService({
+    name: 'PaletteGenerator',
+    service: PaletteGenerator.get_default(),
+    initArgs: () => [generalSettings()],
+});

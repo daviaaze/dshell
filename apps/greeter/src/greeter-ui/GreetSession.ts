@@ -7,10 +7,10 @@
  *   → start_session (on success)
  */
 import Greet from 'gi://AstalGreet';
-import GObject from 'gi://GObject?version=2.0';
-import Gio from 'gi://Gio?version=2.0';
-import {Object, register, property} from 'gnim/gobject';
+import type Gio from 'gi://Gio?version=2.0';
+import type GObject from 'gi://GObject?version=2.0';
 import logger from '@shade/core/logger';
+import {Object, property, register} from 'gnim/gobject';
 
 export type GreetState =
     | 'idle'
@@ -30,8 +30,8 @@ export class GreetSession extends Object {
     private static instance: GreetSession;
 
     static get_default() {
-        if (!this.instance) this.instance = new GreetSession();
-        return this.instance;
+        if (!GreetSession.instance) GreetSession.instance = new GreetSession();
+        return GreetSession.instance;
     }
 
     #greeter: Greet.Greeter | null = null;
@@ -114,40 +114,28 @@ export class GreetSession extends Object {
 
         // Connect all signals
         this.#signalIds = [
-            this.#greeter.connect(
-                'visible-request',
-                (_g: Greet.Greeter, msg: string) => {
-                    this.#infoMessage = msg;
-                    this.notify(NOTIFY_INFO_MSG);
-                    this.state = STATE_AWAITING_INPUT;
-                }
-            ),
+            this.#greeter.connect('visible-request', (_g: Greet.Greeter, msg: string) => {
+                this.#infoMessage = msg;
+                this.notify(NOTIFY_INFO_MSG);
+                this.state = STATE_AWAITING_INPUT;
+            }),
 
-            this.#greeter.connect(
-                'secret-request',
-                (_g: Greet.Greeter, msg: string) => {
-                    this.#infoMessage = msg || 'Password required';
-                    this.notify(NOTIFY_INFO_MSG);
-                    this.state = STATE_AWAITING_INPUT;
-                }
-            ),
+            this.#greeter.connect('secret-request', (_g: Greet.Greeter, msg: string) => {
+                this.#infoMessage = msg || 'Password required';
+                this.notify(NOTIFY_INFO_MSG);
+                this.state = STATE_AWAITING_INPUT;
+            }),
 
-            this.#greeter.connect(
-                'info-message',
-                (_g: Greet.Greeter, msg: string) => {
-                    this.#infoMessage = msg;
-                    this.notify(NOTIFY_INFO_MSG);
-                }
-            ),
+            this.#greeter.connect('info-message', (_g: Greet.Greeter, msg: string) => {
+                this.#infoMessage = msg;
+                this.notify(NOTIFY_INFO_MSG);
+            }),
 
-            this.#greeter.connect(
-                'error-message',
-                (_g: Greet.Greeter, msg: string) => {
-                    this.#errorMessage = msg;
-                    this.notify(NOTIFY_ERROR_MSG);
-                    this.state = 'error';
-                }
-            ),
+            this.#greeter.connect('error-message', (_g: Greet.Greeter, msg: string) => {
+                this.#errorMessage = msg;
+                this.notify(NOTIFY_ERROR_MSG);
+                this.state = 'error';
+            }),
 
             this.#greeter.connect('cancelled', () => {
                 this.#errorMessage = 'Authentication cancelled';
@@ -205,23 +193,19 @@ export class GreetSession extends Object {
     startSession(cmd: string[], env: string[] = []): void {
         if (!this.#greeter) return;
 
-        this.#greeter.start_session(
-            cmd,
-            env,
-            (_g: GObject.Object | null, res: Gio.AsyncResult) => {
-                try {
-                    this.#greeter!.start_session_finish(res);
-                    // If start_session returns, the session is running.
-                    // The greeter process (this app) should terminate.
-                    logger.info('greeter', 'session started successfully');
-                    this.#onSessionStarted?.();
-                } catch (e) {
-                    this.#errorMessage = `Failed to start session: ${e}`;
-                    this.notify(NOTIFY_ERROR_MSG);
-                    this.state = 'error';
-                }
+        this.#greeter.start_session(cmd, env, (_g: GObject.Object | null, res: Gio.AsyncResult) => {
+            try {
+                this.#greeter!.start_session_finish(res);
+                // If start_session returns, the session is running.
+                // The greeter process (this app) should terminate.
+                logger.info('greeter', 'session started successfully');
+                this.#onSessionStarted?.();
+            } catch (e) {
+                this.#errorMessage = `Failed to start session: ${e}`;
+                this.notify(NOTIFY_ERROR_MSG);
+                this.state = 'error';
             }
-        );
+        });
     }
 
     /**

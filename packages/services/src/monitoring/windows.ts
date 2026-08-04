@@ -1,5 +1,5 @@
-import {Process} from '@shade/core/process';
 import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
 
 export interface WindowGeometry {
     address: string;

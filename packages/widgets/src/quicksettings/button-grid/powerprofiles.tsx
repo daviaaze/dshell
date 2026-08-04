@@ -1,20 +1,15 @@
-import Gtk from 'gi://Gtk?version=4.0';
-import {createState, effect, onCleanup} from 'gnim';
 import Adw from 'gi://Adw?version=1';
-import PowerProfiles, {
-    profileLabel,
-    nextProfile,
-} from '@shade/services/power/powerProfiles';
+import Gtk from 'gi://Gtk?version=4.0';
+import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import {bus} from '@shade/services/bus';
-import type {QuickButton} from './quickButton';
-import {QuickToggleButton} from '../../common/quickToggleButton';
+import PowerProfiles, {nextProfile, profileLabel} from '@shade/services/power/powerProfiles';
+import {createState, effect, onCleanup} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
-import {connectFor, cleanupNode} from '@shade/core/connectFor';
+import {QuickToggleButton} from '../../common/quickToggleButton';
+import type {QuickButton} from './quickButton';
 
 export default (): QuickButton => {
-    const [iconName, setIconName] = createState(
-        'power-profile-balanced-symbolic'
-    );
+    const [iconName, setIconName] = createState('power-profile-balanced-symbolic');
     const [label, setLabel] = createState('');
     const [activeProfile, setActiveProfile] = createState<
         'power-saver' | 'balanced' | 'performance'

@@ -17,20 +17,22 @@
 
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
+import {defineService} from '@shade/core/define';
 import {
-    initStore,
+    type ClipboardEntry,
     getAllEntries,
+    initStore,
     searchEntries,
     addEntry as storeAddEntry,
+    clearHistory as storeClearHistory,
     deleteEntry as storeDeleteEntry,
     togglePin as storeTogglePin,
-    clearHistory as storeClearHistory,
-    type ClipboardEntry,
 } from './encryptedStore';
-import {defineService} from '@shade/core/define';
+
 export type {ClipboardEntry};
-import {startClipboardWatcher, stopClipboardWatcher} from './clipboardWatcher';
+
 import logger from '@shade/core/logger';
+import {startClipboardWatcher, stopClipboardWatcher} from './clipboardWatcher';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -55,9 +57,7 @@ function contentHash(data: Uint8Array): string {
 let idCounter = 0;
 
 function generateId(): string {
-    return (
-        Date.now().toString(36) + (idCounter++).toString(36).padStart(4, '0')
-    );
+    return Date.now().toString(36) + (idCounter++).toString(36).padStart(4, '0');
 }
 
 // ── Watcher callback ─────────────────────────────────────────────────────────
@@ -148,9 +148,7 @@ export function searchHistory(query: string): ClipboardEntry[] {
  * Sets the echo-hash so the next watcher event for this content is
  * suppressed.
  */
-export async function copyEntryToClipboard(
-    entry: ClipboardEntry
-): Promise<void> {
+export async function copyEntryToClipboard(entry: ClipboardEntry): Promise<void> {
     const display = Gdk.Display.get_default();
     if (!display) {
         logger.warn('clipboard', 'no display available');
@@ -168,10 +166,7 @@ export async function copyEntryToClipboard(
             // Image — decode from base64 and create a content provider
             const raw = new Uint8Array(GLib.base64_decode(entry.content));
             echoHash = contentHash(raw);
-            const provider = Gdk.ContentProvider.new_for_bytes(
-                entry.mimeType,
-                raw
-            );
+            const provider = Gdk.ContentProvider.new_for_bytes(entry.mimeType, raw);
             clipboard.set_content(provider);
         }
     } catch (e) {

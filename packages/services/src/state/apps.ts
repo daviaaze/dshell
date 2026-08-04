@@ -1,10 +1,10 @@
 import Apps from 'gi://AstalApps';
+import type Hyprland from 'gi://AstalHyprland';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import Hyprland from 'gi://AstalHyprland';
+import {defineService} from '@shade/core/define';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
-import {defineService} from '@shade/core/define';
 
 const apps = new Apps.Apps({
     nameMultiplier: 4,
@@ -52,11 +52,7 @@ function matchByGetter(
     for (const app of allApps) {
         const value = getValue(app);
         if (!value) continue;
-        if (
-            value === terms.cls ||
-            value === terms.title ||
-            value === terms.initialTitle
-        ) {
+        if (value === terms.cls || value === terms.title || value === terms.initialTitle) {
             return app;
         }
     }
@@ -73,9 +69,7 @@ function queryTerm(
     return results.length > 0 ? results[0]! : null;
 }
 
-export function getAppForClient(
-    client: Hyprland.Client
-): Apps.Application | null {
+export function getAppForClient(client: Hyprland.Client): Apps.Application | null {
     const terms: ClientTerms = {
         cls: client.class?.toLowerCase(),
         title: client.title?.toLowerCase(),
@@ -90,7 +84,7 @@ export function getAppForClient(
     const entryMatch = matchByGetter(
         allApps,
         terms,
-        a => a.entry?.toLowerCase().replace('.desktop', '') ?? ''
+        (a) => a.entry?.toLowerCase().replace('.desktop', '') ?? ''
     );
     if (entryMatch) return entryMatch;
 
@@ -101,17 +95,11 @@ export function getAppForClient(
     if (exactFromTitle) return exactFromTitle;
 
     // 3. Executable name match
-    const execMatch = matchByGetter(allApps, terms, a =>
-        getExecutableName(a.executable)
-    );
+    const execMatch = matchByGetter(allApps, terms, (a) => getExecutableName(a.executable));
     if (execMatch) return execMatch;
 
     // 4. App name match
-    const nameMatch = matchByGetter(
-        allApps,
-        terms,
-        a => a.name?.toLowerCase() ?? ''
-    );
+    const nameMatch = matchByGetter(allApps, terms, (a) => a.name?.toLowerCase() ?? '');
     if (nameMatch) return nameMatch;
 
     // 5. Fuzzy query fallback
@@ -140,9 +128,7 @@ export function getAppIcon(client: Hyprland.Client): string {
     return cls.toLowerCase();
 }
 
-export function getDesktopFileForClient(
-    client: Hyprland.Client
-): string | null {
+export function getDesktopFileForClient(client: Hyprland.Client): string | null {
     const app = getAppForClient(client);
     return app?.entry || null;
 }
@@ -176,9 +162,7 @@ export function reloadApps() {
  */
 export function launchApp(application: Apps.Application) {
     try {
-        GLib.spawn_command_line_async(
-            `uwsm-app -t service -- ${application.entry}`
-        );
+        GLib.spawn_command_line_async(`uwsm-app -t service -- ${application.entry}`);
     } catch (e) {
         logger.error('apps', `Failed to launch ${application.entry}:`, e);
     }
@@ -218,8 +202,7 @@ export function initAppWatcher() {
         if (!file.query_exists(null)) continue;
 
         const monitor = file.monitor(
-            Gio.FileMonitorFlags.WATCH_HARD_LINKS |
-                Gio.FileMonitorFlags.WATCH_MOVES,
+            Gio.FileMonitorFlags.WATCH_HARD_LINKS | Gio.FileMonitorFlags.WATCH_MOVES,
             null
         );
         appMonitors.add(monitor);
@@ -238,15 +221,11 @@ export function initAppWatcher() {
                 if (reloadDebounceId !== null) {
                     GLib.source_remove(reloadDebounceId);
                 }
-                reloadDebounceId = GLib.timeout_add(
-                    GLib.PRIORITY_DEFAULT,
-                    2000,
-                    () => {
-                        reloadDebounceId = null;
-                        reloadApps();
-                        return GLib.SOURCE_REMOVE;
-                    }
-                );
+                reloadDebounceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+                    reloadDebounceId = null;
+                    reloadApps();
+                    return GLib.SOURCE_REMOVE;
+                });
             }
         });
 

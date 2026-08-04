@@ -14,15 +14,12 @@
  */
 
 import GLib from 'gi://GLib?version=2.0';
-import {subprocess, Process} from '@shade/core/process';
 import logger from '@shade/core/logger';
+import {type Process, subprocess} from '@shade/core/process';
 
 export type ClipType = 'text' | 'image';
 
-export type ClipboardChangeCallback = (
-    type: ClipType,
-    rawBytes: Uint8Array
-) => void;
+export type ClipboardChangeCallback = (type: ClipType, rawBytes: Uint8Array) => void;
 
 let textWatcher: Process | null = null;
 let imageWatcher: Process | null = null;
@@ -38,10 +35,7 @@ let activeCallback: ClipboardChangeCallback | null = null;
  */
 export function startClipboardWatcher(callback: ClipboardChangeCallback): void {
     if (textWatcher || imageWatcher) {
-        logger.warn(
-            'clipboard',
-            'watcher already started, ignoring duplicate start'
-        );
+        logger.warn('clipboard', 'watcher already started, ignoring duplicate start');
         return;
     }
 
@@ -49,16 +43,7 @@ export function startClipboardWatcher(callback: ClipboardChangeCallback): void {
 
     // Text watcher: base64-encode clipboard text, output one line per change
     textWatcher = subprocess(
-        [
-            'wl-paste',
-            '--no-newline',
-            '--type',
-            'text',
-            '--watch',
-            'sh',
-            '-c',
-            'base64 -w0; echo',
-        ],
+        ['wl-paste', '--no-newline', '--type', 'text', '--watch', 'sh', '-c', 'base64 -w0; echo'],
         (line: string) => {
             try {
                 const trimmed = line.trim();
@@ -76,15 +61,7 @@ export function startClipboardWatcher(callback: ClipboardChangeCallback): void {
 
     // Image watcher: base64-encode PNG data, output one line per change
     imageWatcher = subprocess(
-        [
-            'wl-paste',
-            '--type',
-            'image',
-            '--watch',
-            'sh',
-            '-c',
-            'base64 -w0; echo',
-        ],
+        ['wl-paste', '--type', 'image', '--watch', 'sh', '-c', 'base64 -w0; echo'],
         (line: string) => {
             try {
                 const trimmed = line.trim();
@@ -107,7 +84,7 @@ export function startClipboardWatcher(callback: ClipboardChangeCallback): void {
  * Stop the clipboard watchers and clean up.
  */
 export function stopClipboardWatcher(): void {
-    [textWatcher, imageWatcher].forEach(w => w?.kill());
+    [textWatcher, imageWatcher].forEach((w) => w?.kill());
     textWatcher = null;
     imageWatcher = null;
     activeCallback = null;

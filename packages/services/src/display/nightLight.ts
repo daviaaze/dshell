@@ -1,12 +1,12 @@
-import {Object, register, property} from 'gnim/gobject';
-import {Process} from '@shade/core/process';
-import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import logger from '@shade/core/logger';
-import {Accessor} from 'gnim';
-import {bus} from '../bus';
+import GLib from 'gi://GLib?version=2.0';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import type {Accessor} from 'gnim';
+import {Object, property, register} from 'gnim/gobject';
+import {bus} from '../bus';
 
 export const TEMP_MIN = 2000;
 export const TEMP_MAX = 6500;
@@ -17,8 +17,8 @@ export default class NightLight extends Object {
 
     private static instance: NightLight;
     static get_default() {
-        if (!this.instance) this.instance = new NightLight();
-        return this.instance;
+        if (!NightLight.instance) NightLight.instance = new NightLight();
+        return NightLight.instance;
     }
 
     constructor() {
@@ -101,10 +101,7 @@ export default class NightLight extends Object {
         setNightLightAutoSchedule: (v: boolean) => void;
     }) {
         if (this.#initialized) {
-            logger.warn(
-                'nightLight',
-                'init() called but already initialized — skipping'
-            );
+            logger.warn('nightLight', 'init() called but already initialized — skipping');
             return;
         }
         this.#initialized = true;
@@ -141,9 +138,8 @@ export default class NightLight extends Object {
         });
 
         // Listen for daytime changes from GSettings
-        this.#generalHandlerId = this.#generalSettings.connect(
-            'changed::weather-is-daytime',
-            () => this.#checkSchedule()
+        this.#generalHandlerId = this.#generalSettings.connect('changed::weather-is-daytime', () =>
+            this.#checkSchedule()
         );
 
         this.#sync();
@@ -151,13 +147,19 @@ export default class NightLight extends Object {
 
         // Listen for commands from widgets via the bus
         this.#busSubscriptions.push(
-            bus.on('display:nightlight:enabled', v => { this.enabled = v; })
+            bus.on('display:nightlight:enabled', (v) => {
+                this.enabled = v;
+            })
         );
         this.#busSubscriptions.push(
-            bus.on('display:nightlight:temperature', v => { this.temperature = v; })
+            bus.on('display:nightlight:temperature', (v) => {
+                this.temperature = v;
+            })
         );
         this.#busSubscriptions.push(
-            bus.on('display:nightlight:schedule', v => { this.autoSchedule = v; })
+            bus.on('display:nightlight:schedule', (v) => {
+                this.autoSchedule = v;
+            })
         );
     }
 
@@ -196,8 +198,7 @@ export default class NightLight extends Object {
 
     #checkSchedule() {
         if (!this.#autoSchedule) return;
-        const isDaytime =
-            this.#generalSettings.get_boolean('weather-is-daytime');
+        const isDaytime = this.#generalSettings.get_boolean('weather-is-daytime');
         const shouldBeOn = !isDaytime;
         if (this.#enabled !== shouldBeOn) {
             this.enabled = shouldBeOn;
@@ -233,4 +234,8 @@ export default class NightLight extends Object {
     }
 }
 
-defineService({name: 'NightLight', service: NightLight.get_default(), initArgs: () => [generalSettings()]});
+defineService({
+    name: 'NightLight',
+    service: NightLight.get_default(),
+    initArgs: () => [generalSettings()],
+});

@@ -1,8 +1,8 @@
-import {Object, register, signal} from 'gnim/gobject';
-import {property} from '@shade/core/decorators';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import {property} from '@shade/core/decorators';
 import logger from '@shade/core/logger';
+import {Object, register, signal} from 'gnim/gobject';
 
 const FPRINTD_SERVICE = 'net.reactivated.Fprint';
 const FPRINTD_MANAGER = '/net/reactivated/Fprint/Manager';
@@ -15,8 +15,8 @@ export default class FingerprintAuth extends Object {
     private static instance: FingerprintAuth;
 
     static get_default() {
-        if (!this.instance) this.instance = new FingerprintAuth();
-        return this.instance;
+        if (!FingerprintAuth.instance) FingerprintAuth.instance = new FingerprintAuth();
+        return FingerprintAuth.instance;
     }
 
     #available = false;
@@ -87,10 +87,7 @@ export default class FingerprintAuth extends Object {
         if (this.#initialized) return;
         this.#initialized = true;
         try {
-            const manager = await this.#getProxy(
-                FPRINTD_MANAGER,
-                'net.reactivated.Fprint.Manager'
-            );
+            const manager = await this.#getProxy(FPRINTD_MANAGER, 'net.reactivated.Fprint.Manager');
             const devices = manager
                 .call_sync('GetDevices', null, Gio.DBusCallFlags.NONE, -1, null)
                 ?.get_child_value(0);
@@ -113,9 +110,7 @@ export default class FingerprintAuth extends Object {
                 'g-signal',
                 (_proxy, _sender, signalName, params) => {
                     if (signalName === 'VerifyStatus') {
-                        const status = params
-                            .get_child_value(0)
-                            .get_string()[0];
+                        const status = params.get_child_value(0).get_string()[0];
                         const done = params.get_child_value(1).get_boolean();
                         this.statusChanged(status);
 
@@ -160,9 +155,7 @@ export default class FingerprintAuth extends Object {
                 this.failed('too-many-retries');
                 return;
             }
-            this.#reinitAndRetry().catch(e =>
-                logger.error('fingerprint', 'retry failed:', e)
-            );
+            this.#reinitAndRetry().catch((e) => logger.error('fingerprint', 'retry failed:', e));
             return;
         }
 
@@ -177,7 +170,7 @@ export default class FingerprintAuth extends Object {
         this.#setState('idle');
         this.#release();
         this.#retryPending = true;
-        await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
+        await new Promise<void>((resolve) => setTimeout(() => resolve(), 500));
         if (!this.#retryPending) return; // cancelled by stop() during delay
         this.#retryPending = false;
         this.start();
@@ -233,13 +226,7 @@ export default class FingerprintAuth extends Object {
             return;
         }
         try {
-            this.#deviceProxy.call_sync(
-                'VerifyStop',
-                null,
-                Gio.DBusCallFlags.NONE,
-                -1,
-                null
-            );
+            this.#deviceProxy.call_sync('VerifyStop', null, Gio.DBusCallFlags.NONE, -1, null);
         } catch (e) {
             logger.warn('fingerprint', 'VerifyStop failed:', e);
         }
@@ -250,13 +237,7 @@ export default class FingerprintAuth extends Object {
     #release() {
         if (!this.#claimed || !this.#deviceProxy) return;
         try {
-            this.#deviceProxy.call_sync(
-                'Release',
-                null,
-                Gio.DBusCallFlags.NONE,
-                -1,
-                null
-            );
+            this.#deviceProxy.call_sync('Release', null, Gio.DBusCallFlags.NONE, -1, null);
         } catch (e) {
             // Release can fail if there's no active session to release.
             // This happens with stale VerifyStatus signals when the device
@@ -266,10 +247,7 @@ export default class FingerprintAuth extends Object {
         this.#claimed = false;
     }
 
-    async #getProxy(
-        objectPath: string,
-        interfaceName: string
-    ): Promise<Gio.DBusProxy> {
+    async #getProxy(objectPath: string, interfaceName: string): Promise<Gio.DBusProxy> {
         return new Promise((resolve, reject) => {
             Gio.DBusProxy.new_for_bus(
                 Gio.BusType.SYSTEM,

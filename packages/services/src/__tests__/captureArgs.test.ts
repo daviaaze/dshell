@@ -5,13 +5,9 @@
  * for non-AUTO passthrough (AUTO depends on which binaries are installed).
  */
 
-import {
-    buildRecordingArgs,
-    formatDuration,
-    resolveBackend,
-} from '../capture/utils';
 import {RecorderBackend, RecordingFormat} from '../capture/types';
-import {describe, it, expect, run} from './test-runner';
+import {buildRecordingArgs, formatDuration, resolveBackend} from '../capture/utils';
+import {describe, expect, it, run} from './test-runner';
 
 describe('buildRecordingArgs', () => {
     it('wl-screenrec: always includes filename and quality', () => {
@@ -157,19 +153,14 @@ describe('formatDuration', () => {
 
 describe('resolveBackend', () => {
     it('passes through explicit backends unchanged', () => {
-        expect(resolveBackend(RecorderBackend.WL_SCREENREC)).toBe(
-            RecorderBackend.WL_SCREENREC
-        );
-        expect(resolveBackend(RecorderBackend.WF_RECORDER)).toBe(
-            RecorderBackend.WF_RECORDER
-        );
+        expect(resolveBackend(RecorderBackend.WL_SCREENREC)).toBe(RecorderBackend.WL_SCREENREC);
+        expect(resolveBackend(RecorderBackend.WF_RECORDER)).toBe(RecorderBackend.WF_RECORDER);
     });
 
     it('AUTO resolves to a concrete backend', () => {
         const resolved = resolveBackend(RecorderBackend.AUTO);
         expect(
-            resolved === RecorderBackend.WL_SCREENREC ||
-                resolved === RecorderBackend.WF_RECORDER
+            resolved === RecorderBackend.WL_SCREENREC || resolved === RecorderBackend.WF_RECORDER
         ).toBe(true);
     });
 });

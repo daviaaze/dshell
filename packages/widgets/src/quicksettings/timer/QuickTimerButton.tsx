@@ -1,10 +1,10 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, computed} from 'gnim';
 import {bus} from '@shade/services/bus';
 import TimerService from '@shade/services/time/timerService';
-import {TimerSection} from './TimerSection';
-import type {QuickButton} from '../button-grid/quickButton';
+import {bind, computed} from 'gnim';
 import {QuickToggleButton} from '../../common/quickToggleButton';
+import type {QuickButton} from '../button-grid/quickButton';
+import {TimerSection} from './TimerSection';
 
 function fmtShort(ms: number): string {
     if (ms < 0) return 'Timer';
@@ -26,9 +26,7 @@ export default (): QuickButton => {
 
     const icon = computed(() => 'emoji-recent-symbolic');
 
-    const cssClasses = computed(() =>
-        running() ? ['raised', 'suggested-action'] : ['raised']
-    );
+    const cssClasses = computed(() => (running() ? ['raised', 'suggested-action'] : ['raised']));
 
     const popover = (
         <Gtk.Popover cssClasses={[]}>

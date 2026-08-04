@@ -1,10 +1,11 @@
 /**
  * Smoke tests for power services — verify module loads and singletons.
  */
+
+import {isConservationEnabled} from '../power/batteryConservation';
 import Inhibit from '../power/inhibit';
 import PowerProfiles from '../power/powerProfiles';
-import {isConservationEnabled} from '../power/batteryConservation';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('Inhibit', () => {
     it('get_default returns same instance', () => {

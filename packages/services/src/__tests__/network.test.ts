@@ -3,7 +3,7 @@
  * bindable wifiEnabled property default before init().
  */
 import NetworkService from '../network/networkService';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('NetworkService', () => {
     it('returns the same singleton on repeated get_default()', () => {

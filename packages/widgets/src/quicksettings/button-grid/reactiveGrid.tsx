@@ -17,9 +17,7 @@ export interface ReactiveGridProps {
  * QuickButton keeps its widget across reflows.
  */
 export const ReactiveGrid = ({cols = 2, items}: ReactiveGridProps) => {
-    const visibleItems = computed(() =>
-        items.filter(item => item.visible?.() !== false)
-    );
+    const visibleItems = computed(() => items.filter((item) => item.visible?.() !== false));
 
     const rows = computed(() => {
         const vis = visibleItems();
@@ -31,21 +29,11 @@ export const ReactiveGrid = ({cols = 2, items}: ReactiveGridProps) => {
     });
 
     return (
-        <Gtk.Box
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={4}
-            hexpand
-        >
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
             <For each={rows}>
                 {(row) => (
-                    <Gtk.Box
-                        spacing={4}
-                        homogeneous
-                        hexpand
-                    >
-                        <For each={computed(() => row)}>
-                            {(item: QuickButton) => item.widget}
-                        </For>
+                    <Gtk.Box spacing={4} homogeneous hexpand>
+                        <For each={computed(() => row)}>{(item: QuickButton) => item.widget}</For>
                     </Gtk.Box>
                 )}
             </For>

@@ -1,14 +1,14 @@
 import Adw from 'gi://Adw?version=1';
-import Gtk from 'gi://Gtk?version=4.0';
-import {register, Object, property} from 'gnim/gobject';
-import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import {bus} from '../bus';
-import {createSettings, Schema} from 'gnim/schema';
-import {Accessor, Setter} from 'gnim';
-import logger from '@shade/core/logger';
+import GLib from 'gi://GLib?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import type {Accessor, Setter} from 'gnim';
+import {Object, property, register} from 'gnim/gobject';
+import {createSettings, Schema} from 'gnim/schema';
+import {bus} from '../bus';
 
 export enum DarkModes {
     AUTO,
@@ -19,7 +19,7 @@ export enum DarkModes {
 const TIME_HANDLER_KEYS: Array<'changed::weather-sunrise-time' | 'changed::weather-sunset-time'> = [
     'changed::weather-sunrise-time',
     'changed::weather-sunset-time',
-]
+];
 
 const COLOR_SCHEME_KEY = 'color-scheme';
 
@@ -27,8 +27,8 @@ const COLOR_SCHEME_KEY = 'color-scheme';
 export class ColorScheme extends Object {
     private static instance: ColorScheme;
     static get_default() {
-        if (!this.instance) this.instance = new ColorScheme();
-        return this.instance;
+        if (!ColorScheme.instance) ColorScheme.instance = new ColorScheme();
+        return ColorScheme.instance;
     }
 
     #daytime: boolean = true;
@@ -106,19 +106,14 @@ export class ColorScheme extends Object {
 
         try {
             this.#colorScheme = c;
-            if (c === DarkModes.AUTO)
-                c = this.#daytime ? DarkModes.LIGHT : DarkModes.DARK;
+            if (c === DarkModes.AUTO) c = this.#daytime ? DarkModes.LIGHT : DarkModes.DARK;
 
             // Push the resolved mode to the system key unless it
             // already matches. Compare the KEY itself — not
             // StyleManager.dark — so a 'default' (no-preference)
             // key never suppresses a needed push.
-            const targetKey =
-                c === DarkModes.LIGHT ? 'prefer-light' : 'prefer-dark';
-            if (
-                this.#systemSettings.get_string(COLOR_SCHEME_KEY) !==
-                targetKey
-            ) {
+            const targetKey = c === DarkModes.LIGHT ? 'prefer-light' : 'prefer-dark';
+            if (this.#systemSettings.get_string(COLOR_SCHEME_KEY) !== targetKey) {
                 this.#pushSystemScheme(targetKey);
             }
 
@@ -141,8 +136,7 @@ export class ColorScheme extends Object {
         if (this.#colorScheme === DarkModes.AUTO)
             if (this.#daytime) return 'weather-clear-symbolic';
             else return 'weather-clear-night-symbolic';
-        if (this.#colorScheme === DarkModes.LIGHT)
-            return 'weather-clear-symbolic';
+        if (this.#colorScheme === DarkModes.LIGHT) return 'weather-clear-symbolic';
         else return 'weather-clear-night-symbolic';
     }
 
@@ -170,9 +164,7 @@ export class ColorScheme extends Object {
         if (!this.#gtkSettings) return;
         // GtkInterfaceColorScheme: 0=UNSUPPORTED 1=DEFAULT 2=DARK 3=LIGHT
         const v = Number(
-            (this.#gtkSettings as unknown as Record<string, unknown>)[
-                'gtk_interface_color_scheme'
-            ]
+            (this.#gtkSettings as unknown as Record<string, unknown>)['gtk_interface_color_scheme']
         );
         if (v === 0) return; // unsupported — nothing to follow
         let mode: DarkModes;
@@ -217,9 +209,7 @@ export class ColorScheme extends Object {
         }
 
         const now = GLib.DateTime.new_now_local()!.to_unix();
-        const sunrise = this.#generalSettings.get_double(
-            'weather-sunrise-time'
-        );
+        const sunrise = this.#generalSettings.get_double('weather-sunrise-time');
         const sunset = this.#generalSettings.get_double('weather-sunset-time');
         if (sunrise <= 0 || sunset <= 0) return;
 
@@ -230,17 +220,14 @@ export class ColorScheme extends Object {
         if (isDay !== this.#daytime) {
             this.#daytime = isDay;
             this.notify('daytime');
-            if (this.#colorScheme === DarkModes.AUTO)
-                this.colorScheme = DarkModes.AUTO;
+            if (this.#colorScheme === DarkModes.AUTO) this.colorScheme = DarkModes.AUTO;
         }
 
         // Schedule the NEXT future transition. If both times are in
         // the past, the schedule is stale — retry periodically
         // instead of refiring immediately (which caused the
         // dark/light flip-flop loop).
-        const next = [sunrise, sunset]
-            .filter(t => t > now)
-            .sort((a, b) => a - b)[0];
+        const next = [sunrise, sunset].filter((t) => t > now).sort((a, b) => a - b)[0];
         const delayMs =
             next !== undefined
                 ? Math.max((next - now) * 1000, 1000)
@@ -252,15 +239,9 @@ export class ColorScheme extends Object {
         }, delayMs);
     }
 
-    init(settings: {
-        colorScheme: Accessor<DarkModes>;
-        setColorScheme: (v: DarkModes) => void;
-    }) {
+    init(settings: {colorScheme: Accessor<DarkModes>; setColorScheme: (v: DarkModes) => void}) {
         if (this.#initialized) {
-            logger.warn(
-                'colorscheme',
-                'init() called but already initialized — skipping'
-            );
+            logger.warn('colorscheme', 'init() called but already initialized — skipping');
             return;
         }
         this.#initialized = true;
@@ -286,8 +267,7 @@ export class ColorScheme extends Object {
         this.#generalHandlerId = this.#generalSettings.connect(
             'changed::weather-is-daytime',
             () => {
-                const newDaytime =
-                    this.#generalSettings.get_boolean('weather-is-daytime');
+                const newDaytime = this.#generalSettings.get_boolean('weather-is-daytime');
                 if (newDaytime !== this.#daytime) {
                     this.#daytime = newDaytime;
                     this.notify('daytime');
@@ -303,9 +283,7 @@ export class ColorScheme extends Object {
         // sunrise/sunset times (e.g. new day, location change),
         // even if is-daytime itself didn't flip.
         for (const key of TIME_HANDLER_KEYS) {
-            this.#timeHandlerIds.push(
-                this.#generalSettings.connect(key, () => this.timeout())
-            );
+            this.#timeHandlerIds.push(this.#generalSettings.connect(key, () => this.timeout()));
         }
 
         // Follow Adw.StyleManager as the source of truth after
@@ -314,9 +292,7 @@ export class ColorScheme extends Object {
         const sm = this.#styleManager;
         if (sm) {
             this.#styleManagerHandlerIds.push(
-                sm.connect('notify::dark', () =>
-                    this.adoptExternalDark(sm.dark)
-                )
+                sm.connect('notify::dark', () => this.adoptExternalDark(sm.dark))
             );
         }
 
@@ -332,9 +308,8 @@ export class ColorScheme extends Object {
                     'gtk_interface_color_scheme'
                 ];
                 this.#gtkSettings = gtkSettings;
-                this.#gtkHandlerId = gtkSettings.connect(
-                    'notify::gtk-interface-color-scheme',
-                    () => this.onInterfaceColorScheme()
+                this.#gtkHandlerId = gtkSettings.connect('notify::gtk-interface-color-scheme', () =>
+                    this.onInterfaceColorScheme()
                 );
             } catch {
                 this.#gtkSettings = null;
@@ -343,7 +318,9 @@ export class ColorScheme extends Object {
 
         // Listen for color scheme commands from widgets via the bus
         this.#busSubscriptions.push(
-            bus.on('display:colorscheme:set', v => { this.colorScheme = v; })
+            bus.on('display:colorscheme:set', (v) => {
+                this.colorScheme = v;
+            })
         );
     }
 
@@ -420,4 +397,8 @@ export class ColorScheme extends Object {
     }
 }
 
-defineService({name: 'ColorScheme', service: ColorScheme.get_default(), initArgs: () => [generalSettings()]});
+defineService({
+    name: 'ColorScheme',
+    service: ColorScheme.get_default(),
+    initArgs: () => [generalSettings()],
+});

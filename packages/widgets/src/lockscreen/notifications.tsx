@@ -1,11 +1,11 @@
-import Notifd from 'gi://AstalNotifd';
+import type Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
-import {For, createState, effect, onCleanup} from 'gnim';
-import Notification from '../common/notification';
-import {useNotifd} from '@shade/services/notifications/useNotifd';
-import {isNotifdResolved} from '@shade/services/notifications/guard';
-import {connectFor, cleanupNode} from '@shade/core/connectFor';
+import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import logger from '@shade/core/logger';
+import {isNotifdResolved} from '@shade/services/notifications/guard';
+import {useNotifd} from '@shade/services/notifications/useNotifd';
+import {createState, effect, For, onCleanup} from 'gnim';
+import Notification from '../common/notification';
 
 /**
  * LockscreenNotifications — displays active notifications on the lockscreen.
@@ -22,17 +22,15 @@ import logger from '@shade/core/logger';
 const MAX_NOTIFICATIONS = 20;
 
 const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
-    const [notifications, setNotifications] = createState<
-        Notifd.Notification[]
-    >([]);
+    const [notifications, setNotifications] = createState<Notifd.Notification[]>([]);
 
     const addNotification = (id: number) => {
         const n = notifd.get_notification(id);
         if (!n) return;
 
-        setNotifications(prev => {
+        setNotifications((prev) => {
             // De-duplicate by id (notified can fire for updates to existing notifs)
-            const filtered = prev.filter(x => x.id !== id);
+            const filtered = prev.filter((x) => x.id !== id);
             const next = [n, ...filtered];
             // Cap to prevent unbounded growth on the lockscreen
             return next.slice(0, MAX_NOTIFICATIONS);
@@ -40,7 +38,7 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
     };
 
     const removeNotification = (id: number) =>
-        setNotifications(prev => prev.filter(x => x.id !== id));
+        setNotifications((prev) => prev.filter((x) => x.id !== id));
 
     const closeAction = (notif: Notifd.Notification) => {
         try {
@@ -53,40 +51,31 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
 
     return (
         <Gtk.ScrolledWindow
-            visible={notifications.as(n => n.length > 0)}
+            visible={notifications.as((n) => n.length > 0)}
             propagateNaturalHeight
             maxContentHeight={300}
             hscrollbarPolicy={Gtk.PolicyType.NEVER}
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
             cssClasses={['card']}
-            ref={_self => {
+            ref={(_self) => {
                 // Seed with currently-active notifications (some may have
                 // arrived before the screen locked)
                 try {
                     const active = notifd.get_notifications();
                     if (active && active.length > 0) {
-                        setNotifications(
-                            active.slice(0, MAX_NOTIFICATIONS).reverse()
-                        );
+                        setNotifications(active.slice(0, MAX_NOTIFICATIONS).reverse());
                     }
                 } catch (e) {
                     logger.warn('lockscreen', 'failed to seed notifications:', e);
                 }
 
                 const node = {};
-                connectFor(node, notifd, 'notified', (_, id) =>
-                    addNotification(id)
-                );
-                connectFor(node, notifd, 'dismissed', (_, id) =>
-                    removeNotification(id)
-                );
+                connectFor(node, notifd, 'notified', (_, id) => addNotification(id));
+                connectFor(node, notifd, 'dismissed', (_, id) => removeNotification(id));
                 onCleanup(() => cleanupNode(node));
             }}
         >
-            <Gtk.Box
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={8}
-            >
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <For each={notifications}>
                     {(n: Notifd.Notification) => (
                         <Notification
@@ -108,15 +97,12 @@ export const LockscreenNotifications = () => {
 
     effect(() => {
         if (isNotifdResolved() && notifd() === null) {
-            logger.warn(
-                'lockscreen',
-                'Notifd unavailable — no notifications on lockscreen'
-            );
+            logger.warn('lockscreen', 'Notifd unavailable — no notifications on lockscreen');
         }
     });
 
     return (
-        <For each={notifd.as(n => (n ? [n] : []))}>
+        <For each={notifd.as((n) => (n ? [n] : []))}>
             {(n: Notifd.Notifd) => <LockscreenContent notifd={n} />}
         </For>
     );

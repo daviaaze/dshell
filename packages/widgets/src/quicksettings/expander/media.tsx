@@ -1,11 +1,11 @@
+import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Mpris from 'gi://AstalMpris';
 import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {For, bind} from 'gnim';
-import Adw from 'gi://Adw?version=1';
 import MediaController from '@shade/services/session/mediaController';
 import {exactQuery} from '@shade/services/state/apps';
+import {bind, For} from 'gnim';
 
 function lengthStr(length: number) {
     const min = Math.floor(length / 60);
@@ -19,23 +19,20 @@ const PlayerApp = ({player}: {player: Mpris.Player}) => (
         <Gtk.Image
             cssClasses={['icon']}
             hexpand
-            tooltipText={bind(player, 'identity').as(id => id || '')}
+            tooltipText={bind(player, 'identity').as((id) => id || '')}
             iconName={bind(player, 'entry').as(
-                entry =>
-                    exactQuery(entry)[0]?.iconName ?? 'audio-x-generic-symbolic'
+                (entry) => exactQuery(entry)[0]?.iconName ?? 'audio-x-generic-symbolic'
             )}
         />
-        <Gtk.Label label={bind(player, 'identity').as(id => id || '')} />
+        <Gtk.Label label={bind(player, 'identity').as((id) => id || '')} />
     </Gtk.Box>
 );
 
 const CoverArt = ({player}: {player: Mpris.Player}) => {
     return (
         <Gtk.Picture
-            visible={bind(player, 'cover-art').as(c => !!c)}
-            file={bind(player, 'cover-art').as(path =>
-                Gio.File.new_for_path(path)
-            )}
+            visible={bind(player, 'cover-art').as((c) => !!c)}
+            file={bind(player, 'cover-art').as((path) => Gio.File.new_for_path(path))}
             cssClasses={['media-thumbnail']}
             contentFit={Gtk.ContentFit.COVER}
             widthRequest={120}
@@ -77,7 +74,7 @@ const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) 
             />
 
             <Gtk.Button
-                iconName={bind(player, 'playback-status').as(s =>
+                iconName={bind(player, 'playback-status').as((s) =>
                     s === Mpris.PlaybackStatus.PLAYING
                         ? 'media-playback-pause-symbolic'
                         : 'media-playback-start-symbolic'
@@ -113,15 +110,9 @@ const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
                 value={bind(player, 'position')}
             />
             <Gtk.CenterBox>
-                <Gtk.Label
-                    slot="start"
-                    label={bind(player, 'position').as(lengthStr)}
-                />
+                <Gtk.Label slot="start" label={bind(player, 'position').as(lengthStr)} />
                 <PlaybackButtons slot="center" player={player} />
-                <Gtk.Label
-                    slot="end"
-                    label={bind(player, 'length').as(lengthStr)}
-                />
+                <Gtk.Label slot="end" label={bind(player, 'length').as(lengthStr)} />
             </Gtk.CenterBox>
         </Gtk.Box>
     );
@@ -129,21 +120,14 @@ const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
 
 export const MediaIcon = () => {
     const mc = MediaController.get_default();
-    const hasPlayers = bind(mc, 'players').as(p => p.length > 0);
+    const hasPlayers = bind(mc, 'players').as((p) => p.length > 0);
 
     return (
-        <Gtk.Box
-            spacing={4}
-            cssClasses={['popover-padded']}
-            visible={hasPlayers}
-        >
-            <Gtk.Image
-                iconName="media-playback-start-symbolic"
-                pixelSize={20}
-            />
+        <Gtk.Box spacing={4} cssClasses={['popover-padded']} visible={hasPlayers}>
+            <Gtk.Image iconName="media-playback-start-symbolic" pixelSize={20} />
             <Adw.WindowTitle
                 title={bind(mc, 'activeTitle')}
-                subtitle={bind(mc, 'activePlayer').as(p => p?.identity ?? '')}
+                subtitle={bind(mc, 'activePlayer').as((p) => p?.identity ?? '')}
             />
         </Gtk.Box>
     );
@@ -156,7 +140,7 @@ export const Media = () => {
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
             spacing={4}
-            visible={bind(mc, 'players').as(p => p.length > 0)}
+            visible={bind(mc, 'players').as((p) => p.length > 0)}
         >
             <For each={bind(mc, 'players')}>
                 {(player: Mpris.Player) => (

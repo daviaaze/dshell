@@ -1,5 +1,5 @@
-import {getHyprland} from '../hyprland';
 import logger from '@shade/core/logger';
+import {getHyprland} from '../hyprland';
 import type {BoundaryGeometry} from './types';
 
 /**

@@ -72,11 +72,7 @@ export function connectFor(
  * @param callback  Cleanup function
  * @returns The handler ID
  */
-export function connectDestroy(
-    node: object,
-    widget: Connectable,
-    callback: () => void
-): number {
+export function connectDestroy(node: object, widget: Connectable, callback: () => void): number {
     return connectFor(node, widget, 'destroy', callback);
 }
 

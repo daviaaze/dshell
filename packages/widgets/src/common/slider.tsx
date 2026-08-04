@@ -1,6 +1,6 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor} from 'gnim';
+import type {Accessor} from 'gnim';
 
 type SliderProps = {
     icon: Accessor<string> | string;
@@ -25,11 +25,7 @@ export const Slider = (props: SliderProps) => {
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
 
     return (
-        <Gtk.Box
-            cssClasses={['slider']}
-            spacing={SLIDER_SPACING}
-            visible={props.visible}
-        >
+        <Gtk.Box cssClasses={['slider']} spacing={SLIDER_SPACING} visible={props.visible}>
             {props.onIconClick ? (
                 <Gtk.Button onClicked={props.onIconClick}>
                     <Gtk.Image iconName={props.icon} />
@@ -49,7 +45,7 @@ export const Slider = (props: SliderProps) => {
             />
             <Gtk.Label
                 cssClasses={['heading']}
-                label={props.value.as(v => safe(v).toFixed(0).concat('%'))}
+                label={props.value.as((v) => safe(v).toFixed(0).concat('%'))}
             />
         </Gtk.Box>
     );

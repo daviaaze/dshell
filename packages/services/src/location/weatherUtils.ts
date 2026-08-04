@@ -60,10 +60,6 @@ export function sunAngle(sunrise: number, sunset: number, now: number): number {
 }
 
 /** Check if currently within daylight hours */
-export function isDaytime(
-    sunrise: number,
-    sunset: number,
-    now: number
-): boolean {
+export function isDaytime(sunrise: number, sunset: number, now: number): boolean {
     return now >= sunrise && now <= sunset;
 }

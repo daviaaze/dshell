@@ -52,7 +52,7 @@ export function rectOverlap(
     bx: number,
     by: number,
     bw: number,
-    bh: number,
+    bh: number
 ): boolean {
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
 }
@@ -62,10 +62,7 @@ export function rectOverlap(
  * visible edge segments. Pure geometry — no Cairo, no GI types — so it
  * belongs in the service layer, not the rendering widget.
  */
-export function visibleBoundaryEdges(
-    geom: BoundaryGeometry,
-    monitor: MonitorRect,
-): LineSegment[] {
+export function visibleBoundaryEdges(geom: BoundaryGeometry, monitor: MonitorRect): LineSegment[] {
     const {x: mx, y: my, width: mw, height: mh} = monitor;
     if (!rectOverlap(geom.x, geom.y, geom.width, geom.height, mx, my, mw, mh)) {
         return [];

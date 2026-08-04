@@ -1,12 +1,12 @@
+import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {createState} from 'gnim';
-import {Battery, BatteryIcon} from './battery';
-import {Media, MediaIcon} from './media';
-import {Calendar, CalendarIcon} from './calendar';
 import {WeatherIcon} from '../../common/weatherWidget';
+import {Battery, BatteryIcon} from './battery';
+import {Calendar, CalendarIcon} from './calendar';
+import {Media, MediaIcon} from './media';
 import {Weather} from './weather';
 import {WorldClock} from './worldClock';
-import Adw from 'gi://Adw?version=1';
 
 export const Expander = () => {
     const [visible, setVisible] = createState(false);
@@ -26,9 +26,7 @@ export const Expander = () => {
                 </Adw.WrapBox>
                 <Gtk.Image
                     halign={Gtk.Align.END}
-                    iconName={visible.as(v =>
-                        v ? 'go-up-symbolic' : 'go-down-symbolic'
-                    )}
+                    iconName={visible.as((v) => (v ? 'go-up-symbolic' : 'go-down-symbolic'))}
                 />
             </Gtk.Box>
         </Gtk.ToggleButton>

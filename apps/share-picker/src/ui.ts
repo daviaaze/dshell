@@ -192,16 +192,12 @@ export function buildCombinedTab(
 
     box.append(buildSectionLabel('Screens'));
     const monFlow = buildFlowBox();
-    const monitorPics = monitors.map(state =>
-        monitorCard(monFlow, state, select, false)
-    );
+    const monitorPics = monitors.map((state) => monitorCard(monFlow, state, select, false));
     box.append(monFlow);
 
     box.append(buildSectionLabel('Windows'));
     const winFlow = buildFlowBox();
-    const windowPics = windows.map(state =>
-        windowCard(winFlow, state, select, false)
-    );
+    const windowPics = windows.map((state) => windowCard(winFlow, state, select, false));
     box.append(winFlow);
 
     return {page: scrolled(box), monitorPics, windowPics};

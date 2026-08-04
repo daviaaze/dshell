@@ -3,8 +3,7 @@ import GLib from 'gi://GLib?version=2.0';
 export function fmtOffset(local: GLib.TimeZone, remote: GLib.TimeZone): string {
     const now = GLib.DateTime.new_now(local)!;
     const remoteNow = now.to_timezone(remote);
-    const localOffset =
-        Number(now.get_utc_offset()) / Number(GLib.TIME_SPAN_HOUR);
+    const localOffset = Number(now.get_utc_offset()) / Number(GLib.TIME_SPAN_HOUR);
     const remoteOffset = remoteNow
         ? Number(remoteNow.get_utc_offset()) / Number(GLib.TIME_SPAN_HOUR)
         : 0;
@@ -36,9 +35,7 @@ export function relativeTime(unix: number): string {
 
 /** Wall-clock time of a unix timestamp ("%H:%M:%S"). */
 export function fullTimestamp(unix: number): string {
-    return (
-        GLib.DateTime.new_from_unix_local(unix)!.format('%H:%M:%S') || 'ERROR'
-    );
+    return GLib.DateTime.new_from_unix_local(unix)!.format('%H:%M:%S') || 'ERROR';
 }
 
 /** Format milliseconds as a human-readable duration (e.g. "1:05:30", "5:00"). */
@@ -47,7 +44,6 @@ export function fmtDuration(ms: number): string {
     const h = Math.floor(totalSec / 3600);
     const m = Math.floor((totalSec % 3600) / 60);
     const s = totalSec % 60;
-    if (h > 0)
-        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     return `${m}:${s.toString().padStart(2, '0')}`;
 }

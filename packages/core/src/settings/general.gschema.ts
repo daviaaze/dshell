@@ -1,5 +1,5 @@
+import {defineSchemaList, type Schema} from 'gnim/schema';
 import {defineSettings, getRegisteredSchema} from '../settingsRegistry';
-import {defineSchemaList, Schema} from 'gnim/schema';
 
 /**
  * General shell settings (shell-core).
@@ -44,11 +44,9 @@ function appearanceKeys<
 }
 
 /** World-clock timezones. */
-function clockKeys<
-    T extends TypedKeyLike[],
-    E extends EnumKeyLike[],
-    F extends FlagsKeyLike[],
->(s: Schema<T, E, F>) {
+function clockKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extends FlagsKeyLike[]>(
+    s: Schema<T, E, F>
+) {
     return s.key('timezones', 'as', {
         default: ['America/Sao_Paulo', 'Australia/Sydney'],
         summary: 'List of IANA timezone identifiers for the world clock',
@@ -73,8 +71,7 @@ function nightLightKeys<
         })
         .key('night-light-auto-schedule', 'b', {
             default: false,
-            summary:
-                'Automatically enable night light at sunset and disable at sunrise',
+            summary: 'Automatically enable night light at sunset and disable at sunrise',
         });
 }
 
@@ -112,21 +109,17 @@ function soundAlertKeys<
  * hypridle.conf. The timeout chain must satisfy: dim < idle < dpms < suspend.
  * If a key violates this ordering, Hypridle clamps it automatically.
  */
-function idleKeys<
-    T extends TypedKeyLike[],
-    E extends EnumKeyLike[],
-    F extends FlagsKeyLike[],
->(s: Schema<T, E, F>) {
+function idleKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extends FlagsKeyLike[]>(
+    s: Schema<T, E, F>
+) {
     return s
         .key('auto-lock-enabled', 'b', {
             default: true,
-            summary:
-                'Automatically lock screen after idle timeout (requires hypridle)',
+            summary: 'Automatically lock screen after idle timeout (requires hypridle)',
         })
         .key('idle-timeout', 'i', {
             default: 300,
-            summary:
-                'Seconds of inactivity before auto-lock. Valid range: 60-1800.',
+            summary: 'Seconds of inactivity before auto-lock. Valid range: 60-1800.',
             description:
                 'After this many seconds of inactivity, the screen locks. ' +
                 'dim-timeout should be lower, dpms-timeout and suspend-timeout should be higher.',
@@ -184,8 +177,7 @@ function notificationKeys<
         })
         .key('notification-show-progress', 'b', {
             default: false,
-            summary:
-                'Show countdown progress bar on notification popups (off by default)',
+            summary: 'Show countdown progress bar on notification popups (off by default)',
         })
         .key('notification-ignored-apps', 'as', {
             default: [],
@@ -194,11 +186,9 @@ function notificationKeys<
 }
 
 /** Dynamic theming and debug logging. */
-function themingKeys<
-    T extends TypedKeyLike[],
-    E extends EnumKeyLike[],
-    F extends FlagsKeyLike[],
->(s: Schema<T, E, F>) {
+function themingKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extends FlagsKeyLike[]>(
+    s: Schema<T, E, F>
+) {
     return s
         .key('dynamic-theming-enabled', 'b', {
             default: false,
@@ -216,11 +206,9 @@ function themingKeys<
 }
 
 /** Audio visualizer (Cava). */
-function cavaKeys<
-    T extends TypedKeyLike[],
-    E extends EnumKeyLike[],
-    F extends FlagsKeyLike[],
->(s: Schema<T, E, F>) {
+function cavaKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extends FlagsKeyLike[]>(
+    s: Schema<T, E, F>
+) {
     return s
         .key('cava-enabled', 'b', {
             default: false,
@@ -242,11 +230,9 @@ function cavaKeys<
  * Weather-derived state (written by the Weather service, consumed by
  * ColorScheme and NightLight for day/night detection) plus experiments.
  */
-function weatherKeys<
-    T extends TypedKeyLike[],
-    E extends EnumKeyLike[],
-    F extends FlagsKeyLike[],
->(s: Schema<T, E, F>) {
+function weatherKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extends FlagsKeyLike[]>(
+    s: Schema<T, E, F>
+) {
     return s
         .key('weather-is-daytime', 'b', {
             default: true,
@@ -262,8 +248,7 @@ function weatherKeys<
         })
         .key('experimental-wayland-monitors', 'b', {
             default: false,
-            summary:
-                'Use AstalWl for Wayland-native monitor tracking (experimental)',
+            summary: 'Use AstalWl for Wayland-native monitor tracking (experimental)',
             description:
                 'When enabled, replaces Gdk.Monitor tracking with AstalWl.Output for ' +
                 'Wayland-native monitor enumeration. The monitors array and all widget ' +
@@ -271,7 +256,7 @@ function weatherKeys<
         });
 }
 
-export const generalSettings = defineSettings('general', s => {
+export const generalSettings = defineSettings('general', (s) => {
     const datadir = import.meta.datadir || '@datadir@';
     const s1 = appearanceKeys(s, datadir);
     const s2 = clockKeys(s1);

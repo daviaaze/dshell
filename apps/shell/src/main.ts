@@ -1,9 +1,9 @@
-import Gettext from 'gettext';
 import GLib from 'gi://GLib?version=2.0';
 import GLibUnix from 'gi://GLibUnix?version=2.0';
+import logger, {initLoggerFromSettings, perf} from '@shade/core/logger';
+import Gettext from 'gettext';
 import {exit, programArgs, programInvocationName} from 'system';
 import {app} from './App';
-import logger, {initLoggerFromSettings, perf} from '@shade/core/logger';
 
 // ── Graceful shutdown on signals ──
 
@@ -27,9 +27,7 @@ function setupSignalHandlers() {
     };
 
     for (const sig of [2 /* SIGINT */, 15 /* SIGTERM */]) {
-        GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, sig, () =>
-            handleSignal(sig)
-        );
+        GLibUnix.signal_add(GLib.PRIORITY_DEFAULT, sig, () => handleSignal(sig));
     }
 }
 

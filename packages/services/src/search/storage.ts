@@ -141,15 +141,11 @@ export class FrecencyStorage {
             GLib.source_remove(this.#debounceId);
         }
 
-        this.#debounceId = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            DEBOUNCE_MS,
-            () => {
-                this.#debounceId = null;
-                this.#flush();
-                return GLib.SOURCE_REMOVE;
-            }
-        );
+        this.#debounceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, DEBOUNCE_MS, () => {
+            this.#debounceId = null;
+            this.#flush();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     #flush(): void {

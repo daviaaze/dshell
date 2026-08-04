@@ -1,9 +1,9 @@
-import {Object, register, property} from 'gnim/gobject';
 import GLib from 'gi://GLib?version=2.0';
+import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Object, property, register} from 'gnim/gobject';
 import {bus} from '../bus';
 import {getNotifdSafe} from './guard';
-import logger from '@shade/core/logger';
-import {defineService} from '@shade/core/define';
 
 /**
  * Centralized Do Not Disturb service.
@@ -29,8 +29,8 @@ export default class DndService extends Object {
     private static instance: DndService;
 
     static get_default() {
-        if (!this.instance) this.instance = new DndService();
-        return this.instance;
+        if (!DndService.instance) DndService.instance = new DndService();
+        return DndService.instance;
     }
 
     #dnd = false;
@@ -60,11 +60,9 @@ export default class DndService extends Object {
         this.#initialized = true;
 
         // Subscribe to bus events
+        this.#busSubscriptions.push(bus.on('system:dnd:toggle', () => this.toggle()));
         this.#busSubscriptions.push(
-            bus.on('system:dnd:toggle', () => this.toggle())
-        );
-        this.#busSubscriptions.push(
-            bus.on('system:dnd:set', v => {
+            bus.on('system:dnd:set', (v) => {
                 this.dnd = v;
             })
         );

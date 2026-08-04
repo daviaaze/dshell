@@ -1,6 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind} from 'gnim';
 import BluetoothService from '@shade/services/bluetooth/bluetoothService';
+import {bind} from 'gnim';
 
 export default () => {
     const bt = BluetoothService.get_default();
@@ -9,9 +9,7 @@ export default () => {
         <Gtk.Image
             iconName={bind(bt, 'iconName')}
             visible={bind(bt, 'isPowered')}
-            tooltipText={bind(bt, 'connectedDeviceNames').as(
-                names => names || 'Bluetooth'
-            )}
+            tooltipText={bind(bt, 'connectedDeviceNames').as((names) => names || 'Bluetooth')}
             pixelSize={18}
         />
     );

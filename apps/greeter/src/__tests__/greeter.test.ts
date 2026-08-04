@@ -5,17 +5,14 @@
  * (built via esbuild by the 'test' script in package.json)
  */
 
+import GLib from 'gi://GLib?version=2.0';
 import {GreetSession} from '../greeter-ui/GreetSession';
 import {discoverSessions, parseExec} from '../greeter-ui/sessions';
-import {describe, it, expect, run} from './test-runner';
-import GLib from 'gi://GLib?version=2.0';
+import {describe, expect, it, run} from './test-runner';
 
 describe('sessions', () => {
     it('parseExec strips field codes and splits argv', () => {
-        expect(parseExec('/usr/bin/foo --bar %U')).toEqual([
-            '/usr/bin/foo',
-            '--bar',
-        ]);
+        expect(parseExec('/usr/bin/foo --bar %U')).toEqual(['/usr/bin/foo', '--bar']);
     });
 
     it('parseExec respects quoting', () => {
@@ -40,22 +37,18 @@ describe('sessions', () => {
         const enc = new TextEncoder();
         GLib.file_set_contents(
             `${wsDir}/test.desktop`,
-            enc.encode(
-                '[Desktop Entry]\nName=Test Session\nExec=/usr/bin/test-session --flag %U\n'
-            )
+            enc.encode('[Desktop Entry]\nName=Test Session\nExec=/usr/bin/test-session --flag %U\n')
         );
         GLib.file_set_contents(
             `${wsDir}/hidden.desktop`,
-            enc.encode(
-                '[Desktop Entry]\nName=Hidden\nExec=/bin/hidden\nNoDisplay=true\n'
-            )
+            enc.encode('[Desktop Entry]\nName=Hidden\nExec=/bin/hidden\nNoDisplay=true\n')
         );
 
         const sessions = discoverSessions([base]);
-        const ids = sessions.map(s => s.id);
+        const ids = sessions.map((s) => s.id);
         expect(ids.includes('test.desktop')).toBe(true);
         expect(ids.includes('hidden.desktop')).toBe(false);
-        const test = sessions.find(s => s.id === 'test.desktop')!;
+        const test = sessions.find((s) => s.id === 'test.desktop')!;
         expect(test.name).toBe('Test Session');
         expect(test.command).toEqual(['/usr/bin/test-session', '--flag']);
     });
@@ -111,12 +104,7 @@ describe('GreetSession', () => {
         // The outcome depends on whether AstalGreet.Greeter constructor
         // throws immediately or succeeds and create_session fails later.
         // Either way, the state should be 'error' after a short delay.
-        const states = [
-            'error',
-            'creating-session',
-            'awaiting-input',
-            'authenticating',
-        ];
+        const states = ['error', 'creating-session', 'awaiting-input', 'authenticating'];
         expect(states).toContain(session.state);
 
         // If we're still in creating-session, the proxy was created

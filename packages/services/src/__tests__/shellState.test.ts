@@ -3,7 +3,7 @@
  * bindable launcherOpen property default before init().
  */
 import ShellState from '../state/shellState';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('ShellState', () => {
     it('returns the same singleton on repeated get_default()', () => {

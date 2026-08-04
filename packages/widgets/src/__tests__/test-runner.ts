@@ -39,12 +39,12 @@ export function it(name: string, fn: () => void) {
     addTest(name, fn, false);
 }
 
-it.async = function (name: string, fn: () => Promise<void>) {
+it.async = (name: string, fn: () => Promise<void>) => {
     addTest(name, fn, true);
 };
 
 function addTest(name: string, fn: TestFn, isAsync: boolean) {
-    let entry = suites.find(s => s.suite === currentSuite);
+    let entry = suites.find((s) => s.suite === currentSuite);
     if (!entry) {
         entry = {suite: currentSuite, tests: []};
         suites.push(entry);
@@ -55,9 +55,7 @@ function addTest(name: string, fn: TestFn, isAsync: boolean) {
 export const expect = (actual: unknown) => ({
     toBe: (expected: unknown) => {
         if (actual !== expected) {
-            throw new Error(
-                `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`
-            );
+            throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
         }
     },
     toEqual: (expected: unknown) => {
@@ -84,24 +82,19 @@ export const expect = (actual: unknown) => ({
         if (actual) throw new Error(`Expected falsy, got ${actual}`);
     },
     toBeNull: () => {
-        if (actual !== null)
-            throw new Error(`Expected null, got ${JSON.stringify(actual)}`);
+        if (actual !== null) throw new Error(`Expected null, got ${JSON.stringify(actual)}`);
     },
     toBeDefined: () => {
-        if (actual === undefined)
-            throw new Error(`Expected defined, got undefined`);
+        if (actual === undefined) throw new Error(`Expected defined, got undefined`);
     },
     toContain: (expected: unknown) => {
         if (!Array.isArray(actual)) throw new Error('Expected array');
         if (!actual.includes(expected)) {
-            throw new Error(
-                `Expected [${actual}] to contain ${JSON.stringify(expected)}`
-            );
+            throw new Error(`Expected [${actual}] to contain ${JSON.stringify(expected)}`);
         }
     },
     toThrow: () => {
-        if (typeof actual !== 'function')
-            throw new Error('Expected a function');
+        if (typeof actual !== 'function') throw new Error('Expected a function');
         let threw = false;
         try {
             actual();
@@ -111,8 +104,7 @@ export const expect = (actual: unknown) => ({
         if (!threw) throw new Error('Expected function to throw');
     },
     toThrowMatching: (predicate: (e: unknown) => boolean) => {
-        if (typeof actual !== 'function')
-            throw new Error('Expected a function');
+        if (typeof actual !== 'function') throw new Error('Expected a function');
         let threw = false;
         let error: unknown = null;
         try {
@@ -143,12 +135,7 @@ export async function run(_importMetaUrl?: string) {
                         fn() as Promise<void>,
                         new Promise<never>((_, reject) =>
                             setTimeout(
-                                () =>
-                                    reject(
-                                        new Error(
-                                            `Timeout after ${ASYNC_TIMEOUT_MS}ms`
-                                        )
-                                    ),
+                                () => reject(new Error(`Timeout after ${ASYNC_TIMEOUT_MS}ms`)),
                                 ASYNC_TIMEOUT_MS
                             )
                         ),
@@ -167,9 +154,7 @@ export async function run(_importMetaUrl?: string) {
     }
 
     const total = passed + failed;
-    print(
-        `\n${passed}/${total} passed` + (failed > 0 ? `, ${failed} FAILED` : '')
-    );
+    print(`\n${passed}/${total} passed` + (failed > 0 ? `, ${failed} FAILED` : ''));
 
     if (failed > 0) {
         imports.system.exit(1);

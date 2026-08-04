@@ -31,8 +31,7 @@ export function readFileAsync(file: string | Gio.File): Promise<string> {
                 if (success) {
                     resolve(new TextDecoder().decode(bytes));
                 } else {
-                    const path =
-                        typeof file === 'string' ? file : file.get_path();
+                    const path = typeof file === 'string' ? file : file.get_path();
                     reject(Error(`reading file ${path} was unsuccessful`));
                 }
             } catch (error) {
@@ -63,13 +62,9 @@ export function writeFile(file: string | Gio.File, content: string): Gio.File {
     return gfile;
 }
 
-export function writeFileAsync(
-    file: string | Gio.File,
-    content: string
-): Promise<Gio.File> {
+export function writeFileAsync(file: string | Gio.File, content: string): Promise<Gio.File> {
     return new Promise((resolve, reject) => {
-        const gfile =
-            typeof file === 'string' ? Gio.File.new_for_path(file) : file;
+        const gfile = typeof file === 'string' ? Gio.File.new_for_path(file) : file;
         const path = typeof file === 'string' ? file : gfile.get_path();
 
         if (!path) {
@@ -125,10 +120,7 @@ export function monitorFile(
                 monitorFile(path, callback);
             }
 
-            if (
-                event === Gio.FileMonitorEvent.DELETED &&
-                path === monitoredFile.get_path()
-            ) {
+            if (event === Gio.FileMonitorEvent.DELETED && path === monitoredFile.get_path()) {
                 mon.cancel();
             }
 
@@ -146,9 +138,7 @@ export function monitorFile(
         let i: Gio.FileInfo | null;
         while ((i = enumerator.next_file(null)) !== null) {
             if (i.get_file_type() === Gio.FileType.DIRECTORY) {
-                const filepath = monitoredFile
-                    .get_child(i.get_name())
-                    .get_path();
+                const filepath = monitoredFile.get_child(i.get_name()).get_path();
                 if (filepath !== null) {
                     const m = monitorFile(filepath, callback);
                     if (m) {

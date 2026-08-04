@@ -6,15 +6,10 @@
  * plus one main-loop-drained change event are asserted.
  */
 
-import GLib from 'gi://GLib?version=2.0';
 import Gio from 'gi://Gio?version=2.0';
-import {
-    disposeMonitors,
-    monitorFile,
-    readFile,
-    writeFile,
-} from '../file';
-import {describe, it, expect, run} from './test-runner';
+import GLib from 'gi://GLib?version=2.0';
+import {disposeMonitors, monitorFile, readFile, writeFile} from '../file';
+import {describe, expect, it, run} from './test-runner';
 
 function tmpPath(name: string): string {
     return `${GLib.get_tmp_dir()}/shade-test-${GLib.get_real_time()}-${name}`;

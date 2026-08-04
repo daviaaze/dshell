@@ -6,7 +6,7 @@
  * are reactive (Accessor<T>, callable) rather than plain values.
  */
 import SystemUsage from '../monitoring/systemUsage';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('SystemUsage', () => {
     it('returns the same singleton on repeated get_default()', () => {

@@ -12,15 +12,10 @@
  *   `ClipboardItem`           → `ClipboardEntry`
  */
 
-import logger from '@shade/core/logger';
 import Gdk from 'gi://Gdk?version=4.0';
-import {
-    getHistory,
-    searchHistory,
-    copyEntryToClipboard,
-    deleteEntry,
-} from './history';
+import logger from '@shade/core/logger';
 import type {ClipboardEntry} from './history';
+import {copyEntryToClipboard, deleteEntry, getHistory, searchHistory} from './history';
 
 /** @deprecated Use ClipboardEntry from clipboardHistory instead. */
 export interface ClipboardItem {
@@ -37,9 +32,7 @@ function entryToItem(entry: ClipboardEntry): ClipboardItem {
     };
 }
 
-export async function getClipboardHistory(
-    callback: (items: ClipboardItem[]) => void
-) {
+export async function getClipboardHistory(callback: (items: ClipboardItem[]) => void) {
     try {
         const entries = getHistory();
         callback(entries.map(entryToItem));
@@ -49,10 +42,7 @@ export async function getClipboardHistory(
     }
 }
 
-export async function searchClipboard(
-    query: string,
-    callback: (items: ClipboardItem[]) => void
-) {
+export async function searchClipboard(query: string, callback: (items: ClipboardItem[]) => void) {
     try {
         if (!query) {
             const entries = getHistory().slice(0, 20);
@@ -71,17 +61,14 @@ export async function copyClipboardItem(item: ClipboardEntry) {
     try {
         // Find the actual entry in our history to get the full record
         const entries = getHistory();
-        const entry = entries.find(e => e.id === item.id);
+        const entry = entries.find((e) => e.id === item.id);
         if (entry) {
             await copyEntryToClipboard(entry);
         } else {
             // Fallback: if the entry isn't found (shouldn't happen), try to
             // reconstruct from the ClipboardItem. For text, use the text field.
             // For images, we can't reconstruct without the file.
-            logger.warn(
-                'clipboard',
-                'entry not found in history, creating from item'
-            );
+            logger.warn('clipboard', 'entry not found in history, creating from item');
             const display = Gdk.Display.get_default();
             if (display) {
                 display.get_clipboard().set(item.content);

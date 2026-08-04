@@ -4,11 +4,12 @@
  *   - AudioController / Brightness / Touchpad expose their OSD props
  *     and default to hidden
  */
-import OsdTimer from '../utils/osdTimer';
+
 import AudioController from '../audio/audioController';
 import Brightness from '../display/brightness';
 import Touchpad from '../input/touchpad';
-import {describe, it, expect, run} from './test-runner';
+import OsdTimer from '../utils/osdTimer';
+import {describe, expect, it, run} from './test-runner';
 
 describe('OsdTimer', () => {
     it('starts hidden', () => {
@@ -18,7 +19,7 @@ describe('OsdTimer', () => {
 
     it('trigger reveals and notifies', () => {
         const changes: boolean[] = [];
-        const t = new OsdTimer(v => changes.push(v));
+        const t = new OsdTimer((v) => changes.push(v));
         t.trigger();
         expect(t.visible).toBe(true);
         expect(changes).toEqual([true]);
@@ -27,7 +28,7 @@ describe('OsdTimer', () => {
 
     it('retrigger while visible does not re-notify', () => {
         const changes: boolean[] = [];
-        const t = new OsdTimer(v => changes.push(v));
+        const t = new OsdTimer((v) => changes.push(v));
         t.trigger();
         t.trigger();
         expect(t.visible).toBe(true);
@@ -37,7 +38,7 @@ describe('OsdTimer', () => {
 
     it('dispose hides and notifies', () => {
         const changes: boolean[] = [];
-        const t = new OsdTimer(v => changes.push(v));
+        const t = new OsdTimer((v) => changes.push(v));
         t.trigger();
         t.dispose();
         expect(t.visible).toBe(false);

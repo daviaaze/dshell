@@ -4,9 +4,9 @@
  * Run: gjs -m src/lib/__tests__/clock.test.ts
  */
 
-import Clock from '../time/clock';
 import GLib from 'gi://GLib?version=2.0';
-import {describe, it, expect, run} from './test-runner';
+import Clock from '../time/clock';
+import {describe, expect, it, run} from './test-runner';
 
 describe('Clock singleton', () => {
     it('get_default returns the same instance', () => {
@@ -26,7 +26,7 @@ describe('Clock singleton', () => {
         const t1 = c.time().to_unix();
 
         // Wait a bit more than 1s for the tick to fire
-        await new Promise<void>(resolve => {
+        await new Promise<void>((resolve) => {
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1100, () => {
                 resolve();
                 return GLib.SOURCE_REMOVE;

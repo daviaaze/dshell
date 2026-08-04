@@ -8,8 +8,8 @@
  */
 
 import GObject from 'gi://GObject?version=2.0';
-import {connectFor, cleanupNode, type Connectable} from '@shade/core/connectFor';
-import {describe, it, expect, run} from './test-runner';
+import {type Connectable, cleanupNode, connectFor} from '@shade/core/connectFor';
+import {describe, expect, it, run} from './test-runner';
 
 type Emitter = {emit(signal: string, ...args: unknown[]): void};
 

@@ -1,8 +1,8 @@
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
-import {notify} from './utils';
 import type {VirtualMonitor} from './types';
+import {notify} from './utils';
 
 const ICON_ERROR = 'dialog-error-symbolic';
 
@@ -21,19 +21,13 @@ export async function createVirtualMonitor(
 
         let vmon: {name: string} | null = null;
         for (let attempt = 0; attempt < 10; attempt++) {
-            const all = JSON.parse(
-                await Process.execAsync('hyprctl -j monitors all')
-            );
+            const all = JSON.parse(await Process.execAsync('hyprctl -j monitors all'));
             vmon =
-                all.find((m: {name: string}) =>
-                    m.name.startsWith('SHADE-VMON')
-                ) ??
-                all.find((m: {name: string}) =>
-                    m.name.startsWith('HEADLESS')
-                ) ??
+                all.find((m: {name: string}) => m.name.startsWith('SHADE-VMON')) ??
+                all.find((m: {name: string}) => m.name.startsWith('HEADLESS')) ??
                 null;
             if (vmon) break;
-            await new Promise<void>(resolve =>
+            await new Promise<void>((resolve) =>
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                     resolve();
                     return GLib.SOURCE_REMOVE;
@@ -42,15 +36,8 @@ export async function createVirtualMonitor(
         }
 
         if (!vmon) {
-            logger.error(
-                'screenshot',
-                'failed to find created virtual monitor'
-            );
-            notify(
-                'Virtual monitor',
-                'Hyprland did not register the headless output.',
-                ICON_ERROR
-            );
+            logger.error('screenshot', 'failed to find created virtual monitor');
+            notify('Virtual monitor', 'Hyprland did not register the headless output.', ICON_ERROR);
             return null;
         }
 
@@ -59,10 +46,7 @@ export async function createVirtualMonitor(
         );
         const vm: VirtualMonitor = {name: vmon.name, resolution, fps};
         monitors.push(vm);
-        logger.info(
-            'screenshot',
-            `created virtual monitor: ${vm.name} (${resolution}@${fps})`
-        );
+        logger.info('screenshot', `created virtual monitor: ${vm.name} (${resolution}@${fps})`);
         return vm;
     } catch (e) {
         logger.error(

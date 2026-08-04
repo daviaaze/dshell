@@ -1,7 +1,7 @@
-import Weather from '@shade/services/location/weather';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {Accessor, bind} from 'gnim';
+import Weather from '@shade/services/location/weather';
+import {type Accessor, bind} from 'gnim';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 import {WeatherWidget} from '../common/weatherWidget';
 
@@ -18,9 +18,7 @@ export const WeatherButton = ({
 
     return (
         <Gtk.MenuButton
-            direction={vertical.as(v =>
-                v ? Gtk.ArrowType.RIGHT : Gtk.ArrowType.UP
-            )}
+            direction={vertical.as((v) => (v ? Gtk.ArrowType.RIGHT : Gtk.ArrowType.UP))}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             visible={visible}
             ref={usePopoverCleanup}
@@ -38,7 +36,7 @@ export const WeatherButton = ({
                 </Gtk.Box>
             </Gtk.Popover>
             <Gtk.Box
-                orientation={vertical.as(v =>
+                orientation={vertical.as((v) =>
                     v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                 )}
                 spacing={4}

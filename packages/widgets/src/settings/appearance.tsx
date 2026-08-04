@@ -1,18 +1,15 @@
-import {onCleanup} from 'gnim';
-import WindowManager from '@shade/services/state/windowManager';
-import {generalSettings} from '@shade/core/settings/general.gschema';
-import PaletteGenerator from '@shade/style/palette';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {TEMP_MIN, TEMP_MAX} from '@shade/services/display/nightLight';
+import {generalSettings} from '@shade/core/settings/general.gschema';
+import {TEMP_MAX, TEMP_MIN} from '@shade/services/display/nightLight';
+import WindowManager from '@shade/services/state/windowManager';
+import PaletteGenerator from '@shade/style/palette';
+import {onCleanup} from 'gnim';
 
 type Settings = ReturnType<typeof generalSettings>;
 
 /** Open an image file dialog and apply the chosen path. */
-function pickWallpaper(
-    fileDialog: Gtk.FileDialog,
-    apply: (path: string) => void
-) {
+function pickWallpaper(fileDialog: Gtk.FileDialog, apply: (path: string) => void) {
     fileDialog.open(WindowManager.get_default().settings!, null, (_, res) => {
         try {
             const path = fileDialog.open_finish(res)?.get_path();
@@ -35,37 +32,24 @@ function ThemeToggle({settings}: {settings: Settings}) {
             slot="suffix"
             cssClasses={['round']}
             valign={Gtk.Align.CENTER}
-            onNotifyActiveName={self => {
+            onNotifyActiveName={(self) => {
                 const newVal = map[self.activeName ?? 'auto'] ?? 0;
                 if (newVal !== settings.colorScheme.peek()) {
                     settings.setColorScheme(newVal);
                 }
             }}
-            ref={self => {
+            ref={(self) => {
                 self.activeName = NAMES[settings.colorScheme.peek()] ?? 'auto';
                 onCleanup(
                     settings.colorScheme.subscribe(() => {
-                        self.activeName =
-                            NAMES[settings.colorScheme()] ?? 'auto';
+                        self.activeName = NAMES[settings.colorScheme()] ?? 'auto';
                     })
                 );
             }}
         >
-            <Adw.Toggle
-                name={'auto'}
-                label={'Auto'}
-                iconName={'night-light-symbolic'}
-            />
-            <Adw.Toggle
-                name={'light'}
-                label={'Light'}
-                iconName={'weather-clear-symbolic'}
-            />
-            <Adw.Toggle
-                name={'dark'}
-                label={'Dark'}
-                iconName={'weather-clear-night-symbolic'}
-            />
+            <Adw.Toggle name={'auto'} label={'Auto'} iconName={'night-light-symbolic'} />
+            <Adw.Toggle name={'light'} label={'Light'} iconName={'weather-clear-symbolic'} />
+            <Adw.Toggle name={'dark'} label={'Dark'} iconName={'weather-clear-night-symbolic'} />
         </Adw.ToggleGroup>
     );
 }
@@ -76,10 +60,7 @@ function AppearanceGroup({settings}: {settings: Settings}) {
     fileDialog.set_default_filter(new Gtk.FileFilter({mimeTypes: ['image/*']}));
 
     return (
-        <Adw.PreferencesGroup
-            title={'Appearance'}
-            description={'Set cosmetic options'}
-        >
+        <Adw.PreferencesGroup title={'Appearance'} description={'Set cosmetic options'}>
             <Adw.ActionRow title={'System Theme'}>
                 <ThemeToggle settings={settings} />
             </Adw.ActionRow>
@@ -88,9 +69,7 @@ function AppearanceGroup({settings}: {settings: Settings}) {
                 title={'Wallpaper Day'}
                 subtitle={settings.wallpaperDay}
                 iconName={'image-x-generic-symbolic'}
-                onActivated={() =>
-                    pickWallpaper(fileDialog, p => settings.setWallpaperDay(p))
-                }
+                onActivated={() => pickWallpaper(fileDialog, (p) => settings.setWallpaperDay(p))}
             >
                 <Gtk.Image file={settings.wallpaperDay} />
             </Adw.ActionRow>
@@ -99,11 +78,7 @@ function AppearanceGroup({settings}: {settings: Settings}) {
                 title={'Wallpaper Night'}
                 subtitle={settings.wallpaperNight}
                 iconName={'image-x-generic-symbolic'}
-                onActivated={() =>
-                    pickWallpaper(fileDialog, p =>
-                        settings.setWallpaperNight(p)
-                    )
-                }
+                onActivated={() => pickWallpaper(fileDialog, (p) => settings.setWallpaperNight(p))}
             >
                 <Gtk.Image file={settings.wallpaperNight} />
             </Adw.ActionRow>
@@ -122,13 +97,9 @@ function ThemingGroup({settings}: {settings: Settings}) {
         >
             <Adw.SwitchRow
                 title={'Enable Dynamic Theming'}
-                subtitle={
-                    paletteGen.available ? '' : 'Install matugen to enable'
-                }
+                subtitle={paletteGen.available ? '' : 'Install matugen to enable'}
                 active={settings.dynamicThemingEnabled}
-                onNotifyActive={self =>
-                    settings.setDynamicThemingEnabled(self.active)
-                }
+                onNotifyActive={(self) => settings.setDynamicThemingEnabled(self.active)}
             />
             <Gtk.Button
                 cssClasses={['suggested-action', 'popover-padded']}
@@ -150,12 +121,10 @@ function NightLightGroup({settings}: {settings: Settings}) {
             <Adw.SwitchRow
                 title={'Enable Night Light'}
                 active={settings.nightLightEnabled}
-                onNotifyActive={self =>
-                    settings.setNightLightEnabled(self.active)
-                }
+                onNotifyActive={(self) => settings.setNightLightEnabled(self.active)}
             />
             <Adw.SpinRow
-                ref={self => {
+                ref={(self) => {
                     self.adjustment = new Gtk.Adjustment({
                         lower: TEMP_MIN,
                         upper: TEMP_MAX,
@@ -165,17 +134,13 @@ function NightLightGroup({settings}: {settings: Settings}) {
                 }}
                 title={'Color Temperature'}
                 subtitle={'Lower values are warmer (redder)'}
-                onNotifyValue={self =>
-                    settings.setNightLightTemperature(Math.round(self.value))
-                }
+                onNotifyValue={(self) => settings.setNightLightTemperature(Math.round(self.value))}
             />
             <Adw.SwitchRow
                 title={'Auto Schedule'}
                 subtitle={'Enable at sunset, disable at sunrise'}
                 active={settings.nightLightAutoSchedule}
-                onNotifyActive={self =>
-                    settings.setNightLightAutoSchedule(self.active)
-                }
+                onNotifyActive={(self) => settings.setNightLightAutoSchedule(self.active)}
             />
         </Adw.PreferencesGroup>
     );

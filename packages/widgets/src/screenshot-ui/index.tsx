@@ -1,25 +1,25 @@
 import Astal from 'gi://Astal?version=4.0';
-import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
-import {getHyprland} from '@shade/services/hyprland';
-import {Accessor, bind, createState} from 'gnim';
+import Gtk from 'gi://Gtk?version=4.0';
+import logger from '@shade/core/logger';
 import {getApp} from '@shade/services/appHandle';
 import Screenshot from '@shade/services/capture/screenshot';
+import {getHyprland} from '@shade/services/hyprland';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import logger from '@shade/core/logger';
-import {draw} from './drawing';
+import {type Accessor, bind, createState} from 'gnim';
 import {ControlPanel} from './controlPanel';
+import {draw} from './drawing';
 import {
-    normalizeRect,
-    isScreenshotMode,
     buildGeometry,
-    windowAt,
-    loadWindows,
     getMonitorOrigin,
+    isScreenshotMode,
+    loadWindows,
+    normalizeRect,
     type Point,
-    type WinInfo,
     type SelectionState,
+    type WinInfo,
+    windowAt,
 } from './selection';
 
 const LOG_TAG = 'screenshot-ui';
@@ -56,9 +56,7 @@ function getSelectionState(state: OverlayState): SelectionState {
         selectedWindow: state.selectedWindow(),
         windows: state.windows(),
         monOrigin: state.monOrigin(),
-        focusedMonitor: mon
-            ? {x: mon.x, y: mon.y, width: mon.width, height: mon.height}
-            : null,
+        focusedMonitor: mon ? {x: mon.x, y: mon.y, width: mon.width, height: mon.height} : null,
     };
 }
 
@@ -109,7 +107,10 @@ function onClickPressed(state: OverlayState, cx: number, cy: number) {
             state.setSelectedWindow(hit);
         } else if (state.ss.selectedTarget === 'area') {
             state.setDragStart({x: hit.x - state.monOrigin().x, y: hit.y - state.monOrigin().y});
-            state.setDragEnd({x: hit.x + hit.width - state.monOrigin().x, y: hit.y + hit.height - state.monOrigin().y});
+            state.setDragEnd({
+                x: hit.x + hit.width - state.monOrigin().x,
+                y: hit.y + hit.height - state.monOrigin().y,
+            });
             state.setSelActive(true);
             state.setSelectedWindow(null);
         }
@@ -134,9 +135,7 @@ function executeCapture(state: OverlayState) {
     )
         return;
 
-    const geomLabel = geom
-        ? `${geom.width}x${geom.height}+${geom.x}+${geom.y}`
-        : 'full';
+    const geomLabel = geom ? `${geom.width}x${geom.height}+${geom.x}+${geom.y}` : 'full';
     logger.info(
         LOG_TAG,
         `capture: mode=${state.ss.selectedMode}, target=${target}, geom=${geomLabel}`
@@ -174,7 +173,7 @@ function handleTargetChange(state: OverlayState, value: string) {
 function OverlayBackground({ss}: {ss: Screenshot}) {
     // Stage texture is the reactive trigger (arrives after captureSync on
     // overlay open); mode is peeked for the screenshot/recording switch.
-    return bind(ss, 'stageTexture').as(tex =>
+    return bind(ss, 'stageTexture').as((tex) =>
         tex && isScreenshotMode(ss.selectedMode) ? (
             <Gtk.Picture
                 paintable={tex}
@@ -193,7 +192,7 @@ function OverlayBackground({ss}: {ss: Screenshot}) {
 function SelectionArea({state}: {state: OverlayState}) {
     return (
         <Gtk.DrawingArea
-            ref={self => {
+            ref={(self) => {
                 state.daRef.current = self;
                 self.set_draw_func((_da, cr, w, h) =>
                     draw(_da, cr, w, h, {
@@ -212,22 +211,16 @@ function SelectionArea({state}: {state: OverlayState}) {
             css={'background: transparent;'}
         >
             <Gtk.GestureDrag
-                ref={self => {
-                    self.connect('drag-begin', (_g, sx, sy) =>
-                        onDragBegin(state, sx, sy)
-                    );
-                    self.connect('drag-update', (_g, ox, oy) =>
-                        onDragUpdate(state, ox, oy)
-                    );
+                ref={(self) => {
+                    self.connect('drag-begin', (_g, sx, sy) => onDragBegin(state, sx, sy));
+                    self.connect('drag-update', (_g, ox, oy) => onDragUpdate(state, ox, oy));
                     self.connect('drag-end', () => onDragEnd(state));
                 }}
             />
             <Gtk.GestureClick
-                ref={self => {
+                ref={(self) => {
                     self.set_button(1);
-                    self.connect('pressed', (_g, _n, cx, cy) =>
-                        onClickPressed(state, cx, cy)
-                    );
+                    self.connect('pressed', (_g, _n, cx, cy) => onClickPressed(state, cx, cy));
                 }}
             />
         </Gtk.DrawingArea>
@@ -245,9 +238,7 @@ export default () => {
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
     const [selActive, setSelActive] = createState(false);
-    const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(
-        null
-    );
+    const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(null);
     const [windows, setWindows] = createState<WinInfo[]>([]);
     const [monOrigin, setMonOrigin] = createState<Point>({x: 0, y: 0});
 
@@ -271,14 +262,14 @@ export default () => {
 
     return (
         <Astal.Window
-            ref={self => WindowManager.get_default().setOverlay(self)}
+            ref={(self) => WindowManager.get_default().setOverlay(self)}
             name={LOG_TAG}
             application={getApp()}
             layer={Astal.Layer.TOP}
             keymode={Astal.Keymode.EXCLUSIVE}
             exclusivity={Astal.Exclusivity.IGNORE}
             visible={isVisible}
-            onNotifyVisible={self => {
+            onNotifyVisible={(self) => {
                 if (self.visible) {
                     setMonOrigin(getMonitorOrigin(hyprland.focusedMonitor));
                     setWindows(loadWindows(hyprland.get_clients()));
@@ -291,9 +282,7 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={bind(hyprland, 'focused-monitor').as(
-                monitorIndexFromHyprland
-            )}
+            monitor={bind(hyprland, 'focused-monitor').as(monitorIndexFromHyprland)}
             css={'background-color: transparent;'}
         >
             <Gtk.Overlay>
@@ -302,23 +291,21 @@ export default () => {
 
                 {/* Control panel — hidden in quick-select mode */}
                 {bind(ss, 'overlayQuick').as(
-                    q =>
+                    (q) =>
                         !q && (
                             <ControlPanel
                                 ss={ss}
                                 onCapture={() => executeCapture(state)}
                                 onReset={() => resetSelection(state)}
-                                onTargetChange={v => handleTargetChange(state, v)}
+                                onTargetChange={(v) => handleTargetChange(state, v)}
                             />
                         )
                 )}
 
                 {/* Keyboard handler */}
                 <Gtk.EventControllerKey
-                    ref={self =>
-                        self.connect('key-pressed', (_c, keyval) =>
-                            handleKey(state, keyval)
-                        )
+                    ref={(self) =>
+                        self.connect('key-pressed', (_c, keyval) => handleKey(state, keyval))
                     }
                 />
             </Gtk.Overlay>

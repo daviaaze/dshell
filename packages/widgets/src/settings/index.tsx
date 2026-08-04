@@ -1,21 +1,21 @@
 import Adw from 'gi://Adw?version=1';
-import Bar from './bar';
+import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
-import Weather from './weather';
 import Appearance from './appearance';
-import Idle from './idle';
-import Notifications from './notifications';
+import Bar from './bar';
 import Clock from './clock';
+import Debug from './debug';
+import Idle from './idle';
 import Network from './network';
+import Notifications from './notifications';
 import ScreenCapture from './screenCapture';
 import Timer from './timer';
-import Debug from './debug';
-import {getApp} from '@shade/services/appHandle';
+import Weather from './weather';
 
 export const createSettingsWindow = (): Adw.PreferencesWindow => {
     return (
         <Adw.PreferencesWindow
-            ref={self => WindowManager.get_default().setSettings(self)}
+            ref={(self) => WindowManager.get_default().setSettings(self)}
             hideOnClose={false}
             application={getApp()}
             name={'settings'}
@@ -37,10 +37,7 @@ export const createSettingsWindow = (): Adw.PreferencesWindow => {
                 <Bar />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage
-                title={'Idle & Lock'}
-                iconName={'system-lock-screen-symbolic'}
-            >
+            <Adw.PreferencesPage title={'Idle & Lock'} iconName={'system-lock-screen-symbolic'}>
                 <Idle />
             </Adw.PreferencesPage>
 
@@ -51,17 +48,11 @@ export const createSettingsWindow = (): Adw.PreferencesWindow => {
                 <Notifications />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage
-                title={'Screen Capture'}
-                iconName={'camera-photo-symbolic'}
-            >
+            <Adw.PreferencesPage title={'Screen Capture'} iconName={'camera-photo-symbolic'}>
                 <ScreenCapture />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage
-                title={'Network'}
-                iconName={'network-wireless-symbolic'}
-            >
+            <Adw.PreferencesPage title={'Network'} iconName={'network-wireless-symbolic'}>
                 <Network />
             </Adw.PreferencesPage>
 
@@ -77,10 +68,7 @@ export const createSettingsWindow = (): Adw.PreferencesWindow => {
                 <Timer />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage
-                title={'Debug'}
-                iconName={'applications-engineering-symbolic'}
-            >
+            <Adw.PreferencesPage title={'Debug'} iconName={'applications-engineering-symbolic'}>
                 <Debug />
             </Adw.PreferencesPage>
         </Adw.PreferencesWindow>

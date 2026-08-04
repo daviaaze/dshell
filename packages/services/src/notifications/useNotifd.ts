@@ -1,6 +1,6 @@
-import Notifd from 'gi://AstalNotifd';
+import type Notifd from 'gi://AstalNotifd';
 import GLib from 'gi://GLib?version=2.0';
-import {createState, effect, type Accessor} from 'gnim';
+import {type Accessor, createState, effect} from 'gnim';
 import {getNotifdSafe, isNotifdResolved, watchNotifdInit} from './guard';
 
 /**

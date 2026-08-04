@@ -1,9 +1,9 @@
-import Apps from 'gi://AstalApps';
-import Gtk from 'gi://Gtk?version=4.0';
+import type Apps from 'gi://AstalApps';
 import Gdk from 'gi://Gdk?version=4.0';
-import WindowManager from '@shade/services/state/windowManager';
+import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import {launchApp} from '@shade/services/state/apps';
+import WindowManager from '@shade/services/state/windowManager';
 
 export default ({
     application,
@@ -29,17 +29,9 @@ export default ({
             }}
         >
             <Gtk.Box spacing={8}>
-                <Gtk.Image
-                    iconName={application.iconName || ''}
-                    pixelSize={48}
-                />
+                <Gtk.Image iconName={application.iconName || ''} pixelSize={48} />
                 <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
-                    <Gtk.Label
-                        wrap
-                        cssClasses={['title-2']}
-                        label={application.name}
-                        xalign={0}
-                    />
+                    <Gtk.Label wrap cssClasses={['title-2']} label={application.name} xalign={0} />
                     <Gtk.Label
                         cssClasses={['body']}
                         label={application.description}

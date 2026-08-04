@@ -8,7 +8,7 @@ import {defineSchemaList} from 'gnim/schema';
  * declares the key so it is compiled into the app's gschema. No service reads
  * it via Gio.Settings directly.
  */
-export const launcherSettings = defineSettings('launcher', s =>
+export const launcherSettings = defineSettings('launcher', (s) =>
     s.key('frecency', 's', {
         default: '{}',
         summary: 'Frecency data for app launcher (JSON)',

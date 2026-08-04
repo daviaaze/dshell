@@ -10,11 +10,12 @@
  *   frecencyScore = log2(count + 1) * recencyScore
  *   finalSearchScore = fuzzyScore * (1 + boost * frecencyScore)
  */
-import {Object as GObject, register, signal, property} from 'gnim/gobject';
-import {bus} from '../bus';
-import logger from '@shade/core/logger';
-import {FrecencyStorage, type FrecencyEntry} from './storage';
+
 import {defineService} from '@shade/core/define';
+import logger from '@shade/core/logger';
+import {Object as GObject, property, register, signal} from 'gnim/gobject';
+import {bus} from '../bus';
+import {type FrecencyEntry, FrecencyStorage} from './storage';
 
 // ── Constants ──
 
@@ -30,8 +31,8 @@ const SEARCH_BOOST = 0.5;
 export class FrecencyManager extends GObject {
     private static instance: FrecencyManager;
     static get_default() {
-        if (!this.instance) this.instance = new FrecencyManager();
-        return this.instance;
+        if (!FrecencyManager.instance) FrecencyManager.instance = new FrecencyManager();
+        return FrecencyManager.instance;
     }
 
     #storage: FrecencyStorage;
@@ -61,7 +62,7 @@ export class FrecencyManager extends GObject {
     #initBus(): void {
         if (this.#busInitialized) return;
         this.#busInitialized = true;
-        bus.on('search:frecency:record', desktopId => this.recordLaunch(desktopId));
+        bus.on('search:frecency:record', (desktopId) => this.recordLaunch(desktopId));
     }
 
     /**
@@ -92,11 +93,11 @@ export class FrecencyManager extends GObject {
                 id,
                 score: this.#computeFrecency(entry),
             }))
-            .filter(e => e.score > 0)
+            .filter((e) => e.score > 0)
             .sort((a, b) => b.score - a.score)
             .slice(0, limit);
 
-        return scored.map(e => e.id);
+        return scored.map((e) => e.id);
     }
 
     /**
@@ -146,7 +147,7 @@ export class FrecencyManager extends GObject {
 
         scored.sort((a, b) => b.score - a.score);
 
-        return [...scored.map(s => s.item), ...unscored];
+        return [...scored.map((s) => s.item), ...unscored];
     }
 
     /** Clear all frecency data. */

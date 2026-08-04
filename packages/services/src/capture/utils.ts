@@ -1,9 +1,9 @@
 import AstalWp from 'gi://AstalWp?version=0.1';
+import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import Gdk from 'gi://Gdk?version=4.0';
-import {Process} from '@shade/core/process';
 import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
 import {bus} from '../bus';
 import {RecorderBackend, RecordingFormat} from './types';
 
@@ -26,10 +26,7 @@ export function ensureScreenshotDir(): string {
     try {
         if (dir.query_exists(null)) return SCREENSHOT_DIR;
         dir.make_directory_with_parents(null);
-        logger.info(
-            'screenshot',
-            `created screenshot directory: ${SCREENSHOT_DIR}`
-        );
+        logger.info('screenshot', `created screenshot directory: ${SCREENSHOT_DIR}`);
         return SCREENSHOT_DIR;
     } catch (e) {
         logger.error(
@@ -140,15 +137,7 @@ export function buildRecordingArgs(
             quality
         );
     }
-    return buildWfRecorderArgs(
-        filename,
-        geometry,
-        output,
-        audio,
-        isWebm,
-        audioInputId,
-        quality
-    );
+    return buildWfRecorderArgs(filename, geometry, output, audio, isWebm, audioInputId, quality);
 }
 
 // ── Backend resolution ───────────────────────────────────────────
@@ -179,22 +168,12 @@ export function formatDuration(ms: number): string {
 
 // ── Notify helper ────────────────────────────────────────────────
 
-export function notify(
-    title: string,
-    body: string,
-    icon: string = 'dialog-information-symbolic'
-) {
+export function notify(title: string, body: string, icon: string = 'dialog-information-symbolic') {
     // Use execAsyncv to avoid GLib.shell_parse_argv quoting issues
     // when title or body contain special characters.
-    Process.execAsyncv([
-        'notify-send',
-        '-a',
-        'shade-shell',
-        '-i',
-        icon,
-        title,
-        body,
-    ]).catch(e => logger.warn('screenshot', 'notify-send failed:', e));
+    Process.execAsyncv(['notify-send', '-a', 'shade-shell', '-i', icon, title, body]).catch((e) =>
+        logger.warn('screenshot', 'notify-send failed:', e)
+    );
 }
 
 // ── Post-capture pipeline ──────────────────────────────────────
@@ -234,7 +213,8 @@ export function notifyCaptureFailed(detail: string): void {
  * Uses Gio.Subprocess with stdin pipe instead of shell redirect
  * because GLib.shell_parse_argv does not handle shell operators like <.
  */
-export function copyImageToClipboard(filename: string): void {    try {
+export function copyImageToClipboard(filename: string): void {
+    try {
         const wlCopy = Process.findBinary('wl-copy');
         if (wlCopy !== 'wl-copy') {
             const file = Gio.File.new_for_path(filename);
@@ -251,10 +231,7 @@ export function copyImageToClipboard(filename: string): void {    try {
                 }
                 proc.wait(null);
             }
-            logger.debug(
-                'screenshot',
-                `copied to clipboard via wl-copy: ${filename}`
-            );
+            logger.debug('screenshot', `copied to clipboard via wl-copy: ${filename}`);
             return;
         }
     } catch (e) {

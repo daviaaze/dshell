@@ -1,8 +1,8 @@
-import {Object, register, signal, property} from 'gnim/gobject';
-import {Process} from '@shade/core/process';
-import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import logger from '@shade/core/logger';
+import {Process} from '@shade/core/process';
+import {Object, property, register, signal} from 'gnim/gobject';
 
 const GEOCLUE_BUS = 'org.freedesktop.GeoClue2';
 const GEOCLUE_CLIENT_IFACE = 'org.freedesktop.GeoClue2.Client';
@@ -12,8 +12,8 @@ export default class Geolocation extends Object {
     private static instance: Geolocation;
 
     static get_default() {
-        if (!this.instance) this.instance = new Geolocation();
-        return this.instance;
+        if (!Geolocation.instance) Geolocation.instance = new Geolocation();
+        return Geolocation.instance;
     }
 
     #latitude = 0;
@@ -43,11 +43,11 @@ export default class Geolocation extends Object {
         if (this.#detecting) return;
         this.#detecting = true;
         this.#tryGeoClue()
-            .then(found => {
+            .then((found) => {
                 this.#detecting = false;
                 if (!found) this.#tryIpGeolocation();
             })
-            .catch(e => {
+            .catch((e) => {
                 this.#detecting = false;
                 logger.error('geo', 'GeoClue detection failed:', e);
                 this.#tryIpGeolocation();
@@ -110,49 +110,35 @@ export default class Geolocation extends Object {
             'DesktopId',
             new GLib.Variant('s', 'com.caioasmuniz.shade_shell')
         );
-        setProp(
-            GEOCLUE_CLIENT_IFACE,
-            'RequestedAccuracyLevel',
-            new GLib.Variant('u', 4)
-        );
+        setProp(GEOCLUE_CLIENT_IFACE, 'RequestedAccuracyLevel', new GLib.Variant('u', 4));
     }
 
     #connectGeoClueLocationSignal(
         client: Gio.DBusProxy,
         ref: {latestLocation: string | null}
     ): number {
-        const signalId = client.connect(
-            'g-signal',
-            (_proxy, _sender, signalName, params) => {
-                if (signalName === 'LocationUpdated') {
-                    const newPath = params.get_child_value(1).get_string()?.[0];
-                    logger.debug('geo', `LocationUpdated signal: ${newPath}`);
-                    if (newPath && newPath !== '/') ref.latestLocation = newPath;
-                }
+        const signalId = client.connect('g-signal', (_proxy, _sender, signalName, params) => {
+            if (signalName === 'LocationUpdated') {
+                const newPath = params.get_child_value(1).get_string()?.[0];
+                logger.debug('geo', `LocationUpdated signal: ${newPath}`);
+                if (newPath && newPath !== '/') ref.latestLocation = newPath;
             }
-        );
+        });
         return signalId;
     }
 
     async #startGeoClueClient(client: Gio.DBusProxy): Promise<void> {
         await new Promise<void>((resolve, reject) => {
-            client.call(
-                'Start',
-                null,
-                Gio.DBusCallFlags.NONE,
-                -1,
-                null,
-                (_, res) => {
-                    try {
-                        client.call_finish(res);
-                        logger.debug('geo', 'Start succeeded');
-                        resolve();
-                    } catch (e) {
-                        logger.error('geo', 'Start failed:', e);
-                        reject(e);
-                    }
+            client.call('Start', null, Gio.DBusCallFlags.NONE, -1, null, (_, res) => {
+                try {
+                    client.call_finish(res);
+                    logger.debug('geo', 'Start succeeded');
+                    resolve();
+                } catch (e) {
+                    logger.error('geo', 'Start failed:', e);
+                    reject(e);
                 }
-            );
+            });
         });
     }
 
@@ -161,17 +147,12 @@ export default class Geolocation extends Object {
         latestLocationRef: {latestLocation: string | null}
     ): Promise<string | null> {
         for (let i = 0; i < 60; i++) {
-            if (
-                latestLocationRef.latestLocation &&
-                latestLocationRef.latestLocation !== '/'
-            ) {
+            if (latestLocationRef.latestLocation && latestLocationRef.latestLocation !== '/') {
                 return latestLocationRef.latestLocation;
             }
-            const cached =
-                client.get_cached_property('Location')?.get_string()?.[0] ??
-                null;
+            const cached = client.get_cached_property('Location')?.get_string()?.[0] ?? null;
             if (cached && cached !== '/') return cached;
-            await new Promise<void>(r =>
+            await new Promise<void>((r) =>
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
                     r();
                     return GLib.SOURCE_REMOVE;
@@ -213,10 +194,7 @@ export default class Geolocation extends Object {
 
             await this.#startGeoClueClient(client);
 
-            const locationPath = await this.#waitForGeoClueLocation(
-                client,
-                latestLocationRef
-            );
+            const locationPath = await this.#waitForGeoClueLocation(client, latestLocationRef);
 
             if (signalId) client.disconnect(signalId);
 
@@ -234,10 +212,8 @@ export default class Geolocation extends Object {
                 'Location proxy failed'
             );
 
-            const lat =
-                location.get_cached_property('Latitude')?.get_double() ?? 0;
-            const lon =
-                location.get_cached_property('Longitude')?.get_double() ?? 0;
+            const lat = location.get_cached_property('Latitude')?.get_double() ?? 0;
+            const lon = location.get_cached_property('Longitude')?.get_double() ?? 0;
             logger.info('geo', `coordinates lat=${lat} lon=${lon}`);
 
             this.#update(lat, lon);
@@ -248,13 +224,7 @@ export default class Geolocation extends Object {
         } finally {
             if (client) {
                 try {
-                    client.call_sync(
-                        'Stop',
-                        null,
-                        Gio.DBusCallFlags.NONE,
-                        -1,
-                        null
-                    );
+                    client.call_sync('Stop', null, Gio.DBusCallFlags.NONE, -1, null);
                 } catch {
                     /* ignore */
                 }
@@ -263,14 +233,8 @@ export default class Geolocation extends Object {
     }
 
     #tryIpGeolocation() {
-        Process.execAsyncv([
-            'curl',
-            '-s',
-            '--max-time',
-            '5',
-            'https://ipapi.co/json/',
-        ])
-            .then(out => {
+        Process.execAsyncv(['curl', '-s', '--max-time', '5', 'https://ipapi.co/json/'])
+            .then((out) => {
                 if (!out) {
                     logger.warn('geo', 'curl produced no output');
                     return;
@@ -280,19 +244,13 @@ export default class Geolocation extends Object {
                     logger.warn('geo', 'parsed response is null');
                     return;
                 }
-                if (
-                    typeof data.latitude === 'number' &&
-                    typeof data.longitude === 'number'
-                ) {
+                if (typeof data.latitude === 'number' && typeof data.longitude === 'number') {
                     this.#update(data.latitude, data.longitude);
                 } else {
-                    logger.warn(
-                        'geo',
-                        `no coordinates in response: ${out.slice(0, 200)}`
-                    );
+                    logger.warn('geo', `no coordinates in response: ${out.slice(0, 200)}`);
                 }
             })
-            .catch(e => {
+            .catch((e) => {
                 logger.error('geo', 'IP geolocation failed:', e);
             });
     }

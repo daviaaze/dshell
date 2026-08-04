@@ -3,7 +3,7 @@
  * bindable isPowered property default before init().
  */
 import BluetoothService from '../bluetooth/bluetoothService';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('BluetoothService', () => {
     it('returns the same singleton on repeated get_default()', () => {

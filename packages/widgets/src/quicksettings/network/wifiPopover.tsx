@@ -1,10 +1,10 @@
-import Network from 'gi://AstalNetwork';
 import Adw from 'gi://Adw?version=1';
+import type Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, Accessor} from 'gnim';
-import {bus} from '@shade/services/bus';
-import ApList from './apList';
 import logger from '@shade/core/logger';
+import {bus} from '@shade/services/bus';
+import {type Accessor, bind} from 'gnim';
+import ApList from './apList';
 
 interface WifiPopoverProps {
     wifi: Network.Wifi;
@@ -17,11 +17,7 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
     const scanning = bind(wifi, 'scanning');
 
     return (
-        <Gtk.Box
-            cssClasses={['linked']}
-            spacing={4}
-            orientation={Gtk.Orientation.VERTICAL}
-        >
+        <Gtk.Box cssClasses={['linked']} spacing={4} orientation={Gtk.Orientation.VERTICAL}>
             <Gtk.Box spacing={4}>
                 <Gtk.Button
                     hexpand
@@ -32,32 +28,25 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
                     }}
                 >
                     <Adw.ButtonContent
-                        iconName={scanning.as(s =>
-                            s
-                                ? 'content-loading-symbolic'
-                                : 'view-refresh-symbolic'
+                        iconName={scanning.as((s) =>
+                            s ? 'content-loading-symbolic' : 'view-refresh-symbolic'
                         )}
                         label="Scan"
                     />
                 </Gtk.Button>
                 <Gtk.Button
                     onClicked={() => {
-                        logger.info(
-                            'network',
-                            `wifi ${wifi.enabled ? 'disabled' : 'enabled'}`
-                        );
+                        logger.info('network', `wifi ${wifi.enabled ? 'disabled' : 'enabled'}`);
                         bus.emit('network:wifi:toggle');
                     }}
                 >
                     <Adw.ButtonContent
-                        iconName={wifiEnabled.as(enabled =>
+                        iconName={wifiEnabled.as((enabled) =>
                             enabled
                                 ? 'network-wireless-disabled-symbolic'
                                 : 'network-wireless-symbolic'
                         )}
-                        label={wifiEnabled.as(enabled =>
-                            enabled ? 'Off' : 'On'
-                        )}
+                        label={wifiEnabled.as((enabled) => (enabled ? 'Off' : 'On'))}
                     />
                 </Gtk.Button>
             </Gtk.Box>
@@ -68,11 +57,7 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
                 vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                 hscrollbarPolicy={Gtk.PolicyType.NEVER}
             >
-                <ApList
-                    wifi={wifi}
-                    connectingAp={connectingAp}
-                    setConnectingAp={setConnectingAp}
-                />
+                <ApList wifi={wifi} connectingAp={connectingAp} setConnectingAp={setConnectingAp} />
             </Gtk.ScrolledWindow>
         </Gtk.Box>
     );

@@ -5,7 +5,7 @@
  */
 
 import printOut from '@shade/core/stdout';
-import {describe, it, expect, run} from './test-runner';
+import {describe, expect, it, run} from './test-runner';
 
 describe('printOut', () => {
     it('does not throw', () => {

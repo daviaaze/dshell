@@ -4,9 +4,8 @@
  * Run via: pnpm test
  */
 
-import ServiceRegistry from '../serviceRegistry';
 import {
-    AppContext,
+    type AppContext,
     defineService,
     defineWidget,
     getWidgetActions,
@@ -14,7 +13,8 @@ import {
     initServices,
     resetDefineRegistry,
 } from '../define';
-import {describe, it, expect, run} from './test-runner';
+import ServiceRegistry from '../serviceRegistry';
+import {describe, expect, it, run} from './test-runner';
 
 function fakeCtx(registry: ServiceRegistry): AppContext {
     return {app: null as unknown as AppContext['app'], registry};
@@ -61,9 +61,7 @@ describe('defineService', () => {
         });
         const registry = new ServiceRegistry();
         initServices(fakeCtx(registry));
-        expect(order.indexOf('first')).toBeLessThan(
-            order.indexOf('dependent')
-        );
+        expect(order.indexOf('first')).toBeLessThan(order.indexOf('dependent'));
     });
 
     it('initServices returns false on non-critical failure and continues', () => {
@@ -97,7 +95,7 @@ describe('defineService', () => {
         defineService({
             name: 'ctx-aware',
             service: {init: () => {}},
-            initArgs: ctx => {
+            initArgs: (ctx) => {
                 seen = ctx;
                 return [];
             },
@@ -115,11 +113,7 @@ describe('defineWidget', () => {
         defineWidget({name: 'one', mount: () => null});
         defineWidget({name: 'two', mount: () => null});
         defineWidget({name: 'three', mount: () => null});
-        expect(getWidgetDefs().map(w => w.name)).toEqual([
-            'one',
-            'two',
-            'three',
-        ]);
+        expect(getWidgetDefs().map((w) => w.name)).toEqual(['one', 'two', 'three']);
     });
 
     it('re-declaring a name replaces the def in place', () => {

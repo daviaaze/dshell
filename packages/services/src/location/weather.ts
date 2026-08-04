@@ -1,23 +1,23 @@
+import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import GWeather from 'gi://GWeather?version=4.0';
-import GLib from 'gi://GLib?version=2.0';
-import Gio from 'gi://Gio?version=2.0';
-import {Object, register, property} from 'gnim/gobject';
-import Geolocation from './geolocation';
-import logger from '@shade/core/logger';
-import {Accessor} from 'gnim';
-import {toArray} from '@shade/core/gjsUtils';
-import {formatTemp} from './weatherUtils';
 import {defineService} from '@shade/core/define';
+import {toArray} from '@shade/core/gjsUtils';
+import logger from '@shade/core/logger';
+import type {Accessor} from 'gnim';
+import {Object, property, register} from 'gnim/gobject';
+import Geolocation from './geolocation';
 import {weatherSettings} from './weather.gschema';
+import {formatTemp} from './weatherUtils';
 
 @register
 export default class Weather extends Object {
     private static instance: Weather;
 
     static get_default() {
-        if (!this.instance) this.instance = new Weather();
-        return this.instance;
+        if (!Weather.instance) Weather.instance = new Weather();
+        return Weather.instance;
     }
 
     #weather: GWeather.Info;
@@ -117,15 +117,12 @@ export default class Weather extends Object {
         const valid = w.is_valid();
 
         this.#tempSummary = valid
-            ? formatTemp(
-                  w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1]
-              )
+            ? formatTemp(w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1])
             : '--°';
         this.#feelsLike = valid ? `Feels like ${w.get_apparent()}` : '';
         this.#skyDesc = valid ? w.get_sky() : '';
         this.#locationName = w.get_location_name() || '—';
-        this.#weatherIcon =
-            w.get_icon_name() || 'weather-none-available-symbolic';
+        this.#weatherIcon = w.get_icon_name() || 'weather-none-available-symbolic';
 
         if (valid) {
             const [, speed, dir] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
@@ -133,9 +130,7 @@ export default class Weather extends Object {
             this.#windDirection = dir;
             const humStr = w.get_humidity();
             this.#humidity = humStr ? parseFloat(humStr) : 0;
-            const [, pressure] = w.get_value_pressure(
-                GWeather.PressureUnit.HPA
-            );
+            const [, pressure] = w.get_value_pressure(GWeather.PressureUnit.HPA);
             this.#pressure = pressure;
             const [, sunrise] = w.get_value_sunrise();
             this.#sunrise = sunrise;
@@ -165,10 +160,7 @@ export default class Weather extends Object {
     }
 
     updateFromCoords(lat: number, lon: number) {
-        const newLoc = GWeather.Location.get_world()?.find_nearest_city(
-            lat,
-            lon
-        );
+        const newLoc = GWeather.Location.get_world()?.find_nearest_city(lat, lon);
         if (newLoc) this.location = newLoc;
     }
 
@@ -184,10 +176,7 @@ export default class Weather extends Object {
         setLongitude(lon: number): void;
     }) {
         if (this.#initialized) {
-            logger.warn(
-                'weather',
-                'init() called but already initialized — skipping'
-            );
+            logger.warn('weather', 'init() called but already initialized — skipping');
             return;
         }
         this.#initialized = true;
@@ -201,14 +190,10 @@ export default class Weather extends Object {
             this.#weather.update();
         }
 
-        this.#updateTimer = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            0.25 * 3600000,
-            () => {
-                this.#weather.update();
-                return GLib.SOURCE_CONTINUE;
-            }
-        );
+        this.#updateTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0.25 * 3600000, () => {
+            this.#weather.update();
+            return GLib.SOURCE_CONTINUE;
+        });
 
         let geoHandlerId: number | null = null;
 
@@ -217,13 +202,17 @@ export default class Weather extends Object {
                 this.#geo.disconnect(geoHandlerId);
                 geoHandlerId = null;
             }
-            geoHandlerId = GObject.signal_connect(this.#geo, 'location-changed', (_source: Geolocation, ...args: unknown[]) => {
-                const lat = args[0] as number;
-                const lon = args[1] as number;
-                settings.setLatitude(lat);
-                settings.setLongitude(lon);
-                this.updateFromCoords(lat, lon);
-            });
+            geoHandlerId = GObject.signal_connect(
+                this.#geo,
+                'location-changed',
+                (_source: Geolocation, ...args: unknown[]) => {
+                    const lat = args[0] as number;
+                    const lon = args[1] as number;
+                    settings.setLatitude(lat);
+                    settings.setLongitude(lon);
+                    this.updateFromCoords(lat, lon);
+                }
+            );
         };
 
         // Auto-location on startup if enabled
@@ -257,12 +246,9 @@ export default class Weather extends Object {
         const forecasts = toArray<GWeather.Info>(list);
         const now = GLib.DateTime.new_now_local()!.to_unix();
 
-        logger.debug(
-            'weather',
-            `getHourlyForecast: found ${forecasts.length} forecast entries`
-        );
+        logger.debug('weather', `getHourlyForecast: found ${forecasts.length} forecast entries`);
 
-        const future = forecasts.filter(f => {
+        const future = forecasts.filter((f) => {
             const [valid, ts] = f.get_value_update();
             return valid && ts > now;
         });
@@ -272,14 +258,12 @@ export default class Weather extends Object {
             `getHourlyForecast: ${future.length} future entries, first in ${future.length > 0 ? future[0].get_value_update()[1] - now : 0}s`
         );
 
-        return future.slice(0, hours).map(f => {
+        return future.slice(0, hours).map((f) => {
             const [, ts] = f.get_value_update();
             const isValid = f.is_valid();
             let temp = NaN;
             if (isValid) {
-                const [tempValid, tempVal] = f.get_value_temp(
-                    GWeather.TemperatureUnit.CENTIGRADE
-                );
+                const [tempValid, tempVal] = f.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE);
                 temp = tempValid ? tempVal : NaN;
             }
             return {
@@ -328,9 +312,7 @@ export default class Weather extends Object {
         // Sort days chronologically and skip today
         const today = GLib.DateTime.new_now_local()!.format('%Y-%m-%d');
         if (!today) return [];
-        const sortedDays = Array.from(dayMap.entries()).sort(([a], [b]) =>
-            a.localeCompare(b)
-        );
+        const sortedDays = Array.from(dayMap.entries()).sort(([a], [b]) => a.localeCompare(b));
         const futureDays = sortedDays.filter(([day]) => day > today);
 
         logger.debug(
@@ -347,9 +329,7 @@ export default class Weather extends Object {
 
             for (const f of fs) {
                 if (!f.is_valid()) continue;
-                const [tempValid, tempVal] = f.get_value_temp(
-                    GWeather.TemperatureUnit.CENTIGRADE
-                );
+                const [tempValid, tempVal] = f.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE);
                 if (tempValid) {
                     if (tempVal > tempMax) tempMax = tempVal;
                     if (tempVal < tempMin) tempMin = tempVal;
@@ -443,14 +423,10 @@ export default class Weather extends Object {
         humidity: number;
         pressure: number;
     } {
-        const [, speed, dir] = this.#weather.get_value_wind(
-            GWeather.SpeedUnit.DEFAULT
-        );
+        const [, speed, dir] = this.#weather.get_value_wind(GWeather.SpeedUnit.DEFAULT);
         const humStr = this.#weather.get_humidity();
         const humidity = humStr ? parseFloat(humStr) : 0;
-        const [, pressure] = this.#weather.get_value_pressure(
-            GWeather.PressureUnit.HPA
-        );
+        const [, pressure] = this.#weather.get_value_pressure(GWeather.PressureUnit.HPA);
         return {
             windSpeed: speed,
             windDirection: dir,
@@ -487,14 +463,8 @@ export default class Weather extends Object {
             if (this.#weather.is_valid()) {
                 const [, sunrise] = this.#weather.get_value_sunrise();
                 const [, sunset] = this.#weather.get_value_sunset();
-                this.#generalSettings.set_boolean(
-                    'weather-is-daytime',
-                    this.#weather.is_daytime()
-                );
-                this.#generalSettings.set_double(
-                    'weather-sunrise-time',
-                    sunrise
-                );
+                this.#generalSettings.set_boolean('weather-is-daytime', this.#weather.is_daytime());
+                this.#generalSettings.set_double('weather-sunrise-time', sunrise);
                 this.#generalSettings.set_double('weather-sunset-time', sunset);
             }
         });
@@ -516,4 +486,8 @@ export default class Weather extends Object {
     }
 }
 
-defineService({name: 'Weather', service: Weather.get_default(), initArgs: () => [weatherSettings()]});
+defineService({
+    name: 'Weather',
+    service: Weather.get_default(),
+    initArgs: () => [weatherSettings()],
+});

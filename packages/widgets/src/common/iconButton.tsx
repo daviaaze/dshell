@@ -1,6 +1,6 @@
-import Gdk from 'gi://Gdk?version=4.0';
+import type Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {JSX} from 'gnim';
+import type {JSX} from 'gnim';
 import {usePopoverCleanup} from './popoverCleanup';
 
 interface IconButtonProps {

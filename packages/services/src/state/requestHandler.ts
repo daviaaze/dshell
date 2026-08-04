@@ -5,12 +5,13 @@
  * Each desktop service registers its own GActions via registerCommands().
  * This file parses CLI args and routes them to those GActions.
  */
-import Quarrel from 'gi://Quarrel';
-import Gio from 'gi://Gio?version=2.0';
+
+import type Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import {bus} from '../bus';
+import Quarrel from 'gi://Quarrel';
 import logger, {perf} from '@shade/core/logger';
 import printOut from '@shade/core/stdout';
+import {bus} from '../bus';
 
 // ── Help flag (shared) ──
 
@@ -26,11 +27,7 @@ function activate(app: Gio.Application, actionName: string): void {
     }
 }
 
-function activateWithString(
-    app: Gio.Application,
-    actionName: string,
-    value: string
-): void {
+function activateWithString(app: Gio.Application, actionName: string, value: string): void {
     if (app.lookup_action(actionName)) {
         app.activate_action(actionName, new GLib.Variant('s', value));
     } else {
@@ -94,9 +91,7 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .about('Record the focused monitor output')
         .opt(help);
 
-    const lockscreen = new Quarrel.Command({name: 'lockscreen'})
-        .about('Lock the screen')
-        .opt(help);
+    const lockscreen = new Quarrel.Command({name: 'lockscreen'}).about('Lock the screen').opt(help);
 
     const clipboard = new Quarrel.Command({name: 'clipboard'})
         .about('Open launcher in clipboard mode')
@@ -212,10 +207,7 @@ function dispatch(command: Quarrel.Command, app: Gio.Application): boolean {
 
 // ── Entry point ──
 
-export const requestHandler = (
-    cmd: Gio.ApplicationCommandLine,
-    app: Gio.Application
-) => {
+export const requestHandler = (cmd: Gio.ApplicationCommandLine, app: Gio.Application) => {
     const cli = buildCLI(app);
     const args = cmd.get_arguments();
 
@@ -243,10 +235,7 @@ export const requestHandler = (
             'dbus'
         );
     } else {
-        logger.warn(
-            'dbus',
-            `no command matched, args=${args.slice(1).join(' ')}`
-        );
+        logger.warn('dbus', `no command matched, args=${args.slice(1).join(' ')}`);
         printOut(Quarrel.help(cli));
     }
 

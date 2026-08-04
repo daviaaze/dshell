@@ -1,9 +1,8 @@
-import {getHyprland} from '../hyprland';
 import logger from '@shade/core/logger';
 import {bus} from '../bus';
+import {getHyprland} from '../hyprland';
+import type {BoundaryGeometry, ScreenshotHandle} from './types';
 import {notify} from './utils';
-import type {BoundaryGeometry} from './types';
-import type {ScreenshotHandle} from './types';
 
 const ICON_ERROR = 'dialog-error-symbolic';
 const MSG_RECORDING_FAILED = 'Recording failed';
@@ -71,7 +70,7 @@ export function recordWindowByAddress(ss: ScreenshotHandle, address: string) {
     const hyprland = getHyprland();
     if (!hyprland) return;
     const clients = hyprland.clients || [];
-    const target = clients.find(c => c.address === address);
+    const target = clients.find((c) => c.address === address);
     if (!target) {
         logger.error('screenshot', `window with address ${address} not found`);
         notify(MSG_RECORDING_FAILED, 'Window not found', ICON_ERROR);
