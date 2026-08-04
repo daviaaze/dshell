@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@gnim-js/gtk4':
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
       gnim:
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.5.6
@@ -34,8 +34,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/services
       gnim:
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
 
   apps/share-picker:
     dependencies:
@@ -46,8 +46,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/services
       gnim:
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
 
   apps/shell:
     dependencies:
@@ -64,14 +64,14 @@ importers:
         specifier: workspace:*
         version: link:../../packages/widgets
       gnim:
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
 
   packages/core:
     dependencies:
       gnim:
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
 
   packages/services:
     dependencies:
@@ -79,8 +79,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       gnim:
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
 
   packages/style:
     dependencies:
@@ -88,8 +88,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       gnim:
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
 
   packages/widgets:
     dependencies:
@@ -103,8 +103,8 @@ importers:
         specifier: workspace:*
         version: link:../style
       gnim:
-        specifier: 2.0.0-beta.7
-        version: 2.0.0-beta.7
+        specifier: 2.0.0-beta.10
+        version: 2.0.0-beta.10
 
 packages:
 
@@ -317,12 +317,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@gnim-js/gtk4@2.0.0-beta.7':
-    resolution: {integrity: sha512-/TB9z6O+qqWmQ6Mu0yKh9WvjNAbLgtixw+p+XCDCidHE+TB91JHe7Bhrz1EpEKRaSJbopq6NHkXU3jQypxXBxg==}
+  '@gnim-js/gtk4@2.0.0-beta.10':
+    resolution: {integrity: sha512-xAHQFg28vF2n/k3OTfqzJbaOYSORl+IqbIWWbm6kLfmvpDDVk59tjvzQHkA3X5jTgmaSvd8P7QUPopizJe5JZg==}
     engines: {gjs: '>=1.83.0'}
 
-  '@gnim-js/linux-x64@2.0.0-beta.7':
-    resolution: {integrity: sha512-VeaXUGmxcjYedUZhcMBStMbiZ0R3dD4inGFrU6Mw2YCwQgB46e+uTGR4kmZs9FMbB2QL6m2wstw/ijreqKNDVQ==}
+  '@gnim-js/linux-x64@2.0.0-beta.10':
+    resolution: {integrity: sha512-lREzkWloAVadeBIm+V3UGbZiQygAuRktiMzISVp6TPbra28F/1pdOipzsofpC87yLrPEWb77lkY5JnS8czRjmQ==}
     cpu: [x64]
     os: [linux]
 
@@ -331,8 +331,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  gnim@2.0.0-beta.7:
-    resolution: {integrity: sha512-9KQSwm6TMLQcpLngvQsiIYj/vETIYlQKehRXpsnnIo2/WxHE0qbkjt/4iLsmBlFzXpQSRLegjYliH65Mlmfi/Q==}
+  gnim@2.0.0-beta.10:
+    resolution: {integrity: sha512-mzjwiPXZX5l7tqwFNEIMgtrQdNL+iKBrxmvPjM5VkU6yOsZ3xlFw5CJ7mxxqm71m61PO+mQhFA0d8Gz4tsc6Xg==}
     engines: {gjs: '>=1.83.0'}
     hasBin: true
 
@@ -456,11 +456,11 @@ snapshots:
   '@esbuild/win32-x64@0.28.0':
     optional: true
 
-  '@gnim-js/gtk4@2.0.0-beta.7':
+  '@gnim-js/gtk4@2.0.0-beta.10':
     dependencies:
-      gnim: 2.0.0-beta.7
+      gnim: 2.0.0-beta.10
 
-  '@gnim-js/linux-x64@2.0.0-beta.7':
+  '@gnim-js/linux-x64@2.0.0-beta.10':
     optional: true
 
   esbuild@0.28.0:
@@ -492,8 +492,8 @@ snapshots:
       '@esbuild/win32-ia32': 0.28.0
       '@esbuild/win32-x64': 0.28.0
 
-  gnim@2.0.0-beta.7:
+  gnim@2.0.0-beta.10:
     optionalDependencies:
-      '@gnim-js/linux-x64': 2.0.0-beta.7
+      '@gnim-js/linux-x64': 2.0.0-beta.10
 
   typescript@6.0.3: {}

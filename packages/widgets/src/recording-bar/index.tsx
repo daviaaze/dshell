@@ -39,11 +39,7 @@ export default () => {
         >
             <Gtk.Box cssClasses={['card', 'background']} spacing={8}>
                 {/* Red recording dot */}
-                <Gtk.Image
-                    iconName="media-record-symbolic"
-                    cssClasses={['error']}
-                    pixelSize={16}
-                />
+                <Gtk.Image iconName="media-record-symbolic" cssClasses={['error']} pixelSize={16} />
 
                 {/* "REC" label */}
                 <Gtk.Label label="REC" cssClasses={['error', 'heading']} />

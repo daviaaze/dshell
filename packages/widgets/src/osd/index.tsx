@@ -83,7 +83,7 @@ export default () => {
             ref={(self) => WindowManager.get_default().setOsd(self)}
         >
             <Gtk.Box
-                cssClasses={['linked', 'background']}
+                cssClasses={['linked', 'card', 'background']}
                 orientation={Gtk.Orientation.VERTICAL}
                 valign={Gtk.Align.END}
                 spacing={OSD_SPACING}
