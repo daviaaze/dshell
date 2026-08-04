@@ -37,11 +37,7 @@ export default () => {
             visible={bind(ss, 'recording')}
             css={'background-color: transparent;'}
         >
-            <Gtk.Box
-                cssClasses={['card', 'background']}
-                spacing={8}
-                css={'box-shadow: none; padding: 6px 12px;'}
-            >
+            <Gtk.Box cssClasses={['card', 'background']} spacing={8}>
                 {/* Red recording dot */}
                 <Gtk.Image
                     iconName="media-record-symbolic"

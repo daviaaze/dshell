@@ -39,7 +39,6 @@ function SearchEntry({
     return (
         <Gtk.Entry
             hexpand
-            css={'margin-right:4px;'}
             placeholderText={mode.as((m) =>
                 m === 'clipboard' ? 'Search clipboard history...' : 'Search your apps'
             )}
@@ -110,16 +109,8 @@ function HintLabel({
 /** Scrollable results — app/clipboard buttons plus the empty state. */
 function ResultsList({mode, list}: {mode: Accessor<LauncherMode>; list: Accessor<ListItem[]>}) {
     return (
-        <Gtk.ScrolledWindow
-            css={'padding-right:0px;'}
-            hscrollbarPolicy={Gtk.PolicyType.NEVER}
-            propagateNaturalHeight
-        >
-            <Gtk.Box
-                orientation={Gtk.Orientation.VERTICAL}
-                css={'padding-right: 12px;'}
-                spacing={8}
-            >
+        <Gtk.ScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight>
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <For each={list}>
                     {(item: ListItem) =>
                         mode() === 'clipboard' ? (
@@ -205,7 +196,6 @@ export default () => {
                 }
             }}
             cssClasses={['card', 'background']}
-            css={'box-shadow: none; border: none; padding-right:0px;'}
             keymode={Astal.Keymode.ON_DEMAND}
             monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}

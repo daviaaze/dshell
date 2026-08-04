@@ -129,14 +129,7 @@ export const MediaIcon = () => {
     const hasPlayers = bind(mc, 'players').as((p) => p.length > 0);
 
     return (
-        <Gtk.Box
-            spacing={4}
-            marginTop={8}
-            marginBottom={8}
-            marginStart={8}
-            marginEnd={8}
-            visible={hasPlayers}
-        >
+        <Gtk.Box spacing={4} visible={hasPlayers}>
             <Gtk.Image iconName="media-playback-start-symbolic" pixelSize={20} />
             <Adw.WindowTitle
                 title={bind(mc, 'activeTitle')}
@@ -157,15 +150,7 @@ export const Media = () => {
         >
             <For each={bind(mc, 'players')}>
                 {(player: Mpris.Player) => (
-                    <Gtk.Box
-                        cssClasses={['card']}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
-                        orientation={Gtk.Orientation.VERTICAL}
-                        hexpand
-                    >
+                    <Gtk.Box cssClasses={['card']} orientation={Gtk.Orientation.VERTICAL} hexpand>
                         <PlayerApp player={player} />
                         <Gtk.Box>
                             <CoverArt player={player} />

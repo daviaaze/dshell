@@ -55,10 +55,6 @@ export const Battery = () => {
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
             cssClasses={['card']}
-            marginTop={12}
-            marginBottom={12}
-            marginStart={12}
-            marginEnd={12}
             spacing={4}
             visible={bind(battery, 'is-present')}
         >
