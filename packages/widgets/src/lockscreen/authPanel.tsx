@@ -18,6 +18,7 @@ const CARD_SPACING = 12;
 const AVATAR_SIZE = 80;
 
 export const LockscreenAuthPanel = ({
+    slot,
     authSession,
     fingerprint,
     fpStateBinding,
@@ -27,6 +28,7 @@ export const LockscreenAuthPanel = ({
 
     return (
         <Gtk.Box
+            slot={slot}
             valign={Gtk.Align.CENTER}
             halign={Gtk.Align.CENTER}
             spacing={CARD_SPACING}

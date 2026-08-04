@@ -63,6 +63,9 @@ export interface PopupWindowProps {
     /** Additional CSS classes. */
     cssClasses?: string[];
 
+    /** Whether to apply the .frame class (libadwaita border). Defaults to true. */
+    frame?: boolean;
+
     /** Width constraint (e.g. 420 for quicksettings). */
     widthRequest?: number;
 
@@ -125,6 +128,7 @@ export default (props: PopupWindowProps) => {
         monitor: monitorProp,
         $: widgetRef,
         children,
+        frame: frameProp,
     } = props;
 
     const barCfg = barSettings();
@@ -163,7 +167,10 @@ export default (props: PopupWindowProps) => {
             monitor={resolvedMonitor}
             widthRequest={widthRequest}
             heightRequest={heightRequest}
-            cssClasses={['frame', ...(cssClasses ?? [])]}
+            cssClasses={[
+                ...(frameProp === false ? [] : ['frame']),
+                ...(cssClasses ?? []),
+            ]}
             onNotifyVisible={(self: Astal.Window) => {
                 if (onVisibleChange) onVisibleChange(self.visible);
             }}
