@@ -66,10 +66,6 @@ export const TimerSection = () => {
                 spacing={12}
                 halign={Gtk.Align.FILL}
                 cssClasses={['card']}
-                marginTop={12}
-                marginBottom={12}
-                marginStart={12}
-                marginEnd={12}
             >
                 <Gtk.Label
                     ref={displayStyles.$}
@@ -207,10 +203,6 @@ export const TimerSection = () => {
                         spacing={4}
                         halign={Gtk.Align.FILL}
                         cssClasses={['card']}
-                        marginTop={12}
-                        marginBottom={12}
-                        marginStart={12}
-                        marginEnd={12}
                     >
                         <Gtk.Label
                             label="Focus for 25 minutes, then take a 5 minute break."

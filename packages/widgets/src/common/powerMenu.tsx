@@ -4,14 +4,7 @@ import {ActionButton} from './actionButton';
 
 export const PowerMenu = () => (
     <Gtk.Popover cssClasses={['menu']}>
-        <Gtk.Box
-            orientation={Gtk.Orientation.VERTICAL}
-            marginTop={12}
-            marginBottom={12}
-            marginStart={12}
-            marginEnd={12}
-            spacing={4}
-        >
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
             <ActionButton
                 iconName="system-lock-screen-symbolic"
                 label="Lock"

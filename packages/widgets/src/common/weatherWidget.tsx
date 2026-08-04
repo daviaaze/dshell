@@ -134,7 +134,7 @@ export const WeatherWidget = () => {
             cssClasses={[widgetStyles.class]}
         >
             {/* ── Header: icon + temp/location + refresh ── */}
-            <Gtk.Box spacing={12} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
+            <Gtk.Box spacing={12} marginStart={8} marginEnd={8}>
                 <Gtk.Image iconName={iconName} pixelSize={36} />
                 <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand spacing={0}>
                     <Gtk.Label

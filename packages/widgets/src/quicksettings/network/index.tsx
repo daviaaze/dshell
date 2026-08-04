@@ -58,13 +58,7 @@ const WifiQuicksettingsButton = (): QuickButton => {
                                 setConnectingAp={setConnectingAp}
                             />
                         ) : (
-                            <Gtk.Label
-                                marginTop={12}
-                                marginBottom={12}
-                                marginStart={12}
-                                marginEnd={12}
-                                label={net.wifiReady ? 'No WiFi device' : 'Loading…'}
-                            />
+                            <Gtk.Label label={net.wifiReady ? 'No WiFi device' : 'Loading…'} />
                         )
                     }
                 </With>
