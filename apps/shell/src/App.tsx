@@ -4,7 +4,7 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import logger, {perf} from '@shade/core/logger';
+import logger from '@shade/core/logger';
 import ServiceRegistry from '@shade/core/serviceRegistry';
 import {setApp} from '@shade/services/appHandle';
 import Screenshot from '@shade/services/capture/screenshot';
@@ -59,13 +59,11 @@ export class ShadeShell extends Adw.Application {
     /** Mount all widgets. The composition root (boot) handles settings,
      *  services, action wiring, and per-widget mounting with error isolation. */
     private bootstrapUi() {
-        perf.start('widgets-mount', 'mount');
         this.initIcons();
 
         this.#rootDisposers = boot(this);
 
         GObject.signal_connect(this, 'shutdown', () => this.#teardown());
-        perf.stop('widgets-mount', 'mount');
     }
 
     #rootDisposers: (() => void)[] = [];
