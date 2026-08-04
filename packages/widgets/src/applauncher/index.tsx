@@ -204,8 +204,8 @@ export default () => {
                     bus.emit('shell:launcher:close');
                 }
             }}
-            cssClasses={['card', 'frame', 'background']}
-            css={'padding-right:0px;'}
+            cssClasses={['card', 'background']}
+            css={'box-shadow: none; border: none; padding-right:0px;'}
             keymode={Astal.Keymode.ON_DEMAND}
             monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}

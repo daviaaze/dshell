@@ -38,9 +38,13 @@ export const Expander = () => {
             <Gtk.Revealer revealChild={visible}>
                 <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
                     <Media />
-                    <Battery />
-                    <Weather />
-                    <Calendar />
+                    <Gtk.Box spacing={4} orientation={Gtk.Orientation.HORIZONTAL} homogeneous>
+                        <Battery />
+                        <Calendar />
+                    </Gtk.Box>
+                    <Gtk.Box halign={Gtk.Align.CENTER} hexpand>
+                        <Weather />
+                    </Gtk.Box>
                     <WorldClock />
                 </Gtk.Box>
             </Gtk.Revealer>

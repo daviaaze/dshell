@@ -10,6 +10,8 @@ type SliderProps = {
     value: Accessor<number>;
     setValue: (value: number) => void;
     onIconClick?: () => void;
+    ref?: (self: Gtk.Box) => void;
+    cssClasses?: string[];
 };
 
 const SLIDER_SPACING = 4;
@@ -25,7 +27,12 @@ export const Slider = (props: SliderProps) => {
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);
 
     return (
-        <Gtk.Box cssClasses={['slider']} spacing={SLIDER_SPACING} visible={props.visible}>
+        <Gtk.Box
+            ref={props.ref}
+            cssClasses={['slider', ...(props.cssClasses ?? [])]}
+            spacing={SLIDER_SPACING}
+            visible={props.visible}
+        >
             {props.onIconClick ? (
                 <Gtk.Button onClicked={props.onIconClick}>
                     <Gtk.Image iconName={props.icon} />
