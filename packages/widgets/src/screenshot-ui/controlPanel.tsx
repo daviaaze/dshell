@@ -72,7 +72,7 @@ export const ControlPanel = ({ss, onCapture, onReset, onTargetChange}: ControlPa
             marginTop={24}
         >
             <Gtk.Box
-                cssClasses={['card', 'frame', 'background']}
+                cssClasses={['card', 'background']}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
             >

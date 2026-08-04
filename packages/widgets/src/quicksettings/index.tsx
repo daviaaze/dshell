@@ -61,10 +61,10 @@ export default () => {
             >
                 <Gtk.Box
                     spacing={QUICKSETTINGS_SPACING}
-                    marginTop={12}
-                    marginBottom={12}
-                    marginStart={12}
-                    marginEnd={12}
+                    marginTop={16}
+                    marginBottom={16}
+                    marginStart={16}
+                    marginEnd={16}
                     orientation={Gtk.Orientation.VERTICAL}
                 >
                     <ButtonGrid />

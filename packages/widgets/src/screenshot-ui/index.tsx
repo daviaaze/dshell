@@ -283,7 +283,7 @@ export default () => {
                 Astal.WindowAnchor.RIGHT
             }
             monitor={bind(hyprland, 'focused-monitor').as(monitorIndexFromHyprland)}
-            css={'background-color: transparent;'}
+            css={'background: transparent;'}
         >
             <Gtk.Overlay>
                 <OverlayBackground ss={ss} />

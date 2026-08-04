@@ -29,9 +29,7 @@ export const LockscreenAuthPanel = ({
             valign={Gtk.Align.CENTER}
             halign={Gtk.Align.CENTER}
             spacing={CARD_SPACING}
-            widthRequest={320}
             orientation={Gtk.Orientation.VERTICAL}
-            cssClasses={['card']}
         >
             <Adw.Avatar size={AVATAR_SIZE} />
             <Gtk.Label label={GLib.get_real_name()} cssClasses={['title-3']} />

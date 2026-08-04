@@ -167,21 +167,21 @@ export const TimerSection = () => {
                             valign={Gtk.Align.CENTER}
                             widthRequest={52}
                         />
-                        <Gtk.Label label="h" cssClasses={['caption', 'dim-label']} />
+                        <Gtk.Label label="h" cssClasses={['caption', 'dimmed']} />
                         <Gtk.SpinButton
                             adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
                             digits={0}
                             valign={Gtk.Align.CENTER}
                             widthRequest={52}
                         />
-                        <Gtk.Label label="m" cssClasses={['caption', 'dim-label']} />
+                        <Gtk.Label label="m" cssClasses={['caption', 'dimmed']} />
                         <Gtk.SpinButton
                             adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
                             digits={0}
                             valign={Gtk.Align.CENTER}
                             widthRequest={52}
                         />
-                        <Gtk.Label label="s" cssClasses={['caption', 'dim-label']} />
+                        <Gtk.Label label="s" cssClasses={['caption', 'dimmed']} />
                         <Gtk.Button
                             cssClasses={['circular']}
                             iconName="media-playback-start-symbolic"
@@ -212,7 +212,7 @@ export const TimerSection = () => {
                         />
                         <Gtk.Label
                             label="Long break (15m) after every 4 sessions."
-                            cssClasses={['caption', 'dim-label']}
+                            cssClasses={['caption', 'dimmed']}
                             wrap
                             halign={Gtk.Align.START}
                         />

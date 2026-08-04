@@ -136,7 +136,7 @@ const NotificationListContent = ({
             </Gtk.ListBox>
             <Gtk.Label
                 visible={bind(history, 'history').as((h) => h.length > HISTORY_VISIBLE_COUNT)}
-                cssClasses={['caption', 'dim-label']}
+                cssClasses={['caption', 'dimmed']}
                 label={bind(history, 'history').as(
                     (h) => `Showing ${HISTORY_VISIBLE_COUNT} of ${h.length} notifications`
                 )}

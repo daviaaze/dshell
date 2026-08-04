@@ -33,7 +33,7 @@ export const WorldClock = () => {
                             />
                             <Gtk.Label
                                 halign={Gtk.Align.END}
-                                cssClasses={['caption', 'dim-label']}
+                                cssClasses={['caption', 'dimmed']}
                                 label={fmtOffset(localTz, tz)}
                             />
                         </Gtk.Box>

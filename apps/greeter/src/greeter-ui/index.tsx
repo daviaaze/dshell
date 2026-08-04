@@ -152,7 +152,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={8}
                         cssClasses={['card']}
-                        css={'padding: 24px; min-width: 300px;'}
+                        widthRequest={300}
                     >
                         {/* Username entry (shown before password) */}
                         <Gtk.Entry

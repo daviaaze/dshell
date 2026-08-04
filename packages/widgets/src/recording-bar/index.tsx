@@ -41,21 +41,18 @@ export default () => {
                 {/* Red recording dot */}
                 <Gtk.Image
                     iconName="media-record-symbolic"
-                    css={'color: @error_color;'}
+                    cssClasses={['error']}
                     pixelSize={16}
                 />
 
                 {/* "REC" label */}
-                <Gtk.Label
-                    label="REC"
-                    css={'color: @error_color; font-weight: bold; font-size: 13px;'}
-                />
+                <Gtk.Label label="REC" cssClasses={['error', 'heading']} />
 
                 {/* Separator */}
                 <Gtk.Separator orientation={Gtk.Orientation.VERTICAL} />
 
                 {/* Elapsed time */}
-                <Gtk.Label label={elapsedLabel} css={'font-family: monospace; font-size: 13px;'} />
+                <Gtk.Label label={elapsedLabel} cssClasses={['monospace']} />
 
                 {/* Audio indicator */}
                 <Gtk.Image

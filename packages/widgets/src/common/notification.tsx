@@ -44,7 +44,7 @@ function CardHeader({
                     />
                 </Gtk.Box>
                 {appName ? (
-                    <Gtk.Label cssClasses={['caption', 'dim-label']} label={appName} xalign={0} />
+                    <Gtk.Label cssClasses={['caption', 'dimmed']} label={appName} xalign={0} />
                 ) : null}
             </Gtk.Box>
             <Gtk.Button

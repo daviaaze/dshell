@@ -221,7 +221,7 @@ function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps
                             <Gtk.Label
                                 halign={Gtk.Align.START}
                                 label={secLabel}
-                                cssClasses={['dim-label', 'caption']}
+                                cssClasses={['dimmed', 'caption']}
                             />
                         </Gtk.Box>
 

@@ -35,7 +35,7 @@ function WorldClockRow({
                         label={tzTime.as((t) => t?.format('%H:%M') ?? '--:--')}
                     />
                     <Gtk.Label
-                        cssClasses={['caption', 'dim-label']}
+                        cssClasses={['caption', 'dimmed']}
                         label={fmtOffset(localTz, tz)}
                     />
                 </Gtk.Box>

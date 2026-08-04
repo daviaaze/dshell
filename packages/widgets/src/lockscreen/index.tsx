@@ -12,15 +12,31 @@ import SessionLockService from '@shade/services/session/sessionLockService';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import Clock from '@shade/services/time/clock';
-import {bind, For, onCleanup} from 'gnim';
+import {bind, For, onCleanup, ref} from 'gnim';
+import {useStyle} from '@shade/style/useStyle';
 import {LockscreenAuthPanel} from './authPanel';
 import {LockscreenNotifications} from './notifications';
 import {LockscreenWidgets} from './widgets';
 
-// ── Layout constants ──────────────────────────────────────────────
+// ── Frosted card style — backdrop blur + translucent surface + shadow ──
 
-const TOP_MARGIN = 120;
-const BOTTOM_MARGIN = 64;
+const CARD_RADIUS = '24px';
+
+const mainCardStyle = useStyle({
+    padding: '48px',
+    borderRadius: CARD_RADIUS,
+    backdropFilter: 'blur(24px) brightness(0.8)',
+    backgroundColor: 'color-mix(in srgb, var(--shade-surface) 55%, transparent)',
+    boxShadow: '0 8px 32px color-mix(in srgb, var(--shade-shadow) 40%, transparent)',
+});
+
+const bottomCardStyle = useStyle({
+    padding: '24px',
+    borderRadius: CARD_RADIUS,
+    backdropFilter: 'blur(24px) brightness(0.8)',
+    backgroundColor: 'color-mix(in srgb, var(--shade-surface) 55%, transparent)',
+    boxShadow: '0 8px 32px color-mix(in srgb, var(--shade-shadow) 40%, transparent)',
+});
 
 // ── Main lockscreen creation ──
 
@@ -87,43 +103,60 @@ const createLocks = (onUnlock: () => void) => {
                     visible
                     exclusivity={Astal.Exclusivity.IGNORE}
                     keymode={Astal.Keymode.EXCLUSIVE}
+                    css={'background: transparent;'}
                 >
-                    <Gtk.Box orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER}>
+                    <Gtk.Box
+                        vexpand
+                        hexpand
+                        orientation={Gtk.Orientation.VERTICAL}
+                        halign={Gtk.Align.CENTER}
+                    >
                         <Gtk.Box
                             vexpand
                             valign={Gtk.Align.START}
-                            orientation={Gtk.Orientation.VERTICAL}
-                            marginTop={TOP_MARGIN}
+                            marginTop={120}
                             marginBottom={48}
-                        >
-                            <Gtk.Label
-                                cssClasses={['title-1', 'numeric']}
-                                label={time.as((t) => t.format('%R')!)}
-                                css={'font-size: 5em;'}
-                            />
-                            <Gtk.Label
-                                marginTop={8}
-                                cssClasses={['title-3', 'numeric']}
-                                label={time.as((t) => t.format('%A, %x')!)}
-                            />
-                        </Gtk.Box>
+                        />
                         <Gtk.Box vexpand valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
-                            <LockscreenAuthPanel
-                                authSession={authSession}
-                                fingerprint={fingerprint}
-                                fpStateBinding={fpStateBinding}
-                                fpErrorBinding={fpErrorBinding}
-                            />
+                            <Gtk.Box
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={16}
+                                cssClasses={[mainCardStyle.class]}
+                                ref={mainCardStyle.$}
+                            >
+                                <Gtk.Label
+                                    cssClasses={['title-1', 'numeric']}
+                                    label={time.as((t) => t.format('%R')!)}
+                                    css={'font-size: 5em;'}
+                                />
+                                <Gtk.Label
+                                    cssClasses={['title-3', 'numeric']}
+                                    label={time.as((t) => t.format('%A, %x')!)}
+                                />
+                                <LockscreenAuthPanel
+                                    authSession={authSession}
+                                    fingerprint={fingerprint}
+                                    fpStateBinding={fpStateBinding}
+                                    fpErrorBinding={fpErrorBinding}
+                                />
+                            </Gtk.Box>
                         </Gtk.Box>
                         <Gtk.Box
                             vexpand
                             valign={Gtk.Align.END}
                             halign={Gtk.Align.CENTER}
                             orientation={Gtk.Orientation.VERTICAL}
-                            marginBottom={BOTTOM_MARGIN}
+                            marginBottom={64}
                         >
-                            <LockscreenWidgets position="end" />
-                            <LockscreenNotifications />
+                            <Gtk.Box
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={12}
+                                cssClasses={[bottomCardStyle.class]}
+                                ref={bottomCardStyle.$}
+                            >
+                                <LockscreenWidgets position="end" />
+                                <LockscreenNotifications />
+                            </Gtk.Box>
                         </Gtk.Box>
                     </Gtk.Box>
                 </Astal.Window>
