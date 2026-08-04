@@ -5,9 +5,28 @@ cd "$(dirname "$0")/.."
 
 export PATH="$PWD/node_modules/.bin:$PATH"
 
-nix develop -c gnim dev apps/shell/src/main.ts \
-  -d 'import.meta.domain="com.caioasmuniz.shade_shell"' \
-  -d 'import.meta.name="shade-shell"' \
-  -d 'import.meta.version="0.2.1"' \
-  -d 'import.meta.datadir="'"$PWD/data"'"' \
-  -d 'import.meta.bindir="/usr/local/bin"'
+DOMAIN="com.caioasmuniz.shade_shell"
+NAME="shade-shell"
+VERSION="0.2.1"
+DATADIR="$PWD/data"
+BINDIR="/usr/local/bin"
+
+# Generate required gschema.xml files before running dev server
+nix develop -c bash -c "
+  for dir in packages/core/src/settings packages/services/src/settings \
+           packages/services/src/location packages/services/src/time; do
+    node_modules/.bin/gnim schemas \"\$dir\" -o schema-out \\
+      -d import.meta.domain=$DOMAIN \\
+      -d import.meta.datadir=$DATADIR \\
+      -d import.meta.bindir=$BINDIR
+  done
+"
+
+nix develop -c bash -c "
+  node_modules/.bin/gnim dev apps/shell/src/main.ts \\
+    -d import.meta.domain=$DOMAIN \\
+    -d import.meta.name=$NAME \\
+    -d import.meta.version=$VERSION \\
+    -d import.meta.datadir=$DATADIR \\
+    -d import.meta.bindir=$BINDIR
+"

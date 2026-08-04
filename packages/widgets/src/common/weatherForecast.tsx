@@ -37,7 +37,7 @@ export const HourlyForecastSection = ({
                 halign={Gtk.Align.START}
             />
             <Gtk.ScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
-                <Gtk.Box spacing={4} css={'justify-content: space-between;'}>
+                <Gtk.Box spacing={4} homogeneous={true}>
                     <For each={hourlyForecast}>
                         {(f) => (
                             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={0}>
