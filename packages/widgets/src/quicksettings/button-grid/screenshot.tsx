@@ -130,7 +130,10 @@ export default (): QuickButton => {
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
-                cssClasses={['popover-padded']}
+                marginTop={8}
+                marginBottom={8}
+                marginStart={8}
+                marginEnd={8}
             >
                 <ScreenshotSection ss={screenshot} />
                 <Gtk.Separator />

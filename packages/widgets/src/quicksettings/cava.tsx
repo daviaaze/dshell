@@ -17,7 +17,10 @@ export default () => {
             spacing={2}
             halign={Gtk.Align.CENTER}
             valign={Gtk.Align.END}
-            cssClasses={['popover-padded']}
+            marginTop={8}
+            marginBottom={8}
+            marginStart={8}
+            marginEnd={8}
             ref={(self) => {
                 if (!settings.cavaEnabled()) return;
                 const cava = new AstalCava.Cava();

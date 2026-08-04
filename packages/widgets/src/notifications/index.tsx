@@ -65,7 +65,7 @@ const NotificationContent = ({
             orientation={Gtk.Orientation.VERTICAL}
             ref={(_self) => {
                 const node = {};
-                connectFor(node, notifd, 'notified', (_, id) => addNotification(id));
+                connectFor(node, notifd, 'notified', (_, id) => addNotification(id as number));
                 onCleanup(() => {
                     cleanupNode(node);
                     timers.clear();

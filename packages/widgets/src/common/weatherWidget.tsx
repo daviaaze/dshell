@@ -1,6 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import WeatherLib from '@shade/services/location/weather';
 import {formatTime, windDirectionLabel} from '@shade/services/location/weatherUtils';
+import {useStyle} from '@shade/style/useStyle';
 import {type Accessor, bind, computed} from 'gnim';
 import {DailyForecastSection, HourlyForecastSection} from './weatherForecast';
 
@@ -41,8 +42,10 @@ const SunMoonRow = ({
         iconName: string;
     } | null>;
 }) => {
+    const styles = useStyle({marginTop: '8px', marginBottom: '8px'});
+
     return (
-        <Gtk.Box spacing={16} halign={Gtk.Align.CENTER} cssClasses={['weather-sun-moon-row']}>
+        <Gtk.Box ref={styles.$} spacing={16} halign={Gtk.Align.CENTER} cssClasses={[styles.class]}>
             <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
                 <Gtk.Image iconName={'daytime-sunrise-symbolic'} pixelSize={14} />
                 <Gtk.Label label={sunrise.as((s) => formatTime(s))} cssClasses={['caption']} />
@@ -83,7 +86,7 @@ const DetailsLine = ({
                     `🍃 ${windSpeed().toFixed(0)} ${windDirectionLabel(windDirection())} · 💧 ${humidity().toFixed(0)}% · ${pressure().toFixed(0)} hPa`
             )}
             halign={Gtk.Align.CENTER}
-            cssClasses={['weather-details-line', 'caption', 'dimmed']}
+            cssClasses={['caption', 'dimmed']}
         />
     );
 };
@@ -120,14 +123,23 @@ export const WeatherWidget = () => {
         return weather.getMoonPhase();
     });
 
+    const widgetStyles = useStyle({marginTop: '4px', marginBottom: '4px'});
+    const tempStyles = useStyle({color: 'var(--shade-primary)'});
+
     return (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={0} cssClasses={['weather-widget']}>
+        <Gtk.Box
+            ref={widgetStyles.$}
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={0}
+            cssClasses={[widgetStyles.class]}
+        >
             {/* ── Header: icon + temp/location + refresh ── */}
-            <Gtk.Box spacing={12} cssClasses={['p-12']}>
+            <Gtk.Box spacing={12} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                 <Gtk.Image iconName={iconName} pixelSize={36} />
                 <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand spacing={0}>
                     <Gtk.Label
-                        cssClasses={['weather-temp', 'title-1']}
+                        ref={tempStyles.$}
+                        cssClasses={[tempStyles.class, 'title-1']}
                         label={tempSummary}
                         halign={Gtk.Align.START}
                     />

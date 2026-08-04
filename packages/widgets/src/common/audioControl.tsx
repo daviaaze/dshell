@@ -2,6 +2,7 @@ import type Wireplumber from 'gi://AstalWp';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getVolumeIcon} from '@shade/services/audio/icons';
 import {bus} from '@shade/services/bus';
+import {useStyle} from '@shade/style/useStyle';
 import {type Accessor, bind, createState, For, With} from 'gnim';
 import AppMixer from '../quicksettings/appMixer';
 import {Slider} from './slider';
@@ -23,6 +24,7 @@ export const AudioEndpointControl = ({
     mutedIcon,
     showAppMixer,
 }: AudioControlProps) => {
+    const styles = useStyle({padding: '8px'});
     const [revealed, setRevealed] = createState(false);
     const [tab, setTab] = createState<'devices' | 'apps'>('devices');
     const radioGroup = new Gtk.CheckButton();
@@ -58,7 +60,14 @@ export const AudioEndpointControl = ({
     );
 
     const DevicesList = () => (
-        <Gtk.Box cssClasses={['p-12']} spacing={12} orientation={Gtk.Orientation.VERTICAL}>
+        <Gtk.Box
+            marginTop={12}
+            marginBottom={12}
+            marginStart={12}
+            marginEnd={12}
+            spacing={12}
+            orientation={Gtk.Orientation.VERTICAL}
+        >
             <For each={devices}>{(d) => <DeviceWidget device={d} />}</For>
         </Gtk.Box>
     );
@@ -79,7 +88,10 @@ export const AudioEndpointControl = ({
             </Gtk.Box>
             <Gtk.Box
                 visible={tab.as((t) => t === 'devices')}
-                cssClasses={['popover-padded']}
+                marginTop={8}
+                marginBottom={8}
+                marginStart={8}
+                marginEnd={8}
                 spacing={12}
                 orientation={Gtk.Orientation.VERTICAL}
             >
@@ -87,7 +99,10 @@ export const AudioEndpointControl = ({
             </Gtk.Box>
             <Gtk.Box
                 visible={tab.as((t) => t === 'apps')}
-                cssClasses={['popover-padded', 'p-12']}
+                marginTop={12}
+                marginBottom={12}
+                marginStart={12}
+                marginEnd={12}
                 spacing={12}
                 orientation={Gtk.Orientation.VERTICAL}
             >
@@ -100,7 +115,8 @@ export const AudioEndpointControl = ({
         <Gtk.Box
             visible={visible}
             spacing={4}
-            cssClasses={revealed.as((r) => (r ? ['card', 'audio-config'] : ['audio-config']))}
+            cssClasses={revealed.as((r) => (r ? ['card', styles.class] : [styles.class]))}
+            ref={styles.$}
             orientation={Gtk.Orientation.VERTICAL}
         >
             <Gtk.Box spacing={4}>

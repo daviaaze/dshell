@@ -6,8 +6,11 @@ export const PowerMenu = () => (
     <Gtk.Popover cssClasses={['menu']}>
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
+            marginTop={12}
+            marginBottom={12}
+            marginStart={12}
+            marginEnd={12}
             spacing={4}
-            cssClasses={['popover-padded-lg']}
         >
             <ActionButton
                 iconName="system-lock-screen-symbolic"

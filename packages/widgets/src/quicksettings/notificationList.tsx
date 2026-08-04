@@ -9,6 +9,7 @@ import DndService from '@shade/services/notifications/dnd';
 import type {HistoryEntry} from '@shade/services/notifications/history';
 import NotificationHistory from '@shade/services/notifications/history';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
+import {useStyle} from '@shade/style/useStyle';
 import {bind, createState, For} from 'gnim';
 import Notification from '../common/notification';
 
@@ -152,35 +153,38 @@ const NotificationListContent = ({
         </Gtk.Box>
     );
 
-    const HistoryItem = ({entry}: {entry: HistoryEntry}) => (
-        <Adw.ActionRow
-            title={entry.summary}
-            subtitle={`${entry.appName} — ${entry.body || ''}`}
-            subtitleLines={1}
-            cssClasses={['notification-history-row']}
-        >
-            <Gtk.Label
-                cssClasses={['caption', 'numeric']}
-                label={historyTime(entry.time)}
-                valign={Gtk.Align.CENTER}
-                slot="prefix"
-            />
-            <Gtk.Image
-                pixelSize={24}
-                iconName={entry.appIcon || 'dialog-information-symbolic'}
-                valign={Gtk.Align.CENTER}
-                slot="prefix"
-            />
-            <Gtk.Button
-                cssClasses={['flat', 'circular']}
-                iconName={'edit-delete-symbolic'}
-                valign={Gtk.Align.CENTER}
-                tooltipText={'Delete from history'}
-                onClicked={() => history.remove(entry.id)}
-                slot="suffix"
-            />
-        </Adw.ActionRow>
-    );
+    const HistoryItem = ({entry}: {entry: HistoryEntry}) => {
+        const styles = useStyle({marginBottom: '4px'});
+        return (
+            <Adw.ActionRow
+                title={entry.summary}
+                subtitle={`${entry.appName} — ${entry.body || ''}`}
+                subtitleLines={1}
+                cssClasses={[styles.class]}
+            >
+                <Gtk.Label
+                    cssClasses={['caption', 'numeric']}
+                    label={historyTime(entry.time)}
+                    valign={Gtk.Align.CENTER}
+                    slot="prefix"
+                />
+                <Gtk.Image
+                    pixelSize={24}
+                    iconName={entry.appIcon || 'dialog-information-symbolic'}
+                    valign={Gtk.Align.CENTER}
+                    slot="prefix"
+                />
+                <Gtk.Button
+                    cssClasses={['flat', 'circular']}
+                    iconName={'edit-delete-symbolic'}
+                    valign={Gtk.Align.CENTER}
+                    tooltipText={'Delete from history'}
+                    onClicked={() => history.remove(entry.id)}
+                    slot="suffix"
+                />
+            </Adw.ActionRow>
+        );
+    };
 
     const NotificationGroup = ({notifications}: {notifications: Notifd.Notification[]}) => {
         const [visible, setVisible] = createState(false);

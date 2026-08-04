@@ -3,7 +3,10 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import {getHyprland} from '@shade/services/hyprland';
 import {getAppIcon} from '@shade/services/state/apps';
+import {useStyle} from '@shade/style/useStyle';
 import {type Accessor, bind, computed, For, With} from 'gnim';
+
+const SPECIAL_WORKSPACE_ID = -99;
 
 export default ({
     monitor,
@@ -25,11 +28,7 @@ export default ({
             )}
             spacing={8}
         >
-            <For
-                each={bind(hyprland, 'workspaces').as((ws) =>
-                    ws.filter((ws) => ws.get_monitor() === monitor).sort((a, b) => a.id - b.id)
-                )}
-            >
+            <For each={bind(hyprland, 'workspaces')}>
                 {(ws: Hyprland.Workspace) => {
                     // Guard against race condition: only set activeName if the
                     // client toggle actually exists in this workspace's group.
@@ -47,12 +46,24 @@ export default ({
                             : null;
                     });
 
+                    // Special workspace gets a distinct background
+                    const isSpecial = ws.id === SPECIAL_WORKSPACE_ID;
+                    const specialStyles = useStyle({
+                        backgroundColor: 'var(--shade-primary-container)',
+                        borderRadius: 'var(--shade-radius)',
+                    });
+
                     return (
                         <Gtk.Box
+                            ref={isSpecial ? specialStyles.$ : undefined}
                             orientation={vertical.as((v) =>
                                 v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                             )}
-                            cssClasses={['flat']}
+                            cssClasses={[
+                                'flat',
+                                'card',
+                                ...(isSpecial ? [specialStyles.class] : []),
+                            ]}
                             spacing={4}
                         >
                             <For each={bind(ws, 'clients')}>

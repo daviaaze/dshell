@@ -195,12 +195,12 @@ export default ({
     const clampWidth = variant === 'popup' ? 360 : 320;
     const maxChars = hasImage ? 20 : 30;
 
-    // Urgency drives a single extra class; styling lives in shade.css.
+    // Urgency drives a single extra class; native GTK classes (.error, .dimmed) handle styling.
     let urgencyClass = '';
     if (isCritical) {
-        urgencyClass = 'notification-critical';
+        urgencyClass = 'error';
     } else if (isLow) {
-        urgencyClass = 'notification-low';
+        urgencyClass = 'dimmed';
     }
 
     const handleClose = () => closeAction(notification, card);
@@ -209,7 +209,11 @@ export default ({
         <Adw.Clamp widthRequest={clampWidth}>
             <Gtk.Box
                 name={notification.id.toString()}
-                cssClasses={['card', 'p-12', urgencyClass].filter(Boolean)}
+                marginTop={12}
+                marginBottom={12}
+                marginStart={12}
+                marginEnd={12}
+                cssClasses={['card', urgencyClass].filter(Boolean)}
                 spacing={8}
                 orientation={Gtk.Orientation.VERTICAL}
                 ref={(self) => {

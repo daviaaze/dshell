@@ -31,7 +31,10 @@ export default () => {
                 self.connect('realize', () => logger.log('quicksettings realized'));
                 self.connect('map', () => logger.log('quicksettings mapped'));
             }}
-            margin={12}
+            marginTop={12}
+            marginBottom={12}
+            marginStart={12}
+            marginEnd={12}
             application={getApp()}
             name={'quicksettings'}
             visible={bind(shellState, 'qsOpen')}
@@ -58,7 +61,10 @@ export default () => {
             >
                 <Gtk.Box
                     spacing={QUICKSETTINGS_SPACING}
-                    cssClasses={['popover-padded-lg']}
+                    marginTop={12}
+                    marginBottom={12}
+                    marginStart={12}
+                    marginEnd={12}
                     orientation={Gtk.Orientation.VERTICAL}
                 >
                     <ButtonGrid />

@@ -27,6 +27,19 @@ interface PwDumpItem {
     };
 }
 
+/**
+ * Compute volume from channel volumes (pw-dump reports a misleading
+ * `volume` field that is often 1.0 even when channels are lower).
+ */
+function extractVolume(streamProps: {volume?: number; channelVolumes?: number[]}): number {
+    const channels = streamProps.channelVolumes;
+    if (channels && channels.length > 0) {
+        const sum = channels.reduce((a, b) => a + b, 0);
+        return sum / channels.length;
+    }
+    return streamProps.volume ?? 1.0;
+}
+
 function streamFromPwItem(item: PwDumpItem): AudioStream | null {
     const info = item.info ?? {};
     const props = info.props ?? {};
@@ -37,7 +50,7 @@ function streamFromPwItem(item: PwDumpItem): AudioStream | null {
         name: props['node.name'] || 'Unknown',
         appName: props['application.name'] || props['node.name'] || 'Unknown',
         iconName: props['application.icon-name'] || 'audio-x-generic-symbolic',
-        volume: streamProps.volume ?? 1.0,
+        volume: extractVolume(streamProps),
         muted: streamProps.mute ?? false,
         targetNode: null,
     };
@@ -152,9 +165,6 @@ function parseTargets(pwMetadata: string): Map<number, number> {
 
 @register
 export default class AppMixer extends Object {
-    /** Signal property for default-device-state notify (bound by widgets). */
-    defaultDeviceState: null = null;
-
     private static instance: AppMixer;
     static get_default() {
         if (!AppMixer.instance) {
@@ -204,6 +214,15 @@ export default class AppMixer extends Object {
     @property
     get speakerInUse() {
         return this.#streams.length > 0;
+    }
+
+    /**
+     * Signal property — fires when the default audio device changes.
+     * Bind to this to re-read getDefaultDeviceState().
+     */
+    @property
+    get defaultDeviceState(): boolean {
+        return false;
     }
 
     constructor() {
@@ -297,11 +316,13 @@ export default class AppMixer extends Object {
             this.#sources = newSources;
             this.notify('sources');
         }
-        if (newSinkName !== this.#defaultSinkName || newSourceName !== this.#defaultSourceName) {
-            this.#defaultSinkName = newSinkName;
-            this.#defaultSourceName = newSourceName;
-            this.notify('default-device-state');
-        }
+        const nameChanged =
+            newSinkName !== this.#defaultSinkName || newSourceName !== this.#defaultSourceName;
+        this.#defaultSinkName = newSinkName;
+        this.#defaultSourceName = newSourceName;
+        // Always notify on every poll cycle so the binding re-evaluates.
+        // pw-dump can return cached data; sinksChanged alone may miss updates.
+        this.notify('default-device-state');
     }
 
     #optimisticUpdate(id: number, patch: Partial<AudioStream>) {

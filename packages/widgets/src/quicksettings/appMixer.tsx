@@ -43,7 +43,10 @@ function OutputSelector({
             >
                 <Gtk.Box
                     spacing={4}
-                    cssClasses={['popover-padded']}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
                     orientation={Gtk.Orientation.VERTICAL}
                 >
                     <Gtk.Button

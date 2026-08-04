@@ -16,7 +16,6 @@ import {gettext} from 'gettext';
 import {register} from 'gnim/gobject';
 
 // gnim dev/bundle auto-registers a Gtk.CssProvider for each imported .css
-import './shade.css';
 
 @register
 export class ShadeShell extends Adw.Application {

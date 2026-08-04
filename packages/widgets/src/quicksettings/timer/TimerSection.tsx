@@ -2,6 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import TimerService from '@shade/services/time/timerService';
+import {useStyle} from '@shade/style/useStyle';
 import {bind, computed, createState} from 'gnim';
 
 function fmtRemaining(ms: number): string {
@@ -21,6 +22,8 @@ const PRESETS = [
 
 export const TimerSection = () => {
     const timer = TimerService.get_default();
+    const displayStyles = useStyle({fontSize: '24px', fontWeight: 'bold'});
+    const labelStyles = useStyle({marginTop: '4px'});
     const remaining = bind(timer, 'remaining');
     const total = bind(timer, 'total');
     const running = bind(timer, 'running');
@@ -62,16 +65,22 @@ export const TimerSection = () => {
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={12}
                 halign={Gtk.Align.FILL}
-                cssClasses={['card', 'p-12']}
+                cssClasses={['card']}
+                marginTop={12}
+                marginBottom={12}
+                marginStart={12}
+                marginEnd={12}
             >
                 <Gtk.Label
+                    ref={displayStyles.$}
                     label={remaining.as((r) => fmtRemaining(r))}
-                    cssClasses={['timer-display', 'numeric']}
+                    cssClasses={[displayStyles.class, 'numeric']}
                     halign={Gtk.Align.CENTER}
                 />
                 <Gtk.Label
+                    ref={labelStyles.$}
                     label={label}
-                    cssClasses={['timer-label']}
+                    cssClasses={[labelStyles.class]}
                     halign={Gtk.Align.CENTER}
                     visible={label.as((l) => l.length > 0)}
                 />
@@ -197,7 +206,11 @@ export const TimerSection = () => {
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={4}
                         halign={Gtk.Align.FILL}
-                        cssClasses={['card', 'p-8', 'p-12']}
+                        cssClasses={['card']}
+                        marginTop={12}
+                        marginBottom={12}
+                        marginStart={12}
+                        marginEnd={12}
                     >
                         <Gtk.Label
                             label="Focus for 25 minutes, then take a 5 minute break."

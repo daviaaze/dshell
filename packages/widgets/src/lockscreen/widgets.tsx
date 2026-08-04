@@ -60,7 +60,11 @@ const MediaPlayerWidget = () => {
             visible={bind(mc, 'players').as((p) => p.length > 0)}
             orientation={Gtk.Orientation.HORIZONTAL}
             spacing={8}
-            cssClasses={['card', 'p-8']}
+            cssClasses={['card']}
+            marginTop={8}
+            marginBottom={8}
+            marginStart={8}
+            marginEnd={8}
             halign={Gtk.Align.CENTER}
         >
             <Gtk.Image

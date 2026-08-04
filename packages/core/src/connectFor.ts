@@ -54,8 +54,7 @@ export function connectFor(
     signal: string,
     // GObject signal handlers are variadic with untyped GIR args —
     // callers narrow via their own callback signatures.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    callback: (...args: any[]) => void
+    callback: (...args: unknown[]) => void
 ): number {
     const handlerId = obj.connect(signal, callback);
     const entries = getOrCreateEntries(node);

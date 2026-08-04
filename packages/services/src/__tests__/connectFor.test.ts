@@ -125,9 +125,14 @@ describe('connectFor', () => {
         const node = {};
         let received: number | null = null;
 
-        connectFor(node, signaler as unknown as Connectable, 'test-value', (_, value: number) => {
-            received = value;
-        });
+        connectFor(
+            node,
+            signaler as unknown as Connectable,
+            'test-value',
+            (_: unknown, value: unknown) => {
+                received = value as number;
+            }
+        );
 
         signaler.fireWith(42);
         expect(received).toBe(42);

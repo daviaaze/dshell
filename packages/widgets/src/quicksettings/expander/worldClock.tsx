@@ -12,7 +12,15 @@ export const WorldClock = () => {
     const localTz = GLib.TimeZone.new_local();
 
     return (
-        <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL} cssClasses={['card', 'p-12']}>
+        <Gtk.Box
+            spacing={4}
+            orientation={Gtk.Orientation.VERTICAL}
+            cssClasses={['card']}
+            marginTop={12}
+            marginBottom={12}
+            marginStart={12}
+            marginEnd={12}
+        >
             <Gtk.Label cssClasses={['title-3']} label="World Clock" halign={Gtk.Align.CENTER} />
             <For each={general.timezones}>
                 {(tzId: string) => {

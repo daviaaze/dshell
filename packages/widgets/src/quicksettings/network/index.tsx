@@ -59,7 +59,10 @@ const WifiQuicksettingsButton = (): QuickButton => {
                             />
                         ) : (
                             <Gtk.Label
-                                cssClasses={['popover-padded-lg']}
+                                marginTop={12}
+                                marginBottom={12}
+                                marginStart={12}
+                                marginEnd={12}
                                 label={net.wifiReady ? 'No WiFi device' : 'Loading…'}
                             />
                         )

@@ -10,7 +10,14 @@ function updateCalendar(calendar: Gtk.Calendar) {
 }
 
 export const Calendar = () => (
-    <Gtk.Calendar cssClasses={['card', 'p-12']} ref={(self) => updateCalendar(self)} />
+    <Gtk.Calendar
+        cssClasses={['card']}
+        marginTop={12}
+        marginBottom={12}
+        marginStart={12}
+        marginEnd={12}
+        ref={(self) => updateCalendar(self)}
+    />
 );
 
 export const CalendarIcon = () => {
