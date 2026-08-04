@@ -18,3 +18,7 @@ Knowledge-Base/
 # Dependency graph regenerable artifacts (scripts/deps-graph.sh)
 docs/deps/deps.json
 docs/deps/deps.png
+
+# Dev server generated artifacts
+data/glib-2.0/
+schema-out/
