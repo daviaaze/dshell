@@ -79,7 +79,7 @@ function DockPopover({
             cssClasses={['menu']}
             hasArrow={false}
         >
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} css={'padding: 8px;'}>
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={['card']}>
                 <ActionButton
                     iconName="focus-windows-symbolic"
                     label="Focus"

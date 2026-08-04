@@ -69,13 +69,12 @@ export const ControlPanel = ({ss, onCapture, onReset, onTargetChange}: ControlPa
             valign={Gtk.Align.START}
             hexpand={false}
             vexpand={false}
-            css={'margin-top: 24px;'}
+            marginTop={24}
         >
             <Gtk.Box
                 cssClasses={['card', 'frame', 'background']}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
-                css={'padding: 12px;'}
             >
                 {/* Mode toggle */}
                 <Gtk.Box spacing={4} homogeneous cssClasses={['linked']}>
@@ -171,8 +170,7 @@ export const ControlPanel = ({ss, onCapture, onReset, onTargetChange}: ControlPa
                 <Gtk.Label
                     label="Esc to cancel  ·  Enter to capture"
                     halign={Gtk.Align.CENTER}
-                    cssClasses={['caption']}
-                    css={'opacity: 0.6;'}
+                    cssClasses={['caption', 'dimmed']}
                 />
             </Gtk.Box>
         </Gtk.Box>
