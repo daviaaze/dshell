@@ -209,11 +209,8 @@ export default ({
         <Adw.Clamp widthRequest={clampWidth}>
             <Gtk.Box
                 name={notification.id.toString()}
-                marginTop={12}
-                marginBottom={12}
-                marginStart={12}
-                marginEnd={12}
                 cssClasses={['card', urgencyClass].filter(Boolean)}
+                css={'padding: 12px; margin: 12px; box-shadow: none;'}
                 spacing={8}
                 orientation={Gtk.Orientation.VERTICAL}
                 ref={(self) => {
