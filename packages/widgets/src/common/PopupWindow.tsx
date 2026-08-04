@@ -167,10 +167,7 @@ export default (props: PopupWindowProps) => {
             monitor={resolvedMonitor}
             widthRequest={widthRequest}
             heightRequest={heightRequest}
-            cssClasses={[
-                ...(frameProp === false ? [] : ['frame']),
-                ...(cssClasses ?? []),
-            ]}
+            cssClasses={[...(frameProp === false ? [] : ['frame']), ...(cssClasses ?? [])]}
             onNotifyVisible={(self: Astal.Window) => {
                 if (onVisibleChange) onVisibleChange(self.visible);
             }}

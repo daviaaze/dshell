@@ -1,6 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {formatTemp, formatTime} from '@shade/services/location/weatherUtils';
-import {useStyle} from '@shade/style/useStyle';
 import {type Accessor, For} from 'gnim';
 
 interface HourlyItem {
@@ -23,13 +22,10 @@ export const HourlyForecastSection = ({
 }: {
     hourlyForecast: Accessor<HourlyItem[]>;
 }) => {
-    const styles = useStyle({padding: '8px'});
-
     return (
         <Gtk.Box
-            ref={styles.$}
             orientation={Gtk.Orientation.VERTICAL}
-            cssClasses={[styles.class]}
+            cssClasses={['card']}
             marginTop={8}
             marginBottom={8}
             marginStart={8}
@@ -61,13 +57,10 @@ export const HourlyForecastSection = ({
 };
 
 export const DailyForecastSection = ({dailyForecast}: {dailyForecast: Accessor<DailyItem[]>}) => {
-    const styles = useStyle({padding: '8px'});
-
     return (
         <Gtk.Box
-            ref={styles.$}
             orientation={Gtk.Orientation.VERTICAL}
-            cssClasses={[styles.class]}
+            cssClasses={['card']}
             marginTop={8}
             marginBottom={8}
             marginStart={8}

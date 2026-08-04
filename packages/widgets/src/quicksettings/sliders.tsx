@@ -2,7 +2,6 @@ import logger from '@shade/core/logger';
 import AudioController from '@shade/services/audio/audioController';
 import {bus} from '@shade/services/bus';
 import Brightness from '@shade/services/display/brightness';
-import {useStyle} from '@shade/style/useStyle';
 import {bind, createState} from 'gnim';
 import {AudioEndpointControl} from '../common/audioControl';
 import {Slider} from '../common/slider';
@@ -57,8 +56,6 @@ export const BrightnessSlider = () => {
     logger.debug('brightness', 'BrightnessSlider: get_default()');
     const brightness = Brightness.get_default();
     const [presetIndex, setPresetIndex] = createState(0);
-    const styles = useStyle({padding: '8px'});
-
     const cycleBrightness = () => {
         const next = (presetIndex() + 1) % BRIGHTNESS_PRESETS.length;
         setPresetIndex(next);
@@ -69,8 +66,7 @@ export const BrightnessSlider = () => {
     logger.debug('brightness', 'BrightnessSlider: done');
     return (
         <Slider
-            ref={styles.$}
-            cssClasses={[styles.class]}
+            cssClasses={['card']}
             visible={bind(brightness, 'screen').as((v) => v > 0)}
             icon={'display-brightness-symbolic'}
             min={BRIGHTNESS_PCT_MIN}

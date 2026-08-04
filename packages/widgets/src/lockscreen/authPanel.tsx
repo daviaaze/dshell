@@ -7,18 +7,16 @@ import {type Accessor, bind, createState} from 'gnim';
 import {LockscreenWidgets} from './widgets';
 
 interface AuthPanelProps {
-    slot?: string;
     authSession: AuthSession;
     fingerprint: FingerprintAuth;
     fpStateBinding: Accessor<string>;
     fpErrorBinding: Accessor<string | null>;
 }
 
-const CARD_SPACING = 12;
-const AVATAR_SIZE = 80;
+const CARD_SPACING = 16;
+const AVATAR_SIZE = 96;
 
 export const LockscreenAuthPanel = ({
-    slot,
     authSession,
     fingerprint,
     fpStateBinding,
@@ -28,11 +26,10 @@ export const LockscreenAuthPanel = ({
 
     return (
         <Gtk.Box
-            slot={slot}
             valign={Gtk.Align.CENTER}
             halign={Gtk.Align.CENTER}
             spacing={CARD_SPACING}
-            css={'padding:8px;'}
+            widthRequest={320}
             orientation={Gtk.Orientation.VERTICAL}
             cssClasses={['card']}
         >
@@ -61,11 +58,13 @@ export const LockscreenAuthPanel = ({
             />
             <Gtk.Spinner
                 visible={fpStateBinding.as((s) => s === 'verifying' || s === 'initializing')}
+                marginTop={CARD_SPACING}
                 spinning
             />
             <Gtk.Button
                 visible={fpStateBinding.as((s) => s === 'error')}
                 label={fpErrorBinding.as((msg) => msg ?? 'Retry fingerprint')}
+                marginTop={CARD_SPACING}
                 cssClasses={['flat']}
                 onClicked={() => fingerprint.retry()}
             />

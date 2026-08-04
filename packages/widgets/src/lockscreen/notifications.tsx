@@ -71,7 +71,7 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
 
                 const node = {};
                 connectFor(node, notifd, 'notified', (_, id) => addNotification(id as number));
-                connectFor(node, notifd, 'dismissed', (_, id) => removeNotification(id as number));
+                connectFor(node, notifd, 'resolved', (_, id) => removeNotification(id as number));
                 onCleanup(() => cleanupNode(node));
             }}
         >

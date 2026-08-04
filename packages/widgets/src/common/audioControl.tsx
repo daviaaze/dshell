@@ -2,7 +2,6 @@ import type Wireplumber from 'gi://AstalWp';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getVolumeIcon} from '@shade/services/audio/icons';
 import {bus} from '@shade/services/bus';
-import {useStyle} from '@shade/style/useStyle';
 import {type Accessor, bind, createState, For, With} from 'gnim';
 import AppMixer from '../quicksettings/appMixer';
 import {Slider} from './slider';
@@ -24,7 +23,6 @@ export const AudioEndpointControl = ({
     mutedIcon,
     showAppMixer,
 }: AudioControlProps) => {
-    const styles = useStyle({padding: '8px'});
     const [revealed, setRevealed] = createState(false);
     const [tab, setTab] = createState<'devices' | 'apps'>('devices');
     const radioGroup = new Gtk.CheckButton();
@@ -115,8 +113,7 @@ export const AudioEndpointControl = ({
         <Gtk.Box
             visible={visible}
             spacing={4}
-            cssClasses={revealed.as((r) => (r ? ['card', styles.class] : [styles.class]))}
-            ref={styles.$}
+            cssClasses={revealed.as((r) => (r ? ['card'] : []))}
             orientation={Gtk.Orientation.VERTICAL}
         >
             <Gtk.Box spacing={4}>

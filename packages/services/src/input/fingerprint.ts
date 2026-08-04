@@ -132,7 +132,7 @@ export default class FingerprintAuth extends Object {
         // The signal handler connects during init(), but we only started
         // verifying via start() — stale done=true signals arrive when no
         // verification is active and must be dropped.
-        if (this.#state !== 'verifying' && this.#state !== 'initializing') {
+        if (this.#state !== 'verifying') {
             return;
         }
 
@@ -167,7 +167,7 @@ export default class FingerprintAuth extends Object {
     async #reinitAndRetry() {
         // Don't call stop() — the VerifyStatus D-Bus signal with done=true
         // already ended verification. Just release and restart.
-        this.#setState('idle');
+        // Stay in 'verifying' state to avoid UI flicker (spinner disappearing).
         this.#release();
         this.#retryPending = true;
         await new Promise<void>((resolve) => setTimeout(() => resolve(), 500));
@@ -208,7 +208,9 @@ export default class FingerprintAuth extends Object {
 
     retry() {
         if (this.#state !== 'error') return;
-        this.#consecutiveFailures = 0;
+        // Don't reset #consecutiveFailures here — it should only reset on
+        // a successful match. Resetting here would allow the user to retry
+        // indefinitely by dismissing the error.
         this.#errorMessage = '';
         this.notify('error-message');
         this.#setState('initializing');

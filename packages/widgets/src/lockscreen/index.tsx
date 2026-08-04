@@ -19,7 +19,8 @@ import {LockscreenWidgets} from './widgets';
 
 // ── Layout constants ──────────────────────────────────────────────
 
-const CLOCK_MARGIN_BOTTOM = 8;
+const TOP_MARGIN = 120;
+const BOTTOM_MARGIN = 64;
 
 // ── Main lockscreen creation ──
 
@@ -87,45 +88,44 @@ const createLocks = (onUnlock: () => void) => {
                     exclusivity={Astal.Exclusivity.IGNORE}
                     keymode={Astal.Keymode.EXCLUSIVE}
                 >
-                    <Gtk.CenterBox
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        orientation={Gtk.Orientation.VERTICAL}
-                    >
+                    <Gtk.Box orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER}>
                         <Gtk.Box
-                            slot="start"
+                            vexpand
+                            valign={Gtk.Align.START}
                             orientation={Gtk.Orientation.VERTICAL}
-                            marginBottom={CLOCK_MARGIN_BOTTOM}
+                            marginTop={TOP_MARGIN}
+                            marginBottom={48}
                         >
                             <Gtk.Label
                                 cssClasses={['title-1', 'numeric']}
                                 label={time.as((t) => t.format('%R')!)}
-                                css={'font-size: 4em;'}
+                                css={'font-size: 5em;'}
                             />
                             <Gtk.Label
-                                marginBottom={CLOCK_MARGIN_BOTTOM}
+                                marginTop={8}
                                 cssClasses={['title-3', 'numeric']}
                                 label={time.as((t) => t.format('%A, %x')!)}
                             />
                         </Gtk.Box>
-                        <LockscreenAuthPanel
-                            slot="center"
-                            authSession={authSession}
-                            fingerprint={fingerprint}
-                            fpStateBinding={fpStateBinding}
-                            fpErrorBinding={fpErrorBinding}
-                        />
+                        <Gtk.Box vexpand valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
+                            <LockscreenAuthPanel
+                                authSession={authSession}
+                                fingerprint={fingerprint}
+                                fpStateBinding={fpStateBinding}
+                                fpErrorBinding={fpErrorBinding}
+                            />
+                        </Gtk.Box>
                         <Gtk.Box
-                            slot="end"
+                            vexpand
                             valign={Gtk.Align.END}
                             halign={Gtk.Align.CENTER}
                             orientation={Gtk.Orientation.VERTICAL}
-                            marginTop={CLOCK_MARGIN_BOTTOM}
+                            marginBottom={BOTTOM_MARGIN}
                         >
                             <LockscreenWidgets position="end" />
                             <LockscreenNotifications />
                         </Gtk.Box>
-                    </Gtk.CenterBox>
+                    </Gtk.Box>
                 </Astal.Window>
             )}
         </For>
