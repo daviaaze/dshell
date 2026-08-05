@@ -12,31 +12,11 @@ import SessionLockService from '@shade/services/session/sessionLockService';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import Clock from '@shade/services/time/clock';
-import {useStyle} from '@shade/style/useStyle';
+
 import {bind, For, onCleanup} from 'gnim';
 import {LockscreenAuthPanel} from './authPanel';
 import {LockscreenNotifications} from './notifications';
 import {LockscreenWidgets} from './widgets';
-
-// ── Frosted card style — backdrop blur + translucent surface + shadow ──
-
-const CARD_RADIUS = '24px';
-
-const mainCardStyle = useStyle({
-    padding: '48px',
-    borderRadius: CARD_RADIUS,
-    backdropFilter: 'blur(24px) brightness(0.8)',
-    backgroundColor: 'color-mix(in srgb, var(--shade-surface) 55%, transparent)',
-    boxShadow: '0 8px 32px color-mix(in srgb, var(--shade-shadow) 40%, transparent)',
-});
-
-const bottomCardStyle = useStyle({
-    padding: '24px',
-    borderRadius: CARD_RADIUS,
-    backdropFilter: 'blur(24px) brightness(0.8)',
-    backgroundColor: 'color-mix(in srgb, var(--shade-surface) 55%, transparent)',
-    boxShadow: '0 8px 32px color-mix(in srgb, var(--shade-shadow) 40%, transparent)',
-});
 
 // ── Main lockscreen creation ──
 
@@ -103,7 +83,7 @@ const createLocks = (onUnlock: () => void) => {
                     visible
                     exclusivity={Astal.Exclusivity.IGNORE}
                     keymode={Astal.Keymode.EXCLUSIVE}
-                    css={'background: transparent;'}
+                    css={'backdrop-filter: blur(40px) brightness(0.35);'}
                 >
                     <Gtk.Box
                         vexpand
@@ -121,13 +101,15 @@ const createLocks = (onUnlock: () => void) => {
                             <Gtk.Box
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={16}
-                                cssClasses={[mainCardStyle.class]}
-                                ref={mainCardStyle.$}
+                                marginTop={48}
+                                marginBottom={48}
+                                marginStart={48}
+                                marginEnd={48}
+                                cssClasses={['card']}
                             >
                                 <Gtk.Label
                                     cssClasses={['title-1', 'numeric']}
                                     label={time.as((t) => t.format('%R')!)}
-                                    css={'font-size: 5em;'}
                                 />
                                 <Gtk.Label
                                     cssClasses={['title-3', 'numeric']}
@@ -151,8 +133,11 @@ const createLocks = (onUnlock: () => void) => {
                             <Gtk.Box
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
-                                cssClasses={[bottomCardStyle.class]}
-                                ref={bottomCardStyle.$}
+                                marginTop={24}
+                                marginBottom={24}
+                                marginStart={24}
+                                marginEnd={24}
+                                cssClasses={['card']}
                             >
                                 <LockscreenWidgets position="end" />
                                 <LockscreenNotifications />

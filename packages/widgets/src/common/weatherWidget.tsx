@@ -1,7 +1,6 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import WeatherLib from '@shade/services/location/weather';
 import {formatTime, windDirectionLabel} from '@shade/services/location/weatherUtils';
-import {useStyle} from '@shade/style/useStyle';
 import {type Accessor, bind, computed} from 'gnim';
 import {DailyForecastSection, HourlyForecastSection} from './weatherForecast';
 
@@ -42,10 +41,8 @@ const SunMoonRow = ({
         iconName: string;
     } | null>;
 }) => {
-    const styles = useStyle({marginTop: '8px', marginBottom: '8px'});
-
     return (
-        <Gtk.Box ref={styles.$} spacing={16} halign={Gtk.Align.CENTER} cssClasses={[styles.class]}>
+        <Gtk.Box marginTop={8} marginBottom={8} spacing={16} halign={Gtk.Align.CENTER}>
             <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
                 <Gtk.Image iconName={'daytime-sunrise-symbolic'} pixelSize={14} />
                 <Gtk.Label label={sunrise.as((s) => formatTime(s))} cssClasses={['caption']} />
@@ -123,23 +120,19 @@ export const WeatherWidget = () => {
         return weather.getMoonPhase();
     });
 
-    const widgetStyles = useStyle({marginTop: '4px', marginBottom: '4px'});
-    const tempStyles = useStyle({color: 'var(--shade-primary)'});
-
     return (
         <Gtk.Box
-            ref={widgetStyles.$}
+            marginTop={4}
+            marginBottom={4}
             orientation={Gtk.Orientation.VERTICAL}
             spacing={0}
-            cssClasses={[widgetStyles.class]}
         >
             {/* ── Header: icon + temp/location + refresh ── */}
             <Gtk.Box spacing={12} marginStart={8} marginEnd={8}>
                 <Gtk.Image iconName={iconName} pixelSize={36} />
                 <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand spacing={0}>
                     <Gtk.Label
-                        ref={tempStyles.$}
-                        cssClasses={[tempStyles.class, 'title-1']}
+                        cssClasses={['accent', 'title-1']}
                         label={tempSummary}
                         halign={Gtk.Align.START}
                     />

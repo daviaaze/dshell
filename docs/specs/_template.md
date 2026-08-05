@@ -32,27 +32,31 @@
 
 ## Visual (Adwaita alignment)
 
-All colors must come from the theme (`--shade-*` custom properties set by
-`src/style/theme.ts`) or libadwaita named colors / style classes. Hardcoded
-hex/rgb values and ad-hoc inline `css` are **not allowed** outside
-`src/style/palette.ts` and the `useStyle` helper.
+All colors must come from the theme using **native Adwaita CSS
+variables** (`--window-bg-color`, `--accent-bg-color`, `--card-bg-color`,
+`--shade-color`, etc.) or **GTK style classes** (`.card`, `.accent`,
+`.background`, `.flat`, etc.). Hardcoded hex/rgb values and ad-hoc inline
+`css` are **not allowed**. See [STYLEGUIDE.md](../STYLEGUIDE.md) for the
+full reference.
 
 ### Theme tokens
 
-| Element | Token / style class | Notes |
-|---------|--------------------|-------|
-|  | `--shade-*` / Adw class |  |
+| Element | Variable / style class | Notes |
+|---------|----------------------|-------|
+|  | native var or class |  |
 
 ### Adwaita checklist
 
 - [ ] Uses Adw style classes where one exists (`card`, `linked`, `pill`,
-      `flat`, `circular`, `dim-label`, `accent`, …) instead of custom CSS
-- [ ] Spacing follows the Adwaita 6px grid (6/12/18) or `--shade-spacing`
-- [ ] Corner radius uses `--shade-radius`
+      `flat`, `circular`, `dimmed`, `accent`, …) instead of custom CSS
+- [ ] Spacing follows the Adwaita 6px grid (6/12/18) — use widget
+      `marginTop`/`marginBottom`/`marginStart`/`marginEnd` props
+- [ ] Corner radius uses `var(--window-radius)` if custom CSS is needed
 - [ ] Readable in both light and dark variants (verify with
       `Adw.StyleManager` color-scheme toggle)
 - [ ] Icon-only buttons use symbolic icons (`-symbolic`)
-- [ ] Focus/hover states are visible and use theme accent (`--shade-primary`)
+- [ ] Focus/hover states are visible and use theme accent
+      (`--accent-bg-color` or `.accent` class)
 
 ## Test plan
 

@@ -48,7 +48,8 @@ export default () => {
                     bus.emit('shell:launcher:close');
                 shellState.qsOpen = self.visible;
             }}
-            cssClasses={['card', 'background']}
+            cssClasses={['card']}
+            css={'backdrop-filter: blur(20px) brightness(0.75);'}
             anchor={barCfg.position.as((p) => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM)}
             widthRequest={QUICKSETTINGS_WIDTH}
             monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}

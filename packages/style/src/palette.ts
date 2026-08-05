@@ -1,8 +1,7 @@
 /**
  * Matugen Palette Generator — extracts a full Material 3 color palette from
- * the current wallpaper and applies it via the Theme manager.
- *
- * Replaces the old `Theming` service (3-color accent → full palette).
+ * the current wallpaper and applies it via the Theme manager using only
+ * native Adwaita CSS variables.
  */
 
 import GLib from 'gi://GLib?version=2.0';
@@ -12,27 +11,16 @@ import {Process} from '@shade/core/process';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import type {Accessor} from 'gnim';
 import {Object as GObject, property, register} from 'gnim/gobject';
-import {Stylesheet, Theme, type ThemeColors} from './theme';
+import {type Palette, Stylesheet, Theme} from './theme';
 
-// ── Material 3 → shade CSS variable mapping ──
+// ── Matugen JSON → native Palette key mapping ──
 
-const M3_MAP: Record<string, string> = {
+const M3_TO_PALETTE: Record<string, keyof Palette> = {
     background: 'bg',
-    surface_container_lowest: 'bg',
-    surface_container: 'surface-container',
-    surface_container_low: 'surface-dim',
-    surface_container_high: 'surface',
     on_background: 'fg',
-    on_surface: 'fg-dim',
     primary: 'primary',
-    on_primary: 'on-primary',
-    primary_container: 'primary-container',
-    secondary: 'secondary',
-    tertiary: 'tertiary',
-    error: 'error',
-    on_error: 'on-error',
-    outline: 'outline',
-    outline_variant: 'outline-variant',
+    surface_container: 'surface',
+    surface: 'surface',
     shadow: 'shadow',
 };
 
@@ -162,7 +150,7 @@ export default class PaletteGenerator extends GObject {
             });
     }
 
-    #parseMatugenJson(json: string): {dark: ThemeColors; light: ThemeColors} | null {
+    #parseMatugenJson(json: string): {dark: Palette; light: Palette} | null {
         try {
             const data: MatugenJson = JSON.parse(json);
             const rawDark = data.colors?.dark;
@@ -172,8 +160,8 @@ export default class PaletteGenerator extends GObject {
                 return null;
             }
 
-            const dark = this.#normalizeColors(rawDark);
-            const light = this.#normalizeColors(rawLight);
+            const dark = this.#toPalette(rawDark);
+            const light = this.#toPalette(rawLight);
             return {dark, light};
         } catch (e) {
             logger.error('palette', 'failed to parse matugen output:', e);
@@ -181,34 +169,35 @@ export default class PaletteGenerator extends GObject {
         }
     }
 
-    #normalizeColors(raw: Record<string, string>): ThemeColors {
-        const out: ThemeColors = {};
+    /** Convert a matugen color map into a minimal native Palette. */
+    #toPalette(raw: Record<string, string>): Palette {
+        const p: Partial<Palette> = {};
 
-        // Map known keys
-        for (const [m3Key, shadeKey] of Object.entries(M3_MAP)) {
-            const rawValue = raw[m3Key];
-            if (rawValue) {
-                out[shadeKey] = rawValue;
+        for (const [m3Key, paletteKey] of Object.entries(M3_TO_PALETTE)) {
+            const value = raw[m3Key];
+            if (value && !p[paletteKey]) {
+                p[paletteKey] = value;
             }
         }
 
-        // Fill in any missing keys with fallbacks
-        if (!out.bg) out.bg = out['surface'] ?? '#1a1a1a';
-        if (!out.fg) out.fg = out['on-background'] ?? '#ffffff';
-        if (!out['on-primary']) out['on-primary'] = '#ffffff';
-        if (!out['on-error']) out['on-error'] = '#ffffff';
-        if (!out.shadow) out.shadow = '#000000';
+        // Fallbacks for any missing keys
+        if (!p.bg) p.bg = '#1a1a1a';
+        if (!p.fg) p.fg = '#ffffff';
+        if (!p.primary) p.primary = '#3584e4';
+        if (!p.surface) p.surface = '#242424';
+        if (!p.shadow) p.shadow = '#000000';
 
-        return out;
+        return p as Palette;
     }
 
-    #applyPalette(palette: {dark: ThemeColors; light: ThemeColors}): void {
+    #applyPalette(palette: {dark: Palette; light: Palette}): void {
         // Remove previous dynamic stylesheet
         this.#clearActiveStylesheet();
 
         // Create and activate a matugen-derived stylesheet
         const sheet = new Stylesheet('matugen', {
-            stylesheet: {dark: palette.dark, light: palette.light},
+            dark: palette.dark,
+            light: palette.light,
         });
 
         const theme = Theme.get_default();
@@ -216,7 +205,7 @@ export default class PaletteGenerator extends GObject {
         sheet.activate();
         this.#activeStylesheet = sheet;
 
-        logger.debug('palette', `applied palette — primary: ${palette.dark.primary ?? 'unknown'}`);
+        logger.debug('palette', `applied palette — primary: ${palette.dark.primary}`);
     }
 
     #clearActiveStylesheet(): void {

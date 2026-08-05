@@ -3,7 +3,6 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import {getHyprland} from '@shade/services/hyprland';
 import {getAppIcon} from '@shade/services/state/apps';
-import {useStyle} from '@shade/style/useStyle';
 import {type Accessor, bind, computed, For, With} from 'gnim';
 
 const SPECIAL_WORKSPACE_ID = -99;
@@ -52,21 +51,16 @@ export default ({
 
                     // Special workspace gets a distinct background
                     const isSpecial = ws.id === SPECIAL_WORKSPACE_ID;
-                    const specialStyles = useStyle({
-                        backgroundColor: 'var(--shade-primary-container)',
-                        borderRadius: 'var(--shade-radius)',
-                    });
 
                     return (
                         <Gtk.Box
-                            ref={isSpecial ? specialStyles.$ : undefined}
                             orientation={vertical.as((v) =>
                                 v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                             )}
                             cssClasses={[
                                 'flat',
                                 'card',
-                                ...(isSpecial ? [specialStyles.class] : []),
+                                ...(isSpecial ? ['accent'] : []),
                             ]}
                             spacing={4}
                         >

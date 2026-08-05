@@ -14,10 +14,14 @@ export default ({
     <Gtk.Box
         spacing={12}
         cssClasses={['card']}
+        marginTop={5}
+        marginBottom={5}
+        marginStart={14}
+        marginEnd={14}
         css={selected.as((s) =>
             s
-                ? 'padding: 10px 14px; border-radius: calc(var(--shade-radius) * 1.5); background-color: alpha(@accent_bg_color, 0.85);'
-                : 'padding: 10px 14px; border-radius: calc(var(--shade-radius) * 1.5);'
+                ? 'border-radius: calc(var(--window-radius) * 1.5); background-color: alpha(@accent_bg_color, 0.85);'
+                : 'border-radius: calc(var(--window-radius) * 1.5);'
         )}
         valign={Gtk.Align.CENTER}
     >
@@ -49,7 +53,7 @@ export default ({
             valign={Gtk.Align.CENTER}
             halign={Gtk.Align.END}
             css={
-                'background-color: alpha(@window_bg_color, 0.6); border-radius: var(--shade-radius-full); padding: 2px 10px; min-width: 24px;'
+                'background-color: alpha(@window_bg_color, 0.6); border-radius: var(--window-radius); padding: 2px 10px; min-width: 24px;'
             }
         />
     </Gtk.Box>

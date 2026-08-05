@@ -5,7 +5,6 @@ import Gio from 'gi://Gio?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import MediaController from '@shade/services/session/mediaController';
 import {exactQuery} from '@shade/services/state/apps';
-import {useStyle} from '@shade/style/useStyle';
 import {bind, For} from 'gnim';
 
 function lengthStr(length: number) {
@@ -30,14 +29,11 @@ const PlayerApp = ({player}: {player: Mpris.Player}) => (
 );
 
 const CoverArt = ({player}: {player: Mpris.Player}) => {
-    const styles = useStyle({borderRadius: 'calc(var(--shade-radius) / 2)'});
-
     return (
         <Gtk.Picture
-            ref={styles.$}
             visible={bind(player, 'cover-art').as((c) => !!c)}
             file={bind(player, 'cover-art').as((path) => Gio.File.new_for_path(path))}
-            cssClasses={[styles.class]}
+            css={'border-radius: calc(var(--window-radius) / 2);'}
             contentFit={Gtk.ContentFit.COVER}
             widthRequest={120}
             heightRequest={120}
@@ -99,12 +95,11 @@ const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) 
 
 const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
     const mc = MediaController.get_default();
-    const styles = useStyle({marginTop: '4px', marginBottom: '4px'});
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
             <Astal.Slider
-                ref={styles.$}
-                cssClasses={[styles.class]}
+                marginTop={4}
+                marginBottom={4}
                 drawValue={false}
                 onNotifyValue={({value}) => {
                     const pos = player.position ?? 0;

@@ -6,7 +6,7 @@ import {getApp} from '@shade/services/appHandle';
 import {Gdk2HyprMonitor, monitors} from '@shade/services/monitoring/monitors';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import WindowManager from '@shade/services/state/windowManager';
-import {useStyle} from '@shade/style/useStyle';
+
 import {type Accessor, For, onCleanup} from 'gnim';
 import Clock from './clock';
 import BluetoothAudio from './indicators/bluetoothAudio';
@@ -35,10 +35,8 @@ function BarContent({
 }) {
     const orient = vertical.as((v) => (v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL));
 
-    const styles = useStyle({padding: '4px'});
-
     return (
-        <Gtk.CenterBox ref={styles.$} cssClasses={[styles.class]} orientation={orient}>
+        <Gtk.CenterBox marginTop={4} marginBottom={4} marginStart={4} marginEnd={4} orientation={orient}>
             <Gtk.Box slot="start" cssClasses={['linked']} orientation={orient}>
                 <Launcher visible={bar.showLauncher} />
                 <Gtk.Separator visible={bar.showLauncher} />

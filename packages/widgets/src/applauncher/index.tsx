@@ -14,7 +14,6 @@ import {barSettings} from '@shade/services/settings/bar.gschema';
 import {fuzzyQuery} from '@shade/services/state/apps';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
-import {useStyle} from '@shade/style/useStyle';
 import {type Accessor, bind, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
@@ -142,7 +141,6 @@ function ResultsList({mode, list}: {mode: Accessor<LauncherMode>; list: Accessor
 }
 
 export default () => {
-    const bodyStyles = useStyle({margin: '8px'});
     const barCfg = barSettings();
     const hyprland = getHyprland();
     if (!hyprland) return null;
@@ -195,15 +193,18 @@ export default () => {
                     bus.emit('shell:launcher:close');
                 }
             }}
-            cssClasses={['card', 'background']}
+            cssClasses={['card']}
+            css={'backdrop-filter: blur(20px) brightness(0.75);'}
             keymode={Astal.Keymode.ON_DEMAND}
             monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}
         >
             <Gtk.Box
-                ref={bodyStyles.$}
+                marginTop={8}
+                marginBottom={8}
+                marginStart={8}
+                marginEnd={8}
                 orientation={Gtk.Orientation.VERTICAL}
-                cssClasses={[bodyStyles.class]}
                 spacing={8}
             >
                 <SearchEntry mode={mode} holder={holder} updateSearch={updateSearch} />

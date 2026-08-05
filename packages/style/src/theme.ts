@@ -1,18 +1,21 @@
 /**
- * Theme Manager — CSS custom properties system for the shell.
+ * Theme Manager — overrides native libadwaita CSS variables.
  *
- * Manages a Gtk.CssProvider at PRIORITY_USER that sets `--shade-*` CSS
- * custom properties on `*`. Hosts multiple named Stylesheets, each with
- * light and dark variants, and auto-switches based on Adw.StyleManager.
+ * Manages a single Gtk.CssProvider at PRIORITY_USER that sets the
+ * standard Adwaita CSS custom properties (`--window-bg-color`,
+ * `--accent-bg-color`, etc.) on `*`. Hosts multiple named Stylesheets,
+ * each with light and dark variants, and auto-switches based on
+ * Adw.StyleManager.
+ *
+ * The matugen-driven PaletteGenerator produces palettes that map
+ * directly onto these native variables — no custom `--shade-*` properties.
  *
  * Usage:
  * ```ts
  * const theme = Theme.get_default()
  * const catppuccin = new Theme.Stylesheet("Catppuccin", {
- *   stylesheet: {
- *     dark: { bg: "#1e1e2e", fg: "#cdd6f4", primary: "#cba6f7", surface: "#313244" },
- *     light: { bg: "#eff1f5", fg: "#4c4f69", primary: "#8839ef", surface: "#e6e9ef" },
- *   },
+ *   dark:   { bg: "#1e1e2e", fg: "#cdd6f4", primary: "#cba6f7", surface: "#313244" },
+ *   light:  { bg: "#eff1f5", fg: "#4c4f69", primary: "#8839ef", surface: "#e6e9ef" },
  * })
  * theme.addTheme(catppuccin)
  * catppuccin.activate()
@@ -22,82 +25,46 @@ import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Object as GObject, property, register} from 'gnim/gobject';
-import {registerStyleSheet, updateStyleSheet} from './useStyle';
+import {registerStyleSheet, updateStyleSheet} from './cssProvider';
 
-// ── CSS custom property names ──
+// ── Palette → native Adwaita CSS variables ──
 
-export const CSS_VARS = {
-    bg: '--shade-bg',
-    surface: '--shade-surface',
-    surfaceDim: '--shade-surface-dim',
-    surfaceContainer: '--shade-surface-container',
-    fg: '--shade-fg',
-    fgDim: '--shade-fg-dim',
-    primary: '--shade-primary',
-    primaryContainer: '--shade-primary-container',
-    onPrimary: '--shade-on-primary',
-    secondary: '--shade-secondary',
-    tertiary: '--shade-tertiary',
-    error: '--shade-error',
-    onError: '--shade-on-error',
-    outline: '--shade-outline',
-    outlineVariant: '--shade-outline-variant',
-    shadow: '--shade-shadow',
-    radius: '--shade-radius',
-    radiusFull: '--shade-radius-full',
-    spacing: '--shade-spacing',
-    hoverBg: '--shade-hover-bg',
-    activeBg: '--shade-active-bg',
-} as const;
+/** A minimal palette that fully drives the Adwaita look. */
+export interface Palette {
+    /** Window / background color → --window-bg-color */
+    bg: string;
+    /** Window foreground → --window-fg-color */
+    fg: string;
+    /** Accent background → --accent-bg-color (also derives --accent-color) */
+    primary: string;
+    /** Card / surface color → --card-bg-color */
+    surface: string;
+    /** Shadow / shade → --shade-color */
+    shadow: string;
+}
 
-export type ThemeColors = Record<string, string>;
+export type PaletteKey = keyof Palette;
 
-// ── Default Adwaita-inspired palette ──
+/** The set of keys a palette must provide. */
+export const PALETTE_KEYS: PaletteKey[] = ['bg', 'fg', 'primary', 'surface', 'shadow'];
 
-const ADWAITA_COLORS: ThemeColors = {
+// ── Default Adwaita-inspired palettes ──
+
+const ADWAITA_DARK: Palette = {
     bg: '#1a1a1a',
-    surface: '#242424',
-    'surface-dim': '#1e1e1e',
-    'surface-container': '#303030',
     fg: '#ffffff',
-    'fg-dim': '#9a9a9a',
     primary: '#3584e4',
-    'primary-container': '#1e5fb4',
-    'on-primary': '#ffffff',
-    secondary: '#7a7a7a',
-    tertiary: '#9866c7',
-    error: '#e55f86',
-    'on-error': '#ffffff',
-    outline: '#505050',
-    'outline-variant': '#3a3a3a',
+    surface: '#242424',
     shadow: '#000000',
-    radius: '8px',
-    'radius-full': '999px',
-    spacing: '4px',
-    'hover-bg': 'rgba(128,128,128,0.15)',
-    'active-bg': 'rgba(128,128,128,0.25)',
 };
 
-const ADWAITA_COLORS_LIGHT: ThemeColors = {
-    ...ADWAITA_COLORS,
+const ADWAITA_LIGHT: Palette = {
+    ...ADWAITA_DARK,
     bg: '#fafafa',
-    surface: '#ffffff',
-    'surface-dim': '#f0f0f0',
-    'surface-container': '#e8e8e8',
     fg: '#1a1a1a',
-    'fg-dim': '#707070',
     primary: '#3584e4',
-    'primary-container': '#cfe1fa',
-    'on-primary': '#ffffff',
-    secondary: '#585858',
-    tertiary: '#813d9b',
-    error: '#c01c28',
-    'on-error': '#ffffff',
-    outline: '#c0c0c0',
-    'outline-variant': '#d4d4d4',
-    shadow: '#00000040',
-    'hover-bg': 'rgba(255,255,255,0.12)',
-    'active-bg': 'rgba(255,255,255,0.20)',
+    surface: '#ffffff',
+    shadow: '#000000',
 };
 
 // ── Stylesheet class ──
@@ -105,10 +72,8 @@ const ADWAITA_COLORS_LIGHT: ThemeColors = {
 export class Stylesheet {
     readonly name: string;
     readonly config: {
-        stylesheet: {
-            dark: ThemeColors;
-            light: ThemeColors;
-        };
+        dark: Palette;
+        light: Palette;
     };
     /** @internal accessed by Theme */
     _active = false;
@@ -116,10 +81,8 @@ export class Stylesheet {
     constructor(
         name: string,
         config: {
-            stylesheet: {
-                dark: ThemeColors;
-                light: ThemeColors;
-            };
+            dark: Palette;
+            light: Palette;
         }
     ) {
         this.name = name;
@@ -233,12 +196,12 @@ export class Theme extends GObject {
     }
 
     /** Get the current resolved palette (for use in code, e.g. matugen). */
-    getCurrentPalette(): ThemeColors {
+    getCurrentPalette(): Palette {
         if (this.#activeStylesheet) {
-            const sheet = this.#activeStylesheet.config.stylesheet;
+            const sheet = this.#activeStylesheet.config;
             return this.#isDark ? sheet.dark : sheet.light;
         }
-        return this.#isDark ? ADWAITA_COLORS : ADWAITA_COLORS_LIGHT;
+        return this.#isDark ? ADWAITA_DARK : ADWAITA_LIGHT;
     }
 
     // ── Internals ──
@@ -258,48 +221,60 @@ export class Theme extends GObject {
     }
 
     #reevaluate(): void {
-        if (this.#activeStylesheet) {
-            const sheet = this.#activeStylesheet.config.stylesheet;
-            const colors = this.#isDark ? sheet.dark : sheet.light;
-            this.#applyTheme(colors);
-        } else {
-            this.#applyTheme(this.#isDark ? ADWAITA_COLORS : ADWAITA_COLORS_LIGHT);
-        }
+        const colors = this.#activeStylesheet
+            ? (this.#isDark ? this.#activeStylesheet.config.dark : this.#activeStylesheet.config.light)
+            : (this.#isDark ? ADWAITA_DARK : ADWAITA_LIGHT);
+        this.#applyPalette(colors);
     }
 
-    /** Map shade palette keys to Adwaita CSS variable names. */
-    static readonly ADWAITA_MAP: Record<string, string> = {
-        bg: '--window-bg-color',
-        fg: '--window-fg-color',
-        primary: '--accent-bg-color',
-        'on-primary': '--accent-fg-color',
-        error: '--error-bg-color',
-        'on-error': '--error-fg-color',
-        'outline-variant': '--border-color',
-        surface: '--card-bg-color',
-    };
-
-    #applyTheme(colors: ThemeColors): void {
-        const rules: string[] = [];
-        for (const [key, value] of Object.entries(colors)) {
-            if (value === undefined || value === null || value === 'undefined') {
-                logger.warn('theme', `skipping undefined color: --shade-${key}`);
-                continue;
-            }
-            const varName = `--shade-${key}`;
-            rules.push(`  ${varName}: ${value};`);
-
-            // Also set matching Adwaita variables so native widgets theme too
-            const adwaitaVar = Theme.ADWAITA_MAP[key];
-            if (adwaitaVar) {
-                rules.push(`  ${adwaitaVar}: ${value};`);
+    /**
+     * Apply a palette by overriding native Adwaita CSS custom properties.
+     *
+     * Sets `--window-bg-color`, `--window-fg-color`, `--accent-bg-color`,
+     * `--accent-fg-color`, `--accent-color`, `--card-bg-color`, and
+     * `--shade-color` on `*`. No custom `--shade-*` properties are emitted.
+     */
+    #applyPalette(p: Palette): void {
+        // Validate required keys
+        for (const key of PALETTE_KEYS) {
+            const value = p[key];
+            if (!value || value === 'undefined') {
+                logger.warn('theme', `skipping invalid palette key: ${key}`);
+                return;
             }
         }
-        // --accent-color is used by .accent style class on labels, buttons
-        const accent = colors['primary'] || 'var(--shade-primary)';
-        rules.push(`  --accent-color: ${accent};`);
 
-        const css = `* {\n${rules.join('\n')}\n}`;
+        const css = Theme.generateCSS(p);
         updateStyleSheet(this.#paletteKey, css);
+        logger.debug('theme', `applied palette (dark=${this.#isDark}) — primary: ${p.primary}`);
+    }
+
+    /**
+     * Generate the CSS string for a palette — a pure function for testing.
+     *
+     * @throws if any required palette key is missing or invalid.
+     */
+    static generateCSS(p: Palette): string {
+        for (const key of PALETTE_KEYS) {
+            const value = p[key];
+            if (!value || value === 'undefined') {
+                throw new Error(`Invalid palette key "${key}": missing or undefined`);
+            }
+        }
+
+        // Derive --accent-color (standalone) from --accent-bg-color.
+        // Adwaita normally does this with oklab; we approximate by
+        // declaring it to match the accent background for consistency.
+        const accentFg = '#ffffff'; // Adwaita default accent foreground
+
+        return `* {
+  --window-bg-color: ${p.bg};
+  --window-fg-color: ${p.fg};
+  --accent-bg-color: ${p.primary};
+  --accent-fg-color: ${accentFg};
+  --accent-color: ${p.primary};
+  --card-bg-color: ${p.surface};
+  --shade-color: ${p.shadow};
+}`;
     }
 }

@@ -9,7 +9,6 @@ import DndService from '@shade/services/notifications/dnd';
 import type {HistoryEntry} from '@shade/services/notifications/history';
 import NotificationHistory from '@shade/services/notifications/history';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
-import {useStyle} from '@shade/style/useStyle';
 import {bind, createState, For} from 'gnim';
 import Notification from '../common/notification';
 
@@ -154,13 +153,12 @@ const NotificationListContent = ({
     );
 
     const HistoryItem = ({entry}: {entry: HistoryEntry}) => {
-        const styles = useStyle({marginBottom: '4px'});
         return (
             <Adw.ActionRow
                 title={entry.summary}
                 subtitle={`${entry.appName} — ${entry.body || ''}`}
                 subtitleLines={1}
-                cssClasses={[styles.class]}
+                marginBottom={4}
             >
                 <Gtk.Label
                     cssClasses={['caption', 'numeric']}
