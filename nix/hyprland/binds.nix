@@ -96,21 +96,25 @@ let
   # `bindl` (locked mouse/button binds) and `bindle` (locked empty-workspace binds).
   # These keys must work on the lockscreen too. Sway's own default config
   # uses --locked for the same reason.
+  # NOTE: bindl requires a leading comma — the format is:
+  #   bindl = ,<key>,exec,<command>
+  # The leading comma marks an empty modifier field. Without it, Hyprland
+  # 0.56.2 shifts fields and reports 'Invalid dispatcher'.
   _bindl = [
-    "XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
-    "XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"
-    "XF86AudioStop,exec,${pkgs.playerctl}/bin/playerctl stop"
-    "XF86AudioPrev,exec,${pkgs.playerctl}/bin/playerctl previous"
-    "XF86AudioNext,exec,${pkgs.playerctl}/bin/playerctl next"
-    "XF86AudioMute,exec,wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-    "XF86AudioMicMute,exec,wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
-    "XF86MonBrightnessUp,exec,astal-brightness set +5%"
-    "XF86MonBrightnessDown,exec,astal-brightness set 5%-"
+    ",XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
+    ",XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"
+    ",XF86AudioStop,exec,${pkgs.playerctl}/bin/playerctl stop"
+    ",XF86AudioPrev,exec,${pkgs.playerctl}/bin/playerctl previous"
+    ",XF86AudioNext,exec,${pkgs.playerctl}/bin/playerctl next"
+    ",XF86AudioMute,exec,wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+    ",XF86AudioMicMute,exec,wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
+    ",XF86MonBrightnessUp,exec,astal-brightness set +5%"
+    ",XF86MonBrightnessDown,exec,astal-brightness set 5%-"
   ];
 
   _bindle = [
-    "XF86AudioRaiseVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+"
-    "XF86AudioLowerVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-"
+    ",XF86AudioRaiseVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+"
+    ",XF86AudioLowerVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-"
   ];
 
   _bindm = [
