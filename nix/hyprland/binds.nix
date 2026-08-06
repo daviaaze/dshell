@@ -57,7 +57,7 @@ let
     "SUPER,G,changegroupactive,f"
     "SUPER,Q,killactive"
     "SUPER,P,exec,hyprctl dispatch pseudo"
-    "SUPERSHIFT,P,exec,hyprctl --batch 'dispatch togglefloating 1;dispatch resizeactive exact 1920 1080;dispatch togglefloating 0;dispatch pseudo'"
+    "SUPERSHIFT,T,exec,hyprctl --batch 'dispatch togglefloating 1;dispatch resizeactive exact 1920 1080;dispatch togglefloating 0;dispatch pseudo'"
     "SUPER,F,fullscreen"
     ",Pause,togglespecialworkspace,scratchpad"
     ",Insert,togglespecialworkspace,scratchpad"
