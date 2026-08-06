@@ -242,8 +242,6 @@ in
       }
       (lib.mkIf cfg.binds.enable {
         programs.hyprland.extraConfig = ''
-          gesture= 3,right, dispatcher,exec, shade-shell toggle applauncher
-          gesture= 3,left, dispatcher,exec, shade-shell toggle quicksettings
         '';
 
         # Runtime introspection for keybinds. GNOME and KDE ship a
