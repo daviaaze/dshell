@@ -9,6 +9,11 @@ let
   # 3. On any failure, notify-send a visible error instead of silently
   #    swallowing it (the previous >/dev/null 2>&1 hid typos and missing
   #    services alike).
+  #
+  # NOTE: The entire script MUST be on a single line. Hyprland's config
+  # parser has no line-continuation mechanism (\ does not work), so any
+  # newline inside a bind command produces an "Invalid config line" error.
+  # We chain with && / ; instead of multi-line if/fi blocks.
   shade-action = action:
     let
       dest = "com.caioasmuniz.shade_shell";
@@ -16,25 +21,7 @@ let
       method = "org.gtk.Actions.Activate";
       notify = lib.getExe pkgs.libnotify;
     in
-    ''
-      if ! ${gdbus} call --session --dest org.freedesktop.DBus \
-          --object-path /org/freedesktop/DBus \
-          --method org.freedesktop.DBus.NameHasOwner \
-          string:${dest} | grep -q 'true'; then
-        ${notify} -a shade-shell -u critical \
-          "shade-action '${action}' failed" \
-          "shade-shell is not running (bus name ${dest} not owned)";
-        exit 1;
-      fi;
-      ${gdbus} call --session --dest ${dest} \
-        --object-path ${object} \
-        --method ${method} '${action}' '[]' '{}';
-      rc=$?;
-      if [ $rc -ne 0 ]; then
-        ${notify} -a shade-shell -u critical \
-          "shade-action '${action}' failed" "gdbus returned exit code $rc";
-      fi;
-    '';
+    ''! ${gdbus} call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.NameHasOwner string:${dest} | grep -q 'true' && ${notify} -a shade-shell -u critical "shade-action '${action}' failed" "shade-shell is not running (bus name ${dest} not owned)" && exit 1 ; ${gdbus} call --session --dest ${dest} --object-path ${object} --method ${method} '${action}' '[]' '{}' ; rc=$? ; [ $rc -ne 0 ] && ${notify} -a shade-shell -u critical "shade-action '${action}' failed" "gdbus returned exit code $rc"'';
 
   # Raw bind lists (used by both hyprland and the duplicate detector).
   _bind = [
@@ -75,14 +62,6 @@ let
     "SUPERSHIFT,R,exec,${shade-action "record"}"
     "SUPERSHIFT,P,exec,${shade-action "record-area"}"
 
-    # --locked: these keys must work on the lockscreen too. Sway's own
-    # default config uses --locked for the same reason.
-    "--locked,XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
-    "--locked,XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"
-    "--locked,XF86AudioStop,exec,${pkgs.playerctl}/bin/playerctl stop"
-    "--locked,XF86AudioPrev,exec,${pkgs.playerctl}/bin/playerctl previous"
-    "--locked,XF86AudioNext,exec,${pkgs.playerctl}/bin/playerctl next"
-
     "SUPER,left,movefocus,l"
     "SUPER,right,movefocus,r"
     "SUPER,up,movefocus,u"
@@ -110,18 +89,28 @@ let
     "SUPERALT,k,workspace,empty"
     "SUPERSHIFTALT,i,movetoworkspace,m-1"
     "SUPERSHIFTALT,k,movetoworkspace,empty"
-    "--locked,XF86AudioMute,exec,wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-    "--locked,XF86AudioMicMute,exec,wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
   ];
 
+  # --locked: Hyprland 0.56.2 moved locked binds from `bind` to `bindl`/`bindle`.
+  # The `--locked` prefix is no longer valid in `bind` — it now lives in
+  # `bindl` (locked mouse/button binds) and `bindle` (locked empty-workspace binds).
+  # These keys must work on the lockscreen too. Sway's own default config
+  # uses --locked for the same reason.
   _bindl = [
-    "--locked,XF86MonBrightnessUp,exec,astal-brightness set +5%"
-    "--locked,XF86MonBrightnessDown,exec,astal-brightness set 5%-"
+    "XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
+    "XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"
+    "XF86AudioStop,exec,${pkgs.playerctl}/bin/playerctl stop"
+    "XF86AudioPrev,exec,${pkgs.playerctl}/bin/playerctl previous"
+    "XF86AudioNext,exec,${pkgs.playerctl}/bin/playerctl next"
+    "XF86AudioMute,exec,wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+    "XF86AudioMicMute,exec,wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
+    "XF86MonBrightnessUp,exec,astal-brightness set +5%"
+    "XF86MonBrightnessDown,exec,astal-brightness set 5%-"
   ];
 
   _bindle = [
-    "--locked,XF86AudioRaiseVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+"
-    "--locked,XF86AudioLowerVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-"
+    "XF86AudioRaiseVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+"
+    "XF86AudioLowerVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-"
   ];
 
   _bindm = [
