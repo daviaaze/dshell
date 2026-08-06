@@ -245,6 +245,149 @@ in
           gesture= 3,right, dispatcher,exec, shade-shell toggle applauncher
           gesture= 3,left, dispatcher,exec, shade-shell toggle quicksettings
         '';
+
+        # Runtime introspection for keybinds. GNOME and KDE ship a
+        # Shortcuts panel; this gives shade-shell a terminal equivalent.
+        # Parses the generated hyprland.conf, prints a table, and flags
+        # duplicate (mod,key) pairs.
+        environment.systemPackages = [
+          (pkgs.writeShellScriptBin "shade-keybinds" ''
+            # shade-keybinds — print the active Hyprland bind table and
+            # flag duplicates. Parses the generated hyprland.conf instead
+            # of the Nix source, so it reflects what Hyprland actually
+            # loaded (user overrides included).
+            #
+            # Usage: shade-keybinds [--json|--help]
+
+            set -euo pipefail
+
+            HYPR_CONF="$HOME/.config/hyprland/hyprland.conf"
+            [ -e "$HYPR_CONF" ] || HYPR_CONF="''${XDG_CONFIG_HOME:-$HOME/.config}/hyprland/hyprland.conf"
+
+            print_help() {
+              cat <<'HELP'
+            Usage: shade-keybinds [--json|--help]
+
+            Print the active Hyprland keybind table and flag conflicts.
+
+            Options:
+              --json     Output JSON (array of {type,mods,key,dispatcher,arg})
+              --help     Show this help
+
+            Examples:
+              shade-keybinds              # human-readable table
+              shade-keybinds --json       # machine-readable
+            HELP
+            }
+
+            emit_json() {
+              local first=true
+              echo "["
+              while IFS='|' read -r type mods key dispatcher arg; do
+                $first || echo ","
+                first=false
+                # Escape for JSON
+                mods=$(printf '%s' "$mods" | sed 's/"/\\"/g')
+                key=$(printf '%s' "$key" | sed 's/"/\\"/g')
+                dispatcher=$(printf '%s' "$dispatcher" | sed 's/"/\\"/g')
+                arg=$(printf '%s' "$arg" | sed 's/"/\\"/g')
+                printf '  {"type":"%s","mods":"%s","key":"%s","dispatcher":"%s","arg":"%s"}' \
+                  "$type" "$mods" "$key" "$dispatcher" "$arg"
+              done < <(parse)
+              echo ""
+              echo "]"
+            }
+
+            # Parse hyprland.conf bind lines. Output: type|mods|key|dispatcher|arg
+            parse() {
+              [ -e "$HYPR_CONF" ] || {
+                echo "shade-keybinds: $HYPR_CONF not found" >&2
+                exit 1
+              }
+
+              awk '
+              /^bindl?[e]?=/ { sub(/^bindl?[e]?/, ""); typ=$0 }
+              /^bindm=/          { typ="bindm" }
+              /^bindl=/          { typ="bindl" }
+              /^bindle=/         { typ="bindle" }
+              /^binde=/          { typ="binde" }
+              /^bind=/           { typ="bind" }
+
+              # Collect lines that belong to an array
+              /^bind/ { in_array=1; line=$0; next }
+              in_array && /^[[:space:]]+"/ {
+                line = line "\n" $0
+                if (/\"[[:space:]]*$/) {
+                  # End of one bind entry — extract the comma-separated value
+                  gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+                  gsub(/\n/, "", line)
+                  gsub(/^[[:space:]]*"|"[[:space:]]*$/, "", line)
+                  # Now line is the raw comma list
+                  # Split into fields
+                  n = split(line, f, ",")
+                  if (n >= 4) {
+                    # Detect optional --locked flag
+                    offset = 1
+                    if (f[1] == "--locked") offset = 2
+                    key = f[offset+1]
+                    dispatcher = f[offset+2]
+                    arg = ""
+                    for (i = offset+3; i <= n; i++) {
+                      if (arg != "") arg = arg ","
+                      arg = arg f[i]
+                    }
+                    mods = f[offset]
+                    # Print type|mods|key|dispatcher|arg
+                    printf "%s|%s|%s|%s|%s\n", typ, mods, key, dispatcher, arg
+                  }
+                  line = ""
+                }
+              }
+              in_array && (/^[[:space:]]*\]/ || /^[^[:space:]]/) { in_array=0 }
+              ' "$HYPR_CONF"
+            }
+
+            # Human-readable table with duplicate detection
+            print_table() {
+              # Build associative array of (mods,key) -> count
+              declare -A seen
+              while IFS='|' read -r type mods key dispatcher arg; do
+                pair="$mods,$key"
+                seen["$pair"]=$(( ''${seen["$pair"]:-0} + 1 ))
+              done < <(parse)
+
+              printf "%-8s %-16s %-20s %-20s %s\n" TYPE MODS KEY DISPATCHER ARG
+              printf "%-8s %-16s %-20s %-20s %s\n" ---- ---- ---- ---------- ---
+              while IFS='|' read -r type mods key dispatcher arg; do
+                pair="$mods,$key"
+                marker=""
+                if [ "''${seen["$pair"]}" -gt 1 ]; then
+                  marker="  ⚠ CONFLICT"
+                fi
+                printf "%-8s %-16s %-20s %-20s %s%s\n" "$type" "$mods" "$key" "$dispatcher" "$arg" "$marker"
+              done < <(parse)
+
+              # Summary
+              dupes=0
+              for k in "''${!seen[@]}"; do
+                [ "''${seen[$k]}" -gt 1 ] && dupes=$((dupes+1))
+              done
+              echo ""
+              if [ "$dupes" -gt 0 ]; then
+                echo "⚠ $dupes duplicate keybind pair(s) detected (last one wins in Hyprland)"
+              else
+                echo "✓ No keybind conflicts"
+              fi
+            }
+
+            # Main
+            case "''${1:-}" in
+              --help|-h) print_help ;;
+              --json)    emit_json ;;
+              *)         print_table ;;
+            esac
+          '')
+        ];
       })
     ]
   );
