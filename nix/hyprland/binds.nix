@@ -191,9 +191,8 @@ let
 
   # Assertion fires at nixos-rebuild time.
   _assertNoDupKeybinds =
-    assert
-      builtins.assertMsg (_keyDuplicates == [ ])
-        "Duplicate Hyprland keybinds (Hyprland's silent last-wins hides the first): ${builtins.concatStringsSep "; " _keyDuplicates}";
+    assert (_keyDuplicates == [ ])
+      || throw "Duplicate Hyprland keybinds (Hyprland's silent last-wins hides the first): ${builtins.concatStringsSep "; " _keyDuplicates}";
     [ ];
 
 in
