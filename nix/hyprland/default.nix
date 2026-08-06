@@ -80,6 +80,10 @@ in
           ", preferred, auto-left, auto"
         ];
 
+        cursor = {
+          no_hardware_cursors = true;
+        };
+
         input = {
           kb_layout = "us";
           follow_mouse = 1;

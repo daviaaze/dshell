@@ -115,6 +115,14 @@
           wrapperPackages
           ;
       };
+      nixosConfigurations.vm-vnc = nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit inputs; };
+        modules = [
+          ./nix/vm-vnc.nix
+        ];
+      };
+
       nixosConfigurations.vm = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
