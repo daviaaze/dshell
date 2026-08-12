@@ -19,7 +19,10 @@ import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {type Accessor, createState} from 'gnim';
 
-const POLL_INTERVAL = 1000;
+/** CPU/RAM poll interval (ms). These change frequently and feed live graphs. */
+const POLL_INTERVAL_FAST = 1000;
+/** Temperature/disk poll interval (ms). These change slowly. */
+const POLL_INTERVAL_SLOW = 5000;
 /** hwmon temp1_input is millidegrees. Divide by 1000 for °C, then 100 maps to 0..1. */
 const TEMP_TO_LEVELBAR = 100000;
 
@@ -72,6 +75,10 @@ export default class SystemUsage {
     #tempPath: string | null = null;
     #tempFailed = false;
     #started = false;
+    #bindCount = 0;
+    #fastTimer: number | null = null;
+    #slowTimer: number | null = null;
+    #slowTick = 0;
 
     #cpu: Accessor<number>;
     #setCpu: (v: number) => void;
@@ -127,6 +134,19 @@ export default class SystemUsage {
     }
 
     /**
+     * Subscribe a widget to sampling. Polling starts on the first subscribe
+     * and stops when the last widget unsubscribes — no wakeups at idle.
+     */
+    subscribe(): () => void {
+        this.#bindCount++;
+        if (this.#bindCount === 1) this.#resume();
+        return () => {
+            this.#bindCount--;
+            if (this.#bindCount === 0) this.#pause();
+        };
+    }
+
+    /**
      * Start sampling. `userTempPath` (from settings) takes priority over
      * auto-discovery. Idempotent — safe to call from every widget instance.
      */
@@ -153,13 +173,35 @@ export default class SystemUsage {
             }
         }
 
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_INTERVAL, () => {
-            this.#sample();
+        // Auto-start polling on first widget mount.
+        this.#resume();
+    }
+
+    #resume(): void {
+        if (this.#fastTimer !== null) return;
+        this.#fastTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_INTERVAL_FAST, () => {
+            this.#sampleFast();
+            return GLib.SOURCE_CONTINUE;
+        });
+        this.#slowTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_INTERVAL_SLOW, () => {
+            this.#sampleSlow();
             return GLib.SOURCE_CONTINUE;
         });
     }
 
-    #sample(): void {
+    #pause(): void {
+        if (this.#fastTimer !== null) {
+            GLib.source_remove(this.#fastTimer);
+            this.#fastTimer = null;
+        }
+        if (this.#slowTimer !== null) {
+            GLib.source_remove(this.#slowTimer);
+            this.#slowTimer = null;
+        }
+    }
+
+    /** Fast path: CPU + RAM. Changes frequently, polled every second. */
+    #sampleFast(): void {
         const cpuTop = new GTop.glibtop_cpu();
         glibtop_get_cpu(cpuTop);
         const total = cpuTop.total - this.#lastCpuTop.total;
@@ -172,7 +214,10 @@ export default class SystemUsage {
         const memTop = new GTop.glibtop_mem();
         glibtop_get_mem(memTop);
         this.#setMemory(memTop.user / memTop.total);
+    }
 
+    /** Slow path: disk + temperature. Changes slowly, polled every 5s. */
+    #sampleSlow(): void {
         const diskTop = new GTop.glibtop_fsusage();
         glibtop_get_fsusage(diskTop, '/');
         this.#setDisk((diskTop.blocks - diskTop.bavail) / diskTop.blocks);
@@ -192,6 +237,12 @@ export default class SystemUsage {
                 this.#tempFailed = true;
             }
         }
+    }
+
+    /** Sample everything immediately (e.g. on widget mount for instant data). */
+    #sample(): void {
+        this.#sampleFast();
+        this.#sampleSlow();
     }
 }
 

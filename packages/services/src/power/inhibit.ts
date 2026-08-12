@@ -83,8 +83,10 @@ export default class Inhibit extends Object {
         }
         this.#elapsed = 0;
         this.notify('remaining');
-        this.#timerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-            this.#elapsed += 1000;
+        // 5-second granularity — nobody needs per-second precision for an
+        // idle-inhibit countdown, and this cuts timer wakeups by 80%.
+        this.#timerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
+            this.#elapsed += 5000;
             if (this.#elapsed >= this.#duration) {
                 this.idle = false;
                 return GLib.SOURCE_REMOVE;

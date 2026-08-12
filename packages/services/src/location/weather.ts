@@ -190,7 +190,9 @@ export default class Weather extends Object {
             this.#weather.update();
         }
 
-        this.#updateTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0.25 * 3600000, () => {
+        // Update every 30 minutes. Weather conditions don't change
+        // meaningfully in 15 minutes, and each update wakes the network.
+        this.#updateTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0.5 * 3600000, () => {
             this.#weather.update();
             return GLib.SOURCE_CONTINUE;
         });

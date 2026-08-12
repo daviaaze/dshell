@@ -3,6 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import SystemUsage from '@shade/services/monitoring/systemUsage';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import type {Accessor} from 'gnim';
+import {onCleanup} from 'gnim';
 
 const LEVEL_BAR_SIZE = 50;
 
@@ -57,6 +58,9 @@ export default ({
 }) => {
     const settings = barSettings();
     const usage = SystemUsage.get_default();
+    // Subscribe to polling; auto-unsubscribe on unmount so the service
+    // stops waking the CPU when no system-usage widget is mounted.
+    onCleanup(usage.subscribe());
 
     return (
         <Gtk.Button

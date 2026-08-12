@@ -13,8 +13,6 @@ export const TEMP_MAX = 6500;
 
 @register
 export default class NightLight extends Object {
-    static readonly POLL_INTERVAL_SECONDS = 5;
-
     private static instance: NightLight;
     static get_default() {
         if (!NightLight.instance) NightLight.instance = new NightLight();
@@ -33,7 +31,7 @@ export default class NightLight extends Object {
     #temperature = 3500;
     #autoSchedule = false;
     #process: Process | null = null;
-    #pollTimer: number | null = null;
+    #transitionTimer: number | null = null;
     #initialized = false;
     #generalHandlerId = 0;
     #busSubscriptions: (() => void)[] = [];
@@ -83,7 +81,7 @@ export default class NightLight extends Object {
         if (this.#autoSchedule === v) return;
         this.#autoSchedule = v;
         this.#settings?.setNightLightAutoSchedule(v);
-        this.#checkSchedule();
+        this.#scheduleNextTransition();
         this.notify('auto-schedule');
     }
 
@@ -137,13 +135,18 @@ export default class NightLight extends Object {
             }
         });
 
-        // Listen for daytime changes from GSettings
-        this.#generalHandlerId = this.#generalSettings.connect('changed::weather-is-daytime', () =>
-            this.#checkSchedule()
+        // Listen for daytime changes from GSettings — re-arm the one-shot
+        // timer since sunrise/sunset timestamps were updated by Weather.
+        this.#generalHandlerId = this.#generalSettings.connect(
+            'changed::weather-is-daytime',
+            () => {
+                this.#checkSchedule();
+                this.#scheduleNextTransition();
+            }
         );
 
         this.#sync();
-        this.#startPoll();
+        this.#scheduleNextTransition();
 
         // Listen for commands from widgets via the bus
         this.#busSubscriptions.push(
@@ -205,16 +208,38 @@ export default class NightLight extends Object {
         }
     }
 
-    #startPoll() {
-        if (this.#pollTimer) GLib.source_remove(this.#pollTimer);
-        this.#pollTimer = GLib.timeout_add_seconds(
-            GLib.PRIORITY_DEFAULT,
-            NightLight.POLL_INTERVAL_SECONDS,
-            () => {
-                if (this.#autoSchedule) this.#checkSchedule();
-                return GLib.SOURCE_CONTINUE;
-            }
-        );
+    /**
+     * Schedule a one-shot timer for the next sunrise/sunset transition.
+     * The daytime flag only changes twice a day, so polling is wasteful —
+     * compute when the next transition fires and sleep until then.
+     */
+    #scheduleNextTransition(): void {
+        if (this.#transitionTimer !== null) {
+            GLib.source_remove(this.#transitionTimer);
+            this.#transitionTimer = null;
+        }
+        if (!this.#autoSchedule) return;
+
+        const now = Date.now();
+        const sunrise = this.#generalSettings.get_double('weather-sunrise-time') * 1000;
+        const sunset = this.#generalSettings.get_double('weather-sunset-time') * 1000;
+        const isDaytime = this.#generalSettings.get_boolean('weather-is-daytime');
+
+        // Next transition: if currently daytime, next is sunset; otherwise sunrise.
+        const nextTransition = isDaytime ? sunset : sunrise;
+        // Guard against invalid/zero timestamps (weather not loaded yet)
+        let delayMs = nextTransition > now ? nextTransition - now : 0;
+        if (delayMs <= 0 || delayMs > 12 * 3600 * 1000) {
+            // No valid transition scheduled — fall back to checking in 1 hour
+            delayMs = 3600 * 1000;
+        }
+
+        this.#transitionTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delayMs, () => {
+            this.#transitionTimer = null;
+            this.#checkSchedule();
+            this.#scheduleNextTransition(); // re-arm for the next one
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     dispose() {
@@ -226,9 +251,9 @@ export default class NightLight extends Object {
             }
             this.#generalHandlerId = 0;
         }
-        if (this.#pollTimer) {
-            GLib.source_remove(this.#pollTimer);
-            this.#pollTimer = null;
+        if (this.#transitionTimer !== null) {
+            GLib.source_remove(this.#transitionTimer);
+            this.#transitionTimer = null;
         }
         this.#stopProcess();
     }

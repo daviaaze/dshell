@@ -102,11 +102,17 @@ let monitorStarted = false;
 /** Reactive conservation-mode state. Call startConservationMonitor() once. */
 export const conservationEnabled: Accessor<boolean> = enabledState;
 
-/** Start the 5s sysfs poll that keeps `conservationEnabled` fresh. Idempotent. */
+/**
+ * Start the sysfs poll that keeps `conservationEnabled` fresh. Idempotent.
+ *
+ * Conservation mode only changes when the user toggles it (rare), and
+ * `refreshConservation()` is called immediately after every toggle, so a
+ * slow poll is purely a safety net for external changes (e.g. other tools).
+ */
 export function startConservationMonitor(): void {
     if (monitorStarted) return;
     monitorStarted = true;
-    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
+    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 60, () => {
         setEnabledState(isConservationEnabled());
         return GLib.SOURCE_CONTINUE;
     });

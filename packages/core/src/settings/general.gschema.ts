@@ -205,27 +205,6 @@ function themingKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extend
         });
 }
 
-/** Audio visualizer (Cava). */
-function cavaKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extends FlagsKeyLike[]>(
-    s: Schema<T, E, F>
-) {
-    return s
-        .key('cava-enabled', 'b', {
-            default: false,
-            summary: 'Show audio visualizer in quick settings',
-        })
-        .key('cava-bars', 'i', {
-            default: 16,
-            summary: 'Number of bars in the audio visualizer',
-            range: {min: 4, max: 64},
-        })
-        .key('cava-framerate', 'i', {
-            default: 60,
-            summary: 'Frame rate of the audio visualizer',
-            range: {min: 15, max: 120},
-        });
-}
-
 /**
  * Weather-derived state (written by the Weather service, consumed by
  * ColorScheme and NightLight for day/night detection) plus experiments.
@@ -265,8 +244,7 @@ export const generalSettings = defineSettings('general', (s) => {
     const s5 = idleKeys(s4);
     const s6 = notificationKeys(s5);
     const s7 = themingKeys(s6);
-    const s8 = cavaKeys(s7);
-    return weatherKeys(s8);
+    return weatherKeys(s7);
 });
 
 export default defineSchemaList([getRegisteredSchema('general')]);

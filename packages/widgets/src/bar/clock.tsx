@@ -44,7 +44,9 @@ function WorldClockRow({
 /** Popover contents: calendar, world clocks, and timer section. */
 function ClockPopover() {
     const general = generalSettings();
-    const time = Clock.get_default().time;
+    const clock = Clock.get_default();
+    // World clocks show HH:MM too — the 1-minute wall tick is sufficient.
+    const time = clock.wallTime;
     const localTz = GLib.TimeZone.new_local();
 
     return (
@@ -110,11 +112,13 @@ export default ({
     vertical: Accessor<boolean>;
     visible?: boolean | Accessor<boolean>;
 }) => {
-    const time = Clock.get_default().time;
-    const hour = time.as((t) => t.format('%H')!);
-    const minute = time.as((t) => t.format('%M')!);
-    const day = time.as((t) => t.format('%d')!);
-    const month = time.as((t) => t.format('%B')!);
+    const clock = Clock.get_default();
+    // Wall clock shows hours/minutes only — bind to the 1-minute tick.
+    const wallTime = clock.wallTime;
+    const hour = wallTime.as((t) => t.format('%H')!);
+    const minute = wallTime.as((t) => t.format('%M')!);
+    const day = wallTime.as((t) => t.format('%d')!);
+    const month = wallTime.as((t) => t.format('%B')!);
 
     const timer = TimerService.get_default();
     const timerRemaining = bind(timer, 'remaining');
