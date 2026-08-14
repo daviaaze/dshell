@@ -3,17 +3,25 @@ let
   uwsm-app = app : "${pkgs.uwsm}/bin/uwsm-app -t service -- ${app}.desktop";
   cfg = config.programs.shade.desktop;
   gdbus = lib.getExe' pkgs.glib "gdbus";
+  # busctl (from systemd) is used for the ownership check.
+  busctl = lib.getExe' pkgs.systemd "busctl";
   # shade-action: invoke a GAction on shade-shell via D-Bus. We:
   # 1. Check the bus name is owned (shade-shell is actually running).
   # 2. Call the action.
   # 3. On any failure, notify-send a visible error instead of silently
-  #    swallowing it (the previous >/dev/null 2>&1 hid typos and missing
+  #    swallowing it (the previous >/dev/null hiding typos and missing
   #    services alike).
   #
   # NOTE: The entire script MUST be on a single line. Hyprland's config
   # parser has no line-continuation mechanism (\ does not work), so any
   # newline inside a bind command produces an "Invalid config line" error.
-  # We chain with && / ; instead of multi-line if/fi blocks.
+  # We chain with || / && ; instead of multi-line if/fi blocks.
+  #
+  # gdbus NameHasOwner was replaced by busctl on purpose: on systems where
+  # /usr/bin/gdbus (glib) is the one in PATH, NameHasOwner returns (false,)
+  # for every name even when the bus name IS owned (observed on NixOS with
+  # glib 2.88.1). busctl reports the truth, so the guard no longer
+  # false-positives into the "not running" branch.
   shade-action = action:
     let
       dest = "com.caioasmuniz.shade_shell";
@@ -21,7 +29,7 @@ let
       method = "org.gtk.Actions.Activate";
       notify = lib.getExe pkgs.libnotify;
     in
-    ''! ${gdbus} call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.NameHasOwner string:${dest} | grep -q 'true' && ${notify} -a shade-shell -u critical "shade-action '${action}' failed" "shade-shell is not running (bus name ${dest} not owned)" && exit 1 ; ${gdbus} call --session --dest ${dest} --object-path ${object} --method ${method} '${action}' '[]' '{}' ; rc=$? ; [ $rc -ne 0 ] && ${notify} -a shade-shell -u critical "shade-action '${action}' failed" "gdbus returned exit code $rc"'';
+    ''if ${busctl} --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus NameHasOwner s ${dest} | grep -q 'true'; then ${gdbus} call --session --dest ${dest} --object-path ${object} --method ${method} '${action}' '[]' '{}'; rc=$?; [ $rc -ne 0 ] && ${notify} -a shade-shell -u critical "shade-action '${action}' failed" "gdbus returned exit code $rc"; else ${notify} -a shade-shell -u critical "shade-action '${action}' failed" "shade-shell is not running (bus name ${dest} not owned)"; exit 1; fi'';
 
   # Raw bind lists (used by both hyprland and the duplicate detector).
   _bind = [
