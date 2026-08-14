@@ -192,6 +192,7 @@ function OverlayBackground({ss}: {ss: Screenshot}) {
 function SelectionArea({state}: {state: OverlayState}) {
     return (
         <Gtk.DrawingArea
+            slot="overlay"
             ref={(self) => {
                 state.daRef.current = self;
                 self.set_draw_func((_da, cr, w, h) =>
@@ -205,25 +206,33 @@ function SelectionArea({state}: {state: OverlayState}) {
                         monOrigin: state.monOrigin(),
                     })
                 );
+                // Controllers must be added imperatively — Gtk.Overlay cannot
+                // mount Gtk.EventController as a buildable child (gnim GTK4
+                // renderer appends them via vfunc_add_child, which GTK4
+                // ignores for controllers, so drag/click never attached).
+                const drag = Gtk.GestureDrag.new();
+                drag.connect('drag-begin', (_g, sx, sy) => onDragBegin(state, sx, sy));
+                drag.connect('drag-update', (_g, ox, oy) => onDragUpdate(state, ox, oy));
+                drag.connect('drag-end', () => onDragEnd(state));
+                self.add_controller(drag);
+
+                const click = Gtk.GestureClick.new();
+                click.set_button(1);
+                click.connect('pressed', (_g, _n, cx, cy) => onClickPressed(state, cx, cy));
+                self.add_controller(click);
+
+                // Right-click = cancel/dismiss, always available escape hatch.
+                const cancel = Gtk.GestureClick.new();
+                cancel.set_button(3);
+                cancel.connect('pressed', () => {
+                    state.ss.hideOverlay();
+                });
+                self.add_controller(cancel);
             }}
             hexpand
             vexpand
             css={'background: transparent;'}
-        >
-            <Gtk.GestureDrag
-                ref={(self) => {
-                    self.connect('drag-begin', (_g, sx, sy) => onDragBegin(state, sx, sy));
-                    self.connect('drag-update', (_g, ox, oy) => onDragUpdate(state, ox, oy));
-                    self.connect('drag-end', () => onDragEnd(state));
-                }}
-            />
-            <Gtk.GestureClick
-                ref={(self) => {
-                    self.set_button(1);
-                    self.connect('pressed', (_g, _n, cx, cy) => onClickPressed(state, cx, cy));
-                }}
-            />
-        </Gtk.DrawingArea>
+        />
     );
 }
 
@@ -262,11 +271,27 @@ export default () => {
 
     return (
         <Astal.Window
-            ref={(self) => WindowManager.get_default().setOverlay(self)}
+            ref={(self) => {
+                WindowManager.get_default().setOverlay(self);
+                // Keyboard: Esc/Enter must work during selection. Controllers
+                // can't mount as Gtk.Overlay children, so add imperatively.
+                // Attach at the window AND the selection surface so a focus
+                // shift can never strand the user in an exclusive-key grab.
+                const attachKey = () => {
+                    const key = Gtk.EventControllerKey.new();
+                    key.connect('key-pressed', (_c, keyval) => handleKey(state, keyval));
+                    self.add_controller(key);
+                };
+                attachKey();
+            }}
             name={LOG_TAG}
             application={getApp()}
             layer={Astal.Layer.TOP}
-            keymode={Astal.Keymode.EXCLUSIVE}
+            // ON_DEMAND (like every other popup in this codebase): the surface
+            // only grabs keyboard when focused. EXCLUSIVE grabbed ALL keys as
+            // soon as the overlay mapped, which turned a handler failure into
+            // a trapped desktop (every key swallowed, nothing interactive).
+            keymode={Astal.Keymode.ON_DEMAND}
             exclusivity={Astal.Exclusivity.IGNORE}
             visible={isVisible}
             onNotifyVisible={(self) => {
@@ -286,7 +311,11 @@ export default () => {
             css={'background: transparent;'}
         >
             <Gtk.Overlay>
+                {/* Main child: the frozen stage (must be first, no slot). */}
                 <OverlayBackground ss={ss} />
+
+                {/* Overlay layer: selection surface (needs explicit overlay slot or
+                    it replaces the main child and the stage never renders). */}
                 <SelectionArea state={state} />
 
                 {/* Control panel — hidden in quick-select mode */}
@@ -301,13 +330,6 @@ export default () => {
                             />
                         )
                 )}
-
-                {/* Keyboard handler */}
-                <Gtk.EventControllerKey
-                    ref={(self) =>
-                        self.connect('key-pressed', (_c, keyval) => handleKey(state, keyval))
-                    }
-                />
             </Gtk.Overlay>
         </Astal.Window>
     );
