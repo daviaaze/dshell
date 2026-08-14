@@ -194,7 +194,7 @@ export default () => {
                 }
             }}
             cssClasses={['card']}
-            css={'backdrop-filter: blur(20px) brightness(0.75);'}
+            css={'box-shadow: none; backdrop-filter: blur(20px) brightness(0.75);'}
             keymode={Astal.Keymode.ON_DEMAND}
             monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}
