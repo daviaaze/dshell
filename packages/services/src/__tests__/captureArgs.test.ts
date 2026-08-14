@@ -10,7 +10,7 @@ import {buildRecordingArgs, formatDuration, resolveBackend} from '../capture/uti
 import {describe, expect, it, run} from './test-runner';
 
 describe('buildRecordingArgs', () => {
-    it('wl-screenrec: always includes filename and quality', () => {
+    it('wl-screenrec: always includes filename and bitrate', () => {
         const {args, backendName} = buildRecordingArgs(
             RecorderBackend.WL_SCREENREC,
             'out.mp4',
@@ -21,10 +21,10 @@ describe('buildRecordingArgs', () => {
         expect(backendName).toBe('wl-screenrec');
         expect(args[0]).toBe('wl-screenrec');
         expect(args.join(' ').includes('-f out.mp4')).toBe(true);
-        expect(args.join(' ').includes('--quality 5')).toBe(true);
+        expect(args.join(' ').includes('--bitrate 5 MB')).toBe(true);
     });
 
-    it('wl-screenrec: maps quality 0/1/2 to 3/5/8', () => {
+    it('wl-screenrec: maps quality 0/1/2 to bitrate 2/5/10 MB', () => {
         const q = (quality: number) =>
             buildRecordingArgs(
                 RecorderBackend.WL_SCREENREC,
@@ -36,9 +36,11 @@ describe('buildRecordingArgs', () => {
                 -1,
                 quality
             ).args.join(' ');
-        expect(q(0).includes('--quality 3')).toBe(true);
-        expect(q(1).includes('--quality 5')).toBe(true);
-        expect(q(2).includes('--quality 8')).toBe(true);
+        expect(q(0).includes('--bitrate 2 MB')).toBe(true);
+        expect(q(1).includes('--bitrate 5 MB')).toBe(true);
+        expect(q(2).includes('--bitrate 10 MB')).toBe(true);
+        // wl-screenrec has no --quality flag; must not be emitted
+        expect(q(0).includes('--quality')).toBe(false);
     });
 
     it('wl-screenrec: adds geometry, output, audio and webm codec', () => {

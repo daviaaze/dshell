@@ -65,6 +65,7 @@ export const ControlPanel = ({ss, onCapture, onReset, onTargetChange}: ControlPa
 
     return (
         <Gtk.Box
+            slot="overlay"
             halign={Gtk.Align.CENTER}
             valign={Gtk.Align.START}
             hexpand={false}
@@ -137,8 +138,12 @@ export const ControlPanel = ({ss, onCapture, onReset, onTargetChange}: ControlPa
                 {/* Audio + Boundary options (recording) */}
                 {bind(ss, 'selectedMode').as((m) => m === 'recording') && (
                     <Gtk.Box spacing={12}>
-                        {/* Audio capture not yet implemented in the Screenshot service */}
-                        <Gtk.CheckButton active={false} sensitive={false}>
+                        <Gtk.CheckButton
+                            active={bind(ss.prefs, 'audio')}
+                            onNotifyActive={({active}) => {
+                                ss.prefs.audio = active;
+                            }}
+                        >
                             <Gtk.Label label="Audio" />
                         </Gtk.CheckButton>
                         <Gtk.CheckButton

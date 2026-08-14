@@ -44,10 +44,11 @@ export interface RecordingArgs {
     backendName: string;
 }
 
-function resolveQualityWlScreenrec(quality: number): number {
-    if (quality === 0) return 3;
-    if (quality === 2) return 8;
-    return 5;
+/** wl-screenrec has no --quality flag; map presets to bitrate (bytes/s). */
+function resolveBitrateWlScreenrec(quality: number): string {
+    if (quality === 0) return '2 MB';
+    if (quality === 2) return '10 MB';
+    return '5 MB';
 }
 
 function resolveQualityWfRecorder(quality: number): number {
@@ -82,7 +83,7 @@ function buildWlScreenrecArgs(
     const micName = resolveAudioInputName(audioInputId);
     if (micName) args.push('--audio-device', micName);
 
-    args.push('--quality', String(resolveQualityWlScreenrec(quality)));
+    args.push('--bitrate', resolveBitrateWlScreenrec(quality));
     if (isWebm) args.push('--codec', 'vp9');
 
     return {args, backendName: WL_SCREENREC};
@@ -101,12 +102,14 @@ function buildWfRecorderArgs(
     if (geometry) args.push('-g', geometry);
     if (output) args.push('-o', output);
     if (audio) {
-        args.push('-a');
+        // wf-recorder: -a[=DEVICE]. DEVICE is a PipeWire node id
+        // (e.g. pipewire_node.restore.id=42) or a Pulse source name.
+        if (audioInputId !== -1) {
+            args.push(`--audio=pipewire_node.restore.id=${audioInputId}`);
+        } else {
+            args.push('-a');
+        }
         if (isWebm) args.push('-C', 'libopus');
-    }
-
-    if (audioInputId !== -1) {
-        args.push('--audio', `pipewire_node.restore.id=${audioInputId}`);
     }
 
     args.push('--codec-param', `crf=${resolveQualityWfRecorder(quality)}`);
