@@ -7,7 +7,9 @@ import {Object, register} from 'gnim/gobject';
 import {
     confirmArea as confirmAreaFlow,
     screenshotFullscreen,
+    slurpAreaScreenshot,
     startRecordingAfterOverlayClose,
+    useSlurpForSelection,
 } from './captureFlow';
 import {registerCommands} from './commands';
 import RecordingPrefs from './prefs';
@@ -209,9 +211,14 @@ export default class Screenshot extends Object {
 
     // ── Capture flows ──────────────────────────────────────────────────
 
-    /** Fullscreen grim capture (button/CLI path). */
+    /** Fullscreen grim capture (button/CLI path); area delegates to the
+     *  configured engine (slurp subprocess or the in-shell overlay). */
     screenshot(fullscreen: boolean) {
         if (!fullscreen) {
+            if (useSlurpForSelection()) {
+                slurpAreaScreenshot();
+                return;
+            }
             this.#selectedMode = 'screenshot';
             this.#selectedTarget = 'area';
             this.notify('selected-mode');

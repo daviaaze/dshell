@@ -9,7 +9,7 @@ const VIRTUAL_MONITOR_FPS_MAX = 144;
 
 type Settings = ReturnType<typeof screenCaptureSettings>;
 
-/** ActionRow with a round ToggleGroup bound to an int enum setting. */
+/** ActionRow with a round ToggleGroup bound to an int or string enum setting. */
 function EnumToggleRow({
     title,
     value,
@@ -18,9 +18,9 @@ function EnumToggleRow({
     children,
 }: {
     title: string;
-    value: Accessor<number>;
-    fallback: number;
-    setter: (v: number) => void;
+    value: Accessor<number | string>;
+    fallback: number | string;
+    setter: (v: string | number) => void;
     children?: JSX.Element | JSX.Element[];
 }) {
     return (
@@ -28,7 +28,10 @@ function EnumToggleRow({
             <Adw.ToggleGroup
                 cssClasses={['round']}
                 valign={Gtk.Align.CENTER}
-                onNotifyActiveName={(self) => setter(Number(self.activeName))}
+                onNotifyActiveName={(self) => {
+                    const name = String(self.activeName ?? '');
+                    setter(Number(name) || name);
+                }}
                 ref={(self) => {
                     self.activeName = String(value.peek() ?? fallback);
                     onCleanup(
@@ -55,7 +58,7 @@ function RecordingGroup({settings}: {settings: Settings}) {
                 title={'Backend'}
                 value={settings.recorderBackend}
                 fallback={2}
-                setter={(v) => settings.setRecorderBackend(v)}
+                setter={(v) => settings.setRecorderBackend(Number(v))}
             >
                 <Adw.Toggle name={'0'} label={'wl-screenrec'} iconName={'media-record-symbolic'} />
                 <Adw.Toggle name={'1'} label={'wf-recorder'} iconName={'media-record-symbolic'} />
@@ -66,7 +69,7 @@ function RecordingGroup({settings}: {settings: Settings}) {
                 title={'Container Format'}
                 value={settings.recordingFormat}
                 fallback={0}
-                setter={(v) => settings.setRecordingFormat(v)}
+                setter={(v) => settings.setRecordingFormat(Number(v))}
             >
                 <Adw.Toggle name={'0'} label={'MP4'} iconName={'video-x-generic-symbolic'} />
                 <Adw.Toggle name={'1'} label={'WebM'} iconName={'video-x-generic-symbolic'} />
@@ -76,7 +79,7 @@ function RecordingGroup({settings}: {settings: Settings}) {
                 title={'Quality'}
                 value={settings.recordingQuality}
                 fallback={1}
-                setter={(v) => settings.setRecordingQuality(v)}
+                setter={(v) => settings.setRecordingQuality(Number(v))}
             >
                 <Adw.Toggle name={'0'} label={'Low'} />
                 <Adw.Toggle name={'1'} label={'Medium'} />
@@ -101,7 +104,7 @@ function ScreenshotGroup({settings}: {settings: Settings}) {
                 title={'Image Format'}
                 value={settings.screenshotFormat}
                 fallback={0}
-                setter={(v) => settings.setScreenshotFormat(v)}
+                setter={(v) => settings.setScreenshotFormat(Number(v))}
             >
                 <Adw.Toggle name={'0'} label={'PNG'} iconName={'image-x-generic-symbolic'} />
                 <Adw.Toggle name={'1'} label={'JPEG'} iconName={'image-x-generic-symbolic'} />
@@ -145,6 +148,15 @@ function BoundaryGroup({settings}: {settings: Settings}) {
 function OverlayGroup({settings}: {settings: Settings}) {
     return (
         <Adw.PreferencesGroup title={'Overlay'} description={'Capture overlay behavior'}>
+            <EnumToggleRow
+                title={'Area Selection'}
+                value={settings.areaSelectionEngine}
+                fallback={'overlay'}
+                setter={(v) => settings.setAreaSelectionEngine(String(v))}
+            >
+                <Adw.Toggle name={'overlay'} label={'Panel'} iconName={'input-mouse-symbolic'} />
+                <Adw.Toggle name={'slurp'} label={'slurp'} iconName={'input-keyboard-symbolic'} />
+            </EnumToggleRow>
             <Adw.SwitchRow
                 title={'Freeze Screen'}
                 subtitle={'Pause screen when opening capture overlay'}

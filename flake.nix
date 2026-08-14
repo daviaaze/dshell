@@ -76,6 +76,7 @@
         bash
         curl
         grim
+        slurp
         imagemagick
         libcanberra-gtk3
         wl-screenrec

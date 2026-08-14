@@ -57,6 +57,10 @@ export const screenCaptureSettings = defineSettings('screen-capture', (s) =>
             default: true,
             summary: 'Show live preview thumbnails in capture overlay',
         })
+        .key('area-selection-engine', 's', {
+            default: 'overlay',
+            summary: 'Interactive area selection (overlay = in-shell UI, slurp = slurp process)',
+        })
 );
 
 export default defineSchemaList([getRegisteredSchema('screen-capture')]);

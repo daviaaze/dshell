@@ -2,6 +2,7 @@ import logger from '@shade/core/logger';
 import {bus} from '../bus';
 import {getHyprland} from '../hyprland';
 import type {BoundaryGeometry, ScreenshotHandle} from './types';
+import {slurpAreaRecording, useSlurpForSelection} from './captureFlow';
 import {notify} from './utils';
 
 const ICON_ERROR = 'dialog-error-symbolic';
@@ -26,6 +27,10 @@ function clientGeometry(c: {
 
 export function recordArea(ss: ScreenshotHandle) {
     if (ss.recording) return;
+    if (useSlurpForSelection()) {
+        slurpAreaRecording(ss);
+        return;
+    }
     ss.selectedMode = 'recording';
     ss.selectedTarget = 'area';
     ss.overlayQuick = true;

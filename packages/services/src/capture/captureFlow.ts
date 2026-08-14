@@ -2,9 +2,10 @@ import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {bus} from '../bus';
-import {toGrimGeometry} from './geometry';
+import {getScreenCaptureSettings} from '../settings/screenCapture';
+import {parseGrimGeometry, toGrimGeometry} from './geometry';
 import type {BoundaryGeometry, ScreenshotHandle} from './types';
-import {finalizeImage, freshScreenshotFilename, GRIM_BIN} from './utils';
+import {finalizeImage, freshScreenshotFilename, GRIM_BIN, notify} from './utils';
 
 /**
  * Capture flows — fullscreen/area screenshot entry points and the overlay
@@ -29,6 +30,57 @@ export function screenshotFullscreen() {
             }
         })
         .catch((e) => logger.error('screenshot', 'grim failed:', e));
+}
+
+/**
+ * Interactive area geometry via the slurp subprocess (battle-tested
+ * wlroots region selector). Returns null if the user cancelled or the
+ * selection could not be parsed. Non-blocking: execAsyncv, so the
+ * shell main loop stays alive during selection.
+ *
+ * slurp emits grim-format "x,y WxH" in global compositor coordinates,
+ * the same space grim -g expects — no monitor math needed.
+ */
+export async function slurpGeometry(): Promise<BoundaryGeometry | null> {
+    const slurp = Process.findBinary('slurp');
+    if (!slurp) {
+        logger.error('screenshot', 'slurp not found on PATH');
+        notify('Screenshot failed', 'slurp is not installed', 'dialog-error-symbolic');
+        return null;
+    }
+    try {
+        const out = await Process.execAsyncv([slurp, '-f', '%x,%y %wx%h']);
+        const geometry = parseGrimGeometry(out);
+        if (!geometry) {
+            logger.error('screenshot', `slurp returned unparsable geometry: ${out}`);
+            return null;
+        }
+        return geometry;
+    } catch (e) {
+        // slurp exits non-zero on Esc/cancel — treat as user cancellation.
+        logger.info('screenshot', 'area selection cancelled');
+        return null;
+    }
+}
+
+/** Whether the configured area-selection engine is slurp (not the overlay). */
+export function useSlurpForSelection(): boolean {
+    return getScreenCaptureSettings().areaSelectionEngine() === 'slurp';
+}
+
+/** Slurp-based area screenshot: select via slurp, then live grim capture. */
+export async function slurpAreaScreenshot() {
+    const geometry = await slurpGeometry();
+    if (!geometry) return;
+    captureGeometryLive(geometry);
+}
+
+/** Slurp-based area recording: select via slurp, then record that geometry. */
+export async function slurpAreaRecording(ss: ScreenshotHandle) {
+    const geometry = await slurpGeometry();
+    if (!geometry) return;
+    ss.startRecording({geometry});
+    bus.emit('capture:record:area');
 }
 
 /** Live grim capture of a global-compositor geometry (no stage frame). */
