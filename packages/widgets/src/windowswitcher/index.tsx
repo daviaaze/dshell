@@ -22,6 +22,10 @@ export const toggleWindowSwitcher = () => {
     }
 };
 
+export const hideWindowSwitcher = () => {
+    if (switcherWindow) switcherWindow.visible = false;
+};
+
 const getSortedClients = (
     clients: AstalHyprland.Client[],
     mru: string[]

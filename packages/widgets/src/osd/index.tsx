@@ -84,7 +84,7 @@ export default () => {
         >
             <Gtk.Box
                 cssClasses={['linked', 'card', 'background']}
-                css={'box-shadow: none; padding: 12px;'}
+                css={'box-shadow: none; padding: 12px; background-color: @window_bg_color;'}
                 orientation={Gtk.Orientation.VERTICAL}
                 valign={Gtk.Align.END}
                 spacing={OSD_SPACING}

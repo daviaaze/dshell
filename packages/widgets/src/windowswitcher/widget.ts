@@ -1,8 +1,11 @@
 import {defineWidget} from '@shade/core/define';
-import windowswitcher, {toggleWindowSwitcher} from './index';
+import windowswitcher, {hideWindowSwitcher, toggleWindowSwitcher} from './index';
 
 export default defineWidget({
     name: 'windowswitcher',
     mount: windowswitcher,
-    actions: {onToggleWindowSwitcher: () => toggleWindowSwitcher()},
+    actions: {
+        onToggleWindowSwitcher: () => toggleWindowSwitcher(),
+        onHideWindowSwitcher: () => hideWindowSwitcher(),
+    },
 });

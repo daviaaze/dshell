@@ -99,7 +99,7 @@ function BarWindow({
             }}
             visible
             cssClasses={['card', 'background']}
-            css={'box-shadow: none;'}
+            css={'box-shadow: none; background-color: @window_bg_color;'}
             marginTop={position.as((p) => (p === BOTTOM ? 0 : BAR_MARGIN))}
             marginLeft={position.as((p) => (p === RIGHT ? 0 : BAR_MARGIN))}
             marginBottom={position.as((p) => (p === TOP ? 0 : BAR_MARGIN))}

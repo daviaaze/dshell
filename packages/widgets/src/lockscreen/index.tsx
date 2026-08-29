@@ -106,6 +106,7 @@ const createLocks = (onUnlock: () => void) => {
                                 marginStart={48}
                                 marginEnd={48}
                                 cssClasses={['card']}
+                                css={'background-color: @window_bg_color;'}
                             >
                                 <Gtk.Label
                                     cssClasses={['title-1', 'numeric']}
@@ -138,6 +139,7 @@ const createLocks = (onUnlock: () => void) => {
                                 marginStart={24}
                                 marginEnd={24}
                                 cssClasses={['card']}
+                                css={'background-color: @window_bg_color;'}
                             >
                                 <LockscreenWidgets position="end" />
                                 <LockscreenNotifications />

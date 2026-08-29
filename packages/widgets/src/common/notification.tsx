@@ -210,7 +210,7 @@ export default ({
             <Gtk.Box
                 name={notification.id.toString()}
                 cssClasses={['card', urgencyClass].filter(Boolean)}
-                css={'padding: 12px; margin: 12px; box-shadow: none;'}
+                css={'padding: 12px; margin: 12px; box-shadow: none; background-color: @window_bg_color;'}
                 spacing={8}
                 orientation={Gtk.Orientation.VERTICAL}
                 ref={(self) => {

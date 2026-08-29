@@ -193,13 +193,15 @@ export default () => {
                     bus.emit('shell:launcher:close');
                 }
             }}
-            cssClasses={['card']}
-            css={'box-shadow: none; backdrop-filter: blur(20px) brightness(0.75);'}
+            cssClasses={[]}
+            css={'background-color: transparent;'}
             keymode={Astal.Keymode.ON_DEMAND}
             monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}
         >
             <Gtk.Box
+                cssClasses={['card']}
+                css={'box-shadow: none; background-color: @window_bg_color;'}
                 marginTop={8}
                 marginBottom={8}
                 marginStart={8}

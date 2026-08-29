@@ -1,9 +1,8 @@
 import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango?version=1.0';
+import {computed, type Accessor} from 'gnim';
 import {getAppIcon} from '@shade/services/state/apps';
-import type {Accessor} from 'gnim';
-
 export default ({
     client,
     selected,
@@ -13,16 +12,12 @@ export default ({
 }) => (
     <Gtk.Box
         spacing={12}
-        cssClasses={['card']}
+        cssClasses={computed(() => ['card', selected() ? 'switcher-item-selected' : 'switcher-item'])}
         marginTop={5}
         marginBottom={5}
         marginStart={14}
         marginEnd={14}
-        css={selected.as((s) =>
-            s
-                ? 'border-radius: calc(var(--window-radius) * 1.5); background-color: alpha(@accent_bg_color, 0.85);'
-                : 'border-radius: calc(var(--window-radius) * 1.5);'
-        )}
+        css={'border-radius: calc(var(--window-radius) * 1.5);'}
         valign={Gtk.Align.CENTER}
     >
         <Gtk.Image iconName={getAppIcon(client)} pixelSize={48} valign={Gtk.Align.CENTER} />

@@ -48,18 +48,23 @@ export default () => {
                     bus.emit('shell:launcher:close');
                 shellState.qsOpen = self.visible;
             }}
-            cssClasses={['card']}
-            css={'box-shadow: none; backdrop-filter: blur(20px) brightness(0.75);'}
+            cssClasses={[]}
+            css={'background-color: transparent;'}
             anchor={barCfg.position.as((p) => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM)}
             widthRequest={QUICKSETTINGS_WIDTH}
             monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
         >
-            <Gtk.ScrolledWindow
-                propagateNaturalHeight
-                hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                vexpand
+            <Gtk.Box
+                cssClasses={['card']}
+                css={'box-shadow: none; background-color: @window_bg_color;'}
+                orientation={Gtk.Orientation.VERTICAL}
             >
+                <Gtk.ScrolledWindow
+                    propagateNaturalHeight
+                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                    vexpand
+                >
                 <Gtk.Box
                     spacing={QUICKSETTINGS_SPACING}
                     marginTop={16}
@@ -76,7 +81,8 @@ export default () => {
                     <Expander />
                     <NotificationList />
                 </Gtk.Box>
-            </Gtk.ScrolledWindow>
+                </Gtk.ScrolledWindow>
+            </Gtk.Box>
         </Astal.Window>
     );
 };

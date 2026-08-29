@@ -2,6 +2,7 @@ import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {Object, register} from 'gnim/gobject';
 import {bus} from '../bus';
+import {defineService} from '@shade/core/define';
 
 /**
  * Encapsulates power/session shell commands.
@@ -63,3 +64,4 @@ export default class SessionControl extends Object {
         }
     }
 }
+defineService({name: 'SessionControl', service: SessionControl.get_default()});

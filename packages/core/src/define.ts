@@ -47,6 +47,7 @@ export interface ServiceSpec {
 export interface WidgetActions {
     onToggleSettings: () => void;
     onToggleWindowSwitcher: () => void;
+    onHideWindowSwitcher: () => void;
 }
 
 export interface WidgetDef {

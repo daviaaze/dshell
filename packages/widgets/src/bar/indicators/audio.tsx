@@ -18,8 +18,6 @@ function volumeTooltip(vol: number): string {
  */
 export const SpeakerIndicator = () => {
     const audioCtrl = AudioController.get_default();
-    const mixer = AppMixer.get_default();
-    const speaker = bind(audioCtrl, 'defaultSpeaker');
 
     // Real-time volume and mute from the endpoint itself.
     // bind() with chained props uses computed({equals:()=>false}) internally,
@@ -38,7 +36,7 @@ export const SpeakerIndicator = () => {
 
     return (
         <Gtk.Image
-            visible={bind(mixer, 'speakerInUse')}
+            visible={bind(audioCtrl, 'speakers').as((s) => s.length > 0)}
             iconName={iconName}
             tooltipMarkup={computed(() => {
                 const vol = speakerVol() as number | undefined;

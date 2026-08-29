@@ -126,6 +126,18 @@ export default class ShellState extends GObject {
         bus.emit('shell:windowswitcher:toggle');
     }
 
+    /** Hide the window switcher (idempotent). */
+    hideWindowSwitcher() {
+        this.#onHideWindowSwitcher?.();
+    }
+
+    /** Close every transient surface idempotently (used by UI test harness). */
+    closeAll() {
+        this.closeLauncher();
+        this.closeQuickSettings();
+        this.hideWindowSwitcher();
+    }
+
     /** Subscribe to command events from widgets. Called once at boot. */
     init() {
         if (this.#busSubscriptions.length > 0) return;
@@ -137,6 +149,7 @@ export default class ShellState extends GObject {
 
     #onToggleSettings: (() => void) | null = null;
     #onToggleWindowSwitcher: (() => void) | null = null;
+    #onHideWindowSwitcher: (() => void) | null = null;
 
     /**
      * Register widget-level action callbacks.
@@ -146,9 +159,11 @@ export default class ShellState extends GObject {
     registerWidgetActions(opts: {
         onToggleSettings?: () => void;
         onToggleWindowSwitcher?: () => void;
+        onHideWindowSwitcher?: () => void;
     }) {
         if (opts.onToggleSettings) this.#onToggleSettings = opts.onToggleSettings;
         if (opts.onToggleWindowSwitcher) this.#onToggleWindowSwitcher = opts.onToggleWindowSwitcher;
+        if (opts.onHideWindowSwitcher) this.#onHideWindowSwitcher = opts.onHideWindowSwitcher;
     }
 
     toggleSettings() {
@@ -166,6 +181,7 @@ export default class ShellState extends GObject {
             'toggle-clipboard': () => this.toggleClipboard(),
             'open-clipboard': () => this.openClipboard(),
             lockscreen: () => this.lock(),
+            'close-all': () => this.closeAll(),
         };
         for (const [name, fn] of Object.entries(actions)) {
             const action = Gio.SimpleAction.new(name, null);
