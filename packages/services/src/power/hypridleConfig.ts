@@ -25,6 +25,7 @@ export function buildHypridleConfigLines(cfg: HypridleConfig): string[] {
         '  lock_cmd = shade-shell lockscreen',
         '  before_sleep_cmd = shade-shell lockscreen',
         '  after_sleep_cmd = hyprctl dispatch dpms on',
+        '  ignore_dbus_inhibit = false',
         '}',
     ];
 

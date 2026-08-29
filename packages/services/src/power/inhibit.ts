@@ -1,10 +1,15 @@
 import type Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
-import Gtk from 'gi://Gtk?version=4.0';
+import Gio from 'gi://Gio?version=2.0';
 import {defineService} from '@shade/core/define';
 import logger from '@shade/core/logger';
 import {Object, property, register} from 'gnim/gobject';
 import {bus} from '../bus';
+const SS_BUS_NAME = 'org.freedesktop.ScreenSaver';
+const SS_OBJECT_PATH = '/org/freedesktop/ScreenSaver';
+const SS_INTERFACE = 'org.freedesktop.ScreenSaver';
+const INHIBIT_APP_NAME = 'shade-shell';
+const INHIBIT_REASON = 'keep awake';
 
 @register
 export default class Inhibit extends Object {
@@ -21,6 +26,7 @@ export default class Inhibit extends Object {
     #elapsed = 0;
     #timerId: number | null = null;
     #busSubscriptions: (() => void)[] = [];
+    #proxy: Gio.DBusProxy | null = null;
     #initialized = false;
 
     @property
@@ -56,18 +62,13 @@ export default class Inhibit extends Object {
             `idle ${state ? 'enabled' : 'disabled'}${state && this.#duration > 0 ? ' (' + this.#duration / 60000 + 'min)' : ''}`
         );
         if (state) {
-            if (this.#cookie !== 0) this.#app?.uninhibit(this.#cookie);
-            this.#cookie =
-                this.#app?.inhibit(
-                    null,
-                    Gtk.ApplicationInhibitFlags.IDLE,
-                    'toggled by shade-shell'
-                ) ?? 0;
+            if (this.#cookie !== 0) this.#releaseInhibit(this.#cookie);
+            this.#cookie = this.#requestInhibit();
             this.#startTimer();
         } else {
             this.#stopTimer();
             if (this.#cookie !== 0) {
-                this.#app?.uninhibit(this.#cookie);
+                this.#releaseInhibit(this.#cookie);
                 this.#cookie = 0;
             }
         }
@@ -100,6 +101,62 @@ export default class Inhibit extends Object {
         if (this.#timerId) {
             GLib.source_remove(this.#timerId);
             this.#timerId = null;
+        }
+    }
+
+    #getProxy(): Gio.DBusProxy | null {
+        if (!this.#proxy) {
+            try {
+                const bus = Gio.bus_get_sync(Gio.BusType.SESSION, null);
+                this.#proxy = Gio.DBusProxy.new_sync(
+                    bus,
+                    Gio.DBusProxyFlags.NONE,
+                    null,
+                    SS_BUS_NAME,
+                    SS_OBJECT_PATH,
+                    SS_INTERFACE,
+                    null
+                );
+            } catch (e) {
+                logger.warn('inhibit', 'failed to create ScreenSaver DBus proxy:', e);
+            }
+        }
+        return this.#proxy;
+    }
+
+    #requestInhibit(): number {
+        const proxy = this.#getProxy();
+        if (!proxy) return 0;
+        try {
+            const result = proxy.call_sync(
+                'Inhibit',
+                new GLib.Variant('(ss)', [INHIBIT_APP_NAME, INHIBIT_REASON]),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null
+            );
+            if (!result) return 0;
+            return result.get_child_value(0).get_uint32();
+        } catch (e) {
+            logger.warn('inhibit', 'ScreenSaver.Inhibit failed:', e);
+            return 0;
+        }
+    }
+
+    #releaseInhibit(cookie: number): void {
+        if (cookie === 0) return;
+        const proxy = this.#getProxy();
+        if (!proxy) return;
+        try {
+            proxy.call_sync(
+                'UnInhibit',
+                new GLib.Variant('(u)', [cookie]),
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null
+            );
+        } catch (e) {
+            logger.warn('inhibit', 'ScreenSaver.UnInhibit failed:', e);
         }
     }
 
