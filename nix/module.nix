@@ -137,6 +137,7 @@ in
         ];
       })
       (lib.mkIf cfg.greeter.enable {
+        security.pam.services.greetd.enableGnomeKeyring = true;
         services.greetd = {
           enable = true;
           settings.default_session = let

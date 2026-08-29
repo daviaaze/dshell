@@ -42,6 +42,10 @@ in
       '';
     };
 
+    # Ensure GNOME Keyring default collection points to 'login', which is
+    # automatically unlocked by greetd PAM (pam_gnome_keyring).
+    xdg.dataFile."keyrings/default".text = "login";
+
     programs.ssh = {
       enable = true;
       matchBlocks."*" = {
