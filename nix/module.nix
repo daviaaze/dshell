@@ -138,6 +138,21 @@ in
       })
       (lib.mkIf cfg.greeter.enable {
         security.pam.services.greetd.enableGnomeKeyring = true;
+        # AccountsService provides user metadata (avatars, real names) for the greeter user picker.
+        environment.systemPackages = [ pkgs.accountsservice ];
+        # Cage uses wlr_libinput with tap disabled by default (unlike Hyprland
+        # which enables input.touchpad.tap-to-click). This quirks file forces
+        # tap-to-click on for all touchpads under the greeter session.
+        environment.etc."libinput/local-overrides.quirks".text = ''
+          [Serial Touchpad Touchpad]
+          MatchUdevType=touchpad
+          MatchName=*
+          AttrTapToClickDefault=1
+        '';
+        # Persist last greeter username for pre-selection on next boot.
+        systemd.tmpfiles.rules = [
+          "d /var/cache/shade-greeter 0755 greeter greeter -"
+        ];
         services.greetd = {
           enable = true;
           settings.default_session = let
