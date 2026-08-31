@@ -55,6 +55,7 @@
       buildInputs =
         with pkgs;
         [
+          accountsservice
           gsettings-desktop-schemas
           glib
           libadwaita

@@ -1,4 +1,6 @@
 // AccountsService GIR import — requires accountsservice package installed at runtime.
+import GLib from 'gi://GLib?version=2.0';
+
 import Act from 'gi://AccountsService?version=1.0';
 
 export interface GreeterUser {
