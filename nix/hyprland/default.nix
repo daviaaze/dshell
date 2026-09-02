@@ -7,10 +7,32 @@
 let
   cfg = config.programs.shade.desktop.hyprland;
   desktopCfg = config.programs.shade.desktop;
+
+  # Render a monitor spec from a layout into a Hyprland monitor line.
+  renderMonitor = m:
+    if m.disable then "${m.name}, disable"
+    else
+      let
+        base = "${m.name}, ${m.resolution}, ${m.position}, ${toString m.scale}";
+        transform = lib.optionalString (m.transform != 0) ", transform, ${toString m.transform}";
+        vrr = lib.optionalString (m.vrr != null) ", vrr, ${toString m.vrr}";
+      in
+      base + transform + vrr;
+
+  # Convert a layout's workspaces to Hyprland workspace rule strings.
+  layoutWorkspaces = layout:
+    lib.mapAttrsToList (num: mon: "${num}, monitor:${mon}, default:true") layout.workspaces;
+
+  # Convert a layout into Hyprland settings (monitor + workspace lists).
+  layoutToSettings = layout: {
+    monitor = map renderMonitor layout.monitors;
+    workspace = layoutWorkspaces layout;
+  };
 in
 {
   imports = [
     ./binds.nix
+    ./layouts.nix
   ];
 
   options.programs.shade.desktop.hyprland = {
@@ -182,15 +204,27 @@ in
         exec = [
           "hyprctl setcursor Adwaita 24"
         ];
+      } // lib.optionalAttrs (cfg.defaultLayout != null) {
+        monitor = map renderMonitor cfg.layouts.${cfg.defaultLayout}.monitors;
+        workspace = lib.mapAttrsToList (num: mon: "${num}, monitor:${mon}, default:true") cfg.layouts.${cfg.defaultLayout}.workspaces;
       };
     in
     lib.mkMerge [
       {
+        assertions = lib.mkIf (cfg.defaultLayout != null) [
+          {
+            assertion = cfg.layouts ? ${cfg.defaultLayout};
+            message = "programs.shade.desktop.hyprland.defaultLayout '${cfg.defaultLayout}' is not defined in layouts";
+          }
+        ];
+
         programs.hyprland.settings = lib.recursiveUpdate defaultSettings (
           cfg.settings // {
             # Merge workspace rules: cfg.workspace replaces the default
             # scratchpad rule entirely, or you can include it in your list.
-            workspace = cfg.workspace;
+            # If a defaultLayout is set, its workspace rules are prepended so
+            # explicit cfg.workspace rules can still override them.
+            workspace = (lib.optionals (cfg.defaultLayout != null) (layoutWorkspaces cfg.layouts.${cfg.defaultLayout})) ++ cfg.workspace;
           }
         );
       }
