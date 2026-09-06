@@ -31,9 +31,15 @@ export default class SessionControl extends Object {
     /** Log out the current session via logind. */
     logout() {
         try {
-            Process.exec('loginctl terminate-session');
+            const sessionId = GLib.getenv('XDG_SESSION_ID');
+            if (sessionId) {
+                Process.exec(`loginctl terminate-session ${sessionId}`);
+            } else {
+                logger.warn('session', 'XDG_SESSION_ID not set, falling back to terminate-user');
+                Process.exec(`loginctl terminate-user ${GLib.getenv('USER')}`);
+            }
         } catch (e) {
-            logger.error('session', 'loginctl terminate-session failed:', e);
+            logger.error('session', 'logout failed:', e);
         }
     }
 
