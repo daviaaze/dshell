@@ -67,7 +67,7 @@ export default class DisplayLayout extends Object {
     #layouts: string[] = [];
     #currentLayout: string | null = null;
     #configuredMonitors: {name: string; description: string}[] = [];
-    #liveMonitors: {name: string; description: string}[] = [];
+    #liveMonitors: {name: string; description: string; x: number}[] = [];
 
     @property
     get layouts(): string[] {
@@ -80,21 +80,34 @@ export default class DisplayLayout extends Object {
     }
 
     /**
-     * Monitor toggles to show: the union of live monitors and the active
-     * layout's configured entries, so a monitor disabled by a layout (and
-     * therefore absent from the live list) can be re-enabled from the GUI.
+     * Monitor toggles: union of live + configured, sorted left-to-right
+     * by live x (physical order). Falls back to layout file order for
+     * disabled monitors absent from live.
      */
     @property
     get monitors(): MonitorEntry[] {
         const live = new Set(this.#liveMonitors.map((m) => m.description || m.name));
+        const xByKey = new Map<string, number>();
+        for (const m of this.#liveMonitors) xByKey.set(m.description || m.name, m.x);
+        // Config index fallback for disabled monitors.
+        const cfgIndex = new Map<string, number>();
+        this.#configuredMonitors.forEach((m, i) => cfgIndex.set(m.description || m.name, i));
         const map = new Map<string, MonitorEntry>();
         for (const m of [...this.#configuredMonitors, ...this.#liveMonitors]) {
             const key = m.description || m.name;
             if (!map.has(key)) map.set(key, {name: m.name, description: m.description, enabled: live.has(key)});
         }
-        return [...map.values()];
+        return [...map.values()].sort((a, b) => {
+            const ka = a.description || a.name;
+            const kb = b.description || b.name;
+            const xa = xByKey.get(ka);
+            const xb = xByKey.get(kb);
+            if (xa !== undefined && xb !== undefined) return xa - xb;
+            if (xa !== undefined) return -1;
+            if (xb !== undefined) return 1;
+            return (cfgIndex.get(ka) ?? 0) - (cfgIndex.get(kb) ?? 0);
+        });
     }
-
     init() {
         if (this.#initialized) {
             logger.warn('displayLayout', 'init() called but already initialized — skipping');
@@ -195,9 +208,11 @@ export default class DisplayLayout extends Object {
             this.#configuredMonitors = parseMonitorList(monOut);
 
             const hypr = getHyprland();
-            this.#liveMonitors = (hypr?.monitors ?? []).map((m) => ({
-                name: m.name ?? '',
-                description: m.description ?? '',
+            const raw = (hypr?.monitors ?? []) as unknown as {name?: string; description?: string; x?: number}[];
+            this.#liveMonitors = raw.map((m) => ({
+                name: (m.name as string) ?? '',
+                description: (m.description as string) ?? '',
+                x: (m.x as number) ?? 0,
             }));
 
             this.notify('layouts');
