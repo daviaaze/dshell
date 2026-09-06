@@ -59,6 +59,12 @@ let
 
   layoutsJson = pkgs.writeText "shade-layouts.json" (builtins.toJSON cfg.layouts);
 
+  # jq prelude: parse `get_current_monitors` output (name<TAB>description
+  # lines) into $mons. Interpolated into the shade-layout jq programs at
+  # build time (the programs are single-quoted, so a shell variable would
+  # never expand).
+  jqMonsPrelude = ''($current | split("\n") | map(select(. != "") | split("\t") | {name: .[0], description: .[1]})) as $mons'';
+
   shade-layout = pkgs.writeShellScriptBin "shade-layout" ''
     set -euo pipefail
 
@@ -91,15 +97,11 @@ let
       hyprctl monitors -j | ${lib.getExe pkgs.jq} -r '.[] | "\(.name)\t\(.description)"'
     }
 
-    # jq prelude: parse `get_current_monitors` output (name<TAB>description
-    # lines) into $mons, used for name-or-desc layout matching everywhere.
-    JQ_MONS='($current | split("\n") | map(select(. != "") | split("\t") | {name: .[0], description: .[1]})) as $mons'
-
     find_best_layout() {
       local current
       current=$(get_current_monitors)
       ${lib.getExe pkgs.jq} -r --arg current "$current" '
-        ''${JQ_MONS}
+        ${jqMonsPrelude}
         | to_entries
         | map({ name: .key, auto: (.value.auto // true),
                 monitors: ([.value.monitors[] | (.desc // .name)] | sort) })
@@ -167,7 +169,7 @@ let
       local direction="$1"
       local current next
       current=$(${lib.getExe pkgs.jq} -r --arg current "$(get_current_monitors)" '
-        ''${JQ_MONS}
+        ${jqMonsPrelude}
         | to_entries
         | map({ name: .key,
                 monitors: ([.value.monitors[] | (.desc // .name)] | sort) })
