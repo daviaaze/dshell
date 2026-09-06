@@ -14,6 +14,16 @@ let
         type = lib.types.str;
         description = "Monitor name as shown by hyprctl monitors.";
       };
+      desc = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = ''
+          EDID description (make model serial, as shown by
+          `hyprctl monitors -j` `.description`) for stable matching
+          across connector renames. Takes precedence over `name`
+          when set.
+        '';
+      };
       resolution = lib.mkOption {
         type = lib.types.str;
         default = "preferred";
@@ -78,18 +88,23 @@ let
     }
 
     get_current_monitors() {
-      hyprctl monitors -j | ${lib.getExe pkgs.jq} -r '[.[] | .name] | sort | join(",")'
+      hyprctl monitors -j | ${lib.getExe pkgs.jq} -r '.[] | "\(.name)\t\(.description)"'
     }
+
+    # jq prelude: parse `get_current_monitors` output (name<TAB>description
+    # lines) into $mons, used for name-or-desc layout matching everywhere.
+    JQ_MONS='($current | split("\n") | map(select(. != "") | split("\t") | {name: .[0], description: .[1]})) as $mons'
 
     find_best_layout() {
       local current
       current=$(get_current_monitors)
       ${lib.getExe pkgs.jq} -r --arg current "$current" '
-        ($current | split(",")) as $currentArr
+        ''${JQ_MONS}
         | to_entries
-        | map({ name: .key, monitors: (.value.monitors | map(.name) | sort), auto: (.value.auto // true) })
+        | map({ name: .key, auto: (.value.auto // true),
+                monitors: ([.value.monitors[] | (.desc // .name)] | sort) })
         | map(select(.auto))
-        | map(select(.monitors | all(. as $m | $currentArr | index($m) != null)))
+        | map(select(.monitors | all(. as $t | any($mons[]; .name == $t or .description == $t))))
         | sort_by(-(.monitors | length))
         | .[0].name // empty
       ' "$LAYOUTS_FILE"
@@ -105,10 +120,11 @@ let
       fi
 
       ${lib.getExe pkgs.jq} -r --arg name "$name" '
+        def token: if .desc then "desc:\(.desc)" else .name end;
         .[$name].monitors[]
-        | if .disable then "monitor \(.name),disable"
+        | if .disable then "monitor \(token),disable"
           else
-            "monitor \(.name),\(.resolution // "preferred"),\(.position // "auto"),\(.scale // 1)"
+            "monitor \(token),\(.resolution // "preferred"),\(.position // "auto"),\(.scale // 1)"
             + (if .transform != 0 then ",transform,\(.transform)" else "" end)
             + (if .vrr != null then ",vrr,\(.vrr)" else "" end)
           end
@@ -117,15 +133,29 @@ let
       done
 
       ${lib.getExe pkgs.jq} -r --arg name "$name" '
-        .[$name].workspaces // {} | to_entries[]
-        | "workspace \(.key),monitor:\(.value),default:true"
+        .[$name] as $layout
+        | ($layout.monitors | map(. as $m
+            | [{ key: $m.name, token: (if $m.desc then "desc:\($m.desc)" else $m.name end) }]
+              + (if $m.desc then [{ key: $m.desc, token: "desc:\($m.desc)" }] else [] end)
+          ) | add // []) as $tokens
+        | ($layout.workspaces // {}) | to_entries[]
+        | .key as $k | .value as $v
+        | (($tokens | map(select(.key == $v)) | .[0] // {token: null}) | .token // $v) as $tok
+        | "workspace \($k),monitor:\($tok),default:true"
       ' "$LAYOUTS_FILE" | while IFS= read -r line; do
         hyprctl keyword "$line"
       done
 
       ${lib.getExe pkgs.jq} -r --arg name "$name" '
-        .[$name].workspaces // {} | to_entries[]
-        | "\(.key) \(.value)"
+        .[$name] as $layout
+        | ($layout.monitors | map(. as $m
+            | [{ key: $m.name, token: (if $m.desc then "desc:\($m.desc)" else $m.name end) }]
+              + (if $m.desc then [{ key: $m.desc, token: "desc:\($m.desc)" }] else [] end)
+          ) | add // []) as $tokens
+        | ($layout.workspaces // {}) | to_entries[]
+        | .key as $k | .value as $v
+        | (($tokens | map(select(.key == $v)) | .[0] // {token: null}) | .token // $v) as $tok
+        | "\($k) \($tok)"
       ' "$LAYOUTS_FILE" | while IFS= read -r ws mon; do
         hyprctl dispatch moveworkspacetomonitor "$ws $mon" > /dev/null 2>&1 || true
       done
@@ -137,9 +167,12 @@ let
       local direction="$1"
       local current next
       current=$(${lib.getExe pkgs.jq} -r --arg current "$(get_current_monitors)" '
-        to_entries
-        | map({ name: .key, monitors: (.value.monitors | map(.name) | sort | join(",")) })
-        | map(select(.monitors == $current))
+        ''${JQ_MONS}
+        | to_entries
+        | map({ name: .key,
+                monitors: ([.value.monitors[] | (.desc // .name)] | sort) })
+        | map(select((.monitors | length) == ($mons | length)
+            and (.monitors | all(. as $t | any($mons[]; .name == $t or .description == $t)))))
         | .[0].name // empty
       ' "$LAYOUTS_FILE")
       if [ -z "$current" ]; then
@@ -187,7 +220,7 @@ in
           workspaces = lib.mkOption {
             type = lib.types.attrsOf lib.types.str;
             default = { };
-            description = "Map workspace numbers/names to monitor names";
+            description = "Map workspace numbers/names to monitor names or EDID descriptions (desc: tokens are emitted for monitors that define desc)";
           };
           auto = lib.mkOption {
             type = lib.types.bool;

@@ -8,20 +8,33 @@ let
   cfg = config.programs.shade.desktop.hyprland;
   desktopCfg = config.programs.shade.desktop;
 
+  # Hyprland monitor token for a layout monitor entry: desc: form when the
+  # entry defines an EDID description (stable across connector renames).
+  monitorToken = m:
+    if m.desc != null then "desc:${m.desc}" else m.name;
+
   # Render a monitor spec from a layout into a Hyprland monitor line.
   renderMonitor = m:
-    if m.disable then "${m.name}, disable"
+    if m.disable then "${monitorToken m}, disable"
     else
       let
-        base = "${m.name}, ${m.resolution}, ${m.position}, ${toString m.scale}";
+        base = "${monitorToken m}, ${m.resolution}, ${m.position}, ${toString m.scale}";
         transform = lib.optionalString (m.transform != 0) ", transform, ${toString m.transform}";
         vrr = lib.optionalString (m.vrr != null) ", vrr, ${toString m.vrr}";
       in
       base + transform + vrr;
 
+  # Resolve a workspace target (monitor name or description) to a Hyprland
+  # monitor token, preferring the entry's desc: form when it defines one.
+  monitorTokenFor = layout: target:
+    let
+      entry = lib.findFirst (m: m.name == target || m.desc == target) null layout.monitors;
+    in
+    if entry == null then target else monitorToken entry;
+
   # Convert a layout's workspaces to Hyprland workspace rule strings.
   layoutWorkspaces = layout:
-    lib.mapAttrsToList (num: mon: "${num}, monitor:${mon}, default:true") layout.workspaces;
+    lib.mapAttrsToList (num: mon: "${num}, monitor:${monitorTokenFor layout mon}, default:true") layout.workspaces;
 
   # Convert a layout into Hyprland settings (monitor + workspace lists).
   layoutToSettings = layout: {
@@ -206,7 +219,7 @@ in
         ];
       } // lib.optionalAttrs (cfg.defaultLayout != null) {
         monitor = map renderMonitor cfg.layouts.${cfg.defaultLayout}.monitors;
-        workspace = lib.mapAttrsToList (num: mon: "${num}, monitor:${mon}, default:true") cfg.layouts.${cfg.defaultLayout}.workspaces;
+        workspace = layoutWorkspaces cfg.layouts.${cfg.defaultLayout};
       };
     in
     lib.mkMerge [

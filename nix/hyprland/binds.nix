@@ -78,12 +78,14 @@ let
     "SUPERSHIFT,right,movewindow,r"
     "SUPERSHIFT,up,movewindow,u"
     "SUPERSHIFT,down,movewindow,d"
-    "SUPERALT,up,workspace,previous"
-    "SUPERALT,down,workspace,empty"
+    "SUPERALT,up,workspace,previous_per_monitor"
+    "SUPERALT,down,workspace,emptynm"
     "SUPERSHIFTALT,left,movewindow,mon:-1"
     "SUPERSHIFTALT,right,movewindow,mon:+1"
     "SUPERSHIFTALT,up,movetoworkspace,m-1"
-    "SUPERSHIFTALT,down,movetoworkspace,empty"
+    "SUPERSHIFTALT,down,movetoworkspace,emptynm"
+    "SUPERALT,left,workspace,r-1"
+    "SUPERALT,right,workspace,r+1"
 
     "SUPER,j,movefocus,l"
     "SUPER,l,movefocus,r"
@@ -93,10 +95,12 @@ let
     "SUPERSHIFT,l,movewindow,r"
     "SUPERSHIFT,i,movewindow,u"
     "SUPERSHIFT,k,movewindow,d"
-    "SUPERALT,i,workspace,previous"
-    "SUPERALT,k,workspace,empty"
+    "SUPERALT,i,workspace,previous_per_monitor"
+    "SUPERALT,k,workspace,emptynm"
     "SUPERSHIFTALT,i,movetoworkspace,m-1"
-    "SUPERSHIFTALT,k,movetoworkspace,empty"
+    "SUPERSHIFTALT,k,movetoworkspace,emptynm"
+    "SUPERALT,j,workspace,r-1"
+    "SUPERALT,l,workspace,r+1"
   ];
 
   # --locked: Hyprland 0.56.2 moved locked binds from `bind` to `bindl`/`bindle`.
