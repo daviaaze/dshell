@@ -83,6 +83,8 @@ let
     Commands:
       list              List available layouts
       apply <name>      Apply layout by name
+      current           Print the layout matching connected monitors
+      monitors <name>   Print a layout's monitors (name<TAB>description lines)
       auto              Auto-select layout based on connected monitors
       next              Cycle to next layout
       prev              Cycle to previous layout
@@ -191,9 +193,36 @@ let
       apply_layout "$next"
     }
 
+    # Print the layout matching the connected monitors (name-or-desc
+    # exact-set match), empty when none matches.
+    current_layout() {
+      local current
+      current=$(get_current_monitors)
+      ${lib.getExe pkgs.jq} -r --arg current "$current" '
+        ${jqMonsPrelude}
+        | to_entries
+        | map({ name: .key,
+                monitors: ([.value.monitors[] | (.desc // .name)] | sort) })
+        | map(select((.monitors | length) == ($mons | length)
+            and (.monitors | all(. as $t | any($mons[]; .name == $t or .description == $t)))))
+        | .[0].name // empty
+      ' "$LAYOUTS_FILE"
+    }
+
+    # Print a layout's monitor entries as name<TAB>description lines
+    # (description empty when the entry has no desc).
+    monitors_list() {
+      local name="$1"
+      ${lib.getExe pkgs.jq} -r --arg name "$name" '
+        .[$name].monitors[]? | "\(.name)\t\(.desc // "")"
+      ' "$LAYOUTS_FILE"
+    }
+
     case "''${1:-}" in
       list) list_layouts ;;
       apply) apply_layout "''${2:-}" ;;
+      current) current_layout ;;
+      monitors) monitors_list "''${2:-}" ;;
       auto)
         best=$(find_best_layout)
         if [ -n "$best" ]; then
