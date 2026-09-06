@@ -5,6 +5,7 @@ import Appearance from './appearance';
 import Bar from './bar';
 import Clock from './clock';
 import Debug from './debug';
+import Displays from './displays';
 import Idle from './idle';
 import Network from './network';
 import Notifications from './notifications';
@@ -28,6 +29,10 @@ export const createSettingsWindow = (): Adw.PreferencesWindow => {
                 iconName={'preferences-desktop-wallpaper-symbolic'}
             >
                 <Appearance />
+            </Adw.PreferencesPage>
+
+            <Adw.PreferencesPage title={'Displays'} iconName={'video-display-symbolic'}>
+                <Displays />
             </Adw.PreferencesPage>
 
             <Adw.PreferencesPage

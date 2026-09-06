@@ -15,14 +15,15 @@
 | # | Page | Source | Contents |
 |---|------|--------|----------|
 | P1 | Appearance | `appearance.tsx` | Wallpaper day/night picker, color scheme, font settings |
-| P2 | Bar & Dock | `bar.tsx` | Bar position, modules visibility toggles, dock pinned apps, icon size |
-| P3 | Idle & Lock | `idle.tsx` | Auto-lock timeout, lock screen options |
-| P4 | Notifications | `notifications.tsx` | Sound alerts, history limit, progress bars, ignored apps |
-| P5 | Screen Capture | `screenCapture.tsx` | Recording format/quality, boundary color, screenshot save dir |
-| P6 | Network | `network.tsx` | WiFi networks, connection management (captive portal?) |
-| P7 | Clock & Weather | `clock.tsx`, `weather.tsx` | Timezone, world clocks; weather units, location, API key |
-| P8 | Timer | `timer.tsx` | Timer presets, alarms |
-| P9 | Debug | `debug.tsx` | Debug logging categories, level |
+| P2 | Displays | `displays.tsx` | Per-monitor mode/scale/rotation/position/VRR, named layouts, auto-apply |
+| P3 | Bar & Dock | `bar.tsx` | Bar position, modules visibility toggles, dock pinned apps, icon size |
+| P4 | Idle & Lock | `idle.tsx` | Auto-lock timeout, lock screen options |
+| P5 | Notifications | `notifications.tsx` | Sound alerts, history limit, progress bars, ignored apps |
+| P6 | Screen Capture | `screenCapture.tsx` | Recording format/quality, boundary color, screenshot save dir |
+| P7 | Network | `network.tsx` | WiFi networks, connection management (captive portal?) |
+| P8 | Clock & Weather | `clock.tsx`, `weather.tsx` | Timezone, world clocks; weather units, location, API key |
+| P9 | Timer | `timer.tsx` | Timer presets, alarms |
+| P10 | Debug | `debug.tsx` | Debug logging categories, level |
 
 ### Interactions
 
