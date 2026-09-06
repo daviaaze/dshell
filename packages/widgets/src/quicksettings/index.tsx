@@ -9,6 +9,7 @@ import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {bind} from 'gnim';
 import {ButtonGrid} from './button-grid/index';
+import {DisplaySection} from './display';
 import {Expander} from './expander/index';
 import {NotificationList} from './notificationList';
 import {AudioConfig, BrightnessSlider, MicConfig} from './sliders';
@@ -74,6 +75,7 @@ export default () => {
                     orientation={Gtk.Orientation.VERTICAL}
                 >
                     <ButtonGrid />
+                    <DisplaySection />
                     <BrightnessSlider />
                     <AudioConfig />
                     <MicConfig />
