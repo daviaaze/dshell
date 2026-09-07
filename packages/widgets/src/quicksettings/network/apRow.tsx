@@ -8,10 +8,20 @@ import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 import {type Accessor, computed, createState} from 'gnim';
 import {type ApSnapshot, createNMConnection, findLiveAp, isSaved, signalIconName} from './utils';
+import {AP_ICON_SIZE, AP_TRASH_ICON_SIZE} from './utils';
 
-const AP_ICON_SIZE = 16;
-const AP_TRASH_ICON_SIZE = 14;
+// ── Operation guard: prevent concurrent WiFi operations ──
+let _opInProgress = false;
 
+async function guardedOp(fn: () => Promise<void>): Promise<void> {
+    if (_opInProgress) return;
+    _opInProgress = true;
+    try {
+        await fn();
+    } finally {
+        _opInProgress = false;
+    }
+}
 interface ApRowProps {
     snap: ApSnapshot;
     wifi: Network.Wifi;
@@ -107,7 +117,7 @@ function createDoConnect(
             state.setShowPassword(false);
         };
 
-        run()
+        guardedOp(run)
             .then(() => state.setConnectingAp(null))
             .catch((e: Error) => {
                 state.setConnectingAp(null);
@@ -118,31 +128,33 @@ function createDoConnect(
 }
 
 function createDoForget(wifi: Network.Wifi, apBssid: string | null, apSsid: string) {
-    return () => {
-        const liveAp = findLiveAp(wifi, apBssid, apSsid);
-        if (!liveAp) {
-            logger.warn('network', 'AP no longer available for forget');
-            return;
-        }
-        try {
-            const conns = liveAp.get_connections();
-            if (!conns) return;
-            for (const conn of toArray<NM.RemoteConnection>(conns)) {
-                conn.delete_async(null, (_source: unknown, res: Gio.AsyncResult) => {
-                    try {
-                        conn.delete_finish(res);
-                    } catch (e) {
-                        logger.error(
-                            'network',
-                            'forget failed:',
-                            e instanceof Error ? e.message : String(e)
-                        );
-                    }
-                });
+    return async () => {
+        await guardedOp(async () => {
+            const liveAp = findLiveAp(wifi, apBssid, apSsid);
+            if (!liveAp) {
+                logger.warn('network', 'AP no longer available for forget');
+                return;
             }
-        } catch (e) {
-            logger.error('network', 'forget error:', e);
-        }
+            try {
+                const conns = liveAp.get_connections();
+                if (!conns) return;
+                for (const conn of toArray<NM.RemoteConnection>(conns)) {
+                    conn.delete_async(null, (_source: unknown, res: Gio.AsyncResult) => {
+                        try {
+                            conn.delete_finish(res);
+                        } catch (e) {
+                            logger.error(
+                                'network',
+                                'forget failed:',
+                                e instanceof Error ? e.message : String(e)
+                            );
+                        }
+                    });
+                }
+            } catch (e) {
+                logger.error('network', 'forget error:', e);
+            }
+        });
     };
 }
 
@@ -157,7 +169,7 @@ function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps
     const [showPassword, setShowPassword] = createState(false);
     const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(null);
     const [passwordError, setPasswordError] = createState<string | null>(null);
-
+    const [cooldown, setCooldown] = createState(false);
     const connectState: ConnectState = {
         lastConnectMs: 0,
         setConnectingAp,
@@ -188,6 +200,13 @@ function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps
                     hexpand
                     cssClasses={['flat']}
                     onClicked={() => {
+                        if (cooldown()) return;
+                        setCooldown(true);
+                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+                            setCooldown(false);
+                            return GLib.SOURCE_REMOVE;
+                        });
+
                         if (isActive()) {
                             try {
                                 wifi.deactivate_connection(null);
@@ -252,7 +271,15 @@ function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps
                 <Gtk.Button
                     visible={canForget}
                     cssClasses={['flat', 'circular']}
-                    onClicked={doForget}
+                    onClicked={() => {
+                        if (cooldown()) return;
+                        setCooldown(true);
+                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+                            setCooldown(false);
+                            return GLib.SOURCE_REMOVE;
+                        });
+                        doForget();
+                    }}
                     tooltipText="Forget Network"
                     valign={Gtk.Align.CENTER}
                 >

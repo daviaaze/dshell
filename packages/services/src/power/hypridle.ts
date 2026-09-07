@@ -310,6 +310,9 @@ export default class Hypridle extends GObject {
         deleteHypridleConfig();
     }
 
+    stop() { this.#stop(); }
+    apply() { this.#apply(); }
+
     dispose() {
         this.#stop();
     }

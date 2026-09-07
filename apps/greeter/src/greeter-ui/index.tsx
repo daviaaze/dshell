@@ -22,7 +22,8 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, computed, createState, onCleanup} from 'gnim';
+import {bind, computed, createState, For, onCleanup} from 'gnim';
+import {monitors} from '@shade/services/monitoring/monitors';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
 import {GreeterClock} from './clock';
@@ -342,29 +343,37 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     );
 
     return (
-        <Astal.Window
-            name="shade-greeter"
-            application={application}
-            namespace="shade-greeter"
-            anchor={
-                Astal.WindowAnchor.TOP |
-                Astal.WindowAnchor.BOTTOM |
-                Astal.WindowAnchor.LEFT |
-                Astal.WindowAnchor.RIGHT
-            }
-            exclusivity={Astal.Exclusivity.EXCLUSIVE}
-            keymode={Astal.Keymode.EXCLUSIVE}
-            layer={Astal.Layer.OVERLAY}
-            visible
-        >
-            {wallpaper ? (
-                <Gtk.Overlay hexpand vexpand>
-                    <Gtk.Picture contentFit={Gtk.ContentFit.COVER} file={wallpaper} hexpand vexpand />
-                    {content}
-                </Gtk.Overlay>
-            ) : (
-                content
-            )}
-        </Astal.Window>
+        <For each={monitors}>
+            {(monitor: Gdk.Monitor, index: number) => {
+                const isPrimary = index === 0;
+                return (
+                    <Astal.Window
+                        name={`shade-greeter-${index}`}
+                        application={application}
+                        namespace={`shade-greeter-${index}`}
+                        gdkmonitor={monitor}
+                        anchor={
+                            Astal.WindowAnchor.TOP |
+                            Astal.WindowAnchor.BOTTOM |
+                            Astal.WindowAnchor.LEFT |
+                            Astal.WindowAnchor.RIGHT
+                        }
+                        exclusivity={isPrimary ? Astal.Exclusivity.EXCLUSIVE : Astal.Exclusivity.IGNORE}
+                        keymode={isPrimary ? Astal.Keymode.EXCLUSIVE : Astal.Keymode.NONE}
+                        layer={Astal.Layer.OVERLAY}
+                        visible
+                    >
+                        {wallpaper ? (
+                            <Gtk.Overlay hexpand vexpand>
+                                <Gtk.Picture contentFit={Gtk.ContentFit.COVER} file={wallpaper} hexpand vexpand />
+                                {isPrimary ? content : <GreeterClock />}
+                            </Gtk.Overlay>
+                        ) : (
+                            isPrimary ? content : <GreeterClock />
+                        )}
+                    </Astal.Window>
+                );
+            }}
+        </For>
     );
 };

@@ -1,190 +1,139 @@
-/**
- * Displays settings page — monitor + layout management.
- *
- * Monitors group: per-monitor physical setup (mode, position, scale,
- * rotation, VRR, enable) applied live through LayoutService.
- * Layouts group: save the current arrangement as a named layout and apply
- * saved layouts later.
- */
-
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {toArray} from '@shade/core/gjsUtils';
-import LayoutService, {type MonitorSpec} from '@shade/services/display/layouts';
-import {type AstalHyprland, getHyprland} from '@shade/services/hyprland';
-import {monitorsSettings} from '@shade/services/settings/monitors.gschema';
-import {bind, For} from 'gnim';
-
-const TRANSFORM_NAMES = ['Normal', '90°', '180°', '270°'];
-
-/** Index of the monitor's current mode inside `modes`, or 0 (preferred). */
-function modeIndex(mon: AstalHyprland.Monitor, modes: string[]): number {
-    const curWxH = String(mon.currentFormat ?? '').split('@')[0];
-    if (!curWxH) return 0;
-    const idx = modes.findIndex((m) => m.split('@')[0] === curWxH);
-    return idx >= 0 ? idx : 0;
-}
-
-function MonitorRow({mon}: {mon: AstalHyprland.Monitor}) {
-    const service = LayoutService.get_default();
-    const modes = toArray<string>(mon.availableModes);
-    const modeNames = ['Preferred', ...modes];
-
-    /** Apply a partial change on top of the monitor's live state. */
-    const patch = (part: Partial<MonitorSpec>) => {
-        service.applySpec({...service.specFor(mon), ...part});
-    };
-
-    return (
-        <Adw.ExpanderRow
-            title={mon.description || mon.name}
-            subtitle={`${mon.name} · ${mon.width}×${mon.height}`}
-        >
-            <Adw.SwitchRow
-                title={'Enabled'}
-                active={bind(mon, 'disabled').as((d) => !d)}
-                onNotifyActive={(self) => service.applyEnabled(mon.name, self.active)}
-            />
-            <Adw.ActionRow title={'Resolution'}>
-                <Gtk.DropDown
-                    model={new Gtk.StringList({strings: modeNames})}
-                    selected={bind(mon, 'current-format').as((f) => modeIndex(mon, modes))}
-                    onNotifySelected={(self) => {
-                        const want = modeNames[self.selected];
-                        if (!want) return;
-                        const cur = String(mon.currentFormat ?? '').split('@')[0];
-                        if (want === 'Preferred') {
-                            if (cur) patch({resolution: 'preferred'});
-                        } else if (want.split('@')[0] !== cur) {
-                            patch({resolution: want});
-                        }
-                    }}
-                />
-            </Adw.ActionRow>
-            <Adw.SpinRow
-                title={'Scale'}
-                adjustment={new Gtk.Adjustment({lower: 0.5, upper: 3, stepIncrement: 0.25})}
-                value={bind(mon, 'scale')}
-                onNotifyValue={(self) => {
-                    if (Math.abs(self.value - mon.scale) > 0.001) patch({scale: self.value});
-                }}
-            />
-            <Adw.ActionRow title={'Rotation'}>
-                <Gtk.DropDown
-                    model={new Gtk.StringList({strings: TRANSFORM_NAMES})}
-                    selected={bind(mon, 'transform')}
-                    onNotifySelected={(self) => {
-                        if (self.selected !== mon.transform) patch({transform: self.selected});
-                    }}
-                />
-            </Adw.ActionRow>
-            <Adw.SpinRow
-                title={'Horizontal Position'}
-                adjustment={new Gtk.Adjustment({lower: -20000, upper: 20000, stepIncrement: 10})}
-                value={bind(mon, 'x')}
-                onNotifyValue={(self) => {
-                    if (self.value !== mon.x) patch({position: `${Math.round(self.value)}x${mon.y}`});
-                }}
-            />
-            <Adw.SpinRow
-                title={'Vertical Position'}
-                adjustment={new Gtk.Adjustment({lower: -20000, upper: 20000, stepIncrement: 10})}
-                value={bind(mon, 'y')}
-                onNotifyValue={(self) => {
-                    if (self.value !== mon.y) patch({position: `${mon.x}x${Math.round(self.value)}`});
-                }}
-            />
-            <Adw.SwitchRow
-                title={'Adaptive Sync (VRR)'}
-                active={bind(mon, 'vrr').as((v) => !v)}
-                onNotifyActive={(self) => patch({vrr: self.active ? 1 : 0})}
-            />
-        </Adw.ExpanderRow>
-    );
-}
-
-function LayoutRow({name}: {name: string}) {
-    const service = LayoutService.get_default();
-    const layout = service.get(name);
-    const n = layout?.monitors.length ?? 0;
-    const count = `${n} monitor${n === 1 ? '' : 's'}`;
-
-    return (
-        <Adw.ActionRow
-            title={name}
-            subtitle={bind(service, 'current').as((c) => (c === name ? `Active · ${count}` : count))}
-        >
-            <Gtk.Button
-                slot={'suffix'}
-                valign={Gtk.Align.CENTER}
-                iconName={'system-run-symbolic'}
-                tooltipText={`Apply '${name}'`}
-                onClicked={() => service.apply(name)}
-            />
-            <Gtk.Button
-                slot={'suffix'}
-                valign={Gtk.Align.CENTER}
-                iconName={'user-trash-symbolic'}
-                tooltipText={`Delete '${name}'`}
-                onClicked={() => service.remove(name)}
-            />
-        </Adw.ActionRow>
-    );
-}
+import {bind, computed} from 'gnim';
+import MonitorConfig from '@shade/services/display/monitorConfig';
+import type {MonitorInfo} from '@shade/services/display/monitorConfig';
 
 export default () => {
-    const hyprland = getHyprland();
-    if (!hyprland) return null;
+    const config = MonitorConfig.get_default();
+    const monitors = bind(config, 'monitors');
 
     return (
-        <>
-            <Adw.PreferencesGroup
-                title={'Monitors'}
-                description={'Physical setup — arrangement, rotation, scale, mode'}
-            >
-                <For each={bind(hyprland, 'monitors')}>
-                    {(mon: AstalHyprland.Monitor) => <MonitorRow mon={mon} />}
-                </For>
-            </Adw.PreferencesGroup>
-            <Adw.PreferencesGroup
-                title={'Layouts'}
-                description={'Named setups — save the current arrangement, apply it later'}
-            >
-                <Adw.SwitchRow
-                    title={'Auto-apply on monitor change'}
-                    subtitle={'Best matching saved layout reapplies when monitors connect or disconnect'}
-                    active={monitorsSettings().autoApply}
-                    onNotifyActive={(self) => monitorsSettings().setAutoApply(self.active)}
-                />
-                <LayoutSaveRow />
-                <For each={bind(LayoutService.get_default(), 'names')}>
-                    {(name: string) => <LayoutRow name={name} />}
-                </For>
-            </Adw.PreferencesGroup>
-        </>
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={24}>
+            {monitors.as((monitorList) =>
+                monitorList.map((monitor) => {
+                    const currentMode = computed(() => {
+                        const w = monitor.width;
+                        const h = monitor.height;
+                        const r = monitor.refreshRate;
+                        return `${w}x${h}@${r}`;
+                    });
+
+                    const resolutions = computed(() => {
+                        const modes = monitor.availableModes;
+                        const unique = new Map<string, {width: number; height: number}>();
+                        modes.forEach((m) => {
+                            const key = `${m.width}x${m.height}`;
+                            if (!unique.has(key)) {
+                                unique.set(key, {width: m.width, height: m.height});
+                            }
+                        });
+                        return Array.from(unique.values());
+                    });
+
+                    const refreshRates = computed(() => {
+                        const w = monitor.width;
+                        const h = monitor.height;
+                        const modes = monitor.availableModes;
+                        const rates = modes
+                            .filter((m) => m.width === w && m.height === h)
+                            .map((m) => m.refreshRate);
+                        return [...new Set(rates)].sort((a, b) => b - a);
+                    });
+
+                    return (
+                        <Adw.PreferencesGroup title={monitor.description || monitor.name}>
+                            <Adw.ComboRow title="Resolution" subtitle={currentMode()}>
+                                <Gtk.DropDown
+                                    selected={computed(() => {
+                                        const res = resolutions();
+                                        const idx = res.findIndex(
+                                            (r) => r.width === monitor.width && r.height === monitor.height
+                                        );
+                                        return idx >= 0 ? idx : 0;
+                                    })}
+                                    onNotifySelected={(self) => {
+                                        const res = resolutions();
+                                        const selected = res[self.selected];
+                                        if (selected) {
+                                            config.setResolution(monitor.name, selected.width, selected.height);
+                                        }
+                                    }}
+                                >
+                                    <Gtk.StringList>
+                                        {resolutions().map((res: {width: number; height: number}) => (
+                                            <Gtk.StringObject string={`${res.width}x${res.height}`} />
+                                        ))}
+                                    </Gtk.StringList>
+                                </Gtk.DropDown>
+                            </Adw.ComboRow>
+
+                            <Adw.ComboRow title="Refresh Rate" subtitle={`${monitor.refreshRate} Hz`}>
+                                <Gtk.DropDown
+                                    selected={computed(() => {
+                                        const rates = refreshRates();
+                                        const idx = rates.indexOf(monitor.refreshRate);
+                                        return idx >= 0 ? idx : 0;
+                                    })}
+                                    onNotifySelected={(self) => {
+                                        const rates = refreshRates();
+                                        const rate = rates[self.selected];
+                                        if (rate) {
+                                            config.setRefreshRate(monitor.name, rate);
+                                        }
+                                    }}
+                                >
+                                    <Gtk.StringList>
+                                        {refreshRates().map((rate: number) => (
+                                            <Gtk.StringObject string={`${rate} Hz`} />
+                                        ))}
+                                    </Gtk.StringList>
+                                </Gtk.DropDown>
+                            </Adw.ComboRow>
+
+                            <Adw.ActionRow title="Scale" subtitle={`${monitor.scale}x`}>
+                                <Gtk.Scale
+                                    orientation={Gtk.Orientation.HORIZONTAL}
+                                    min={1}
+                                    max={2}
+                                    step={0.25}
+                                    value={monitor.scale}
+                                    onChangeValue={(value) => config.setScale(monitor.name, value)}
+                                    width-request={200}
+                                />
+                            </Adw.ActionRow>
+
+                            <Adw.ComboRow title="Rotation" subtitle={`${monitor.transform * 90}°`}>
+                                <Gtk.DropDown
+                                    selected={monitor.transform}
+                                    onNotifySelected={(self) => {
+                                        config.setTransform(monitor.name, self.selected);
+                                    }}
+                                >
+                                    <Gtk.StringList strings={['0°', '90°', '180°', '270°']} />
+                                </Gtk.DropDown>
+                            </Adw.ComboRow>
+
+                            <Adw.SwitchRow
+                                title="Display Power"
+                                subtitle={monitor.dpmsStatus ? 'On' : 'Off'}
+                                active={monitor.dpmsStatus}
+                                onNotifyActive={(self) => {
+                                    config.setDpms(monitor.name, self.active);
+                                }}
+                            />
+
+                            <Adw.ActionRow title="Primary Display">
+                                <Gtk.Button
+                                    label={monitor.focused ? 'Current' : 'Set as Primary'}
+                                    sensitive={!monitor.focused}
+                                    onClicked={() => config.setPrimaryMonitor(monitor.name)}
+                                />
+                            </Adw.ActionRow>
+                        </Adw.PreferencesGroup>
+                    );
+                })
+            )}
+        </Gtk.Box>
     );
 };
-
-/** Entry row that snapshots the live setup under a new name. */
-function LayoutSaveRow() {
-    const service = LayoutService.get_default();
-    let entry: Adw.EntryRow | null = null;
-
-    const save = () => {
-        if (!entry) return;
-        const name = entry.text.trim();
-        if (name && service.save(name)) entry.text = '';
-    };
-
-    return (
-        <Adw.EntryRow title={'New layout name'} ref={(self) => (entry = self)} onEntryActivated={save}>
-            <Gtk.Button
-                slot={'suffix'}
-                valign={Gtk.Align.CENTER}
-                iconName={'document-save-symbolic'}
-                tooltipText={'Save current setup as this layout'}
-                onClicked={save}
-            />
-        </Adw.EntryRow>
-    );
-}

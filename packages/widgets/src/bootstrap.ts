@@ -18,7 +18,7 @@ import ShellState from '@shade/services/state/shellState';
 import '@shade/services/audio/audioController';
 import '@shade/services/session/mediaController';
 import '@shade/services/location/weather';
-import '@shade/services/display/colorScheme';
+import '@shade/services/display/monitorConfig';
 import '@shade/services/power/inhibit';
 import '@shade/services/display/nightLight';
 import '@shade/services/power/hypridle';

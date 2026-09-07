@@ -5,6 +5,7 @@ import {defineService} from '@shade/core/define';
 import logger from '@shade/core/logger';
 import {Object, property, register} from 'gnim/gobject';
 import {bus} from '../bus';
+import Hypridle from './hypridle';
 const SS_BUS_NAME = 'org.freedesktop.ScreenSaver';
 const SS_OBJECT_PATH = '/org/freedesktop/ScreenSaver';
 const SS_INTERFACE = 'org.freedesktop.ScreenSaver';
@@ -45,12 +46,17 @@ export default class Inhibit extends Object {
 
     setDuration(minutes: number) {
         this.#duration = minutes > 0 ? minutes * 60 * 1000 : 0;
-        this.#elapsed = 0;
+        if (this.#duration === 0) {
+            this.idle = false;
+            return;
+        }
         if (this.#idle) {
-            this.#startTimer();
+            // Already active — keep the running timer and elapsed time,
+            // so extending/shortening the duration doesn't restart the countdown.
             this.notify('remaining');
             return;
         }
+        this.#elapsed = 0;
         this.idle = true;
     }
 
@@ -62,6 +68,13 @@ export default class Inhibit extends Object {
             `idle ${state ? 'enabled' : 'disabled'}${state && this.#duration > 0 ? ' (' + this.#duration / 60000 + 'min)' : ''}`
         );
         if (state) {
+            // hypridle doesn't honour org.freedesktop.ScreenSaver.Inhibit, so
+            // stop it outright — otherwise the screen still dims/locks/DPMS.
+            try {
+                Hypridle.get_default().stop();
+            } catch (e) {
+                logger.warn('inhibit', 'failed to stop hypridle:', e);
+            }
             if (this.#cookie !== 0) this.#releaseInhibit(this.#cookie);
             this.#cookie = this.#requestInhibit();
             this.#startTimer();
@@ -70,6 +83,12 @@ export default class Inhibit extends Object {
             if (this.#cookie !== 0) {
                 this.#releaseInhibit(this.#cookie);
                 this.#cookie = 0;
+            }
+            // Restore hypridle with the current settings.
+            try {
+                Hypridle.get_default().apply();
+            } catch (e) {
+                logger.warn('inhibit', 'failed to restart hypridle:', e);
             }
         }
         this.notify('idle');
@@ -177,6 +196,12 @@ export default class Inhibit extends Object {
                 this.idle = v;
             })
         );
+    }
+
+    dispose() {
+        if (this.#idle) this.idle = false;
+        for (const unsub of this.#busSubscriptions) unsub();
+        this.#busSubscriptions = [];
     }
 
     constructor() {

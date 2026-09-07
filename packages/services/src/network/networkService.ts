@@ -90,23 +90,33 @@ export default class NetworkService extends Object {
     }
 
     #onWifiChanged(): void {
-        this.#cleanupWifiSignals();
-        this.#wifi = this.#network?.wifi ?? null;
-        this.notify('wifi');
+        const newWifi = this.#network?.wifi ?? null;
+        
+        // Only rebuild signal handlers if the wifi device reference actually changed
+        if (newWifi !== this.#wifi) {
+            this.#cleanupWifiSignals();
+            this.#wifi = newWifi;
+            this.notify('wifi');
 
-        const w = this.#wifi;
-        if (w) {
-            const onPropChanged = () => {
-                this.notify('wifi-ssid');
-                this.notify('wifi-enabled');
-                this.notify('wifi-strength');
-                this.notify('wifi-state');
-            };
+            const w = this.#wifi;
+            if (w) {
+                const onPropChanged = () => {
+                    this.notify('wifi-ssid');
+                    this.notify('wifi-enabled');
+                    this.notify('wifi-strength');
+                    this.notify('wifi-state');
+                };
 
-            this.#wifiSignalIds.push(w.connect('notify::state', onPropChanged));
-            this.#wifiSignalIds.push(w.connect('notify::strength', onPropChanged));
-            this.#wifiSignalIds.push(w.connect('notify::ssid', onPropChanged));
-            this.#wifiSignalIds.push(w.connect('notify::enabled', onPropChanged));
+                try {
+                    this.#wifiSignalIds.push(w.connect('notify::state', onPropChanged));
+                    this.#wifiSignalIds.push(w.connect('notify::strength', onPropChanged));
+                    this.#wifiSignalIds.push(w.connect('notify::ssid', onPropChanged));
+                    this.#wifiSignalIds.push(w.connect('notify::enabled', onPropChanged));
+                } catch (e) {
+                    logger.error('networkService', 'Failed to connect wifi signals:', e);
+                    this.#wifiSignalIds = [];
+                }
+            }
         }
 
         this.notify('wifi-ssid');
@@ -117,10 +127,11 @@ export default class NetworkService extends Object {
     }
 
     #cleanupWifiSignals(): void {
-        const w = this.#wifi;
         for (const id of this.#wifiSignalIds) {
+            const w = this.#wifi;
+            if (!w) break;
             try {
-                if (w) w.disconnect(id);
+                w.disconnect(id);
             } catch {
                 /* already dead */
             }

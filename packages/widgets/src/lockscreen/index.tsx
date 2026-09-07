@@ -30,6 +30,9 @@ const createLocks = (onUnlock: () => void) => {
 
     let sharedCleanedUp = false;
 
+    // Store monitor→window mapping to avoid runtime query races
+    const monitorMap = new Map<Astal.Window, Gdk.Monitor>();
+
     const cleanupAll = () => {
         if (sharedCleanedUp) return;
         sharedCleanedUp = true;
@@ -53,19 +56,24 @@ const createLocks = (onUnlock: () => void) => {
 
     const onRealize = () => {
         const wm = WindowManager.get_default();
+        // Wait for all lock windows to be realized before locking
         for (const window of wm.lockscreens) {
             if (!window.get_realized()) return;
         }
-        lockService.lock();
-        for (const window of wm.lockscreens) {
-            lockService.assignWindow(window, window.get_current_monitor());
+        // CRITICAL: Assign windows to monitors FIRST (ext-session-lock-v1 requirement)
+        for (const [window, monitor] of monitorMap) {
+            lockService.assignWindow(window, monitor);
         }
+        // THEN acquire the lock
+        lockService.lock();
     };
 
-    const onRef = (self: Astal.Window) => {
+    const onRef = (self: Astal.Window, monitor: Gdk.Monitor) => {
+        monitorMap.set(self, monitor);
         const wm = WindowManager.get_default();
         wm.registerLockscreen(self);
         onCleanup(() => {
+            monitorMap.delete(self);
             cleanupAll();
             wm.unregisterLockscreen(self);
         });
@@ -75,7 +83,7 @@ const createLocks = (onUnlock: () => void) => {
         <For each={monitors}>
             {(monitor: Gdk.Monitor) => (
                 <Astal.Window
-                    ref={onRef}
+                    ref={(self) => onRef(self, monitor)}
                     onRealize={onRealize}
                     gdkmonitor={monitor}
                     application={getApp()}

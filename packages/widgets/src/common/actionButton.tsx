@@ -1,5 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
+import type {Accessor} from 'gnim';
 
 /**
  * A button with an icon and label, styled as a flat menu item.
@@ -14,14 +15,18 @@ import Gtk from 'gi://Gtk?version=4.0';
  */
 export const ActionButton = (props: {
     iconName: string;
-    label: string;
+    label: string | Accessor<string>;
+    cssClasses?: string[] | Accessor<string[]>;
     destructive?: boolean;
-    visible?: boolean | import('gnim').Accessor<boolean>;
+    visible?: boolean | Accessor<boolean>;
     onClicked: () => void;
 }) => (
     <Gtk.Button
         visible={props.visible ?? true}
-        cssClasses={props.destructive ? ['flat', 'destructive-action'] : ['flat']}
+        cssClasses={
+            props.cssClasses ??
+            (props.destructive ? ['flat', 'destructive-action'] : ['flat'])
+        }
         onClicked={props.onClicked}
     >
         <Adw.ButtonContent iconName={props.iconName} label={props.label} />

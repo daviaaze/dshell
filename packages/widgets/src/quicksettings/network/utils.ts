@@ -5,6 +5,11 @@ import NM from 'gi://NM?version=1.0';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 
+
+// ── Icon size constants ──────────────────────────────────────────────
+
+export const AP_ICON_SIZE = 16;
+export const AP_TRASH_ICON_SIZE = 12;
 // ── NM 802.11 flag constants ──────────────────────────────────────
 // NM.__80211ApSecurityFlags is not reliably exposed across GIR versions.
 // These are the stable NM values from libnm.
