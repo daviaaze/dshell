@@ -21,8 +21,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, computed, createState, For, onCleanup} from 'gnim';
-import {monitors} from '@shade/services/monitoring/monitors';
+import {bind, computed, createState, onCleanup} from 'gnim';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
 import {GreeterClock} from './clock';
@@ -221,7 +220,9 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
             >
                 <Gtk.Image iconName="fingerprint-symbolic" pixelSize={48} />
                 <Adw.Spinner
-                    visible={stateBinding.as((s) => s === 'authenticating' || s === 'creating-session')}
+                    visible={stateBinding.as(
+                        (s) => s === 'authenticating' || s === 'creating-session'
+                    )}
                 />
             </Gtk.Box>
             {/* Error message */}
@@ -258,7 +259,11 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
 
             {/* Session picker */}
             <Gtk.Box spacing={8} marginTop={8}>
-                <Gtk.Label label="Session" cssClasses={['caption', 'dimmed']} valign={Gtk.Align.CENTER} />
+                <Gtk.Label
+                    label="Session"
+                    cssClasses={['caption', 'dimmed']}
+                    valign={Gtk.Align.CENTER}
+                />
                 <Gtk.DropDown
                     hexpand
                     model={sessionNames}
@@ -278,19 +283,6 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
             hexpand
             css={wallpaper ? 'backdrop-filter: blur(40px) brightness(0.35);' : undefined}
         >
-            <Gtk.EventControllerKey
-                ref={(self) => {
-                    self.connect('key-pressed', (_, keyval) => {
-                        if (keyval === Gdk.KEY_Escape && showPassword()) {
-                            goBack();
-                            return true;
-                        }
-                        const state = self.get_current_event_state();
-                        setCapsLock((state & Gdk.ModifierType.LOCK_MASK) !== 0);
-                        return false;
-                    });
-                }}
-            />
             {/* Top bar: keyboard layout (left) + power actions (right) */}
             <Gtk.Box marginTop={16} marginStart={16} marginEnd={16}>
                 <Gtk.Button
@@ -300,7 +292,11 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                     halign={Gtk.Align.START}
                 />
                 <Gtk.Box hexpand />
-                <Gtk.Button iconName="system-reboot-symbolic" tooltipText="Restart" onClicked={() => reboot()} />
+                <Gtk.Button
+                    iconName="system-reboot-symbolic"
+                    tooltipText="Restart"
+                    onClicked={() => reboot()}
+                />
                 <Gtk.Button
                     iconName="system-shutdown-symbolic"
                     tooltipText="Power Off"
@@ -310,7 +306,11 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                 />
             </Gtk.Box>
 
-            <Gtk.Separator visible={greeterUsers.length > 1} orientation={Gtk.Orientation.HORIZONTAL} marginTop={8} />
+            <Gtk.Separator
+                visible={greeterUsers.length > 1}
+                orientation={Gtk.Orientation.HORIZONTAL}
+                marginTop={8}
+            />
 
             {/* Clock */}
             <Gtk.Box halign={Gtk.Align.CENTER} marginTop={48} marginBottom={24}>
@@ -341,48 +341,67 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
         </Gtk.Box>
     );
 
-    // Per-monitor layout: single fullscreen Gtk.Window.
-    // Cage (greetd kiosk compositor) has no layer-shell → Astal.Window
-    // falls back to decorated toplevels. Plain Gtk.Window works correctly.
-    const monitorLayout = (
+    // Per-monitor layout from Gdk directly — no MonitorService
+    // dependency (requires Hyprland IPC, unavailable under greetd/Cage).
+    const display = Gdk.Display.get_default();
+    const monitorList = display?.get_monitors();
+    const monitorCount = monitorList?.get_n_items() ?? 0;
+
+    const monitorBoxes: Array<JSX.Element> = [];
+    for (let i = 0; i < monitorCount; i++) {
+        const mon = monitorList!.get_item(i) as Gdk.Monitor;
+        const geo = mon.get_geometry();
+        monitorBoxes.push(
+            <Gtk.Box
+                widthRequest={geo.width}
+                orientation={Gtk.Orientation.VERTICAL}
+                vexpand
+                hexpand={false}
+            >
+                {i === 0 ? content : <GreeterClock />}
+            </Gtk.Box>
+        );
+    }
+
+    // Fallback: no monitors detected → show content directly
+    if (monitorBoxes.length === 0) {
+        monitorBoxes.push(content);
+    }
+
+    // Render monitors directly as siblings, no Overlay
+    // (Overlay with JSX arrays has rendering issues)
+    const layout = (
         <Gtk.Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} hexpand vexpand>
-            <For each={monitors}>
-                {(monitor: Gdk.Monitor, index: number) => {
-                    const geo = monitor.get_geometry();
-                    return (
-                        <Gtk.Box
-                            widthRequest={geo.width}
-                            orientation={Gtk.Orientation.VERTICAL}
-                            vexpand
-                        >
-                            {index === 0 ? content : <GreeterClock />}
-                        </Gtk.Box>
-                    );
-                }}
-            </For>
+            {monitorBoxes.map((box) => box)}
         </Gtk.Box>
     );
 
     return (
         <Gtk.Window
-            name="shade-greeter"
+            title="shade-greeter"
             decorated={false}
             defaultWidth={1920}
             defaultHeight={1080}
             visible
-            ref={(self) => {
-                application.add_window(self);
-                self.fullscreen();
+            ref={(win: Gtk.Window) => {
+                application.add_window(win);
+                // Attach key controller to window (not as child widget)
+                const keyCtrl = new Gtk.EventControllerKey();
+                keyCtrl.connect('key-pressed', (_, keyval) => {
+                    if (keyval === Gdk.KEY_Escape && showPassword()) {
+                        goBack();
+                        return true;
+                    }
+                    const state = keyCtrl.get_current_event_state();
+                    setCapsLock((state & Gdk.ModifierType.LOCK_MASK) !== 0);
+                    return false;
+                });
+                win.add_controller(keyCtrl);
+                win.present();
+                win.fullscreen();
             }}
         >
-            {wallpaper ? (
-                <Gtk.Overlay hexpand vexpand>
-                    <Gtk.Picture contentFit={Gtk.ContentFit.COVER} file={wallpaper} hexpand vexpand />
-                    {monitorLayout}
-                </Gtk.Overlay>
-            ) : (
-                monitorLayout
-            )}
+            {layout}
         </Gtk.Window>
     );
 };
