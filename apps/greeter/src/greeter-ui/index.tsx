@@ -17,7 +17,6 @@
  */
 
 import Adw from 'gi://Adw?version=1';
-import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
@@ -342,38 +341,48 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
         </Gtk.Box>
     );
 
+    // Per-monitor layout: single fullscreen Gtk.Window.
+    // Cage (greetd kiosk compositor) has no layer-shell → Astal.Window
+    // falls back to decorated toplevels. Plain Gtk.Window works correctly.
+    const monitorLayout = (
+        <Gtk.Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} hexpand vexpand>
+            <For each={monitors}>
+                {(monitor: Gdk.Monitor, index: number) => {
+                    const geo = monitor.get_geometry();
+                    return (
+                        <Gtk.Box
+                            widthRequest={geo.width}
+                            orientation={Gtk.Orientation.VERTICAL}
+                            vexpand
+                        >
+                            {index === 0 ? content : <GreeterClock />}
+                        </Gtk.Box>
+                    );
+                }}
+            </For>
+        </Gtk.Box>
+    );
+
     return (
-        <For each={monitors}>
-            {(monitor: Gdk.Monitor, index: number) => {
-                const isPrimary = index === 0;
-                return (
-                    <Astal.Window
-                        name={`shade-greeter-${index}`}
-                        application={application}
-                        namespace={`shade-greeter-${index}`}
-                        gdkmonitor={monitor}
-                        anchor={
-                            Astal.WindowAnchor.TOP |
-                            Astal.WindowAnchor.BOTTOM |
-                            Astal.WindowAnchor.LEFT |
-                            Astal.WindowAnchor.RIGHT
-                        }
-                        exclusivity={isPrimary ? Astal.Exclusivity.EXCLUSIVE : Astal.Exclusivity.IGNORE}
-                        keymode={isPrimary ? Astal.Keymode.EXCLUSIVE : Astal.Keymode.NONE}
-                        layer={Astal.Layer.OVERLAY}
-                        visible
-                    >
-                        {wallpaper ? (
-                            <Gtk.Overlay hexpand vexpand>
-                                <Gtk.Picture contentFit={Gtk.ContentFit.COVER} file={wallpaper} hexpand vexpand />
-                                {isPrimary ? content : <GreeterClock />}
-                            </Gtk.Overlay>
-                        ) : (
-                            isPrimary ? content : <GreeterClock />
-                        )}
-                    </Astal.Window>
-                );
+        <Gtk.Window
+            name="shade-greeter"
+            decorated={false}
+            defaultWidth={1920}
+            defaultHeight={1080}
+            visible
+            ref={(self) => {
+                application.add_window(self);
+                self.fullscreen();
             }}
-        </For>
+        >
+            {wallpaper ? (
+                <Gtk.Overlay hexpand vexpand>
+                    <Gtk.Picture contentFit={Gtk.ContentFit.COVER} file={wallpaper} hexpand vexpand />
+                    {monitorLayout}
+                </Gtk.Overlay>
+            ) : (
+                monitorLayout
+            )}
+        </Gtk.Window>
     );
 };
