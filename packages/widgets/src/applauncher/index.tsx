@@ -14,6 +14,7 @@ import {barSettings} from '@shade/services/settings/bar.gschema';
 import {fuzzyQuery} from '@shade/services/state/apps';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
+import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
@@ -196,7 +197,7 @@ export default () => {
             cssClasses={[]}
             css={'background-color: transparent;'}
             keymode={Astal.Keymode.ON_DEMAND}
-            monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as((m) => monitorIndexFromHyprland(m))}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}
         >
             <Gtk.Box

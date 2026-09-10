@@ -7,6 +7,7 @@ import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 import {getApp} from '@shade/services/appHandle';
 import {getHyprland} from '@shade/services/hyprland';
+import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, createState, For, onCleanup, type Setter} from 'gnim';
 import SwitcherItem from './item';
 
@@ -202,7 +203,7 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as((m) => monitorIndexFromHyprland(m))}
             css={'background-color: transparent;'}
         >
             <Gtk.Box
