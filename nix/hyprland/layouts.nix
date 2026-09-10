@@ -288,10 +288,18 @@ in
         HYPRL_DIR="''${XDG_RUNTIME_DIR:-/run/user/$(id - u)}/hypr"
 
         find_socket() {
-          local sig
-          sig=$(ls -1 "$HYPRL_DIR" 2>/dev/null | head -n1)
-          if [ -z "$sig" ]; then
-            echo "shade-layout-auto: no Hyprland instance found" >&2
+          local sig dir
+          # Use HYPRLAND_INSTANCE_SIGNATURE if set (passed by Hyprland to env)
+          if [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+            sig="$HYPRLAND_INSTANCE_SIGNATURE"
+          else
+            # Find the active instance by lock file (not alphabetical — stale dirs linger)
+            for dir in "$HYPRL_DIR"/*/; do
+              [ -f "$dir/hyprland.lock" ] && { sig=$(basename "$dir"); break; }
+            done
+          fi
+          if [ -z "''${sig:-}" ]; then
+            echo "shade-layout-auto: no active Hyprland instance found" >&2
             exit 1
           fi
           echo "$HYPRL_DIR/$sig/.socket2.sock"
