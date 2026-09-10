@@ -338,6 +338,7 @@ in
           partOf = [ "graphical-session.target" ];
           after = [ "graphical-session.target" ];
           wantedBy = [ "graphical-session.target" ];
+          path = [ config.programs.hyprland.package ];
           serviceConfig = {
             ExecStart = lib.getExe shade-layout-auto;
             Restart = "on-failure";
