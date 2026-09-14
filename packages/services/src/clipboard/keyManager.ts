@@ -17,7 +17,7 @@
 
 import Secret from 'gi://Secret?version=1';
 import logger from '@shade/core/logger';
-import {bytesToHex, generateKey, hexToBytes} from './cryptoEngine';
+import {bytesToHex, generateKeyNative, hexToBytes} from './nativeCrypto';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -70,7 +70,7 @@ export function initKeyManager(): void {
             keyResult = hexToBytes(keyHex);
         } else {
             logger.info('clipboard', 'no encryption key found, generating new key');
-            keyResult = generateKey();
+            keyResult = generateKeyNative();
 
             // Only attempt to persist the key if the secret service has a
             // default collection (i.e. the keyring has been unlocked via PAM).
@@ -91,7 +91,7 @@ export function initKeyManager(): void {
     } catch (e) {
         keyringReady = false;
         logger.warn('clipboard', 'keyring not available, generating ephemeral key:', e);
-        keyResult = generateKey();
+        keyResult = generateKeyNative();
     }
 }
 
@@ -133,7 +133,7 @@ export function getKey(): Uint8Array {
         initKeyManager();
     }
     if (!keyResult) {
-        keyResult = generateKey();
+        keyResult = generateKeyNative();
     }
     return keyResult;
 }

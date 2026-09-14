@@ -341,40 +341,99 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
         </Gtk.Box>
     );
 
-    // Per-monitor layout from Gdk directly — no MonitorService
-    // dependency (requires Hyprland IPC, unavailable under greetd/Cage).
+    // Per-monitor layout from Gdk directly — no MonitorService dependency
+    // (requires Hyprland IPC, unavailable under greetd/Cage).
+    //
+    // Cage extends the single fullscreen toplevel across the output-layout
+    // bounding box, so we letterbox with a Gtk.Fixed sized to that bounding
+    // box and place one pane per monitor at its exact (x, y) geometry.
+    // The login form goes on the largest-area monitor; others show a clock.
     const display = Gdk.Display.get_default();
     const monitorList = display?.get_monitors();
     const monitorCount = monitorList?.get_n_items() ?? 0;
 
-    const monitorBoxes: Array<JSX.Element> = [];
-    for (let i = 0; i < monitorCount; i++) {
-        const mon = monitorList!.get_item(i) as Gdk.Monitor;
-        const geo = mon.get_geometry();
-        monitorBoxes.push(
+    let body;
+
+    if (monitorCount === 0) {
+        // Headless fallback: render the login content directly.
+        body = content;
+    } else {
+        // Bounding box over all monitors
+        const geos: Array<{x: number; y: number; width: number; height: number}> = [];
+        let minX = Number.POSITIVE_INFINITY;
+        let minY = Number.POSITIVE_INFINITY;
+        let maxX = Number.NEGATIVE_INFINITY;
+        let maxY = Number.NEGATIVE_INFINITY;
+        for (let i = 0; i < monitorCount; i++) {
+            const mon = monitorList!.get_item(i) as Gdk.Monitor;
+            const geo = mon.get_geometry();
+            geos.push({x: geo.x, y: geo.y, width: geo.width, height: geo.height});
+            minX = Math.min(minX, geo.x);
+            minY = Math.min(minY, geo.y);
+            maxX = Math.max(maxX, geo.x + geo.width);
+            maxY = Math.max(maxY, geo.y + geo.height);
+        }
+
+        // Largest-area monitor hosts the login form (no Gdk primary API).
+        let loginIdx = 0;
+        let bestArea = -1;
+        geos.forEach((geo, i) => {
+            const area = geo.width * geo.height;
+            if (area > bestArea) {
+                bestArea = area;
+                loginIdx = i;
+            }
+        });
+
+        const clockPane = (
             <Gtk.Box
-                widthRequest={geo.width}
                 orientation={Gtk.Orientation.VERTICAL}
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.CENTER}
+                hexpand
                 vexpand
-                hexpand={false}
+                css={wallpaper ? 'backdrop-filter: blur(40px) brightness(0.35);' : undefined}
             >
-                {i === 0 ? content : <GreeterClock />}
+                <GreeterClock />
             </Gtk.Box>
         );
-    }
 
-    // Fallback: no monitors detected → show content directly
-    if (monitorBoxes.length === 0) {
-        monitorBoxes.push(content);
-    }
+        // Collect pane widgets + target positions; placed once the Fixed
+        // (and its children) have mounted (gnim refs fire pre-mount).
+        const placements: Array<{widget: Gtk.Widget; x: number; y: number}> = [];
+        const panes = geos.map((geo, i) => (
+            <Gtk.Box
+                ref={(self) => {
+                    placements.push({widget: self, x: geo.x - minX, y: geo.y - minY});
+                }}
+                widthRequest={geo.width}
+                heightRequest={geo.height}
+            >
+                {i === loginIdx ? content : clockPane}
+            </Gtk.Box>
+        ));
 
-    // Render monitors directly as siblings, no Overlay
-    // (Overlay with JSX arrays has rendering issues)
-    const layout = (
-        <Gtk.Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} hexpand vexpand>
-            {monitorBoxes.map((box) => box)}
-        </Gtk.Box>
-    );
+        body = (
+            <Gtk.Fixed
+                widthRequest={maxX - minX}
+                heightRequest={maxY - minY}
+                ref={(self) => {
+                    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+                        for (const p of placements) {
+                            if (p.widget.get_parent() === self) {
+                                self.move(p.widget, p.x, p.y);
+                            } else {
+                                self.put(p.widget, p.x, p.y);
+                            }
+                        }
+                        return GLib.SOURCE_REMOVE;
+                    });
+                }}
+            >
+                {panes}
+            </Gtk.Fixed>
+        );
+    }
 
     return (
         <Gtk.Window
@@ -401,7 +460,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                 win.fullscreen();
             }}
         >
-            {layout}
+            {body}
         </Gtk.Window>
     );
 };

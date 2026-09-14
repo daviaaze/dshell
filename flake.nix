@@ -90,6 +90,7 @@
         glib.bin
         uwsm
         pipewire
+        openssl
       ];
     in
     {

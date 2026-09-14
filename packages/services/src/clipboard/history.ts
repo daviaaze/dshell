@@ -20,12 +20,13 @@ import GLib from 'gi://GLib?version=2.0';
 import {defineService} from '@shade/core/define';
 import {
     type ClipboardEntry,
+    EncryptedStore,
     getAllEntries,
-    initStore,
     searchEntries,
     addEntry as storeAddEntry,
     clearHistory as storeClearHistory,
     deleteEntry as storeDeleteEntry,
+    shutdownStore,
     togglePin as storeTogglePin,
 } from './encryptedStore';
 
@@ -109,11 +110,16 @@ export function initClipboardHistory() {
     if (initialized) return;
     initialized = true;
 
-    // Initialise the encrypted store
-    initStore();
-
-    // Start the wl-paste watchers (replaces Gdk.Clipboard 'changed')
+    // Start the wl-paste watchers first (non-blocking). Copies made before
+    // the store load completes are buffered and merged by initAsync.
     startClipboardWatcher(onClipboardData);
+
+    // Defer the encrypted-store load off the init path: decrypting a large
+    // history must never block shell startup (previously a 62 s freeze).
+    GLib.idle_add(GLib.PRIORITY_LOW, () => {
+        void EncryptedStore.get_default().initAsync();
+        return GLib.SOURCE_REMOVE;
+    });
 
     logger.info('clipboard', 'clipboard history monitoring started');
 }
@@ -196,4 +202,13 @@ export function clearHistory(): void {
     storeClearHistory();
 }
 
-defineService({name: 'ClipboardHistory', service: {init: () => initClipboardHistory()}});
+defineService({
+    name: 'ClipboardHistory',
+    service: {
+        init: () => initClipboardHistory(),
+        dispose: () => {
+            stopClipboardHistory();
+            return shutdownStore();
+        },
+    },
+});

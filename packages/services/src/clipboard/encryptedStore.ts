@@ -1,27 +1,38 @@
 /**
- * EncryptedStore — AES-256-GCM encrypted clipboard history storage.
+ * EncryptedStore — encrypted clipboard history storage (v3, native crypto).
  *
  * Clipboard entries are held in memory and encrypted to disk as a
  * single JSON blob. The encryption key is stored in the system keyring
  * via libsecret.
  *
- * File format (.enc):
+ * Crypto: AES-256-CTR + HMAC-SHA256 (encrypt-then-MAC) via the `openssl`
+ * binary (nativeCrypto.ts), replacing the pure-JS AES-256-GCM that ran at
+ * ~2.8 MB/s and froze the main loop for 62 s on a large history.
+ *
+ * File format (.enc) v3:
  *   [magic: "SHED" 4 bytes][version: uint32 4 bytes]
- *   [nonce: 12 bytes][encrypted JSON blob: variable][auth tag: 16 bytes]
+ *   [nonceLen: 1 byte][nonce][macLen: 1 byte][mac][ciphertext...]
  *
- * Image data is stored as base64 inside the JSON blob, not as separate
- * files on disk (replaces legacy clipboard/<filename>.png approach).
+ * Design for startup safety:
+ *   - The initial load is async (`initAsync`), scheduled off the init path.
+ *   - Writes are debounced (1.5 s) and flushed asynchronously, so a large
+ *     blob never rewrites/encrypts synchronously on the main loop.
+ *   - History is capped at MAX_HISTORY entries AND MAX_TOTAL_BYTES plaintext
+ *     (oldest unpinned evicted), so disk size stays bounded.
+ *   - Copies that arrive before the first load completes are buffered in
+ *     `#pending` and merged when the load finishes.
  *
- * Emits 'entries-changed' on every mutation so UIs can react.
+ * Emits 'entries-changed' when a flush actually persists, so UIs can react.
  *
  * @module encryptedStore
  */
 
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
+import {Timeout} from '@shade/core/timeout';
 import logger from '@shade/core/logger';
 import {Object, register, signal} from 'gnim/gobject';
-import {decrypt, encrypt} from './cryptoEngine';
+import {decryptNative, encryptNative, type SealedBlob} from './nativeCrypto';
 import {getKey, initKeyManager, isKeyPersistent} from './keyManager';
 
 export interface ClipboardEntry {
@@ -40,12 +51,13 @@ const DATA_DIR = `${GLib.get_user_data_dir()}/shade-shell`;
 const HISTORY_FILE = `${DATA_DIR}/clipboard-history.enc`;
 const LEGACY_CLIPBOARD_DIR = `${DATA_DIR}/clipboard`;
 
-const MAGIC = 0x53484544; // "SHED" as uint32 LE
-const VERSION = 2;
-const NONCE_SIZE = 12;
-const TAG_SIZE = 16;
+const MAGIC = 0x53484544; // "SHED" as uint32 BE
+const VERSION = 3;
 
-const MAX_HISTORY = 100;
+const MAX_HISTORY = 500;
+/** Hard cap on serialized plaintext size — bounded disk regardless of images. */
+const MAX_TOTAL_BYTES = 64 * 1024 * 1024;
+const SAVE_DEBOUNCE_MS = 1500;
 const LEGACY_PNG_RE = /^clipboard-\d+\.png$/;
 
 // ── Singleton service ────────────────────────────────────────────────────────
@@ -62,27 +74,71 @@ export class EncryptedStore extends Object {
     }
 
     #entries: ClipboardEntry[] = [];
+    /** Entries copied while the first load is still in flight. */
+    #pending: ClipboardEntry[] = [];
     #encryptionKey: Uint8Array | null = null;
     #ready = false;
     #keyPersistent = false;
+    /** True when mutations happened but aren't persisted yet. */
+    #dirty = false;
+    /** A flush is scheduled (debounce) or currently running. */
+    #savePending = false;
+    #flushInFlight = false;
+    #saveTimer = new Timeout();
+    #initPromise: Promise<void> | null = null;
 
-    /** Emitted after every mutation (add, delete, toggle, clear). */
+    /** Emitted after a flush persists changes to disk. */
     @signal
     entriesChanged() {}
 
     // ── Initialisation ───────────────────────────────────────────────────
 
     /**
-     * Initialize the encrypted store.
-     *
-     * Must be called once before any other operations.
-     * After this, `#ready` is true.
+     * Synchronous init for tests (or legacy callers). Production boot uses
+     * {@link initAsync} so the heavy decrypt never blocks shell startup.
+     * Skips the file load; callers testing load behaviour should use the
+     * async path with a real on-disk fixture.
      *
      * @param testKey — Optional 32-byte key for testing (skips secret service).
      */
     init(testKey?: Uint8Array): void {
         if (this.#ready) return;
+        this.#setupKey(testKey);
+        this.#migrateLegacyJson();
+        this.#migrateLegacyImages();
+        this.#ready = true;
+        logger.info('clipboard', `store initialised (${this.#entries.length} entries)`);
+    }
 
+    /**
+     * Production async init: set up the key, load and decrypt the history
+     * file, merge any entries buffered meanwhile, then mark ready. Safe to
+     * call multiple times (idempotent, deduped via #initPromise).
+     */
+    initAsync(): Promise<void> {
+        if (this.#ready) return Promise.resolve();
+        if (this.#initPromise) return this.#initPromise;
+        this.#initPromise = this.#doInitAsync();
+        return this.#initPromise;
+    }
+
+    async #doInitAsync(): Promise<void> {
+        this.#setupKey();
+        this.#migrateLegacyJson();
+        await this.#loadEncryptedFile();
+        if (this.#pending.length > 0) {
+            this.#entries = [...this.#pending, ...this.#entries];
+            this.#pending = [];
+            this.#dirty = true;
+        }
+        this.#migrateLegacyImages();
+        this.#ready = true;
+        logger.info('clipboard', `store initialised (${this.#entries.length} entries)`);
+        if (this.#dirty) this.#save();
+    }
+
+    #setupKey(testKey?: Uint8Array): void {
+        if (this.#encryptionKey) return;
         if (testKey) {
             this.#encryptionKey = testKey;
             this.#keyPersistent = true;
@@ -91,14 +147,9 @@ export class EncryptedStore extends Object {
             this.#encryptionKey = getKey();
             this.#keyPersistent = isKeyPersistent();
         }
-        this.#migrateLegacyJson();
-        this.#loadEncryptedFile();
-        this.#migrateLegacyImages();
-        this.#ready = true;
-        logger.info('clipboard', `store initialised (${this.#entries.length} entries)`);
     }
 
-    /** True after `init()` has been called successfully. */
+    /** True after init/initAsync has completed. */
     get ready(): boolean {
         return this.#ready;
     }
@@ -134,9 +185,15 @@ export class EncryptedStore extends Object {
      * If the clipboard contains both text _and_ image for the same copy,
      * both entries are kept (different types, both valid). Move-to-front
      * dedup prevents the type-specific duplicates that wl-paste can emit.
+     *
+     * Before the initial load completes, entries are buffered in #pending
+     * (never lost, no throw) and merged by initAsync.
      */
     addEntry(entry: ClipboardEntry): void {
-        this.#ensureReady();
+        if (!this.#ready) {
+            this.#pending.push(entry);
+            return;
+        }
 
         // Move-to-front dedup — find matching content of the same type
         const dupIdx = this.#entries.findIndex(
@@ -155,7 +212,7 @@ export class EncryptedStore extends Object {
         // New entry — insert at front
         this.#entries.unshift(entry);
 
-        // Evict oldest unpinned entries if over limit
+        // Fast-path eviction for the count cap (size eviction runs in flush)
         if (this.#entries.length > MAX_HISTORY) {
             let toEvict = this.#entries.length - MAX_HISTORY;
             for (let i = this.#entries.length - 1; i >= 0 && toEvict > 0; i--) {
@@ -195,24 +252,35 @@ export class EncryptedStore extends Object {
     }
 
     /**
-     * Shut down (save then release key). Safe to call multiple times.
+     * Shut down: cancel any pending debounce, flush pending changes to disk,
+     * then release the key. Safe to call multiple times.
      */
-    shutdown(): void {
+    async shutdown(): Promise<void> {
         if (!this.#ready) return;
-        this.#save();
+        this.#saveTimer.cancel();
+        await this.#flushSave();
         this.#encryptionKey = null;
         this.#entries = [];
+        this.#pending = [];
+        this.#dirty = false;
+        this.#savePending = false;
         this.#ready = false;
     }
 
     /**
      * Reset internal state for testing. Clears entries and removes the
-     * encrypted file so the next `init()` starts fresh.
+     * encrypted file so the next init() starts fresh.
      */
     testReset(): void {
+        this.#saveTimer.cancel();
         this.#entries = [];
+        this.#pending = [];
         this.#encryptionKey = null;
         this.#ready = false;
+        this.#dirty = false;
+        this.#savePending = false;
+        this.#flushInFlight = false;
+        this.#initPromise = null;
         try {
             Gio.File.new_for_path(HISTORY_FILE).delete(null);
         } catch {
@@ -232,9 +300,107 @@ export class EncryptedStore extends Object {
         this.entriesChanged();
     }
 
+    // ── Debounced persistence ────────────────────────────────────────────
+
+    /**
+     * Mark the store dirty and schedule a flush. Bursts of mutations are
+     * coalesced into a single debounced write.
+     */
+    #save(): void {
+        this.#dirty = true;
+        if (this.#savePending) return;
+        this.#savePending = true;
+        this.#saveTimer.start(SAVE_DEBOUNCE_MS, () => {
+            void this.#flushSave();
+        });
+    }
+
+    /**
+     * Evict oldest unpinned entries until both caps hold, and return the
+     * final serialized JSON bytes. Pinned entries are never evicted.
+     */
+    #evictForFlush(): Uint8Array {
+        const entries = this.#entries;
+        const encoder = new TextEncoder();
+
+        // Count cap — scan from oldest (end) toward newest, evict unpinned
+        if (entries.length > MAX_HISTORY) {
+            let toEvict = entries.length - MAX_HISTORY;
+            for (let i = entries.length - 1; i >= 0 && toEvict > 0; i--) {
+                if (!entries[i]!.pinned) {
+                    entries.splice(i, 1);
+                    toEvict--;
+                }
+            }
+        }
+
+        let jsonBytes = encoder.encode(JSON.stringify({entries}));
+
+        // Byte cap — precompute per-entry sizes so we evict without
+        // re-serializing the whole array on every removal
+        if (jsonBytes.length > MAX_TOTAL_BYTES) {
+            const sizes = entries.map((e) => encoder.encode(JSON.stringify(e)).length + 2);
+            let total = jsonBytes.length;
+            for (let i = entries.length - 1; i >= 0 && total > MAX_TOTAL_BYTES; i--) {
+                if (!entries[i]!.pinned) {
+                    total -= sizes[i]!;
+                    entries.splice(i, 1);
+                    sizes.splice(i, 1);
+                }
+            }
+            jsonBytes = encoder.encode(JSON.stringify({entries}));
+        }
+
+        if (entries.length > MAX_HISTORY || jsonBytes.length > MAX_TOTAL_BYTES) {
+            logger.warn(
+                'clipboard',
+                `history size cap reached; kept ${entries.length} entries (${jsonBytes.length} bytes) — pinned entries retained`
+            );
+        }
+
+        return jsonBytes;
+    }
+
+    /**
+     * Encrypt and persist the current entries (debounced). Captures the key
+     * at start so a concurrent shutdown() can't null it mid-flush.
+     */
+    async #flushSave(): Promise<void> {
+        if (this.#flushInFlight) return;
+        this.#flushInFlight = true;
+        this.#saveTimer.cancel();
+        try {
+            const key = this.#encryptionKey;
+            if (!key || !this.#keyPersistent) return;
+            const jsonBytes = this.#evictForFlush();
+            this.#dirty = false;
+            const sealed = await encryptNative(key, jsonBytes);
+            const output = serializeV3(sealed);
+            GLib.mkdir_with_parents(DATA_DIR, 0o755);
+            GLib.file_set_contents(HISTORY_FILE, output);
+            this.#emitChanged();
+            logger.debug(
+                'clipboard',
+                `saved ${this.#entries.length} entries (${output.length} bytes)`
+            );
+        } catch (e) {
+            logger.error('clipboard', 'failed to save encrypted history:', e);
+        } finally {
+            this.#flushInFlight = false;
+            this.#savePending = false;
+            if (this.#dirty) {
+                // Mutations arrived during the async flush — write again
+                this.#savePending = true;
+                this.#saveTimer.start(SAVE_DEBOUNCE_MS, () => {
+                    void this.#flushSave();
+                });
+            }
+        }
+    }
+
     // ── Encrypted file I/O ────────────────────────────────────────────────
 
-    #loadEncryptedFile(): void {
+    async #loadEncryptedFile(): Promise<void> {
         const file = Gio.File.new_for_path(HISTORY_FILE);
         if (!file.query_exists(null)) {
             logger.info('clipboard', 'no history file yet, starting fresh');
@@ -260,26 +426,34 @@ export class EncryptedStore extends Object {
             // Verify version
             const version = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
             if (version !== VERSION) {
-                logger.warn('clipboard', `unsupported file version: ${version}`);
-                // Don't clear — old version might still be readable
+                // v2 GCM blobs are intentionally NOT migrated: decrypting them
+                // needs the removed pure-JS AES (~2.8 MB/s — the original
+                // 62 s startup freeze). Delete and start fresh.
+                logger.warn(
+                    'clipboard',
+                    `unsupported file version ${version}, resetting history ` +
+                        '(legacy encrypted blobs are not migrated)'
+                );
+                file.delete(null);
                 return;
             }
 
-            // Parse layout
-            const nonce = data.subarray(8, 8 + NONCE_SIZE);
-            const ciphertext = data.subarray(8 + NONCE_SIZE, data.length - TAG_SIZE);
-            const tag = data.subarray(data.length - TAG_SIZE);
+            // v3 layout: [magic 4][version 4][nonceLen 1][nonce][macLen 1][mac][ciphertext]
+            let off = 8;
+            const nonceLen = data[off]!;
+            off += 1;
+            const nonce = data.subarray(off, off + nonceLen);
+            off += nonceLen;
+            const macLen = data[off]!;
+            off += 1;
+            const mac = data.subarray(off, off + macLen);
+            off += macLen;
+            const ciphertext = data.subarray(off);
 
-            // Reconstruct [nonce][ciphertext][tag] for decrypt
-            const decryptInput = new Uint8Array(NONCE_SIZE + ciphertext.length + TAG_SIZE);
-            decryptInput.set(nonce);
-            decryptInput.set(ciphertext, NONCE_SIZE);
-            decryptInput.set(tag, NONCE_SIZE + ciphertext.length);
-
-            const decrypted = decrypt(this.#encryptionKey!, decryptInput);
+            const plaintext = await decryptNative(this.#encryptionKey!, {nonce, ciphertext, mac});
 
             const decoder = new TextDecoder();
-            const parsed: {entries: ClipboardEntry[]} = JSON.parse(decoder.decode(decrypted));
+            const parsed: {entries: ClipboardEntry[]} = JSON.parse(decoder.decode(plaintext));
             this.#entries = parsed.entries || [];
             logger.info('clipboard', `loaded ${this.#entries.length} entries`);
         } catch (e) {
@@ -292,53 +466,6 @@ export class EncryptedStore extends Object {
                 file.delete(null);
             }
             this.#entries = [];
-        }
-    }
-
-    #save(): void {
-        if (!this.#encryptionKey) {
-            logger.warn('clipboard', 'no encryption key, skipping save');
-            return;
-        }
-        if (!this.#keyPersistent) {
-            logger.debug('clipboard', 'ephemeral key, skipping persist');
-            return;
-        }
-
-        try {
-            GLib.mkdir_with_parents(DATA_DIR, 0o755);
-
-            const encoder = new TextEncoder();
-            const jsonBytes = encoder.encode(JSON.stringify({entries: this.#entries}));
-
-            const encrypted = encrypt(this.#encryptionKey!, jsonBytes);
-
-            const nonce = encrypted.subarray(0, NONCE_SIZE);
-            const ciphertext = encrypted.subarray(NONCE_SIZE, encrypted.length - TAG_SIZE);
-            const tag = encrypted.subarray(encrypted.length - TAG_SIZE);
-
-            const output = new Uint8Array(4 + 4 + NONCE_SIZE + ciphertext.length + TAG_SIZE);
-            // Magic
-            output[0] = (MAGIC >>> 24) & 0xff;
-            output[1] = (MAGIC >>> 16) & 0xff;
-            output[2] = (MAGIC >>> 8) & 0xff;
-            output[3] = MAGIC & 0xff;
-            // Version
-            output[4] = (VERSION >>> 24) & 0xff;
-            output[5] = (VERSION >>> 16) & 0xff;
-            output[6] = (VERSION >>> 8) & 0xff;
-            output[7] = VERSION & 0xff;
-            // Nonce
-            output.set(nonce, 8);
-            // Ciphertext
-            output.set(ciphertext, 8 + NONCE_SIZE);
-            // Tag
-            output.set(tag, 8 + NONCE_SIZE + ciphertext.length);
-
-            GLib.file_set_contents(HISTORY_FILE, output);
-            this.#emitChanged();
-        } catch (e) {
-            logger.error('clipboard', 'failed to save encrypted history:', e);
         }
     }
 
@@ -411,11 +538,40 @@ export class EncryptedStore extends Object {
     }
 }
 
+/** Serialize a SealedBlob to the v3 on-disk layout (magic/version BE). */
+function serializeV3(sealed: SealedBlob): Uint8Array {
+    const out = new Uint8Array(
+        4 + 4 + 1 + sealed.nonce.length + 1 + sealed.mac.length + sealed.ciphertext.length
+    );
+    let o = 0;
+    // Magic (BE — spells "SHED")
+    out[o++] = (MAGIC >>> 24) & 0xff;
+    out[o++] = (MAGIC >>> 16) & 0xff;
+    out[o++] = (MAGIC >>> 8) & 0xff;
+    out[o++] = MAGIC & 0xff;
+    // Version
+    out[o++] = (VERSION >>> 24) & 0xff;
+    out[o++] = (VERSION >>> 16) & 0xff;
+    out[o++] = (VERSION >>> 8) & 0xff;
+    out[o++] = VERSION & 0xff;
+    // Nonce (length-prefixed)
+    out[o++] = sealed.nonce.length;
+    out.set(sealed.nonce, o);
+    o += sealed.nonce.length;
+    // MAC (length-prefixed)
+    out[o++] = sealed.mac.length;
+    out.set(sealed.mac, o);
+    o += sealed.mac.length;
+    // Ciphertext
+    out.set(sealed.ciphertext, o);
+    return out;
+}
+
 // ── Convenience singleton re-exports ─────────────────────────────────────────
 // These match the previous function-based API so consumers don't break.
 
 export function initStore(): void {
-    EncryptedStore.get_default().init();
+    void EncryptedStore.get_default().initAsync();
 }
 
 export function getAllEntries(): ClipboardEntry[] {
@@ -446,6 +602,6 @@ export function getEntry(id: string): ClipboardEntry | null {
     return EncryptedStore.get_default().getEntry(id);
 }
 
-export function shutdownStore(): void {
-    EncryptedStore.get_default().shutdown();
+export function shutdownStore(): Promise<void> {
+    return EncryptedStore.get_default().shutdown();
 }

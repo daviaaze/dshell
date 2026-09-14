@@ -41,12 +41,15 @@ const createLocks = (onUnlock: () => void) => {
 
     const doUnlock = () => {
         cleanupAll();
-        lockService.unlock();
-        for (const w of WindowManager.get_default().lockscreens) {
-            w.close();
-        }
         bus.emit('shell:unlock');
+        // Destroy the gnim window tree FIRST while the Wayland session is still
+        // valid: gtk4-session-lock frees the xx_session during unlock(), and any
+        // later window teardown (remove_from_session) dereferences the freed
+        // session (SEGV_MAPERR in gdk_wayland_toplevel_remove_from_session).
+        // The library's clear_lock_state() then no-ops on the already-destroyed
+        // windows (parentless/unrealized guards) instead of double-destroying.
         onUnlock();
+        lockService.unlock();
     };
 
     GObject.signal_connect(authSession, 'success', () => doUnlock());

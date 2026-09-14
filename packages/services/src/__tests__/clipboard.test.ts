@@ -7,6 +7,7 @@
 
 import type {ClipboardEntry} from '../clipboard/encryptedStore';
 import {EncryptedStore} from '../clipboard/encryptedStore';
+import {decryptNative, encryptNative} from '../clipboard/nativeCrypto';
 import {describe, expect, it, run} from './test-runner';
 
 /** Valid 32-byte AES-256 key for testing. */
@@ -187,7 +188,39 @@ describe('EncryptedStore', () => {
         expect(remaining[0]!.pinned).toBe(true);
     });
 
-    it('entriesChanged signal fires on addEntry', () => {
+    it('caps history at MAX_HISTORY=500 keeping newest + pinned', () => {
+        const store = freshStore();
+        // Pin an early entry — it must survive count eviction.
+        store.addEntry({
+            id: 'pinned-old',
+            type: 'text',
+            content: 'pinned survivor',
+            mimeType: 'text/plain',
+            timestamp: 1,
+            pinned: true,
+        });
+        // Add 600 distinct text entries (601 total with the pinned one).
+        for (let i = 0; i < 600; i++) {
+            store.addEntry({
+                id: `entry-${i}`,
+                type: 'text',
+                content: `content-${i}`,
+                mimeType: 'text/plain',
+                timestamp: 1000 + i,
+                pinned: false,
+            });
+        }
+        const entries = store.getAllEntries();
+        expect(entries.length).toBe(500);
+        // Newest entry is at the front.
+        expect(entries[0]!.content).toBe('content-599');
+        // Pinned entry survived eviction.
+        expect(store.getEntry('pinned-old')!.pinned).toBe(true);
+        // Oldest unpinned entries were evicted.
+        expect(store.getEntry('content-0')).toBeNull();
+    });
+
+    it.async('entriesChanged signal fires when a flush persists', async () => {
         const store = freshStore();
         let signalFired = false;
         (store as unknown as {connect(s: string, cb: () => void): number}).connect(
@@ -204,7 +237,37 @@ describe('EncryptedStore', () => {
             timestamp: 1000,
             pinned: false,
         });
+        // Debounce never fires without a main loop in tests — flush via
+        // shutdown, which is the same write path.
+        await store.shutdown();
         expect(signalFired).toBe(true);
+    });
+});
+
+describe('NativeCrypto', () => {
+    it.async('round-trips plaintext through AES-256-CTR + HMAC-SHA256', async () => {
+        const key = new Uint8Array(32).fill(0x42);
+        const plaintext = new TextEncoder().encode('native crypto roundtrip');
+        const sealed = await encryptNative(key, plaintext);
+        expect(sealed.nonce.length).toBe(16);
+        expect(sealed.mac.length).toBe(32);
+        const decrypted = await decryptNative(key, sealed);
+        expect(new TextDecoder().decode(decrypted)).toBe('native crypto roundtrip');
+    });
+
+    it.async('rejects tampered ciphertext (MAC mismatch)', async () => {
+        const key = new Uint8Array(32).fill(0x42);
+        const plaintext = new TextEncoder().encode('tamper me');
+        const sealed = await encryptNative(key, plaintext);
+        // Flip one ciphertext byte — decrypt must fail auth before decrypting.
+        sealed.ciphertext[0] = (sealed.ciphertext[0]! ^ 0xff) & 0xff;
+        let threw = false;
+        try {
+            await decryptNative(key, sealed);
+        } catch {
+            threw = true;
+        }
+        expect(threw).toBe(true);
     });
 });
 
