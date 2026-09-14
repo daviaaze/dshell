@@ -22,6 +22,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {getApp} from '@shade/services/appHandle';
 import {getHyprland} from '@shade/services/hyprland';
 import {barSettings} from '@shade/services/settings/bar.gschema';
+import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, createState, type JSX} from 'gnim';
 
 // ── Types ──
@@ -134,7 +135,7 @@ export default (props: PopupWindowProps) => {
     const barCfg = barSettings();
     const hyprland = getHyprland();
     if (!hyprland) return null;
-    const defaultMon = bind(hyprland, 'focused-monitor').as((m) => m.id);
+    const defaultMon = bind(hyprland, 'focused-monitor').as((m) => monitorIndexFromHyprland(m));
 
     // Resolve anchor
     let anchorValue: Accessor<number> | number;

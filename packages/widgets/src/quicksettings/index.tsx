@@ -7,6 +7,7 @@ import {getHyprland} from '@shade/services/hyprland';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
+import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {bind} from 'gnim';
 import {ButtonGrid} from './button-grid/index';
 import {DisplaySection} from './display';
@@ -53,7 +54,7 @@ export default () => {
             css={'background-color: transparent;'}
             anchor={barCfg.position.as((p) => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM)}
             widthRequest={QUICKSETTINGS_WIDTH}
-            monitor={bind(hyprland, 'focused-monitor').as((m) => m.id)}
+            monitor={bind(hyprland, 'focused-monitor').as((m) => monitorIndexFromHyprland(m))}
         >
             <Gtk.Box
                 cssClasses={['card']}
@@ -66,23 +67,23 @@ export default () => {
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vexpand
                 >
-                <Gtk.Box
-                    spacing={QUICKSETTINGS_SPACING}
-                    marginTop={16}
-                    marginBottom={16}
-                    marginStart={16}
-                    marginEnd={16}
-                    orientation={Gtk.Orientation.VERTICAL}
-                >
-                    <ButtonGrid />
-                    <DisplaySection />
-                    <BrightnessSlider />
-                    <AudioConfig />
-                    <MicConfig />
-                    <TrayBox />
-                    <Expander />
-                    <NotificationList />
-                </Gtk.Box>
+                    <Gtk.Box
+                        spacing={QUICKSETTINGS_SPACING}
+                        marginTop={16}
+                        marginBottom={16}
+                        marginStart={16}
+                        marginEnd={16}
+                        orientation={Gtk.Orientation.VERTICAL}
+                    >
+                        <ButtonGrid />
+                        <DisplaySection />
+                        <BrightnessSlider />
+                        <AudioConfig />
+                        <MicConfig />
+                        <TrayBox />
+                        <Expander />
+                        <NotificationList />
+                    </Gtk.Box>
                 </Gtk.ScrolledWindow>
             </Gtk.Box>
         </Astal.Window>
