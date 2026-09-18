@@ -1,5 +1,6 @@
 import GLib from 'gi://GLib?version=2.0';
 import {type Accessor, createState} from 'gnim';
+import logger from '@shade/core/logger';
 
 /**
  * Shared wall-clock state.
@@ -25,6 +26,7 @@ export default class Clock {
     #setTime: (v: GLib.DateTime) => void;
     #wallTime: Accessor<GLib.DateTime>;
     #setWallTime: (v: GLib.DateTime) => void;
+    #tickTimer: number | null = null;
     #wallTimer: number | null = null;
 
     constructor() {
@@ -37,8 +39,12 @@ export default class Clock {
         this.#setWallTime = setWallTime;
 
         // 1Hz tick — powers the active timer countdown.
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-            this.#setTime(GLib.DateTime.new_now_local()!);
+        this.#tickTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            try {
+                this.#setTime(GLib.DateTime.new_now_local()!);
+            } catch (e) {
+                logger.error('clock', '1Hz tick failed:', e);
+            }
             return GLib.SOURCE_CONTINUE;
         });
 
@@ -61,7 +67,11 @@ export default class Clock {
     #startWallTimer(): void {
         if (this.#wallTimer !== null) return;
         this.#wallTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Clock.WALL_INTERVAL_MS, () => {
-            this.#setWallTime(GLib.DateTime.new_now_local()!);
+            try {
+                this.#setWallTime(GLib.DateTime.new_now_local()!);
+            } catch (e) {
+                logger.error('clock', 'wall tick failed:', e);
+            }
             return GLib.SOURCE_CONTINUE;
         });
     }

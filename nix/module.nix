@@ -138,6 +138,7 @@ in
       })
       (lib.mkIf cfg.greeter.enable {
         security.pam.services.greetd.enableGnomeKeyring = true;
+        services.gnome-keyring.enable = true;
         # AccountsService daemon provides user metadata (avatars, real names)
         # for the greeter user picker. The module wires up D-Bus activation,
         # the systemd unit, and polkit rules.
@@ -148,15 +149,17 @@ in
         ];
         services.greetd = {
           enable = true;
-          settings.default_session = let
-            greeterSession = pkgs.writeShellScript "shade-greeter-session" ''
-              export SHADE_SESSION_COMMAND=${lib.escapeShellArg cfg.greeter.sessionCommand}
-              exec ${pkgs.cage}/bin/cage -s -- ${cfg.greeter.package}/bin/shade-shell-greet
-            '';
-          in {
-            command = "${greeterSession}";
-            user = "greeter";
-          };
+          settings.default_session =
+            let
+              greeterSession = pkgs.writeShellScript "shade-greeter-session" ''
+                export SHADE_SESSION_COMMAND=${lib.escapeShellArg cfg.greeter.sessionCommand}
+                exec ${pkgs.cage}/bin/cage -s -- ${cfg.greeter.package}/bin/shade-shell-greet
+              '';
+            in
+            {
+              command = "${greeterSession}";
+              user = "greeter";
+            };
         };
       })
     ]

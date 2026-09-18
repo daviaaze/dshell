@@ -20,6 +20,7 @@ export default class NetworkService extends Object {
     #wifiSignalIds: number[] = [];
     #initialized = false;
     #busInitialized = false;
+    #lastToggleMs = 0;
 
     static get_default(): NetworkService {
         if (!_instance) _instance = new NetworkService();
@@ -58,8 +59,17 @@ export default class NetworkService extends Object {
 
     /** Toggle wifi on/off. */
     toggleWifi(): void {
-        if (this.#wifi) {
+        if (!this.#wifi) {
+            logger.warn('networkService', 'toggleWifi: wifi proxy not ready');
+            return;
+        }
+        const now = Date.now();
+        if (now - this.#lastToggleMs < 500) return;
+        this.#lastToggleMs = now;
+        try {
             this.#wifi.enabled = !this.#wifi.enabled;
+        } catch (e) {
+            logger.error('networkService', 'toggleWifi failed:', e);
         }
     }
 
@@ -91,7 +101,7 @@ export default class NetworkService extends Object {
 
     #onWifiChanged(): void {
         const newWifi = this.#network?.wifi ?? null;
-        
+
         // Only rebuild signal handlers if the wifi device reference actually changed
         if (newWifi !== this.#wifi) {
             this.#cleanupWifiSignals();

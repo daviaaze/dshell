@@ -1,3 +1,5 @@
+import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {Object, register} from 'gnim/gobject';
@@ -5,8 +7,9 @@ import {bus} from '../bus';
 import {defineService} from '@shade/core/define';
 
 /**
- * Encapsulates power/session shell commands.
- * Widgets call semantic methods; this service owns the Process.exec calls.
+ * Encapsulates power/session actions.
+ * Widgets call semantic methods; power state changes go to logind over
+ * D-Bus, logout shells out to loginctl.
  */
 @register
 export default class SessionControl extends Object {
@@ -28,6 +31,25 @@ export default class SessionControl extends Object {
         this.#busSubscriptions.push(bus.on('power:cmd:poweroff', () => this.powerOff()));
     }
 
+    /** Change power state via systemd-logind on the system bus. */
+    #callLogind(method: 'PowerOff' | 'Reboot' | 'Suspend') {
+        try {
+            Gio.DBus.system.call_sync(
+                'org.freedesktop.login1',
+                '/org/freedesktop/login1',
+                'org.freedesktop.login1.Manager',
+                method,
+                new GLib.Variant('(b)', [false]),
+                null,
+                Gio.DBusCallFlags.NONE,
+                -1,
+                null
+            );
+        } catch (e) {
+            logger.error('session', `logind ${method} failed:`, e);
+        }
+    }
+
     /** Log out the current session via logind. */
     logout() {
         try {
@@ -43,31 +65,19 @@ export default class SessionControl extends Object {
         }
     }
 
-    /** Suspend the system via systemd. */
+    /** Suspend the system via logind. */
     suspend() {
-        try {
-            Process.exec('systemctl suspend');
-        } catch (e) {
-            logger.error('session', 'systemctl suspend failed:', e);
-        }
+        this.#callLogind('Suspend');
     }
 
-    /** Reboot the system via systemd. */
+    /** Reboot the system via logind. */
     reboot() {
-        try {
-            Process.exec('systemctl reboot');
-        } catch (e) {
-            logger.error('session', 'systemctl reboot failed:', e);
-        }
+        this.#callLogind('Reboot');
     }
 
-    /** Power off the system via systemd. */
+    /** Power off the system via logind. */
     powerOff() {
-        try {
-            Process.exec('systemctl poweroff');
-        } catch (e) {
-            logger.error('session', 'systemctl poweroff failed:', e);
-        }
+        this.#callLogind('PowerOff');
     }
 }
 defineService({name: 'SessionControl', service: SessionControl.get_default()});

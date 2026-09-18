@@ -12,12 +12,19 @@ import {AP_ICON_SIZE, AP_TRASH_ICON_SIZE} from './utils';
 
 // ── Operation guard: prevent concurrent WiFi operations ──
 let _opInProgress = false;
+const OP_TIMEOUT_MS = 15_000;
 
 async function guardedOp(fn: () => Promise<void>): Promise<void> {
     if (_opInProgress) return;
     _opInProgress = true;
     try {
-        await fn();
+        const {promise, reject} = Promise.withResolvers<never>();
+        const timer = setTimeout(
+            () => reject(new Error('WiFi operation timed out')),
+            OP_TIMEOUT_MS
+        );
+        await Promise.race([fn(), promise]);
+        clearTimeout(timer);
     } finally {
         _opInProgress = false;
     }
