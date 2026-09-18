@@ -138,7 +138,7 @@ in
       })
       (lib.mkIf cfg.greeter.enable {
         security.pam.services.greetd.enableGnomeKeyring = true;
-        services.gnome-keyring.enable = true;
+        services.gnome.gnome-keyring.enable = true;
         # AccountsService daemon provides user metadata (avatars, real names)
         # for the greeter user picker. The module wires up D-Bus activation,
         # the systemd unit, and polkit rules.
