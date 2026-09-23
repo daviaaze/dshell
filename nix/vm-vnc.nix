@@ -5,33 +5,33 @@ let
 in
 {
   imports = [
-    inputs.hyprland.nixosModules.default
+    # inputs.self.nixosModules.default already imports the hyprland nixos
+    # module (via ./module.nix), so importing it again here double-declares
+    # every programs.hyprland.* option.
     inputs.self.nixosModules.default
+    # nixpkgs >= 25.05 stopped importing qemu-vm.nix by default (it now only
+    # appears in documentation.extraModules); import it explicitly or every
+    # virtualisation.* VM option is undefined.
+    "${inputs.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix"
   ];
 
   # === VM hardware ===
   virtualisation = {
     memorySize = 4096;
     cores = 4;
-    qemu = {
-      graphics = true;
-      videoDriver = "virtio-vga";
-      display = "gtk";
-      options = [
-        # VNC server on port 5900
-        "-vnc :0"
-        # virtio GPU with virgl for 3D acceleration (needed by Hyprland)
-        "-device virtio-vga-gl"
-        "-display gtk,gl=on"
-        # USB tablet for proper cursor tracking
-        "-usb"
-        "-device usb-tablet"
-        # Audio
-        "-audiodev pa,id=pa0"
-        "-device intel-hda"
-        "-device hda-duplex,audiodev=pa0"
-      ];
-    };
+    graphics = true;
+    qemu.options = [
+      # virtio GPU with virgl; requires a GL display backend (egl-headless
+      # in the headless run)
+      "-device virtio-vga-gl"
+      # USB tablet for proper cursor tracking
+      "-usb"
+      "-device usb-tablet"
+      # Audio
+      "-audiodev pa,id=pa0"
+      "-device intel-hda"
+      "-device hda-duplex,audiodev=pa0"
+    ];
   };
 
   # === SSH for headless test commands ===
@@ -61,13 +61,8 @@ in
   };
 
   # Ensure the greeter user exists (greetd needs it)
-  users.users.greeter = {
-    isNormalUser = true;
-    description = "greetd greeter user";
-    group = "greeter";
-  };
-  users.groups.greeter = {};
-
+  # The greetd NixOS module already defines users.users.greeter
+  # (isSystemUser) — do not redeclare it here.
   # === Shade shell ===
   programs.shade = {
     enable = true;
@@ -95,7 +90,7 @@ in
           vrr = 0;
         };
         env = [
-          "AQ_DRM_DEVICES,/dev/dri/renderD128"
+          "AQ_DRM_DEVICES,/dev/dri/card0"
         ];
       };
     };
@@ -149,7 +144,7 @@ in
     adwaita-fonts
     google-fonts
     noto-fonts
-    noto-fonts-emoji
+    noto-fonts-color-emoji
   ];
 
   # === Nix settings ===
