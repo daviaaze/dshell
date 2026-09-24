@@ -19,6 +19,7 @@ const PAM_TIMEOUT_MS = 10000;
 export default class AuthSession extends Object {
     #pam: AstalAuth.Pam;
     #pamActive = false;
+    #disposed = false;
     #pendingPassword = '';
     #pamTimeout = new Timeout();
     #pamSignalIds: number[] = [];
@@ -65,32 +66,39 @@ export default class AuthSession extends Object {
 
     #setupPam() {
         const onSuccess = () => {
-            if (!this.#pamActive) return;
+            if (!this.#pamActive || this.#disposed) return;
             this.#pamActive = false;
-            this.#pamTimeout.cancel();
+            this.#pendingPassword = '';
             this.#complete();
             this.success();
         };
 
         const onFail = (_pam: AstalAuth.Pam, msg: string) => {
-            if (!this.#pamActive) return;
+            if (!this.#pamActive || this.#disposed) return;
             this.#pamActive = false;
+            this.#pendingPassword = '';
             this.#pamTimeout.cancel();
             logger.debug('auth', 'PAM auth failed:', msg);
             this.authStatus = 'Authentication failed';
         };
 
         const onError = (_pam: AstalAuth.Pam, msg: string) => {
-            if (!this.#pamActive) return;
+            if (!this.#pamActive || this.#disposed) return;
             this.#pamActive = false;
+            this.#pendingPassword = '';
             this.#pamTimeout.cancel();
             logger.debug('auth', 'PAM auth error:', msg);
             this.authStatus = msg || 'Authentication error';
-            this.#pam.supply_secret(null);
+            try {
+                this.#pam.supply_secret(null);
+            } catch (e) {
+                logger.debug('auth', 'could not clear PAM secret after auth error:', e);
+            }
         };
 
         this.#pamSignalIds = [
             this.#pam.connect('auth-prompt-hidden', () => {
+                if (!this.#pamActive || this.#disposed) return;
                 this.#pam.supply_secret(this.#pendingPassword);
             }),
             this.#pam.connect('success', onSuccess),
@@ -112,16 +120,17 @@ export default class AuthSession extends Object {
 
     /** Attempt unlock with a password. */
     submitPassword(password: string) {
-        if (this.#pamActive) return;
+        if (this.#pamActive || this.#disposed) return;
         this.#pendingPassword = password;
         this.authStatus = 'Authenticating...';
         this.#pamActive = true;
-        this.#pam.start_authenticate();
-
+        // Watchdog is started before PAM in case a terminal signal arrives synchronously.
         this.#pamTimeout.start(PAM_TIMEOUT_MS, () => {
-            this.#pamActive = false;
-            this.authStatus = 'Authentication timed out';
+            if (!this.#pamActive || this.#disposed) return;
+            // This only updates the UI; PAM remains active until a terminal signal.
+            this.authStatus = 'Authentication is taking longer…';
         });
+        this.#pam.start_authenticate();
     }
 
     // ── Fingerprint ──
@@ -200,7 +209,7 @@ export default class AuthSession extends Object {
 
     /** Start the auth session: save brightness, connect PAM + fingerprint. */
     async start(): Promise<void> {
-        if (this.#initialized) return;
+        if (this.#initialized || this.#disposed) return;
         this.#initialized = true;
         this.#saveBrightness();
         this.#setupPam();
@@ -209,7 +218,18 @@ export default class AuthSession extends Object {
 
     /** Cancel/cleanup the auth session. Safe to call multiple times. */
     cancel(): void {
+        if (this.#disposed) return;
+        this.#disposed = true;
+        this.#pendingPassword = '';
+        if (this.#pamActive) {
+            try {
+                this.#pam.supply_secret(null);
+            } catch (e) {
+                logger.debug('auth', 'could not clear secret while disposing PAM prompt:', e);
+            }
+        }
+        // AstalAuth exposes no conversation cancellation. Keep #pamActive truthful;
+        // disposal only stops this session from submitting secrets or handling events.
         this.#complete();
-        this.#restoreBrightness();
     }
 }

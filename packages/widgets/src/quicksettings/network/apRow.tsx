@@ -1,88 +1,211 @@
-import Network from 'gi://AstalNetwork';
+import type Network from 'gi://AstalNetwork';
 import Gdk from 'gi://Gdk?version=4.0';
 import type Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import type NM from 'gi://NM?version=1.0';
-import {toArray} from '@shade/core/gjsUtils';
+import NM from 'gi://NM?version=1.0';
 import logger from '@shade/core/logger';
 import {type Accessor, computed, createState} from 'gnim';
-import {type ApSnapshot, createNMConnection, findLiveAp, isSaved, signalIconName} from './utils';
-import {AP_ICON_SIZE, AP_TRASH_ICON_SIZE} from './utils';
+import {
+    type ApSnapshot,
+    bssidEquals,
+    bssidOf,
+    bytesToString,
+    commitChangesAsync,
+    createNMConnection,
+    deleteConnectionAsync,
+    signalIconName,
+    AP_ICON_SIZE,
+    AP_TRASH_ICON_SIZE,
+} from './utils';
 
 // ── Operation guard: prevent concurrent WiFi operations ──
 let _opInProgress = false;
-const OP_TIMEOUT_MS = 15_000;
 
 async function guardedOp(fn: () => Promise<void>): Promise<void> {
-    if (_opInProgress) return;
+    if (_opInProgress) throw new Error('Another Wi-Fi operation is already in progress');
     _opInProgress = true;
     try {
-        const {promise, reject} = Promise.withResolvers<never>();
-        const timer = setTimeout(
-            () => reject(new Error('WiFi operation timed out')),
-            OP_TIMEOUT_MS
-        );
-        await Promise.race([fn(), promise]);
-        clearTimeout(timer);
+        await fn();
     } finally {
         _opInProgress = false;
     }
 }
+
 interface ApRowProps {
     snap: ApSnapshot;
     wifi: Network.Wifi;
+    client: NM.Client;
+    connectionRevision: Accessor<number>;
     isActive: Accessor<boolean>;
     isConnecting: Accessor<boolean>;
     setConnectingAp: (v: string | null) => void;
 }
 
-// ── Connection / Forget helpers ──
+// ── NM operations ──
 
-async function connectViaNM(
+function currentAccessPoint(
     wifi: Network.Wifi,
-    apSsid: string,
-    secure: boolean,
-    password?: string
-): Promise<void> {
-    if (!apSsid || apSsid === 'Hidden Network') throw new Error('Network not found');
+    snap: ApSnapshot
+): {device: NM.DeviceWifi; ap: NM.AccessPoint} {
+    const device = (wifi.device as NM.DeviceWifi | null) ?? null;
+    if (!device) throw new Error('Wi-Fi device is no longer available');
 
-    if (!wifi.device) throw new Error('No WiFi device');
+    const ap = device.get_access_point_by_path(snap.objectPath);
+    if (!ap) throw new Error('Network is no longer available');
+    const currentBssid = bssidOf(ap);
+    if (snap.bssid && (!currentBssid || !bssidEquals(snap.bssid, currentBssid))) {
+        throw new Error('Network is no longer available');
+    }
 
-    const connection = createNMConnection(apSsid, secure ? password : undefined);
-    const client = Network.get_default().client as NM.Client;
+    return {device, ap};
+}
 
-    return new Promise((resolve, reject) => {
-        client.add_and_activate_connection_async(
-            connection,
-            wifi.device,
-            null,
-            null,
-            (_source: unknown, res: Gio.AsyncResult) => {
-                try {
-                    client.add_and_activate_connection_finish(res);
-                    resolve();
-                } catch (e) {
-                    reject(e);
-                }
-            }
-        );
+function savedConnectionsFor(
+    client: NM.Client,
+    ap: NM.AccessPoint,
+    ssid: string
+): NM.RemoteConnection[] {
+    return client.get_connections().filter((connection) => {
+        try {
+            const wireless = connection.get_setting_wireless();
+            return (
+                wireless !== null &&
+                bytesToString(wireless.ssid) === ssid &&
+                ap.connection_valid(connection)
+            );
+        } catch {
+            return false;
+        }
     });
 }
+
+function activationError(reason: number): Error {
+    const reasonName = Object.entries(NM.ActiveConnectionStateReason).find(
+        ([name, value]) => name === name.toUpperCase() && value === reason
+    )?.[0];
+    const detail = reasonName
+        ? reasonName.toLowerCase().replace(/_/g, ' ')
+        : `state reason ${reason}`;
+    return new Error(`NetworkManager could not activate the connection: ${detail}`);
+}
+
+function waitForActivation(active: NM.ActiveConnection): Promise<void> {
+    if (active.state === NM.ActiveConnectionState.ACTIVATED) return Promise.resolve();
+    if (active.state === NM.ActiveConnectionState.DEACTIVATED) {
+        return Promise.reject(activationError(NM.ActiveConnectionStateReason.UNKNOWN));
+    }
+
+    const {promise, resolve, reject} = Promise.withResolvers<void>();
+    let handlerId = 0;
+    let settled = false;
+    const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true;
+        try {
+            active.disconnect(handlerId);
+        } catch {
+            // The connection may already have been removed from NetworkManager.
+        }
+        if (error) reject(error);
+        else resolve();
+    };
+
+    handlerId = active.connect(
+        'state-changed',
+        (_active, state: number, reason: number) => {
+            if (state === NM.ActiveConnectionState.ACTIVATED) finish();
+            else if (state === NM.ActiveConnectionState.DEACTIVATED) {
+                finish(activationError(reason));
+            }
+        }
+    );
+
+    const state: number = active.state;
+    if (state === NM.ActiveConnectionState.ACTIVATED) finish();
+    else if (state === NM.ActiveConnectionState.DEACTIVATED) {
+        finish(activationError(NM.ActiveConnectionStateReason.UNKNOWN));
+    }
+    return promise;
+}
+function activateNMConnection(
+    client: NM.Client,
+    connection: NM.Connection,
+    device: NM.DeviceWifi,
+    objectPath: string,
+    addConnection: boolean
+): Promise<void> {
+    const {promise, resolve, reject} = Promise.withResolvers<void>();
+    const callback = (_source: unknown, result: Gio.AsyncResult) => {
+        let active: NM.ActiveConnection;
+        try {
+            active = addConnection
+                ? client.add_and_activate_connection_finish(result)
+                : client.activate_connection_finish(result);
+            if (!active) throw new Error('NetworkManager returned no active connection');
+        } catch (error) {
+            reject(error);
+            return;
+        }
+        waitForActivation(active).then(resolve, reject);
+    };
+
+    if (addConnection) {
+        client.add_and_activate_connection_async(connection, device, objectPath, null, callback);
+    } else {
+        client.activate_connection_async(connection, device, objectPath, null, callback);
+    }
+    return promise;
+}
+function deactivateNMConnection(
+    client: NM.Client,
+    active: NM.ActiveConnection
+): Promise<void> {
+    const {promise, resolve, reject} = Promise.withResolvers<void>();
+    client.deactivate_connection_async(active, null, (_source, result) => {
+        try {
+            if (!client.deactivate_connection_finish(result)) {
+                throw new Error('NetworkManager did not deactivate the connection');
+            }
+            resolve();
+        } catch (error) {
+            reject(error);
+        }
+    });
+    return promise;
+}
+
 
 interface ConnectState {
     lastConnectMs: number;
     setConnectingAp: (v: string | null) => void;
     setShowPassword: (v: boolean) => void;
     showPassword: Accessor<boolean>;
-    setPasswordError: (v: string | null) => void;
+    setOperationError: (v: string | null) => void;
+}
+
+function errorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    if (error && typeof error === 'object' && 'message' in error) {
+        const {message} = error as {message?: unknown};
+        if (typeof message === 'string') return message;
+    }
+    return String(error);
+}
+
+function runOperation(state: ConnectState, name: string, run: () => Promise<void>): void {
+    state.setOperationError(null);
+    void guardedOp(run).catch((error: unknown) => {
+        const message = errorMessage(error);
+        logger.warn('network', `${name} failed:`, message);
+        state.setOperationError(message || `${name} failed`);
+    });
 }
 
 function createDoConnect(
+    client: NM.Client,
     wifi: Network.Wifi,
-    apBssid: string | null,
-    apSsid: string,
-    secure: boolean,
+    snap: ApSnapshot,
     state: ConnectState
 ) {
     const DEBOUNCE_MS = 1500;
@@ -92,82 +215,109 @@ function createDoConnect(
         if (now - state.lastConnectMs < DEBOUNCE_MS) return;
         state.lastConnectMs = now;
 
-        state.setPasswordError(null);
+        runOperation(state, 'connect', async () => {
+            const {device, ap} = currentAccessPoint(wifi, snap);
+            if (!snap.ssid || snap.ssid === 'Hidden Network') {
+                throw new Error('Network name is hidden; use the Hidden Network action');
+            }
 
-        const run = async () => {
-            const liveAp = findLiveAp(wifi, apBssid, apSsid);
-
-            if (liveAp) {
-                if (apBssid) state.setConnectingAp(apBssid);
-
-                if (!secure) {
-                    liveAp.activate(null, null);
-                } else if (password !== undefined) {
-                    liveAp.activate(password || null, null);
-                } else if (isSaved(liveAp)) {
-                    liveAp.activate(null, null);
-                } else {
-                    state.setShowPassword(!state.showPassword());
-                    return;
-                }
-
-                state.setShowPassword(false);
+            const saved = savedConnectionsFor(client, ap, snap.ssid);
+            if (snap.secure && password === undefined && saved.length === 0) {
+                state.setShowPassword(!state.showPassword());
                 return;
             }
 
-            if (!apSsid || apSsid === 'Hidden Network') {
-                throw new Error('Network no longer available');
-            }
-
-            if (apBssid) state.setConnectingAp(apBssid);
-            await connectViaNM(wifi, apSsid, secure, password);
-            state.setShowPassword(false);
-        };
-
-        guardedOp(run)
-            .then(() => state.setConnectingAp(null))
-            .catch((e: Error) => {
-                state.setConnectingAp(null);
-                logger.warn('network', 'connect failed:', e.message);
-                state.setPasswordError(e.message || 'Connection failed');
-            });
-    };
-}
-
-function createDoForget(wifi: Network.Wifi, apBssid: string | null, apSsid: string) {
-    return async () => {
-        await guardedOp(async () => {
-            const liveAp = findLiveAp(wifi, apBssid, apSsid);
-            if (!liveAp) {
-                logger.warn('network', 'AP no longer available for forget');
-                return;
-            }
+            state.setConnectingAp(snap.bssid ?? snap.objectPath);
             try {
-                const conns = liveAp.get_connections();
-                if (!conns) return;
-                for (const conn of toArray<NM.RemoteConnection>(conns)) {
-                    conn.delete_async(null, (_source: unknown, res: Gio.AsyncResult) => {
-                        try {
-                            conn.delete_finish(res);
-                        } catch (e) {
-                            logger.error(
-                                'network',
-                                'forget failed:',
-                                e instanceof Error ? e.message : String(e)
-                            );
+                if (saved.length > 0) {
+                    const connection = saved[0];
+                    if (password !== undefined) {
+                        const security = connection.get_setting_wireless_security();
+                        if (!security) {
+                            throw new Error('Saved connection has no Wi-Fi password setting');
                         }
-                    });
+                        security.psk = password;
+                        await commitChangesAsync(connection, true);
+                    }
+
+                    try {
+                        await activateNMConnection(
+                            client,
+                            connection,
+                            device,
+                            snap.objectPath,
+                            false
+                        );
+                    } catch (error) {
+                        if (snap.secure && password === undefined) {
+                            state.setShowPassword(true);
+                        }
+                        throw error;
+                    }
+                } else {
+                    const connection = createNMConnection(
+                        snap.ssid,
+                        snap.secure ? password : undefined
+                    );
+                    await activateNMConnection(
+                        client,
+                        connection,
+                        device,
+                        snap.objectPath,
+                        true
+                    );
                 }
-            } catch (e) {
-                logger.error('network', 'forget error:', e);
+                state.setShowPassword(false);
+            } finally {
+                state.setConnectingAp(null);
             }
         });
     };
 }
 
+function createDoDisconnect(
+    client: NM.Client,
+    wifi: Network.Wifi,
+    snap: ApSnapshot,
+    state: ConnectState
+): () => void {
+    return () => {
+        runOperation(state, 'disconnect', async () => {
+            const {device} = currentAccessPoint(wifi, snap);
+            const active = device.get_active_connection();
+            if (!active || active.specificObjectPath !== snap.objectPath) {
+                throw new Error('Network is no longer active');
+            }
+
+            state.setConnectingAp(snap.bssid ?? snap.objectPath);
+            try {
+                await deactivateNMConnection(client, active);
+            } finally {
+                state.setConnectingAp(null);
+            }
+        });
+    };
+}
+
+function createDoForget(
+    client: NM.Client,
+    wifi: Network.Wifi,
+    snap: ApSnapshot,
+    state: ConnectState
+): () => void {
+    return () => {
+        runOperation(state, 'forget', async () => {
+            const {ap} = currentAccessPoint(wifi, snap);
+            const saved = savedConnectionsFor(client, ap, snap.ssid);
+            for (const connection of saved) {
+                await deleteConnectionAsync(connection);
+            }
+        });
+    };
+}
 // ── ApRow component ──
 
-function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps) {
+function ApRow({snap, wifi, client, connectionRevision, isActive, isConnecting, setConnectingAp}: ApRowProps) {
     const apSsid = snap.ssid;
     const apBssid = snap.bssid;
     const secure = snap.secure;
@@ -175,25 +325,30 @@ function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps
 
     const [showPassword, setShowPassword] = createState(false);
     const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(null);
-    const [passwordError, setPasswordError] = createState<string | null>(null);
+    const [operationError, setOperationError] = createState<string | null>(null);
     const [cooldown, setCooldown] = createState(false);
     const connectState: ConnectState = {
         lastConnectMs: 0,
         setConnectingAp,
         setShowPassword,
         showPassword,
-        setPasswordError,
+        setOperationError,
     };
 
-    const doConnect = createDoConnect(wifi, apBssid, apSsid, secure, connectState);
-    const doForget = createDoForget(wifi, apBssid, apSsid);
+    const doConnect = createDoConnect(client, wifi, snap, connectState);
+    const doDisconnect = createDoDisconnect(client, wifi, snap, connectState);
+    const doForget = createDoForget(client, wifi, snap, connectState);
 
     const notActive = computed(() => !isActive());
     const canForget = computed(() => {
+        connectionRevision();
         if (isActive()) return false;
-        const liveAp = findLiveAp(wifi, apBssid, apSsid);
-        if (!liveAp) return false;
-        return isSaved(liveAp);
+        try {
+            const {ap} = currentAccessPoint(wifi, snap);
+            return savedConnectionsFor(client, ap, apSsid).length > 0;
+        } catch {
+            return false;
+        }
     });
 
     const prefixIcon = secure
@@ -214,21 +369,11 @@ function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps
                             return GLib.SOURCE_REMOVE;
                         });
 
-                        if (isActive()) {
-                            try {
-                                wifi.deactivate_connection(null);
-                            } catch (e) {
-                                logger.error(
-                                    'network',
-                                    'deactivate failed:',
-                                    e instanceof Error ? e.message : String(e)
-                                );
-                            }
-                            return;
-                        }
-                        doConnect();
+                        if (isActive()) doDisconnect();
+                        else doConnect();
                     }}
                 >
+
                     <Gtk.Box spacing={12}>
                         <Gtk.Image iconName={prefixIcon} pixelSize={AP_ICON_SIZE} />
 
@@ -337,11 +482,11 @@ function ApRow({snap, wifi, isActive, isConnecting, setConnectingAp}: ApRowProps
             </Gtk.Revealer>
 
             <Gtk.Label
-                label={passwordError.as((e) => e ?? '')}
+                label={operationError.as((e) => e ?? '')}
                 cssClasses={['error', 'caption']}
                 marginStart={28}
                 marginBottom={4}
-                visible={passwordError.as((e) => e !== null)}
+                visible={operationError.as((e) => e !== null)}
                 wrap
             />
         </Gtk.Box>

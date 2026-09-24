@@ -1,0 +1,56 @@
+diff --git a/src/wifi.vala b/src/wifi.vala
+--- a/src/wifi.vala
++++ b/src/wifi.vala
+@@ -44,6 +44,13 @@
+     public signal void access_point_added(AccessPoint ap) ;
+     public signal void access_point_removed(AccessPoint ap) ;
+ 
++    private string _ap_key(NM.AccessPoint ap) {
++        var bssid = ap.bssid;
++        if (bssid != null && bssid.length > 0) return bssid;
++
++        return ap.get_path();
++    }
++
+     internal Wifi(NM.DeviceWifi device) {
+         this.device = device;
+ 
+@@ -50,5 +57,5 @@
+         foreach (var ap in device.access_points) {
+             var new_ap = new AccessPoint(this, ap);
+-            _access_points.set(ap.bssid, new_ap);
++            _access_points.set(_ap_key(ap), new_ap);
+             access_point_added(new_ap);
+         }
+@@ -56,7 +63,7 @@
+         device.access_point_added.connect((access_point) => {
+             var ap = (NM.AccessPoint)access_point;
+             var new_ap = new AccessPoint(this, ap);
+-            _access_points.set(ap.bssid, new_ap);
++            _access_points.set(_ap_key(ap), new_ap);
+             access_point_added(new_ap);
+             notify_property("access-points");
+         });
+@@ -64,7 +71,9 @@
+         device.access_point_removed.connect((access_point) => {
+             var ap = (NM.AccessPoint)access_point;
+-            var rem_ap = _access_points.get(ap.bssid);
+-            _access_points.remove(ap.bssid);
++            var key = _ap_key(ap);
++            var rem_ap = _access_points.get(key);
++            if (rem_ap == null) return;
++            _access_points.remove(key);
+             access_point_removed(rem_ap);
+             notify_property("access-points");
+         });
+@@ -151,6 +160,8 @@
+         var ap = device.active_access_point;
+         if (ap != null) {
+-            active_access_point = _access_points.get(ap.bssid);
++            var active_ap = _access_points.get(_ap_key(ap));
++            if (active_ap == null) return;
++            active_access_point = active_ap;
+             on_active_access_point_notify();
+-            ap_handler = active_access_point.notify.connect(on_active_access_point_notify);
++            ap_handler = active_ap.notify.connect(on_active_access_point_notify);
+         }

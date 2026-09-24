@@ -2,26 +2,23 @@ import type Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import logger from '@shade/core/logger';
+import {generalSettings} from '@shade/core/settings/general.gschema';
 import {isNotifdResolved} from '@shade/services/notifications/guard';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
 import {createState, effect, For, onCleanup} from 'gnim';
 import Notification from '../common/notification';
 
 /**
- * LockscreenNotifications — displays active notifications on the lockscreen.
- *
- * Design goals:
- * - Show notifications that arrive while the screen is locked.
- * - No auto-dismiss (user may be away); notifications persist until dismissed.
- * - Reuses the shared `Notification` card component for visual consistency.
- * - Capped to MAX_NOTIFICATIONS to prevent unbounded growth (overflow handling).
- * - Non-interactive actions are hidden on the lockscreen for security
- *   (a close button is provided so the user can clear them).
+ * LockscreenNotifications displays active notifications without revealing
+ * content unless the user explicitly allows it in notification settings.
+ * Redacted cards retain a generic presence label and dismissal control.
  */
 
 const MAX_NOTIFICATIONS = 20;
 
 const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
+    const settings = generalSettings();
+    const [showContent, setShowContent] = createState(settings.notificationLockscreenContent());
     const [notifications, setNotifications] = createState<Notifd.Notification[]>([]);
 
     const addNotification = (id: number) => {
@@ -70,6 +67,11 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
                 }
 
                 const node = {};
+                connectFor(node, settings.raw, 'changed', (_, key) => {
+                    if (key === 'notification-lockscreen-content') {
+                        setShowContent(settings.notificationLockscreenContent());
+                    }
+                });
                 connectFor(node, notifd, 'notified', (_, id) => addNotification(id as number));
                 connectFor(node, notifd, 'resolved', (_, id) => removeNotification(id as number));
                 onCleanup(() => cleanupNode(node));
@@ -77,15 +79,33 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
         >
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <For each={notifications}>
-                    {(n: Notifd.Notification) => (
-                        <Notification
-                            notification={n}
-                            variant="lockscreen"
-                            closeAction={closeAction}
-                            showProgress={false}
-                            showActions={false}
-                        />
-                    )}
+                    {(n: Notifd.Notification) =>
+                        showContent() ? (
+                            <Notification
+                                notification={n}
+                                variant="lockscreen"
+                                closeAction={closeAction}
+                                showProgress={false}
+                                showActions={false}
+                            />
+                        ) : (
+                            <Gtk.Box
+                                cssClasses={['card']}
+                                spacing={8}
+                                halign={Gtk.Align.FILL}
+                            >
+                                <Gtk.Label
+                                    label={'New notification'}
+                                    hexpand
+                                    halign={Gtk.Align.START}
+                                />
+                                <Gtk.Button
+                                    label={'Dismiss'}
+                                    onClicked={() => closeAction(n)}
+                                />
+                            </Gtk.Box>
+                        )
+                    }
                 </For>
             </Gtk.Box>
         </Gtk.ScrolledWindow>

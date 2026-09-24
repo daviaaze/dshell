@@ -11,6 +11,13 @@ type PropKey = keyof HypridleConfig | 'enabled';
 /** All hypridle props are either boolean toggles or second-based timeouts. */
 type PropValue = boolean | number;
 
+interface HypridleRuntime {
+    available?: boolean;
+    writeConfig?: () => void;
+    restart?: () => void;
+    stop?: () => void;
+}
+
 /**
  * Descriptor for a single hypridle property: its GObject notify name,
  * clamp range, settings accessor key, and how changing it may bump
@@ -81,6 +88,7 @@ export default class Hypridle extends GObject {
 
     #settings: Record<string, (v: PropValue) => void> | null = null;
     #process: Process | null = null;
+    #runtime: HypridleRuntime = {};
 
     // ── GObject property accessors ────────────────────────────────────
 
@@ -147,7 +155,7 @@ export default class Hypridle extends GObject {
 
     // ── Centralised property write ────────────────────────────────────
 
-    #set(key: PropKey, value: PropValue) {
+    #set(key: PropKey, value: PropValue, apply = true) {
         const def = PROPS[key];
         if (!def) return;
 
@@ -179,7 +187,7 @@ export default class Hypridle extends GObject {
         if (acc && typeof acc === 'function') acc(value);
 
         this.notify(def.notify);
-        this.#apply();
+        if (apply) this.#apply();
     }
 
     // ── Initialisation ────────────────────────────────────────────────
@@ -201,13 +209,14 @@ export default class Hypridle extends GObject {
         setDpmsTimeout: (v: number) => void;
         setSuspendEnabled: (v: boolean) => void;
         setSuspendTimeout: (v: number) => void;
-    }) {
+    }, runtime: HypridleRuntime = {}) {
         if (this.#settings) {
             logger.warn('hypridle', 'init() called but already initialized — skipping');
             return;
         }
 
         this.#settings = {};
+        this.#runtime = runtime;
         const s = this.#settings; // local ref — always non-null after guard above
 
         // Wire each GSettings accessor → this.#set() on change
@@ -233,25 +242,30 @@ export default class Hypridle extends GObject {
         link(settings.suspendEnabled, settings.setSuspendEnabled, 'suspendEnabled');
         link(settings.suspendTimeout, settings.setSuspendTimeout, 'suspendTimeout');
 
-        // Load initial values
-        this.#set('enabled', settings.autoLockEnabled());
-        this.#set('idleTimeout', settings.idleTimeout());
-        this.#set('dimTimeout', settings.screenDimTimeout());
-        this.#set('dimEnabled', settings.screenDimEnabled());
-        this.#set('dpmsTimeout', settings.dpmsTimeout());
-        this.#set('dpmsEnabled', settings.dpmsEnabled());
-        this.#set('suspendTimeout', settings.suspendTimeout());
-        this.#set('suspendEnabled', settings.suspendEnabled());
+        // Load initial values without applying between each property.
+        this.#set('enabled', settings.autoLockEnabled(), false);
+        this.#set('idleTimeout', settings.idleTimeout(), false);
+        this.#set('dimTimeout', settings.screenDimTimeout(), false);
+        this.#set('dimEnabled', settings.screenDimEnabled(), false);
+        this.#set('dpmsTimeout', settings.dpmsTimeout(), false);
+        this.#set('dpmsEnabled', settings.dpmsEnabled(), false);
+        this.#set('suspendTimeout', settings.suspendTimeout(), false);
+        this.#set('suspendEnabled', settings.suspendEnabled(), false);
+        this.#apply();
     }
 
     // ── Process lifecycle ─────────────────────────────────────────────
 
     #apply() {
         try {
-            if (!this.available) return;
+            if (!(this.#runtime.available ?? this.available)) return;
             if (this.#values.enabled) {
-                this.#writeConfig();
-                this.#restart();
+                if (this.#runtime.writeConfig) this.#runtime.writeConfig();
+                else this.#writeConfig();
+                if (this.#runtime.restart) this.#runtime.restart();
+                else this.#restart();
+            } else if (this.#runtime.stop) {
+                this.#runtime.stop();
             } else {
                 this.#stop();
             }
@@ -310,11 +324,15 @@ export default class Hypridle extends GObject {
         deleteHypridleConfig();
     }
 
-    stop() { this.#stop(); }
+    stop() {
+        if (this.#runtime.stop) this.#runtime.stop();
+        else this.#stop();
+    }
     apply() { this.#apply(); }
 
     dispose() {
-        this.#stop();
+        if (this.#runtime.stop) this.#runtime.stop();
+        else this.#stop();
     }
 }
 

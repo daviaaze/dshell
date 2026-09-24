@@ -15,11 +15,25 @@ import {fuzzyQuery} from '@shade/services/state/apps';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import {type Accessor, bind, createState, For} from 'gnim';
+import {type Accessor, bind, computed, createState, For} from 'gnim';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
+const LAUNCHER_WIDTH = 640;
+const WINDOW_MARGIN = 12;
+const BAR_EDGE_RESERVE = 48;
+
+function availableLauncherWidth(
+    monitor: {width: number; scale: number} | null,
+    barPosition: number,
+    left: number,
+    right: number
+) {
+    const logicalWidth = monitor ? monitor.width / (monitor.scale || 1) : LAUNCHER_WIDTH + WINDOW_MARGIN * 2;
+    const barReserve = barPosition === left || barPosition === right ? BAR_EDGE_RESERVE : 0;
+    return Math.max(1, Math.min(LAUNCHER_WIDTH, logicalWidth - WINDOW_MARGIN * 2 - barReserve));
+}
 
 /** Shared handle so the window and hint labels can read the entry. */
 interface EntryHolder {
@@ -107,9 +121,22 @@ function HintLabel({
 }
 
 /** Scrollable results — app/clipboard buttons plus the empty state. */
-function ResultsList({mode, list}: {mode: Accessor<LauncherMode>; list: Accessor<ListItem[]>}) {
+function ResultsList({
+    mode,
+    list,
+    maxContentWidth,
+}: {
+    mode: Accessor<LauncherMode>;
+    list: Accessor<ListItem[]>;
+    maxContentWidth: Accessor<number>;
+}) {
     return (
-        <Gtk.ScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight>
+        <Gtk.ScrolledWindow
+            hscrollbarPolicy={Gtk.PolicyType.NEVER}
+            propagateNaturalHeight
+            maxContentWidth={maxContentWidth}
+            propagateNaturalWidth={false}
+        >
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <For each={list}>
                     {(item: ListItem) =>
@@ -127,13 +154,13 @@ function ResultsList({mode, list}: {mode: Accessor<LauncherMode>; list: Accessor
                     )}
                     title={mode.as((m) =>
                         m === 'clipboard'
-                            ? 'Nenhum resultado no histórico'
-                            : 'Nenhum aplicativo encontrado'
+                            ? 'No results in clipboard history'
+                            : 'No applications found'
                     )}
                     description={mode.as((m) =>
                         m === 'clipboard'
-                            ? 'Copie algo para aparecer aqui'
-                            : 'Tente um termo de busca diferente'
+                            ? 'Copy something to see it here'
+                            : 'Try a different search term'
                     )}
                 />
             </Gtk.Box>
@@ -145,6 +172,10 @@ export default () => {
     const barCfg = barSettings();
     const hyprland = getHyprland();
     if (!hyprland) return null;
+    const focusedMonitor = bind(hyprland, 'focused-monitor');
+    const launcherWidth = computed(() =>
+        availableLauncherWidth(focusedMonitor(), barCfg.position(), LEFT, RIGHT)
+    );
     const shellState = ShellState.get_default();
     const [list, setList] = createState<ListItem[]>([]);
     const [mode, setMode] = createState<LauncherMode>('apps');
@@ -167,10 +198,11 @@ export default () => {
             }}
             valign={Gtk.Align.CENTER}
             name={'applauncher'}
-            marginTop={12}
-            marginBottom={12}
-            marginStart={12}
-            marginEnd={12}
+            widthRequest={launcherWidth}
+            marginTop={WINDOW_MARGIN}
+            marginBottom={WINDOW_MARGIN}
+            marginStart={WINDOW_MARGIN}
+            marginEnd={WINDOW_MARGIN}
             application={getApp()}
             visible={bind(shellState, 'launcherOpen')}
             onNotifyVisible={(self) => {
@@ -197,10 +229,11 @@ export default () => {
             cssClasses={[]}
             css={'background-color: transparent;'}
             keymode={Astal.Keymode.ON_DEMAND}
-            monitor={bind(hyprland, 'focused-monitor').as((m) => monitorIndexFromHyprland(m))}
+            monitor={focusedMonitor.as((m) => monitorIndexFromHyprland(m))}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}
         >
             <Gtk.Box
+                widthRequest={launcherWidth}
                 cssClasses={['card']}
                 css={'box-shadow: none; background-color: @window_bg_color;'}
                 marginTop={8}
@@ -217,7 +250,7 @@ export default () => {
                     frecencyHasData={frecencyHasData}
                     holder={holder}
                 />
-                <ResultsList mode={mode} list={list} />
+                <ResultsList mode={mode} list={list} maxContentWidth={launcherWidth} />
             </Gtk.Box>
         </Astal.Window>
     );

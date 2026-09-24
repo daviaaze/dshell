@@ -32,7 +32,7 @@ export const createSettingsWindow = (): Adw.PreferencesWindow => {
             name={'settings'}
             cssClasses={['background']}
             title={'Shade Settings'}
-            searchEnabled={false}
+            searchEnabled={true}
         >
             <Adw.PreferencesPage
                 title={'Appearance'}
@@ -75,8 +75,9 @@ export const createSettingsWindow = (): Adw.PreferencesWindow => {
 
             <Adw.PreferencesPage title={'Network'} iconName={'network-wireless-symbolic'}>
                 <Network />
-                <Bluetooth />
             </Adw.PreferencesPage>
+
+            <Bluetooth />
 
             <Adw.PreferencesPage
                 title={'Clock & Weather'}

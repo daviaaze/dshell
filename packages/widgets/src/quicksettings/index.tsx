@@ -8,7 +8,7 @@ import {barSettings} from '@shade/services/settings/bar.gschema';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import {bind} from 'gnim';
+import {bind, computed} from 'gnim';
 import {ButtonGrid} from './button-grid/index';
 import {DisplaySection} from './display';
 import {Expander} from './expander/index';
@@ -18,6 +18,20 @@ import {TrayBox} from './tray';
 
 const QUICKSETTINGS_WIDTH = 420;
 const QUICKSETTINGS_SPACING = 8;
+const WINDOW_MARGIN = 12;
+const BAR_EDGE_RESERVE = 48;
+
+function availableWidth(
+    monitor: {width: number; scale: number} | null,
+    preferred: number,
+    barPosition: number,
+    left: number,
+    right: number
+) {
+    const logicalWidth = monitor ? monitor.width / (monitor.scale || 1) : preferred + WINDOW_MARGIN * 2;
+    const barReserve = barPosition === left || barPosition === right ? BAR_EDGE_RESERVE : 0;
+    return Math.max(1, Math.min(preferred, logicalWidth - WINDOW_MARGIN * 2 - barReserve));
+}
 
 export default () => {
     const barCfg = barSettings();
@@ -25,6 +39,10 @@ export default () => {
     if (!hyprland) return null;
     const shellState = ShellState.get_default();
     const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
+    const focusedMonitor = bind(hyprland, 'focused-monitor');
+    const settingsWidth = computed(() =>
+        availableWidth(focusedMonitor(), QUICKSETTINGS_WIDTH, barCfg.position(), LEFT, RIGHT)
+    );
 
     return (
         <Astal.Window
@@ -33,10 +51,10 @@ export default () => {
                 self.connect('realize', () => logger.log('quicksettings realized'));
                 self.connect('map', () => logger.log('quicksettings mapped'));
             }}
-            marginTop={12}
-            marginBottom={12}
-            marginStart={12}
-            marginEnd={12}
+            marginTop={WINDOW_MARGIN}
+            marginBottom={WINDOW_MARGIN}
+            marginStart={WINDOW_MARGIN}
+            marginEnd={WINDOW_MARGIN}
             application={getApp()}
             name={'quicksettings'}
             visible={bind(shellState, 'qsOpen')}
@@ -53,8 +71,8 @@ export default () => {
             cssClasses={[]}
             css={'background-color: transparent;'}
             anchor={barCfg.position.as((p) => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM)}
-            widthRequest={QUICKSETTINGS_WIDTH}
-            monitor={bind(hyprland, 'focused-monitor').as((m) => monitorIndexFromHyprland(m))}
+            widthRequest={settingsWidth}
+            monitor={focusedMonitor.as((m) => monitorIndexFromHyprland(m))}
         >
             <Gtk.Box
                 cssClasses={['card']}
@@ -63,6 +81,8 @@ export default () => {
             >
                 <Gtk.ScrolledWindow
                     propagateNaturalHeight
+                    maxContentWidth={settingsWidth}
+                    propagateNaturalWidth={false}
                     hscrollbarPolicy={Gtk.PolicyType.NEVER}
                     vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vexpand

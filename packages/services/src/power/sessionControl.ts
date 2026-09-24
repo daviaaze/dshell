@@ -6,6 +6,43 @@ import {Object, register} from 'gnim/gobject';
 import {bus} from '../bus';
 import {defineService} from '@shade/core/define';
 
+function reportLogoutFailure(message: string) {
+    Process.execAsyncv([
+        'notify-send',
+        '-a',
+        'shade-shell',
+        '-i',
+        'dialog-error-symbolic',
+        'Log Out Failed',
+        message,
+    ]).catch((e) => logger.warn('session', 'logout error notification failed:', e));
+}
+
+/** Terminate only the specified session; dependencies are injectable for tests. */
+export function logoutCurrentSession(
+    sessionId: string | null,
+    execute: (argv: string[]) => string = (argv) => Process.execv(argv),
+    showError: (message: string) => void = reportLogoutFailure
+): boolean {
+    let error: unknown;
+    const id = sessionId?.trim();
+    if (!id) {
+        error = new Error('XDG_SESSION_ID is not set');
+    } else {
+        try {
+            execute(['loginctl', 'terminate-session', id]);
+            return true;
+        } catch (e) {
+            error = e;
+        }
+    }
+
+    const detail = error instanceof Error ? error.message : String(error);
+    logger.error('session', 'logout failed:', error);
+    showError(`Could not end the current session: ${detail}`);
+    return false;
+}
+
 /**
  * Encapsulates power/session actions.
  * Widgets call semantic methods; power state changes go to logind over
@@ -50,19 +87,9 @@ export default class SessionControl extends Object {
         }
     }
 
-    /** Log out the current session via logind. */
+    /** Log out only the current XDG session via logind. */
     logout() {
-        try {
-            const sessionId = GLib.getenv('XDG_SESSION_ID');
-            if (sessionId) {
-                Process.exec(`loginctl terminate-session ${sessionId}`);
-            } else {
-                logger.warn('session', 'XDG_SESSION_ID not set, falling back to terminate-user');
-                Process.exec(`loginctl terminate-user ${GLib.getenv('USER')}`);
-            }
-        } catch (e) {
-            logger.error('session', 'logout failed:', e);
-        }
+        logoutCurrentSession(GLib.getenv('XDG_SESSION_ID'));
     }
 
     /** Suspend the system via logind. */

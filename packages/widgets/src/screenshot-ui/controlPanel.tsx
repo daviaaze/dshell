@@ -1,5 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
+import GObject from 'gi://GObject?version=2.0';
 import type Screenshot from '@shade/services/capture/screenshot';
 import {getScreenCaptureSettings} from '@shade/services/settings/screenCapture';
 import {bind} from 'gnim';
@@ -39,6 +40,12 @@ const ModeTab = ({label, value, icon, ss, onReset}: ModeTabProps) => (
             }
         }}
         hexpand
+        ref={(self) =>
+            self.update_property(
+                [Gtk.AccessibleProperty.LABEL],
+                [new GObject.Value(GObject.TYPE_STRING, label)]
+            )
+        }
     >
         <Adw.ButtonContent iconName={icon} label={label} />
     </Gtk.ToggleButton>
@@ -55,6 +62,12 @@ const TargetButton = ({label, value, icon, ss, onReset, onTargetChange}: TargetB
             }
         }}
         hexpand
+        ref={(self) =>
+            self.update_property(
+                [Gtk.AccessibleProperty.LABEL],
+                [new GObject.Value(GObject.TYPE_STRING, label)]
+            )
+        }
     >
         <Adw.ButtonContent iconName={icon} label={label} />
     </Gtk.ToggleButton>
@@ -136,26 +149,39 @@ export const ControlPanel = ({ss, onCapture, onReset, onTargetChange}: ControlPa
                 <Gtk.Separator />
 
                 {/* Audio + Boundary options (recording) */}
-                {bind(ss, 'selectedMode').as((m) => m === 'recording') && (
-                    <Gtk.Box spacing={12}>
-                        <Gtk.CheckButton
-                            active={bind(ss.prefs, 'audio')}
-                            onNotifyActive={({active}) => {
-                                ss.prefs.audio = active;
-                            }}
-                        >
-                            <Gtk.Label label="Audio" />
-                        </Gtk.CheckButton>
-                        <Gtk.CheckButton
-                            active={captureSettings.showRecordingBoundary}
-                            onNotifyActive={({active}) => {
-                                captureSettings.setShowRecordingBoundary(active);
-                            }}
-                        >
-                            <Gtk.Label label="Boundary" />
-                        </Gtk.CheckButton>
-                    </Gtk.Box>
-                )}
+                <Gtk.Box
+                    spacing={12}
+                    visible={bind(ss, 'selectedMode').as((m) => m === 'recording')}
+                >
+                    <Gtk.CheckButton
+                        active={bind(ss.prefs, 'audio')}
+                        onNotifyActive={({active}) => {
+                            ss.prefs.audio = active;
+                        }}
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Audio')]
+                            )
+                        }
+                    >
+                        <Gtk.Label label="Audio" />
+                    </Gtk.CheckButton>
+                    <Gtk.CheckButton
+                        active={captureSettings.showRecordingBoundary}
+                        onNotifyActive={({active}) => {
+                            captureSettings.setShowRecordingBoundary(active);
+                        }}
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Recording boundary')]
+                            )
+                        }
+                    >
+                        <Gtk.Label label="Boundary" />
+                    </Gtk.CheckButton>
+                </Gtk.Box>
 
                 <Gtk.Separator />
 

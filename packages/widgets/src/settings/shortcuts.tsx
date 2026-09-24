@@ -1,50 +1,144 @@
 import Adw from 'gi://Adw?version=1';
+import Gtk from 'gi://Gtk?version=4.0';
+import Keybinds, {type HyprBind} from '@shade/services/input/keybinds';
+import {computed, createState, For, onCleanup} from 'gnim';
 
-interface Keybinding {
-  key: string;
-  description: string;
-}
+const DISPATCHER_DESCRIPTIONS: Record<string, string> = {
+    workspace: 'Switch workspace',
+    movetoworkspace: 'Move window to workspace',
+    movetoworkspacesilent: 'Move window to workspace without switching',
+    togglefloating: 'Toggle floating mode',
+    fullscreen: 'Toggle fullscreen',
+    focuswindow: 'Focus window',
+    movewindow: 'Move window',
+    resizewindow: 'Resize window',
+    killactive: 'Close active window',
+    togglepseudo: 'Toggle pseudo-tile mode',
+    pin: 'Pin window',
+    cyclenext: 'Cycle window focus',
+    changegroupactive: 'Change active window in group',
+    splitratio: 'Adjust split ratio',
+    togglesplit: 'Toggle split direction',
+    layoutopt: 'Change layout option',
+    swapnext: 'Swap with next window',
+    swapactiveworkspaces: 'Swap active workspaces',
+    exit: 'Exit Hyprland',
+    forcerendererreload: 'Reload the renderer',
+};
 
-const KEYBINDINGS: Keybinding[] = [
-  { key: 'Super', description: 'Open app launcher' },
-  { key: 'Super+Return', description: 'Open terminal' },
-  { key: 'Super+Q', description: 'Close focused window' },
-  { key: 'Super+Shift+E', description: 'Exit Hyprland' },
-  { key: 'Super+F', description: 'Toggle fullscreen' },
-  { key: 'Super+Space', description: 'Toggle floating' },
-  { key: 'Super+Shift+Space', description: 'Toggle scratchpad' },
-  { key: 'Super+Left', description: 'Move focus left' },
-  { key: 'Super+Right', description: 'Move focus right' },
-  { key: 'Super+Up', description: 'Move focus up' },
-  { key: 'Super+Down', description: 'Move focus down' },
-  { key: 'Super+Shift+Left', description: 'Move window left' },
-  { key: 'Super+Shift+Right', description: 'Move window right' },
-  { key: 'Super+Shift+Up', description: 'Move window up' },
-  { key: 'Super+Shift+Down', description: 'Move window down' },
-  { key: 'Super+1', description: 'Switch to workspace 1' },
-  { key: 'Super+2', description: 'Switch to workspace 2' },
-  { key: 'Super+3', description: 'Switch to workspace 3' },
-  { key: 'Super+4', description: 'Switch to workspace 4' },
-  { key: 'Super+5', description: 'Switch to workspace 5' },
-  { key: 'Super+Shift+1', description: 'Move window to workspace 1' },
-  { key: 'Super+Shift+2', description: 'Move window to workspace 2' },
-  { key: 'Super+Shift+3', description: 'Move window to workspace 3' },
-  { key: 'Super+Shift+4', description: 'Move window to workspace 4' },
-  { key: 'Super+Shift+5', description: 'Move window to workspace 5' },
-  { key: 'Super+Tab', description: 'Cycle through workspaces' },
-  { key: 'Super+Shift+Tab', description: 'Cycle through workspaces (reverse)' },
-  { key: 'Print', description: 'Take screenshot' },
-  { key: 'Super+Print', description: 'Take screenshot of active window' },
-  { key: 'Shift+Print', description: 'Take screenshot of selected area' },
-  { key: 'Super+V', description: 'Open clipboard manager' },
-  { key: 'Super+M', description: 'Open music player' },
-  { key: 'Super+L', description: 'Lock screen' },
+const SHADE_COMMANDS: Array<[RegExp, string]> = [
+    [/\bshade-shell\s+toggle\s+launcher(?:\s|$)/, 'Toggle app launcher'],
+    [/\bshade-shell\s+toggle\s+quicksettings(?:\s|$)/, 'Toggle quick settings'],
+    [/\bshade-shell\s+toggle\s+bar(?:\s|$)/, 'Toggle top bar'],
+    [/\bshade-shell\s+toggle\s+windowswitcher(?:\s|$)/, 'Toggle window switcher'],
+    [/\bshade-shell\s+toggle\s+settings(?:\s|$)/, 'Toggle settings'],
+    [/\bshade-shell\s+toggle\s+touchpad(?:\s|$)|\bshade-shell\s+touchpad(?:\s|$)/, 'Toggle touchpad'],
+    [/\bshade-shell\s+clipboard(?:\s|$)/, 'Open launcher in clipboard mode'],
+    [/\bshade-shell\s+open-clipboard(?:\s|$)/, 'Open clipboard history directly'],
+    [/\bshade-shell\s+lockscreen(?:\s|$)/, 'Lock the screen'],
+    [/\bshade-shell\s+screenshot-area(?:\s|$)/, 'Take a screenshot of a selected area'],
+    [/\bshade-shell\s+screenshot-overlay(?:\s|$)/, 'Open the capture overlay'],
+    [/\bshade-shell\s+screenshot(?:\s|$)/, 'Take a fullscreen screenshot'],
+    [/\bshade-shell\s+record-area(?:\s|$)/, 'Record a selected area'],
+    [/\bshade-shell\s+record-window(?:\s|$)/, 'Record the focused window'],
+    [/\bshade-shell\s+record-output(?:\s|$)/, 'Record the focused output'],
+    [/\bshade-shell\s+record(?:\s|$)/, 'Start fullscreen recording'],
 ];
 
-export default () => (
-  <Adw.PreferencesGroup title="Keyboard Shortcuts" description="View and customize keybindings">
-    {KEYBINDINGS.map((binding) => (
-      <Adw.ActionRow title={binding.description} subtitle={binding.key} />
-    ))}
-  </Adw.PreferencesGroup>
-);
+const describeBind = (bind: HyprBind, keybinds: Keybinds): string => {
+    if (bind.dispatcher === 'exec') {
+        const action = SHADE_COMMANDS.find(([pattern]) => pattern.test(bind.arg));
+        if (action) return action[1];
+    }
+
+    const description = DISPATCHER_DESCRIPTIONS[bind.dispatcher];
+    return description
+        ? bind.arg
+            ? `${description}: ${bind.arg}`
+            : description
+        : keybinds.formatDescription(bind);
+};
+
+export default () => {
+    const keybinds = Keybinds.get_default();
+    const [categories, setCategories] = createState(keybinds.getCategorizedBinds());
+    const [loaded, setLoaded] = createState(false);
+
+    const updateBinds = () => {
+        setCategories(keybinds.getCategorizedBinds());
+        setLoaded(true);
+    };
+    const refresh = () => {
+        setLoaded(false);
+        keybinds.refresh();
+    };
+    const bindsSignal = keybinds.connect('notify', (_source, pspec) => {
+        if (pspec.name === 'binds') updateBinds();
+    });
+
+    onCleanup(() => keybinds.disconnect(bindsSignal));
+
+    return (
+        <>
+            <Adw.PreferencesGroup
+                ref={(self) => {
+                    // Mapping occurs when the settings page is entered, including
+                    // when its existing window is shown again after being hidden.
+                    const mapSignal = self.connect('map', refresh);
+                    onCleanup(() => self.disconnect(mapSignal));
+                }}
+                title="Keyboard Shortcuts"
+                description="View active keybindings"
+            >
+                <Adw.ActionRow
+                    title="Refresh keybindings"
+                    subtitle="Read the current bindings from Hyprland"
+                >
+                    <Gtk.Button
+                        slot="suffix"
+                        valign={Gtk.Align.CENTER}
+                        iconName="view-refresh-symbolic"
+                        tooltipText="Refresh active keybindings"
+                        onClicked={refresh}
+                    />
+                </Adw.ActionRow>
+                <Adw.ActionRow
+                    title="Hyprland configuration"
+                    subtitle={keybinds.configPath}
+                >
+                    <Gtk.Button
+                        slot="suffix"
+                        valign={Gtk.Align.CENTER}
+                        label="Open"
+                        onClicked={() => keybinds.openConfig()}
+                    />
+                </Adw.ActionRow>
+                <Adw.ActionRow
+                    visible={categories.as((groups) => groups.length === 0)}
+                    title={loaded.as((isLoaded) =>
+                        isLoaded ? 'No active keybindings available' : 'Loading active keybindings…'
+                    )}
+                    subtitle={loaded.as((isLoaded) =>
+                        isLoaded
+                            ? 'No bindings are available. Hyprland may be unavailable or have no configured binds; check the compositor and configuration, then refresh.'
+                            : 'Fetching the current bindings from Hyprland.'
+                    )}
+                />
+            </Adw.PreferencesGroup>
+            <For each={categories}>
+                {(group) => (
+                    <Adw.PreferencesGroup title={group.category}>
+                        <For each={computed(() => group.binds)}>
+                            {(bind: HyprBind) => (
+                                <Adw.ActionRow
+                                    title={describeBind(bind, keybinds)}
+                                    subtitle={keybinds.formatKeyCombo(bind) || 'No key specified'}
+                                />
+                            )}
+                        </For>
+                    </Adw.PreferencesGroup>
+                )}
+            </For>
+        </>
+    );
+};

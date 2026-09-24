@@ -2,7 +2,6 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed} from 'gnim';
 import MonitorConfig from '@shade/services/display/monitorConfig';
-import type {MonitorInfo} from '@shade/services/display/monitorConfig';
 
 export default () => {
     const config = MonitorConfig.get_default();
@@ -43,76 +42,80 @@ export default () => {
 
                     return (
                         <Adw.PreferencesGroup title={monitor.description || monitor.name}>
-                            <Adw.ComboRow title="Resolution" subtitle={currentMode()}>
-                                <Gtk.DropDown
-                                    selected={computed(() => {
-                                        const res = resolutions();
-                                        const idx = res.findIndex(
-                                            (r) => r.width === monitor.width && r.height === monitor.height
-                                        );
-                                        return idx >= 0 ? idx : 0;
-                                    })}
-                                    onNotifySelected={(self) => {
-                                        const res = resolutions();
-                                        const selected = res[self.selected];
-                                        if (selected) {
-                                            config.setResolution(monitor.name, selected.width, selected.height);
-                                        }
-                                    }}
-                                >
-                                    <Gtk.StringList>
-                                        {resolutions().map((res: {width: number; height: number}) => (
-                                            <Gtk.StringObject string={`${res.width}x${res.height}`} />
-                                        ))}
-                                    </Gtk.StringList>
-                                </Gtk.DropDown>
-                            </Adw.ComboRow>
+                            <Adw.ComboRow
+                                title="Resolution"
+                                subtitle={currentMode()}
+                                model={
+                                    new Gtk.StringList({
+                                        strings: resolutions().map((res) => `${res.width}x${res.height}`),
+                                    })
+                                }
+                                selected={computed(() => {
+                                    const res = resolutions();
+                                    const idx = res.findIndex(
+                                        (r) => r.width === monitor.width && r.height === monitor.height
+                                    );
+                                    return idx >= 0 ? idx : 0;
+                                })}
+                                onNotifySelected={(row) => {
+                                    const res = resolutions();
+                                    const selected = res[row.selected];
+                                    if (selected) {
+                                        config.setResolution(monitor.name, selected.width, selected.height);
+                                    }
+                                }}
+                            />
 
-                            <Adw.ComboRow title="Refresh Rate" subtitle={`${monitor.refreshRate} Hz`}>
-                                <Gtk.DropDown
-                                    selected={computed(() => {
-                                        const rates = refreshRates();
-                                        const idx = rates.indexOf(monitor.refreshRate);
-                                        return idx >= 0 ? idx : 0;
-                                    })}
-                                    onNotifySelected={(self) => {
-                                        const rates = refreshRates();
-                                        const rate = rates[self.selected];
-                                        if (rate) {
-                                            config.setRefreshRate(monitor.name, rate);
-                                        }
-                                    }}
-                                >
-                                    <Gtk.StringList>
-                                        {refreshRates().map((rate: number) => (
-                                            <Gtk.StringObject string={`${rate} Hz`} />
-                                        ))}
-                                    </Gtk.StringList>
-                                </Gtk.DropDown>
-                            </Adw.ComboRow>
+                            <Adw.ComboRow
+                                title="Refresh Rate"
+                                subtitle={`${monitor.refreshRate} Hz`}
+                                model={
+                                    new Gtk.StringList({
+                                        strings: refreshRates().map((rate) => `${rate} Hz`),
+                                    })
+                                }
+                                selected={computed(() => {
+                                    const rates = refreshRates();
+                                    const idx = rates.indexOf(monitor.refreshRate);
+                                    return idx >= 0 ? idx : 0;
+                                })}
+                                onNotifySelected={(row) => {
+                                    const rates = refreshRates();
+                                    const rate = rates[row.selected];
+                                    if (rate) {
+                                        config.setRefreshRate(monitor.name, rate);
+                                    }
+                                }}
+                            />
 
                             <Adw.ActionRow title="Scale" subtitle={`${monitor.scale}x`}>
                                 <Gtk.Scale
                                     orientation={Gtk.Orientation.HORIZONTAL}
-                                    min={1}
-                                    max={2}
-                                    step={0.25}
-                                    value={monitor.scale}
-                                    onChangeValue={(value) => config.setScale(monitor.name, value)}
-                                    width-request={200}
+                                    adjustment={
+                                        new Gtk.Adjustment({
+                                            value: monitor.scale,
+                                            lower: 0.5,
+                                            upper: 3,
+                                            stepIncrement: 0.25,
+                                            pageIncrement: 0.25,
+                                        })
+                                    }
+                                    widthRequest={200}
+                                    onValueChanged={(scale: Gtk.Scale) =>
+                                        config.setScale(monitor.name, scale.get_value())
+                                    }
                                 />
                             </Adw.ActionRow>
 
-                            <Adw.ComboRow title="Rotation" subtitle={`${monitor.transform * 90}°`}>
-                                <Gtk.DropDown
-                                    selected={monitor.transform}
-                                    onNotifySelected={(self) => {
-                                        config.setTransform(monitor.name, self.selected);
-                                    }}
-                                >
-                                    <Gtk.StringList strings={['0°', '90°', '180°', '270°']} />
-                                </Gtk.DropDown>
-                            </Adw.ComboRow>
+                            <Adw.ComboRow
+                                title="Rotation"
+                                subtitle={`${monitor.transform * 90}°`}
+                                model={new Gtk.StringList({strings: ['0°', '90°', '180°', '270°']})}
+                                selected={monitor.transform}
+                                onNotifySelected={(row) => {
+                                    config.setTransform(monitor.name, row.selected);
+                                }}
+                            />
 
                             <Adw.SwitchRow
                                 title="Display Power"

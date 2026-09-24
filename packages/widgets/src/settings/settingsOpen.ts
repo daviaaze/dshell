@@ -1,7 +1,10 @@
+import type Adw from 'gi://Adw?version=1';
+import {render} from '@gnim-js/gtk4';
+import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
-import {createRoot} from 'gnim';
 import {createSettingsWindow} from './index';
 
+let settingsWindow: Adw.Window | null = null;
 let settingsDispose: (() => void) | null = null;
 
 /**
@@ -10,6 +13,18 @@ let settingsDispose: (() => void) | null = null;
  * Extracted from the widget barrel to eliminate the tray → barrel
  * circular dependency (tray.tsx → widget/index.tsx → quicksettings/ → tray).
  */
+function disposeCurrentSettings() {
+    const wm = WindowManager.get_default();
+    const current = settingsWindow;
+    settingsWindow = null;
+
+    if (current && wm.settings === current) wm.setSettings(null);
+
+    const dispose = settingsDispose;
+    settingsDispose = null;
+    dispose?.();
+}
+
 export function openSettings() {
     const wm = WindowManager.get_default();
     const existing = wm.settings;
@@ -19,15 +34,22 @@ export function openSettings() {
     }
     if (existing) {
         existing.close();
-        wm.setSettings(null);
+        if (wm.settings === existing) wm.setSettings(null);
     }
-    // Dispose previous scope — unsubscribes settings-page subscriptions
-    settingsDispose?.();
-    settingsDispose = null;
-    const win = createRoot((dispose) => {
-        settingsDispose = dispose;
-        return createSettingsWindow();
+    disposeCurrentSettings();
+
+    const dispose = render(() => createSettingsWindow(), getApp());
+    const win = wm.settings;
+    if (!win) {
+        dispose();
+        throw new Error('Settings window did not register with WindowManager');
+    }
+
+    settingsWindow = win;
+    settingsDispose = dispose;
+    win.connect('close-request', () => {
+        if (settingsWindow === win) disposeCurrentSettings();
+        return false;
     });
-    wm.setSettings(win);
     win.present();
 }

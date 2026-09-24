@@ -48,7 +48,8 @@ export default () => {
             }
         });
 
-        group.add(row);
+        // Adw.ComboRow is a Gtk.Widget; generated bindings disagree on activate()'s return type.
+        group.add(row as unknown as Gtk.Widget);
     });
 
     return group;

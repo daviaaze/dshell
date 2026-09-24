@@ -1,6 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {computed, For} from 'gnim';
+import {bind, computed, For} from 'gnim';
 import type {QuickButton} from './quickButton';
+import {getHyprland} from '@shade/services/hyprland';
 
 export interface ReactiveGridProps {
     cols?: number;
@@ -16,14 +17,23 @@ export interface ReactiveGridProps {
  * component preserves child identity via object reference, so the same
  * QuickButton keeps its widget across reflows.
  */
+const SINGLE_COLUMN_WIDTH = 600;
+
 export const ReactiveGrid = ({cols = 2, items}: ReactiveGridProps) => {
     const visibleItems = computed(() => items.filter((item) => item.visible?.() !== false));
-
+    const hyprland = getHyprland();
+    const focusedMonitor = hyprland ? bind(hyprland, 'focused-monitor') : null;
+    const columnCount = computed(() => {
+        const monitor = focusedMonitor?.() ?? null;
+        const logicalWidth = monitor ? monitor.width / (monitor.scale || 1) : 0;
+        return logicalWidth > 0 && logicalWidth <= SINGLE_COLUMN_WIDTH ? 1 : cols;
+    });
     const rows = computed(() => {
         const vis = visibleItems();
+        const columns = columnCount();
         const result: QuickButton[][] = [];
-        for (let i = 0; i < vis.length; i += cols) {
-            result.push(vis.slice(i, i + cols));
+        for (let i = 0; i < vis.length; i += columns) {
+            result.push(vis.slice(i, i + columns));
         }
         return result;
     });
@@ -40,3 +50,4 @@ export const ReactiveGrid = ({cols = 2, items}: ReactiveGridProps) => {
         </Gtk.Box>
     );
 };
+

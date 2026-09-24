@@ -26,6 +26,14 @@ function NotificationsGroup({settings}: {settings: Settings}) {
                 active={settings.notificationShowProgress}
                 onNotifyActive={(self) => settings.setNotificationShowProgress(self.active)}
             />
+            <Adw.SwitchRow
+                title={'Show notification content on lock screen'}
+                subtitle={'Notification details are hidden until you unlock'}
+                active={settings.notificationLockscreenContent}
+                onNotifyActive={(self) =>
+                    settings.setNotificationLockscreenContent(self.active)
+                }
+            />
             <Adw.SpinRow
                 title={'History Limit'}
                 subtitle={'Maximum notifications to keep in history'}

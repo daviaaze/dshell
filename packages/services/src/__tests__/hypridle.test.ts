@@ -254,7 +254,7 @@ describe('Hypridle init', () => {
             suspendEnabled: true,
             suspendTimeout: 2000,
         });
-        h.init(s);
+        h.init(s, {available: true, writeConfig: () => {}, restart: () => {}, stop: () => {}});
         expect(h.enabled).toBe(false);
         expect(h.idleTimeout).toBe(400);
         expect(h.dimEnabled).toBe(false);
@@ -264,6 +264,44 @@ describe('Hypridle init', () => {
         expect(h.suspendEnabled).toBe(true);
         expect(h.suspendTimeout).toBe(2000);
     });
+
+    it('applies and starts once when all fresh settings have default values', () => {
+        const h = new Hypridle();
+        let writes = 0;
+        let starts = 0;
+        h.init(mockSettings(), {
+            available: true,
+            writeConfig: () => writes++,
+            restart: () => starts++,
+        });
+        expect(writes).toBe(1);
+        expect(starts).toBe(1);
+    });
+
+    it('keeps disabled and unavailable initialization safe', () => {
+        const disabled = new Hypridle();
+        let disabledWrites = 0;
+        let stops = 0;
+        disabled.init(mockSettings({autoLockEnabled: false}), {
+            available: true,
+            writeConfig: () => disabledWrites++,
+            stop: () => stops++,
+        });
+        expect(disabledWrites).toBe(0);
+        expect(stops).toBe(1);
+
+        const unavailable = new Hypridle();
+        let unavailableWrites = 0;
+        let starts = 0;
+        unavailable.init(mockSettings(), {
+            available: false,
+            writeConfig: () => unavailableWrites++,
+            restart: () => starts++,
+        });
+        expect(unavailableWrites).toBe(0);
+        expect(starts).toBe(0);
+    });
+
 
     it('guards against double-init', () => {
         const h = Hypridle.get_default();

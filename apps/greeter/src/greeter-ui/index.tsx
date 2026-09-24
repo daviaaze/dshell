@@ -26,7 +26,7 @@ import {generalSettings} from '@shade/core/settings/general.gschema';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
 import {GreeterClock} from './clock';
 import {GreetSession} from './GreetSession';
-import {useGreeterKeyboard} from './keyboard';
+import {getGreeterKeyboardIndicator} from './keyboard';
 import {powerOff, reboot} from './power';
 import {buildSessionList} from './sessions';
 import {getGreeterUsers, getLastUsername, setLastUsername, type GreeterUser} from './users';
@@ -68,7 +68,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     const [isFingerprint, setIsFingerprint] = createState(false);
 
     // Keyboard layout
-    const {layout: keyboardLayout} = useGreeterKeyboard();
+    const keyboardIndicator = getGreeterKeyboardIndicator();
 
     // Wallpaper: resolve from GSettings (auto day/night by ColorScheme), fallback solid
     let wallpaper: ReturnType<typeof computed<Gio.File | null>> | null = null;
@@ -285,10 +285,13 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
         >
             {/* Top bar: keyboard layout (left) + power actions (right) */}
             <Gtk.Box marginTop={16} marginStart={16} marginEnd={16}>
-                <Gtk.Button
+                <Gtk.Label
                     cssClasses={['pill']}
-                    label={keyboardLayout}
-                    tooltipText="Keyboard layout"
+                    label={keyboardIndicator}
+                    halign={Gtk.Align.START}
+                />
+                <Gtk.Label
+                    label="Layout switching is unavailable here; active layout is not queried."
                     halign={Gtk.Align.START}
                 />
                 <Gtk.Box hexpand />

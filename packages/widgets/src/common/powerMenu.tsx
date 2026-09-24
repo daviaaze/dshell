@@ -25,9 +25,12 @@ export const PowerMenu = () => {
     const [pendingAction, setPendingAction] = createState<string | null>(null);
 
     const handleClick = (action: string) => {
-        if (!DESTRUCTIVE_ACTIONS.includes(action as (typeof DESTRUCTIVE_ACTIONS)[number])) {
-            // Non-destructive action: execute immediately
-            bus.emit(`power:cmd:${action}` as 'power:cmd:logout' | 'power:cmd:suspend');
+        if (action === 'lock') {
+            bus.emit('shell:lock');
+            return;
+        }
+        if (action === 'suspend') {
+            bus.emit('power:cmd:suspend');
             return;
         }
 

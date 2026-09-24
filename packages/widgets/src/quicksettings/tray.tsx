@@ -1,5 +1,6 @@
 import type Tray from 'gi://AstalTray';
 import Gtk from 'gi://Gtk?version=4.0';
+import GObject from 'gi://GObject?version=2.0';
 import {bus} from '@shade/services/bus';
 import TrayService from '@shade/services/desktop/trayService';
 import {barSettings} from '@shade/services/settings/bar.gschema';
@@ -15,6 +16,8 @@ export const TrayBox = () => {
     const LockButton = () => (
         <IconButton
             icon="system-lock-screen-symbolic"
+            accessibleLabel="Lock screen"
+            tooltipText="Lock screen"
             onClicked={() => {
                 bus.emit('shell:lock');
             }}
@@ -22,7 +25,12 @@ export const TrayBox = () => {
     );
 
     const PowerButton = () => (
-        <IconMenuButton icon="system-shutdown-symbolic" cssClasses={['destructive-action']}>
+        <IconMenuButton
+            icon="system-shutdown-symbolic"
+            accessibleLabel="Power options"
+            tooltipText="Power options"
+            cssClasses={['destructive-action']}
+        >
             <PowerMenu />
         </IconMenuButton>
     );
@@ -32,6 +40,8 @@ export const TrayBox = () => {
         return (
             <IconButton
                 icon="object-rotate-right-symbolic"
+                accessibleLabel="Rotate panel position"
+                tooltipText="Rotate panel position"
                 onClicked={() => {
                     if (barCfg.position() > 8) barCfg.setPosition(2);
                     else barCfg.setPosition(barCfg.position() * 2);
@@ -43,6 +53,8 @@ export const TrayBox = () => {
     const SettingsButton = () => (
         <IconButton
             icon="preferences-system-symbolic"
+            accessibleLabel="Open Settings"
+            tooltipText="Open Settings"
             onClicked={() => {
                 openSettings();
                 bus.emit('shell:qs:close');
@@ -58,6 +70,16 @@ export const TrayBox = () => {
                         cssClasses={['circular']}
                         ref={(self) => {
                             self.insert_action_group('dbusmenu', item.actionGroup);
+                            const label = item.tooltipMarkup?.replace(/<[^>]*>/g, '').trim();
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [
+                                    new GObject.Value(
+                                        GObject.TYPE_STRING,
+                                        label || 'System tray item'
+                                    ),
+                                ]
+                            );
                             usePopoverCleanup(self);
                         }}
                         tooltipMarkup={bind(item, 'tooltip-markup')}
@@ -78,3 +100,4 @@ export const TrayBox = () => {
         </Gtk.Box>
     );
 };
+

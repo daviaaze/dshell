@@ -179,6 +179,10 @@ function notificationKeys<
             default: false,
             summary: 'Show countdown progress bar on notification popups (off by default)',
         })
+        .key('notification-lockscreen-content', 'b', {
+            default: false,
+            summary: 'Show notification content on the lock screen',
+        })
         .key('notification-ignored-apps', 'as', {
             default: [],
             summary: 'List of app names to ignore for notifications',

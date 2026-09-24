@@ -2,7 +2,6 @@ import Network from 'gi://AstalNetwork';
 import type Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import NM from 'gi://NM?version=1.0';
-import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 
 
@@ -40,6 +39,14 @@ export function bytesToString(value: unknown): string | null {
             return null;
         }
     }
+    if (
+        typeof value === 'object' &&
+        value !== null &&
+        'toArray' in value &&
+        typeof value.toArray === 'function'
+    ) {
+        return bytesToString(value.toArray());
+    }
     if (typeof value.toString === 'function') {
         const str = value.toString();
         if (str && !str.startsWith('[object ')) return str;
@@ -47,7 +54,7 @@ export function bytesToString(value: unknown): string | null {
     return null;
 }
 
-export function ssidOf(ap: Network.AccessPoint): string {
+export function ssidOf(ap: NM.AccessPoint): string {
     try {
         return bytesToString(ap.ssid) ?? 'Hidden Network';
     } catch {
@@ -55,7 +62,7 @@ export function ssidOf(ap: Network.AccessPoint): string {
     }
 }
 
-export function bssidOf(ap: Network.AccessPoint): string | null {
+export function bssidOf(ap: NM.AccessPoint): string | null {
     try {
         return bytesToString(ap.bssid);
     } catch {
@@ -118,7 +125,7 @@ export function signalIconName(strength: number): string {
  * Derive a human-readable security label from AP flags.
  * Returns e.g. "WPA3", "WPA2", "WPA1", "WEP", "Enhanced Open", "Open".
  */
-export function securityLabel(ap: Network.AccessPoint): string {
+export function securityLabel(ap: NM.AccessPoint): string {
     try {
         const rsn = ap.rsnFlags ?? 0;
         const wpa = ap.wpaFlags ?? 0;
@@ -169,7 +176,7 @@ export function securityLabel(ap: Network.AccessPoint): string {
  * Whether the AP uses any encryption (for lock icon display).
  * Uses the same logic as securityLabel but optimized for boolean check.
  */
-export function isSecure(ap: Network.AccessPoint): boolean {
+export function isSecure(ap: NM.AccessPoint): boolean {
     try {
         const rsn = ap.rsnFlags ?? 0;
         const wpa = ap.wpaFlags ?? 0;
@@ -180,24 +187,10 @@ export function isSecure(ap: Network.AccessPoint): boolean {
     }
 }
 
-// ── Saved / known network detection ────────────────────────────────
-
-/**
- * Check if an AP has any saved (known) NM connections.
- */
-export function isSaved(ap: Network.AccessPoint): boolean {
-    try {
-        const conns = ap.get_connections();
-        if (!conns) return false;
-        return toArray(conns).length > 0;
-    } catch {
-        return false;
-    }
-}
-
 // ── AP Snapshot (defensive copy for render) ───────────────────────
 
 export interface ApSnapshot {
+    objectPath: string;
     ssid: string;
     bssid: string | null;
     strength: number;
@@ -205,67 +198,25 @@ export interface ApSnapshot {
     secLabel: string;
 }
 
-/**
- * Eagerly read all GObject properties into a plain-JS snapshot.
- * Call this immediately when accessPoints changes, while the proxy is still valid.
- */
-export function snapshotAp(ap: Network.AccessPoint): ApSnapshot {
+/** Eagerly copy NM AP values into a plain-JS snapshot for rendering. */
+export function snapshotNMAccessPoint(ap: NM.AccessPoint): ApSnapshot {
+    let objectPath = '';
+    let strength = 0;
+    try {
+        objectPath = ap.get_path() ?? '';
+    } catch {}
+    try {
+        strength = ap.strength ?? 0;
+    } catch {}
+
     return {
+        objectPath,
         ssid: ssidOf(ap),
         bssid: bssidOf(ap),
-        strength: (() => {
-            try {
-                return ap.strength ?? 0;
-            } catch {
-                return 0;
-            }
-        })(),
+        strength,
         secure: isSecure(ap),
         secLabel: securityLabel(ap),
     };
-}
-
-/**
- * Look up a current (live) AP object from wifi.accessPoints.
- * Priority: exact BSSID match → SSID match.
- * SSID fallback handles cases where BSSID is null (bytesToString failure)
- * or the AP was rescanned with a different BSSID between render and action.
- * Only use this for actions (connect/forget), never for rendering.
- */
-export function findLiveAp(
-    wifi: Network.Wifi,
-    bssid: string | null,
-    ssid?: string
-): Network.AccessPoint | null {
-    const points = (() => {
-        try {
-            return toArray<Network.AccessPoint>(wifi.accessPoints);
-        } catch {
-            return [];
-        }
-    })();
-
-    // 1. Try BSSID match (most precise)
-    if (bssid) {
-        for (const ap of points) {
-            try {
-                const apBssid = bssidOf(ap);
-                if (apBssid && bssidEquals(apBssid, bssid)) return ap;
-            } catch {}
-        }
-    }
-
-    // 2. Fallback: SSID match (handles null BSSID or rescanned APs)
-    if (ssid) {
-        for (const ap of points) {
-            try {
-                const apSsid = ssidOf(ap);
-                if (apSsid === ssid) return ap;
-            } catch {}
-        }
-    }
-
-    return null;
 }
 
 // ── Shared NM connection builder ───────────────────────────────────
