@@ -8,39 +8,6 @@ let
   cfg = config.programs.shade.desktop.hyprland;
   desktopCfg = config.programs.shade.desktop;
 
-  # Hyprland monitor token for a layout monitor entry: desc: form when the
-  # entry defines an EDID description (stable across connector renames).
-  monitorToken = m:
-    if m.desc != null then "desc:${m.desc}" else m.name;
-
-  # Render a monitor spec from a layout into a Hyprland monitor line.
-  renderMonitor = m:
-    if m.disable then "${monitorToken m}, disable"
-    else
-      let
-        base = "${monitorToken m}, ${m.resolution}, ${m.position}, ${toString m.scale}";
-        transform = lib.optionalString (m.transform != 0) ", transform, ${toString m.transform}";
-        vrr = lib.optionalString (m.vrr != null) ", vrr, ${toString m.vrr}";
-      in
-      base + transform + vrr;
-
-  # Resolve a workspace target (monitor name or description) to a Hyprland
-  # monitor token, preferring the entry's desc: form when it defines one.
-  monitorTokenFor = layout: target:
-    let
-      entry = lib.findFirst (m: m.name == target || m.desc == target) null layout.monitors;
-    in
-    if entry == null then target else monitorToken entry;
-
-  # Convert a layout's workspaces to Hyprland workspace rule strings.
-  layoutWorkspaces = layout:
-    lib.mapAttrsToList (num: mon: "${num}, monitor:${monitorTokenFor layout mon}, default:true") layout.workspaces;
-
-  # Convert a layout into Hyprland settings (monitor + workspace lists).
-  layoutToSettings = layout: {
-    monitor = map renderMonitor layout.monitors;
-    workspace = layoutWorkspaces layout;
-  };
 in
 {
   imports = [
@@ -85,9 +52,10 @@ in
       default = [
         "special:scratchpad, on-created-empty: [pseudo; size 1920 1080] ${lib.getExe pkgs.uwsm} app -- ${desktopCfg.defaultTerminal}"
       ];
-      defaultText = lib.literalExpression ''[
-        "special:scratchpad, on-created-empty: ..."
-      ]'';
+      defaultText = lib.literalExpression ''
+        [
+                "special:scratchpad, on-created-empty: ..."
+              ]'';
       description = ''
         Workspace rules for Hyprland. Each entry is a workspace rule string.
         Default creates a scratchpad terminal. Add monitor-specific rules
@@ -217,9 +185,6 @@ in
         exec = [
           "hyprctl setcursor Adwaita 24"
         ];
-      } // lib.optionalAttrs (cfg.defaultLayout != null) {
-        monitor = map renderMonitor cfg.layouts.${cfg.defaultLayout}.monitors;
-        workspace = layoutWorkspaces cfg.layouts.${cfg.defaultLayout};
       };
     in
     lib.mkMerge [
@@ -232,12 +197,11 @@ in
         ];
 
         programs.hyprland.settings = lib.recursiveUpdate defaultSettings (
-          cfg.settings // {
+          cfg.settings
+          // {
             # Merge workspace rules: cfg.workspace replaces the default
             # scratchpad rule entirely, or you can include it in your list.
-            # If a defaultLayout is set, its workspace rules are prepended so
-            # explicit cfg.workspace rules can still override them.
-            workspace = (lib.optionals (cfg.defaultLayout != null) (layoutWorkspaces cfg.layouts.${cfg.defaultLayout})) ++ cfg.workspace;
+            workspace = cfg.workspace;
           }
         );
       }
@@ -292,8 +256,7 @@ in
         };
       }
       (lib.mkIf cfg.binds.enable {
-        programs.hyprland.extraConfig = ''
-        '';
+        programs.hyprland.extraConfig = "";
 
         # Runtime introspection for keybinds. GNOME and KDE ship a
         # Shortcuts panel; this gives shade-shell a terminal equivalent.
