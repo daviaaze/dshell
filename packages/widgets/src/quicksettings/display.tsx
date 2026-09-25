@@ -1,78 +1,81 @@
 import Gtk from 'gi://Gtk?version=4.0';
+import LayoutService, {type OutputInfo} from '@shade/services/display/layouts';
 import {bind, For} from 'gnim';
-import type {MonitorEntry} from '@shade/services/display/layout';
-import DisplayLayout from '@shade/services/display/layout';
-import {bus} from '@shade/services/bus';
 import {QuickToggleButton} from '../common/quickToggleButton';
 
 const SPACING = 8;
 
-/**
- * Display controls — layout picker + per-monitor enable/disable.
- * Style-matched to the shell: QuickToggleButton (raised/active) for
- * layouts and monitors, caption headers like sliders/button-grid.
- * Hidden when host defines no layouts.
- */
 export const DisplaySection = () => {
-    const layout = DisplayLayout.get_default();
-
+    const service = LayoutService.get_default();
     return (
         <Gtk.Box
             spacing={SPACING}
             orientation={Gtk.Orientation.VERTICAL}
-            visible={bind(layout, 'layouts').as((l) => l.length > 0)}
+            visible={bind(service, 'monitors').as(
+                (outputs) => outputs.length > 0 || service.names.length > 0
+            )}
         >
             <Gtk.Box spacing={8}>
                 <Gtk.Label label="Display" xalign={0} cssClasses={['caption']} hexpand />
                 <Gtk.Label
-                    label={bind(layout, 'currentLayout').as((c) => (c ? c : 'no match'))}
+                    label={bind(service, 'current').as((name) => name ?? 'Custom setup')}
                     xalign={1}
                     cssClasses={['caption']}
                 />
             </Gtk.Box>
-
             <Gtk.Label
-                visible={bind(layout, 'layouts').as((l) => l.length > 1)}
+                visible={bind(service, 'names').as((names) => names.length > 0)}
                 label="Layouts"
                 xalign={0}
                 cssClasses={['caption']}
             />
             <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-                <For each={bind(layout, 'layouts')}>
+                <For each={bind(service, 'names')}>
                     {(name: string) => (
                         <QuickToggleButton
                             icon="video-display-symbolic"
                             label={name}
-                            active={bind(layout, 'currentLayout').as((c) => c === name)}
-                            onClick={() => bus.emit('display:layout:apply', name)}
+                            active={bind(service, 'current').as((current) => current === name)}
+                            onClick={() => {
+                                const layout = service.get(name);
+                                if (layout) void service.preview(layout);
+                            }}
                         />
                     )}
                 </For>
             </Gtk.Box>
-
             <Gtk.Label
-                visible={bind(layout, 'monitors').as((ms) => ms.length > 1)}
-                label="Monitores"
+                visible={bind(service, 'monitors').as((outputs) => outputs.length > 1)}
+                label="Monitors"
                 xalign={0}
                 cssClasses={['caption']}
             />
             <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-                <For each={bind(layout, 'monitors')}>
-                    {(m: MonitorEntry) => (
+                <For each={bind(service, 'monitors')}>
+                    {(monitor: OutputInfo) => (
                         <QuickToggleButton
                             icon="video-display-symbolic"
-                            label={m.description || m.name}
-                            active={m.enabled}
-                            onClick={() =>
-                                bus.emit('display:monitor:set-enabled', {
-                                    description: m.description || m.name,
-                                    enabled: !m.enabled,
-                                })
-                            }
+                            label={monitor.description || monitor.name}
+                            active={monitor.enabled}
+                            onClick={() => void service.setEnabled(monitor.name, !monitor.enabled)}
                         />
                     )}
                 </For>
             </Gtk.Box>
+            <Gtk.Box
+                spacing={6}
+                visible={bind(service, 'pending').as((deadline) => deadline !== null)}
+            >
+                <Gtk.Button label="Keep Changes" hexpand onClicked={() => service.confirm()} />
+                <Gtk.Button label="Revert" hexpand onClicked={() => void service.revert()} />
+            </Gtk.Box>
+            <Gtk.Label
+                visible={bind(service, 'error').as((error) => error !== null)}
+                label={bind(service, 'error').as((error) => error ?? '')}
+                wrap
+                xalign={0}
+                cssClasses={['error']}
+            />
         </Gtk.Box>
     );
 };

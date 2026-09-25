@@ -8,6 +8,7 @@ import logger from '@shade/core/logger';
 import ServiceRegistry from '@shade/core/serviceRegistry';
 import {setApp} from '@shade/services/appHandle';
 import Screenshot from '@shade/services/capture/screenshot';
+import LayoutService from '@shade/services/display/layouts';
 import Touchpad from '@shade/services/input/touchpad';
 import {requestHandler} from '@shade/services/state/requestHandler';
 import ShellState from '@shade/services/state/shellState';
@@ -30,6 +31,7 @@ export class ShadeShell extends Adw.Application {
         GLib.set_application_name(gettext('Shade Shell'));
         ShellState.get_default().registerCommands(this);
         Screenshot.get_default().registerCommands(this);
+        LayoutService.get_default().registerCommands(this);
         Touchpad.get_default().registerCommands(this);
     }
 

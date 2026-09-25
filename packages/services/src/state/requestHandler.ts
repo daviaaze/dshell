@@ -43,6 +43,7 @@ const CMD_RECORD_WINDOW = 'record-window';
 const CMD_RECORD_WINDOW_ADDRESS = 'record-window-address';
 const CMD_RECORD_OUTPUT = 'record-output';
 const CMD_OPEN_CLIPBOARD = 'open-clipboard';
+const CMD_DISPLAY_NEXT = 'display-next';
 
 // ── Build command tree ──
 
@@ -109,6 +110,10 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .about('Toggle touchpad enable/disable')
         .opt(help);
 
+    const displayNext = new Quarrel.Command({name: CMD_DISPLAY_NEXT})
+        .about('Preview the next layout matching connected displays')
+        .opt(help);
+
     // Root CLI
     const cli = new Quarrel.Command({name: 'shade-shell'})
         .about('Shade Shell — Hyprland Adwaita Desktop Environment')
@@ -125,6 +130,7 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .subcommand(clipboard)
         .subcommand(openClipboard)
         .subcommand(toggleDnd)
+        .subcommand(displayNext)
         .subcommand(touchpad)
         .opt(help);
 
@@ -194,6 +200,10 @@ function dispatch(command: Quarrel.Command, app: Gio.Application): boolean {
 
         case 'toggle-dnd':
             bus.emit('system:dnd:toggle');
+            return true;
+
+        case CMD_DISPLAY_NEXT:
+            activate(app, CMD_DISPLAY_NEXT);
             return true;
 
         case 'touchpad':

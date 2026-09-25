@@ -10,6 +10,4 @@ export interface DisplayEvents {
     'display:nightlight:temperature': number;
     'display:nightlight:schedule': boolean;
     'display:colorscheme:set': number;
-    'display:layout:apply': string;
-    'display:monitor:set-enabled': {description: string; enabled: boolean};
 }
