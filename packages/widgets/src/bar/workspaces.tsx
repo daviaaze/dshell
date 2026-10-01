@@ -6,6 +6,23 @@ import {getAppIcon} from '@shade/services/state/apps';
 import {type Accessor, bind, computed, For, With} from 'gnim';
 
 const SPECIAL_WORKSPACE_ID = -99;
+export function bindWorkspaceClientIcon(
+    client: Hyprland.Client,
+    resolveIcon: (client: Hyprland.Client) => string = getAppIcon
+): Accessor<string> {
+    const clientClass = bind(client, 'class');
+    const clientTitle = bind(client, 'title');
+    const initialClass = bind(client, 'initial-class');
+    const initialTitle = bind(client, 'initial-title');
+
+    return computed(() => {
+        clientClass();
+        clientTitle();
+        initialClass();
+        initialTitle();
+        return resolveIcon(client);
+    });
+}
 
 export default ({
     monitor,
@@ -57,23 +74,23 @@ export default ({
                             orientation={vertical.as((v) =>
                                 v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                             )}
-                            cssClasses={[
-                                'flat',
-                                'card',
-                                ...(isSpecial ? ['accent'] : []),
-                            ]}
+                            cssClasses={['flat', 'card', ...(isSpecial ? ['accent'] : [])]}
                             spacing={4}
                         >
                             <For each={bind(ws, 'clients')}>
-                                {(client: Hyprland.Client) => (
-                                    <Gtk.ToggleButton
-                                        active={computed(() => activeName() === client.address)}
-                                        onClicked={() => client.focus()}
-                                        cssClasses={['flat']}
-                                    >
-                                        <Gtk.Image iconName={getAppIcon(client)} pixelSize={24} />
-                                    </Gtk.ToggleButton>
-                                )}
+                                {(client: Hyprland.Client) => {
+                                    const iconName = bindWorkspaceClientIcon(client);
+
+                                    return (
+                                        <Gtk.ToggleButton
+                                            active={computed(() => activeName() === client.address)}
+                                            onClicked={() => client.focus()}
+                                            cssClasses={['flat']}
+                                        >
+                                            <Gtk.Image iconName={iconName} pixelSize={24} />
+                                        </Gtk.ToggleButton>
+                                    );
+                                }}
                             </For>
                             {/* show empty dot when ws is empty */}
                             <With value={bind(ws, 'clients').as((clients) => clients.length < 1)}>

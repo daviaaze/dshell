@@ -27,7 +27,8 @@
         nixfmt-rfc-style
         nix-output-monitor
         d-spy
-        graphviz          # dot, for scripts/deps-graph.sh rendering
+        graphviz # dot, for scripts/deps-graph.sh rendering
+        ffmpeg-headless # inspect timestamped VM screen recordings
         python3
         python3Packages.vncdo
         python3Packages.mcp

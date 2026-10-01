@@ -1,0 +1,18 @@
+diff --git a/src/core/nm-core-utils.c b/src/core/nm-core-utils.c
+--- a/src/core/nm-core-utils.c
++++ b/src/core/nm-core-utils.c
+@@ -4333,7 +4333,13 @@ nm_utils_validate_plugin(const char *path, struct stat *st, GError **error)
+-    if (st->st_uid != 0) {
++    /* The QEMU VM exposes its immutable Nix store through virtio-9p. In
++     * rootless Nix builds, those files appear owned by nobody (65534), not
++     * root. Accept only non-owner-writable files within the store; retain
++     * the group/world-write and setuid checks below. */
++    if (st->st_uid != 0
++        && !(st->st_uid == 65534 && g_str_has_prefix(path, "/nix/store/")
++             && !(st->st_mode & S_IWUSR))) {
+         g_set_error_literal(error,
+                             NM_UTILS_ERROR,
+                             NM_UTILS_ERROR_UNKNOWN,
+                             "file has invalid owner (should be root)");
+         return FALSE;
+     }

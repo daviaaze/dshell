@@ -66,7 +66,7 @@ function ClockPopover() {
     );
 }
 
-/** Button face: hour/minute + day/month, or the running timer. */
+/** Button face: time/date follows the bar orientation, or shows the running timer. */
 function ClockLabel({
     hour,
     minute,
@@ -74,6 +74,7 @@ function ClockLabel({
     month,
     timerActive,
     timerDisplay,
+    vertical,
 }: {
     hour: Accessor<string>;
     minute: Accessor<string>;
@@ -81,14 +82,18 @@ function ClockLabel({
     month: Accessor<string>;
     timerActive: Accessor<boolean>;
     timerDisplay: Accessor<string>;
+    vertical: Accessor<boolean>;
 }) {
     return (
         <Gtk.Box halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} spacing={4}>
-            <Gtk.Box visible={timerActive.as((a) => !a)} spacing={4}>
+            <Gtk.Box
+                visible={timerActive.as((a) => !a)}
+                spacing={4}
+                orientation={vertical.as(clockLayoutOrientation)}
+            >
                 <Gtk.Label label={hour} cssClasses={['title-1', 'numeric']} />
                 <Gtk.Label label={minute} cssClasses={['title-1', 'numeric']} />
                 <Gtk.Box
-                    visible={timerActive.as((a) => !a)}
                     orientation={Gtk.Orientation.VERTICAL}
                     halign={Gtk.Align.CENTER}
                     valign={Gtk.Align.CENTER}
@@ -106,7 +111,11 @@ function ClockLabel({
     );
 }
 
+export const clockLayoutOrientation = (vertical: boolean) =>
+    vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL;
+
 export default ({
+    vertical,
     visible = true,
 }: {
     vertical: Accessor<boolean>;
@@ -140,6 +149,7 @@ export default ({
                 month={month}
                 timerActive={timerActive}
                 timerDisplay={timerDisplay}
+                vertical={vertical}
             />
         </Gtk.MenuButton>
     );

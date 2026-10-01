@@ -4,9 +4,9 @@
 
 ## Overview
 
-- **Source**: `src/widget/settings/` (entry: `index.tsx`, plus pages: `appearance.tsx`, `bar.tsx`, `clock.tsx`, `debug.tsx`, `idle.tsx`, `network.tsx`, `notifications.tsx`, `screenCapture.tsx`, `timer.tsx`, `weather.tsx`)
-- **Settings groups**: All from `src/lib/settings/schema.ts` (general, bar, weather, timer, screenCapture)
-- **Type**: `Adw.PreferencesWindow`, standalone Adw window (not a shell overlay); created via exported `createSettingsWindow()`
+- **Source**: `packages/widgets/src/settings/` (entry: `index.tsx`; window lifecycle: `settingsOpen.ts`; page components are colocated)
+- **Settings groups**: owned by settings/services schemas under `packages/services/src/settings/`; each page also uses the relevant service API
+- **Type**: `Adw.PreferencesWindow`, opened lazily from the shell. `openSettings()` presents an already-visible window or disposes a stale instance before creating and presenting one.
 
 ## Functional
 
@@ -14,33 +14,36 @@
 
 | # | Page | Source | Contents |
 |---|------|--------|----------|
-| P1 | Appearance | `appearance.tsx` | Wallpaper day/night picker, color scheme, font settings |
-| P2 | Displays | `displays.tsx` | Per-monitor mode/scale/rotation/position/VRR, named layouts, auto-apply |
-| P3 | Bar & Dock | `bar.tsx` | Bar position, modules visibility toggles, dock pinned apps, icon size |
-| P4 | Idle & Lock | `idle.tsx` | Auto-lock timeout, lock screen options |
-| P5 | Notifications | `notifications.tsx` | Sound alerts, history limit, progress bars, ignored apps |
-| P6 | Screen Capture | `screenCapture.tsx` | Recording format/quality, boundary color, screenshot save dir |
-| P7 | Network | `network.tsx` | WiFi networks, connection management (captive portal?) |
-| P8 | Clock & Weather | `clock.tsx`, `weather.tsx` | Timezone, world clocks; weather units, location, API key |
-| P9 | Timer | `timer.tsx` | Timer presets, alarms |
-| P10 | Debug | `debug.tsx` | Debug logging categories, level |
+| P1 | Appearance | `appearance.tsx` | Theme, wallpaper and appearance controls |
+| P2 | Displays | `displays.tsx` | Monitor and display-layout controls |
+| P3 | Bar & Dock | `bar.tsx` | Bar modules/position and dock preferences |
+| P4 | Idle & Lock | `idle.tsx`, `power.tsx` | Idle and power/lock preferences |
+| P5 | Notifications | `notifications.tsx`, `scheduledDND.tsx` | Notification and scheduled DND preferences |
+| P6 | Screen Capture | `screenCapture.tsx`, `screenShare.tsx` | Capture and screen-sharing preferences |
+| P7 | Network | `network.tsx` | Network controls |
+| P8 | Bluetooth | `bluetooth.tsx` | Bluetooth controls |
+| P9 | Clock & Weather | `clock.tsx`, `weather.tsx` | Clock and weather preferences |
+| P10 | Timer | `timer.tsx` | Timer preferences |
+| P11 | Sound | `sound.tsx` | Audio preferences |
+| P12 | Mouse & Touchpad | `mouse.tsx` | Pointer and touchpad preferences |
+| P13 | Keyboard Shortcuts | `shortcuts.tsx` | Shortcut reference |
+| P14 | Default Apps | `defaultApps.tsx` | Default application choices |
+| P15 | Startup Apps | `startupApps.tsx` | Startup application choices |
+| P16 | About | `about.tsx` | Application information |
+| P17 | Debug | `debug.tsx` | Debug controls |
 
 ### Interactions
 
 | # | Action | Expected behavior |
 |---|--------|-------------------|
-| I1 | Navigate via sidebar | Adw.PreferencesWindow handles page switching |
-| I2 | Toggle a switch | Corresponding GSettings key updated immediately |
-| I3 | Pick a file (wallpaper) | Gtk.FileChooser opens; path saved to GSettings |
-| I4 | Search settings | `searchEnabled=true` on PreferencesWindow; Adw search bar |
+| I1 | Navigate via sidebar | `Adw.PreferencesWindow` provides page navigation |
+| I2 | Search settings | `searchEnabled=true` enables built-in preferences search |
 
-### Edge cases
+### Lifecycle notes
 
-| # | Condition | Expected behavior |
-|---|-----------|-------------------|
-| E1 | Application not set | PreferencesWindow application set to `app` from shell's App; if called outside shell context, window is standalone |
-| E2 | GSettings key not writable | Settings write silently fails (GSettings default behavior) |
-| E3 | Multiple settings windows | Not prevented — each call to `createSettingsWindow()` creates a new window |
+- The page grouping and titles above follow `packages/widgets/src/settings/index.tsx`.
+- Settings window creation/presentation is managed by `packages/widgets/src/settings/settingsOpen.ts`; it presents a visible existing window, and closes/disposes a stale existing instance before recreating it.
+- This index describes page composition, not the persistence model of each control. Confirm the relevant page and service/schema before asserting whether a setting takes effect immediately, is saved, or requires another action.
 
 ## Visual (Adwaita alignment)
 
@@ -48,19 +51,18 @@
 
 | Element | Token / style class | Notes |
 |---------|--------------------|-------|
-| Window | `Adw.PreferencesWindow` with `background` class | Adw native window |
-| Pages | `Adw.PreferencesPage` with `iconName` | Standard Adw components |
-| Rows | `Adw.ActionRow`, `Adw.ComboRow`, `Adw.SwitchRow` | Standard Adw widgets |
+| Window | `Adw.PreferencesWindow` with `background` class | Native Adwaita window |
+| Pages | `Adw.PreferencesPage` with symbolic `iconName` | Standard Adwaita navigation |
+| Rows | Adwaita preference rows | Use the row types chosen by each page |
 
 ### Adwaita checklist
 
-- [x] Uses `Adw.PreferencesWindow` and standard Adw widgets throughout
-- [x] Each page has a symbolic icon
-- [x] Search enabled
-- [x] Verified in light and dark — native Adw theming
+- [x] Uses `Adw.PreferencesWindow` and standard Adwaita preference pages
+- [x] Page icons are symbolic
+- [x] Search is enabled
+- [ ] Verify light and dark appearance on the running application
 
 ## Test plan
 
-- **Unit**: each page is declarative; test GSettings read/write round-trip for each setting
-- **Compliance linter**: `network.tsx` oversized (627 lines), get_default in JSX warnings; hardcoded color in screenCapture
-- **Visual/manual**: open each page; toggle every switch; pick wallpaper; search settings; close and reopen
+- **Functional/manual**: open the window, navigate/search the current page list, and verify behavior against each page's implementation and service.
+- **Visual/manual**: inspect the preferences window in light and dark schemes. This checklist does not claim a recent runtime verification.

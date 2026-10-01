@@ -1,80 +1,44 @@
 # Spec: Bar
 
-> Contract for the shell bar. Functional tests verify the **Functional**
-> section; the theme linter + visual checklist verify the **Visual** section.
+> Source-linked reference for the shell bar. Verify behavior against the current implementation before treating older detail as a contract.
 
 ## Overview
 
-- **Source**: `src/widget/bar/` (entry: `index.tsx`)
-- **Settings group**: `barSchema` (`src/lib/settings/schema.ts`) —
-  `position`, `showLauncher`, `showWorkspaces`, `showWindowTitle`,
-  `showSystemResources`, `showClock`, `showWeather`, `showSystemIndicators`,
-  `showBluetoothBattery`
-- **Layer/behavior**: one `Astal.Window` per monitor, `EXCLUSIVE`
-  exclusivity, anchored to the configured edge; registered in
-  `WindowManager` as the bar (affects maximized-window gaps)
+- **Source**: `packages/widgets/src/bar/` (entry: `index.tsx`)
+- **Settings group**: `barSettings` in `packages/services/src/settings/bar.gschema.ts`
+- **Layer/behavior**: one `Astal.Window` per GDK monitor; anchored to the selected edge, exclusive, and registered with `WindowManager`
 
 ## Functional
 
-### States
+### Current composition and adaptation
 
-| # | State | Trigger | Expected behavior |
-|---|-------|---------|-------------------|
-| F1 | Position change | `bar.position` set to TOP/BOTTOM/LEFT/RIGHT | Window re-anchors to that edge; orientation becomes vertical for LEFT/RIGHT, horizontal otherwise; 4px outer margin on the non-anchored side |
-| F2 | Module toggles | Each `show*` setting flipped | The corresponding module (launcher, workspaces, window title, system usage, clock, weather, system indicators) appears/disappears without restart |
-| F3 | Separator logic | Adjacent modules toggled | Separators only render when both neighboring modules are visible (clock/weather, weather/indicators, launcher/usage) |
-| F4 | Multi-monitor | Monitor hotplug | One bar per monitor via `For each={monitors}`; bars destroyed and unregistered from `WindowManager` on monitor removal |
-| F5 | Workspaces | Hyprland workspace/client events | Only workspaces of the bar's own monitor shown, sorted by id; `Adw.ToggleGroup` marks the focused client's toggle active; special workspaces (id < 0) get `success` style class |
-| F6 | Recording | Screen/audio capture active | Recording indicator appears in end section |
+| Behavior | Source evidence |
+|---|---|
+| Start slot contains launcher and system usage; center contains monitor workspaces and window title; end contains Bluetooth/audio, recording, clock, weather, and system indicators | `bar/index.tsx` |
+| Workspace app icons update when Hyprland finishes populating a client's class or title | `workspaces.tsx` |
+| Position determines window anchor and horizontal/vertical orientation | `bar/index.tsx` |
+| Clock uses four rows (hour, minute, day, localized month) when the bar is vertical; horizontal placement preserves the existing horizontal face, and the active timer remains a single label | `bar/clock.tsx` |
+| The bar is rendered for each current monitor and unregisters/closes its window on cleanup | `bar/index.tsx` |
+| Visibility settings include bar modules and dock preferences | `packages/services/src/settings/bar.gschema.ts` |
 
-### Interactions
-
-| # | Action | Expected behavior |
-|---|--------|-------------------|
-| I1 | Click launcher | Toggles app launcher (button `active` bound to `ShellState.launcherOpen`) |
-| I2 | Click system indicators | Toggles QuickSettings (button `active` bound to `ShellState.qsOpen`) |
-| I3 | Scroll over system indicators | Default speaker volume ±2.5% per step |
-| I4 | Click clock | Opens calendar/timer popover (`Gtk.MenuButton`, arrow direction follows bar orientation) |
-| I5 | Click weather | Opens weather detail popover |
-| I6 | Click workspace client icon | Focuses that specific client; empty workspaces show a placeholder toggle |
-
-### Edge cases
-
-| # | Condition | Expected behavior |
-|---|-----------|-------------------|
-| E1 | No focused window | WindowTitle hides or shows fallback; no layout jump |
-| E2 | Weather unavailable/offline | WeatherButton shows fallback icon, no error badge |
-| E3 | Battery absent (desktop) | Battery indicator hidden, no empty slot |
-| E4 | Vertical bar | Clock rotates/stacks legibly; indicators stack vertically |
+Component-specific interactions and fallback behavior should be verified in the owning component before adding them here.
 
 ## Visual (Adwaita alignment)
 
-### Theme tokens
-
 | Element | Token / style class | Notes |
 |---------|--------------------|-------|
-| Bar window | `card` + `background` Adw classes | No custom background CSS |
-| Module groups (start/end) | `linked` | Segmented Adwaita look |
-| Center box | `bar-centerbox` + `useStyle` (0 min-height, `0 4px` padding) | Spacing only, no colors |
-| Workspaces | `Adw.ToggleGroup` / `Adw.Toggle` (Adw defaults); `success` class for special workspaces | Active state comes from Adw accent, not custom CSS |
-| Indicator icons | symbolic, `--shade-fg`; warning states `--shade-error` | e.g. low battery, recording |
-| Separators | `--shade-outline-variant` | |
-| Clock/labels | `--shade-fg`; secondary text `--shade-fg-dim` or `dim-label` | |
+| Bar window | `card` + `background`; `@window_bg_color` | Current root window classes/background in `bar/index.tsx` |
+| Start/end groups | `linked` | Adwaita linked groups |
+| Workspaces/indicators | Component-specific Adwaita classes | Verify the owning component before adding a token contract |
 
 ### Adwaita checklist
 
-- [ ] Only Adw classes / `useStyle` layout props — no hardcoded colors
-- [ ] Spacing on the 6px grid (bar padding 4px is the documented exception)
-- [ ] Radius via `--shade-radius` for any pill/card children
-- [ ] Verified in light and dark variants (both bar positions)
-- [ ] All icons symbolic; indicator buttons have visible hover/focus using `--shade-primary`
+- [x] Current bar root uses Adwaita `card`/`background` classes and a native window color
+- [x] Start/end groups use the `linked` class
+- [ ] Verify light/dark variants and both orientations on the running application
+
 
 ## Test plan
 
-- **Unit**: extract and test `systemUsage` formatting (CPU/RAM/temp strings),
-  workspace filtering per monitor (`Gdk2HyprMonitor`), and separator
-  visibility logic from settings values.
-- **Compliance linter**: no exceptions expected — bar should be fully token-driven.
-- **Visual/manual**: screenshots in light + dark, horizontal + vertical,
-  with each `show*` toggle combination of the end section; attach baselines
-  to `assets/`.
+- **Functional/manual**: inspect bar position, enabled modules, workspaces, and monitor add/remove behavior against the current source and runtime.
+- **Visual/manual**: inspect horizontal and vertical layouts in light and dark schemes. No current screenshot baseline is asserted here.

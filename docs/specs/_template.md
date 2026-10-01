@@ -1,14 +1,12 @@
 # Spec: <App/Widget Name>
 
-> One page. This document is the contract: functional tests verify the
-> **Functional** section; the theme linter and visual checklist verify the
-> **Visual** section. Keep both testable — no vague requirements.
+> Source-linked reference. Keep functional claims observable and check them against current implementation; distinguish verified behavior from proposed requirements.
 
 ## Overview
 
-- **Source**: `src/widget/<name>/` (entry: `<file>.tsx`)
+- **Source**: `packages/widgets/src/<name>/` (entry: `<file>.tsx`)
 - **Settings group**: `<schema id>` (if any)
-- **Layer/behavior**: e.g. `Astal.Window`, layer, exclusivity, anchor
+- **Layer/behavior**: e.g. `Astal.Window`, layer, exclusivity, anchor; link current source
 
 ## Functional
 
@@ -32,12 +30,12 @@
 
 ## Visual (Adwaita alignment)
 
-All colors must come from the theme using **native Adwaita CSS
-variables** (`--window-bg-color`, `--accent-bg-color`, `--card-bg-color`,
-`--shade-color`, etc.) or **GTK style classes** (`.card`, `.accent`,
-`.background`, `.flat`, etc.). Hardcoded hex/rgb values and ad-hoc inline
-`css` are **not allowed**. See [STYLEGUIDE.md](../STYLEGUIDE.md) for the
-full reference.
+Prefer **native Adwaita CSS variables** (`--window-bg-color`, `--accent-bg-color`,
+`--card-bg-color`, `--shade-color`, etc.) and GTK style classes (`.card`,
+`.accent`, `.background`, `.flat`, etc.). Do not add undocumented custom palette
+tokens; use the [STYLEGUIDE.md](../STYLEGUIDE.md) catalog. Hardcoded values and
+inline CSS should be justified against the current styling conventions rather
+than added as an unexamined second theme system.
 
 ### Theme tokens
 
@@ -60,11 +58,6 @@ full reference.
 
 ## Test plan
 
-- **Unit (GJS harness, `src/lib/__tests__/`)**: list logic that is (or should
-  be) extracted from widgets and testable headless.
-- **Compliance linter (`pnpm check:compliance`)**: exceptions, if any, with
-  justification. Enforces theme tokens, componentization, event-driven
-  design, logging (`#/lib/core/logger`), async usage, and gnim/astal
-  reactivity patterns. Suppress with `// comply-allow: <rule>`.
-- **Visual/manual**: screenshots to capture (light/dark × states), run
-  before release.
+- **Tests**: name the current test target or script only after confirming it exists in this repository. Put pure logic behind testable functions where appropriate; do not invent a test directory or test harness.
+- **Static checks**: list only scripts that exist in `package.json` and can be run without modifying source. `pnpm run lint` uses `--write`; do not describe it as a read-only compliance check.
+- **Visual/manual**: list reproducible states, themes and orientations to inspect. Mark screenshots/baselines as proposals unless they exist and match the current implementation.

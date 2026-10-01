@@ -17,8 +17,8 @@ COMPONENT = "org.a11y.atspi.Component"
 SCREEN_COORDS = 0
 TIMEOUT = 4.0
 COMMAND_TIMEOUT = 30.0
-DEFAULT_DEPTH = 8
-DEFAULT_NODES = 500
+DEFAULT_DEPTH = 16
+DEFAULT_NODES = 2000
 MAX_DEPTH = 16
 MAX_NODES = 2000
 
@@ -74,11 +74,32 @@ class Atspi:
         except ValueError as exc:
             raise AccessibilityError("Could not parse %s.%s reply %r: %s" % (interface, method, result.stdout.strip(), exc))
 
+
+    def property_string(self, destination, path, interface, name):
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise AccessibilityError("AT-SPI command exceeded its %d-second time limit" % COMMAND_TIMEOUT)
+        command = ["busctl", "--address=" + self.address, "--timeout=4s", "get-property", destination, path, interface, name]
+        try:
+            result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=min(TIMEOUT, remaining))
+        except FileNotFoundError:
+            raise AccessibilityError("busctl is not installed")
+        except subprocess.TimeoutExpired:
+            raise AccessibilityError("Timed out reading %s.%s on %s %s" % (interface, name, destination, path))
+        except subprocess.CalledProcessError as exc:
+            detail = exc.stderr.strip() or exc.stdout.strip() or "no D-Bus diagnostic"
+            raise AccessibilityError("D-Bus property %s.%s failed on %s %s: %s" % (interface, name, destination, path, detail))
+        fields = shlex.split(result.stdout)
+        if len(fields) != 2 or fields[0] != "s":
+            raise AccessibilityError("Unexpected %s property reply from %s %s: %r" % (name, destination, path, fields))
+        return fields[1]
+
     def string(self, destination, path, method):
         fields = self.call(destination, path, ACCESSIBLE, method)
         if len(fields) < 2 or fields[0] != "s":
             raise AccessibilityError("Unexpected %s reply from %s %s: %r" % (method, destination, path, fields))
         return fields[1]
+
 
     def children(self, destination, path):
         fields = self.call(destination, path, ACCESSIBLE, "GetChildren")
@@ -93,12 +114,24 @@ class Atspi:
         except (ValueError, IndexError) as exc:
             raise AccessibilityError("Malformed GetChildren reply from %s %s: %r (%s)" % (destination, path, fields, exc))
 
+    def state_words(self, destination, path):
+        fields = self.call(destination, path, ACCESSIBLE, "GetState")
+        if len(fields) < 2 or fields[0] != "au":
+            raise AccessibilityError("Unexpected GetState reply from %s %s: %r" % (destination, path, fields))
+        try:
+            count = int(fields[1])
+            words = [int(value) for value in fields[2:]]
+            if len(words) != count:
+                raise ValueError("expected %d state words, got %d values" % (count, len(words)))
+            return words
+        except (ValueError, IndexError) as exc:
+            raise AccessibilityError("Malformed GetState reply from %s %s: %r (%s)" % (destination, path, fields, exc))
     def bounds(self, destination, path):
         try:
-            fields = self.call(destination, path, COMPONENT, "GetExtents", SCREEN_COORDS, signature="i")
+            fields = self.call(destination, path, COMPONENT, "GetExtents", SCREEN_COORDS, signature="u")
         except AccessibilityError:
             return None
-        if len(fields) != 5 or fields[0] != "iiii":
+        if len(fields) != 5 or fields[0] not in ("iiii", "(iiii)"):
             return None
         try:
             return [int(value) for value in fields[1:]]
@@ -109,7 +142,7 @@ class Atspi:
         return {
             "bus": destination,
             "path": path,
-            "name": self.string(destination, path, "GetName"),
+            "name": self.property_string(destination, path, ACCESSIBLE, "Name"),
             "role": self.string(destination, path, "GetRoleName"),
             "bounds": self.bounds(destination, path),
         }
@@ -137,22 +170,20 @@ class Atspi:
         return node
 
     def actions(self, node):
-        fields = self.call(node["bus"], node["path"], ACTION, "GetNActions")
-        if len(fields) != 2 or fields[0] != "i":
-            raise AccessibilityError("Unexpected GetNActions reply for %r: %r" % (node, fields))
+        fields = self.call(node["bus"], node["path"], ACTION, "GetActions")
+        if len(fields) < 2 or fields[0] != "a(sss)":
+            raise AccessibilityError("Unexpected GetActions reply for %r: %r" % (node, fields))
         try:
             count = int(fields[1])
-        except ValueError:
-            raise AccessibilityError("Invalid action count for %r: %r" % (node, fields))
-        if count < 0 or count > 128:
-            raise AccessibilityError("Invalid action count %d for %r" % (count, node))
-        result = []
-        for index in range(count):
-            reply = self.call(node["bus"], node["path"], ACTION, "GetActionName", index, signature="i")
-            if len(reply) != 2 or reply[0] != "s":
-                raise AccessibilityError("Unexpected GetActionName reply for %r action %d: %r" % (node, index, reply))
-            result.append(reply[1])
-        return result
+            values = fields[2:]
+            if count < 0 or count > 128 or len(values) != count * 3:
+                raise ValueError("expected %d action triples, got %d values" % (count, len(values)))
+            return [
+                {"name": values[index], "description": values[index + 1], "keybinding": values[index + 2]}
+                for index in range(0, len(values), 3)
+            ]
+        except (ValueError, IndexError) as exc:
+            raise AccessibilityError("Malformed GetActions reply for %r: %r (%s)" % (node, fields, exc))
 
 
 def bounded(value, default, maximum):
@@ -179,7 +210,15 @@ def locate(atspi, args, want_actions=False):
     while stack:
         node = stack.pop()
         search_truncated = search_truncated or node.get("truncated", False)
-        if node.get("name", "").casefold() == target and (role is None or node.get("role", "").casefold() == role):
+        role_matches = role is None or node.get("role", "").casefold() == role
+        matched = node.get("name", "").casefold() == target
+        if not matched and role_matches and getattr(args, "description_match", False):
+            try:
+                description = atspi.property_string(node["bus"], node["path"], ACCESSIBLE, "Description")
+                matched = description.casefold() == target
+            except AccessibilityError:
+                pass
+        if matched and role_matches:
             if want_actions:
                 try:
                     node["actions"] = atspi.actions(node)
@@ -228,25 +267,30 @@ def command_tree(atspi, args):
 
 
 def command_find(atspi, args):
-    return locate(atspi, args)
+    node = locate(atspi, args)
+    if args.include_state:
+        node["state_words"] = atspi.state_words(node["bus"], node["path"])
+    return node
 
 
 def command_click(atspi, args):
     node = locate(atspi, args, want_actions=True)
     actions = node["actions"]
-    preferred = [i for i, name in enumerate(actions) if name.casefold() in ("click", "press", "activate")]
+    preferred = [i for i, action in enumerate(actions) if action["name"].casefold() in ("click", "press", "activate")]
     if len(preferred) == 1:
         index = preferred[0]
     elif len(actions) == 1:
         index = 0
     else:
-        raise AccessibilityError("Node matched uniquely but has no unambiguous click action; available actions: " + json.dumps(actions, ensure_ascii=False))
+        names = [action["name"] for action in actions]
+        raise AccessibilityError("Node matched uniquely but has no unambiguous click action; available actions: " + json.dumps(names, ensure_ascii=False))
+    action = actions[index]["name"]
     reply = atspi.call(node["bus"], node["path"], ACTION, "DoAction", index, signature="i")
     if len(reply) != 2 or reply[0] != "b":
-        raise AccessibilityError("Unexpected DoAction reply for %r action %r: %r" % (node, actions[index], reply))
+        raise AccessibilityError("Unexpected DoAction reply for %r action %r: %r" % (node, action, reply))
     if reply[1] != "true":
-        raise AccessibilityError("AT-SPI rejected action %r on node %r" % (actions[index], node))
-    return {"clicked": True, "action": actions[index], "node": node}
+        raise AccessibilityError("AT-SPI rejected action %r on node %r" % (action, node))
+    return {"clicked": True, "action": action, "node": node}
 
 
 def make_parser():
@@ -255,7 +299,10 @@ def make_parser():
     commands.add_parser("probe", help="report the AT-SPI registry desktop and application roots")
     tree = commands.add_parser("tree", help="print a bounded semantic tree")
     find = commands.add_parser("find", help="find one exact accessible name")
+    find.add_argument("--include-state", action="store_true", help="include the AT-SPI state bit words for the matched node")
     click = commands.add_parser("click", help="invoke one unambiguous AT-SPI click action")
+    for command in (find, click):
+        command.add_argument("--description-match", action="store_true", help="also match the AT-SPI accessible description")
     for command in (tree, find, click):
         command.add_argument("--max-depth", type=int, default=DEFAULT_DEPTH)
         command.add_argument("--max-nodes", type=int, default=DEFAULT_NODES)
