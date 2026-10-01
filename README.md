@@ -1,11 +1,11 @@
 # Shade
 
-Shade is the GTK4/libadwaita desktop shell used by dshell. It brings together desktop surfaces such as the bar, launcher, Quick Settings, Settings, notifications, and capture controls. This repository also contains the greeter and screen-share picker applications.
+Shade is a GTK4/libadwaita desktop shell for Hyprland, with a greetd sign-in application and an XDPH screen-share picker. Its shell provides panels, application and window navigation, Quick Settings, Settings, notifications, capture controls, and lock/power surfaces. The guides distinguish source-traced behavior from runtime-verified behavior.
 
 ## Documentation
 
-- [User workflows](docs/workflows.md) — how to use the main desktop and session flows.
-- [Design and architecture](docs/design.md) — current implementation structure, surfaces, and visual system.
-- [GTK/libadwaita style guide](docs/STYLEGUIDE.md) — available native styling primitives and theme variables.
-- [Feature specifications](docs/specs/) — per-feature design and behavior references; check each document against current source before treating it as a statement of current behavior.
-- [VM radio testing](docs/vm-radio-testing.md) — isolated guest-local Wi-Fi and Bluetooth test setup; not a host-radio setup guide.
+- [User workflows](docs/workflows.md): entry points, steps, visible outcomes, and implementation trails.
+- [Architecture and visual design](docs/design.md): boot flow, shell surfaces, and current styling conventions.
+- [GTK4/libadwaita style guide](docs/STYLEGUIDE.md): native CSS variables and widget classes.
+- [Feature specifications](docs/specs/): source-linked references; older specifications may not match the current implementation.
+- [VM radio testing](docs/vm-radio-testing.md): isolated guest Wi-Fi and Bluetooth test setup.

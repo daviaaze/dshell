@@ -30,12 +30,15 @@
 
 ## Visual (Adwaita alignment)
 
-Prefer **native Adwaita CSS variables** (`--window-bg-color`, `--accent-bg-color`,
-`--card-bg-color`, `--shade-color`, etc.) and GTK style classes (`.card`,
-`.accent`, `.background`, `.flat`, etc.). Do not add undocumented custom palette
-tokens; use the [STYLEGUIDE.md](../STYLEGUIDE.md) catalog. Hardcoded values and
-inline CSS should be justified against the current styling conventions rather
-than added as an unexamined second theme system.
+Prefer **native Adwaita CSS variables** such as `--window-bg-color`,
+`--accent-bg-color`, `--card-bg-color`, and `--shade-color`, and GTK style
+classes such as `.card`, `.accent`, `.background`, and `.flat`. Use
+`var(--window-radius)` for a custom radius when appropriate. Do not introduce
+legacy `--shade-fg` or `--shade-radius` properties or undocumented palette
+tokens; use the [STYLEGUIDE.md](../STYLEGUIDE.md) catalog. Justify hardcoded
+values and inline CSS against the current styling conventions rather than
+creating a second theme system.
+
 
 ### Theme tokens
 
@@ -58,6 +61,6 @@ than added as an unexamined second theme system.
 
 ## Test plan
 
-- **Tests**: name the current test target or script only after confirming it exists in this repository. Put pure logic behind testable functions where appropriate; do not invent a test directory or test harness.
-- **Static checks**: list only scripts that exist in `package.json` and can be run without modifying source. `pnpm run lint` uses `--write`; do not describe it as a read-only compliance check.
-- **Visual/manual**: list reproducible states, themes and orientations to inspect. Mark screenshots/baselines as proposals unless they exist and match the current implementation.
+- **Tests**: name a test target or script only after confirming it exists in this repository. Put pure logic behind testable functions where appropriate; do not invent a test directory or harness.
+- **Static checks**: list only existing checks that are appropriate to the change. Do not describe write-mode lint or formatting scripts as read-only checks.
+- **Visual/manual**: list reproducible states, themes, and orientations to inspect. Mark screenshots/baselines as proposals unless they exist and match the current implementation.

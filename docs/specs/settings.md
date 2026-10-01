@@ -1,36 +1,39 @@
 # Spec: Settings
 
-> Multi-page preferences window using Adw.PreferencesWindow.
+> Source-linked reference to the current Settings implementation. Source descriptions are not claims of runtime verification.
+
 
 ## Overview
 
-- **Source**: `packages/widgets/src/settings/` (entry: `index.tsx`; window lifecycle: `settingsOpen.ts`; page components are colocated)
-- **Settings groups**: owned by settings/services schemas under `packages/services/src/settings/`; each page also uses the relevant service API
-- **Type**: `Adw.PreferencesWindow`, opened lazily from the shell. `openSettings()` presents an already-visible window or disposes a stale instance before creating and presenting one.
+- **Source**: [`packages/widgets/src/settings/`](../../packages/widgets/src/settings/) (page composition: [`index.tsx`](../../packages/widgets/src/settings/index.tsx); lazy lifecycle: [`settingsOpen.ts`](../../packages/widgets/src/settings/settingsOpen.ts))
+- **Settings groups**: settings components use the relevant schemas and services under [`packages/services/src/`](../../packages/services/src/).
+- **Type**: `Adw.PreferencesWindow`, rendered lazily when Settings is opened.
+- `openSettings()` presents the existing window if it is visible. If an existing window is not visible, it closes and clears that instance, disposes its rendered tree, then renders and presents a new window. The close-request handler disposes the current rendered tree.
 
 ## Functional
 
 ### Pages
 
-| # | Page | Source | Contents |
-|---|------|--------|----------|
-| P1 | Appearance | `appearance.tsx` | Theme, wallpaper and appearance controls |
-| P2 | Displays | `displays.tsx` | Monitor and display-layout controls |
-| P3 | Bar & Dock | `bar.tsx` | Bar modules/position and dock preferences |
-| P4 | Idle & Lock | `idle.tsx`, `power.tsx` | Idle and power/lock preferences |
-| P5 | Notifications | `notifications.tsx`, `scheduledDND.tsx` | Notification and scheduled DND preferences |
-| P6 | Screen Capture | `screenCapture.tsx`, `screenShare.tsx` | Capture and screen-sharing preferences |
-| P7 | Network | `network.tsx` | Network controls |
-| P8 | Bluetooth | `bluetooth.tsx` | Bluetooth controls |
-| P9 | Clock & Weather | `clock.tsx`, `weather.tsx` | Clock and weather preferences |
-| P10 | Timer | `timer.tsx` | Timer preferences |
-| P11 | Sound | `sound.tsx` | Audio preferences |
-| P12 | Mouse & Touchpad | `mouse.tsx` | Pointer and touchpad preferences |
-| P13 | Keyboard Shortcuts | `shortcuts.tsx` | Shortcut reference |
-| P14 | Default Apps | `defaultApps.tsx` | Default application choices |
-| P15 | Startup Apps | `startupApps.tsx` | Startup application choices |
-| P16 | About | `about.tsx` | Application information |
-| P17 | Debug | `debug.tsx` | Debug controls |
+| # | Page | Current page content sources | Contents |
+|---|------|-------------------------------|----------|
+| P1 | Appearance | [`appearance.tsx`](../../packages/widgets/src/settings/appearance.tsx) | Appearance and wallpaper controls |
+| P2 | Displays | [`displays.tsx`](../../packages/widgets/src/settings/displays.tsx) | Display controls |
+| P3 | Bar & Dock | [`bar.tsx`](../../packages/widgets/src/settings/bar.tsx) | Bar and dock preferences |
+| P4 | Idle & Lock | [`idle.tsx`](../../packages/widgets/src/settings/idle.tsx), [`power.tsx`](../../packages/widgets/src/settings/power.tsx) | Idle and power/lock preferences |
+| P5 | Notifications | [`notifications.tsx`](../../packages/widgets/src/settings/notifications.tsx), [`scheduledDND.tsx`](../../packages/widgets/src/settings/scheduledDND.tsx) | Notification and scheduled DND preferences |
+| P6 | Screen Capture | [`screenCapture.tsx`](../../packages/widgets/src/settings/screenCapture.tsx), [`screenShare.tsx`](../../packages/widgets/src/settings/screenShare.tsx) | Capture and screen-sharing preferences |
+| P7 | Network | [`network.tsx`](../../packages/widgets/src/settings/network.tsx) | Network preferences |
+| P8 | Bluetooth | [`bluetooth.tsx`](../../packages/widgets/src/settings/bluetooth.tsx) | Bluetooth devices and adapter controls |
+| P9 | Clock & Weather | [`clock.tsx`](../../packages/widgets/src/settings/clock.tsx), [`weather.tsx`](../../packages/widgets/src/settings/weather.tsx) | Clock and weather preferences |
+| P10 | Timer | [`timer.tsx`](../../packages/widgets/src/settings/timer.tsx) | Timer preferences |
+| P11 | Sound | [`sound.tsx`](../../packages/widgets/src/settings/sound.tsx) | Sound preferences |
+| P12 | Mouse & Touchpad | [`mouse.tsx`](../../packages/widgets/src/settings/mouse.tsx) | Pointer and touchpad preferences |
+| P13 | Keyboard Shortcuts | [`shortcuts.tsx`](../../packages/widgets/src/settings/shortcuts.tsx) | Shortcut reference |
+| P14 | Default Apps | [`defaultApps.tsx`](../../packages/widgets/src/settings/defaultApps.tsx) | Default application preferences |
+| P15 | Startup Apps | [`startupApps.tsx`](../../packages/widgets/src/settings/startupApps.tsx) | Startup application preferences |
+| P16 | About | [`about.tsx`](../../packages/widgets/src/settings/about.tsx) | Application information |
+| P17 | Debug | [`debug.tsx`](../../packages/widgets/src/settings/debug.tsx) | Debug controls |
+
 
 ### Interactions
 
@@ -41,28 +44,16 @@
 
 ### Lifecycle notes
 
-- The page grouping and titles above follow `packages/widgets/src/settings/index.tsx`.
-- Settings window creation/presentation is managed by `packages/widgets/src/settings/settingsOpen.ts`; it presents a visible existing window, and closes/disposes a stale existing instance before recreating it.
-- This index describes page composition, not the persistence model of each control. Confirm the relevant page and service/schema before asserting whether a setting takes effect immediately, is saved, or requires another action.
+- Page titles and component composition follow [`index.tsx`](../../packages/widgets/src/settings/index.tsx); Bluetooth supplies its own `Adw.PreferencesPage` from `bluetooth.tsx`.
+- Settings is a lazy widget; its open action calls `openSettings()` to render the window on demand. The lifecycle behavior above follows [`settingsOpen.ts`](../../packages/widgets/src/settings/settingsOpen.ts).
+- This table identifies page composition, not per-control persistence or service behavior. Check the relevant page and service before describing those details.
+
 
 ## Visual (Adwaita alignment)
 
-### Theme tokens
-
-| Element | Token / style class | Notes |
-|---------|--------------------|-------|
-| Window | `Adw.PreferencesWindow` with `background` class | Native Adwaita window |
-| Pages | `Adw.PreferencesPage` with symbolic `iconName` | Standard Adwaita navigation |
-| Rows | Adwaita preference rows | Use the row types chosen by each page |
-
-### Adwaita checklist
-
-- [x] Uses `Adw.PreferencesWindow` and standard Adwaita preference pages
-- [x] Page icons are symbolic
-- [x] Search is enabled
-- [ ] Verify light and dark appearance on the running application
+The window is an `Adw.PreferencesWindow` with the `background` CSS class. Its pages use `Adw.PreferencesPage` and symbolic icon names; built-in search is enabled. Individual page controls use their respective Adwaita widgets. See [`index.tsx`](../../packages/widgets/src/settings/index.tsx) and the [GTK4/libadwaita style guide](../STYLEGUIDE.md).
 
 ## Test plan
 
-- **Functional/manual**: open the window, navigate/search the current page list, and verify behavior against each page's implementation and service.
-- **Visual/manual**: inspect the preferences window in light and dark schemes. This checklist does not claim a recent runtime verification.
+- **Functional/manual**: when running the application, inspect navigation and search and compare page behavior with its current implementation. This spec does not assert runtime verification.
+- **Visual/manual**: inspect the preferences window in the supported color schemes; no screenshot baseline is asserted here.
