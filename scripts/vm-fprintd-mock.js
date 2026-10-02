@@ -1,4 +1,4 @@
-#!/usr/bin/env -S gjs
+#!/usr/bin/env -S gjs -m
 
 // Guest-only fprintd protocol fixture. This exercises Shade's D-Bus client path
 // only; it is not a reader, enrollment service, PAM authenticator, or biometric
@@ -40,7 +40,7 @@ const XML = `
 </node>`;
 
 function usage() {
-    printerr(`Usage: gjs scripts/vm-fprintd-mock.js --socket /absolute/path/to/private-bus.sock \\
+    printerr(`Usage: gjs -m scripts/vm-fprintd-mock.js --socket /absolute/path/to/private-bus.sock \\
   --sequence active-hold,no-match-retry,mock-match [--hold-ms 10000] [--retry-ms 1000]
 
 The socket must belong to a private guest dbus-daemon. This program connects
