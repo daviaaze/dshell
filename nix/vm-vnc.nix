@@ -8,6 +8,16 @@
 
 let
   cfg = config.programs.shade;
+  backlightSsdt =
+    pkgs.runCommand "shade-vm-backlight-ssdt"
+      {
+        nativeBuildInputs = [ pkgs.acpica-tools ];
+      }
+      ''
+        iasl -tc -p ssdt ${./vm-vnc-backlight.asl}
+        mkdir -p "$out"
+        cp ssdt.aml "$out/ssdt.aml"
+      '';
   bluetoothPeerStart = pkgs.writeShellScript "shade-vm-bluetooth-peer-start" ''
     set -euo pipefail
     bluetoothctl=${bluezTesting}/bin/bluetoothctl
@@ -43,46 +53,33 @@ let
     bluetoothctl=${bluezTesting}/bin/bluetoothctl
     controllers=()
     mapfile -t controllers < <("$bluetoothctl" list | ${pkgs.gawk}/bin/awk '$1 == "Controller" { print $2 }')
+    if [ "''${#controllers[@]}" -lt 2 ]; then
+      exit 0
+    fi
 
-    for controller in "''${controllers[@]}"; do
-      "$bluetoothctl" <<EOF || true
-    select $controller
+    main="''${controllers[0]}"
+    peer="''${controllers[1]}"
+
+    # Disable only modes enabled on the fixture peer.
+    "$bluetoothctl" <<EOF || true
+    select $peer
     scan off
     advertise off
     discoverable off
     pairable off
-    EOF
-    done
-
-    for controller in "''${controllers[@]}"; do
-      paired_devices=$("$bluetoothctl" <<EOF
-    select $controller
-    devices Paired
-    EOF
-    )
-      while read -r kind address _; do
-        if [ "$kind" = "Device" ] && [ -n "$address" ]; then
-          "$bluetoothctl" <<EOF || true
-    select $controller
-    remove $address
-    EOF
-        fi
-      done <<< "$paired_devices"
-    done
-    peer="''${controllers[1]:-}"
-    if [ -n "$peer" ]; then
-      "$bluetoothctl" <<EOF || true
-    select $peer
     reset-alias
     EOF
-    fi
 
-    for controller in "''${controllers[@]}"; do
-      "$bluetoothctl" <<EOF || true
-    select $controller
-    power off
+    # Pairing creates one entry for each controller; remove only the counterpart
+    # addresses, never other devices paired with either controller.
+    "$bluetoothctl" <<EOF || true
+    select $main
+    remove $peer
     EOF
-    done
+    "$bluetoothctl" <<EOF || true
+    select $peer
+    remove $main
+    EOF
   '';
   # The null sink exposes a guest-only .monitor source for generated signal capture; it is not a microphone.
   audioFixtureStart = pkgs.writeShellScript "shade-vm-audio-fixture-start" ''
@@ -109,7 +106,7 @@ let
     pactl=${pkgs.pulseaudio}/bin/pactl
     state="$XDG_RUNTIME_DIR/shade-vm-audio-fixture/module-id"
     if [ -s "$state" ]; then
-      module_id="$(${pkgs.coreutils}/bin/cat "$state")"
+      module_id="$("${pkgs.coreutils}/bin/cat" "$state")"
       if [[ "$module_id" =~ ^[0-9]+$ ]]; then
         "$pactl" unload-module "$module_id" || true
       fi
@@ -141,6 +138,7 @@ in
     "hci_vhci"
   ];
   boot.extraModprobeConfig = "options mac80211_hwsim radios=2";
+  boot.kernelParams = [ "acpi_backlight=video" ];
   # qemu-vm disables wireless by default; this guest provides virtual radios.
   networking.wireless.enable = lib.mkOverride 5 true;
   imports = [
@@ -161,7 +159,8 @@ in
     graphics = true;
     qemu.options = [
       # Keep the existing primary output as the sole active desktop until a test enables head 1.
-      "-device virtio-vga,max_outputs=2"
+      "-device virtio-vga,bus=pci.0,addr=1e.0,max_outputs=2"
+      "-acpitable file=${backlightSsdt}/ssdt.aml"
       # USB tablet for proper cursor tracking
       "-usb"
       "-device usb-tablet"
@@ -305,9 +304,27 @@ in
 
   # Keep the XDPH custom picker override confined to the disposable VM tester.
   systemd.tmpfiles.rules = [
+    # Create tester's config tree before copying the XDPH chooser configuration.
+    "d /home/tester 0755 tester users - -"
     "d /home/tester/.config 0755 tester users - -"
     "d /home/tester/.config/hypr 0755 tester users - -"
     "C+ /home/tester/.config/hypr/xdph.conf 0644 tester users - ${xdphTesterConfig}"
+  ];
+
+  security.sudo.extraRules = [
+    {
+      users = [ "tester" ];
+      commands = [
+        {
+          command = "${pkgs.systemd}/bin/systemctl start shade-vm-bluetooth-fixture.target";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "${pkgs.systemd}/bin/systemctl stop shade-vm-bluetooth-fixture.target";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
   ];
 
   # Ensure the greeter user exists (greetd needs it)
