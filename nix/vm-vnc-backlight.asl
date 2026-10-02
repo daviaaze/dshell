@@ -26,13 +26,14 @@ DefinitionBlock ("", "SSDT", 2, "OMP", "VMVNCBKL", 0x00000001)
 
             Method (_BCL, 0, NotSerialized)
             {
-                // AC and battery preferences followed by supported levels.
-                Return (Package (0x04)
+                // AC and battery preferences stay at 100% and 50%, followed by supported 100%, 50%, and 0% levels.
+                Return (Package (0x05)
                 {
                     0x64,
                     0x32,
                     0x64,
-                    0x32
+                    0x32,
+                    0x00
                 })
             }
 
