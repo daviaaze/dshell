@@ -116,10 +116,10 @@ let
       ${pkgs.coreutils}/bin/rm -f "$state"
     fi
   '';
-  portalRequesterStop = pkgs.writeShellScript "shade-vm-portal-requester-stop" ''
-    ${pkgs.systemd}/bin/systemctl --user stop \
-      xdg-desktop-portal.service \
-      xdg-desktop-portal-gtk.service || true
+  xdphTesterConfig = pkgs.writeText "shade-vm-tester-xdph.conf" ''
+    screencopy {
+        custom_picker_binary = ${lib.getBin cfg.package}/bin/shade-shell-share-picker
+    }
   '';
   secondaryDisplayStop = pkgs.writeShellScript "shade-vm-secondary-display-stop" ''
     ${pkgs.hyprland}/bin/hyprctl keyword monitor "Virtual-2, disable" || true
@@ -298,8 +298,17 @@ in
       "video"
       "input"
     ];
+    home = "/home/tester";
+    createHome = true;
     shell = pkgs.bash;
   };
+
+  # Keep the XDPH custom picker override confined to the disposable VM tester.
+  systemd.tmpfiles.rules = [
+    "d /home/tester/.config 0755 tester users - -"
+    "d /home/tester/.config/hypr 0755 tester users - -"
+    "C+ /home/tester/.config/hypr/xdph.conf 0644 tester users - ${xdphTesterConfig}"
+  ];
 
   # Ensure the greeter user exists (greetd needs it)
   # The greetd NixOS module already defines users.users.greeter
@@ -360,32 +369,29 @@ in
     };
   };
 
-  # gtk4-demo's file chooser demo is the real GTK portal requester; tests invoke it through guest UI.
+  # Guest contract: as tester, run `systemctl --user start shade-vm-portal-fixture.target`;
+  # choose a monitor/window or cancel using guest input, then inspect
+  # `journalctl --user -u shade-vm-portal-requester.service`. The requester closes
+  # its ScreenCast session and exits after the response. Stop the target with
+  # `systemctl --user stop shade-vm-portal-fixture.target` before the next run/teardown.
   systemd.user.services.shade-vm-portal-requester = {
-    description = "GTK portal requester for Shade VM workflow testing";
-    after = [
-      "xdg-desktop-portal.service"
-      "xdg-desktop-portal-gtk.service"
-    ];
+    description = "Guest ScreenCast portal requester for Shade picker testing";
+    after = [ "xdg-desktop-portal.service" ];
     partOf = [ "shade-vm-portal-fixture.target" ];
     serviceConfig = {
       Type = "simple";
-      Environment = "GDK_DEBUG=portals";
-      ExecStart = "${lib.getBin pkgs.gtk4}/bin/gtk4-demo";
-      ExecStopPost = portalRequesterStop;
+      ExecStart = "${pkgs.gjs}/bin/gjs -m ${../scripts/vm-screen-cast-requester.js}";
     };
   };
 
   systemd.user.targets.shade-vm-portal-fixture = {
-    description = "On-demand guest portal and GTK requester fixture";
+    description = "On-demand guest ScreenCast portal and Shade picker fixture";
     requires = [
       "xdg-desktop-portal.service"
-      "xdg-desktop-portal-gtk.service"
       "shade-vm-portal-requester.service"
     ];
     after = [
       "xdg-desktop-portal.service"
-      "xdg-desktop-portal-gtk.service"
       "shade-vm-portal-requester.service"
     ];
   };
