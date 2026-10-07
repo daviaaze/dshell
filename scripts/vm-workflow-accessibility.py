@@ -138,17 +138,22 @@ class Atspi:
         except ValueError:
             return None
 
-    def node(self, destination, path):
+    def summary(self, destination, path):
         return {
             "bus": destination,
             "path": path,
             "name": self.property_string(destination, path, ACCESSIBLE, "Name"),
             "role": self.string(destination, path, "GetRoleName"),
-            "bounds": self.bounds(destination, path),
+            "bounds": None,
         }
 
-    def tree(self, destination, path, depth, max_depth, budget):
-        node = self.node(destination, path)
+    def node(self, destination, path):
+        node = self.summary(destination, path)
+        node["bounds"] = self.bounds(destination, path)
+        return node
+
+    def tree(self, destination, path, depth, max_depth, budget, include_bounds=True):
+        node = self.node(destination, path) if include_bounds else self.summary(destination, path)
         node["children"] = []
         if depth >= max_depth:
             node["truncated"] = True
@@ -164,7 +169,9 @@ class Atspi:
                 break
             budget[0] += 1
             try:
-                node["children"].append(self.tree(child["bus"], child["path"], depth + 1, max_depth, budget))
+                node["children"].append(
+                    self.tree(child["bus"], child["path"], depth + 1, max_depth, budget, include_bounds)
+                )
             except AccessibilityError as exc:
                 node["children"].append({**child, "error": str(exc)})
         return node
@@ -198,9 +205,15 @@ def get_root(atspi):
 
 
 def locate(atspi, args, want_actions=False):
-    root = get_root(atspi)
+    try:
+        root = atspi.summary(REGISTRY, ROOT_PATH)
+    except AccessibilityError as exc:
+        raise AccessibilityError("AT-SPI registry desktop root is unavailable: " + str(exc))
     budget = [1, bounded(args.max_nodes, DEFAULT_NODES, MAX_NODES)]
-    tree = atspi.tree(root["bus"], root["path"], 0, bounded(args.max_depth, DEFAULT_DEPTH, MAX_DEPTH), budget)
+    tree = atspi.tree(
+        root["bus"], root["path"], 0, bounded(args.max_depth, DEFAULT_DEPTH, MAX_DEPTH), budget,
+        include_bounds=False,
+    )
     matches = []
     rejected = []
     target = args.name.casefold()
@@ -241,7 +254,9 @@ def locate(atspi, args, want_actions=False):
         evidence = [{key: node.get(key) for key in ("name", "role", "bus", "path", "actions")} for node in matches]
         raise AccessibilityError("Ambiguous match for name %r%s: %d nodes: %s" % (
             args.name, " and role " + repr(args.role) if args.role else "", len(matches), json.dumps(evidence, ensure_ascii=False)))
-    return matches[0]
+    match = matches[0]
+    match["bounds"] = atspi.bounds(match["bus"], match["path"])
+    return match
 
 
 def command_probe(atspi):
@@ -262,8 +277,12 @@ def command_probe(atspi):
 
 
 def command_tree(atspi, args):
-    root = get_root(atspi)
-    return atspi.tree(root["bus"], root["path"], 0, bounded(args.max_depth, DEFAULT_DEPTH, MAX_DEPTH), [1, bounded(args.max_nodes, DEFAULT_NODES, MAX_NODES)])
+    include_bounds = not getattr(args, "no_bounds", False)
+    root = get_root(atspi) if include_bounds else atspi.summary(REGISTRY, ROOT_PATH)
+    return atspi.tree(
+        root["bus"], root["path"], 0, bounded(args.max_depth, DEFAULT_DEPTH, MAX_DEPTH),
+        [1, bounded(args.max_nodes, DEFAULT_NODES, MAX_NODES)], include_bounds=include_bounds,
+    )
 
 
 def command_find(atspi, args):
@@ -298,6 +317,7 @@ def make_parser():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("probe", help="report the AT-SPI registry desktop and application roots")
     tree = commands.add_parser("tree", help="print a bounded semantic tree")
+    tree.add_argument("--no-bounds", action="store_true", help="skip per-node screen geometry queries")
     find = commands.add_parser("find", help="find one exact accessible name")
     find.add_argument("--include-state", action="store_true", help="include the AT-SPI state bit words for the matched node")
     click = commands.add_parser("click", help="invoke one unambiguous AT-SPI click action")

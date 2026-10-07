@@ -368,11 +368,7 @@ in
   # Enable guest-side accessibility APIs for semantic UI automation.
   services.gnome.at-spi2-core.enable = true;
 
-  xdg.portal = {
-    enable = true;
-    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-    config.common.default = [ "gtk" ];
-  };
+  xdg.portal.enable = true;
 
   systemd.user.services.shade-vm-secondary-display = {
     description = "Enable the guest-only secondary display for a Shade workflow";

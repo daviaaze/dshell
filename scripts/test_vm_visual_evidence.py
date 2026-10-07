@@ -75,6 +75,7 @@ class VisualEvidenceTests(unittest.TestCase):
                 self.make_video(directory, flash_at=None, codec="libx264"),
                 (1, 1, 3, 5), directory / "evidence", label="odd-native-roi",
             )
+            self.assertEqual(evidence["video_decode_passes"], 2)
             for image in evidence["keyframe_pngs"]:
                 self.assertEqual(struct.unpack(">II", Path(image).read_bytes()[16:24]), (3, 5))
 

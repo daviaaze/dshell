@@ -26,47 +26,82 @@ The VM uses plain virtio VGA so QEMU's VNC backend can expose its screen. VNC li
 # Existing multi-scenario workflow smoke test
 python3 scripts/vm-workflow-test.py
 
-# Isolated recording pilot: Quick Settings, Wi-Fi off/on, notification arrival/close
+# Isolated recording pilot
 python3 scripts/vm-workflow-test.py --visual-audit
 
-# Frame-selection regression tests (real FFV1 and H.264 fixtures)
-nix develop -c python3 -m unittest discover -s scripts -p test_vm_visual_evidence.py
+# Run the smoke scenarios, history check, and recording audit in one guest boot
+python3 scripts/vm-workflow-test.py --full-suite
+
+# Script-level regression tests (frame selection, accessibility, and timing)
+nix develop -c python3 -m unittest discover -s scripts -p 'test_*.py'
 ```
 
-Both workflow modes build the existing `vm-vnc` target, create a disposable guest disk,
-log in through the real greeter, and clean up QEMU and disk state on exit. They never
-operate the host desktop or radios. The command prints its retained artifact directory.
+The default smoke test and `--visual-audit` retain their existing behavior. The
+`--full-suite` mode starts one `vm-vnc` guest, logs in once through the real
+greeter, then runs the default scenarios, notification-history check, and
+recording audit sequentially against that same guest. Every mode uses a
+disposable guest disk and cleans up QEMU and disk state on exit. Guest VNC and
+SSH remain loopback-only; the tests never operate the host desktop or radios.
+The command prints its retained artifact directory.
 
-### Workflow smoke results and limits
+`scripts/vm-workflow-test.py` writes `results.json` in that directory and prints
+one `PASS`, `FAIL`, or `UNSUPPORTED` result per executed or explicitly excluded
+scenario. `--full-suite` records known coverage exclusions as `UNSUPPORTED`;
+because the current runner treats any non-PASS as a nonzero exit, an exit code
+of 1 is expected until those exclusions are implemented or removed from scope.
+Read the result details rather than treating that exit code alone as a feature
+failure.
 
-`scripts/vm-workflow-test.py` writes `results.json` in the retained artifact
-directory and prints one `PASS`, `FAIL`, or `UNSUPPORTED` result per scenario.
-The JSON and scenario logs are the run-specific record; the suite is not a
-release gate unless every required scenario passes.
+The final `results.json` includes total elapsed time, summed scenario time,
+time outside scenarios, status counts, measured startup/shutdown phases, and
+the five slowest host commands. Each `commands.log` entry also includes its
+duration. This separates guest boot and setup overhead from scenario time and
+identifies whether the next optimization should target Nix builds, SSH/UI
+round-trips, or video evidence processing.
 
-Across the completed pilot runs, greeter login, launcher, Quick Settings,
-Wi-Fi radio toggling, and screenshot capture have passed. Bar-position
-selection/state verification and finding the synthetic notification through
-AT-SPI have failed in some runs. Check the current run's `results.json`; do not
-assume those outcomes are fixed or treat the suite as green.
+Across completed pilot runs, greeter login, launcher, Quick Settings, Wi-Fi
+radio toggling, and screenshot capture have passed. Bar-position selection/state
+verification and finding the synthetic notification through AT-SPI have failed
+in some runs. Check the current run's `results.json`; do not assume those
+outcomes are fixed or treat the suite as green.
 
 | Scenario | UI evidence | Independent guest evidence |
 |---|---|---|
 | Greeter login | VNC submits invalid credentials, returns to the prompt, then submits valid credentials; AT-SPI observes the greeter flow | Shade's user service and AT-SPI session become active |
 | Launcher | `Super+Space` opens the launcher and `Escape` closes it; the accessible search control is inspected | Hyprland layer appears and is removed |
 | Quick Settings | `Super+N` opens and closes the panel | Hyprland layer appears and is removed |
-| Bar position | Settings is opened from the shell and the Bar & Dock page is selected; the position control is clicked | Bar layer geometry and the saved setting are checked; failures are reported, not treated as passes |
+| Bar position | Settings is opened from the shell and the Bar & Dock page is selected; the position control is clicked | Bar layer geometry is checked; the saved preference value is not independently read |
 | Wi-Fi | The Wi-Fi tile is clicked off and on through AT-SPI | NetworkManager reports disabled then enabled; the isolated AP scan is checked |
 | Screenshot | The overlay is opened and cancelled, then opened again and confirmed with the screenshot shortcut | A new screenshot appears in the disposable guest's output directory |
-| Notifications/DND | A synthetic guest notification is sent; Quick Settings and its DND control are inspected | Notification history and DND state are checked when accessible |
+| Notifications/DND | A synthetic guest notification is sent; Quick Settings and its DND control are inspected | Active notification visibility and DND state are checked when accessible |
+| Notification history (`--full-suite`) | A uniquely titled synthetic notification is opened in the History view | The same summary is present in `~/.cache/shade/notifications.json` |
 
-This pilot does **not** cover Wi-Fi credential entry or connection to `Shade-Test`;
-it verifies the radio toggle and AP visibility only. Notification/DND coverage
-requires reliable notification delivery and accessible controls. A failed
-AT-SPI lookup is not evidence that the underlying feature is absent. Screenshots
-prove rendered pixels only, not widget identity or successful user interaction.
-The recording/temporal review described below is a separate visual sampling
-workflow, not additional proof of these pilot scenarios.
+The smoke suite does **not** cover Wi-Fi credential entry or connection to
+`Shade-Test`; the guest-local AP is only scanned. The extended runner reports
+the following gaps as `UNSUPPORTED`, not as passing tests: Wi-Fi credential
+connection, window-target capture, display preview/revert, Settings page
+navigation beyond Bar & Dock, window switcher, lock/unlock, Bluetooth pairing,
+portal-backed share-picker, guest brightness, audio playback/capture,
+biometrics, and power actions. Positive Bluetooth pairing has no advertising
+peer; the guest has only `Virtual-1`; no guest portal requester is established;
+brightness has no guest endpoint; QEMU audio uses host PulseAudio. Host
+audio/microphone use, biometric claims, and suspend/reboot/power-off actions
+are excluded rather than attempted.
+
+Notification/DND coverage requires reliable notification delivery and
+accessible controls. A failed AT-SPI lookup is not evidence that the underlying
+feature is absent. Screenshots prove rendered pixels only, not widget identity
+or successful user interaction. The recording/temporal review described below
+is separate visual evidence; `--full-suite` runs it after the shell scenarios
+in the same guest session.
+
+
+AT-SPI name/role searches still scan the bounded tree to prove a result is unique,
+but fetch screen bounds only for that unique match. This avoids a geometry D-Bus
+request for every node visited. Harness tree snapshots use `--no-bounds` and
+`--max-depth 10` because those evidence files need bounded semantic structure,
+not per-node geometry. Live `find`/`click` searches retain their depth-16 limit;
+the helper's default `tree` command still includes bounds.
 
 The recording mode enables compositor animations inside the disposable guest and
 supervises `wf-recorder` with a guest user service. It records the full compositor,
@@ -98,6 +133,11 @@ recordings above 18,000 probed frames. This is a review aid, not proof that tiny
 text/color defects or every transient are absent. The high-resolution state captures
 complement the transition selection. Timing windows include recorder-start uncertainty
 and command round trips; do not interpret them as measured sub-frame response latency.
+
+Selected native-resolution ROI frames are extracted together in one FFmpeg pass
+per region; `visual-audit.json` records the video decode-pass count. This replaces
+one video decode per selected frame while preserving source-frame order and
+timestamps.
 
 Review the native-resolution component PNGs with `decomposed-visual-ux-audit`:
 separate style, grouping, spacing, copy, duplication, affordance, and temporal-state

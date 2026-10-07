@@ -155,19 +155,26 @@ def render_evidence(
     output_dir.mkdir(parents=True, exist_ok=True)
     slug = re.sub(r"[^A-Za-z0-9_-]+", "-", label).strip("-") or "evidence"
     x, y, width, height = region
+    indices = analysis["keyframes"]
+    select = "+".join(f"eq(n\\,{index})" for index in indices)
     frames: list[dict[str, object]] = []
-    for index in analysis["keyframes"]:
-        timestamp = analysis["frame_times"][index]
-        image = output_dir / f"{slug}-frame-{index:06d}-t{timestamp:.6f}s.png"
+    with tempfile.TemporaryDirectory(prefix=f".{slug}-frames-", dir=output_dir) as temporary:
+        pattern = Path(temporary) / "frame-%06d.png"
         _run(
             ["ffmpeg", "-v", "error", "-y", "-i", str(video), "-map", "0:v:0",
-             "-vf", f"select=eq(n\\,{index}),crop={width}:{height}:{x}:{y}:exact=1",
-             "-fps_mode", "passthrough", "-frames:v", "1", str(image)],
-            action=f"Extracting ROI frame {index} from {video}",
+             "-vf", f"select={select},crop={width}:{height}:{x}:{y}:exact=1",
+             "-fps_mode", "passthrough", "-start_number", "0", "-frames:v", str(len(indices)),
+             str(pattern)],
+            action=f"Extracting selected ROI frames from {video}",
         )
-        if not image.is_file() or image.stat().st_size == 0:
-            raise RuntimeError(f"ffmpeg produced no PNG for frame {index} of {video}: {image}")
-        frames.append({"index": index, "time": timestamp, "path": str(image.resolve())})
+        for sequence, index in enumerate(indices):
+            timestamp = analysis["frame_times"][index]
+            extracted = Path(temporary) / f"frame-{sequence:06d}.png"
+            image = output_dir / f"{slug}-frame-{index:06d}-t{timestamp:.6f}s.png"
+            if not extracted.is_file() or extracted.stat().st_size == 0:
+                raise RuntimeError(f"ffmpeg produced no PNG for frame {index} of {video}: {extracted}")
+            extracted.replace(image)
+            frames.append({"index": index, "time": timestamp, "path": str(image.resolve())})
 
     columns = min(4, len(frames))
     filters = []
@@ -194,6 +201,7 @@ def render_evidence(
         raise RuntimeError(f"ffmpeg produced no contact sheet for {video}: {sheet}")
     return {
         **analysis,
+        "video_decode_passes": 2,
         "video": str(video.resolve()),
         "region": list(region),
         "label": label,
