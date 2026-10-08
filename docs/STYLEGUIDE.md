@@ -6,6 +6,60 @@ is provided by GTK4 and libadwaita automatically.
 
 ---
 
+## UI rule authority
+
+Use this precedence when applying native visual guidance:
+
+1. An applicable external accessibility or platform requirement remains binding.
+2. An explicit project contract applies within its stated scope. A documented
+   component-specific rule may specialize a project-wide default, but does not
+   override an applicable external requirement.
+3. The native patterns cataloged below are the project default where no
+   narrower contract applies.
+4. Design heuristics such as hierarchy, balance, and density guide review but
+   are not deterministic pass/fail rules.
+
+For a project rule, identify its source, affected components/states, how it can
+be checked, and any documented exception. A deviation is not automatically an
+exception: it needs a source and rationale. If applicable project rules conflict
+at the same scope, report the conflict as unresolved instead of choosing a
+threshold. An unselected checklist item or a proposed migration is not by
+itself an accepted contract.
+
+Use `MEASURED` for runtime values, `DECLARED` for source/configuration values,
+`ESTIMATED` for pixel-derived approximations, and `UNAVAILABLE` when evidence
+is missing. Keep the observation separate from the judgment: source-declared
+spacing does not prove the rendered gap, and a screenshot estimate cannot prove
+an exact CSS padding value.
+
+## Accessibility review contract
+
+Declare the platform and the accessibility conformance target, if one exists,
+before making a standards claim. WCAG criteria may be used as a benchmark for a
+native GTK surface, but do not claim WCAG conformance from a partial visual or
+automated review. For each criterion, record its applicability, exact scope,
+exceptions, check method, evidence, and status. Use `UNKNOWN` when applicability
+or evidence is insufficient; `NOT APPLICABLE` requires a reason.
+
+For in-scope controls, review:
+
+- accessible role, name, and state through AT-SPI or another platform
+  accessibility interface; screenshots alone cannot establish these;
+- keyboard operation, logical focus order, and visible focus for controls
+  intended to be keyboard-operable;
+- text and non-text contrast against the applicable criterion, measured from
+  reliable rendered colors and backgrounds;
+- actionable target bounds against the applicable target-size criterion,
+  including its exceptions; do not impose one universal pixel minimum.
+
+Useful WCAG 2.2 references include [Keyboard](https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html),
+[Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html),
+[Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html),
+[Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html),
+[Contrast Minimum](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
+[Non-text Contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html),
+and [Target Size Minimum](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html).
+
 ## Quick Reference
 
 | Need | Use |

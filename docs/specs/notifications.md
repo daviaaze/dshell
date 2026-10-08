@@ -162,7 +162,10 @@ classes. No hardcoded hex/rgb or ad-hoc inline `css`.
 - [ ] Icon-only buttons use symbolic icons (`-symbolic`)
 - [ ] Urgency visually differentiated (critical border, low dimmed)
 - [ ] Lockscreen: no action buttons, no default-action click
-- [ ] Spacing on 6px grid; radius via `--shade-radius`
+- [ ] Spacing uses the 6px grid as baseline where appropriate; this component
+      also has source-declared 4/6/8/12 gaps. Review those in context rather
+      than treating each non-grid value as an automatic failure. Any custom
+      radius uses `var(--window-radius)`.
 - [ ] Verified in light and dark
 - [ ] Empty-state icons semantically correct
 - [ ] Consistent capitalization: sentence case ("No new notifications")

@@ -44,22 +44,20 @@
 
 | Element | Token / style class | Notes |
 |---------|--------------------|-------|
-| Dock background | `card` + `background` + `linked` | Adw classes |
-| Container padding/radius | Inline `css` (`padding: 8px; border-radius: 24px;`) | **Violation** — should use `--shade-radius` |
-| Status indicator (active) | `@accent_color` via inline css | Uses Adw accent color, not --shade-primary |
-| Status indicator (running) | `@accent_color` via inline css | Smaller dot when not focused |
+| Dock container | `Gtk.Box`, `spacing={8}`, `.linked` + `.card` + `.background` | Current widget classes; no explicit custom radius declared |
+| Status indicator | `status-active` / `status-running` classes | Applied to the indicator in `item.tsx`; avoid undocumented `--shade-*` tokens |
 | Icon size | `bar.dockIconSize` | Reactive setting |
 | Button shape | `flat` + `circular` | Adw classes |
 
 ### Adwaita checklist
 
 - [x] Uses `flat` + `circular` button style classes
-- [ ] `border-radius: 24px` should use `--shade-radius`
+- [x] Container uses `.card`; no custom radius token is declared
 - [x] Icons are symbolic
 - [x] Verified in light and dark
 
 ## Test plan
 
 - **Unit**: extract and test dock item computation from pinned + running + focus state
-- **Compliance linter**: hardcoded-radius violation on dock container; get_default in JSX
+- **Compliance linter**: `get_default` in JSX
 - **Visual/manual**: screenshots with pinned only, running only, mixed, and active state

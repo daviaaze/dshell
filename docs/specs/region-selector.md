@@ -48,7 +48,7 @@
 ### Adwaita checklist
 
 - [ ] All visuals are Cairo-drawn — not CSS theme tokens (expected for this widget)
-- [x] Selection border color matches Adwaita accent (#3584e4 / --shade-primary)
+- [x] Cairo selection border uses the documented fixed `#3584e4` color; it is not a CSS variable or theme-reactive token
 
 ## Test plan
 

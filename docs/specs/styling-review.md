@@ -1,6 +1,13 @@
 # GTK4/Libadwaita Styling Reference & Migrations
 
-## 1. Inventário completo de classes libadwaita
+**Status and authority:** this document is a styling audit with candidate
+migration ideas, not the canonical project contract. Apply
+[`STYLEGUIDE.md`](../STYLEGUIDE.md) and the relevant component spec first.
+The inventory and proposals below must be checked against current GTK/
+libadwaita documentation, source, and rendered behavior before use. An
+unchecked migration item is not an approved requirement.
+
+## 1. Inventário de classes libadwaita
 
 ### Layout & Containers
 | Classe | Função | Substitui |
@@ -228,37 +235,27 @@
 2. Avaliar `.linked` pros itens
 
 ### Fase 6 — Logger/Clean-up
-1. Auditar usos restantes de `useStyle` — mover pros `--shade-*` vars quando possível
+1. Revisar usos restantes de `useStyle` e CSS inline contra o `STYLEGUIDE.md` e o código atual; não migrar valores indiscriminadamente para tokens `--shade-*`.
 2. Remover `css` inline que não são necessários
 3. Documentar decisões
 
 ---
 
-## 6. Como executar migrações em batch
+## 6. Revisar uma proposta de migração
 
-### Substituição via sed (cuidadoso)
-```bash
-# useStyle padding → .card
-find packages apps -name "*.tsx" -exec sed -i \
-  "s/useStyle({padding: '8px'})/useStyle({}); cssClasses={['card']}/g" {} +
+Antes de alterar um componente:
 
-# css={'box-shadow: none'} → remover se .card também removido
-# css={'padding: 12px; margin: 12px;'} → .card
-```
+1. Confirme o código atual e o escopo/estado afetado.
+2. Compare a proposta com o `STYLEGUIDE.md`, o spec atual do componente e o
+   comportamento atual de GTK/libadwaita.
+3. Registre o efeito visual/comportamental esperado e eventuais exceções.
+4. Verifique com os checks existentes e uma captura em runtime do estado/tema
+   afetado, quando disponíveis.
 
-### Usando `style-classes.md` como referência
-Toda classe listada no documento do GNOME pode ser aplicada via `cssClasses={[...]}` no JSX/TSX.
-
-### Validação pós-migração
-```bash
-npx tsc --noEmit        # TypeScript OK
-npx @biomejs/biome check .  # Lint OK
-# Testar visualmente:
-# - Cantos arredondados onde é card
-# - Padding consistente
-# - Sem bordas duplas
-# - Sem margins colapsados
-```
+Não execute substituições textuais amplas copiadas de exemplos históricos.
+Valide cada mudança contra a implementação do componente: uma classe, por si
+só, não prova equivalência de padding, espaçamento, foco ou comportamento de
+estado.
 
 ---
 

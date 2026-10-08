@@ -49,11 +49,9 @@
 |---------|--------------------|-------|
 | Window | `card` + `frame` + `background` | Adw classes, no custom colors |
 | Body | `applauncher-body` | Spacing only (8px) |
-| Entry placeholder text | `--shade-fg-dim` | Applied via theme defaults |
-| Search hints | `caption` | Adw style class |
-| App result buttons | `app-button` + `useStyle` (hover/active `--shade-*` bg) | Hover/active use theme variables with fallback |
+| Entry placeholder text | `Gtk.Entry.placeholderText` | Uses GTK placeholder rendering; no custom `--shade-fg-dim` token is declared |
+| App result buttons | `.app-button` + `.flat` | Classes applied in app and clipboard result buttons; no `--shade-*` colors declared in those components |
 | Status page | `Adw.StatusPage` | Standard Adw component |
-| Entry margins | Inline `css` (`padding-right:0px; margin-right:4px`) | Layout-only — compliance linter exception? Layout only |
 
 ### Adwaita checklist
 
