@@ -1,6 +1,11 @@
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
-  uwsm-app = app : "${pkgs.uwsm}/bin/uwsm-app -t service -- ${app}.desktop";
+  uwsm-app = app: "${pkgs.uwsm}/bin/uwsm-app -t service -- ${app}.desktop";
   cfg = config.programs.shade.desktop;
   gdbus = lib.getExe' pkgs.glib "gdbus";
   # busctl (from systemd) is used for the ownership check.
@@ -22,7 +27,8 @@ let
   # for every name even when the bus name IS owned (observed on NixOS with
   # glib 2.88.1). busctl reports the truth, so the guard no longer
   # false-positives into the "not running" branch.
-  shade-action = action:
+  shade-action =
+    action:
     let
       dest = "com.caioasmuniz.shade_shell";
       object = "/com/caioasmuniz/shade_shell";
@@ -38,6 +44,10 @@ let
     "SUPER,V,exec,pkill pwvucontrol || pwvucontrol"
     "SUPER,E,exec,${uwsm-app cfg.defaultFileManager}"
     "SUPER,C,exec,${uwsm-app "code"}"
+    "SUPER,M,exec,shade-shell display-next"
+    "SUPERALT,M,exec,shade-shell display-mode-chooser"
+    "SUPERSHIFT,M,exec,shade-shell display-toggle-internal"
+    ",XF86Display,exec,shade-shell display-mode-chooser"
     "SUPERSHIFT,V,exec,${shade-action "toggle-clipboard"}"
 
     # Was SUPERSHIFT,R, but that conflicts with screenshot record (same
@@ -160,15 +170,18 @@ let
   # Extract the "key" field from a bind string. The key is the field right
   # before the dispatcher, which is always the second field (or third if
   # --locked is present).
-  _keyOf = bindStr:
-    let parts = _splitBind bindStr;
+  _keyOf =
+    bindStr:
+    let
+      parts = _splitBind bindStr;
     in
     if builtins.head parts == "--locked" then builtins.elemAt parts 2 else builtins.elemAt parts 1;
 
   # Extract the "modifiers" portion (everything before the key). Used to
   # disambiguate e.g. "SUPER,comma" vs ",comma" (the latter being
   # unmodded).
-  _modsOf = bindStr:
+  _modsOf =
+    bindStr:
     let
       parts = _splitBind bindStr;
       # Drop --locked if present, then drop the last two fields
@@ -180,7 +193,10 @@ let
 
   # A "mods+key" tuple uniquely identifies a Hyprland binding. Two entries
   # with the same tuple are a conflict.
-  _tupleOf = bindStr: { mods = _modsOf bindStr; key = _keyOf bindStr; };
+  _tupleOf = bindStr: {
+    mods = _modsOf bindStr;
+    key = _keyOf bindStr;
+  };
 
   _allBindLines = _bind ++ _bindl ++ _bindle ++ _bindm ++ _binde;
 
@@ -196,7 +212,8 @@ let
 
   # Assertion fires at nixos-rebuild time.
   _assertNoDupKeybinds =
-    assert (_keyDuplicates == [ ])
+    assert
+      (_keyDuplicates == [ ])
       || throw "Duplicate Hyprland keybinds (Hyprland's silent last-wins hides the first): ${builtins.concatStringsSep "; " _keyDuplicates}";
     [ ];
 

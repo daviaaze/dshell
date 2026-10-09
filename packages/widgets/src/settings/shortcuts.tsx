@@ -32,7 +32,10 @@ const SHADE_COMMANDS: Array<[RegExp, string]> = [
     [/\bshade-shell\s+toggle\s+bar(?:\s|$)/, 'Toggle top bar'],
     [/\bshade-shell\s+toggle\s+windowswitcher(?:\s|$)/, 'Toggle window switcher'],
     [/\bshade-shell\s+toggle\s+settings(?:\s|$)/, 'Toggle settings'],
-    [/\bshade-shell\s+toggle\s+touchpad(?:\s|$)|\bshade-shell\s+touchpad(?:\s|$)/, 'Toggle touchpad'],
+    [
+        /\bshade-shell\s+toggle\s+touchpad(?:\s|$)|\bshade-shell\s+touchpad(?:\s|$)/,
+        'Toggle touchpad',
+    ],
     [/\bshade-shell\s+clipboard(?:\s|$)/, 'Open launcher in clipboard mode'],
     [/\bshade-shell\s+open-clipboard(?:\s|$)/, 'Open clipboard history directly'],
     [/\bshade-shell\s+lockscreen(?:\s|$)/, 'Lock the screen'],
@@ -43,6 +46,13 @@ const SHADE_COMMANDS: Array<[RegExp, string]> = [
     [/\bshade-shell\s+record-window(?:\s|$)/, 'Record the focused window'],
     [/\bshade-shell\s+record-output(?:\s|$)/, 'Record the focused output'],
     [/\bshade-shell\s+record(?:\s|$)/, 'Start fullscreen recording'],
+    [/\bshade-shell\s+display-next(?:\s|$)/, 'Cycle saved display layouts'],
+    [/\bshade-shell\s+display-mode-chooser(?:\s|$)/, 'Choose display mode'],
+    [/\bshade-shell\s+display-toggle-internal(?:\s|$)/, 'Toggle internal display'],
+    [/\bshade-shell\s+display-mode\s+internal-only(?:\s|$)/, 'Use internal-only display mode'],
+    [/\bshade-shell\s+display-mode\s+external-only(?:\s|$)/, 'Use external-only display mode'],
+    [/\bshade-shell\s+display-mode\s+extend(?:\s|$)/, 'Extend displays'],
+    [/\bshade-shell\s+display-mode\s+duplicate(?:\s|$)/, 'Duplicate displays'],
 ];
 
 const describeBind = (bind: HyprBind, keybinds: Keybinds): string => {
@@ -102,10 +112,7 @@ export default () => {
                         onClicked={refresh}
                     />
                 </Adw.ActionRow>
-                <Adw.ActionRow
-                    title="Hyprland configuration"
-                    subtitle={keybinds.configPath}
-                >
+                <Adw.ActionRow title="Hyprland configuration" subtitle={keybinds.configPath}>
                     <Gtk.Button
                         slot="suffix"
                         valign={Gtk.Align.CENTER}

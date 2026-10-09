@@ -51,6 +51,11 @@ let
         default = null;
         description = "Variable refresh rate setting.";
       };
+      mirror = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Name of another monitor in this layout to mirror; null means independent output.";
+      };
       disable = lib.mkOption {
         type = lib.types.bool;
         default = false;
@@ -95,17 +100,10 @@ in
     };
   };
 
-  config = lib.mkMerge [
-    (lib.mkIf cfg.enable {
-      programs.hyprland.extraConfig = ''
-        bind = SUPER, M, exec, shade-shell display-next
-      '';
-    })
-    (lib.mkIf (cfg.enable && cfg.layouts != { }) {
-      environment.etc."xdg/shade/initial-monitor-layouts.json".text = builtins.toJSON {
-        layouts = cfg.layouts;
-        defaultLayout = cfg.defaultLayout;
-      };
-    })
-  ];
+  config = lib.mkIf (cfg.enable && cfg.layouts != { }) {
+    environment.etc."xdg/shade/initial-monitor-layouts.json".text = builtins.toJSON {
+      layouts = cfg.layouts;
+      defaultLayout = cfg.defaultLayout;
+    };
+  };
 }

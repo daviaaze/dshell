@@ -22,6 +22,10 @@ function resolveAction(args: string[]): string | null {
     else if (args[1] === 'record-window') return 'record-window';
     else if (args[1] === 'record-window-address') return 'record-window-address';
     else if (args[1] === 'record-output') return 'record-output';
+    else if (args[1] === 'display-next') return 'display-next';
+    else if (args[1] === 'display-mode' && args[2]) return 'display-mode';
+    else if (args[1] === 'display-mode-chooser') return 'display-mode-chooser';
+    else if (args[1] === 'display-toggle-internal') return 'display-toggle-internal';
     else if (args[1] === 'touchpad') return 'toggle-touchpad';
     return null;
 }
@@ -89,6 +93,18 @@ describe('requestHandler action resolution', () => {
         expect(resolveAction(['', 'touchpad'])).toBe('toggle-touchpad');
     });
 
+    it('routes direct display mode values with their parameterized action', () => {
+        for (const mode of ['internal-only', 'external-only', 'extend', 'duplicate']) {
+            expect(resolveAction(['', 'display-mode', mode])).toBe('display-mode');
+        }
+    });
+
+    it('routes display chooser, internal toggle, and saved-layout cycling', () => {
+        expect(resolveAction(['', 'display-mode-chooser'])).toBe('display-mode-chooser');
+        expect(resolveAction(['', 'display-toggle-internal'])).toBe('display-toggle-internal');
+        expect(resolveAction(['', 'display-next'])).toBe('display-next');
+    });
+
     it('returns null for unknown command', () => {
         expect(resolveAction(['', 'nonexistent'])).toBe(null);
     });
@@ -115,6 +131,10 @@ describe('requestHandler action completeness', () => {
         'record-window',
         'record-window-address',
         'record-output',
+        'display-next',
+        'display-mode',
+        'display-mode-chooser',
+        'display-toggle-internal',
         'toggle-touchpad',
     ];
 
@@ -133,7 +153,15 @@ describe('requestHandler action completeness', () => {
         'record-window-address',
         'record-output',
         'touchpad',
+        'display-next',
+        'display-mode',
+        'display-mode-chooser',
+        'display-toggle-internal',
     ];
+    for (const mode of ['internal-only', 'external-only', 'extend', 'duplicate']) {
+        const action = resolveAction(['', 'display-mode', mode]);
+        if (action) reachableViaCLI.add(action);
+    }
 
     for (const cmd of commands) {
         const action = resolveAction(['', cmd]);

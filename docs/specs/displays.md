@@ -1,99 +1,73 @@
 # Spec: Displays (Monitors & Layouts)
 
-> Runtime monitor management: per-monitor physical setup applied live, plus
-> named layouts that snapshot and restore the whole arrangement.
+> Runtime monitor management combines built-in display modes, per-output controls,
+> and named layouts. Output modes and window tiling are separate concerns.
 
 ## Overview
 
-- **Source**: `packages/widgets/src/settings/displays.tsx` (settings page), `packages/services/src/display/layouts.ts` (`LayoutService`)
-- **Settings**: `packages/services/src/settings/monitors.gschema.ts` (`monitors.auto-apply`)
+- **Settings**: `packages/widgets/src/settings/displays.tsx`
+- **Quick Settings**: `packages/widgets/src/quicksettings/display.tsx`
+- **Service**: `packages/services/src/display/layouts.ts` (`LayoutService`)
 - **Persistence**: `$XDG_CONFIG_HOME/shade/monitor-layouts.json` (runtime store; overridable via `SHADE_LAYOUTS_FILE` for tests)
-- **Type**: one `Adw.PreferencesPage` in the Shade Settings window, with a Monitors group and a Layouts group
-- **Related**: Nix-declared layouts (`nix/hyprland/layouts.nix`, `shade-layout` CLI) remain the declarative path; `LayoutService` manages user-edited runtime layouts and complements it.
+- **Nix seed**: `nix/hyprland/layouts.nix` declares initial named layouts; a monitor's optional `mirror` names another monitor in the same profile.
+- **Auto-apply**: `monitors.auto-apply` controls profile selection on startup and topology changes.
 
-Research references: [monique](https://github.com/ToRvaLDz/monique) (per-monitor inspector, profile system, hotplug daemon), [nwg-displays](https://github.com/nwg-piotr/nwg-displays) (workspace→output assignments), [hyprmoncfg](https://paolino.me/hyprmoncfg-monitor-configuration-for-hyprland/) (same per-monitor control set).
+## Built-in display modes
 
-## Functional
+The available mode chooser is keyboard-focusable and is available in Quick Settings. It previews a selection without changing outputs on focus/navigation. A preview has a 15-second confirmation window; Keep Changes commits it, and Revert or timeout restores the previous arrangement. Starting another preview replaces the candidate while retaining the original rollback target.
 
-### Monitors group
+| Mode | Result |
+|------|--------|
+| Internal only | Enable the first attached `eDP-*` output and disable other outputs. |
+| External only | Disable the internal panel and enable all attached external outputs independently. |
+| Extend | Enable all attached outputs independently. |
+| Duplicate | Enable all outputs and mirror every output to one source (the internal panel when attached, otherwise the lexical-first output). |
 
-Per-monitor `Adw.ExpanderRow`, one per live Hyprland monitor:
+Unavailable modes are omitted. A mode matching the current arrangement is a no-op. Duplicate retains each output's own resolution; source content can therefore scale or differ in aspect ratio on mirror destinations. Named layouts can store mixed arrangements, such as one mirrored pair plus an independently extended output; these are displayed as custom setups rather than extra built-in modes.
 
-| Control | Behavior |
-|---------|----------|
-| Enabled | `monitor NAME,disable` or re-enable with the last enabled spec (cached) |
-| Resolution | `Gtk.DropDown` over `availableModes` + `Preferred`; applies `monitor NAME,MODE,POS,SCALE` |
-| Scale | SpinRow 0.5–3.0; applies scale |
-| Rotation | DropDown Normal/90°/180°/270°; applies `transform,N` (0–3) |
-| Horizontal/Vertical Position | SpinRows; applies `POS = XxY` |
-| Adaptive Sync (VRR) | Switch; applies `vrr,1` / omits (default off) |
+Quick Settings individual-output switches use the same preview transaction. An enabled mirror destination is labeled with its source. Disabling a mirror source promotes a remaining destination and redirects its dependent destinations. The last enabled independent desktop cannot be disabled.
 
-All changes apply live via `hyprctl keyword monitor …` (`LayoutService.applySpec`), guarded against echo loops (handler compares against the monitor's current astal property before applying). Changes are NOT persisted until saved into a layout.
+## Displays settings
 
-Guard: the last enabled monitor cannot be disabled.
+- Per-output resolution, scale, transform, position, VRR, enabled state, and mirror source are editable.
+- Mirror sources are enabled independent outputs; mirror destinations cannot themselves be sources. Invalid dependencies are rejected on Apply without changing live outputs.
+- The arrangement canvas depicts independent desktop rectangles only; mirror destinations are represented in their output rows.
+- Mode selection immediately previews that mode and replaces the draft with the resulting live arrangement. Manual draft edits remain separate until Apply.
+- Named layouts save/restore the complete output arrangement (including mirror relationships) and workspace assignments.
+- A short `Window tiling` explanation points to Hyprland per-workspace layout configuration; this feature does not change window tiling algorithms.
 
-### Layouts group
-
-- **Save**: `Adw.EntryRow` + save button — snapshots the live monitors (`currentFormat`, `XxY`, scale, transform, vrr, enabled) plus workspace→monitor bindings into a named layout.
-- **Apply**: per-layout button — re-applies every monitor spec then `hyprctl keyword workspace N,monitor:NAME,default:true` for each binding. Marks the layout `Active` (persisted as `current`).
-- **Delete**: per-layout button; clears `current` if it pointed at the layout.
-- **Auto-apply on monitor change**: `monitors.auto-apply` (default on). On Hyprland `monitor-added`/`monitor-removed`, after a 500 ms debounce, the saved layout whose monitors are all connected (or disabled) with the most enabled monitors is applied, unless already active.
-
-### Data model
+## Data model
 
 ```json
-{ "version": 1, "current": "Home",
-  "layouts": { "Home": {
-    "monitors": [{ "name": "DP-1", "resolution": "3440x1440@144",
-                   "position": "0x0", "scale": 1, "transform": 0, "vrr": null,
-                   "disabled": false }],
-    "workspaces": { "1": "DP-1", "2": "DP-1", "3": "HDMI-A-1" } } } }
+{ "version": 1, "current": "Mixed",
+  "layouts": { "Mixed": {
+    "monitors": [
+      { "name": "eDP-1", "resolution": "preferred", "position": "0x0",
+        "scale": 1, "transform": 0, "vrr": null, "disabled": false },
+      { "name": "HDMI-A-1", "resolution": "preferred", "position": "0x0",
+        "scale": 1, "transform": 0, "vrr": null, "disabled": false,
+        "mirror": "eDP-1" },
+      { "name": "DP-1", "resolution": "preferred", "position": "auto-right",
+        "scale": 1, "transform": 0, "vrr": null, "disabled": false,
+        "mirror": null }
+    ],
+    "workspaces": { "1": "eDP-1", "2": "DP-1" } } } }
 ```
 
-`monitors[].transform`: 0=normal, 1=90°, 2=180°, 3=270°. Rendered to `hyprctl` as `monitor NAME,RES,POS,SCALE[,transform,N][,vrr,N]` / `monitor NAME,disable`.
+`mirror` is additive and nullable: absent or `null` means an independent output. Its value is the source monitor name in the profile. Existing version-1 profiles without this field remain independent outputs. Hyprland mirror destinations are physically enabled but are not independent logical desktops.
 
-### Interactions
+## CLI and default bindings
 
-| # | Action | Expected behavior |
-|---|--------|-------------------|
-| I1 | Change a monitor control | Applied live; row stays consistent (binds to astal monitor properties) |
-| I2 | Save a layout | Current arrangement snapshotted and persisted; appears in list |
-| I3 | Apply a layout | Monitors + workspaces restored; row shows `Active` |
-| I4 | Unplug/replug a monitor | Best matching saved layout reapplies after 500 ms (if auto-apply on) |
-| I5 | Disable last enabled monitor | Rejected with a warning notification |
-
-### Edge cases
-
-| # | Condition | Expected behavior |
-|---|-----------|-------------------|
-| E1 | Store file missing/corrupt | Treated as empty store; first save recreates it |
-| E2 | Layout applied with disconnected monitor | That spec fails via hyprctl, error logged + notified; others still apply |
-| E3 | No Hyprland (getHyprland null) | Page renders nothing; `save()` refuses empty captures; auto-apply never schedules |
-| E4 | Re-enable after disable | Uses last applied enabled spec (resolution/position/scale/transform preserved) |
-| E5 | Current mode not in `availableModes` | DropDown shows `Preferred` |
+- `shade-shell display-next` previews the next matching saved layout.
+- `shade-shell display-mode MODE` previews one of `internal-only`, `external-only`, `extend`, or `duplicate`.
+- `shade-shell display-mode-chooser` opens the mode chooser without applying a mode.
+- `shade-shell display-toggle-internal` previews toggling the internal panel.
+- Super+M remains saved-layout cycling; Super+Alt+M and XF86Display open the chooser; Super+Shift+M toggles the internal panel. These are default bindings and follow the existing Hyprland binds enable gate.
 
 ## Service API
 
-`LayoutService` (singleton, `@shade/services/display/layouts`):
+`LayoutService` (singleton, `@shade/services/display/layouts`) owns profile persistence and all preview/confirm/revert transactions. Built-in modes and output toggles share this transaction; a pending candidate is reverted after 15 seconds unless confirmed. The chooser request opens Quick Settings and signals the widget to focus a mode; it does not mutate monitor state.
 
-- `names`, `current` (read-only properties), signals `applied(name)`, `storeChanged()`
-- `get(name)`, `save(name, layout?)`, `remove(name)`, `apply(name)`
-- `specFor(mon)`, `monitorSpecs()`, `captureWorkspaces()`, `captureLayout()`
-- `applySpec(spec)`, `applyEnabled(name, enabled)`
-- `testReset()` (tests)
+## Tiling guidance
 
-Note: object-typed private fields (`#store`, `#lastEnabled`) must be initialized in the constructor body — field initializers on gnim `@register` classes are shared across instances.
-
-## Visual (Adwaita alignment)
-
-| Element | Token / style class | Notes |
-|---------|--------------------|-------|
-| Page | `Adw.PreferencesPage`, icon `video-display-symbolic` | after Appearance |
-| Groups | `Adw.PreferencesGroup` for Monitors / Layouts | |
-| Monitor rows | `Adw.ExpanderRow` + `Adw.SwitchRow` / `Adw.SpinRow` / `Adw.ActionRow`+`Gtk.DropDown` | |
-| Layout rows | `Adw.ActionRow` + suffix icon buttons | `document-save-symbolic`, `system-run-symbolic`, `user-trash-symbolic` |
-
-## Test plan
-
-- **Unit** (`packages/services/src/display/__tests__/layouts.test.ts`): `renderMonitorSpec` matrix (full spec, transform/vrr omission, disable); store round-trip across instances; sorted names; empty-name/empty-capture refusal; remove clears `current`; apply of unknown layout returns false.
-- **Manual**: open Displays; change scale/rotation/position on each monitor; toggle enabled; save two layouts; apply each; unplug a monitor and verify auto-apply; re-enable a disabled monitor preserves its spec.
+Configure distinct algorithms through the existing Hyprland workspace rules, for example `"1, monitor:DP-1, layout:master"` and `"2, monitor:HDMI-A-1, layout:dwindle"`. This assigns layouts to workspaces, not a new per-monitor tiling controller.

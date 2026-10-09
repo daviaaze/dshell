@@ -44,7 +44,9 @@ const CMD_RECORD_WINDOW_ADDRESS = 'record-window-address';
 const CMD_RECORD_OUTPUT = 'record-output';
 const CMD_OPEN_CLIPBOARD = 'open-clipboard';
 const CMD_DISPLAY_NEXT = 'display-next';
-
+const CMD_DISPLAY_MODE = 'display-mode';
+const CMD_DISPLAY_MODE_CHOOSER = 'display-mode-chooser';
+const CMD_DISPLAY_TOGGLE_INTERNAL = 'display-toggle-internal';
 // ── Build command tree ──
 
 function buildCLI(_app: Gio.Application): Quarrel.Command {
@@ -113,6 +115,18 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
     const displayNext = new Quarrel.Command({name: CMD_DISPLAY_NEXT})
         .about('Preview the next layout matching connected displays')
         .opt(help);
+    const displayMode = new Quarrel.Command({name: CMD_DISPLAY_MODE})
+        .about('Preview a built-in display mode')
+        .arg('MODE', 'Display mode: internal-only, external-only, extend, duplicate')
+        .opt(help);
+
+    const displayModeChooser = new Quarrel.Command({name: CMD_DISPLAY_MODE_CHOOSER})
+        .about('Open the display mode chooser')
+        .opt(help);
+
+    const displayToggleInternal = new Quarrel.Command({name: CMD_DISPLAY_TOGGLE_INTERNAL})
+        .about('Toggle the internal display')
+        .opt(help);
 
     // Root CLI
     const cli = new Quarrel.Command({name: 'shade-shell'})
@@ -130,9 +144,11 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .subcommand(clipboard)
         .subcommand(openClipboard)
         .subcommand(toggleDnd)
+        .subcommand(displayMode)
+        .subcommand(displayModeChooser)
+        .subcommand(displayToggleInternal)
         .subcommand(displayNext)
-        .subcommand(touchpad)
-        .opt(help);
+        .subcommand(touchpad);
 
     return cli;
 }
@@ -204,6 +220,22 @@ function dispatch(command: Quarrel.Command, app: Gio.Application): boolean {
 
         case CMD_DISPLAY_NEXT:
             activate(app, CMD_DISPLAY_NEXT);
+            return true;
+
+        case CMD_DISPLAY_MODE: {
+            const mode = command.get_args()[0];
+            if (mode) {
+                activateWithString(app, CMD_DISPLAY_MODE, mode);
+            }
+            return true;
+        }
+
+        case CMD_DISPLAY_MODE_CHOOSER:
+            activate(app, CMD_DISPLAY_MODE_CHOOSER);
+            return true;
+
+        case CMD_DISPLAY_TOGGLE_INTERNAL:
+            activate(app, CMD_DISPLAY_TOGGLE_INTERNAL);
             return true;
 
         case 'touchpad':
