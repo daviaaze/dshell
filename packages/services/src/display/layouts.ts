@@ -10,6 +10,14 @@ import {notify} from '../capture/utils';
 import {getHyprland} from '../hyprland';
 import {monitorsSettings} from '../settings/monitors.gschema';
 import ShellState from '../state/shellState';
+import {
+    buildDisplayMode,
+    detectDisplayMode,
+    getAvailableDisplayModes,
+    logicalMonitorSize,
+    setLayoutOutputEnabled,
+} from './modes';
+import type {DisplayMode} from './modes';
 
 export interface MonitorSpec {
     name: string;
@@ -20,9 +28,12 @@ export interface MonitorSpec {
     transform: number;
     vrr: number | null;
     disabled: boolean;
+    mirror?: string | null;
 }
 
 export interface OutputInfo extends MonitorSpec {
+    mirror: string | null;
+    id: number;
     enabled: boolean;
     dpms: boolean;
     width: number;
@@ -66,6 +77,7 @@ export interface LayoutServiceOptions {
 
 type RawMonitor = {
     name?: unknown;
+    id?: unknown;
     description?: unknown;
     currentFormat?: unknown;
     refreshRate?: unknown;
@@ -77,6 +89,8 @@ type RawMonitor = {
     transform?: unknown;
     vrr?: unknown;
     dpmsStatus?: unknown;
+    disabled?: unknown;
+    mirrorOf?: unknown;
     availableModes?: unknown;
 };
 
@@ -90,6 +104,7 @@ export function renderMonitorSpec(spec: MonitorSpec): string {
     const parts = [`monitor ${spec.name}`, spec.resolution, spec.position, `${spec.scale}`];
     if (spec.transform !== 0) parts.push('transform', `${spec.transform}`);
     if (spec.vrr != null && spec.vrr !== 0) parts.push('vrr', `${spec.vrr}`);
+    parts.push('mirror', spec.mirror ?? '');
     return parts.join(',');
 }
 
@@ -114,6 +129,20 @@ function missingFile(error: unknown): boolean {
     return error instanceof GLib.Error && error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND);
 }
 
+function normalizedMirror(mirror: string | null | undefined): string | null {
+    return mirror || null;
+}
+
+function normalizeLayout(layout: Layout): Layout {
+    return {
+        ...layout,
+        monitors: layout.monitors.map((monitor) => ({
+            ...monitor,
+            mirror: normalizedMirror(monitor.mirror),
+        })),
+    };
+}
+
 function parseStore(value: unknown): LayoutStore {
     if (typeof value !== 'object' || value === null || Array.isArray(value))
         throw new Error('Invalid layout store');
@@ -125,7 +154,10 @@ function parseStore(value: unknown): LayoutStore {
         Array.isArray(parsed.layouts)
     )
         throw new Error('Invalid layout store');
-    return {...EMPTY_STORE, ...parsed};
+    const layouts: Record<string, Layout> = {};
+    for (const [name, layout] of Object.entries(parsed.layouts))
+        layouts[name] = normalizeLayout(layout);
+    return {...EMPTY_STORE, ...parsed, layouts};
 }
 
 function parseMonitorArray(value: unknown): RawMonitor[] {
@@ -149,7 +181,16 @@ function parseWorkspaceArray(value: unknown): Record<number, string> {
     }
     return workspaces;
 }
-function monitorFromRaw(raw: RawMonitor, enabled: boolean): OutputInfo {
+function mirrorSource(raw: RawMonitor, namesById: Map<string, string>): string | null {
+    const rawMirror = raw.mirrorOf;
+    if (rawMirror === undefined || rawMirror === null || rawMirror === '' || rawMirror === 'none')
+        return null;
+    const source = namesById.get(String(rawMirror));
+    if (!source) throw new Error(`Mirror source is not attached: ${String(rawMirror)}`);
+    return source;
+}
+
+function monitorFromRaw(raw: RawMonitor, enabled: boolean, mirror: string | null): OutputInfo {
     const name = typeof raw.name === 'string' ? raw.name : '';
     if (!name) throw new Error('Hyprland returned a monitor without a connector name');
     const description =
@@ -159,6 +200,7 @@ function monitorFromRaw(raw: RawMonitor, enabled: boolean): OutputInfo {
     const width = Number(raw.width ?? 0);
     const height = Number(raw.height ?? 0);
     const scale = Number(raw.scale ?? 1);
+    const rawId = Number(raw.id);
     const modes = Array.isArray(raw.availableModes)
         ? raw.availableModes.flatMap((value) => {
               if (typeof value === 'string') {
@@ -189,6 +231,7 @@ function monitorFromRaw(raw: RawMonitor, enabled: boolean): OutputInfo {
             ? `${width}x${height}@${refreshRate.toFixed(2)}`
             : 'preferred';
     return {
+        id: Number.isFinite(rawId) ? rawId : -1,
         name,
         description,
         resolution,
@@ -196,6 +239,7 @@ function monitorFromRaw(raw: RawMonitor, enabled: boolean): OutputInfo {
         scale: Number.isFinite(scale) && scale > 0 ? scale : 1,
         transform: Number(raw.transform ?? 0),
         vrr: raw.vrr ? 1 : 0,
+        mirror,
         disabled: !enabled,
         enabled,
         dpms: raw.dpmsStatus !== false,
@@ -215,14 +259,28 @@ export function parseHyprlandSnapshot(
     const all = parseMonitorArray(allValue);
     const active = parseMonitorArray(activeValue);
     const activeNames: Record<string, true> = {};
+    const namesById = new Map<string, string>();
     for (const monitor of active)
         if (typeof monitor.name === 'string') activeNames[monitor.name] = true;
-    const attached = all.map((monitor) =>
-        monitorFromRaw(monitor, !!activeNames[String(monitor.name)])
-    );
+    for (const monitor of all) {
+        const name = typeof monitor.name === 'string' ? monitor.name : '';
+        const id = Number(monitor.id);
+        if (name && Number.isFinite(id)) namesById.set(String(id), name);
+    }
+    const attached = all.map((monitor) => {
+        const mirror = mirrorSource(monitor, namesById);
+        const name = typeof monitor.name === 'string' ? monitor.name : '';
+        const enabled =
+            typeof monitor.disabled === 'boolean'
+                ? !monitor.disabled
+                : !!activeNames[name] || mirror !== null;
+        return monitorFromRaw(monitor, enabled, mirror);
+    });
     return {
         attached,
-        active: attached.filter((monitor) => monitor.enabled),
+        active: attached.filter(
+            (monitor) => monitor.enabled && monitor.mirror === null && !!activeNames[monitor.name]
+        ),
         workspaces: workspaceValue === undefined ? {} : parseWorkspaceArray(workspaceValue),
     };
 }
@@ -277,8 +335,60 @@ function sameIdentitySet(specs: MonitorSpec[], outputs: OutputInfo[]): boolean {
     );
 }
 
+function specFromOutput(output: OutputInfo, disabled = !output.enabled): MonitorSpec {
+    return {
+        name: output.name,
+        description: output.description,
+        resolution: output.resolution,
+        position: output.position,
+        scale: output.scale,
+        transform: output.transform,
+        vrr: output.vrr,
+        disabled,
+        mirror: normalizedMirror(output.mirror),
+    };
+}
+
+class LayoutWriteFailure extends Error {
+    constructor(
+        message: string,
+        readonly changed: boolean
+    ) {
+        super(message);
+    }
+}
+type LayoutWriteState = {changed: boolean};
+
+function validateMirrorGraph(specs: MonitorSpec[]): void {
+    const byName = new Map<string, MonitorSpec>();
+    for (const spec of specs) {
+        if (byName.has(spec.name)) throw new Error('Invalid mirror configuration');
+        byName.set(spec.name, spec);
+    }
+    for (const spec of specs) {
+        if (spec.disabled || !spec.mirror) continue;
+        const source = byName.get(spec.mirror);
+        if (!source || source.disabled || source.name === spec.name || source.mirror)
+            throw new Error('Invalid mirror configuration');
+    }
+    if (!specs.some((spec) => !spec.disabled && !spec.mirror))
+        throw new Error('Invalid mirror configuration');
+}
+
+function isDisplayMode(value: string): value is DisplayMode {
+    return (
+        value === 'internal-only' ||
+        value === 'external-only' ||
+        value === 'extend' ||
+        value === 'duplicate'
+    );
+}
+
 function sameLayout(a: Layout | undefined, b: Layout): boolean {
-    return !!a && JSON.stringify(a.monitors) === JSON.stringify(b.monitors);
+    return (
+        !!a &&
+        JSON.stringify(normalizeLayout(a).monitors) === JSON.stringify(normalizeLayout(b).monitors)
+    );
 }
 
 @register
@@ -313,6 +423,7 @@ export class LayoutService extends GObject {
     #pendingOriginalLayout: Layout | null = null;
     #pendingOriginalName: string | null = null;
     #previewTimer: number | null = null;
+    #previewGeneration = 0;
     #hotplugTimer: number | null = null;
 
     constructor(options: LayoutServiceOptions = {}) {
@@ -343,51 +454,49 @@ export class LayoutService extends GObject {
     @property get error(): string | null {
         return this.#error;
     }
+    @property get displayMode(): string {
+        return detectDisplayMode(this.#outputs);
+    }
+    @property get availableDisplayModes(): string[] {
+        return getAvailableDisplayModes(this.#outputs);
+    }
+    @signal modeChooserRequested(): void {}
     @signal applied(_name: string): void {}
     drawArrangement(cr: Cairo.Context, width: number, height: number, layout: Layout): void {
-        const enabled = layout.monitors
-            .map((spec) => ({
-                spec,
-                output: this.#outputs.find((output) => output.name === spec.name),
-            }))
-            .filter((item) => item.output && !item.spec.disabled);
-        if (!enabled.length) return;
-        const positions = enabled.map(({spec}) => {
-            const parts = spec.position.split('x').map(Number);
-            return {x: parts[0] ?? 0, y: parts[1] ?? 0};
+        let rightEdge = 0;
+        const rectangles = layout.monitors.flatMap((spec) => {
+            if (spec.disabled || spec.mirror) return [];
+            const output = this.#outputs.find((item) => item.name === spec.name);
+            if (!output) return [];
+            const match = /^(-?\d+)x(-?\d+)$/.exec(spec.position);
+            const size = logicalMonitorSize(spec, output);
+            const x = spec.position === 'auto-right' ? rightEdge : Number(match?.[1] ?? output.x);
+            const y = spec.position === 'auto-right' ? 0 : Number(match?.[2] ?? output.y);
+            rightEdge = Math.max(rightEdge, x + size.width);
+            return [{output, x, y, width: size.width, height: size.height}];
         });
-        const left = Math.min(...positions.map((position) => position.x));
-        const top = Math.min(...positions.map((position) => position.y));
-        const right = Math.max(
-            ...enabled.map(
-                ({spec, output}) =>
-                    (spec.position.split('x').map(Number)[0] ?? 0) +
-                    (output?.width ?? 0) / (output?.scale ?? 1)
-            )
-        );
-        const bottom = Math.max(
-            ...enabled.map(
-                ({spec, output}) =>
-                    (spec.position.split('x').map(Number)[1] ?? 0) +
-                    (output?.height ?? 0) / (output?.scale ?? 1)
-            )
-        );
+        if (!rectangles.length) return;
+        const left = Math.min(...rectangles.map((rectangle) => rectangle.x));
+        const top = Math.min(...rectangles.map((rectangle) => rectangle.y));
+        const right = Math.max(...rectangles.map((rectangle) => rectangle.x + rectangle.width));
+        const bottom = Math.max(...rectangles.map((rectangle) => rectangle.y + rectangle.height));
         const scale = Math.min(
             (width - 24) / Math.max(1, right - left),
             (height - 24) / Math.max(1, bottom - top)
         );
-        for (const {spec, output} of enabled) {
-            if (!output) continue;
-            const [x, y] = spec.position.split('x').map(Number);
-            const w = (output.width / output.scale) * scale;
-            const h = (output.height / output.scale) * scale;
+        for (const rectangle of rectangles) {
             cr.setSourceRGB(0.22, 0.42, 0.65);
-            cr.rectangle(12 + ((x ?? 0) - left) * scale, 12 + ((y ?? 0) - top) * scale, w, h);
+            cr.rectangle(
+                12 + (rectangle.x - left) * scale,
+                12 + (rectangle.y - top) * scale,
+                rectangle.width * scale,
+                rectangle.height * scale
+            );
             cr.fillPreserve();
             cr.setSourceRGB(0.8, 0.85, 0.95);
             cr.stroke();
-            cr.moveTo(18 + ((x ?? 0) - left) * scale, 30 + ((y ?? 0) - top) * scale);
-            cr.showText(output.name);
+            cr.moveTo(18 + (rectangle.x - left) * scale, 30 + (rectangle.y - top) * scale);
+            cr.showText(rectangle.output.name);
         }
     }
     registerCommands(app: Gio.Application): void {
@@ -430,9 +539,15 @@ export class LayoutService extends GObject {
     }
 
     #setError(error: unknown): void {
-        this.#error = String(error);
+        this.#error = error instanceof Error ? error.message : String(error);
         this.notify('error');
         logger.error('layouts', this.#error);
+    }
+    #publishOutputs(outputs: OutputInfo[]): void {
+        this.#outputs = outputs;
+        this.notify('monitors');
+        this.notify('displayMode');
+        this.notify('availableDisplayModes');
     }
 
     #load(): LayoutStore {
@@ -488,6 +603,7 @@ export class LayoutService extends GObject {
                         scale: monitor.scale ?? 1,
                         transform: monitor.transform ?? 0,
                         vrr: monitor.vrr ?? null,
+                        mirror: normalizedMirror(monitor.mirror),
                         disabled: monitor.disable ?? monitor.disabled ?? false,
                     })),
                 };
@@ -530,51 +646,66 @@ export class LayoutService extends GObject {
                 this.#setError(error);
                 return;
             }
-            const changed = this.#topology !== topology(snapshot.attached);
-            this.#topology = topology(snapshot.attached);
-            this.#outputs = snapshot.attached;
-            this.notify('monitors');
-            if (this.#deadline !== null && changed) this.#clearPreview();
-            if (!snapshot.active.length) {
-                const internal = snapshot.attached.find((monitor) => /^eDP-/.test(monitor.name));
-                if (!internal) {
-                    this.#setError(
-                        new Error('No active display and no attached internal panel to recover')
-                    );
-                    return;
-                }
-                try {
-                    await this.#adapter.keyword({
-                        ...internal,
-                        resolution: 'preferred',
-                        position: 'auto',
-                        scale: 1,
-                        transform: 0,
-                        vrr: null,
-                        disabled: false,
-                    });
-                    this.#outputs = (await this.#adapter.snapshot()).attached;
-                    this.notify('monitors');
-                } catch (error) {
-                    this.#setError(error);
-                    notify('Display recovery failed', String(error), 'dialog-error-symbolic');
-                }
-                return;
-            }
-            if ((!startup && !changed) || !this.#autoApply()) return;
-            const matches = Object.entries(this.#load().layouts).filter(
-                ([, layout]) =>
-                    layout.auto !== false && sameIdentitySet(layout.monitors, snapshot.attached)
-            );
-            const selected =
-                matches.find(([name]) => name === this.#store.current) ??
-                matches.find(([name]) => name === this.#seedDefault) ??
-                matches.sort(([a], [b]) => a.localeCompare(b))[0];
-            if (selected) await this.#applyCommitted(selected[0], selected[1], snapshot);
+            await this.#reconcileSnapshot(startup, snapshot);
         });
     }
 
+    async #reconcileSnapshot(startup: boolean, snapshot: DisplaySnapshot): Promise<void> {
+        const changed = this.#topology !== topology(snapshot.attached);
+        this.#topology = topology(snapshot.attached);
+        this.#publishOutputs(snapshot.attached);
+        if (this.#pendingBefore && changed) this.#clearPreview();
+        if (!snapshot.active.some((monitor) => monitor.enabled && !monitor.mirror)) {
+            const internal = snapshot.attached
+                .filter((monitor) => /^eDP-/.test(monitor.name))
+                .sort((a, b) => a.name.localeCompare(b.name))[0];
+            if (!internal) {
+                this.#setError(
+                    new Error('No active display and no attached internal panel to recover')
+                );
+                return;
+            }
+            try {
+                await this.#adapter.keyword({
+                    ...specFromOutput(internal, false),
+                    resolution: 'preferred',
+                    position: 'auto',
+                    scale: 1,
+                    transform: 0,
+                    vrr: null,
+                    mirror: null,
+                });
+                const recovered = await this.#adapter.snapshot();
+                this.#publishOutputs(recovered.attached);
+                if (
+                    !recovered.active.some(
+                        (monitor) =>
+                            monitor.name === internal.name &&
+                            monitor.enabled &&
+                            monitor.mirror === null
+                    )
+                )
+                    throw new Error('Display recovery did not activate the internal panel');
+            } catch (error) {
+                this.#setError(error);
+                notify('Display recovery failed', String(error), 'dialog-error-symbolic');
+            }
+            return;
+        }
+        if ((!startup && !changed) || !this.#autoApply()) return;
+        const matches = Object.entries(this.#load().layouts).filter(
+            ([, layout]) =>
+                layout.auto !== false && sameIdentitySet(layout.monitors, snapshot.attached)
+        );
+        const selected =
+            matches.find(([name]) => name === this.#store.current) ??
+            matches.find(([name]) => name === this.#seedDefault) ??
+            matches.sort(([a], [b]) => a.localeCompare(b))[0];
+        if (selected) await this.#applyCommitted(selected[0], selected[1], snapshot);
+    }
+
     #clearPreview(): void {
+        this.#previewGeneration++;
         if (this.#previewTimer !== null) this.#cancel(this.#previewTimer);
         this.#previewTimer = null;
         this.#deadline = null;
@@ -601,59 +732,175 @@ export class LayoutService extends GObject {
     #resolvedSpec(spec: MonitorSpec, outputs: OutputInfo[]): MonitorSpec {
         const output = this.#resolve(spec, outputs);
         if (!output) throw new Error(`Display is not attached: ${spec.name}`);
-        return {...spec, name: output.name, description: output.description};
+        return {
+            ...spec,
+            name: output.name,
+            description: output.description,
+            mirror: normalizedMirror(spec.mirror),
+        };
+    }
+
+    #validatedSpecs(layout: Layout, before: DisplaySnapshot): MonitorSpec[] {
+        const attachedNames = new Set(before.attached.map((output) => output.name));
+        if (attachedNames.size !== before.attached.length)
+            throw new Error('Invalid mirror configuration');
+        const profileNames = new Map<string, MonitorSpec>();
+        const resolvedNames = new Set<string>();
+        const specs = layout.monitors.map((monitor) => {
+            if (profileNames.has(monitor.name)) throw new Error('Invalid mirror configuration');
+            const resolved = this.#resolvedSpec(monitor, before.attached);
+            if (resolvedNames.has(resolved.name)) throw new Error('Invalid mirror configuration');
+            profileNames.set(monitor.name, resolved);
+            resolvedNames.add(resolved.name);
+            return resolved;
+        });
+        for (const [index, monitor] of layout.monitors.entries()) {
+            const reference = normalizedMirror(monitor.mirror);
+            if (!reference || specs[index].disabled) continue;
+            const source = profileNames.get(reference);
+            if (!source) throw new Error('Invalid mirror configuration');
+            specs[index].mirror = source.name;
+        }
+        if (!specs.some((monitor) => !monitor.disabled))
+            throw new Error('A layout must enable at least one attached display');
+        const all = [
+            ...specs,
+            ...before.attached
+                .filter((monitor) => !resolvedNames.has(monitor.name))
+                .map((monitor) => specFromOutput(monitor, true)),
+        ];
+        validateMirrorGraph(all);
+        return all;
     }
 
     #sameTopology(a: OutputInfo[], b: OutputInfo[]): boolean {
         return topology(a) === topology(b);
     }
 
-    async #writeLayout(layout: Layout, before: DisplaySnapshot): Promise<DisplaySnapshot> {
-        const specs = layout.monitors.map((monitor) =>
-            this.#resolvedSpec(monitor, before.attached)
-        );
-        if (!specs.some((monitor) => !monitor.disabled))
-            throw new Error('A layout must enable at least one attached display');
-        const configured = new Set(specs.map((monitor) => monitor.name));
-        const disabled = [
-            ...specs.filter((monitor) => monitor.disabled),
-            ...before.attached
-                .filter((monitor) => !configured.has(monitor.name))
-                .map((monitor) => ({...monitor, disabled: true})),
-        ];
-        for (const spec of specs.filter((monitor) => !monitor.disabled))
+    async #configureIndependent(
+        specs: MonitorSpec[],
+        before: DisplaySnapshot,
+        state: LayoutWriteState
+    ): Promise<void> {
+        for (const spec of specs) {
+            state.changed = true;
             await this.#adapter.keyword(spec);
-        let snapshot = await this.#adapter.snapshot();
-        if (!snapshot.active.length) throw new Error('Layout left no active display');
-        for (const spec of disabled) await this.#adapter.keyword(spec);
-        snapshot = await this.#adapter.snapshot();
-        if (!snapshot.active.length) throw new Error('Layout left no active display');
+        }
+        const snapshot = await this.#adapter.snapshot();
+        if (!this.#sameTopology(before.attached, snapshot.attached))
+            throw new Error('Attached displays changed while applying layout');
+        if (
+            !specs.every((spec) =>
+                snapshot.active.some(
+                    (output) =>
+                        output.name === spec.name && output.enabled && output.mirror === null
+                )
+            )
+        )
+            throw new Error('Layout left no active display');
+    }
+
+    async #configureMirrorsAndDisabled(
+        specs: MonitorSpec[],
+        mirrors: MonitorSpec[],
+        beforeByName: Map<string, OutputInfo>,
+        state: LayoutWriteState
+    ): Promise<DisplaySnapshot> {
+        for (const spec of mirrors) {
+            state.changed = true;
+            await this.#adapter.keyword(spec);
+        }
+        for (const spec of specs) {
+            if (!spec.disabled || !beforeByName.get(spec.name)?.enabled) continue;
+            state.changed = true;
+            await this.#adapter.keyword(spec);
+        }
+        return this.#adapter.snapshot();
+    }
+
+    #verifyWrittenLayout(
+        before: DisplaySnapshot,
+        snapshot: DisplaySnapshot,
+        specs: MonitorSpec[],
+        independent: MonitorSpec[]
+    ): void {
+        if (!this.#sameTopology(before.attached, snapshot.attached))
+            throw new Error('Attached displays changed while applying layout');
+        const activeNames = snapshot.active
+            .filter((output) => output.enabled && !output.mirror)
+            .map((output) => output.name)
+            .sort();
+        const expectedActiveNames = independent.map((spec) => spec.name).sort();
+        if (JSON.stringify(activeNames) !== JSON.stringify(expectedActiveNames))
+            throw new Error('Layout left no active display');
+        const liveByName = new Map(snapshot.attached.map((output) => [output.name, output]));
+        for (const expected of specs) {
+            const live = liveByName.get(expected.name);
+            if (!live || live.enabled === expected.disabled)
+                throw new Error('Invalid mirror configuration');
+            if (
+                !expected.disabled &&
+                normalizedMirror(live.mirror) !== normalizedMirror(expected.mirror)
+            )
+                throw new Error('Invalid mirror configuration');
+        }
+    }
+
+    async #assignWorkspaces(layout: Layout, independent: MonitorSpec[]): Promise<void> {
         for (const [workspaceId, monitorName] of Object.entries(layout.workspaces)) {
-            const monitor = specs.find(
-                (spec) =>
-                    spec.name === monitorName &&
-                    !spec.disabled &&
-                    snapshot.active.some((output) => output.name === spec.name)
-            );
+            const monitor = independent.find((spec) => spec.name === monitorName);
             const id = Number(workspaceId);
             if (monitor && Number.isInteger(id)) await this.#adapter.workspace(id, monitor.name);
         }
-        return snapshot;
     }
+
+    async #writeLayout(layout: Layout, before: DisplaySnapshot): Promise<DisplaySnapshot> {
+        let specs: MonitorSpec[];
+        try {
+            specs = this.#validatedSpecs(layout, before);
+        } catch (error) {
+            throw new LayoutWriteFailure(
+                error instanceof Error ? error.message : String(error),
+                false
+            );
+        }
+        const independent = specs.filter((spec) => !spec.disabled && !spec.mirror);
+        const mirrors = specs.filter((spec) => !spec.disabled && !!spec.mirror);
+        const beforeByName = new Map(before.attached.map((output) => [output.name, output]));
+        const state: LayoutWriteState = {changed: false};
+        try {
+            for (const output of before.attached)
+                if (output.enabled)
+                    this.#lastEnabled.set(output.name, specFromOutput(output, false));
+            await this.#configureIndependent(independent, before, state);
+            const snapshot = await this.#configureMirrorsAndDisabled(
+                specs,
+                mirrors,
+                beforeByName,
+                state
+            );
+            this.#verifyWrittenLayout(before, snapshot, specs, independent);
+            await this.#assignWorkspaces(layout, independent);
+            return snapshot;
+        } catch (error) {
+            if (error instanceof LayoutWriteFailure) throw error;
+            throw new LayoutWriteFailure(
+                error instanceof Error ? error.message : String(error),
+                state.changed
+            );
+        }
+    }
+
     async #restoreSnapshot(before: DisplaySnapshot, previous: Layout | null): Promise<void> {
         const now = await this.#adapter.snapshot().catch(() => null);
         if (!now || !this.#sameTopology(before.attached, now.attached)) return;
         const rollback: Layout = {
-            monitors: before.attached.map((monitor) => ({
-                ...monitor,
-                disabled: !monitor.enabled,
-            })),
+            monitors: before.attached.map((monitor) => specFromOutput(monitor, !monitor.enabled)),
             workspaces: before.workspaces ?? previous?.workspaces ?? {},
         };
         try {
             const restored = await this.#writeLayout(rollback, now);
-            this.#outputs = restored.attached;
-            this.notify('monitors');
+            this.#publishOutputs(restored.attached);
         } catch (error) {
             this.#setError(error);
         }
@@ -664,13 +911,18 @@ export class LayoutService extends GObject {
         layout: Layout,
         original?: DisplaySnapshot
     ): Promise<boolean> {
-        const before = original ?? (await this.#adapter.snapshot());
+        let before: DisplaySnapshot;
+        try {
+            before = original ?? (await this.#adapter.snapshot());
+        } catch (error) {
+            this.#setError(error);
+            return false;
+        }
         const currentName = this.#load().current;
         const previous = currentName ? (this.#store.layouts[currentName] ?? null) : null;
         try {
             const after = await this.#writeLayout(layout, before);
-            this.#outputs = after.attached;
-            this.notify('monitors');
+            this.#publishOutputs(after.attached);
             this.#store.current = name;
             this.#persist();
             this.notify('current');
@@ -678,7 +930,8 @@ export class LayoutService extends GObject {
             return true;
         } catch (error) {
             this.#setError(error);
-            await this.#restoreSnapshot(before, previous);
+            if (error instanceof LayoutWriteFailure && error.changed)
+                await this.#restoreSnapshot(before, previous);
             return false;
         }
     }
@@ -692,7 +945,7 @@ export class LayoutService extends GObject {
         if (!this.#storeValid) return false;
         const key = name.trim();
         if (!key) return false;
-        const next = layout ?? this.captureLayout();
+        const next = normalizeLayout(layout ?? this.captureLayout());
         if (!next.monitors.length) return false;
         const previous = this.#store.layouts[key];
         this.#store.layouts[key] = next;
@@ -725,16 +978,7 @@ export class LayoutService extends GObject {
 
     captureLayout(): Layout {
         return {
-            monitors: this.#outputs.map((monitor) => ({
-                name: monitor.name,
-                description: monitor.description,
-                resolution: monitor.resolution,
-                position: monitor.position,
-                scale: monitor.scale,
-                transform: monitor.transform,
-                vrr: monitor.vrr,
-                disabled: !monitor.enabled,
-            })),
+            monitors: this.#outputs.map((monitor) => specFromOutput(monitor, !monitor.enabled)),
             workspaces: {},
         };
     }
@@ -745,36 +989,245 @@ export class LayoutService extends GObject {
         return this.#enqueue(() => this.#applyCommitted(name, layout));
     }
 
+    #layoutFromSnapshot(snapshot: DisplaySnapshot): Layout {
+        return {
+            monitors: snapshot.attached.map((output) => specFromOutput(output)),
+            workspaces: {},
+        };
+    }
+
+    #modeInputs(snapshot: DisplaySnapshot): OutputInfo[] {
+        return snapshot.attached.map((output) => {
+            if (output.enabled) return output;
+            const cached = this.#lastEnabled.get(output.name);
+            if (!cached) return output;
+            return {
+                ...output,
+                ...cached,
+                name: output.name,
+                description: output.description,
+                id: output.id,
+                enabled: false,
+                disabled: true,
+            };
+        });
+    }
+
+    #toggleLayout(snapshot: DisplaySnapshot, name: string, enabled: boolean): Layout | null {
+        const output = snapshot.attached.find((monitor) => monitor.name === name);
+        if (!output) {
+            this.#setError(`Display is not attached: ${name}`);
+            return null;
+        }
+        let layout = this.#layoutFromSnapshot(snapshot);
+        if (enabled && !output.enabled) {
+            const cached = this.#lastEnabled.get(name);
+            const noUsableMode =
+                output.resolution === 'preferred' && !(output.width > 0 && output.height > 0);
+            let replacement: MonitorSpec | null = null;
+            if (cached) {
+                replacement = {
+                    ...specFromOutput(output, true),
+                    ...cached,
+                    name: output.name,
+                    description: output.description,
+                    disabled: true,
+                };
+            } else if (noUsableMode) {
+                replacement = {
+                    ...specFromOutput(output, true),
+                    resolution: 'preferred',
+                    position: 'auto-right',
+                    scale: 1,
+                    transform: 0,
+                    vrr: null,
+                    mirror: null,
+                };
+            }
+            if (replacement) {
+                layout = {
+                    ...layout,
+                    monitors: layout.monitors.map((monitor) =>
+                        monitor.name === name ? replacement : monitor
+                    ),
+                };
+            }
+        }
+        const toggled = setLayoutOutputEnabled(layout, name, enabled);
+        if (!toggled) {
+            const current = layout.monitors.find((monitor) => monitor.name === name);
+            const independent = layout.monitors.filter(
+                (monitor) => !monitor.disabled && !monitor.mirror
+            );
+            const hasDependents = layout.monitors.some(
+                (monitor) => !monitor.disabled && monitor.mirror === name
+            );
+            if (
+                !enabled &&
+                current &&
+                !current.disabled &&
+                !current.mirror &&
+                independent.length === 1 &&
+                !hasDependents
+            )
+                this.#setError('Cannot disable the last enabled display');
+            else this.#setError('Invalid mirror configuration');
+            return null;
+        }
+        return enabled ? this.#placeNonOverlapping(toggled, name, snapshot) : toggled;
+    }
+
+    #placeNonOverlapping(layout: Layout, name: string, snapshot: DisplaySnapshot): Layout {
+        const target = layout.monitors.find((monitor) => monitor.name === name);
+        const output = snapshot.attached.find((monitor) => monitor.name === name);
+        if (
+            !target ||
+            !output ||
+            target.disabled ||
+            target.mirror ||
+            target.position === 'auto-right'
+        )
+            return layout;
+        const position = /^(-?\d+)x(-?\d+)$/.exec(target.position);
+        const x = Number(position?.[1] ?? output.x);
+        const y = Number(position?.[2] ?? output.y);
+        const size = logicalMonitorSize(target, output);
+        for (const other of layout.monitors) {
+            if (other.name === name || other.disabled || other.mirror) continue;
+            const otherOutput = snapshot.attached.find((monitor) => monitor.name === other.name);
+            if (!otherOutput) continue;
+            const otherPosition = /^(-?\d+)x(-?\d+)$/.exec(other.position);
+            const otherX = Number(otherPosition?.[1] ?? otherOutput.x);
+            const otherY = Number(otherPosition?.[2] ?? otherOutput.y);
+            const otherSize = logicalMonitorSize(other, otherOutput);
+            if (
+                x < otherX + otherSize.width &&
+                x + size.width > otherX &&
+                y < otherY + otherSize.height &&
+                y + size.height > otherY
+            )
+                return {
+                    ...layout,
+                    monitors: layout.monitors.map((monitor) =>
+                        monitor.name === name ? {...monitor, position: 'auto-right'} : monitor
+                    ),
+                };
+        }
+        return layout;
+    }
+
+    async #snapshotOrError(): Promise<DisplaySnapshot | null> {
+        try {
+            return await this.#adapter.snapshot();
+        } catch (error) {
+            this.#setError(error);
+            return null;
+        }
+    }
+
     async setEnabled(name: string, enabled: boolean): Promise<boolean> {
         return this.#enqueue(async () => {
-            const before = await this.#adapter.snapshot();
+            const before = await this.#snapshotOrError();
+            if (!before) return false;
             const output = before.attached.find((monitor) => monitor.name === name);
-            if (!output || (!enabled && before.active.length <= 1)) return false;
-            const spec = enabled
-                ? (this.#lastEnabled.get(name) ?? {
-                      ...output,
-                      resolution: 'preferred',
-                      position: 'auto',
-                      scale: 1,
-                      transform: 0,
-                      vrr: null,
-                      disabled: false,
-                  })
-                : {...output, disabled: true};
-            if (!enabled) this.#lastEnabled.set(name, {...output, disabled: false});
-            try {
-                await this.#adapter.keyword(spec);
-                const after = await this.#adapter.snapshot();
-                if (!after.active.length) throw new Error('Cannot disable the last active display');
-                this.#outputs = after.attached;
-                this.#store.current = null;
-                this.notify('monitors');
-                this.notify('current');
-                return true;
-            } catch (error) {
-                this.#setError(error);
+            if (!output) {
+                this.#setError(`Display is not attached: ${name}`);
                 return false;
             }
+            if (output.enabled === enabled) return true;
+            const layout = this.#toggleLayout(before, name, enabled);
+            if (!layout) return false;
+            return this.#previewLayout(layout, before);
+        });
+    }
+
+    #modeMatches(layout: Layout, snapshot: DisplaySnapshot): boolean {
+        if (layout.monitors.length !== snapshot.attached.length) return false;
+        const outputs = new Map(snapshot.attached.map((output) => [output.name, output]));
+        for (const spec of layout.monitors) {
+            const output = outputs.get(spec.name);
+            if (!output || output.enabled === spec.disabled) return false;
+            if (!spec.disabled && (output.mirror ?? null) !== (spec.mirror ?? null)) return false;
+        }
+        let rightEdge = 0;
+        for (const spec of layout.monitors) {
+            if (spec.disabled || spec.mirror) continue;
+            const output = outputs.get(spec.name);
+            if (!output) return false;
+            const position = /^(-?\d+)x(-?\d+)$/.exec(spec.position);
+            const x =
+                spec.position === 'auto-right' ? rightEdge : Number(position?.[1] ?? output.x);
+            const y = spec.position === 'auto-right' ? 0 : Number(position?.[2] ?? output.y);
+            if (output.x !== x || output.y !== y) return false;
+            rightEdge = Math.max(rightEdge, x + logicalMonitorSize(spec, output).width);
+        }
+        return true;
+    }
+
+    #unavailableModeError(mode: string, outputs: OutputInfo[]): string {
+        if (
+            mode !== 'internal-only' &&
+            mode !== 'external-only' &&
+            mode !== 'extend' &&
+            mode !== 'duplicate'
+        )
+            return `Unknown display mode: ${mode}`;
+        const hasPanel = outputs.some((output) => /^eDP-/.test(output.name));
+        const hasExternal = outputs.some((output) => !/^eDP-/.test(output.name));
+        if (mode === 'internal-only' && !hasPanel) return 'No internal display is attached';
+        if (mode === 'external-only') {
+            if (!hasExternal) return 'No external displays are attached';
+            if (!hasPanel) return 'No internal display is attached';
+        }
+        if (mode === 'duplicate' && outputs.length < 2)
+            return 'Duplicate needs at least two attached displays';
+        if (mode === 'extend' && outputs.length < 2)
+            return 'Extend needs at least two attached displays';
+        return `Display mode is unavailable: ${mode}`;
+    }
+
+    async previewMode(mode: DisplayMode): Promise<boolean> {
+        return this.#enqueue(async () => {
+            this.#load();
+            const before = await this.#snapshotOrError();
+            if (!before) return false;
+            const modeName = String(mode);
+            if (!isDisplayMode(modeName)) {
+                this.#setError(this.#unavailableModeError(modeName, before.attached));
+                return false;
+            }
+            const layout = buildDisplayMode(modeName, this.#modeInputs(before));
+            if (!layout) {
+                this.#setError(this.#unavailableModeError(modeName, before.attached));
+                return false;
+            }
+            if (this.#modeMatches(layout, before)) return true;
+            return this.#previewLayout(layout, before);
+        });
+    }
+
+    openModeChooser(): void {
+        ShellState.get_default().qsOpen = true;
+        this.modeChooserRequested();
+    }
+
+    async toggleInternal(): Promise<boolean> {
+        return this.#enqueue(async () => {
+            const before = await this.#snapshotOrError();
+            if (!before) return false;
+            const panel = before.attached
+                .filter((output) => /^eDP-/.test(output.name))
+                .sort((a, b) => a.name.localeCompare(b.name))[0];
+            if (!panel) {
+                this.#setError('No internal display is attached');
+                return false;
+            }
+            const enabled = !panel.enabled;
+            const layout = this.#toggleLayout(before, panel.name, enabled);
+            if (!layout) return false;
+            const applied = await this.#previewLayout(layout, before);
+            if (applied) ShellState.get_default().qsOpen = true;
+            return applied;
         });
     }
 
@@ -785,8 +1238,8 @@ export class LayoutService extends GObject {
                     ['hyprctl', 'dispatch', 'dpms', on ? 'on' : 'off', name],
                     true
                 );
-                this.#outputs = (await this.#adapter.snapshot()).attached;
-                this.notify('monitors');
+                const snapshot = await this.#adapter.snapshot();
+                this.#publishOutputs(snapshot.attached);
                 return true;
             } catch (error) {
                 this.#setError(error);
@@ -798,63 +1251,100 @@ export class LayoutService extends GObject {
     async preview(layout: Layout): Promise<boolean> {
         return this.#enqueue(async () => {
             this.#load();
-            const previousName = this.#store.current;
-            const previous = previousName ? (this.#store.layouts[previousName] ?? null) : null;
-            let before: DisplaySnapshot | null = null;
-            try {
-                before = await this.#adapter.snapshot();
-                if (!layout.monitors.some((monitor) => !monitor.disabled)) return false;
-                const after = await this.#writeLayout(layout, before);
-                this.#outputs = after.attached;
-                this.notify('monitors');
-                this.#pendingLayout = layout;
+            const before = await this.#snapshotOrError();
+            if (!before) return false;
+            return this.#previewLayout(layout, before);
+        });
+    }
+
+    async #previewLayout(layout: Layout, before: DisplaySnapshot): Promise<boolean> {
+        this.#load();
+        const replacing = this.#pendingBefore !== null;
+        const previousName = replacing ? this.#pendingOriginalName : this.#store.current;
+        let previousLayout: Layout | null = null;
+        if (replacing) previousLayout = this.#pendingOriginalLayout;
+        else if (previousName) previousLayout = this.#store.layouts[previousName] ?? null;
+        const immediateLayout = replacing ? this.#pendingLayout : previousLayout;
+        try {
+            const after = await this.#writeLayout(layout, before);
+            this.#publishOutputs(after.attached);
+            if (!replacing) {
                 this.#pendingBefore = before;
-                this.#pendingOriginalLayout = previous;
+                this.#pendingOriginalLayout = previousLayout;
                 this.#pendingOriginalName = previousName;
-                this.#deadline = Date.now() + 15_000;
-                this.notify('pending');
-                if (this.#previewTimer !== null) this.#cancel(this.#previewTimer);
-                this.#previewTimer = this.#schedule(15_000, () => {
+            }
+            this.#pendingLayout = normalizeLayout(layout);
+            this.#store.current = null;
+            this.notify('current');
+            if (this.#previewTimer !== null) this.#cancel(this.#previewTimer);
+            const generation = ++this.#previewGeneration;
+            this.#deadline = Date.now() + 15_000;
+            this.notify('pending');
+            this.#previewTimer = this.#schedule(15_000, () =>
+                this.#enqueue(async () => {
+                    if (generation !== this.#previewGeneration || !this.#pendingLayout) return;
                     this.#previewTimer = null;
-                    return this.revert();
-                });
-                this.#store.current = null;
+                    await this.#revertPreview();
+                })
+            );
+            return true;
+        } catch (error) {
+            if (error instanceof LayoutWriteFailure && error.changed)
+                await this.#restoreSnapshot(before, immediateLayout);
+            this.#setError(error);
+            return false;
+        }
+    }
+
+    async confirm(): Promise<boolean> {
+        return this.#enqueue(async () => {
+            if (!this.#pendingLayout) return false;
+            this.#load();
+            const currentName = this.#store.current;
+            try {
+                const live = this.captureLayout();
+                this.#store.current =
+                    this.names.find((name) => sameLayout(this.#store.layouts[name], live)) ?? null;
+                if (!this.#persist()) {
+                    this.#store.current = currentName;
+                    if (!this.#error) this.#setError('Unable to save display layout');
+                    this.notify('current');
+                    return false;
+                }
+                this.#clearPreview();
                 this.notify('current');
                 return true;
             } catch (error) {
-                if (before) await this.#restoreSnapshot(before, previous);
+                this.#store.current = currentName;
                 this.#setError(error);
+                this.notify('current');
                 return false;
             }
         });
     }
 
-    confirm(): void {
-        if (!this.#pendingLayout) return;
+    async #revertPreview(): Promise<void> {
+        const before = this.#pendingBefore;
+        if (!before) {
+            this.#clearPreview();
+            return;
+        }
+        const previous = this.#pendingOriginalLayout;
+        const previousName = this.#pendingOriginalName;
+        const now = await this.#snapshotOrError();
         this.#clearPreview();
-        this.#store.current =
-            this.names.find((name) =>
-                sameLayout(this.#store.layouts[name], this.captureLayout())
-            ) ?? null;
-        this.#persist();
+        if (!now) return;
+        if (!this.#sameTopology(before.attached, now.attached)) {
+            await this.#reconcileSnapshot(false, now);
+            return;
+        }
+        await this.#restoreSnapshot(before, previous);
+        this.#store.current = previousName;
         this.notify('current');
     }
 
     async revert(): Promise<void> {
-        await this.#enqueue(async () => {
-            const before = this.#pendingBefore;
-            const previous = this.#pendingOriginalLayout;
-            const previousName = this.#pendingOriginalName;
-            const now = await this.#adapter.snapshot().catch(() => null);
-            this.#clearPreview();
-            if (!before || !now || !this.#sameTopology(before.attached, now.attached)) {
-                if (now) void this.#reconcile(false).catch((error) => this.#setError(error));
-                return;
-            }
-            await this.#restoreSnapshot(before, previous);
-            this.#store.current = previousName;
-            this.notify('current');
-        });
+        await this.#enqueue(() => this.#revertPreview());
     }
 
     async next(): Promise<boolean> {
