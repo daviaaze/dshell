@@ -62,11 +62,8 @@ const describeBind = (bind: HyprBind, keybinds: Keybinds): string => {
     }
 
     const description = DISPATCHER_DESCRIPTIONS[bind.dispatcher];
-    return description
-        ? bind.arg
-            ? `${description}: ${bind.arg}`
-            : description
-        : keybinds.formatDescription(bind);
+    if (!description) return keybinds.formatDescription(bind);
+    return bind.arg ? `${description}: ${bind.arg}` : description;
 };
 
 export default () => {

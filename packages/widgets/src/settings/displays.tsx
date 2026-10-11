@@ -2,9 +2,10 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import LayoutService, {type Layout, type OutputInfo} from '@shade/services/display/layouts';
 import {
-    logicalMonitorSize,
-    setLayoutOutputEnabled,
     type DisplayMode,
+    logicalMonitorSize,
+    resolveAutoRightPositions,
+    setLayoutOutputEnabled,
 } from '@shade/services/display/modes';
 import {monitorsSettings} from '@shade/services/settings/monitors.gschema';
 import {type Accessor, bind, computed, createState, For, onCleanup} from 'gnim';
@@ -177,13 +178,14 @@ function createDraftModel(service: LayoutService, onChange: () => void): DraftMo
 }
 
 function hasIndependentOverlap(layout: Layout, outputs: OutputInfo[]) {
-    return layout.monitors.some((monitor, index) => {
+    const positioned = resolveAutoRightPositions(layout, outputs);
+    return positioned.monitors.some((monitor, index) => {
         if (monitor.disabled || monitor.mirror) return false;
         const [x, y] = monitor.position.split('x').map(Number);
         const output = outputs.find((item) => item.name === monitor.name);
         if (!output) return false;
         const size = logicalMonitorSize(monitor, output);
-        return layout.monitors.slice(index + 1).some((other) => {
+        return positioned.monitors.slice(index + 1).some((other) => {
             if (other.disabled || other.mirror) return false;
             const [otherX, otherY] = other.position.split('x').map(Number);
             const otherOutput = outputs.find((item) => item.name === other.name);
@@ -199,9 +201,12 @@ function hasIndependentOverlap(layout: Layout, outputs: OutputInfo[]) {
     });
 }
 
-function normalizeDraft(layout: Layout): Layout {
-    const independent = layout.monitors.filter((monitor) => !monitor.disabled && !monitor.mirror);
-    if (independent.length === 0) return cloneLayout(layout);
+function normalizeDraft(layout: Layout, outputs: OutputInfo[]): Layout {
+    const positioned = resolveAutoRightPositions(layout, outputs);
+    const independent = positioned.monitors.filter(
+        (monitor) => !monitor.disabled && !monitor.mirror
+    );
+    if (independent.length === 0) return cloneLayout(positioned);
     const minX = Math.min(...independent.map((monitor) => Number(monitor.position.split('x')[0])));
     const minY = Math.min(...independent.map((monitor) => Number(monitor.position.split('x')[1])));
     const positions = new Map<string, string>();
@@ -210,8 +215,8 @@ function normalizeDraft(layout: Layout): Layout {
         positions.set(monitor.name, `${x - minX}x${y - minY}`);
     }
     return {
-        ...cloneLayout(layout),
-        monitors: layout.monitors.map((monitor) => {
+        ...cloneLayout(positioned),
+        monitors: positioned.monitors.map((monitor) => {
             if (monitor.disabled) return monitor;
             if (monitor.mirror) {
                 const sourcePosition = positions.get(monitor.mirror);
@@ -232,13 +237,13 @@ function createPreviewActions(
     let confirmInProgress = false;
 
     const applyDraft = async () => {
-        const current = model.draft();
-        if (hasIndependentOverlap(current, service.monitors)) return;
-        const candidate = normalizeDraft(current);
+        const submitted = cloneLayout(model.draft());
+        if (hasIndependentOverlap(submitted, service.monitors)) return;
+        const candidate = normalizeDraft(submitted, service.monitors);
         const ok = await service.preview(candidate).catch(() => false);
         if (!ok) return;
         previewKind = 'draft';
-        model.setIfChanged(candidate);
+        if (sameLayout(model.draft(), submitted)) model.setIfChanged(candidate);
     };
     const previewMode = async (mode: DisplayMode) => {
         const ok = await service.previewMode(mode).catch(() => false);
@@ -391,7 +396,7 @@ function ArrangementCanvas({
                 );
                 const drag = Gtk.GestureDrag.new();
                 drag.connect('drag-begin', (_gesture, x, y) => {
-                    const current = draft();
+                    const current = resolveAutoRightPositions(draft(), service.monitors);
                     const geometry = arrangementGeometry(
                         current,
                         service.monitors,

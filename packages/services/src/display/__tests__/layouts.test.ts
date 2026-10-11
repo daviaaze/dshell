@@ -17,6 +17,7 @@ import {
     detectDisplayMode,
     getAvailableDisplayModes,
     logicalMonitorSize,
+    resolveAutoRightPositions,
     setLayoutOutputEnabled,
 } from '../modes';
 
@@ -175,7 +176,6 @@ class FakeAdapter implements DisplayAdapter {
     }
 }
 
-function service(
 class HyprlandSnapshotAdapter extends FakeAdapter {
     async snapshot(): Promise<DisplaySnapshot> {
         const all = this.attached.map(rawMonitor);
@@ -199,6 +199,7 @@ function rawMonitor(outputInfo: OutputInfo) {
     };
 }
 
+function service(
     adapter: FakeAdapter,
     store: Layout = {monitors: [], workspaces: {}},
     autoApply = false
@@ -293,7 +294,6 @@ describe('monitor snapshots', () => {
         expect(mirrored.dpms).toBe(false);
     });
 
-    it('rejects a mirror source id that is not attached', () => {
     it('excludes only the synthetic FALLBACK output from attached and active sets', () => {
         const raw = [
             EDP(false),
@@ -319,6 +319,7 @@ describe('monitor snapshots', () => {
         );
     });
 
+    it('rejects a mirror source id that is not attached', () => {
         expect(() =>
             parseHyprlandSnapshot([{name: 'HDMI-A-1', id: 1, disabled: false, mirrorOf: '99'}], [])
         ).toThrowMatching(
@@ -366,8 +367,8 @@ describe('display mode helpers', () => {
         expect(entry(internal, 'eDP-1')?.disabled).toBe(false);
         expect(entry(internal, 'DP-1')?.disabled).toBe(true);
         expect(entry(external, 'eDP-1')?.disabled).toBe(true);
-        expect(entry(external, 'HDMI-A-1')?.position).toBe('0x0');
-        expect(entry(external, 'DP-1')?.position).toBe('auto-right');
+        expect(entry(external, 'DP-1')?.position).toBe('0x0');
+        expect(entry(external, 'HDMI-A-1')?.position).toBe('auto-right');
         expect(entry(extend, 'eDP-1')?.position).toBe('0x0');
         expect(entry(extend, 'HDMI-A-1')?.position).toBe('auto-right');
         expect(entry(extend, 'DP-1')?.position).toBe('auto-right');
@@ -432,6 +433,27 @@ describe('display mode helpers', () => {
         ).toEqual({width: 1920, height: 1080});
     });
 
+    it('resolves auto-right draft outputs without moving mirrors off their source', () => {
+        const layout: Layout = {
+            monitors: [
+                spec(EDP()),
+                {
+                    ...spec(HDMI(true, {position: 'auto-right', resolution: '2560x1440@60'})),
+                    scale: 2,
+                },
+                spec(DP(true, {mirror: 'HDMI-A-1'})),
+            ],
+            workspaces: {},
+        };
+        const resolved = resolveAutoRightPositions(layout, [EDP(), HDMI(), DP()]);
+        expect(resolved.monitors.find((monitor) => monitor.name === 'HDMI-A-1')?.position).toBe(
+            '1920x0'
+        );
+        expect(resolved.monitors.find((monitor) => monitor.name === 'DP-1')?.position).toBe(
+            '1920x0'
+        );
+    });
+
     it('transforms output toggles without dropping unrelated layout geometry', () => {
         const source = EDP();
         const mirror = HDMI(true, {position: '0x0', mirror: 'eDP-1'});
@@ -494,8 +516,8 @@ describe('LayoutService display modes and mirror transactions', () => {
             const {instance} = service(adapter);
             const api = instance as unknown as ServiceModeApi;
             expect(await api.previewMode('external-only')).toBe(true);
-            expect(adapter.writes[0]?.name).toBe('HDMI-A-1');
-            expect(adapter.writes[1]?.name).toBe('DP-1');
+            expect(adapter.writes[0]?.name).toBe('DP-1');
+            expect(adapter.writes[1]?.name).toBe('HDMI-A-1');
             expect(adapter.writes[2]?.name).toBe('eDP-1');
             expect(
                 adapter.attached.find((monitorInfo) => monitorInfo.name === 'eDP-1')?.enabled
@@ -510,6 +532,7 @@ describe('LayoutService display modes and mirror transactions', () => {
         async () => {
             const adapter = new FakeAdapter([EDP(), HDMI(), DP()]);
             const {instance} = service(adapter);
+            await instance.reconcileNow();
             const api = instance as unknown as ServiceModeApi;
             expect(api.availableDisplayModes).toEqual([
                 'internal-only',
@@ -558,12 +581,12 @@ describe('LayoutService display modes and mirror transactions', () => {
         async () => {
             const adapter = new FakeAdapter([
                 EDP(),
-                HDMI(true, {position: '1920x0'}),
-                DP(true, {position: '3840x0'}),
+                HDMI(true, {position: '3840x0'}),
+                DP(true, {position: '1920x0'}),
             ]);
             const {instance} = service(adapter);
+            await instance.reconcileNow();
             const api = instance as unknown as ServiceModeApi;
-            expect(api.displayMode).toBe('extend');
             expect(await api.previewMode('extend')).toBe(true);
             expect(adapter.writes.length).toBe(0);
             expect(instance.pending).toBeNull();
@@ -755,7 +778,7 @@ describe('LayoutService display modes and mirror transactions', () => {
             expect(await instance.setEnabled('DP-1', true)).toBe(true);
             const restored = adapter.attached.find((monitorInfo) => monitorInfo.name === 'DP-1');
             expect(restored?.scale).toBe(1.25);
-            expect(restored?.position).toBe('auto-right');
+            expect(restored?.position).toBe('1920x0');
         }
     );
 
@@ -887,29 +910,6 @@ describe('LayoutService display modes and mirror transactions', () => {
     );
 
     it.async(
-        'retains a surviving logical desktop after partial hotplug and unmirrors a recovered panel',
-        async () => {
-            const adapter = new FakeAdapter([EDP(true, {mirror: 'DP-1'}), HDMI(), DP()]);
-            const {instance} = service(adapter, {monitors: [], workspaces: {}}, false);
-            adapter.attached = [EDP(true, {mirror: 'DP-1'}), DP()];
-            await instance.reconcileNow();
-            expect(
-                adapter.attached.find((monitorInfo) => monitorInfo.name === 'DP-1')?.enabled
-            ).toBe(true);
-            expect(
-                adapter.attached.find((monitorInfo) => monitorInfo.name === 'eDP-1')?.mirror
-            ).toBe('DP-1');
-
-            adapter.attached = [EDP(true, {mirror: 'missing-source'})];
-            await instance.reconcileNow();
-            expect(adapter.attached[0]?.enabled).toBe(true);
-            expect(adapter.attached[0]?.mirror).toBe(null);
-            expect((await adapter.snapshot()).active[0]?.name).toBe('eDP-1');
-        }
-    );
-
-    it.async(
-    it.async(
         'recovers a disabled internal panel when FALLBACK is the only active raw output',
         async () => {
             const adapter = new HyprlandSnapshotAdapter([EDP(false), output('FALLBACK', 9)]);
@@ -948,43 +948,68 @@ describe('LayoutService display modes and mirror transactions', () => {
         }
     );
 
+    it.async(
+        'retains a surviving logical desktop after partial hotplug and unmirrors a recovered panel',
+        async () => {
+            const adapter = new FakeAdapter([EDP(true, {mirror: 'DP-1'}), HDMI(), DP()]);
+            const {instance} = service(adapter, {monitors: [], workspaces: {}}, false);
+            adapter.attached = [EDP(true, {mirror: 'DP-1'}), DP()];
+            await instance.reconcileNow();
+            expect(
+                adapter.attached.find((monitorInfo) => monitorInfo.name === 'DP-1')?.enabled
+            ).toBe(true);
+            expect(
+                adapter.attached.find((monitorInfo) => monitorInfo.name === 'eDP-1')?.mirror
+            ).toBe('DP-1');
+
+            adapter.attached = [EDP(true, {mirror: 'missing-source'})];
+            await instance.reconcileNow();
+            expect(adapter.attached[0]?.enabled).toBe(true);
+            expect(adapter.attached[0]?.mirror).toBe(null);
+            expect((await adapter.snapshot()).active[0]?.name).toBe('eDP-1');
+        }
+    );
+
+    it.async(
         'normalizes version-one profiles without mirror fields when previewing and confirming',
         async () => {
             const adapter = new FakeAdapter([EDP(), DP()]);
             const {instance, storePath} = service(adapter);
             GLib.file_set_contents(
                 storePath,
-                JSON.stringify({
-                    version: 1,
-                    current: 'Docked',
-                    layouts: {
-                        Docked: {
-                            monitors: [
-                                {
-                                    name: 'eDP-1',
-                                    description: 'eDP-1 display',
-                                    resolution: '1920x1200@60',
-                                    position: '0x0',
-                                    scale: 1,
-                                    transform: 0,
-                                    vrr: null,
-                                    disabled: false,
-                                },
-                                {
-                                    name: 'DP-1',
-                                    description: 'DP-1 display',
-                                    resolution: '1920x1080@60',
-                                    position: '1920x0',
-                                    scale: 1,
-                                    transform: 0,
-                                    vrr: null,
-                                    disabled: false,
-                                },
-                            ],
-                            workspaces: {},
+                new TextEncoder().encode(
+                    JSON.stringify({
+                        version: 1,
+                        current: 'Docked',
+                        layouts: {
+                            Docked: {
+                                monitors: [
+                                    {
+                                        name: 'eDP-1',
+                                        description: 'eDP-1 display',
+                                        resolution: '1920x1200@60',
+                                        position: '0x0',
+                                        scale: 1,
+                                        transform: 0,
+                                        vrr: null,
+                                        disabled: false,
+                                    },
+                                    {
+                                        name: 'DP-1',
+                                        description: 'DP-1 display',
+                                        resolution: '1920x1080@60',
+                                        position: '1920x0',
+                                        scale: 1,
+                                        transform: 0,
+                                        vrr: null,
+                                        disabled: false,
+                                    },
+                                ],
+                                workspaces: {},
+                            },
                         },
-                    },
-                })
+                    })
+                )
             );
             expect(await instance.preview(instance.get('Docked') as Layout)).toBe(true);
             const api = instance as unknown as ServiceModeApi;

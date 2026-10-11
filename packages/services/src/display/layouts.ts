@@ -10,6 +10,7 @@ import {notify} from '../capture/utils';
 import {getHyprland} from '../hyprland';
 import {monitorsSettings} from '../settings/monitors.gschema';
 import ShellState from '../state/shellState';
+import type {DisplayMode} from './modes';
 import {
     buildDisplayMode,
     detectDisplayMode,
@@ -17,7 +18,11 @@ import {
     logicalMonitorSize,
     setLayoutOutputEnabled,
 } from './modes';
-import type {DisplayMode} from './modes';
+
+export interface LayoutServiceSignalSignatures extends GObject.SignalSignatures {
+    'mode-chooser-requested': LayoutService['modeChooserRequested'];
+    applied: LayoutService['applied'];
+}
 
 export interface MonitorSpec {
     name: string;
@@ -394,6 +399,7 @@ function sameLayout(a: Layout | undefined, b: Layout): boolean {
 
 @register
 export class LayoutService extends GObject {
+    declare readonly $signals: LayoutServiceSignalSignatures;
     private static instance: LayoutService | null = null;
     static get_default(): LayoutService {
         if (!LayoutService.instance) LayoutService.instance = new LayoutService();
@@ -501,11 +507,31 @@ export class LayoutService extends GObject {
         }
     }
     registerCommands(app: Gio.Application): void {
-        const action = Gio.SimpleAction.new('display-next', null);
-        action.connect('activate', () => {
+        const nextAction = Gio.SimpleAction.new('display-next', null);
+        nextAction.connect('activate', () => {
             void this.next();
         });
-        app.add_action(action);
+        app.add_action(nextAction);
+
+        const modeAction = Gio.SimpleAction.new('display-mode', GLib.VariantType.new('s'));
+        modeAction.connect('activate', (_action, parameter) => {
+            const mode = parameter?.get_string()[0];
+            if (!mode) return;
+            void this.previewMode(mode as DisplayMode).then((applied) => {
+                if (applied) ShellState.get_default().qsOpen = true;
+            });
+        });
+        app.add_action(modeAction);
+
+        const chooserAction = Gio.SimpleAction.new('display-mode-chooser', null);
+        chooserAction.connect('activate', () => this.openModeChooser());
+        app.add_action(chooserAction);
+
+        const internalAction = Gio.SimpleAction.new('display-toggle-internal', null);
+        internalAction.connect('activate', () => {
+            void this.toggleInternal();
+        });
+        app.add_action(internalAction);
     }
     @signal storeChanged(): void {}
 
@@ -547,8 +573,9 @@ export class LayoutService extends GObject {
     #publishOutputs(outputs: OutputInfo[]): void {
         this.#outputs = outputs;
         this.notify('monitors');
-        this.notify('displayMode');
-        this.notify('availableDisplayModes');
+        this.notify('display-mode');
+        this.notify('available-display-modes');
+        this.notify('current');
     }
 
     #load(): LayoutStore {
@@ -827,13 +854,6 @@ export class LayoutService extends GObject {
     ): void {
         if (!this.#sameTopology(before.attached, snapshot.attached))
             throw new Error('Attached displays changed while applying layout');
-        const activeNames = snapshot.active
-            .filter((output) => output.enabled && !output.mirror)
-            .map((output) => output.name)
-            .sort();
-        const expectedActiveNames = independent.map((spec) => spec.name).sort();
-        if (JSON.stringify(activeNames) !== JSON.stringify(expectedActiveNames))
-            throw new Error('Layout left no active display');
         const liveByName = new Map(snapshot.attached.map((output) => [output.name, output]));
         for (const expected of specs) {
             const live = liveByName.get(expected.name);
@@ -845,6 +865,13 @@ export class LayoutService extends GObject {
             )
                 throw new Error('Invalid mirror configuration');
         }
+        const activeNames = snapshot.active
+            .filter((output) => output.enabled && !output.mirror)
+            .map((output) => output.name)
+            .sort();
+        const expectedActiveNames = independent.map((spec) => spec.name).sort();
+        if (JSON.stringify(activeNames) !== JSON.stringify(expectedActiveNames))
+            throw new Error('Layout left no active display');
     }
 
     async #assignWorkspaces(layout: Layout, independent: MonitorSpec[]): Promise<void> {
@@ -1142,14 +1169,18 @@ export class LayoutService extends GObject {
         });
     }
 
-    #modeMatches(layout: Layout, snapshot: DisplaySnapshot): boolean {
-        if (layout.monitors.length !== snapshot.attached.length) return false;
-        const outputs = new Map(snapshot.attached.map((output) => [output.name, output]));
-        for (const spec of layout.monitors) {
+    #modeOutputMatches(layout: Layout, outputs: Map<string, OutputInfo>): boolean {
+        return layout.monitors.every((spec) => {
             const output = outputs.get(spec.name);
-            if (!output || output.enabled === spec.disabled) return false;
-            if (!spec.disabled && (output.mirror ?? null) !== (spec.mirror ?? null)) return false;
-        }
+            return (
+                !!output &&
+                output.enabled !== spec.disabled &&
+                (spec.disabled || (output.mirror ?? null) === (spec.mirror ?? null))
+            );
+        });
+    }
+
+    #modeArrangementMatches(layout: Layout, outputs: Map<string, OutputInfo>): boolean {
         let rightEdge = 0;
         for (const spec of layout.monitors) {
             if (spec.disabled || spec.mirror) continue;
@@ -1163,6 +1194,15 @@ export class LayoutService extends GObject {
             rightEdge = Math.max(rightEdge, x + logicalMonitorSize(spec, output).width);
         }
         return true;
+    }
+
+    #modeMatches(layout: Layout, snapshot: DisplaySnapshot): boolean {
+        if (layout.monitors.length !== snapshot.attached.length) return false;
+        const outputs = new Map(snapshot.attached.map((output) => [output.name, output]));
+        return (
+            this.#modeOutputMatches(layout, outputs) &&
+            this.#modeArrangementMatches(layout, outputs)
+        );
     }
 
     #unavailableModeError(mode: string, outputs: OutputInfo[]): string {

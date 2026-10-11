@@ -2,6 +2,9 @@ import type {Layout, MonitorSpec, OutputInfo} from './layouts';
 
 export type DisplayMode = 'internal-only' | 'external-only' | 'extend' | 'duplicate';
 
+function normalizedMirror(mirror: string | null | undefined): string | null {
+    return mirror || null;
+}
 function isInternalConnector(output: Pick<OutputInfo, 'name'>): boolean {
     return /^eDP-/.test(output.name);
 }
@@ -148,6 +151,36 @@ export function logicalMonitorSize(
     return {width: width / scale, height: height / scale};
 }
 
+export function resolveAutoRightPositions(layout: Layout, outputs: OutputInfo[]): Layout {
+    const outputsByName = new Map(outputs.map((output) => [output.name, output]));
+    const positions = new Map<string, string>();
+    let rightEdge = 0;
+    const monitors = layout.monitors.map((monitor) => {
+        if (monitor.disabled || monitor.mirror) return monitor;
+        const output = outputsByName.get(monitor.name);
+        if (!output) return monitor;
+        const position = /^(-?\d+)x(-?\d+)$/.exec(monitor.position);
+        const x = monitor.position === 'auto-right' ? rightEdge : Number(position?.[1] ?? output.x);
+        const y = monitor.position === 'auto-right' ? 0 : Number(position?.[2] ?? output.y);
+        const resolvedPosition = monitor.position === 'auto-right' ? `${x}x${y}` : monitor.position;
+        positions.set(monitor.name, resolvedPosition);
+        rightEdge = Math.max(rightEdge, x + logicalMonitorSize(monitor, output).width);
+        return resolvedPosition === monitor.position
+            ? monitor
+            : {...monitor, position: resolvedPosition};
+    });
+    return {
+        ...layout,
+        monitors: monitors.map((monitor) => {
+            if (monitor.disabled || !monitor.mirror) return monitor;
+            const sourcePosition = positions.get(monitor.mirror);
+            return sourcePosition && sourcePosition !== monitor.position
+                ? {...monitor, position: sourcePosition}
+                : monitor;
+        }),
+    };
+}
+
 export function setLayoutOutputEnabled(
     layout: Layout,
     name: string,
@@ -159,7 +192,8 @@ export function setLayoutOutputEnabled(
         ...monitor,
         mirror: normalizedMirror(monitor.mirror),
     }));
-    const target = monitors.find((monitor) => monitor.name === name)!;
+    const target = monitors.find((monitor) => monitor.name === name);
+    if (!target) return null;
 
     if (enabled) {
         target.disabled = false;

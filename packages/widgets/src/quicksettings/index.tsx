@@ -70,16 +70,12 @@ export default () => {
                 const keyController = Gtk.EventControllerKey.new();
                 keyController.connect('key-pressed', (_controller, keyval) => {
                     if (keyval !== Gdk.KEY_Escape || !self.visible) return false;
-                    if (service.pending !== null) {
-                        void service
-                            .revert()
-                            .catch(() => undefined)
-                            .finally(() => {
-                                shellState.qsOpen = false;
-                            });
-                    } else {
-                        shellState.qsOpen = false;
-                    }
+                    void service
+                        .revert()
+                        .catch(() => undefined)
+                        .finally(() => {
+                            shellState.qsOpen = false;
+                        });
                     return true;
                 });
                 self.add_controller(keyController);
