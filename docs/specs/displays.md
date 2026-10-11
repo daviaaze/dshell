@@ -68,6 +68,12 @@ Quick Settings individual-output switches use the same preview transaction. An e
 
 `LayoutService` (singleton, `@shade/services/display/layouts`) owns profile persistence and all preview/confirm/revert transactions. Built-in modes and output toggles share this transaction; a pending candidate is reverted after 15 seconds unless confirmed. The chooser request opens Quick Settings and signals the widget to focus a mode; it does not mutate monitor state.
 
+## Hotplug recovery
+
+Hyprland's synthetic `FALLBACK` output is excluded from attached and active display snapshots. It must not prevent internal-panel recovery or alter the topology used to match saved layouts. Other virtual outputs, such as `HEADLESS-*`, remain available.
+
+When no enabled independent desktop remains after hotplug, the service re-enables the first attached `eDP-*` panel. This safety recovery runs even when automatic profile selection is disabled.
+
 ## Tiling guidance
 
 Configure distinct algorithms through the existing Hyprland workspace rules, for example `"1, monitor:DP-1, layout:master"` and `"2, monitor:HDMI-A-1, layout:dwindle"`. This assigns layouts to workspaces, not a new per-monitor tiling controller.

@@ -176,6 +176,29 @@ class FakeAdapter implements DisplayAdapter {
 }
 
 function service(
+class HyprlandSnapshotAdapter extends FakeAdapter {
+    async snapshot(): Promise<DisplaySnapshot> {
+        const all = this.attached.map(rawMonitor);
+        return parseHyprlandSnapshot(
+            all,
+            all.filter((outputInfo) => !outputInfo.disabled && !outputInfo.mirror)
+        );
+    }
+}
+
+function rawMonitor(outputInfo: OutputInfo) {
+    const match = /^(\d+)x(\d+)@([\d.]+)$/.exec(outputInfo.resolution);
+    const [, rawWidth = '1920', rawHeight = '1080', rawRefreshRate = '60'] = match ?? [];
+    return {
+        ...outputInfo,
+        width: Number(rawWidth),
+        height: Number(rawHeight),
+        refreshRate: Number(rawRefreshRate),
+        dpmsStatus: outputInfo.dpms,
+        disabled: !outputInfo.enabled,
+    };
+}
+
     adapter: FakeAdapter,
     store: Layout = {monitors: [], workspaces: {}},
     autoApply = false
@@ -271,6 +294,31 @@ describe('monitor snapshots', () => {
     });
 
     it('rejects a mirror source id that is not attached', () => {
+    it('excludes only the synthetic FALLBACK output from attached and active sets', () => {
+        const raw = [
+            EDP(false),
+            output('FALLBACK', 9),
+            output('FALLBACK-1', 10),
+            output('HEADLESS-1', 11),
+        ].map(rawMonitor);
+        const parsed = parseHyprlandSnapshot(
+            raw,
+            raw.filter((outputInfo) => !outputInfo.disabled)
+        );
+        expect(parsed.attached.map((monitorInfo) => monitorInfo.name)).toEqual([
+            'eDP-1',
+            'FALLBACK-1',
+            'HEADLESS-1',
+        ]);
+        expect(parsed.active.map((monitorInfo) => monitorInfo.name)).toEqual([
+            'FALLBACK-1',
+            'HEADLESS-1',
+        ]);
+        expect(parsed.attached.find((monitorInfo) => monitorInfo.name === 'eDP-1')?.enabled).toBe(
+            false
+        );
+    });
+
         expect(() =>
             parseHyprlandSnapshot([{name: 'HDMI-A-1', id: 1, disabled: false, mirrorOf: '99'}], [])
         ).toThrowMatching(
@@ -861,6 +909,45 @@ describe('LayoutService display modes and mirror transactions', () => {
     );
 
     it.async(
+    it.async(
+        'recovers a disabled internal panel when FALLBACK is the only active raw output',
+        async () => {
+            const adapter = new HyprlandSnapshotAdapter([EDP(false), output('FALLBACK', 9)]);
+            const {instance} = service(adapter);
+            await instance.reconcileNow();
+            expect(adapter.writes.map((write) => write.name)).toEqual(['eDP-1']);
+            expect(
+                adapter.attached.find((monitorInfo) => monitorInfo.name === 'eDP-1')?.enabled
+            ).toBe(true);
+            expect(instance.monitors.map((monitorInfo) => monitorInfo.name)).toEqual(['eDP-1']);
+            expect(instance.monitors[0]?.enabled).toBe(true);
+        }
+    );
+
+    it.async(
+        'matches the undocked profile when FALLBACK accompanies the real internal panel',
+        async () => {
+            const adapter = new HyprlandSnapshotAdapter([EDP(), output('FALLBACK', 9)]);
+            const {instance} = service(adapter, {monitors: [], workspaces: {}}, true);
+            const undocked = {
+                monitors: [spec(EDP(true, {position: '73x41', scale: 1.25}))],
+                workspaces: {},
+            };
+            expect(instance.save('Undocked', undocked)).toBe(true);
+
+            await instance.reconcileNow();
+
+            const panel = adapter.attached.find((monitorInfo) => monitorInfo.name === 'eDP-1');
+            expect(adapter.writes.map((write) => write.name)).toEqual(['eDP-1']);
+            expect(panel?.position).toBe('73x41');
+            expect(panel?.scale).toBe(1.25);
+            expect(instance.current).toBe('Undocked');
+            expect(instance.monitors.map((monitorInfo) => monitorInfo.name)).toEqual(['eDP-1']);
+            expect(instance.monitors[0]?.position).toBe('73x41');
+            expect(instance.monitors[0]?.scale).toBe(1.25);
+        }
+    );
+
         'normalizes version-one profiles without mirror fields when previewing and confirming',
         async () => {
             const adapter = new FakeAdapter([EDP(), DP()]);

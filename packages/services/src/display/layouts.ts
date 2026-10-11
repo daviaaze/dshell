@@ -256,7 +256,8 @@ export function parseHyprlandSnapshot(
     activeValue: unknown,
     workspaceValue?: unknown
 ): DisplaySnapshot {
-    const all = parseMonitorArray(allValue);
+    // Hyprland's synthetic fallback is not a usable display or part of a saved topology.
+    const all = parseMonitorArray(allValue).filter((monitor) => monitor.name !== 'FALLBACK');
     const active = parseMonitorArray(activeValue);
     const activeNames: Record<string, true> = {};
     const namesById = new Map<string, string>();
