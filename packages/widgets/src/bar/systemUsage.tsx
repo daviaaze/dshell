@@ -1,5 +1,6 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import Pango from 'gi://Pango?version=1.0';
 import SystemUsage from '@shade/services/monitoring/systemUsage';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import type {Accessor} from 'gnim';
@@ -20,6 +21,7 @@ const Indicator = ({
     vertical: Accessor<boolean>;
     visible?: Accessor<boolean> | boolean;
 }) => {
+    const formattedValue = value.as((v) => (v * 100).toFixed(0).concat(unit));
     return (
         <Gtk.Box visible={visible} spacing={2} orientation={Gtk.Orientation.VERTICAL}>
             <Gtk.Box
@@ -28,10 +30,19 @@ const Indicator = ({
                     v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                 )}
             >
-                <Gtk.Label label={label} cssClasses={['caption-heading', 'numeric']} />
+                <Gtk.Label
+                    label={label}
+                    tooltipText={label}
+                    maxWidthChars={vertical.as((v) => (v ? 4 : -1))}
+                    ellipsize={Pango.EllipsizeMode.END}
+                    cssClasses={['caption-heading', 'numeric']}
+                />
                 <Gtk.Label
                     cssClasses={['caption', 'numeric']}
-                    label={value.as((v) => (v * 100).toFixed(0).concat(unit))}
+                    label={formattedValue}
+                    tooltipText={formattedValue}
+                    maxWidthChars={vertical.as((v) => (v ? 4 : -1))}
+                    ellipsize={Pango.EllipsizeMode.END}
                 />
             </Gtk.Box>
             <Gtk.LevelBar
@@ -65,6 +76,7 @@ export default ({
     return (
         <Gtk.Button
             visible={visible}
+            cssClasses={vertical.as((v) => (v ? ['bar-vertical-content-button'] : []))}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             onClicked={() => {
                 const monitor = settings.systemMonitor();

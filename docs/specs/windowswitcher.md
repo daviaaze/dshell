@@ -1,10 +1,10 @@
 # Spec: WindowSwitcher
 
-> Alt+Tab window switcher with MRU ordering, keyboard navigation, and Alt-key dismiss.
+> Super+Tab window switcher with MRU ordering, keyboard navigation, and Super/Meta-release selection.
 
 ## Overview
 
-- **Source**: `src/widget/windowswitcher/` (entry: `index.tsx`)
+- **Source**: `packages/widgets/src/windowswitcher/`
 - **Dependencies**: `AstalHyprland`, `WindowManager`
 - **Type**: `Astal.Window`, layer `OVERLAY`, keymode `EXCLUSIVE`, covers entire monitor; toggled via exported `toggleWindowSwitcher()` function
 
@@ -15,8 +15,8 @@
 | # | State | Trigger | Expected behavior |
 |---|-------|---------|-------------------|
 | F1 | Hidden | Default | Window hidden; no MRU tracking active for navigation |
-| F2 | Shown | `toggleWindowSwitcher()` called | Window visible; clients list populated and sorted by MRU; selected index = 1 (second item = previously focused); focus grabbed on the inner box |
-| F3 | Empty / no windows | Hyprland has zero clients | `Adw.StatusPage` with "No Open Windows" displayed; keyboard actions are no-ops |
+| F2 | Shown | `toggleWindowSwitcher()` called | Present the native surface before inner focus; window-level key capture handles navigation; reactive MRU order chooses the previously focused client at index 1 when one exists |
+| F3 | Empty / no windows | Hyprland has zero clients | Opaque native content surface with No Open Windows and Press Escape to close the switcher; Escape still closes |
 
 ### Interactions
 
@@ -24,10 +24,10 @@
 |---|--------|-------------------|
 | I1 | Tab / Right arrow | Advance selection forward (wraps around) |
 | I2 | Shift+Tab / Left arrow | Move selection backward (wraps) |
-| I3 | Enter / KP_Enter | Focus the selected client |
+| I3 | Enter / KP_Enter | Hide the switcher and flush its Wayland unmap before asking Hyprland to focus the selected client |
 | I4 | Escape | Close switcher without focusing |
 | I5 | Q | Kill the selected client |
-| I6 | Super/Meta key released | Focus selected client and close switcher |
+| I6 | Super/Meta key released | Use the same release-before-focus selection path and close the switcher |
 | I7 | Super held (no other key) | Switcher stays open; selection unchanged |
 
 ### Edge cases
@@ -46,8 +46,9 @@
 | Element | Token / style class | Notes |
 |---------|--------------------|-------|
 | Window background | Inline `css` (`background-color: transparent;`) | Transparent; no theme color needed |
-| Item container | `box` with | Uses `SwitcherItem` component |
+| Centered content | `card background`, width request 500 | Native opaque surface inside the transparent full-monitor overlay |
 | Status page | `compact` on `Adw.StatusPage` | Custom compact variant |
+| Window title | Wrapped, at most two lines, end ellipsis | Full title uses a bounded native word/character-wrapped tooltip, including unbroken long tokens |
 
 ### Adwaita checklist
 

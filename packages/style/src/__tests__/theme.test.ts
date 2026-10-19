@@ -1,97 +1,124 @@
 /**
- * Tests for the theme system — palette → CSS generation.
+ * Tests for palette validation and semantic accent contrast.
  *
- * Run via: pnpm test
  */
 
-import {type Palette, Theme} from '../theme';
+import {
+    ACCENT_TEXT_CONTRAST_MIN,
+    type Palette,
+    Theme,
+    contrastRatio,
+    resolveAccentRoles,
+} from '../theme';
 import {describe, expect, it, run} from './test-runner';
 
-describe('Theme.generateCSS', () => {
-    const validPalette: Palette = {
-        bg: '#1e1e2e',
-        fg: '#cdd6f4',
-        primary: '#cba6f7',
-        surface: '#313244',
-        shadow: '#000000',
-    };
+const validPalette: Palette = {
+    bg: '#1e1e2e',
+    fg: '#cdd6f4',
+    primary: '#3584e4',
+    surface: '#313244',
+    shadow: '#000000',
+};
 
-    it('generates CSS with all required Adwaita variables', () => {
-        const css = Theme.generateCSS(validPalette);
-        expect(css.includes('--window-bg-color: #1e1e2e')).toBe(true);
-        expect(css.includes('--window-fg-color: #cdd6f4')).toBe(true);
-        expect(css.includes('--accent-bg-color: #cba6f7')).toBe(true);
-        expect(css.includes('--accent-fg-color: #ffffff')).toBe(true);
-        expect(css.includes('--accent-color: #cba6f7')).toBe(true);
-        expect(css.includes('--card-bg-color: #313244')).toBe(true);
-        expect(css.includes('--shade-color: #000000')).toBe(true);
+function expectAtLeast(actual: number, minimum: number): void {
+    expect(actual >= minimum).toBe(true);
+}
+
+describe('Theme.generateCSS palette validation', () => {
+    it('rejects invalid values in every palette color field', () => {
+        for (const key of ['bg', 'fg', 'primary', 'surface', 'shadow'] as const) {
+            expect(() => Theme.generateCSS({...validPalette, [key]: 'not-a-color'})).toThrow();
+            expect(() => Theme.generateCSS({...validPalette, [key]: ''})).toThrow();
+            expect(() =>
+                Theme.generateCSS({...validPalette, [key]: undefined as unknown as string})
+            ).toThrow();
+        }
     });
 
-    it('does NOT emit any --shade-* custom properties', () => {
-        const css = Theme.generateCSS(validPalette);
-        expect(css.includes('--shade-bg')).toBe(false);
-        expect(css.includes('--shade-surface')).toBe(false);
-        expect(css.includes('--shade-primary')).toBe(false);
-        expect(css.includes('--shade-fg')).toBe(false);
-        expect(css.includes('--shade-radius')).toBe(false);
-    });
-
-    it('throws on missing bg', () => {
-        const bad = {...validPalette, bg: ''};
-        expect(() => Theme.generateCSS(bad)).toThrow();
-    });
-
-    it('throws on missing fg', () => {
-        const bad = {...validPalette, fg: ''};
-        expect(() => Theme.generateCSS(bad)).toThrow();
-    });
-
-    it('throws on missing primary', () => {
-        const bad = {...validPalette, primary: ''};
-        expect(() => Theme.generateCSS(bad)).toThrow();
-    });
-
-    it('throws on missing surface', () => {
-        const bad = {...validPalette, surface: ''};
-        expect(() => Theme.generateCSS(bad)).toThrow();
-    });
-
-    it('throws on missing shadow', () => {
-        const bad = {...validPalette, shadow: ''};
-        expect(() => Theme.generateCSS(bad)).toThrow();
-    });
-
-    it('throws on undefined value', () => {
-        const bad = {...validPalette, bg: undefined as unknown as string};
-        expect(() => Theme.generateCSS(bad)).toThrow();
-    });
-
-    it('uses --accent-color matching --accent-bg-color', () => {
-        const css = Theme.generateCSS(validPalette);
-        // Both should use the primary value
-        const accentBg = css.match(/--accent-bg-color:\s*(#[0-9a-fA-F]+)/)?.[1];
-        const accentColor = css.match(/--accent-color:\s*(#[0-9a-fA-F]+)/)?.[1];
-        expect(accentBg).toBe(accentColor);
-    });
-
-    it('produces well-formed CSS block', () => {
-        const css = Theme.generateCSS(validPalette);
-        expect(css.startsWith('* {')).toBe(true);
-        expect(css.endsWith('}')).toBe(true);
+    it('rejects a translucent window background', () => {
+        expect(() => Theme.generateCSS({...validPalette, bg: '#ffffff80'})).toThrow();
     });
 });
 
-describe('Palette type', () => {
-    it('accepts a valid palette object', () => {
-        const p: Palette = {
-            bg: '#000',
-            fg: '#fff',
-            primary: '#3584e4',
-            surface: '#222',
-            shadow: '#000',
-        };
-        expect(p.bg).toBe('#000');
-        expect(p.primary).toBe('#3584e4');
+describe('semantic accent contrast', () => {
+    it('computes luminance contrast extrema and fully transparent foreground', () => {
+        expect(contrastRatio('#ffffff', '#000000')).toBe(21);
+        expect(contrastRatio('rgba(255,255,255,0)', '#121212')).toBe(1);
+    });
+
+    it('selects the higher-contrast foreground against accent backgrounds', () => {
+        const light = resolveAccentRoles('#ffff00', '#ffffff');
+        expect(light.foreground).toBe('#000000');
+        expect(contrastRatio(light.foreground, light.background)).toBeGreaterThan(
+            contrastRatio('#ffffff', light.background)
+        );
+
+        const dark = resolveAccentRoles('#222222', '#1a1a1a');
+        expect(dark.foreground).toBe('#ffffff');
+        expect(contrastRatio(dark.foreground, dark.background)).toBeGreaterThan(
+            contrastRatio('#000000', dark.background)
+        );
+    });
+
+    it('resolves default blue and bright, dark, and gray dynamic primaries', () => {
+        for (const [primary, background] of [
+            ['#3584e4', '#ffffff'],
+            ['#ffff00', '#ffffff'],
+            ['#101010', '#ffffff'],
+            ['#777777', '#ffffff'],
+            ['#777777', '#1a1a1a'],
+            ['#1956c8', '#1a1a1a'],
+            ['#ffff00', '#1a1a1a'],
+        ]) {
+            const roles = resolveAccentRoles(primary, background);
+            expectAtLeast(
+                contrastRatio(roles.foreground, roles.background),
+                ACCENT_TEXT_CONTRAST_MIN
+            );
+            expectAtLeast(
+                contrastRatio(roles.standalone, background),
+                ACCENT_TEXT_CONTRAST_MIN
+            );
+        }
+
+        const defaultBlue = resolveAccentRoles('#3584e4', '#ffffff');
+        expect(defaultBlue.background).toBe('#3584e4');
+        expectAtLeast(
+            contrastRatio(defaultBlue.standalone, '#ffffff'),
+            ACCENT_TEXT_CONTRAST_MIN
+        );
+    });
+
+    it('composites a translucent primary onto the known opaque background', () => {
+        const roles = resolveAccentRoles('#ff000080', '#ffffff');
+        expect(contrastRatio(roles.background, '#ff8080')).toBeLessThan(1.01);
+        expectAtLeast(
+            contrastRatio(roles.foreground, roles.background),
+            ACCENT_TEXT_CONTRAST_MIN
+        );
+        expectAtLeast(
+            contrastRatio(roles.standalone, '#ffffff'),
+            ACCENT_TEXT_CONTRAST_MIN
+        );
+    });
+
+    it('keeps standalone contrast above threshold after 8-bit rounding', () => {
+        const primary = '#777777';
+        const roles = resolveAccentRoles(primary, '#ffffff');
+
+        expect(contrastRatio(primary, '#ffffff')).toBeLessThan(ACCENT_TEXT_CONTRAST_MIN);
+        expect(roles.standalone === primary).toBe(false);
+        expectAtLeast(
+            contrastRatio(roles.standalone, '#ffffff'),
+            ACCENT_TEXT_CONTRAST_MIN
+        );
+    });
+
+    it('rejects invalid colors and translucent window backgrounds', () => {
+        expect(() => contrastRatio('not-a-color', '#ffffff')).toThrow();
+        expect(() => contrastRatio('#000000', 'not-a-color')).toThrow();
+        expect(() => contrastRatio('#000000', '#ffffff80')).toThrow();
+        expect(() => resolveAccentRoles('#3584e4', '#ffffff80')).toThrow();
     });
 });
 

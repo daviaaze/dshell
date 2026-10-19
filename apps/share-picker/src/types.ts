@@ -1,4 +1,18 @@
 import type Gdk from 'gi://Gdk?version=4.0';
+import type Gtk from 'gi://Gtk?version=4.0';
+
+export interface ParsedWindowList {
+    provided: boolean;
+    windows: XDPHWindow[];
+}
+
+export type PreviewState = 'idle' | 'loading' | 'available' | 'unavailable';
+export interface PreviewHandle {
+    widget: Gtk.Widget;
+    setState(state: PreviewState): void;
+    setTexture(texture: Gdk.Texture | null): void;
+    dispose(): void;
+}
 
 export interface XDPHWindow {
     id: string;

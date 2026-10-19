@@ -158,6 +158,8 @@ in
         };
 
         misc = {
+          # A crashed locker leaves the compositor locked; its replacement must be able to recover.
+          allow_session_lock_restore = true;
           animate_manual_resizes = true;
           animate_mouse_windowdragging = false;
           vrr = 1;
@@ -228,6 +230,7 @@ in
               ];
               "org.freedesktop.impl.portal.Screencast" = "hyprland";
               "org.freedesktop.impl.portal.Screenshot" = "hyprland";
+              "org.freedesktop.impl.portal.Settings" = "gtk";
             };
           };
         };

@@ -3,7 +3,7 @@ import {
     conservationEnabled,
     startConservationMonitor,
 } from '@shade/services/power/batteryConservation';
-import {QuickToggleButton} from '../../common/quickToggleButton';
+import {QuickControlButton} from '../../common/quickControlButton';
 import type {QuickButton} from './quickButton';
 
 export default (): QuickButton => {
@@ -11,12 +11,17 @@ export default (): QuickButton => {
 
     return {
         widget: (
-            <QuickToggleButton
-                icon={conservationEnabled.as((e) =>
-                    e ? 'battery-caution-symbolic' : 'battery-good-symbolic'
-                )}
-                label={conservationEnabled.as((e) => (e ? 'Conservation' : 'Full Power'))}
+            <QuickControlButton
+                intent="toggle"
                 active={conservationEnabled}
+                icon={conservationEnabled.as((enabled) =>
+                    enabled ? 'battery-caution-symbolic' : 'battery-good-symbolic'
+                )}
+                domain="Battery care"
+                value={conservationEnabled.as((enabled) => enabled ? 'On' : 'Off')}
+                actionLabel={conservationEnabled.as((enabled) =>
+                    enabled ? 'Turn battery care off' : 'Turn battery care on'
+                )}
                 onClick={() => bus.emit('power:conservation:toggle')}
             />
         ),

@@ -68,8 +68,8 @@ def summarize_timing(
 class WorkflowTest:
     def __init__(self) -> None:
         self.started_at = time.monotonic()
-        self.artifacts = Path(tempfile.mkdtemp(prefix="shade-workflow-artifacts."))
-        self.state = Path(tempfile.mkdtemp(prefix="shade-workflow-state."))
+        self.artifacts = Path(tempfile.mkdtemp(prefix="swf-a-", dir="/tmp"))
+        self.state = Path(tempfile.mkdtemp(prefix="swf-s-", dir="/tmp"))
         self.results: list[dict[str, object]] = []
         self.phase_timings: dict[str, float] = {}
         self.command_timings: list[dict[str, object]] = []
@@ -80,6 +80,8 @@ class WorkflowTest:
         self.build_log = self.artifacts / "build.log"
         self.qemu_log = self.artifacts / "qemu.log"
         self.command_log = self.artifacts / "commands.log"
+        self._gsettings_environment_pid: int | None = None
+        self._gsettings_environment: dict[str, str] = {}
 
     @staticmethod
     def free_port() -> int:
@@ -185,7 +187,7 @@ class WorkflowTest:
 
     def accessibility_tree(self, label: str) -> dict[str, object]:
         return self.accessibility(
-            label, "tree", "--max-depth", "16", "--max-nodes", "4000"
+            label, "tree", "--max-depth", "32", "--max-nodes", "4000"
         )
 
     @staticmethod
@@ -221,13 +223,14 @@ class WorkflowTest:
         return matches[0]
 
     def click_accessible_node(self, node: dict[str, object], label: str) -> None:
-        bounds = node.get("bounds")
-        if not isinstance(bounds, list) or len(bounds) != 4:
-            raise Unsupported(f"{label} has no usable screen bounds: {node}")
-        x, y, width, height = (int(value) for value in bounds)
-        if width <= 0 or height <= 0:
-            raise Unsupported(f"{label} has empty screen bounds: {node}")
-        self.vnc(label, "move", str(x + width // 2), str(y + height // 2), "click", "1", "pause", "0.2")
+        name, role = str(node.get("name") or ""), str(node.get("role") or "")
+        destination, path = node.get("bus"), node.get("path")
+        if not isinstance(destination, str) or not isinstance(path, str):
+            raise Unsupported(f"{label} has no native accessible identity: {node}")
+        self.accessibility(
+            label, "click", "--name", name, "--role", role,
+            "--bus", destination, "--path", path,
+        )
 
     def click_named(
         self, label: str, name: str, *, role: str | None = None, contains: bool = False
@@ -236,26 +239,131 @@ class WorkflowTest:
         self.click_accessible_node(node, label)
         return node
 
+    def nodes_in_group(self, tree: dict[str, object], group_title: str) -> list[dict[str, object]]:
+        groups = [
+            node for node in self.walk_accessibility(tree)
+            if str(node.get("name") or "") == group_title
+        ]
+        if not groups:
+            raise Unsupported(f"Settings feature group {group_title!r} is not exposed in the accessible tree")
+        return [
+            node
+            for group in groups
+            for node in self.walk_accessibility(group)
+        ]
+
+    def find_in_group(
+        self,
+        tree: dict[str, object],
+        group_title: str,
+        name: str,
+        *,
+        role: str | None = None,
+    ) -> dict[str, object]:
+        target = name.casefold()
+        matches = {
+            (node.get("bus"), node.get("path")): node
+            for node in self.nodes_in_group(tree, group_title)
+            if str(node.get("name") or "").casefold() == target
+            and (role is None or str(node.get("role") or "").casefold() == role.casefold())
+        }
+        if len(matches) != 1:
+            raise Unsupported(
+                f"Expected one {name!r} role={role!r} in Settings group {group_title!r}; "
+                f"found {[{key: node.get(key) for key in ('name', 'role', 'bounds')} for node in matches.values()]}"
+            )
+        return next(iter(matches.values()))
+
+    def click_in_group(
+        self,
+        label: str,
+        group_title: str,
+        name: str,
+        *,
+        role: str | None = None,
+    ) -> dict[str, object]:
+        tree = self.accessibility_tree(f"finding {name} in Settings group {group_title}")
+        node = self.find_in_group(tree, group_title, name, role=role)
+        self.click_accessible_node(node, label)
+        return node
+
+
+    def gsettings_environment(self) -> dict[str, str]:
+        raw_pid = self.desktop(
+            "identifying the running shell for GSettings schema lookup",
+            "systemctl --user show shade-shell.service -p MainPID --value",
+        ).stdout.strip()
+        if not raw_pid.isdecimal() or int(raw_pid) <= 0:
+            raise Unsupported(f"Shade has no running MainPID for schema lookup: {raw_pid!r}")
+        pid = int(raw_pid)
+        if self._gsettings_environment_pid == pid:
+            return self._gsettings_environment
+        code = """import json, os, sys
+keys = {b'GSETTINGS_SCHEMA_DIR', b'XDG_DATA_DIRS'}
+environment = {}
+with open('/proc/' + sys.argv[1] + '/environ', 'rb') as source:
+    for entry in source.read().split(b'\\0'):
+        key, separator, value = entry.partition(b'=')
+        if separator and key in keys:
+            environment[os.fsdecode(key)] = os.fsdecode(value)
+print(json.dumps(environment))"""
+        environment = json.loads(self.desktop(
+            "reading only the running shell's GSettings schema environment",
+            "python3 -c " + shlex.quote(code) + " " + str(pid),
+        ).stdout)
+        if not isinstance(environment, dict) or any(
+            key not in {"GSETTINGS_SCHEMA_DIR", "XDG_DATA_DIRS"} or not isinstance(value, str)
+            for key, value in environment.items()
+        ):
+            raise RuntimeError(f"Invalid GSettings schema environment: {environment!r}")
+        self._gsettings_environment_pid = pid
+        self._gsettings_environment = environment
+        return environment
+
     def gsetting(self, key: str, value: str | None = None) -> str:
         schema = "com.caioasmuniz.shade_shell"
         if key in {"position"}:
             schema += ".bar"
         else:
             schema += ".screen-capture"
-        if value is None:
-            return self.desktop(
-                f"reading {schema}.{key}", f"gsettings get {schema} {key}"
-            ).stdout.strip()
+        environment = self.gsettings_environment()
+        command_env = shlex.join([
+            "env", "-u", "GSETTINGS_SCHEMA_DIR", "-u", "XDG_DATA_DIRS",
+            *[f"{name}={value}" for name, value in environment.items()],
+        ])
+        if value is not None:
+            self.desktop(
+                f"setting {schema}.{key}",
+                f"{command_env} gsettings set {schema} {shlex.quote(key)} {shlex.quote(value)}",
+            )
+        return self.desktop(
+            f"reading {schema}.{key}",
+            f"{command_env} gsettings get {schema} {shlex.quote(key)}",
+        ).stdout.strip()
+
+    def activate_shell_action(self, action: str) -> None:
         self.desktop(
-            f"setting {schema}.{key}", f"gsettings set {schema} {key} {shlex.quote(value)}"
+            f"activating registered Shade action {action}",
+            "gdbus call --session --dest com.caioasmuniz.shade_shell "
+            "--object-path /com/caioasmuniz/shade_shell "
+            "--method org.gtk.Actions.Activate "
+            + shlex.quote(action) + " '[]' '{}'",
         )
-        return self.gsetting(key)
+
+    def hyprland_pid(self) -> str:
+        code = """import json, os, subprocess
+signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE')
+instances = json.loads(subprocess.check_output(['hyprctl', 'instances', '-j'], text=True))
+matches = [item for item in instances if item.get('instance') == signature]
+pid = matches[0].get('pid') if len(matches) == 1 else None
+print(str(pid) if str(pid).isdecimal() else '')"""
+        return self.desktop(
+            "reading the current Hyprland instance PID",
+            "python3 -c " + shlex.quote(code),
+        ).stdout.strip()
 
     def quick_settings_open(self) -> bool:
-        return any(
-            350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700
-            for layer in self.layers()
-        )
+        return any(layer.get("namespace") == "quicksettings" for layer in self.layers())
 
     def open_quick_settings(self) -> None:
         if self.quick_settings_open():
@@ -269,33 +377,45 @@ class WorkflowTest:
             self.wait_until("Quick Settings closure", lambda: not self.quick_settings_open(), timeout=12)
 
     def settings_page(self, title: str) -> dict[str, object]:
-        tree = self.accessibility_tree(f"reading Settings navigation for {title}")
-        preferred_roles = {"page tab", "tab", "list item", "button"}
-        candidates = [
-            node
-            for node in self.walk_accessibility(tree)
-            if node.get("name") == title
-            and str(node.get("role") or "").casefold() in preferred_roles
-        ]
-        if len(candidates) != 1:
-            raise Unsupported(
-                f"Settings navigation entry {title!r} is not uniquely accessible: "
-                f"{[{key: node.get(key) for key in ('name', 'role', 'bounds')} for node in candidates]}"
+        clients = [client for client in self.clients() if client.get("title") == "Shade Settings"]
+        if len(clients) != 1:
+            raise Unsupported(f"Settings window is not unique: {clients}")
+        key = (clients[0].get("address"), clients[0].get("stableId"))
+        if getattr(self, "_settings_navigation_key", None) != key:
+            tree = self.accessibility(
+                "reading stable native Settings navigation identities", "tree", "--no-bounds",
+                "--max-depth", "24", "--max-nodes", "4000",
             )
-        self.click_accessible_node(candidates[0], f"select Settings page {title}")
-        return self.wait_until(
-            f"Settings page {title}",
-            lambda: self.accessibility(
-                f"verifying Settings page {title}",
-                "find", "--max-depth", "16", "--max-nodes", "4000",
-                "--name", title, "--role", "tab panel",
-            ),
-            timeout=12,
+            self._settings_navigation = {}
+            for node in self.walk_accessibility(tree):
+                if node.get("role") == "tab panel":
+                    entry = (str(node.get("name") or ""), str(node["role"]))
+                    self._settings_navigation.setdefault(entry, []).append(node)
+            self._settings_navigation_key = key
+        owners = self._settings_navigation.get((title, "tab panel"), [])
+        if len(owners) != 1:
+            raise Unsupported(f"Settings category lacks a unique native panel: {title}")
+        owner = owners[0]
+        # Adwaita rebuilds header tabs when group/search models change.
+        tab = self.accessibility(
+            f"finding current native Settings tab {title}", "find",
+            "--max-depth", "24", "--max-nodes", "4000",
+            "--name", title, "--role", "tab",
         )
+        self.click_accessible_node(tab, f"select Settings page {title}")
+        def visible_panel():
+            panel = self.accessibility(
+                f"verifying Settings page {title}", "find", "--include-state",
+                "--name", title, "--role", "tab panel",
+                "--bus", str(owner["bus"]), "--path", str(owner["path"]),
+            )
+            words = panel.get("state_words", [])
+            return panel if words and int(words[0]) & (1 << 25) else None
+        return self.wait_until(f"visible Settings page {title}", visible_panel, timeout=15)
 
     def open_settings(self) -> None:
         self.open_quick_settings()
-        self.vnc("open Settings from Quick Settings", "move", "230", "406", "click", "1", "pause", "0.3")
+        self.click_named("open Settings from Quick Settings", "Open Settings", role="button")
         self.wait_until(
             "Shade Settings window",
             lambda: any(
@@ -310,16 +430,22 @@ class WorkflowTest:
             client for client in self.clients()
             if "settings" in str(client.get("title", "")).casefold()
         ]
-        if settings_clients:
-            self.vnc("close Settings", "move", "1251", "29", "click", "1", "pause", "0.2")
-            self.wait_until(
-                "Shade Settings closure",
-                lambda: not any(
-                    "settings" in str(client.get("title", "")).casefold()
-                    for client in self.clients()
-                ),
-                timeout=12,
-            )
+        if not settings_clients:
+            return
+        if len(settings_clients) != 1:
+            raise Unsupported(f"Settings window target is ambiguous: {settings_clients}")
+        address = str(settings_clients[0].get("address", ""))
+        if not address:
+            raise Unsupported(f"Settings window has no Hyprland address: {settings_clients[0]}")
+        self.desktop(
+            "closing the targeted Settings window",
+            "hyprctl dispatch closewindow " + shlex.quote(f"address:{address}"),
+        )
+        self.wait_until(
+            "Shade Settings closure",
+            lambda: not any(client.get("address") == address for client in self.clients()),
+            timeout=12,
+        )
 
     def clients(self) -> list[dict[str, object]]:
         result = self.desktop("reading Hyprland clients", "hyprctl clients -j")
@@ -583,9 +709,12 @@ class WorkflowTest:
         if size != "1280x800":
             raise Unsupported(f"Greeter pointer fixture requires a 1280x800 screen; got {size}")
 
-        self.vnc("clicking the greeter Continue button", "move", "640", "491", "click", "1", "pause", "1")
-        prompt = self.capture("greeter-password-prompt")
-        continue_change = self.assert_visual_change(ready, prompt, "Continue to password")
+        self.wait_until(
+            "selected account starts its PAM worker without Continue",
+            lambda: int(self.guest("checking native greeter authentication worker", "pgrep -c -x greetd").stdout.strip()) >= 3,
+            timeout=15,
+        )
+        prompt = self.capture("greeter-automatic-password-prompt")
         self.vnc("submit invalid greeter password", "type", "shade-invalid", "key", "enter", "pause", "2")
         invalid = self.capture("greeter-invalid-password")
         invalid_change = self.assert_visual_change(prompt, invalid, "invalid password feedback")
@@ -594,21 +723,20 @@ class WorkflowTest:
         self.vnc("return from greeter password prompt", "key", "esc", "pause", "1")
         back = self.capture("greeter-back")
         back_change = self.assert_visual_change(prompt, back, "Escape to user selection")
-        self.vnc("reopen greeter password prompt", "move", "640", "491", "click", "1", "pause", "1")
+        self.vnc("reopen greeter password prompt", "move", "640", "517", "click", "1", "pause", "1")
         retry = self.capture("greeter-password-retry")
         retry_change = self.assert_visual_change(back, retry, "Continue after Back")
         self.vnc("submit test-account password", "type", SSH_PASSWORD, "key", "enter", "pause", "2")
         self.wait_shell()
         return {
-            "ui": "VNC pointer selected Continue in the fixed-size greeter; virtual keyboard submitted invalid and valid passwords, with Escape/Back between attempts",
+            "ui": "The selected account started PAM without Continue; virtual keyboard submitted invalid and valid passwords, with Escape/Back and an explicit authentication retry between attempts",
             "visual_pixels_changed_in_form": {
-                "continue": continue_change,
                 "invalid_response": invalid_change,
                 "back": back_change,
                 "retry": retry_change,
             },
             "guest": "invalid login left the Shade service inactive; valid login started Shade and registered AT-SPI",
-            "screenshots": [str(invalid), str(back)],
+            "screenshots": [str(prompt), str(invalid), str(back)],
         }
 
     def test_launcher(self) -> dict[str, object]:
@@ -638,13 +766,23 @@ class WorkflowTest:
             raise RuntimeError("Launcher layer remained after Escape")
         return {"ui": "VNC Super+Space opened the launcher; Escape removed its layer", "accessibility": entry, "guest": {"launcher_geometry": launcher_geometry, "remaining_layer_count": len(remaining)}}
 
+    def wifi_control(self) -> dict[str, object]:
+        return self.find_accessible_node("Wi-Fi:", role="toggle button", contains=True)
+
+    def click_wifi_control(self, label: str) -> dict[str, object]:
+        node = self.wifi_control()
+        return self.accessibility(
+            label, "click", "--max-depth", "24", "--max-nodes", "3000",
+            "--name", str(node["name"]), "--role", "toggle button",
+        )
+
     def test_quicksettings(self) -> dict[str, object]:
         before = self.layers()
         before_geometry = {tuple(layer.get(key) for key in ("x", "y", "w", "h")) for layer in before}
         self.vnc("open Quick Settings with Super+N", "keydown", "super", "key", "n", "keyup", "super", "pause", "1")
         self.capture("quicksettings-open")
         self.save_accessibility_tree("quicksettings-open")
-        wifi = self.accessibility("finding Wi-Fi tile", "find", "--max-depth", "16", "--max-nodes", "2000", "--name", "WiFi", "--role", "button")
+        wifi = self.wifi_control()
         opened = self.layers()
         quicksettings = next(
             (
@@ -665,11 +803,12 @@ class WorkflowTest:
             raise RuntimeError("Quick Settings layer remained after its shortcut")
         return {"ui": "VNC Super+N opened and closed Quick Settings", "accessibility": wifi, "guest": {"quicksettings_geometry": quicksettings_geometry, "remaining_layer_count": len(remaining)}}
 
-    def start_pattern_window(self) -> dict[str, object]:
+    def start_pattern_window(self, title: str = "Shade Area Recording Pattern", title_control: str | None = None) -> dict[str, object]:
         pattern = """import Gtk from 'gi://Gtk?version=4.0';
+import Gio from 'gi://Gio';
 const app = new Gtk.Application({application_id: 'org.shade.WorkflowPattern'});
 app.connect('activate', () => {
-  const window = new Gtk.ApplicationWindow({application: app, title: 'Shade Area Recording Pattern'});
+  const window = new Gtk.ApplicationWindow({application: app, title: __TITLE__});
   window.set_decorated(false);
   window.set_resizable(false);
   window.set_default_size(480, 320);
@@ -692,21 +831,53 @@ app.connect('activate', () => {
     }
   });
   window.set_child(canvas);
+  const titleControl = __TITLE_CONTROL__;
+  if (titleControl) {
+    const file = Gio.File.new_for_path(titleControl);
+    file.replace_contents(new TextEncoder().encode(__TITLE__), null, false, Gio.FileCreateFlags.NONE, null);
+    const monitor = file.monitor_file(Gio.FileMonitorFlags.NONE, null);
+    monitor.connect('changed', () => {
+      const [ok, contents] = file.load_contents(null);
+      if (ok) window.set_title(new TextDecoder().decode(contents));
+    });
+    window.connect('destroy', () => monitor.cancel());
+  }
   window.present();
 });
-app.run([]);"""
+app.run([]);""".replace("__TITLE__", json.dumps(title)).replace("__TITLE_CONTROL__", json.dumps(title_control))
         guest_script = "/tmp/shade-vm-pattern.mjs"
+        code = """import json, os, sys
+pid = sys.argv[1]
+allowed = {b'GI_TYPELIB_PATH', b'LD_LIBRARY_PATH', b'XDG_DATA_DIRS',
+           b'WAYLAND_DISPLAY', b'XDG_RUNTIME_DIR', b'DBUS_SESSION_BUS_ADDRESS'}
+environment = {}
+for entry in open('/proc/' + pid + '/environ', 'rb').read().split(b'\\0'):
+    key, separator, value = entry.partition(b'=')
+    if separator and key in allowed:
+        environment[os.fsdecode(key)] = os.fsdecode(value)
+print(json.dumps({'executable': os.readlink('/proc/' + pid + '/exe'), 'environment': environment}))"""
+        runtime = json.loads(self.desktop(
+            "reading the installed GTK fixture runtime",
+            'pid=$(systemctl --user show shade-shell.service -p MainPID --value); python3 -c '
+            + shlex.quote(code) + ' "$pid"',
+        ).stdout)
+        command = shlex.join([
+            "env", "-u", "LD_PRELOAD",
+            *[f"{name}={value}" for name, value in runtime["environment"].items()],
+            runtime["executable"], "-m", guest_script,
+        ])
         self.desktop(
             "creating deterministic guest capture pattern",
             f"printf %s {shlex.quote(pattern)} > {guest_script}; "
-            f"systemd-run --user --no-block --collect --unit=shade-vm-pattern gjs -m {guest_script}",
+            f"systemd-run --user --no-block --collect --unit=shade-vm-pattern "
+            f"{command}",
         )
         client = self.wait_until(
             "guest capture pattern window",
             lambda: next(
                 (
                     item for item in self.clients()
-                    if item.get("title") == "Shade Area Recording Pattern"
+                    if item.get("title") == title
                 ),
                 None,
             ),
@@ -812,7 +983,8 @@ print(json.dumps(result))"""
         )
 
     def test_area_recording(self) -> dict[str, object]:
-        original_engine = self.gsetting("area-selection-engine").strip("'\"")
+        original_engine_raw = self.gsetting("area-selection-engine")
+        original_engine = original_engine_raw.strip("'\"")
         original_boundary = self.gsetting("show-recording-boundary")
         pattern_started = False
         pattern: dict[str, object] = {}
@@ -931,7 +1103,7 @@ print(json.dumps(result))"""
                     self.stop_recording()
             finally:
                 try:
-                    self.gsetting("area-selection-engine", f"'{original_engine}'")
+                    self.gsetting("area-selection-engine", original_engine_raw)
                 finally:
                     try:
                         self.gsetting("show-recording-boundary", original_boundary)
@@ -968,7 +1140,7 @@ print(json.dumps(result))"""
 
     def test_settings_position(self) -> dict[str, object]:
         saved_raw = self.gsetting("position")
-        saved_position = {1: "Top", 8: "Left", 2: "Right", 4: "Bottom"}.get(int(saved_raw))
+        saved_position = {2: "Top", 8: "Left", 4: "Right", 16: "Bottom"}.get(int(saved_raw))
         initial_geometry = self.bar_position_from_layers(self.layers())
         opened_settings = False
         restored_raw = None
@@ -977,7 +1149,7 @@ print(json.dumps(result))"""
             self.open_settings()
             opened_settings = True
             self.save_accessibility_tree("settings-home")
-            page = self.settings_page("Bar & Dock")
+            page = self.settings_page("Personalization")
             self.capture("settings-bar-position")
             self.save_accessibility_tree("settings-bar-position")
             bounds = page.get("bounds")
@@ -985,9 +1157,9 @@ print(json.dumps(result))"""
                 raise RuntimeError(f"Bar & Dock page is not selected in Settings: {page}")
 
             self.click_named("establishing known Top bar baseline", "Top", role="toggle button")
-            top = self.wait_bar_position("Top", "1")
+            top = self.wait_bar_position("Top", "2")
             self.click_named("moving visible Bar position control to Bottom", "Bottom", role="toggle button")
-            bottom = self.wait_bar_position("Bottom", "4")
+            bottom = self.wait_bar_position("Bottom", "16")
             bottom_capture = self.capture("bar-bottom")
             bottom_layers = self.layers()
             screen_height = max(
@@ -1006,11 +1178,7 @@ print(json.dumps(result))"""
                 raise RuntimeError(f"Bottom position preference produced no bottom-edge bar layer: {bottom_layers}")
         finally:
             try:
-                self.desktop(
-                    "restoring exact raw bar position",
-                    f"gsettings set com.caioasmuniz.shade_shell.bar position {shlex.quote(saved_raw)}",
-                )
-                restored_raw = self.gsetting("position")
+                restored_raw = self.gsetting("position", saved_raw)
                 if restored_raw != saved_raw:
                     raise RuntimeError(f"Raw bar position restoration failed: {saved_raw} -> {restored_raw}")
                 if saved_position is not None:
@@ -1054,24 +1222,32 @@ print(json.dumps(result))"""
         self.vnc("open Wi-Fi controls", "keydown", "super", "key", "n", "keyup", "super", "pause", "1")
         try:
             self.save_accessibility_tree("wifi-controls")
-            button = self.accessibility("finding Wi-Fi tile", "find", "--max-depth", "16", "--max-nodes", "2000", "--name", "WiFi", "--role", "button")
+            button = self.wifi_control()
             initial = self.guest("reading initial Wi-Fi radio", "nmcli radio wifi", timeout=30).stdout.strip()
             if initial != "enabled":
                 raise RuntimeError(f"Wi-Fi test fixture must start enabled: got {initial!r}")
-            self.accessibility("turning Wi-Fi off in Quick Settings", "click", "--max-depth", "16", "--max-nodes", "2000", "--name", "WiFi", "--role", "button")
-            off = self.guest("verifying Wi-Fi disabled", "nmcli radio wifi", timeout=30).stdout.strip()
-            if off != "disabled":
-                raise RuntimeError(f"Wi-Fi UI action did not disable the radio: got {off!r}")
-            self.accessibility("turning Wi-Fi on in Quick Settings", "click", "--max-depth", "16", "--max-nodes", "2000", "--name", "WiFi Off", "--role", "button")
-            deadline = time.monotonic() + 10
-            on = ""
-            while time.monotonic() < deadline:
-                on = self.guest("verifying Wi-Fi enabled", "nmcli radio wifi", timeout=30).stdout.strip()
-                if on == "enabled":
-                    break
-                time.sleep(0.5)
-            if on != "enabled":
-                raise RuntimeError(f"Wi-Fi UI action did not re-enable the radio: got {on!r}")
+            self.click_wifi_control("turning Wi-Fi off in Quick Settings")
+            off = self.wait_until(
+                "guest NetworkManager Wi-Fi radio disabled",
+                lambda: (
+                    state if (state := self.guest(
+                        "waiting for Wi-Fi radio disabled",
+                        "nmcli radio wifi",
+                    ).stdout.strip()) == "disabled" else None
+                ),
+                timeout=20,
+            )
+            self.click_wifi_control("turning Wi-Fi on in Quick Settings")
+            on = self.wait_until(
+                "guest NetworkManager Wi-Fi radio enabled",
+                lambda: (
+                    state if (state := self.guest(
+                        "waiting for Wi-Fi radio enabled",
+                        "nmcli radio wifi",
+                    ).stdout.strip()) == "enabled" else None
+                ),
+                timeout=20,
+            )
             self.guest("requesting a fresh guest Wi-Fi scan", "nmcli device wifi rescan ifname wlan0", timeout=15, check=False)
             scan = self.guest("scanning guest-local test access point", "nmcli -t -f SSID device wifi list ifname wlan0", timeout=15, check=False)
             for _ in range(4):
@@ -1156,18 +1332,13 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             opened_quick_settings = True
             current_radio = self.guest("checking guest Wi-Fi before connection", "nmcli radio wifi").stdout.strip()
             if current_radio == "disabled":
-                self.click_named("enabling guest Wi-Fi in Quick Settings", "WiFi Off", role="button")
+                self.click_wifi_control("enabling guest Wi-Fi in Quick Settings")
                 self.wait_until(
                     "guest Wi-Fi radio enabled",
                     lambda: self.guest("waiting for guest Wi-Fi radio", "nmcli radio wifi").stdout.strip() == "enabled",
                     timeout=20,
                 )
-            wifi = self.find_accessible_node("WiFi", role="button")
-            bounds = wifi.get("bounds")
-            if not isinstance(bounds, list) or len(bounds) != 4:
-                raise Unsupported(f"Wi-Fi split control has no bounds: {wifi}")
-            x, y, width, height = (int(value) for value in bounds)
-            self.vnc("opening Wi-Fi access-point list", "move", str(x + width - 12), str(y + height // 2), "click", "1")
+            self.click_named("opening Wi-Fi access-point list", "Wi-Fi options", role="toggle button")
             self.click_named("scanning guest Wi-Fi access points", "Scan", role="button")
             self.wait_until(
                 "guest-local Shade-Test AP in NetworkManager",
@@ -1241,8 +1412,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                         "checking guest Wi-Fi radio for restoration", "nmcli radio wifi"
                     ).stdout.strip()
                     if current_radio != initial_radio:
-                        target = "WiFi" if current_radio == "enabled" else "WiFi Off"
-                        self.click_named("restoring original guest Wi-Fi radio state", target, role="button")
+                        self.click_wifi_control("restoring original guest Wi-Fi radio state")
                         self.wait_until(
                             "original guest Wi-Fi radio state",
                             lambda: self.guest(
@@ -1427,27 +1597,70 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                                 self.stop_pattern_window()
 
     def test_settings_page_registry(self) -> dict[str, object]:
-        pages = [
-            "Appearance", "Displays", "Bar & Dock", "Idle & Lock", "Notifications",
-            "Screen Capture", "Network", "Bluetooth", "Clock & Weather", "Timer",
-            "Sound", "Mouse & Touchpad", "Keyboard Shortcuts", "Default Apps",
-            "Startup Apps", "About", "Debug",
-        ]
+        category_groups = {
+            "Personalization": ["Appearance", "Dynamic Theming", "Night Light", "Bar", "Dock", "Pinned Apps", "Modules"],
+            "Devices": ["Display modes", "Display Layout", "Connected Displays", "Saved Layouts", "Display Changes", "Output", "Input", "Mouse", "Touchpad"],
+            "Connectivity": ["Wi-Fi", "Wired", "Hotspot", "Connectivity", "Bluetooth", "Paired Devices", "Available Devices"],
+            "Privacy & Security": ["Idle Management", "Power Actions", "Notifications", "Sound Alerts", "Scheduled DND", "Recording", "Screenshot", "Recording Boundary", "Overlay", "Screen Share"],
+            "Applications": ["Default Applications", "Startup Applications"],
+            "System": ["Clock", "Pomodoro", "Countdown", "Keyboard Shortcuts", "System Information", "Debug"],
+        }
         visited: list[dict[str, object]] = []
+        feature_groups: list[dict[str, str]] = []
         opened_settings = False
         try:
             self.open_settings()
             opened_settings = True
-            for title in pages:
-                panel = self.settings_page(title)
+            for category, expected_groups in category_groups.items():
+                panel = self.settings_page(category)
                 bounds = panel.get("bounds")
                 if not isinstance(bounds, list) or len(bounds) != 4 or int(bounds[2]) <= 0 or int(bounds[3]) <= 0:
-                    raise RuntimeError(f"Settings page {title!r} did not render usable content: {panel}")
-                screenshot = self.capture(f"settings-page-{len(visited) + 1:02d}")
-                visited.append({"title": title, "panel": panel, "screenshot": str(screenshot)})
+                    raise RuntimeError(f"Settings category {category!r} did not render usable content: {panel}")
+                tree = self.accessibility_tree(f"reading {category} feature groups")
+                found = []
+                missing = []
+                for group_title in expected_groups:
+                    try:
+                        self.nodes_in_group(tree, group_title)
+                    except Unsupported:
+                        missing.append(group_title)
+                        continue
+                    found.append(group_title)
+                    feature_groups.append({"category": category, "group": group_title})
+                if missing:
+                    raise RuntimeError(
+                        f"Settings category {category!r} is missing mapped feature groups {missing}; "
+                        f"found {found}"
+                    )
+                screenshot = self.capture(f"settings-category-{len(visited) + 1:02d}")
+                visited.append({
+                    "title": category,
+                    "panel": panel,
+                    "feature_groups": found,
+                    "screenshot": str(screenshot),
+                })
+            if len(visited) != 6:
+                raise RuntimeError(f"Expected all six native Settings categories, visited {len(visited)}")
+
+            self.vnc(
+                "searching Settings for a control outside System",
+                "keydown", "ctrl", "key", "f", "keyup", "ctrl",
+                "type", "Scan for Devices", "pause", "0.5",
+            )
+            search_evidence = self.wait_until(
+                "native Settings search for Connectivity control",
+                lambda: self.find_accessible_node("Scan for Devices", role="button"),
+                timeout=12,
+            )
             return {
-                "ui": "Visited all 17 registered Settings pages by their navigation entries; page controls were not activated.",
-                "guest": {"visited_pages": visited, "count": len(visited)},
+                "ui": "Visited all six native Settings categories, inspected their mapped feature groups, and used built-in search to find Scan for Devices outside the selected System category.",
+                "guest": {
+                    "visited_categories": visited,
+                    "category_count": len(visited),
+                    "feature_groups": feature_groups,
+                    "feature_group_count": len(feature_groups),
+                },
+                "accessibility": {"cross_category_search_result": search_evidence},
             }
         finally:
             if opened_settings:
@@ -1479,12 +1692,29 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             )
             self.open_settings()
             settings_open = True
-            page = self.settings_page("Displays")
+            page = self.settings_page("Devices")
             tree = self.accessibility_tree("reading display controls before preview")
             self.save_accessibility_tree("settings-displays-preview")
-            scale_controls = [
+            change_groups = [
                 node for node in self.walk_accessibility(tree)
-                if node.get("role", "").casefold() == "spin button"
+                if node.get("name") == "Display Changes" and any(
+                    child.get("name") == "Apply" and child.get("role") == "button"
+                    for child in self.walk_accessibility(node)
+                )
+            ]
+            if not change_groups:
+                raise Unsupported("Native Display Changes action group is unavailable")
+            changes = min(change_groups, key=lambda node: len(list(self.walk_accessibility(node))))
+            def current_revert():
+                scoped = self.accessibility(
+                    "reading only native display transaction actions",
+                    "tree", "--bus", str(changes["bus"]), "--path", str(changes["path"]),
+                    "--no-bounds", "--max-depth", "12", "--max-nodes", "100",
+                )
+                return self.find_in_group(scoped, "Display Changes", "Revert", role="button")
+            scale_controls = [
+                node for node in self.nodes_in_group(tree, "Connected Displays")
+                if str(node.get("role", "")).casefold() == "spin button"
                 and isinstance(node.get("bounds"), list)
                 and len(node["bounds"]) == 4
             ]
@@ -1496,17 +1726,17 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             primary_scale = float(initial_primary.get("scale", 1.0))
             target_scale = 1.25 if abs(primary_scale - 1.25) > 0.01 else 1.5
             control = scale_controls[0]
-            self.click_accessible_node(control, "editing Virtual-1 scale in Displays settings")
-            self.vnc(
-                "setting a reversible Virtual-1 scale preview",
-                "keydown", "ctrl", "key", "a", "keyup", "ctrl",
-                "type", str(target_scale), "key", "enter",
+            self.accessibility(
+                "setting a reversible native Virtual-1 scale",
+                "set-value", "--name", str(control.get("name") or ""), "--role", "spin button",
+                "--bus", str(control["bus"]), "--path", str(control["path"]),
+                "--value", str(target_scale),
             )
-            self.click_named("applying reversible display preview", "Apply", role="button")
+            self.click_in_group("applying reversible display preview", "Display Changes", "Apply", role="button")
             preview_pending = True
-            self.wait_until(
+            revert_control = self.wait_until(
                 "display preview controls",
-                lambda: self.find_accessible_node("Revert", role="button"),
+                current_revert,
                 timeout=12,
             )
             preview = self.wait_until(
@@ -1524,7 +1754,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             if preview.get("disabled", False):
                 raise RuntimeError("Display preview unexpectedly disabled the primary Virtual-1 output")
             preview_screenshot = self.capture("display-preview-active")
-            self.click_named("reverting guest display preview", "Revert", role="button")
+            self.click_accessible_node(revert_control, "reverting guest display preview")
             preview_pending = False
             reverted = self.wait_until(
                 "Virtual-1 layout restored by Revert",
@@ -1557,7 +1787,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         finally:
             try:
                 if preview_pending:
-                    self.click_named("reverting pending display preview during cleanup", "Revert", role="button")
+                    self.click_in_group("reverting pending display preview during cleanup", "Display Changes", "Revert", role="button")
                     self.wait_until(
                         "display preview cleanup",
                         lambda: (
@@ -1600,10 +1830,34 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         settings_open = False
         pattern_started = False
         try:
+            states: list[dict[str, object]] = []
+            def cancel_state(name: str) -> None:
+                before = self.active_window()
+                layer_count = len(self.layers())
+                self.activate_shell_action("toggle-windowswitcher")
+                self.wait_until(f"{name} switcher layer", lambda: len(self.layers()) > layer_count, timeout=12)
+                if name == "empty":
+                    self.find_accessible_node("Press Escape to close the switcher.")
+                self.save_accessibility_tree(f"window-switcher-{name}")
+                screenshot = self.capture(f"window-switcher-{name}")
+                self.vnc(f"cancelling {name} switcher", "key", "esc")
+                self.wait_until(f"{name} switcher closed", lambda: len(self.layers()) <= layer_count, timeout=12)
+                after = self.active_window()
+                if before.get("address") != after.get("address"):
+                    raise RuntimeError(f"{name} cancellation changed client focus: {before} -> {after}")
+                states.append({"state": name, "client_count": len(self.clients()), "screenshot": str(screenshot)})
+            if not self.clients():
+                cancel_state("empty")
+            else:
+                states.append({"state": "empty", "status": "unverified", "reason": "Guest already has clients"})
+            pattern = self.start_pattern_window("Long switcher title " + "X" * 300)
+            pattern_started = True
+            if len(self.clients()) == 1:
+                cancel_state("one-long-title")
+            else:
+                states.append({"state": "one-long-title", "status": "unverified", "reason": "Guest has additional clients"})
             self.open_settings()
             settings_open = True
-            pattern = self.start_pattern_window()
-            pattern_started = True
             settings = next(
                 (
                     client for client in self.clients()
@@ -1622,7 +1876,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             before_count = len(before_clients)
             before_active = self.active_window()
             before_layers = len(self.layers())
-            self.desktop("opening Shade window switcher", "shade-shell toggle windowswitcher")
+            self.activate_shell_action("toggle-windowswitcher")
             self.wait_until(
                 "window switcher layer",
                 lambda: len(self.layers()) > before_layers,
@@ -1630,6 +1884,10 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             )
             self.capture("window-switcher-select")
             self.vnc("selecting next switcher client", "key", "enter")
+            (self.artifacts / "window-switcher-after-enter.json").write_text(
+                json.dumps({"active_window": self.active_window(), "layers": self.layers()}, indent=2) + "\n"
+            )
+            self.capture("window-switcher-after-enter")
             self.wait_until(
                 "selected guest window focus",
                 lambda: (
@@ -1655,7 +1913,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             )
             cancel_before = self.active_window()
             cancel_layers = len(self.layers())
-            self.desktop("reopening Shade window switcher", "shade-shell toggle windowswitcher")
+            self.activate_shell_action("toggle-windowswitcher")
             self.wait_until(
                 "window switcher for Escape path",
                 lambda: len(self.layers()) > cancel_layers,
@@ -1680,9 +1938,25 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 raise RuntimeError(f"Escape path closed or lost a guest client: {final_clients}")
             if before_active.get("address") != address:
                 raise RuntimeError(f"Switcher precondition did not focus Settings: {before_active}")
+            # Keep modifier and release within one RFB connection instead of
+            # relying on keyboard state across vncdotool disconnects.
+            held_capture = self.artifacts / "window-switcher-super-held.png"
+            self.vnc(
+                "selecting actual MRU client with held Super",
+                "keydown", "super", "key", "tab", "pause", "1",
+                "capture", str(held_capture), "keyup", "super", "pause", "0.5",
+            )
+            self.wait_until(
+                "real Super release selected the MRU client",
+                lambda: self.active_window().get("address") == pattern.get("address")
+                        and len(self.layers()) <= cancel_layers,
+                timeout=12,
+            )
+            released_active = self.active_window()
             return {
-                "ui": "Opened the switcher with Settings and a pattern client, selected/focused the pattern, then tested Escape cancellation.",
+                "ui": "Empty/long/multiple-client switcher states; Enter selects, Escape preserves focus, and actual held-Super release selects MRU.",
                 "guest": {
+                    "state_receipts": states,
                     "client_count_before": before_count,
                     "settings_address": address,
                     "pattern_address": pattern.get("address"),
@@ -1691,6 +1965,8 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                     "active_before_escape": cancel_before,
                     "active_after_escape": cancel_active,
                     "client_count_after": len(final_clients),
+                    "active_after_super_release": released_active,
+                    "super_held_screenshot": str(held_capture),
                 },
             }
         finally:
@@ -1711,7 +1987,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         return result.stdout + result.stderr
 
     def portal_request(self, kind: str) -> dict[str, object]:
-        marker = self.desktop("marking portal request log time", "date +%s").stdout.strip()
+        marker = self.desktop("marking portal request log time", "date +%s.%N").stdout.strip()
         self.desktop(
             f"starting actual ScreenCast portal requester for {kind}",
             "systemctl --user stop shade-vm-portal-fixture.target 2>/dev/null || true; "
@@ -1730,25 +2006,22 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         )
         self.capture(f"share-picker-{kind}")
         self.save_accessibility_tree(f"share-picker-{kind}")
+        def choose_source(fragment: str) -> None:
+            button = self.find_accessible_node(fragment, role="button", contains=True)
+            self.accessibility(
+                f"choosing the actual picker button for {fragment}",
+                "click", "--name", fragment, "--name-contains", "--role", "button",
+                "--bus", str(button["bus"]), "--path", str(button["path"]),
+            )
         if kind == "screen":
-            self.click_named("show guest screen sources", "Screens", role="page tab")
+            self.click_named("show guest screen sources", "Screens", role="tab")
             primary = next((item for item in self.monitors() if item.get("name") == "Virtual-1"), None)
             if primary is None:
                 raise RuntimeError("Portal screen selection has no Virtual-1 primary output")
-            self.click_named(
-                "selecting Virtual-1 through the Shade share picker",
-                str(primary.get("name")),
-                role="label",
-                contains=True,
-            )
+            choose_source(str(primary["name"]))
         elif kind == "window":
-            self.click_named("show guest window sources", "Windows", role="page tab")
-            self.click_named(
-                "selecting the guest test window through the Shade share picker",
-                "Shade Area Recording Pattern",
-                role="label",
-                contains=True,
-            )
+            self.click_named("show guest window sources", "Windows", role="tab")
+            choose_source("org.shade.WorkflowPattern")
         elif kind == "cancel":
             self.click_named("cancelling the real Shade share picker", "Cancel", role="button")
         else:
@@ -1760,30 +2033,50 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 if (
                     (logs := self.portal_journal(marker))
                     and "PORTAL RESPONSE" in logs
-                    and "Session.Close" in logs
+                    and ("Session.Close" in logs or "portal session closed" in logs)
                 )
                 else None
             ),
             timeout=30,
         )
         logs = self.portal_journal(marker)
-        if "PORTAL RESPONSE org.freedesktop.portal.Session.Close" not in logs or " closed" not in logs:
-            raise RuntimeError(f"Portal requester did not close its ScreenCast session: {logs}")
-        if kind == "screen":
-            if "[SELECTION]/screen:" not in logs or "Start accepted" not in logs:
-                raise RuntimeError(f"Guest picker did not return an accepted screen selection: {logs}")
-        elif kind == "window":
-            if "[SELECTION]/window:" not in logs or "Start accepted" not in logs:
-                raise RuntimeError(f"Guest picker did not return an accepted window selection: {logs}")
-        elif not any(
-            phrase in logs
-            for phrase in (
-                "was cancelled in the guest share picker",
-                "SelectSources was cancelled",
-                "CreateSession was cancelled",
-            )
-        ):
-            raise RuntimeError(f"Guest share picker cancellation did not cancel the portal request: {logs}")
+        close_acknowledged = (
+            ("PORTAL RESPONSE org.freedesktop.portal.Session.Close" in logs and " closed" in logs)
+            or "portal session closed" in logs
+        )
+        if not close_acknowledged:
+            raise RuntimeError(f"Portal requester did not acknowledge session closure: {logs}")
+        responses = [line for line in logs.splitlines()
+                     if "PORTAL RESPONSE org.freedesktop.portal.ScreenCast.Start code=0 " in line]
+        if kind in ("screen", "window"):
+            source_type = 1 if kind == "screen" else 2
+            if len(responses) != 1 or not re.search(
+                rf"'source_type':\s*<uint32 {source_type}>", responses[0]
+            ):
+                raise RuntimeError(f"Portal did not return the requested native stream type: {logs}")
+            if kind == "screen" and "'mapping_id': <'Virtual-1'>" not in responses[0]:
+                raise RuntimeError(f"Portal selected the wrong guest screen: {responses[0]}")
+            if kind == "window" and "'size': <(480, 320)>" not in responses[0]:
+                raise RuntimeError(f"Portal selected the wrong guest window geometry: {responses[0]}")
+            response = responses[0]
+        else:
+            cancelled = [line for line in logs.splitlines() if re.search(
+                r"PORTAL RESPONSE org\.freedesktop\.portal\.ScreenCast\.(SelectSources|Start) code=1 ", line
+            )]
+            if responses or len(cancelled) != 1:
+                raise RuntimeError(f"Portal cancellation returned success or no cancelled response: {logs}")
+            response = cancelled[0]
+        def requester_finished():
+            status = dict(line.split("=", 1) for line in self.desktop(
+                "reading actual portal requester completion",
+                "systemctl --user show shade-vm-portal-requester.service -p ActiveState -p Result -p ExecMainStatus",
+            ).stdout.splitlines() if "=" in line)
+            if status.get("ActiveState") not in ("inactive", "failed"):
+                return None
+            if status.get("Result") != "success" or status.get("ExecMainStatus") != "0":
+                raise RuntimeError(f"Portal requester failed after response: {status}")
+            return status
+        requester_status = self.wait_until("portal requester clean completion", requester_finished, timeout=5)
         self.desktop(
             f"stopping ScreenCast portal requester after {kind}",
             "systemctl --user stop shade-vm-portal-fixture.target",
@@ -1795,10 +2088,8 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             "kind": kind,
             "picker_title": picker.get("title"),
             "session_close": "confirmed in requester journal",
-            "selection_log": next(
-                (line for line in logs.splitlines() if "[SELECTION]" in line),
-                None,
-            ),
+            "portal_response": response,
+            "requester_status": requester_status,
             "requester_log": str(log_path),
         }
 
@@ -1840,48 +2131,62 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             if len(fields := line.split()) >= 2 and fields[0] == "Controller"
         ]
 
+    @staticmethod
+    def bluetooth_command(controller: str, *arguments: str) -> str:
+        # BlueZ 5.87 selects adapters within a session, not via --controller.
+        commands = ("select " + controller, shlex.join(arguments))
+        return "printf '%s\\n' " + shlex.join(commands) + " | bluetoothctl"
+
     def bluetooth_info(self, controller: str, address: str) -> str:
         return self.guest(
             "reading guest Bluetooth device state",
-            "bluetoothctl --controller " + shlex.quote(controller)
-            + " info " + shlex.quote(address),
+            self.bluetooth_command(controller, "info", address),
             check=False,
         ).stdout
 
     def test_bluetooth_pairing(self) -> dict[str, object]:
-        controllers = self.bluetooth_controllers()
-        if len(controllers) < 2:
-            raise Unsupported(f"Guest Bluetooth fixture expected two virtual controllers, found {controllers}")
-        primary_address, peer_controller = controllers[:2]
         fixture_started = False
         settings_open = False
         scanning = False
         paired_address: str | None = None
-        initial_powered = "Powered: yes" in self.guest(
-            "snapshotting guest Bluetooth adapter power",
-            "bluetoothctl --controller " + shlex.quote(primary_address) + " show",
-        ).stdout
+        controllers: list[str] = []
+        primary_address: str | None = None
+        peer_controller: str | None = None
+        initial_powered: bool | None = None
         try:
+            fixture_started = True
             self.guest(
                 "starting guest-only Bluetooth advertising peer",
-                "sudo -n systemctl start shade-vm-bluetooth-fixture.target",
+                'control=$(readlink -f "$(command -v systemctl)"); sudo -n "$control" start shade-vm-bluetooth-fixture.target',
+                timeout=45,
             )
-            fixture_started = True
-            self.open_settings()
+            controllers = self.wait_until(
+                "guest Bluetooth fixture controllers",
+                lambda: (
+                    found if len(found := self.bluetooth_controllers()) >= 2 else None
+                ),
+                timeout=30,
+            )
+            primary_address, peer_controller = controllers[:2]
+            initial_powered = "Powered: yes" in self.guest(
+                "snapshotting guest Bluetooth adapter power",
+                self.bluetooth_command(primary_address, "show"),
+            ).stdout
             settings_open = True
-            page = self.settings_page("Bluetooth")
+            self.open_settings()
+            page = self.settings_page("Connectivity")
             self.save_accessibility_tree("settings-bluetooth-peer")
             if not initial_powered:
-                self.click_named("enabling guest Bluetooth from Settings", "Bluetooth", role="switch")
+                self.click_in_group("enabling guest Bluetooth from Settings", "Bluetooth", "Bluetooth", role="switch")
                 self.wait_until(
                     "guest Bluetooth adapter powered",
                     lambda: "Powered: yes" in self.guest(
                         "waiting for guest Bluetooth adapter",
-                        "bluetoothctl --controller " + shlex.quote(primary_address) + " show",
+                        self.bluetooth_command(primary_address, "show"),
                     ).stdout,
                     timeout=20,
                 )
-            self.click_named("starting guest Bluetooth discovery", "Scan for Devices", role="button")
+            self.click_in_group("starting guest Bluetooth discovery", "Available Devices", "Scan for Devices", role="button")
             scanning = True
             devices = self.wait_until(
                 "guest-advertised ShadeVM-Peer",
@@ -1889,7 +2194,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                     output
                     if "ShadeVM-Peer" in (output := self.guest(
                         "discovering on guest virtual Bluetooth controller",
-                        "bluetoothctl --controller " + shlex.quote(primary_address) + " devices",
+                        self.bluetooth_command(primary_address, "devices"),
                         check=False,
                     ).stdout)
                     else None
@@ -1907,7 +2212,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             if address_match is None:
                 raise RuntimeError(f"Guest BlueZ did not report the advertised peer: {devices}")
             paired_address = address_match
-            self.click_named("pairing discovered guest peer in Settings", "Pair", role="button")
+            self.click_in_group("pairing discovered guest peer in Settings", "Available Devices", "Pair", role="button")
             paired = self.wait_until(
                 "guest peer paired and connected",
                 lambda: (
@@ -1922,7 +2227,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             )
             connected = "Connected: yes" in paired
             if not connected:
-                self.click_named("connecting the paired guest peer", "Connect", role="button")
+                self.click_in_group("connecting the paired guest peer", "Paired Devices", "Connect", role="button")
                 paired = self.wait_until(
                     "guest peer connection",
                     lambda: (
@@ -1934,13 +2239,13 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 )
             if "Connected: yes" not in paired:
                 raise RuntimeError(f"Guest-only Bluetooth peer did not connect: {paired}")
-            self.click_named("disconnecting guest peer before cleanup", "Disconnect", role="button")
+            self.click_in_group("disconnecting guest peer before cleanup", "Paired Devices", "Disconnect", role="button")
             self.wait_until(
                 "guest Bluetooth peer disconnected",
                 lambda: "Connected: no" in self.bluetooth_info(primary_address, address_match),
                 timeout=20,
             )
-            self.click_named("forgetting guest Bluetooth peer", "Forget", role="button")
+            self.click_in_group("forgetting guest Bluetooth peer", "Paired Devices", "Forget", role="button")
             self.click_named("confirming guest Bluetooth forget cleanup", "Confirm", role="button")
             forgotten = self.wait_until(
                 "guest Bluetooth peer forgotten",
@@ -1953,7 +2258,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                     else None
                 ) if (output := self.guest(
                     "checking guest Bluetooth device list after Forget",
-                    "bluetoothctl --controller " + shlex.quote(primary_address) + " devices",
+                    self.bluetooth_command(primary_address, "devices"),
                     check=False,
                 ).stdout) else "forgotten",
                 timeout=20,
@@ -1974,38 +2279,43 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             try:
                 if scanning:
                     try:
-                        stop_scan = self.find_accessible_node("Stop Scan", role="button")
+                        stop_scan = self.find_in_group(
+                            self.accessibility_tree("reading Bluetooth scan cleanup control"),
+                            "Available Devices",
+                            "Stop Scan",
+                            role="button",
+                        )
                     except (RuntimeError, Unsupported):
                         stop_scan = None
                     if stop_scan:
                         self.click_accessible_node(stop_scan, "stopping guest Bluetooth discovery")
-                if paired_address:
+                if paired_address and primary_address:
                     self.guest(
                         "removing guest peer pairing if still present",
-                        "bluetoothctl --controller " + shlex.quote(primary_address)
-                        + " remove " + shlex.quote(paired_address),
+                        self.bluetooth_command(primary_address, "remove", paired_address),
                         check=False,
                     )
-                if not initial_powered and "Powered: yes" in self.guest(
-                    "checking Bluetooth power before cleanup",
-                    "bluetoothctl --controller " + shlex.quote(primary_address) + " show",
-                    check=False,
-                ).stdout:
-                    self.guest(
-                        "restoring guest Bluetooth adapter power",
-                        "bluetoothctl --controller " + shlex.quote(primary_address) + " power off",
+                if primary_address and initial_powered is not None:
+                    if not initial_powered and "Powered: yes" in self.guest(
+                        "checking Bluetooth power before cleanup",
+                        self.bluetooth_command(primary_address, "show"),
                         check=False,
-                    )
-                elif initial_powered and "Powered: no" in self.guest(
-                    "checking Bluetooth power before cleanup",
-                    "bluetoothctl --controller " + shlex.quote(primary_address) + " show",
-                    check=False,
-                ).stdout:
-                    self.guest(
-                        "restoring guest Bluetooth adapter power",
-                        "bluetoothctl --controller " + shlex.quote(primary_address) + " power on",
+                    ).stdout:
+                        self.guest(
+                            "restoring guest Bluetooth adapter power",
+                            self.bluetooth_command(primary_address, "power", "off"),
+                            check=False,
+                        )
+                    elif initial_powered and "Powered: no" in self.guest(
+                        "checking Bluetooth power before cleanup",
+                        self.bluetooth_command(primary_address, "show"),
                         check=False,
-                    )
+                    ).stdout:
+                        self.guest(
+                            "restoring guest Bluetooth adapter power",
+                            self.bluetooth_command(primary_address, "power", "on"),
+                            check=False,
+                        )
             finally:
                 try:
                     if settings_open:
@@ -2014,7 +2324,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                     if fixture_started:
                         self.guest(
                             "stopping guest-only Bluetooth peer fixture",
-                            "sudo -n systemctl stop shade-vm-bluetooth-fixture.target",
+                            'control=$(readlink -f "$(command -v systemctl)"); sudo -n "$control" stop shade-vm-bluetooth-fixture.target',
                             check=False,
                         )
                     self.close_quick_settings()
@@ -2232,11 +2542,17 @@ print(json.dumps(values))"""
             self.guest("selecting isolated guest monitor source", f"pactl set-default-source {test_source}")
             self.open_settings()
             settings_open = True
-            page = self.settings_page("Sound")
+            page = self.settings_page("Devices")
             self.save_accessibility_tree("settings-sound-audio")
-            settings_sliders = self.slider_nodes(
-                self.accessibility_tree("reading guest Sound endpoint sliders")
-            )
+            sound_tree = self.accessibility_tree("reading guest Sound endpoint sliders")
+            settings_sliders = [
+                node
+                for group_title in ("Output", "Input")
+                for node in self.nodes_in_group(sound_tree, group_title)
+                if str(node.get("role", "")).casefold() == "slider"
+                and isinstance(node.get("bounds"), list)
+                and len(node["bounds"]) == 4
+            ]
             if len(settings_sliders) < 2:
                 raise Unsupported(f"Sound Settings did not expose output and input volume sliders: {settings_sliders}")
             self.capture("settings-sound-audio")
@@ -2412,7 +2728,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
     def fprint_mock_journal(self) -> str:
         result = self.desktop(
             "reading private guest fprintd mock protocol log",
-            "journalctl --user -u shade-vm-fprint-mock.service --no-pager",
+            "journalctl --user -u shade-vm-fprint-mock.service --invocation=0 --no-pager",
             check=False,
         )
         return result.stdout + result.stderr
@@ -2423,6 +2739,10 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         uid = self.guest("reading guest tester UID", "id -u").stdout.strip()
         if not uid.isdigit():
             raise RuntimeError(f"Invalid guest tester UID: {uid!r}")
+        gjs = self.desktop(
+            "locating the running shell's GJS interpreter",
+            'pid=$(systemctl --user show shade-shell.service -p MainPID --value); readlink -f "/proc/$pid/exe"',
+        ).stdout.strip()
         socket_path = f"/run/user/{uid}/shade-vm-fprintd-private.sock"
         mock_path = "/tmp/shade-vm-fprintd-mock.js"
         normal_service_stopped = False
@@ -2433,7 +2753,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             self.local(
                 "copying fprintd mock into disposable guest",
                 [
-                    "sshpass", "-p", SSH_PASSWORD, "scp",
+                    "sshpass", "-p", SSH_PASSWORD, "scp", "-F", "/dev/null",
                     "-P", str(self.ssh_port),
                     "-o", "StrictHostKeyChecking=no",
                     "-o", "UserKnownHostsFile=/dev/null",
@@ -2463,8 +2783,8 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             self.desktop(
                 "starting fprintd mock on explicit private socket",
                 "systemd-run --user --no-block --collect --unit=shade-vm-fprint-mock "
-                f"gjs -m {mock_path} --socket {shlex.quote(socket_path)} "
-                "--sequence active-hold,no-match-retry,mock-match --hold-ms 1200 --retry-ms 700",
+                f"{shlex.quote(gjs)} -m {mock_path} --socket {shlex.quote(socket_path)} "
+                "--sequence active-hold,no-match-retry,mock-match --hold-ms 10000 --retry-ms 700",
             )
             mock_started = True
             self.wait_until(
@@ -2496,7 +2816,9 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             self.desktop("locking guest for private fprint protocol", "shade-shell lockscreen")
             self.wait_until(
                 "private-bus guest lockscreen",
-                lambda: self.lockscreen_visible(),
+                lambda: self.lockscreen_visible() and json.loads(
+                    self.desktop("checking native lock before fingerprint verification", "hyprctl -j locked").stdout
+                )["locked"],
                 timeout=15,
             )
             first_start = self.wait_until(
@@ -2527,7 +2849,9 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             )
             unlocked = self.wait_until(
                 "guest UI after private mock match",
-                lambda: not self.lockscreen_visible(),
+                lambda: not json.loads(
+                    self.desktop("checking native unlock after mock fingerprint match", "hyprctl -j locked").stdout
+                )["locked"] and not self.lockscreen_visible(),
                 timeout=15,
             )
             self.capture("fprint-private-bus-unlocked")
@@ -2616,30 +2940,63 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
     def test_lock_unlock(self) -> dict[str, object]:
         baseline_layers = len(self.layers())
         locked = False
+        settings_open = False
+        def native_locked() -> bool:
+            return bool(json.loads(self.desktop(
+                "reading compositor lock authority", "hyprctl -j locked",
+            ).stdout)["locked"])
         try:
-            self.desktop("locking guest session", "shade-shell lockscreen")
-            self.wait_until(
-                "guest password lockscreen",
-                lambda: self.lockscreen_visible(),
-                timeout=15,
-            )
+            self.open_settings()
+            settings_open = True
+            shell_pid = self.desktop(
+                "recording shell before Settings-to-lock transition",
+                "systemctl --user show shade-shell.service -p MainPID --value",
+            ).stdout.strip()
+            self.desktop("locking guest with its own Settings open", "shade-shell lockscreen")
             locked = True
+            self.wait_until(
+                "native password lock with normal Settings window suspended",
+                lambda: native_locked() and self.lockscreen_visible() and not any(
+                    client.get("title") == "Shade Settings" and client.get("mapped")
+                    for client in self.clients()
+                ),
+                timeout=20,
+            )
             locked_capture = self.capture("password-lockscreen")
             self.save_accessibility_tree("password-lockscreen")
-            self.vnc("entering disposable guest password", "type", SSH_PASSWORD, "key", "enter")
+            self.vnc("submit incorrect disposable lock credential", "type", "shade-invalid", "key", "enter")
             self.wait_until(
-                "guest session password unlock",
-                lambda: not self.lockscreen_visible(),
+                "real password rejection while compositor remains locked",
+                lambda: self.find_accessible_node("Authentication failed", role="label"),
+                timeout=20,
             )
-            unlocked_capture = self.capture("password-unlocked-session")
-            if not self.user_service_active("verifying Shade remains active after password unlock"):
-                raise RuntimeError("Shade session service is not active after password unlock")
+            if not native_locked():
+                raise RuntimeError("Wrong password released compositor lock")
+            wrong_capture = self.capture("password-lockscreen-wrong")
+            self.vnc("submit correct disposable lock credential", "type", SSH_PASSWORD, "key", "enter")
+            self.wait_until(
+                "authenticated native unlock and restored Settings",
+                lambda: not native_locked() and not self.lockscreen_visible() and any(
+                    client.get("title") == "Shade Settings" and client.get("mapped")
+                    for client in self.clients()
+                ),
+                timeout=30,
+            )
             locked = False
+            after_pid = self.desktop(
+                "verify authentication did not restart shell",
+                "systemctl --user show shade-shell.service -p MainPID --value",
+            ).stdout.strip()
+            if shell_pid != after_pid or not self.user_service_active("verify shell after password unlock"):
+                raise RuntimeError("Authentication stopped or restarted the shell")
+            unlocked_capture = self.capture("password-unlocked-session")
             return {
-                "ui": "Locked the guest session, authenticated through the visible password field, and returned to the unlocked desktop.",
+                "ui": "Settings was suspended while native lock owned keyboard input; wrong password retained the lock, correct PAM authentication unlocked without restart and restored Settings.",
                 "guest": {
                     "password": "disposable guest account only",
+                    "shell_pid": shell_pid,
                     "lockscreen_screenshot": str(locked_capture),
+                    "rejected_password_screenshot": str(wrong_capture),
                     "unlocked_screenshot": str(unlocked_capture),
                     "baseline_layer_count": baseline_layers,
                     "unlocked_layer_count": len(self.layers()),
@@ -2648,47 +3005,145 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         finally:
             if locked:
                 self.vnc("unlocking guest during lock test cleanup", "type", SSH_PASSWORD, "key", "enter")
-                self.wait_until(
-                    "guest unlocked cleanup",
-                    lambda: not self.lockscreen_visible(),
-                    timeout=30,
-                )
+                self.wait_until("native unlock cleanup", lambda: not native_locked(), timeout=30)
+            if settings_open and not native_locked():
+                self.close_settings()
 
     def test_power_confirmation_cancel(self) -> dict[str, object]:
-        self.open_quick_settings()
-        try:
+        actions = tuple(
+            (label, heading, dismissal)
+            for label, heading in (
+                ("Log Out", "Log out?"), ("Restart", "Restart?"), ("Power Off", "Power off?")
+            )
+            for dismissal in ("cancel", "escape", "window")
+        )
+        compositor = self.hyprland_pid()
+        if not compositor:
+            raise Unsupported("Could not identify the current compositor PID from hyprctl instances")
+
+        def assert_session_survived(label: str) -> None:
+            if not self.user_service_active(f"verifying Shade service after {label}"):
+                raise RuntimeError(f"Shade service stopped after {label}")
+            current = self.hyprland_pid()
+            if current != compositor:
+                raise RuntimeError(
+                    f"Original Hyprland session changed after {label}: {compositor!r} -> {current!r}"
+                )
+
+        def dialog_visible(heading: str) -> bool:
+            # Adwaita presents a separate native window for this Astal parent.
+            # Closed GTK accessibility objects can remain registered until GC.
+            return any(
+                client.get("title") == heading and client.get("mapped") is True
+                for client in self.clients()
+            )
+
+        def open_action(label: str, heading: str, dismissal: str) -> dict[str, object]:
+            if not self.quick_settings_open():
+                self.open_quick_settings()
             power = self.accessibility(
                 "finding Power options in Quick Settings",
-                "find", "--description-match", "--name", "Power options", "--role", "button",
+                "find", "--name", "Power options", "--role", "toggle button", "--include-state", "--window-bounds",
             )
-            self.click_accessible_node(power, "opening Power options")
-            self.click_named("opening reversible reboot confirmation", "Reboot", role="button")
-            confirmation = self.wait_until(
-                "reboot confirmation prompt",
-                lambda: self.find_accessible_node("Confirm Reboot?", role="button"),
+            if not (power["state_words"][0] & (1 << 20)):
+                # The pinned Wayland popup stalls under raw DoAction. Exercise
+                # real input using WINDOW bounds; SCREEN origins are unavailable.
+                bounds = power.get("window_bounds")
+                panels = [layer for layer in self.layers() if layer.get("namespace") == "quicksettings"]
+                if not isinstance(bounds, list) or len(bounds) != 4 or len(panels) != 1:
+                    raise Unsupported(f"Cannot map the native menu control to its layer: {power}, {panels}")
+                x, y, width, height = map(int, bounds)
+                panel = panels[0]
+                if min(x, y) < 0 or width <= 0 or height <= 0 or x + width > int(panel["w"]) or y + height > int(panel["h"]):
+                    raise Unsupported(f"Native menu bounds exceed the observed layer: {bounds}, {panel}")
+                self.vnc(
+                    "opening Power options with measured native input",
+                    "move", str(int(panel["x"]) + 8), str(int(panel["y"]) + 8),
+                    "click", "1", "pause", "0.2",
+                    "move", str(int(panel["x"]) + x + width // 2),
+                    str(int(panel["y"]) + y + height // 2), "click", "1", "pause", "0.3",
+                )
+            trigger = self.wait_until(
+                f"mapped native {label} power action",
+                lambda: self.find_accessible_node(label, role="button"),
+                timeout=10,
+            )
+            self.click_accessible_node(trigger, f"opening {heading} confirmation")
+            dialog_heading = self.wait_until(
+                f"native {heading} AlertDialog",
+                lambda: self.find_accessible_node(heading, role="alert dialog"),
                 timeout=5,
             )
-            self.capture("power-reboot-confirmation")
-            reverted = self.wait_until(
-                "reboot confirmation cancellation by expiry",
-                lambda: self.find_accessible_node("Reboot", role="button"),
-                timeout=6,
-                interval=0.15,
+            self.capture(f"power-{label.lower().replace(' ', '-')}-{dismissal}-confirmation")
+            return trigger
+
+        self.open_quick_settings()
+        try:
+            observed: list[str] = []
+            rapid_activation = "not attempted"
+            open_action("Restart", "Restart?", "parent-hide")
+            self.activate_shell_action("toggle-quicksettings")
+            self.wait_until(
+                "hidden Quick Settings cancels its pending confirmation",
+                lambda: not self.quick_settings_open() and not dialog_visible("Restart?"),
+                timeout=10,
             )
-            if not self.user_service_active("verifying guest remains powered after cancelled confirmation"):
-                raise RuntimeError("Shade stopped after cancelling the power confirmation")
+            assert_session_survived("hiding the confirmation parent")
+            # The first iteration must reopen a different action successfully:
+            # an unmapped fallback need not emit AlertDialog::closed.
+            for label, heading, dismissal in actions:
+                trigger = open_action(label, heading, dismissal)
+                if label == "Restart" and dismissal == "escape":
+                    # Target the original native object, never a SCREEN-coordinate
+                    # hit test: GTK's AT-SPI backend may report [0, 0] bounds.
+                    try:
+                        self.click_accessible_node(trigger, "rapid second Restart activation while dialog is open")
+                    except RuntimeError as error:
+                        if "Exact accessible node changed identity" not in str(error):
+                            raise
+                        rapid_activation = "unavailable: original trigger loses its accessible identity while modal; exact-object safety guard refused activation"
+                    else:
+                        rapid_activation = "same dialog remained open after exact-object reactivation; Escape then dismissed it"
+                    if not dialog_visible(heading):
+                        raise RuntimeError("Repeated original trigger removed the pending Restart confirmation")
+                    assert_session_survived("rapid second Restart activation")
+                if dismissal == "cancel":
+                    self.click_named(f"cancelling {heading}", "Cancel", role="button")
+                elif dismissal == "escape":
+                    self.vnc(f"dismissing {heading} with Escape", "key", "esc", "pause", "0.3")
+                else:
+                    dialogs = [client for client in self.clients()
+                               if client.get("title") == heading and client.get("mapped") is True]
+                    if len(dialogs) != 1:
+                        raise RuntimeError(f"Expected exactly one mapped confirmation to dismiss: {dialogs}")
+                    self.desktop(
+                        f"closing only the native {heading} dialog",
+                        "hyprctl dispatch closewindow " + shlex.quote("address:" + str(dialogs[0]["address"])),
+                    )
+                self.wait_until(
+                    f"native {heading} dismissal",
+                    lambda: not dialog_visible(heading),
+                    timeout=5,
+                )
+                assert_session_survived(f"{heading} dismissal")
+                observed.append(f"{heading}: {dismissal}")
+
             return {
-                "ui": "Opened the Reboot confirmation label and allowed its timeout to cancel it; no action was confirmed.",
+                "ui": "Each native Log Out, Restart, and Power Off dialog was cancelled by Cancel, Escape, and exact native-window close without invoking a destructive response.",
                 "guest": {
-                    "confirmation_control": confirmation,
-                    "cancelled_control": reverted,
+                    "dialog_headings": [heading for _, heading, _ in actions],
+                    "dismissals": observed,
+                    "rapid_second_activation": rapid_activation,
+                    "native_window_dismissal": "Each exact mapped Adwaita fallback dialog was closed by its compositor address and cancelled safely.",
                     "shade_service_active": True,
+                    "hyprland_processes_unchanged": True,
                     "actual_power_action": False,
                 },
             }
         finally:
             self.vnc("closing power menu after cancellation", "key", "esc")
             self.close_quick_settings()
+
     def test_capture(self) -> dict[str, object]:
         before = len(self.layers())
         self.vnc("open capture overlay with Print", "key", "sysrq", "pause", "1")
@@ -2712,7 +3167,31 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
 
     def test_notifications_dnd(self) -> dict[str, object]:
         before_state = None
-        self.desktop("sending synthetic notification", "notify-send --app-name=ShadeWorkflowTest 'Shade workflow smoke' 'Synthetic guest-only notification'")
+        summary = f"Shade workflow smoke {time.time_ns()}"
+        self.desktop(
+            "sending synthetic notification",
+            "notify-send --expire-time=0 --app-name=ShadeWorkflowTest "
+            + shlex.quote(summary)
+            + " 'Synthetic guest-only notification'",
+        )
+        toast = self.wait_until(
+            "standalone notification popup",
+            lambda: next(
+                (layer for layer in self.layers() if layer.get("namespace") == "notifications"),
+                None,
+            ),
+            timeout=10,
+        )
+        toast_notification = self.accessibility(
+            "finding standalone notification content", "find", "--max-depth", "16",
+            "--max-nodes", "2000", "--name", summary,
+        )
+        toast_capture = self.capture("notification-toast")
+        self.wait_until(
+            "toast expiry without opening Quick Settings",
+            lambda: not any(layer.get("namespace") == "notifications" for layer in self.layers()),
+            timeout=10,
+        )
         self.vnc("open Quick Settings notification list", "keydown", "super", "key", "n", "keyup", "super", "pause", "2")
         try:
             quicksettings = any(350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700 for layer in self.layers())
@@ -2723,7 +3202,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                 raise RuntimeError("Super+N did not open Quick Settings for the notification scenario")
             self.capture("notification-center")
             self.save_accessibility_tree("notification-center")
-            notification = self.accessibility("finding synthetic notification", "find", "--max-depth", "16", "--max-nodes", "2000", "--name", "Shade workflow smoke")
+            notification = self.accessibility("finding synthetic notification", "find", "--max-depth", "16", "--max-nodes", "2000", "--name", summary)
             try:
                 dnd = self.accessibility("finding Do Not Disturb control", "find", "--max-depth", "16", "--max-nodes", "2000", "--include-state", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
             except Unsupported as exc:
@@ -2737,7 +3216,11 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             restored = self.accessibility("verifying restored Do Not Disturb state", "find", "--max-depth", "16", "--max-nodes", "2000", "--include-state", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
             if restored["state_words"] != before_state:
                 raise RuntimeError("Restoring Do Not Disturb did not recover its initial exposed state")
-            return {"ui": "synthetic notification appeared in Quick Settings; DND toggled and returned to its initial state", "accessibility": {"notification": notification, "dnd_before": dnd, "dnd_after": after, "dnd_restored": restored}}
+            return {
+                "ui": "notification appeared as a standalone toast, expired, remained in Quick Settings, and DND toggled and restored",
+                "toast": {"layer": toast, "screenshot": str(toast_capture), "accessibility": toast_notification},
+                "accessibility": {"notification": notification, "dnd_before": dnd, "dnd_after": after, "dnd_restored": restored},
+            }
         finally:
             try:
                 panel_open = any(350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700 for layer in self.layers())
@@ -2925,17 +3408,15 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                     "reading Wi-Fi radio before visual audit", "nmcli radio wifi"
                 ).stdout.strip())
                 if initial == "enabled":
-                    observe("toggle Wi-Fi off", lambda: self.accessibility(
-                        "turning Wi-Fi off during recording", "click", "--max-depth", "16",
-                        "--max-nodes", "2000", "--name", "WiFi", "--role", "button",
+                    observe("toggle Wi-Fi off", lambda: self.click_wifi_control(
+                        "turning Wi-Fi off during recording",
                     ))
                     observe("Wi-Fi disabled effect", lambda: radio("disabled"))
                 elif initial != "disabled":
                     findings.append(f"Initial Wi-Fi state not usable for a toggle journey: {initial!r}")
                 if initial in ("enabled", "disabled"):
-                    observe("toggle Wi-Fi on", lambda: self.accessibility(
-                        "turning Wi-Fi on during recording", "click", "--max-depth", "16",
-                        "--max-nodes", "2000", "--name", "WiFi Off", "--role", "button",
+                    observe("toggle Wi-Fi on", lambda: self.click_wifi_control(
+                        "turning Wi-Fi on during recording",
                     ))
                     observe("Wi-Fi enabled effect", lambda: radio("enabled"))
                 screenshots["wifi"] = str(self.capture("visual-wifi"))

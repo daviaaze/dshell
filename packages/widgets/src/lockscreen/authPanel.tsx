@@ -1,9 +1,10 @@
 import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import type FingerprintAuth from '@shade/services/input/fingerprint';
 import type AuthSession from '@shade/services/session/authSession';
-import {type Accessor, bind, createState} from 'gnim';
+import {type Accessor, bind} from 'gnim';
 import {LockscreenWidgets} from './widgets';
 
 interface AuthPanelProps {
@@ -22,8 +23,6 @@ export const LockscreenAuthPanel = ({
     fpStateBinding,
     fpErrorBinding,
 }: AuthPanelProps) => {
-    const [, setPassword] = createState('');
-
     return (
         <Gtk.Box
             valign={Gtk.Align.CENTER}
@@ -35,6 +34,10 @@ export const LockscreenAuthPanel = ({
             <Gtk.Label label={GLib.get_real_name()} cssClasses={['title-3']} />
             <Gtk.PasswordEntry
                 ref={(self) => {
+                    self.update_property(
+                        [Gtk.AccessibleProperty.LABEL],
+                        [new GObject.Value(GObject.TYPE_STRING, 'Password')]
+                    );
                     self.connect('map', () => {
                         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
                             self.grab_focus();
@@ -45,8 +48,7 @@ export const LockscreenAuthPanel = ({
                 placeholderText={'password'}
                 showPeekIcon
                 onActivate={(self) => {
-                    authSession.submitPassword(self.get_text());
-                    setPassword('');
+                    if (authSession.submitPassword(self.get_text())) self.set_text('');
                 }}
             />
             <Gtk.Label

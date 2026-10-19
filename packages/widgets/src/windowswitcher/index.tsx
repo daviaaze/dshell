@@ -8,7 +8,7 @@ import logger from '@shade/core/logger';
 import {getApp} from '@shade/services/appHandle';
 import {getHyprland} from '@shade/services/hyprland';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import {type Accessor, bind, createState, For, onCleanup, type Setter} from 'gnim';
+import {type Accessor, bind, computed, createState, For, onCleanup, type Setter} from 'gnim';
 import SwitcherItem from './item';
 
 let switcherWindow: Astal.Window | null = null;
@@ -56,8 +56,10 @@ function closeSwitcher(state: SwitcherState) {
 }
 
 function doFocus(state: SwitcherState, client: AstalHyprland.Client) {
-    client.focus();
+    // Release the layer grab before Hyprland processes client-focus IPC.
     closeSwitcher(state);
+    switcherWindow?.get_display().flush();
+    client.focus();
 }
 
 /** Flat key → action lookup, built from grouped key bindings. */
@@ -139,6 +141,7 @@ function onOpen(state: SwitcherState) {
     const clients = state.clientsList() ?? [];
     state.setSelectedIndex(clients.length > 1 ? 1 : 0);
     state.superReleased = false;
+    switcherWindow?.present();
     state.boxRef.current?.grab_focus();
 }
 
@@ -147,12 +150,15 @@ export default () => {
     if (!hyprland) return null;
     const [selectedIndex, setSelectedIndex] = createState(0);
 
-    let mru: string[] = [];
+    const [mru, setMru] = createState<string[]>([]);
 
     const updateMru = (client: AstalHyprland.Client | null) => {
-        if (!client || client.address === '0x0') return;
-        mru = mru.filter((addr) => addr !== client.address);
-        mru.unshift(client.address);
+        if (!client || !client.address || client.address === '0x0') return;
+        setMru((current) => {
+            const next = current.filter((addr) => addr !== client.address);
+            next.unshift(client.address);
+            return next;
+        });
     };
 
     const focusedClient = bind(hyprland, 'focused-client');
@@ -160,9 +166,10 @@ export default () => {
     const focusedClientUnsubscribe = focusedClient.subscribe(() => {
         updateMru(focusedClient());
     });
+    updateMru(focusedClient());
 
     const clientsBinding = bind(hyprland, 'clients');
-    const clientsList = clientsBinding.as((c) => getSortedClients(c, mru));
+    const clientsList = computed(() => getSortedClients(clientsBinding(), mru()));
 
     const clampUnsubscribe = clientsList.subscribe(() => {
         const len = clientsList()?.length ?? 0;
@@ -183,7 +190,18 @@ export default () => {
         <Astal.Window
             ref={(self) => {
                 switcherWindow = self;
+                const keys = new Gtk.EventControllerKey({
+                    propagationPhase: Gtk.PropagationPhase.CAPTURE,
+                });
+                keys.connect('key-pressed', (_controller, keyval) =>
+                    handleKeyPressed(state, keyval)
+                );
+                keys.connect('key-released', (_controller, keyval) =>
+                    handleKeyReleased(state, keyval)
+                );
+                self.add_controller(keys);
                 onCleanup(() => {
+                    self.remove_controller(keys);
                     switcherWindow = null;
                     focusedClientUnsubscribe();
                     clampUnsubscribe();
@@ -194,9 +212,7 @@ export default () => {
             layer={Astal.Layer.OVERLAY}
             keymode={Astal.Keymode.EXCLUSIVE}
             visible={false}
-            onNotifyVisible={(self) => {
-                if (self.visible) onOpen(state);
-            }}
+            onMap={() => onOpen(state)}
             anchor={
                 Astal.WindowAnchor.TOP |
                 Astal.WindowAnchor.BOTTOM |
@@ -216,17 +232,8 @@ export default () => {
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
                 widthRequest={500}
+                cssClasses={['card', 'background']}
             >
-                <Gtk.EventControllerKey
-                    ref={(self) => {
-                        self.connect('key-pressed', (_c, keyval) =>
-                            handleKeyPressed(state, keyval)
-                        );
-                        self.connect('key-released', (_c, keyval) =>
-                            handleKeyReleased(state, keyval)
-                        );
-                    }}
-                />
                 <For each={clientsList}>
                     {(client: AstalHyprland.Client) => (
                         <SwitcherItem
@@ -243,6 +250,7 @@ export default () => {
                     vexpand
                     cssClasses={['compact']}
                     title="No Open Windows"
+                    description="Press Escape to close the switcher."
                     iconName="window-new-symbolic"
                 />
             </Gtk.Box>

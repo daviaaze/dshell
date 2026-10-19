@@ -1,8 +1,9 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
+import {timerSettings} from '@shade/services/time/timer.gschema';
 import TimerService from '@shade/services/time/timerService';
-import {bind, computed, createState} from 'gnim';
+import {bind, computed, createState, onCleanup} from 'gnim';
 
 function fmtRemaining(ms: number): string {
     if (ms < 0) return '--:--';
@@ -13,11 +14,6 @@ function fmtRemaining(ms: number): string {
     if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
-
-const PRESETS = [
-    [1, 5, 10],
-    [15, 30, 60],
-];
 
 export const TimerSection = () => {
     const timer = TimerService.get_default();
@@ -138,21 +134,33 @@ export const TimerSection = () => {
                         columnHomogeneous
                         hexpand
                         ref={(self) => {
-                            const flat = PRESETS.flat();
-                            flat.forEach((min, i) => {
-                                const btn = new Gtk.Button({
-                                    cssClasses: ['flat'],
-                                    hexpand: true,
+                            const settings = timerSettings();
+                            const update = () => {
+                                let child = self.get_first_child();
+                                while (child) {
+                                    const next = child.get_next_sibling();
+                                    self.remove(child);
+                                    child = next;
+                                }
+                                settings.countdownPresets().forEach((min, i) => {
+                                    const btn = new Gtk.Button({
+                                        cssClasses: ['flat'],
+                                        hexpand: true,
+                                    });
+                                    btn.set_child(
+                                        new Gtk.Label({
+                                            label: min >= 60 ? `${min / 60}h` : `${min}m`,
+                                        })
+                                    );
+                                    btn.connect('clicked', () =>
+                                        bus.emit('timer:cmd:start-countdown', min * 60 * 1000)
+                                    );
+                                    self.attach(btn, i % 3, Math.floor(i / 3), 1, 1);
                                 });
-                                const label = new Gtk.Label({
-                                    label: min >= 60 ? `${min / 60}h` : `${min}m`,
-                                });
-                                btn.set_child(label);
-                                btn.connect('clicked', () =>
-                                    bus.emit('timer:cmd:start-countdown', min * 60 * 1000)
-                                );
-                                self.attach(btn, i % 3, Math.floor(i / 3), 1, 1);
-                            });
+                            };
+                            update();
+                            const unsubscribe = settings.countdownPresets.subscribe(update);
+                            onCleanup(unsubscribe);
                         }}
                     ></Gtk.Grid>
 

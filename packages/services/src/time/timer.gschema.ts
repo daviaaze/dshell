@@ -6,6 +6,8 @@ import {defineSchemaList} from 'gnim/schema';
  *
  * Colocated with the service that consumes it (packages/services/src/time/timerService.ts).
  */
+export const DEFAULT_COUNTDOWN_PRESETS = [1, 5, 10, 15, 30, 60] as const;
+
 export const timerSettings = defineSettings('timer', (s) =>
     s
         .key('pomodoro-work-duration', 'i', {
@@ -25,7 +27,7 @@ export const timerSettings = defineSettings('timer', (s) =>
             summary: 'Number of work sessions before a long break',
         })
         .key('countdown-presets', 'ai', {
-            default: [1, 5, 10, 15, 30, 60],
+            default: [...DEFAULT_COUNTDOWN_PRESETS],
             summary: 'Countdown preset durations in minutes',
         })
         .key('timer-alert-sound', 's', {

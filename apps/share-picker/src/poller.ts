@@ -2,24 +2,16 @@
  * Round-robin live polling of monitor captures via grim.
  */
 import GLib from 'gi://GLib?version=2.0';
-import type Gtk from 'gi://Gtk?version=4.0';
 import {captureMonitor, POLL_INTERVAL_MS} from './capture';
-import type {MonitorState} from './types';
+import type {MonitorState, PreviewHandle} from './types';
 
 export class MonitorPoller {
     private timer = 0;
     private index = 0;
 
-    /**
-     * @param states monitors to poll
-     * @param primaryPics pictures updated with every fresh capture
-     * @param onTick called after each capture fires — use to refresh
-     *        secondary pictures from the *previous* capture file
-     */
     constructor(
         private states: MonitorState[],
-        private primaryPics: Gtk.Picture[],
-        private onTick?: (state: MonitorState, index: number) => void
+        private targets: readonly (readonly PreviewHandle[])[]
     ) {}
 
     get running(): boolean {
@@ -27,7 +19,7 @@ export class MonitorPoller {
     }
 
     start(): void {
-        if (this.running) return;
+        if (this.running || this.states.length === 0) return;
         this.index = 0;
         this.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_INTERVAL_MS, this.tick);
     }
@@ -40,12 +32,11 @@ export class MonitorPoller {
     }
 
     private tick = (): boolean => {
-        const state = this.states[this.index];
-        if (state) {
-            captureMonitor(state, this.primaryPics);
-            this.onTick?.(state, this.index);
-        }
-        this.index = (this.index + 1) % this.states.length;
+        const index = this.index;
+        const state = this.states[index];
+        const targets = this.targets[index];
+        if (state && targets) captureMonitor(state, targets);
+        this.index = (index + 1) % this.states.length;
         return GLib.SOURCE_CONTINUE;
     };
 }

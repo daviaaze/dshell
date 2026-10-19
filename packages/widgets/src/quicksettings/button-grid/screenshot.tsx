@@ -4,7 +4,7 @@ import Screenshot from '@shade/services/capture/screenshot';
 import {getScreenCaptureSettings} from '@shade/services/settings/screenCapture';
 import {bind} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
-import {QuickToggleButton} from '../../common/quickToggleButton';
+import {QuickControlButton} from '../../common/quickControlButton';
 import type {QuickButton} from './quickButton';
 
 // Dismiss the popover and run `fn` shortly after, so the selector/overlay
@@ -68,21 +68,20 @@ function PrefsSection({
     return (
         <Gtk.Box spacing={12} orientation={Gtk.Orientation.HORIZONTAL} marginStart={4}>
             <Gtk.CheckButton
+                label="Record Audio"
                 active={bind(screenshot.prefs, 'audio')}
                 onNotifyActive={({active}) => {
                     screenshot.prefs.audio = active;
                 }}
             />
-            <Gtk.Label label="Record Audio" />
-
             {/* WebM (VP9). Unchecked = MP4 (H.264), the default. */}
             <Gtk.CheckButton
+                label="WebM"
                 active={captureSettings.recordingFormat() === 1}
                 onNotifyActive={({active}) => {
                     captureSettings.setRecordingFormat(active ? 1 : 0);
                 }}
             />
-            <Gtk.Label label="WebM" />
         </Gtk.Box>
     );
 }
@@ -148,13 +147,19 @@ export default (): QuickButton => {
 
     return {
         widget: (
-            <QuickToggleButton
+            <QuickControlButton
+                intent="toggle"
+                active={bind(screenshot, 'recording')}
+                domain="Screen capture"
                 icon={bind(screenshot, 'recording').as((rec) =>
                     rec ? 'media-playback-stop-symbolic' : 'camera-video-symbolic'
                 )}
-                label={bind(screenshot, 'recording').as((rec) => (rec ? 'Stop' : 'Record'))}
+                value={bind(screenshot, 'recording').as((rec) =>
+                    rec ? 'Recording' : 'Not recording'
+                )}
+                actionLabel="Start or stop full-screen recording"
                 onClick={() => screenshot.toggleRecording()}
-                popover={popover}
+                menu={{label: 'Capture options', popover}}
             />
         ),
     };

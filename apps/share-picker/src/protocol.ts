@@ -9,7 +9,7 @@
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
-import type {HyprClient, HyprMonitor, XDPHWindow} from './types';
+import type {HyprClient, HyprMonitor, ParsedWindowList, XDPHWindow} from './types';
 
 const CAT = 'share-picker';
 
@@ -42,10 +42,10 @@ function runSync(cmd: string[]): {ok: boolean; out: string; err: string} {
  *   - [HA>] (optional, newer XDPH) separates TITLE from ADDR (Handle Address)
  *   - The XDPH "id" is a wayland object handle serial, NOT a Hyprland client address
  */
-export function parseWindowList(env: string | null): XDPHWindow[] {
-    if (!env) {
+export function parseWindowList(env: string | null): ParsedWindowList {
+    if (env === null) {
         logger.info(CAT, 'XDPH_WINDOW_SHARING_LIST not set — no portal windows available');
-        return [];
+        return {provided: false, windows: []};
     }
     const result: XDPHWindow[] = [];
 
@@ -79,7 +79,7 @@ export function parseWindowList(env: string | null): XDPHWindow[] {
     }
 
     logger.info(CAT, `parsed ${result.length} XDPH windows from env`);
-    return result;
+    return {provided: true, windows: result};
 }
 
 export function getHyprMonitors(): HyprMonitor[] {

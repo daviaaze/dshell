@@ -2,7 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {screenCaptureSettings} from '@shade/services/settings/screenCapture.gschema';
-import {type Accessor, type JSX, onCleanup} from 'gnim';
+import {type Accessor, onCleanup} from 'gnim';
 
 const VIRTUAL_MONITOR_FPS_MIN = 1;
 const VIRTUAL_MONITOR_FPS_MAX = 144;
@@ -15,34 +15,36 @@ function EnumToggleRow({
     value,
     fallback,
     setter,
-    children,
+    toggles,
 }: {
     title: string;
     value: Accessor<number | string>;
     fallback: number | string;
     setter: (v: string | number) => void;
-    children?: JSX.Element | JSX.Element[];
+    toggles: readonly {name: string; label: string; iconName?: string}[];
 }) {
     return (
         <Adw.ActionRow title={title}>
             <Adw.ToggleGroup
                 cssClasses={['round']}
                 valign={Gtk.Align.CENTER}
-                onNotifyActiveName={(self) => {
-                    const name = String(self.activeName ?? '');
-                    setter(Number(name) || name);
-                }}
                 ref={(self) => {
+                    for (const toggle of toggles) self.add(new Adw.Toggle(toggle));
                     self.activeName = String(value.peek() ?? fallback);
-                    onCleanup(
-                        value.subscribe(() => {
-                            self.activeName = String(value.peek());
-                        })
-                    );
+                    const changed = self.connect('notify::active-name', () => {
+                        const name = String(self.activeName ?? '');
+                        if (name !== String(value.peek())) setter(Number(name) || name);
+                    });
+                    const unsubscribe = value.subscribe(() => {
+                        self.activeName = String(value.peek());
+                    });
+                    onCleanup(() => {
+                        unsubscribe();
+                        self.disconnect(changed);
+                        self.remove_all();
+                    });
                 }}
-            >
-                {children}
-            </Adw.ToggleGroup>
+            />
         </Adw.ActionRow>
     );
 }
@@ -59,32 +61,35 @@ function RecordingGroup({settings}: {settings: Settings}) {
                 value={settings.recorderBackend}
                 fallback={2}
                 setter={(v) => settings.setRecorderBackend(Number(v))}
-            >
-                <Adw.Toggle name={'0'} label={'wl-screenrec'} iconName={'media-record-symbolic'} />
-                <Adw.Toggle name={'1'} label={'wf-recorder'} iconName={'media-record-symbolic'} />
-                <Adw.Toggle name={'2'} label={'Auto'} iconName={'emblem-system-symbolic'} />
-            </EnumToggleRow>
+                toggles={[
+                    {name: '0', label: 'wl-screenrec', iconName: 'media-record-symbolic'},
+                    {name: '1', label: 'wf-recorder', iconName: 'media-record-symbolic'},
+                    {name: '2', label: 'Auto', iconName: 'emblem-system-symbolic'},
+                ]}
+            />
 
             <EnumToggleRow
                 title={'Container Format'}
                 value={settings.recordingFormat}
                 fallback={0}
                 setter={(v) => settings.setRecordingFormat(Number(v))}
-            >
-                <Adw.Toggle name={'0'} label={'MP4'} iconName={'video-x-generic-symbolic'} />
-                <Adw.Toggle name={'1'} label={'WebM'} iconName={'video-x-generic-symbolic'} />
-            </EnumToggleRow>
+                toggles={[
+                    {name: '0', label: 'MP4', iconName: 'video-x-generic-symbolic'},
+                    {name: '1', label: 'WebM', iconName: 'video-x-generic-symbolic'},
+                ]}
+            />
 
             <EnumToggleRow
                 title={'Quality'}
                 value={settings.recordingQuality}
                 fallback={1}
                 setter={(v) => settings.setRecordingQuality(Number(v))}
-            >
-                <Adw.Toggle name={'0'} label={'Low'} />
-                <Adw.Toggle name={'1'} label={'Medium'} />
-                <Adw.Toggle name={'2'} label={'High'} />
-            </EnumToggleRow>
+                toggles={[
+                    {name: '0', label: 'Low'},
+                    {name: '1', label: 'Medium'},
+                    {name: '2', label: 'High'},
+                ]}
+            />
 
             <Adw.SwitchRow
                 title={'Record Audio'}
@@ -105,10 +110,11 @@ function ScreenshotGroup({settings}: {settings: Settings}) {
                 value={settings.screenshotFormat}
                 fallback={0}
                 setter={(v) => settings.setScreenshotFormat(Number(v))}
-            >
-                <Adw.Toggle name={'0'} label={'PNG'} iconName={'image-x-generic-symbolic'} />
-                <Adw.Toggle name={'1'} label={'JPEG'} iconName={'image-x-generic-symbolic'} />
-            </EnumToggleRow>
+                toggles={[
+                    {name: '0', label: 'PNG', iconName: 'image-x-generic-symbolic'},
+                    {name: '1', label: 'JPEG', iconName: 'image-x-generic-symbolic'},
+                ]}
+            />
         </Adw.PreferencesGroup>
     );
 }
@@ -153,10 +159,11 @@ function OverlayGroup({settings}: {settings: Settings}) {
                 value={settings.areaSelectionEngine}
                 fallback={'overlay'}
                 setter={(v) => settings.setAreaSelectionEngine(String(v))}
-            >
-                <Adw.Toggle name={'overlay'} label={'Panel'} iconName={'input-mouse-symbolic'} />
-                <Adw.Toggle name={'slurp'} label={'slurp'} iconName={'input-keyboard-symbolic'} />
-            </EnumToggleRow>
+                toggles={[
+                    {name: 'overlay', label: 'Panel', iconName: 'input-mouse-symbolic'},
+                    {name: 'slurp', label: 'slurp', iconName: 'input-keyboard-symbolic'},
+                ]}
+            />
             <Adw.SwitchRow
                 title={'Freeze Screen'}
                 subtitle={'Pause screen when opening capture overlay'}

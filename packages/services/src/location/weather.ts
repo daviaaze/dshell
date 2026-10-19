@@ -7,9 +7,26 @@ import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 import type {Accessor} from 'gnim';
 import {Object, property, register} from 'gnim/gobject';
+import type {Coordinates} from './geolocation';
 import Geolocation from './geolocation';
 import {weatherSettings} from './weather.gschema';
 import {formatTemp} from './weatherUtils';
+
+type UpdateRequest = {
+    kind: 'location' | 'refresh';
+    location?: GWeather.Location;
+    phase: 'starting' | 'waiting';
+    resolve: () => void;
+    reject: (error: Error) => void;
+};
+
+type WeatherDependencies = {
+    info?: GWeather.Info;
+    geo?: Geolocation;
+};
+
+const toError = (error: unknown): Error =>
+    error instanceof Error ? error : new Error(String(error));
 
 @register
 export default class Weather extends Object {
@@ -22,11 +39,43 @@ export default class Weather extends Object {
 
     #weather: GWeather.Info;
     #location: GWeather.Location | undefined;
-    #geo = Geolocation.get_default();
+    #geo: Geolocation;
     #updateTimer: number | null = null;
     #weatherHandlerId = 0;
+    #geoHandlerId: number | null = null;
+    #autoLocationUnsubscribe: (() => void) | null = null;
+    #drainSourceId: number | null = null;
+    #updateQueue: UpdateRequest[];
+    #activeUpdate: UpdateRequest | null = null;
+    #detectionPromise: Promise<Coordinates> | null = null;
+    #detectionReject: ((error: Error) => void) | null = null;
+    #detectionGeneration = 0;
+    #locationBusy = false;
+    #locationError: string | null = null;
+    #updateError: string | null = null;
+    #disposed = false;
     #initialized = false;
-    #generalSettings: Gio.Settings;
+    #generalSettings: Gio.Settings | null = null;
+
+    @property
+    get locationBusy() {
+        return this.#locationBusy;
+    }
+
+    @property
+    get locationError() {
+        return this.#locationError;
+    }
+
+    @property
+    get updateBusy() {
+        return this.#activeUpdate !== null || this.#updateQueue.length > 0;
+    }
+
+    @property
+    get updateError() {
+        return this.#updateError;
+    }
 
     @property
     get info() {
@@ -151,21 +200,177 @@ export default class Weather extends Object {
         this.notify('sunset');
     }
 
-    set location(location: GWeather.Location | undefined) {
-        if (!location) return;
+    #setLocation(location: GWeather.Location): Promise<void> {
+        if (this.#disposed) return Promise.reject(new Error('Weather service is disposed'));
         this.#location = location;
-        this.#weather.set_location(location);
-        this.#weather.update();
-        this.notify('location');
+        return this.#enqueueUpdate('location', location);
     }
 
-    updateFromCoords(lat: number, lon: number) {
-        const newLoc = GWeather.Location.get_world()?.find_nearest_city(lat, lon);
-        if (newLoc) this.location = newLoc;
+    #enqueueUpdate(kind: UpdateRequest['kind'], location?: GWeather.Location): Promise<void> {
+        if (this.#disposed) return Promise.reject(new Error('Weather service is disposed'));
+
+        this.#updateError = null;
+        this.notify('update-error');
+
+        const completion = Promise.withResolvers<void>();
+        this.#updateQueue.push({
+            kind,
+            location,
+            phase: 'starting',
+            resolve: () => completion.resolve(),
+            reject: (error) => completion.reject(error),
+        });
+        this.notify('update-busy');
+        this.#drainUpdates();
+        return completion.promise;
     }
 
-    detectLocation() {
-        this.#geo.detect();
+    #drainUpdates() {
+        if (this.#disposed || this.#activeUpdate || this.#drainSourceId !== null) return;
+        const request = this.#updateQueue.shift();
+        if (!request) return;
+
+        this.#activeUpdate = request;
+        this.#updateError = null;
+        this.notify('update-error');
+        const location = request.kind === 'refresh' ? this.#location : request.location;
+        if (!location) {
+            this.#finishUpdate(request, new Error('No weather location is available'));
+            return;
+        }
+
+        try {
+            this.#weather.set_location(location);
+            if (this.#disposed || this.#activeUpdate !== request) return;
+            request.phase = 'waiting';
+            this.#weather.update();
+        } catch (error) {
+            this.#finishUpdate(request, toError(error));
+        }
+    }
+
+    #finishUpdate(request: UpdateRequest, error?: Error) {
+        if (this.#activeUpdate !== request) return;
+        this.#activeUpdate = null;
+        if (error) {
+            this.#updateError = error.message;
+            this.notify('update-error');
+            request.reject(error);
+        } else {
+            request.resolve();
+        }
+        this.notify('update-busy');
+        if (this.#updateQueue.length > 0) this.#scheduleUpdateDrain();
+    }
+
+    #scheduleUpdateDrain() {
+        if (this.#disposed || this.#drainSourceId !== null || this.#updateQueue.length === 0) return;
+        this.#drainSourceId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this.#drainSourceId = null;
+            this.#drainUpdates();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    #onWeatherUpdated() {
+        if (this.#disposed) return;
+        logger.info(
+            'weather',
+            `updated: valid=${this.#weather.is_valid()}` +
+                ` temp=${this.#weather.get_temp_summary() || 'null'}` +
+                ` sky=${this.#weather.get_sky() || 'null'}` +
+                ` loc=${this.#weather.get_location_name() || 'null'}`
+        );
+        this.#updateComputed();
+        this.notify('info');
+
+        if (this.#weather.is_valid() && this.#generalSettings) {
+            const [, sunrise] = this.#weather.get_value_sunrise();
+            const [, sunset] = this.#weather.get_value_sunset();
+            this.#generalSettings.set_boolean('weather-is-daytime', this.#weather.is_daytime());
+            this.#generalSettings.set_double('weather-sunrise-time', sunrise);
+            this.#generalSettings.set_double('weather-sunset-time', sunset);
+        }
+
+        const request = this.#activeUpdate;
+        if (!request || request.phase !== 'waiting') return;
+        try {
+            if (this.#weather.network_error()) {
+                this.#finishUpdate(request, new Error('Weather update failed due to a network error'));
+            } else if (!this.#weather.is_valid()) {
+                this.#finishUpdate(request, new Error('Weather data is invalid'));
+            } else {
+                this.#finishUpdate(request);
+            }
+        } catch (error) {
+            this.#finishUpdate(request, toError(error));
+        }
+    }
+
+    set location(location: GWeather.Location | undefined) {
+        if (!location || this.#disposed) return;
+        void this.#setLocation(location).catch((error: unknown) => {
+            logger.error('weather', 'Location update failed:', error);
+        });
+    }
+
+    async updateFromCoords(lat: number, lon: number): Promise<void> {
+        if (this.#disposed) throw new Error('Weather service is disposed');
+        const location = GWeather.Location.get_world()?.find_nearest_city(lat, lon);
+        if (!location) {
+            const error = new Error('Could not find a weather location for these coordinates');
+            this.#updateError = error.message;
+            this.notify('update-error');
+            throw error;
+        }
+        await this.#setLocation(location);
+    }
+
+    detectLocation(): Promise<Coordinates> {
+        if (this.#disposed) return Promise.reject(new Error('Weather service is disposed'));
+        if (this.#detectionPromise) return this.#detectionPromise;
+
+        this.#locationError = null;
+        this.#locationBusy = true;
+        this.notify('location-error');
+        this.notify('location-busy');
+        const generation = ++this.#detectionGeneration;
+        const completion = Promise.withResolvers<Coordinates>();
+        this.#detectionPromise = completion.promise;
+        this.#detectionReject = completion.reject;
+
+        let result: Promise<Coordinates>;
+        try {
+            result = this.#geo.detect();
+        } catch (error) {
+            result = Promise.reject(error);
+        }
+        Promise.resolve(result).then(
+            (coordinates) => {
+                if (this.#disposed || generation !== this.#detectionGeneration) return;
+                this.#detectionPromise = null;
+                this.#detectionReject = null;
+                this.#locationBusy = false;
+                this.notify('location-busy');
+                completion.resolve(coordinates);
+            },
+            (error: unknown) => {
+                if (this.#disposed || generation !== this.#detectionGeneration) return;
+                const failure = toError(error);
+                this.#detectionPromise = null;
+                this.#detectionReject = null;
+                this.#locationBusy = false;
+                this.#locationError = failure.message;
+                this.notify('location-busy');
+                this.notify('location-error');
+                completion.reject(failure);
+            }
+        );
+        return completion.promise;
+    }
+
+    refresh(): Promise<void> {
+        return this.#enqueueUpdate('refresh');
     }
 
     init(settings: {
@@ -175,62 +380,76 @@ export default class Weather extends Object {
         setLatitude(lat: number): void;
         setLongitude(lon: number): void;
     }) {
+        if (this.#disposed) return;
         if (this.#initialized) {
             logger.warn('weather', 'init() called but already initialized — skipping');
             return;
         }
         this.#initialized = true;
+        this.#generalSettings = new Gio.Settings({
+            schemaId: `${import.meta.domain}.general`,
+        });
         this.#location = GWeather.Location.get_world()?.find_nearest_city(
             settings.latitude(),
             settings.longitude()
         );
 
         if (this.#location) {
-            this.#weather.set_location(this.#location);
-            this.#weather.update();
+            void this.#enqueueUpdate('location', this.#location).catch((error: unknown) => {
+                logger.error('weather', 'Initial weather update failed:', error);
+            });
         }
 
-        // Update every 30 minutes. Weather conditions don't change
-        // meaningfully in 15 minutes, and each update wakes the network.
+        // Keep the existing 30-minute cadence.
         this.#updateTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0.5 * 3600000, () => {
-            this.#weather.update();
-            return GLib.SOURCE_CONTINUE;
+            if (!this.#disposed) {
+                void this.refresh().catch((error: unknown) => {
+                    logger.error('weather', 'Scheduled weather update failed:', error);
+                });
+            }
+            return this.#disposed ? GLib.SOURCE_REMOVE : GLib.SOURCE_CONTINUE;
         });
 
-        let geoHandlerId: number | null = null;
-
         const connectGeo = () => {
-            if (geoHandlerId !== null) {
-                this.#geo.disconnect(geoHandlerId);
-                geoHandlerId = null;
+            if (this.#geoHandlerId !== null) {
+                this.#geo.disconnect(this.#geoHandlerId);
+                this.#geoHandlerId = null;
             }
-            geoHandlerId = GObject.signal_connect(
+            this.#geoHandlerId = GObject.signal_connect(
                 this.#geo,
                 'location-changed',
                 (_source: Geolocation, ...args: unknown[]) => {
+                    if (this.#disposed) return;
                     const lat = args[0] as number;
                     const lon = args[1] as number;
                     settings.setLatitude(lat);
                     settings.setLongitude(lon);
-                    this.updateFromCoords(lat, lon);
+                    void this.updateFromCoords(lat, lon).catch((error: unknown) => {
+                        logger.error('weather', 'Automatic weather update failed:', error);
+                    });
                 }
             );
         };
 
-        // Auto-location on startup if enabled
+        const detectAutomatically = () => {
+            void this.detectLocation().catch((error: unknown) => {
+                logger.error('weather', 'Automatic location detection failed:', error);
+            });
+        };
+
         if (settings.autoLocation()) {
             connectGeo();
-            this.detectLocation();
+            detectAutomatically();
         }
 
-        settings.autoLocation.subscribe(() => {
-            const enabled = settings.autoLocation();
-            if (enabled) {
+        this.#autoLocationUnsubscribe = settings.autoLocation.subscribe(() => {
+            if (this.#disposed) return;
+            if (settings.autoLocation()) {
                 connectGeo();
-                this.detectLocation();
-            } else if (geoHandlerId !== null) {
-                this.#geo.disconnect(geoHandlerId);
-                geoHandlerId = null;
+                detectAutomatically();
+            } else if (this.#geoHandlerId !== null) {
+                this.#geo.disconnect(this.#geoHandlerId);
+                this.#geoHandlerId = null;
             }
         });
     }
@@ -348,12 +567,6 @@ export default class Weather extends Object {
         });
     }
 
-    /** Sunrise unix timestamp */
-    /** Trigger a network refresh. Widgets call this instead of `weather.info.update()`. */
-    refresh() {
-        this.#weather.update();
-    }
-
     getSunriseTime(): number {
         const [, ts] = this.#weather.get_value_sunrise();
         return ts;
@@ -437,59 +650,96 @@ export default class Weather extends Object {
         };
     }
 
-    constructor() {
+    constructor(dependencies: WeatherDependencies = {}) {
         super();
 
-        this.#weather = GWeather.Info.new(null);
+        this.#updateQueue = [];
+        this.#geo = dependencies.geo ?? Geolocation.get_default();
+        this.#weather = dependencies.info ?? GWeather.Info.new(null);
 
         this.#weather.set_application_id(import.meta.domain);
         this.#weather.set_enabled_providers(GWeather.Provider.MET_NO);
         this.#weather.set_contact_info('caiomuniz888@gmail.com');
 
-        this.#generalSettings = new Gio.Settings({
-            schemaId: `${import.meta.domain}.general`,
-        });
-
         this.#weatherHandlerId = this.#weather.connect('updated', () => {
-            logger.info(
-                'weather',
-                `updated: valid=${this.#weather.is_valid()}` +
-                    ` temp=${this.#weather.get_temp_summary() || 'null'}` +
-                    ` sky=${this.#weather.get_sky() || 'null'}` +
-                    ` loc=${this.#weather.get_location_name() || 'null'}`
-            );
-            this.#updateComputed();
-            this.notify('info');
-
-            // Persist daytime/sunrise/sunset for other services
-            if (this.#weather.is_valid()) {
-                const [, sunrise] = this.#weather.get_value_sunrise();
-                const [, sunset] = this.#weather.get_value_sunset();
-                this.#generalSettings.set_boolean('weather-is-daytime', this.#weather.is_daytime());
-                this.#generalSettings.set_double('weather-sunrise-time', sunrise);
-                this.#generalSettings.set_double('weather-sunset-time', sunset);
-            }
+            this.#onWeatherUpdated();
         });
     }
 
     dispose() {
-        if (this.#weatherHandlerId !== 0) {
-            try {
-                this.#weather.disconnect(this.#weatherHandlerId);
-            } catch {
-                /* ignore */
-            }
-            this.#weatherHandlerId = 0;
-        }
+        if (this.#disposed) return;
+        this.#disposed = true;
+        this.#detectionGeneration++;
+
         if (this.#updateTimer !== null) {
             GLib.source_remove(this.#updateTimer);
             this.#updateTimer = null;
         }
+        if (this.#drainSourceId !== null) {
+            GLib.source_remove(this.#drainSourceId);
+            this.#drainSourceId = null;
+        }
+        if (this.#autoLocationUnsubscribe) {
+            try {
+                this.#autoLocationUnsubscribe();
+            } catch (error) {
+                logger.warn('weather', 'Could not disconnect auto-location settings:', error);
+            }
+            this.#autoLocationUnsubscribe = null;
+        }
+        if (this.#geoHandlerId !== null) {
+            try {
+                this.#geo.disconnect(this.#geoHandlerId);
+            } catch (error) {
+                logger.warn('weather', 'Could not disconnect geolocation listener:', error);
+            }
+            this.#geoHandlerId = null;
+        }
+
+        const disposedError = new Error('Weather service is disposed');
+        const active = this.#activeUpdate;
+        this.#activeUpdate = null;
+        active?.reject(disposedError);
+        for (const request of this.#updateQueue.splice(0)) {
+            request.reject(disposedError);
+        }
+        this.notify('update-busy');
+
+        const rejectDetection = this.#detectionReject;
+        this.#detectionPromise = null;
+        this.#detectionReject = null;
+        this.#locationBusy = false;
+        this.notify('location-busy');
+        rejectDetection?.(disposedError);
+
+        if (this.#weatherHandlerId !== 0) {
+            try {
+                this.#weather.disconnect(this.#weatherHandlerId);
+            } catch (error) {
+                logger.warn('weather', 'Could not disconnect weather listener:', error);
+            }
+            this.#weatherHandlerId = 0;
+        }
+        try {
+            this.#weather.abort();
+        } catch (error) {
+            logger.warn('weather', 'Could not abort weather update during disposal:', error);
+        }
     }
 }
 
+let initializedWeather: Weather | null = null;
 defineService({
     name: 'Weather',
-    service: Weather.get_default(),
+    service: {
+        init(settings: Parameters<Weather['init']>[0]) {
+            initializedWeather = Weather.get_default();
+            initializedWeather.init(settings);
+        },
+        dispose() {
+            initializedWeather?.dispose();
+            initializedWeather = null;
+        },
+    },
     initArgs: () => [weatherSettings()],
 });

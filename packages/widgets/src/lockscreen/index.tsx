@@ -1,19 +1,19 @@
 import Astal from 'gi://Astal?version=4.0';
 import type Gdk from 'gi://Gdk?version=4.0';
+import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {render} from '@gnim-js/gtk4';
 import {getApp} from '@shade/services/appHandle';
 import {bus} from '@shade/services/bus';
 import FingerprintAuth from '@shade/services/input/fingerprint';
-import {monitors} from '@shade/services/monitoring/monitors';
 import AuthSession from '@shade/services/session/authSession';
 import SessionLockService from '@shade/services/session/sessionLockService';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import Clock from '@shade/services/time/clock';
 
-import {bind, For, onCleanup} from 'gnim';
+import {bind, createState, For, onCleanup} from 'gnim';
 import {LockscreenAuthPanel} from './authPanel';
 import {LockscreenNotifications} from './notifications';
 import {LockscreenWidgets} from './widgets';
@@ -21,80 +21,92 @@ import {LockscreenWidgets} from './widgets';
 // ── Main lockscreen creation ──
 
 const createLocks = (onUnlock: () => void) => {
-    const {LEFT, RIGHT, TOP, BOTTOM} = Astal.WindowAnchor;
     const lockService = SessionLockService.get_default();
     const time = Clock.get_default().time;
     const fingerprint = FingerprintAuth.get_default();
     const authSession = new AuthSession();
-    authSession.start();
+    const [lockMonitors, setLockMonitors] = createState<Gdk.Monitor[]>([]);
+    const monitorSignals: {monitor: Gdk.Monitor; id: number}[] = [];
+    let disposed = false;
+    let retrySource = 0;
 
-    let sharedCleanedUp = false;
-
-    // Store monitor→window mapping to avoid runtime query races
-    const monitorMap = new Map<Astal.Window, Gdk.Monitor>();
-
-    const cleanupAll = () => {
-        if (sharedCleanedUp) return;
-        sharedCleanedUp = true;
+    const cleanup = () => {
+        if (disposed) return;
+        disposed = true;
         authSession.cancel();
+        if (retrySource) GLib.source_remove(retrySource);
+        for (const {monitor, id} of monitorSignals) monitor.disconnect(id);
     };
+    onCleanup(cleanup);
 
-    const doUnlock = () => {
-        cleanupAll();
-        bus.emit('shell:unlock');
-        // Destroy the gnim window tree FIRST while the Wayland session is still
-        // valid: gtk4-session-lock frees the xx_session during unlock(), and any
-        // later window teardown (remove_from_session) dereferences the freed
-        // session (SEGV_MAPERR in gdk_wayland_toplevel_remove_from_session).
-        // The library's clear_lock_state() then no-ops on the already-destroyed
-        // windows (parentless/unrealized guards) instead of double-destroying.
+    const successId = GObject.signal_connect(authSession, 'success', () => {
+        if (disposed || !lockService.isLocked) return;
+        cleanup();
+        // Tear down GTK surfaces while their native session still exists.
+        // Shutdown takes this same disposal path, but never calls unlock().
         onUnlock();
         lockService.unlock();
-    };
+        bus.emit('shell:unlock');
+    });
+    onCleanup(() => authSession.disconnect(successId));
 
-    GObject.signal_connect(authSession, 'success', () => doUnlock());
+    const monitorId = lockService.connect(
+        'monitor',
+        (_service, monitor) => {
+            if (disposed || lockMonitors().includes(monitor)) return;
+            const id = monitor.connect('invalidate', () => {
+                setLockMonitors(lockMonitors().filter((item) => item !== monitor));
+            });
+            monitorSignals.push({monitor, id});
+            setLockMonitors([...lockMonitors(), monitor]);
+        }
+    );
+    const lockedId = GObject.signal_connect(lockService, 'locked', () => {
+        if (!disposed) void authSession.start();
+    });
+    const failedId = GObject.signal_connect(lockService, 'failed', () => {
+        if (disposed || retrySource) return;
+        setLockMonitors([]);
+        retrySource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            retrySource = 0;
+            if (!disposed) lockService.lock();
+            return GLib.SOURCE_REMOVE;
+        });
+    });
+    const unlockedId = GObject.signal_connect(lockService, 'unlocked', () => {
+        if (disposed || lockService.isLocked) return;
+        cleanup();
+        onUnlock();
+        bus.emit('shell:unlock');
+    });
+    onCleanup(() => {
+        lockService.disconnect(monitorId);
+        lockService.disconnect(lockedId);
+        lockService.disconnect(failedId);
+        lockService.disconnect(unlockedId);
+    });
 
     const fpStateBinding = bind(fingerprint, 'state');
     const fpErrorBinding = bind(fingerprint, 'errorMessage');
-
-    const onRealize = () => {
-        const wm = WindowManager.get_default();
-        // Wait for all lock windows to be realized before locking
-        for (const window of wm.lockscreens) {
-            if (!window.get_realized()) return;
-        }
-        // CRITICAL: Assign windows to monitors FIRST (ext-session-lock-v1 requirement)
-        for (const [window, monitor] of monitorMap) {
-            lockService.assignWindow(window, monitor);
-        }
-        // THEN acquire the lock
-        lockService.lock();
-    };
-
-    const onRef = (self: Astal.Window, monitor: Gdk.Monitor) => {
-        monitorMap.set(self, monitor);
+    const onRef = (self: Gtk.Window, monitor: Gdk.Monitor) => {
         const wm = WindowManager.get_default();
         wm.registerLockscreen(self);
-        onCleanup(() => {
-            monitorMap.delete(self);
-            cleanupAll();
-            wm.unregisterLockscreen(self);
-        });
+        onCleanup(() => wm.unregisterLockscreen(self));
+        lockService.assignWindow(self, monitor);
     };
 
+    // The native ::monitor signal is emitted only after requesting the protocol
+    // lock. assignWindow() maps each still-unrealized Gtk.Window itself.
+    lockService.lock();
+
     return (
-        <For each={monitors}>
+        <For each={lockMonitors}>
             {(monitor: Gdk.Monitor) => (
-                <Astal.Window
+                <Gtk.Window
+                    title="Session lock"
                     ref={(self) => onRef(self, monitor)}
-                    onRealize={onRealize}
-                    gdkmonitor={monitor}
                     application={getApp()}
-                    anchor={TOP | BOTTOM | LEFT | RIGHT}
-                    visible
-                    exclusivity={Astal.Exclusivity.IGNORE}
-                    keymode={Astal.Keymode.EXCLUSIVE}
-                    css={'backdrop-filter: blur(40px) brightness(0.35);'}
+                    cssClasses={['background']}
                 >
                     <Gtk.Box
                         vexpand
@@ -157,31 +169,55 @@ const createLocks = (onUnlock: () => void) => {
                             </Gtk.Box>
                         </Gtk.Box>
                     </Gtk.Box>
-                </Astal.Window>
+                </Gtk.Window>
             )}
         </For>
     );
 };
 
 export const LockScreen = () => {
-    let locked = false;
-
+    let disposeLocks: (() => void) | null = null;
+    const app = getApp();
+    const state = ShellState.get_default();
+    const wm = WindowManager.get_default();
+    let hiddenWindows: Gtk.Window[] = [];
     const screenlocked = bind(ShellState.get_default(), 'screenlocked');
-
-    onCleanup(
-        screenlocked.subscribe(() => {
-            if (screenlocked() && !locked) {
-                locked = true;
-                const dispose = render(
-                    () =>
-                        createLocks(() => {
-                            locked = false;
-                            dispose();
-                        }),
-                    getApp()
-                );
+    const syncLock = () => {
+        if (!screenlocked()) {
+            const restore = hiddenWindows;
+            hiddenWindows = [];
+            // Restore focus only after authenticated protocol unlock, never on
+            // disposal/restart while the compositor still owns the lock.
+            for (const window of restore.reverse()) {
+                if (window.get_application() === app) window.present();
             }
-        })
-    );
+            return;
+        }
+        if (disposeLocks) return;
+        state.closeAll();
+        // Normal same-process GTK toplevels can retain keyboard ownership even
+        // when the session-lock entry reports focused. Suspend those windows;
+        // layer-shell surfaces and native lock windows have separate lifetimes.
+        hiddenWindows = app.get_windows().filter((window) =>
+            window.visible && !(window instanceof Astal.Window) && !wm.lockscreens.includes(window));
+        for (const window of hiddenWindows) window.set_visible(false);
+        disposeLocks = render(
+            () =>
+                createLocks(() => {
+                    const dispose = disposeLocks;
+                    disposeLocks = null;
+                    dispose?.();
+                }),
+            getApp()
+        );
+    };
+    onCleanup(screenlocked.subscribe(syncLock));
+    onCleanup(() => {
+        disposeLocks?.();
+        disposeLocks = null;
+        hiddenWindows = [];
+    });
+    // A restarted shell must render the compositor's existing lock immediately.
+    syncLock();
     return <></>;
 };

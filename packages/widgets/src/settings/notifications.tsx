@@ -28,7 +28,11 @@ function NotificationsGroup({settings}: {settings: Settings}) {
             />
             <Adw.SwitchRow
                 title={'Show notification content on lock screen'}
-                subtitle={'Notification details are hidden until you unlock'}
+                subtitle={settings.notificationLockscreenContent.as((show) =>
+                    show
+                        ? 'Notification details are visible while the screen is locked'
+                        : 'Notification details are hidden until you unlock'
+                )}
                 active={settings.notificationLockscreenContent}
                 onNotifyActive={(self) =>
                     settings.setNotificationLockscreenContent(self.active)

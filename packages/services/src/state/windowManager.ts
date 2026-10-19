@@ -1,11 +1,12 @@
 import type Adw from 'gi://Adw?version=1';
 import type Astal from 'gi://Astal?version=4.0';
+import type Gtk from 'gi://Gtk?version=4.0';
 import {property} from '@shade/core/decorators';
 import {defineService} from '@shade/core/define';
 import {Object, register} from 'gnim/gobject';
 
 // ── Generic window collection for multi-window types (bars, wallpapers, lockscreens) ──
-function windowCollection<T extends Astal.Window>(
+function windowCollection<T extends Gtk.Window>(
     initial: T[] = []
 ): {
     getAll: () => T[];
@@ -37,7 +38,7 @@ export default class WindowManager extends Object {
     // Multi-window collections (one per monitor)
     #bars = windowCollection<Astal.Window>();
     #wallpapers = windowCollection<Astal.Window>();
-    #lockscreens = windowCollection<Astal.Window>();
+    #lockscreens = windowCollection<Gtk.Window>();
 
     // Single-window registrations
     #quicksettings: Astal.Window | null = null;
@@ -115,12 +116,12 @@ export default class WindowManager extends Object {
         this.notify('wallpapers');
     }
 
-    registerLockscreen(win: Astal.Window) {
+    registerLockscreen(win: Gtk.Window) {
         this.#lockscreens.add(win);
         this.notify('lockscreens');
     }
 
-    unregisterLockscreen(win: Astal.Window) {
+    unregisterLockscreen(win: Gtk.Window) {
         this.#lockscreens.remove(win);
         this.notify('lockscreens');
     }

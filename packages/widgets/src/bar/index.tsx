@@ -9,6 +9,7 @@ import WindowManager from '@shade/services/state/windowManager';
 
 import {type Accessor, For, onCleanup} from 'gnim';
 import Clock from './clock';
+import {BAR_EDGE_RESERVE} from './geometry';
 import BluetoothAudio from './indicators/bluetoothAudio';
 import RecordingIndicator from './indicators/recording';
 import Launcher from './launcher';
@@ -36,7 +37,13 @@ function BarContent({
     const orient = vertical.as((v) => (v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL));
 
     return (
-        <Gtk.CenterBox marginTop={4} marginBottom={4} marginStart={4} marginEnd={4} orientation={orient}>
+        <Gtk.CenterBox
+            marginTop={4}
+            marginBottom={4}
+            marginStart={vertical.as((v) => (v ? 0 : 4))}
+            marginEnd={vertical.as((v) => (v ? 0 : 4))}
+            orientation={orient}
+        >
             <Gtk.Box slot="start" cssClasses={['linked']} orientation={orient}>
                 <Launcher visible={bar.showLauncher} />
                 <Gtk.Separator visible={bar.showLauncher} />
@@ -57,12 +64,12 @@ function BarContent({
                         visible={bar.showWorkspaces}
                     />
                 ) : null}
-                <WindowTitle visible={bar.showWindowTitle} />
+                <WindowTitle vertical={vertical} visible={bar.showWindowTitle} />
             </Gtk.Box>
 
             <Gtk.Box slot="end" cssClasses={['linked']} orientation={orient}>
-                <BluetoothAudio />
-                <RecordingIndicator />
+                <BluetoothAudio vertical={vertical} />
+                <RecordingIndicator vertical={vertical} />
                 <Clock vertical={vertical} visible={bar.showClock} />
                 <Gtk.Separator visible={bar.showClock.as((v) => v && bar.showWeather())} />
                 <WeatherButton vertical={vertical} visible={bar.showWeather} />
@@ -115,7 +122,27 @@ function BarWindow({
                 return TOP | RIGHT | BOTTOM;
             })}
         >
-            <BarContent bar={bar} vertical={vertical} hyprMonitor={hyprMonitor} />
+            <For each={vertical.as((v) => [v])}>
+                {(isVertical: boolean) => {
+                    const content = (
+                        <BarContent bar={bar} vertical={vertical} hyprMonitor={hyprMonitor} />
+                    );
+                    return isVertical ? (
+                        <Gtk.ScrolledWindow
+                            widthRequest={BAR_EDGE_RESERVE}
+                            minContentWidth={BAR_EDGE_RESERVE}
+                            maxContentWidth={BAR_EDGE_RESERVE}
+                            propagateNaturalWidth
+                            hscrollbarPolicy={Gtk.PolicyType.EXTERNAL}
+                            vscrollbarPolicy={Gtk.PolicyType.NEVER}
+                        >
+                            {content}
+                        </Gtk.ScrolledWindow>
+                    ) : (
+                        content
+                    );
+                }}
+            </For>
         </Astal.Window>
     );
 }

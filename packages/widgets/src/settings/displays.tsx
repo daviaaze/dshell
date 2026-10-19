@@ -702,7 +702,16 @@ function ConnectedDisplays({
             />
         ));
     });
-    return <Adw.PreferencesGroup title="Connected Displays">{editorRows}</Adw.PreferencesGroup>;
+    return (
+        <Adw.PreferencesGroup title="Connected Displays">
+            <Adw.ActionRow
+                visible={outputs.as((items) => items.length === 0)}
+                title="No displays detected"
+                subtitle="Connect a display. Available outputs update automatically."
+            />
+            {editorRows}
+        </Adw.PreferencesGroup>
+    );
 }
 
 function SavedLayouts({
@@ -724,7 +733,7 @@ function SavedLayouts({
                     active={bind(service, 'autoApply')}
                     onNotifyActive={(self) => {
                         monitorsSettings().setAutoApply(self.active);
-                        service.notify('autoApply');
+                        service.notify('auto-apply');
                     }}
                 />
             </Adw.ActionRow>
@@ -776,11 +785,7 @@ export default () => {
     });
 
     return (
-        <Gtk.Box
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={18}
-            onMap={model.synchronizeTopology}
-        >
+        <>
             <DisplayModeChoices service={service} onPreview={actions.previewMode} />
             <DisplayLayoutGroup
                 service={service}
@@ -805,6 +810,7 @@ export default () => {
                 }}
                 onSave={saveCurrent}
             />
+            <Adw.PreferencesGroup title="Display Changes" onMap={model.synchronizeTopology}>
             <Gtk.Box spacing={8}>
                 <Gtk.Button label="Apply" hexpand onClicked={() => void actions.applyDraft()} />
                 <Gtk.Button
@@ -827,6 +833,7 @@ export default () => {
                 xalign={0}
                 cssClasses={['error']}
             />
-        </Gtk.Box>
+            </Adw.PreferencesGroup>
+        </>
     );
 };

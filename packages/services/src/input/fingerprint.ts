@@ -8,11 +8,52 @@ const FPRINTD_SERVICE = 'net.reactivated.Fprint';
 const FPRINTD_MANAGER = '/net/reactivated/Fprint/Manager';
 const MAX_RETRIES = 3;
 
+const DBUS_TIMEOUT_MS = 2000;
+const CLEANUP_TIMEOUT_MS = 1000;
+
 type FingerprintState = 'idle' | 'initializing' | 'verifying' | 'error';
+
+type ProxyFactory = (objectPath: string, interfaceName: string) => Promise<Gio.DBusProxy>;
+
+export interface FingerprintAuthOptions {
+    proxyFactory?: ProxyFactory;
+}
+
+interface ActiveVerification {
+    generation: number;
+    proxy: Gio.DBusProxy;
+    signalId: number;
+}
+
+// fprintd claims are process-wide; serialize operations even across singleton replacement.
+let deviceOperationQueue: Promise<void> = Promise.resolve();
+// A timed-out call leaves remote state unknown until stop and release both acknowledge.
+let deviceNeedsReset = false;
+let deviceNeedsResetProxy: Gio.DBusProxy | null = null;
+
+function enqueueDeviceOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const pending = deviceOperationQueue.then(operation, operation);
+    deviceOperationQueue = pending.then(
+        () => undefined,
+        () => undefined
+    );
+    return pending;
+}
+
+function isRemoteFprintError(error: unknown, code: string) {
+    try {
+        return (
+            Gio.DBusError.get_remote_error(error as GLib.Error) ===
+            `net.reactivated.Fprint.Error.${code}`
+        );
+    } catch {
+        return false;
+    }
+}
 
 @register
 export default class FingerprintAuth extends Object {
-    private static instance: FingerprintAuth;
+    private static instance: FingerprintAuth | null = null;
 
     static get_default() {
         if (!FingerprintAuth.instance) FingerprintAuth.instance = new FingerprintAuth();
@@ -22,13 +63,25 @@ export default class FingerprintAuth extends Object {
     #available = false;
     #state: FingerprintState = 'idle';
     #errorMessage = '';
-    #devicePath: string | null = null;
-    #deviceProxy: Gio.DBusProxy | null = null;
+    #deviceProxy: Gio.DBusProxy | null;
     #initialized = false;
-    #claimed = false;
     #consecutiveFailures = 0;
-    #retryPending = false;
-    #signalId = 0;
+    #disposed = false;
+    #initGeneration = 0;
+    #verifyGeneration = 0;
+    #retrySource = 0;
+    #initPromise: Promise<void> | null;
+    #activeVerification: ActiveVerification | null;
+    #proxyFactory: ProxyFactory;
+
+    constructor(options: FingerprintAuthOptions = {}) {
+        super();
+        this.#deviceProxy = null;
+        this.#initPromise = null;
+        this.#activeVerification = null;
+        this.#proxyFactory =
+            options.proxyFactory ?? ((path, interfaceName) => this.#getProxy(path, interfaceName));
+    }
 
     @property
     get available() {
@@ -36,14 +89,23 @@ export default class FingerprintAuth extends Object {
     }
 
     dispose() {
-        if (this.#signalId !== 0 && this.#deviceProxy) {
-            try {
-                this.#deviceProxy.disconnect(this.#signalId);
-            } catch {
-                /* ignore */
-            }
-            this.#signalId = 0;
+        if (this.#disposed) return;
+        this.stop();
+        this.#disposed = true;
+        this.#initGeneration++;
+        this.#initialized = false;
+        this.#initPromise = null;
+        this.#deviceProxy = null;
+        if (this.#available) {
+            this.#available = false;
+            this.notify('available');
         }
+        if (this.#errorMessage) {
+            this.#errorMessage = '';
+            this.notify('error-message');
+        }
+        this.#setState('idle');
+        if (FingerprintAuth.instance === this) FingerprintAuth.instance = null;
     }
 
     @property
@@ -83,68 +145,159 @@ export default class FingerprintAuth extends Object {
         this.#setState('error');
     }
 
-    async init() {
-        if (this.#initialized) return;
-        this.#initialized = true;
+    #call(
+        proxy: Gio.DBusProxy,
+        method: string,
+        parameters: GLib.Variant | null,
+        timeoutMs: number
+    ): Promise<GLib.Variant> {
+        const {promise, resolve, reject} = Promise.withResolvers<GLib.Variant>();
         try {
-            const manager = await this.#getProxy(FPRINTD_MANAGER, 'net.reactivated.Fprint.Manager');
-            const devices = manager
-                .call_sync('GetDevices', null, Gio.DBusCallFlags.NONE, -1, null)
-                ?.get_child_value(0);
-
-            if (!devices || devices.n_children() === 0) {
-                this.#available = false;
-                this.notify('available');
-                return;
-            }
-
-            this.#devicePath = devices.get_child_value(0).get_string()[0];
-            this.#deviceProxy = await this.#getProxy(
-                this.#devicePath,
-                'net.reactivated.Fprint.Device'
-            );
-            this.#available = true;
-            this.notify('available');
-
-            this.#signalId = this.#deviceProxy.connect(
-                'g-signal',
-                (_proxy, _sender, signalName, params) => {
-                    if (signalName === 'VerifyStatus') {
-                        const status = params.get_child_value(0).get_string()[0];
-                        const done = params.get_child_value(1).get_boolean();
-                        this.statusChanged(status);
-
-                        if (done) {
-                            this.#handleVerifyDone(status);
-                        }
+            proxy.call(
+                method,
+                parameters,
+                Gio.DBusCallFlags.NONE,
+                timeoutMs,
+                null,
+                (_, result) => {
+                    try {
+                        resolve(proxy.call_finish(result));
+                    } catch (e) {
+                        reject(e);
                     }
                 }
             );
         } catch (e) {
-            logger.warn('fingerprint', 'init failed:', e);
-            this.#available = false;
-            this.notify('available');
+            reject(e);
+        }
+        return promise;
+    }
+
+    #isCurrentInit(generation: number) {
+        return !this.#disposed && this.#initGeneration === generation;
+    }
+
+    #isCurrentGeneration(generation: number, proxy: Gio.DBusProxy) {
+        return (
+            !this.#disposed &&
+            this.#verifyGeneration === generation &&
+            this.#deviceProxy === proxy
+        );
+    }
+
+    #isActiveVerification(verification: ActiveVerification) {
+        return (
+            !this.#disposed &&
+            this.#activeVerification === verification &&
+            this.#verifyGeneration === verification.generation &&
+            this.#deviceProxy === verification.proxy
+        );
+    }
+
+    async init() {
+        if (this.#disposed || this.#initialized) return;
+        if (this.#initPromise) return this.#initPromise;
+
+        const generation = ++this.#initGeneration;
+        const pending = this.#initialize(generation);
+        this.#initPromise = pending;
+        try {
+            await pending;
+        } finally {
+            if (this.#initPromise === pending) this.#initPromise = null;
         }
     }
 
-    #handleVerifyDone(status: string) {
-        // Ignore stale VerifyStatus signals from a previous fprintd session.
-        // The signal handler connects during init(), but we only started
-        // verifying via start() — stale done=true signals arrive when no
-        // verification is active and must be dropped.
-        if (this.#state !== 'verifying') {
-            return;
+    async #initialize(generation: number) {
+        try {
+            const manager = await this.#proxyFactory(
+                FPRINTD_MANAGER,
+                'net.reactivated.Fprint.Manager'
+            );
+            if (!this.#isCurrentInit(generation)) return;
+
+            const result = await this.#call(manager, 'GetDevices', null, DBUS_TIMEOUT_MS);
+            if (!this.#isCurrentInit(generation)) return;
+            const devices = result.get_child_value(0);
+            if (!devices || devices.n_children() === 0) {
+                if (this.#available) {
+                    this.#available = false;
+                    this.notify('available');
+                }
+                return;
+            }
+
+            const devicePath = devices.get_child_value(0).get_string()[0];
+            const proxy = await this.#proxyFactory(devicePath, 'net.reactivated.Fprint.Device');
+            if (!this.#isCurrentInit(generation)) return;
+
+            this.#deviceProxy = proxy;
+            this.#initialized = true;
+            if (!this.#available) {
+                this.#available = true;
+                this.notify('available');
+            }
+        } catch (e) {
+            if (!this.#isCurrentInit(generation)) return;
+            logger.warn('fingerprint', 'init failed:', e);
+            if (this.#available) {
+                this.#available = false;
+                this.notify('available');
+            }
         }
+    }
 
-        // The VerifyStatus D-Bus signal with done=true means the hardware
-        // verification already ended — calling VerifyStop would just
-        // produce a spurious D-Bus error. Release and reset instead.
+    #connectVerification(generation: number, proxy: Gio.DBusProxy) {
+        const verification: ActiveVerification = {
+            generation,
+            proxy,
+            signalId: 0,
+        };
+        verification.signalId = proxy.connect(
+            'g-signal',
+            (_proxy, _sender, signalName, params) => {
+                if (!this.#isActiveVerification(verification) || signalName !== 'VerifyStatus') {
+                    return;
+                }
+                const status = params.get_child_value(0).get_string()[0];
+                const done = params.get_child_value(1).get_boolean();
+                this.statusChanged(status);
+                if (done) this.#handleVerifyDone(verification, status);
+            }
+        );
+        this.#activeVerification = verification;
+        return verification;
+    }
 
-        this.#setState('idle');
+    #disconnectVerification(verification = this.#activeVerification) {
+        if (!verification || this.#activeVerification !== verification) return;
+        this.#activeVerification = null;
+        try {
+            verification.proxy.disconnect(verification.signalId);
+        } catch {
+            /* ignore */
+        }
+    }
+
+    #retireVerification(verification: ActiveVerification) {
+        if (!this.#isActiveVerification(verification)) return false;
+        this.#disconnectVerification(verification);
+        this.#verifyGeneration++;
+        if (this.#state === 'verifying' || this.#state === 'initializing') {
+            this.#setState('idle');
+        }
+        return true;
+    }
+
+    #handleVerifyDone(verification: ActiveVerification, status: string) {
+        if (!this.#retireVerification(verification)) return;
+        const generation = this.#verifyGeneration;
+        const cleanup = this.#queueTeardown(verification.proxy);
 
         if (status === 'verify-match') {
             this.#consecutiveFailures = 0;
             this.verified();
+            void cleanup.catch((e) => this.#cleanupFailed(e));
             return;
         }
 
@@ -153,104 +306,170 @@ export default class FingerprintAuth extends Object {
             if (this.#consecutiveFailures >= MAX_RETRIES) {
                 this.#setError('Too many fingerprint attempts');
                 this.failed('too-many-retries');
+                void cleanup.catch((e) => this.#cleanupFailed(e));
                 return;
             }
-            this.#reinitAndRetry().catch((e) => logger.error('fingerprint', 'retry failed:', e));
+            this.#scheduleRetry(generation, verification.proxy, cleanup);
             return;
         }
 
-        this.#release();
         this.#setError(`Fingerprint error: ${status}`);
         this.failed(status);
+        void cleanup.catch((e) => this.#cleanupFailed(e));
     }
 
-    async #reinitAndRetry() {
-        // Don't call stop() — the VerifyStatus D-Bus signal with done=true
-        // already ended verification. Just release and restart.
-        // Stay in 'verifying' state to avoid UI flicker (spinner disappearing).
-        this.#release();
-        this.#retryPending = true;
-        await new Promise<void>((resolve) => setTimeout(() => resolve(), 500));
-        if (!this.#retryPending) return; // cancelled by stop() during delay
-        this.#retryPending = false;
-        this.start();
+    #scheduleRetry(
+        generation: number,
+        proxy: Gio.DBusProxy,
+        cleanup: Promise<void>
+    ) {
+        void cleanup
+            .then(() => {
+                if (
+                    !this.#isCurrentGeneration(generation, proxy) ||
+                    this.#state !== 'idle'
+                ) {
+                    return;
+                }
+                this.#retrySource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+                    this.#retrySource = 0;
+                    if (
+                        this.#isCurrentGeneration(generation, proxy) &&
+                        this.#state === 'idle'
+                    ) {
+                        this.start();
+                    }
+                    return GLib.SOURCE_REMOVE;
+                });
+            })
+            .catch((e) => this.#cleanupFailed(e));
+    }
+
+    async #teardownDevice(proxy: Gio.DBusProxy): Promise<void> {
+        if (!deviceNeedsReset) return;
+        const resetProxy = deviceNeedsResetProxy ?? proxy;
+
+        let stopFailure: unknown = null;
+        try {
+            await this.#call(resetProxy, 'VerifyStop', null, CLEANUP_TIMEOUT_MS);
+        } catch (e) {
+            if (
+                !isRemoteFprintError(e, 'NoActionInProgress') &&
+                !isRemoteFprintError(e, 'ClaimDevice')
+            ) {
+                stopFailure = e;
+            }
+        }
+
+        let releaseFailure: unknown = null;
+        try {
+            await this.#call(resetProxy, 'Release', null, CLEANUP_TIMEOUT_MS);
+        } catch (e) {
+            if (!isRemoteFprintError(e, 'ClaimDevice')) releaseFailure = e;
+        }
+
+        if (stopFailure || releaseFailure) {
+            deviceNeedsReset = true;
+            deviceNeedsResetProxy = resetProxy;
+            throw stopFailure ?? releaseFailure;
+        }
+        deviceNeedsReset = false;
+        deviceNeedsResetProxy = null;
+    }
+
+    #queueTeardown(proxy: Gio.DBusProxy): Promise<void> {
+        return enqueueDeviceOperation(() => this.#teardownDevice(proxy));
+    }
+
+    #cleanupFailed(error: unknown) {
+        logger.warn('fingerprint', 'device cleanup failed:', error);
+        if (this.#disposed || this.#state === 'error') return;
+        this.#setError('Fingerprint device cleanup failed');
+        this.failed('cleanup-failed');
     }
 
     start() {
-        if (!this.#available || !this.#deviceProxy) return;
+        if (
+            this.#disposed ||
+            !this.#available ||
+            !this.#deviceProxy ||
+            this.#state === 'initializing' ||
+            this.#state === 'verifying'
+        ) {
+            return;
+        }
+
+        const proxy = this.#deviceProxy;
+        const generation = ++this.#verifyGeneration;
         this.#setState('initializing');
-        try {
-            if (!this.#claimed) {
-                this.#deviceProxy.call_sync(
-                    'Claim',
-                    GLib.Variant.new('(s)', [GLib.get_user_name()]),
-                    Gio.DBusCallFlags.NONE,
-                    -1,
-                    null
-                );
-                this.#claimed = true;
-            }
+        void enqueueDeviceOperation(async () => {
+            if (!this.#isCurrentGeneration(generation, proxy)) return;
+            if (deviceNeedsReset) await this.#teardownDevice(proxy);
+            if (!this.#isCurrentGeneration(generation, proxy)) return;
+
+            deviceNeedsReset = true;
+            deviceNeedsResetProxy = proxy;
+            await this.#call(
+                proxy,
+                'Claim',
+                GLib.Variant.new('(s)', [GLib.get_user_name()]),
+                DBUS_TIMEOUT_MS
+            );
+            if (!this.#isCurrentGeneration(generation, proxy)) return;
+
             this.#setState('verifying');
-            this.#deviceProxy.call_sync(
+            const verification = this.#connectVerification(generation, proxy);
+            await this.#call(
+                proxy,
                 'VerifyStart',
                 GLib.Variant.new('(s)', ['']),
-                Gio.DBusCallFlags.NONE,
-                -1,
-                null
+                DBUS_TIMEOUT_MS
             );
-        } catch (e) {
+            if (!this.#isActiveVerification(verification)) return;
+        }).catch((e) => {
+            if (!this.#isCurrentGeneration(generation, proxy)) return;
+            this.#disconnectVerification();
+            this.#verifyGeneration++;
+            deviceNeedsReset = true;
             logger.warn('fingerprint', 'start failed:', e);
             this.#setError(`Fingerprint device error: ${String(e)}`);
             this.failed(String(e));
-            this.#release();
-        }
+            void this.#queueTeardown(proxy).catch((cleanupError) =>
+                this.#cleanupFailed(cleanupError)
+            );
+        });
     }
 
     retry() {
-        if (this.#state !== 'error') return;
-        // Don't reset #consecutiveFailures here — it should only reset on
-        // a successful match. Resetting here would allow the user to retry
-        // indefinitely by dismissing the error.
+        if (this.#disposed || this.#state !== 'error') return;
+        // Keep the failure count so dismissing the error cannot reset retries.
         this.#errorMessage = '';
         this.notify('error-message');
-        this.#setState('initializing');
+        this.#setState('idle');
         this.start();
     }
 
     stop() {
-        this.#retryPending = false;
-        if (!this.#deviceProxy) return;
-        // Only call VerifyStop if there's an active verification to cancel.
-        // The VerifyStatus D-Bus signal with done=true already ended verification,
-        // so calling VerifyStop afterward would fail with a D-Bus error.
-        if (this.#state !== 'verifying' && this.#state !== 'initializing') {
-            this.#release();
-            return;
+        if (this.#disposed) return;
+        this.#verifyGeneration++;
+        this.#disconnectVerification();
+        if (this.#retrySource !== 0) {
+            GLib.source_remove(this.#retrySource);
+            this.#retrySource = 0;
         }
-        try {
-            this.#deviceProxy.call_sync('VerifyStop', null, Gio.DBusCallFlags.NONE, -1, null);
-        } catch (e) {
-            logger.warn('fingerprint', 'VerifyStop failed:', e);
-        }
-        this.#setState('idle');
-        this.#release();
-    }
 
-    #release() {
-        if (!this.#claimed || !this.#deviceProxy) return;
-        try {
-            this.#deviceProxy.call_sync('Release', null, Gio.DBusCallFlags.NONE, -1, null);
-        } catch (e) {
-            // Release can fail if there's no active session to release.
-            // This happens with stale VerifyStatus signals when the device
-            // was never properly claimed by us. Just log and continue.
-            logger.debug('fingerprint', 'Release failed:', e);
+        if (this.#state === 'verifying' || this.#state === 'initializing') {
+            this.#setState('idle');
         }
-        this.#claimed = false;
+        const proxy = this.#deviceProxy;
+        if (proxy && deviceNeedsReset) {
+            void this.#queueTeardown(proxy).catch((e) => this.#cleanupFailed(e));
+        }
     }
 
     async #getProxy(objectPath: string, interfaceName: string): Promise<Gio.DBusProxy> {
-        return new Promise((resolve, reject) => {
+        const {promise, resolve, reject} = Promise.withResolvers<Gio.DBusProxy>();
+        try {
             Gio.DBusProxy.new_for_bus(
                 Gio.BusType.SYSTEM,
                 Gio.DBusProxyFlags.NONE,
@@ -267,6 +486,9 @@ export default class FingerprintAuth extends Object {
                     }
                 }
             );
-        });
+        } catch (e) {
+            reject(e);
+        }
+        return promise;
     }
 }

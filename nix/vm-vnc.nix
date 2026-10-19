@@ -119,7 +119,7 @@ let
     }
   '';
   secondaryDisplayStop = pkgs.writeShellScript "shade-vm-secondary-display-stop" ''
-    ${pkgs.hyprland}/bin/hyprctl keyword monitor "Virtual-2, disable" || true
+    ${pkgs.hyprland}/bin/hyprctl output remove Virtual-2 || true
   '';
   bluezTesting = pkgs.bluez.overrideAttrs (old: {
     configureFlags = (old.configureFlags or [ ]) ++ [ "--enable-testing" ];
@@ -158,7 +158,7 @@ in
     cores = 4;
     graphics = true;
     qemu.options = [
-      # Keep the existing primary output as the sole active desktop until a test enables head 1.
+      # Keep the physical primary output observable; tests create a separate headless output.
       "-device virtio-vga,bus=pci.0,addr=1e.0,max_outputs=2"
       "-acpitable file=${backlightSsdt}/ssdt.aml"
       # USB tablet for proper cursor tracking
@@ -371,13 +371,18 @@ in
   xdg.portal.enable = true;
 
   systemd.user.services.shade-vm-secondary-display = {
-    description = "Enable the guest-only secondary display for a Shade workflow";
+    description = "Create the guest-only headless secondary display for a Shade workflow";
     after = [ "graphical-session.target" ];
     partOf = [ "graphical-session.target" ];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = "${pkgs.hyprland}/bin/hyprctl keyword monitor 'Virtual-2, preferred, auto, 1'";
+      ExecStart = pkgs.writeShellScript "shade-vm-secondary-display-start" ''
+        set -e
+        ${pkgs.hyprland}/bin/hyprctl output create headless Virtual-2
+        ${pkgs.hyprland}/bin/hyprctl keyword monitor "Virtual-2,1280x800@60,auto,1"
+        ${pkgs.hyprland}/bin/hyprctl dispatch focusmonitor Virtual-1
+      '';
       ExecStopPost = secondaryDisplayStop;
     };
   };

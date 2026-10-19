@@ -147,6 +147,13 @@ in
         systemd.tmpfiles.rules = [
           "d /var/cache/shade-greeter 0755 greeter greeter -"
         ];
+        # Keep cancellation safe while PAM is waiting on a conversation message.
+        # A user-supplied services.greetd.package still takes precedence.
+        services.greetd.package = lib.mkDefault (
+          pkgs.greetd.overrideAttrs (old: {
+            patches = (old.patches or [ ]) ++ [ ./patches/greetd-session-cancel.patch ];
+          })
+        );
         services.greetd = {
           enable = true;
           settings.default_session =

@@ -11,12 +11,12 @@
 
 Four surfaces, one shared card component:
 
-- **Popup** (`src/widget/notifications/index.tsx`) — transient toasts, top of screen
-- **List** (`src/widget/quicksettings/notificationList.tsx`) — active notifications inside quicksettings
+- **Popup** (`packages/widgets/src/notifications/index.tsx`) — transient toasts, top of screen
+- **List** (`packages/widgets/src/quicksettings/notificationList.tsx`) — active notifications inside quicksettings
 - **History** (same file, toggled view) — persisted log backed by `NotificationHistory`
-- **Lockscreen** (`src/widget/lockscreen/notifications.tsx`) — read-mostly view while locked
+- **Lockscreen** (`packages/widgets/src/lockscreen/notifications.tsx`) — read-mostly view while locked
 
-- **Shared component**: `src/widget/common/notification.tsx` (`NotificationCard`)
+- **Shared component**: `packages/widgets/src/common/notification.tsx`
 - **Settings group**: `generalSchema` — `notificationShowProgress`, `notificationHistoryLimit`, `notificationIgnoredApps`
 - **Dependencies**: `AstalNotifd`, `DndService`, `NotificationHistory`, `ShellState`, `PopupWindow`
 
@@ -40,27 +40,28 @@ Four surfaces, one shared card component:
 | # | State | Trigger | Expected behavior |
 |---|-------|---------|-------------------|
 | F1 | Empty popup | No pending notifications | Window hidden; `notificationCount = 0` |
-| F2 | Notification arrives | `notifd` emits `notified` | Card appended to popup list; slide-in animation; auto-dismiss timer starts (expire_timeout → notifd default → 5000ms fallback) |
+| F2 | Notification arrives | `notifd` emits `notified` | Card appended to popup list; visibility recomputes from daemon availability, pending count, DND, and lock state; auto-dismiss timer starts (expire_timeout → notifd default → 5000ms fallback) |
 | F3 | DND active | `dnd.dnd` = true | Popup hidden; list still shows notifications (DND suppresses popups, not the list) |
 | F4 | Screen locked | `ShellState.screenlocked` = true | Popup hidden; lockscreen view shows notifications |
-| F5 | Auto-dismiss | Timer expires | Card removed with fade-out; timer canceled; count decremented |
+| F5 | Auto-dismiss | Local toast timer expires | Card removed; timer canceled; count decremented. Daemon timeouts are disabled at initialization, so active notifications and history remain until explicitly dismissed/deleted |
 | F6 | Hover | Pointer enters/leaves card | Timer paused / resumed |
 | F7 | Popup overflow | > 3 simultaneous notifications | Only newest 3 shown; older ones go straight to the quicksettings list |
 | F8 | History toggle | History button clicked in list header | List swaps to history view; button icon becomes back arrow |
-| F9 | Urgency | `notification.urgency` | CRITICAL: error-accent left border, no auto-dismiss; LOW: `dim-label` styling on card |
+| F9 | Urgency | `notification.urgency` | CRITICAL: error styling, no auto-dismiss or countdown, including after hover leave or replacement; LOW: dimmed card |
+| F10 | Same-ID update | Native fields change | Summary, body, image, urgency and actions refresh even when the native object is reused |
+| F11 | Resolution | `notifd` emits `resolved` | Local toast and its timer are removed |
 
 ### Interactions
 
 | # | Action | Expected behavior |
 |---|--------|-------------------|
-| I1 | Click card body | Invoke notification default action (if any) and dismiss from popup |
-| I2 | Click close button | Dismiss immediately (`closeAction`) |
-| I3 | Click action button | `notification.invoke(action.id)`; card dismisses |
-| I4 | Clear button (list header) | Dismiss all active notifications (via idle callback) |
-| I5 | DND toggle (list header) | `bus.emit('system:dnd:set', active)`; toggle shows `flat` normally, `warning`+filled when active |
+| I1 | Click card body | Invoke notification default action and remove only the local toast |
+| I2 | Close notification toast | Remove only the local toast; retain the daemon's active notification and history |
+| I3 | Click popup action | Invoke the action, then remove only the local toast |
+| I4 | Dismiss all active notifications | Dismiss active notifications via idle callback; retain history |
+| I5 | DND toggle | Suppress ordinary and critical popups; native checked state and distinct icon show DND, while active/history data remain |
 | I6 | Group header click | Expand/collapse older notifications of that app (Revealer) |
 | I7 | Group dismiss button | Dismiss all notifications of that app |
-| I8 | Clear history | `history.clear()`; history empty-state appears |
 | I9 | Delete history entry | Per-row delete button removes entry |
 | I10 | Lockscreen close button | Dismiss notification locally + via notifd |
 
@@ -75,7 +76,7 @@ Four surfaces, one shared card component:
 | E5 | History empty | `Adw.StatusPage` with `notification-symbolic`, title "No History" |
 | E6 | Active list empty | `Adw.StatusPage` with `notification-symbolic`, title "No New Notifications" |
 | E7 | History over visible count | Footer row: "Showing 20 of N" |
-| E8 | Lockscreen | Action buttons and default-action click disabled; close button only; no auto-dismiss; cap 20 |
+| E8 | Lockscreen | Content off: generic presence and Dismiss only; content on: sender/details but no actions/default click. The preference subtitle matches the current privacy state |
 | E9 | Card has image | Image left of body, 48px, rounded; body `maxWidthChars` reduced |
 | E10 | `notified` fires for existing id | Update in place, don't duplicate (lockscreen already does this; popup must too) |
 
@@ -175,6 +176,7 @@ classes. No hardcoded hex/rgb or ad-hoc inline `css`.
 - **Unit**: `groupByApp` (order preserved, newest-first), history truncation footer count, popup overflow cap, critical-no-dismiss timer logic, timestamp formatter.
 - **Compliance linter**: idle-deferred dismissal is legitimate (mutation during signal emission); document `comply-allow` if flagged.
 - **Visual/manual**: light/dark × {1 popup, 3+ popup overflow, critical, low urgency, image card, actions, list grouped/expanded, history populated/empty/truncated, lockscreen}.
+- **Popup regression**: `scripts/vm-workflow-test.py` checks the actual toast surface and its content before opening Quick Settings, then verifies local toast expiry and retained notification delivery. The isolated stash reproduction also verified that enabled DND receives a new notification in the center without creating a toast surface.
 
 ## Migration (current → target)
 

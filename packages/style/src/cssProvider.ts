@@ -19,10 +19,7 @@ let initialized = false;
 function ensureGlobalProvider(): boolean {
     if (initialized) return !!globalProvider;
     const display = Gdk.Display.get_default();
-    if (!display) {
-        initialized = true;
-        return false;
-    }
+    if (!display) return false;
     globalProvider = new Gtk.CssProvider();
     globalProvider.load_from_string('');
     Gtk.StyleContext.add_provider_for_display(
@@ -69,6 +66,7 @@ export function registerStyleSheet(css: string): string {
 export function updateStyleSheet(key: string, css: string): void {
     const entry = cssRegistry.get(key);
     if (entry) {
+        ensureGlobalProvider();
         entry.css = css;
         rebuildAllCSS();
     }

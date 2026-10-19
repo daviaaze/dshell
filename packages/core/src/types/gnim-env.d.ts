@@ -1,7 +1,7 @@
 /**
  * Augment ImportMeta with gnim/GJS-specific properties.
  *
- * gnim passes module metadata via ImportMeta (name, domain, datadir)
+ * gnim passes module metadata via ImportMeta (name, domain, datadir, bindir)
  * which GJS exposes at runtime but are absent from the generated type
  * declarations. Without these augmentations every usage across the
  * codebase produces TS2339, which cascades into implicit-any noise.
@@ -15,6 +15,8 @@ interface ImportMeta {
     domain: string;
     /** XDG data directory — resolved by gnim at build time. */
     datadir: string;
+    /** Executable directory — injected by the bundle or development script. */
+    bindir: string;
     /** Module version — injected by gnim bundler. */
     version: string;
 }

@@ -5,9 +5,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {defineService} from '@shade/core/define';
 import logger from '@shade/core/logger';
 import {generalSettings} from '@shade/core/settings/general.gschema';
-import type {Accessor, Setter} from 'gnim';
+import type {Accessor} from 'gnim';
 import {Object, property, register} from 'gnim/gobject';
-import {createSettings, Schema} from 'gnim/schema';
 import {bus} from '../bus';
 
 export enum DarkModes {
@@ -23,6 +22,13 @@ const TIME_HANDLER_KEYS: Array<'changed::weather-sunrise-time' | 'changed::weath
 
 const COLOR_SCHEME_KEY = 'color-scheme';
 
+interface ColorSchemeDependencies {
+    generalSettings?: Gio.Settings;
+    systemSettings?: Gio.Settings;
+    getStyleManager?: () => Adw.StyleManager;
+    getGtkSettings?: () => Gtk.Settings | null;
+}
+
 @register
 export class ColorScheme extends Object {
     private static instance: ColorScheme;
@@ -36,9 +42,13 @@ export class ColorScheme extends Object {
     #initialized = false;
     #timerId: GLib.Source | null = null;
     #generalHandlerId = 0;
-    #busSubscriptions: (() => void)[] = [];
-    #timeHandlerIds: number[] = [];
-    #styleManagerHandlerIds: number[] = [];
+    #busSubscriptions: (() => void)[];
+    #timeHandlerIds: number[];
+    #styleManagerHandlerIds: number[];
+    #settingsSubscription: (() => void) | null = null;
+    #getStyleManager: () => Adw.StyleManager;
+    #getGtkSettings: () => Gtk.Settings | null;
+    #applyError: string | null = null;
     #shadeSettings: {
         colorScheme: Accessor<DarkModes>;
         setColorScheme: (v: DarkModes) => void;
@@ -50,9 +60,20 @@ export class ColorScheme extends Object {
     /** Adw.StyleManager singleton — used to check current dark
      *  state before writing to org.gnome.desktop.interface. */
     #styleManager: Adw.StyleManager | null = null;
-    #gsettings: {
-        setColorScheme: Setter<string>;
-    };
+    @property
+    get effectiveDark(): boolean {
+        return this.#styleManager?.dark ?? false;
+    }
+
+    @property
+    get systemScheme(): string {
+        return this.#systemSettings.get_string(COLOR_SCHEME_KEY);
+    }
+
+    @property
+    get applyError(): string | null {
+        return this.#applyError;
+    }
     #generalSettings: Gio.Settings;
     /** Direct handle on the org.gnome.desktop.interface settings —
      *  the PUSH target: writing color-scheme here drives the
@@ -91,31 +112,32 @@ export class ColorScheme extends Object {
     }
 
     set colorScheme(c: DarkModes) {
-        // ── Re-entrancy guard ──
-        // Silently drop ANY recursive call. The initial caller
-        // already updated this.#colorScheme, so a dropped
-        // re-entrant call is always redundant.
-        if (this.#settingColorScheme) {
-            logger.warn(
-                'colorscheme',
-                `re-entrant setter dropped (c=${c}, current=${this.#colorScheme})`
-            );
-            return;
-        }
+        if (this.#settingColorScheme) return;
         this.#settingColorScheme = true;
 
         try {
             this.#colorScheme = c;
             if (c === DarkModes.AUTO) c = this.#daytime ? DarkModes.LIGHT : DarkModes.DARK;
 
-            // Push the resolved mode to the system key unless it
-            // already matches. Compare the KEY itself — not
-            // StyleManager.dark — so a 'default' (no-preference)
-            // key never suppresses a needed push.
             const targetKey = c === DarkModes.LIGHT ? 'prefer-light' : 'prefer-dark';
-            if (this.#systemSettings.get_string(COLOR_SCHEME_KEY) !== targetKey) {
-                this.#pushSystemScheme(targetKey);
+            const targetScheme = c === DarkModes.LIGHT
+                ? Adw.ColorScheme.FORCE_LIGHT : Adw.ColorScheme.FORCE_DARK;
+            this.#applyError = null;
+            try {
+                const written = this.#systemSettings.set_string(COLOR_SCHEME_KEY, targetKey);
+                if (!this.#styleManager) throw new Error('Native appearance manager unavailable');
+                this.#styleManager.colorScheme = targetScheme;
+                if (!written || this.systemScheme !== targetKey ||
+                    this.#styleManager.colorScheme !== targetScheme ||
+                    this.effectiveDark !== (c === DarkModes.DARK)) {
+                    throw new Error('Requested appearance was not fully applied');
+                }
+            } catch (error) {
+                this.#applyError = String(error);
             }
+            this.notify('effective-dark');
+            this.notify('system-scheme');
+            this.notify('apply-error');
 
             this.notify(COLOR_SCHEME_KEY);
             this.notify('color-scheme-name');
@@ -145,10 +167,6 @@ export class ColorScheme extends Object {
      *  updated it yet. */
     private static readonly STALE_SCHEDULE_RETRY_MS = 5 * 60 * 1000;
 
-    /** Push shade's resolved mode to the system key. */
-    #pushSystemScheme(value: 'prefer-light' | 'prefer-dark') {
-        this.#gsettings.setColorScheme(value);
-    }
 
     /** Adopt the system color-scheme preference mirrored by GTK
      *  into GtkSettings:gtk-interface-color-scheme. This fires for
@@ -245,6 +263,11 @@ export class ColorScheme extends Object {
             return;
         }
         this.#initialized = true;
+        try {
+            this.#styleManager = this.#getStyleManager();
+        } catch {
+            this.#styleManager = null;
+        }
         this.#shadeSettings = settings;
         // Load daytime BEFORE the initial push below — otherwise
         // AUTO resolves with the default #daytime=true and the
@@ -254,7 +277,7 @@ export class ColorScheme extends Object {
         const colorSchemeSetting = settings.colorScheme;
         this.colorScheme = colorSchemeSetting();
 
-        colorSchemeSetting.subscribe(() => {
+        this.#settingsSubscription = colorSchemeSetting.subscribe(() => {
             const newValue = colorSchemeSetting();
             if (newValue !== this.#colorScheme) {
                 this.colorScheme = newValue;
@@ -294,13 +317,25 @@ export class ColorScheme extends Object {
             this.#styleManagerHandlerIds.push(
                 sm.connect('notify::dark', () => this.adoptExternalDark(sm.dark))
             );
+            this.#styleManagerHandlerIds.push(
+                sm.connect('notify::color-scheme', () => {
+                    if (this.#settingColorScheme) return;
+                    if (sm.colorScheme === Adw.ColorScheme.FORCE_LIGHT) {
+                        this.colorScheme = DarkModes.LIGHT;
+                    } else if (sm.colorScheme === Adw.ColorScheme.FORCE_DARK) {
+                        this.colorScheme = DarkModes.DARK;
+                    } else {
+                        this.colorScheme = DarkModes.AUTO;
+                    }
+                })
+            );
         }
 
         // GtkSettings:gtk-interface-color-scheme (GTK ≥ 4.20) is
         // the unified system source of truth: GTK mirrors the
         // portal preference into it live, and the GTK Inspector's
         // system color-scheme selector edits it directly.
-        const gtkSettings = Gtk.Settings.get_default();
+        const gtkSettings = this.#getGtkSettings();
         if (gtkSettings) {
             try {
                 // eslint-disable-next-line sonarjs/void-use
@@ -326,6 +361,10 @@ export class ColorScheme extends Object {
 
     dispose() {
         logger.debug('colorscheme', 'disposing');
+        this.#settingsSubscription?.();
+        this.#settingsSubscription = null;
+        for (const unsubscribe of this.#busSubscriptions) unsubscribe();
+        this.#busSubscriptions = [];
         if (this.#generalHandlerId !== 0) {
             try {
                 this.#generalSettings.disconnect(this.#generalHandlerId);
@@ -367,33 +406,19 @@ export class ColorScheme extends Object {
         this.#initialized = false;
     }
 
-    constructor() {
+    constructor(dependencies: ColorSchemeDependencies = {}) {
         super();
-
-        // Must happen early — guards the setter against writing
-        // to org.gnome.desktop.interface when the StyleManager
-        // already reflects the target mode.
-        try {
-            this.#styleManager = Adw.StyleManager.get_default();
-        } catch {
-            this.#styleManager = null;
-        }
-
-        this.#generalSettings = new Gio.Settings({
+        this.#busSubscriptions = [];
+        this.#timeHandlerIds = [];
+        this.#styleManagerHandlerIds = [];
+        this.#getStyleManager = dependencies.getStyleManager ?? (() => Adw.StyleManager.get_default());
+        this.#getGtkSettings = dependencies.getGtkSettings ?? (() => Gtk.Settings.get_default());
+        this.#generalSettings = dependencies.generalSettings ?? new Gio.Settings({
             schemaId: `${import.meta.domain}.general`,
         });
-
-        this.#systemSettings = new Gio.Settings({
+        this.#systemSettings = dependencies.systemSettings ?? new Gio.Settings({
             schemaId: 'org.gnome.desktop.interface',
         });
-
-        this.#gsettings = createSettings(
-            this.#systemSettings,
-            new Schema({
-                id: 'org.gnome.desktop.interface',
-                path: '/org/gnome/desktop/interface/',
-            }).key(COLOR_SCHEME_KEY, 's', {default: 'prefer-light'})
-        );
     }
 }
 

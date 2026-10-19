@@ -3,10 +3,17 @@ import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
 import Weather from '@shade/services/location/weather';
 import {weatherSettings} from '@shade/services/location/weather.gschema';
+import {bind, computed} from 'gnim';
 
 export default () => {
     const settings = weatherSettings();
     const weather = Weather.get_default();
+    const locationBusy = bind(weather, 'locationBusy');
+    const locationError = bind(weather, 'locationError');
+    const updateBusy = bind(weather, 'updateBusy');
+    const updateError = bind(weather, 'updateError');
+    const locationStatus = computed(() => (locationBusy() ? 'Detecting location…' : ''));
+    const updateStatus = computed(() => (updateBusy() ? 'Updating weather…' : ''));
 
     return (
         <Adw.PreferencesGroup title={'Weather'} description={'Weather options'}>
@@ -30,24 +37,60 @@ export default () => {
             />
             <Adw.ActionRow
                 title={'Detect Location Now'}
+                subtitle={locationStatus}
                 activatable
-                onActivated={() => {
+                sensitive={computed(() => !locationBusy())}
+                onActivated={async () => {
                     logger.info('weather', 'manual location detection triggered');
-                    weather.detectLocation();
+                    try {
+                        const coordinates = await weather.detectLocation();
+                        if (!settings.autoLocation()) {
+                            settings.setLatitude(coordinates.latitude);
+                            settings.setLongitude(coordinates.longitude);
+                        }
+                    } catch (error) {
+                        logger.error('weather', 'manual location detection failed:', error);
+                    }
                 }}
             >
                 <Gtk.Image iconName="find-location-symbolic" pixelSize={16} />
             </Adw.ActionRow>
+            <Gtk.Label
+                label={locationError.as((error) => error ?? '')}
+                cssClasses={['error', 'caption']}
+                visible={locationError.as((error) => error !== null)}
+                xalign={0}
+                wrap
+                marginStart={12}
+                marginEnd={12}
+                marginBottom={12}
+            />
             <Adw.ActionRow
                 title={'Update Weather'}
+                subtitle={updateStatus}
                 activatable
-                onActivated={() => {
+                sensitive={computed(() => !updateBusy())}
+                onActivated={async () => {
                     logger.info('weather', 'manual weather update triggered');
-                    weather.updateFromCoords(settings.latitude(), settings.longitude());
+                    try {
+                        await weather.updateFromCoords(settings.latitude(), settings.longitude());
+                    } catch (error) {
+                        logger.error('weather', 'manual weather update failed:', error);
+                    }
                 }}
             >
                 <Gtk.Image iconName="view-refresh-symbolic" pixelSize={16} />
             </Adw.ActionRow>
+            <Gtk.Label
+                label={updateError.as((error) => error ?? '')}
+                cssClasses={['error', 'caption']}
+                visible={updateError.as((error) => error !== null)}
+                xalign={0}
+                wrap
+                marginStart={12}
+                marginEnd={12}
+                marginBottom={12}
+            />
         </Adw.PreferencesGroup>
     );
 };

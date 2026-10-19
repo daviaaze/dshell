@@ -17,4 +17,11 @@ registerStyleSheet(`
   background-color: alpha(@accent_bg_color, 0.85);
   border-radius: calc(var(--window-radius) * 1.5);
 }
+
+/* Keep vertical text controls inside the fixed 48px bar viewport. */
+button.bar-vertical-content-button,
+.bar-vertical-content-button > button {
+  padding-left: 0;
+  padding-right: 0;
+}
 `);

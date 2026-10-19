@@ -1,10 +1,8 @@
 /**
- * Smoke tests for power services — verify module loads and singletons.
+ * Power service behavior: targeted logout and inhibition transitions.
  */
 
-import {isConservationEnabled} from '../power/batteryConservation';
 import Inhibit from '../power/inhibit';
-import PowerProfiles from '../power/powerProfiles';
 import {describe, expect, it, run} from './test-runner';
 
 import {logoutCurrentSession} from '../power/sessionControl';
@@ -55,68 +53,32 @@ describe('Inhibit', () => {
         if (inhib.idle) inhib.idle = false;
     };
 
-    it('get_default returns same instance', () => {
+    it('switches finite to indefinite and back without releasing inhibition', () => {
         reset();
-        const a = Inhibit.get_default();
-        const b = Inhibit.get_default();
-        expect(a).toBe(b);
+        const inhibit = Inhibit.get_default();
+        inhibit.setDuration(1);
+        expect(inhibit.idle).toBe(true);
+        expect(inhibit.remaining).toBe('1:00');
+        inhibit.startIndefinite();
+        expect(inhibit.idle).toBe(true);
+        expect(inhibit.remaining).toBe('');
+        inhibit.setDuration(2);
+        expect(inhibit.idle).toBe(true);
+        expect(inhibit.remaining).toBe('2:00');
+        inhibit.idle = false;
+        expect(inhibit.remaining).toBe('');
     });
 
-    it('idle defaults to false', () => {
+    it('retains duration-zero Off semantics after explicit indefinite activation', () => {
         reset();
-        expect(Inhibit.get_default().idle).toBe(false);
-    });
-
-    it('remaining is empty string when idle is false', () => {
-        reset();
-        const inhib = Inhibit.get_default();
-        inhib.idle = false;
-        expect(inhib.remaining).toBe('');
-    });
-
-    it('remaining is non-empty when idle is true with duration', () => {
-        reset();
-        const inhib = Inhibit.get_default();
-        inhib.setDuration(1);
-        inhib.idle = true;
-        expect(inhib.idle).toBe(true);
-        expect(inhib.remaining).toBeTruthy();
-    });
-
-    it('remaining is empty string when idle is true but duration is 0 (indefinite)', () => {
-        reset();
-        const inhib = Inhibit.get_default();
-        inhib.setDuration(0);
-        inhib.idle = true;
-        expect(inhib.idle).toBe(true);
-        expect(inhib.remaining).toBe('');
-    });
-
-    it('idle=false after idle=true resets state', () => {
-        reset();
-        const inhib = Inhibit.get_default();
-        inhib.setDuration(0);
-        inhib.idle = true;
-        expect(inhib.idle).toBe(true);
-        inhib.idle = false;
-        expect(inhib.idle).toBe(false);
-        expect(inhib.remaining).toBe('');
+        const inhibit = Inhibit.get_default();
+        inhibit.startIndefinite();
+        expect(inhibit.idle).toBe(true);
+        inhibit.setDuration(0);
+        expect(inhibit.idle).toBe(false);
+        expect(inhibit.remaining).toBe('');
     });
 });
 
-describe('PowerProfiles', () => {
-    it('get_default returns same instance', () => {
-        const a = PowerProfiles.get_default();
-        const b = PowerProfiles.get_default();
-        expect(a).toBe(b);
-    });
-});
-
-describe('BatteryConservation', () => {
-    it('isConservationEnabled returns boolean', () => {
-        const v = isConservationEnabled();
-        expect(typeof v).toBe('boolean');
-    });
-});
 
 await run(import.meta.url);

@@ -1,42 +1,71 @@
-import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
-import {bind} from 'gnim';
+import {bind, effect} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
-import {QuickToggleButton} from '../../common/quickToggleButton';
+import {QuickControlButton} from '../../common/quickControlButton';
 import type {QuickButton} from './quickButton';
 
 const SET_SCHEME = 'display:colorscheme:set';
 
 export default (): QuickButton => {
     const colorScheme = ColorScheme.get_default();
+    const requestedScheme = bind(colorScheme, 'colorScheme');
+    const group = new Gtk.CheckButton();
+    const choices = [
+        {mode: DarkModes.AUTO, label: 'Automatic'},
+        {mode: DarkModes.LIGHT, label: 'Light Mode'},
+        {mode: DarkModes.DARK, label: 'Dark Mode'},
+    ].map(({mode, label}) => ({
+        mode,
+        button: new Gtk.CheckButton({group, label}),
+    }));
+    let syncing = false;
+    const syncChoices = () => {
+        syncing = true;
+        try {
+            for (const {mode, button} of choices) {
+                button.active = colorScheme.colorScheme === mode;
+            }
+        } finally {
+            syncing = false;
+        }
+    };
+    for (const {mode, button} of choices) {
+        button.connect('toggled', () => {
+            if (syncing || !button.active || colorScheme.colorScheme === mode) return;
+            try {
+                bus.emit(SET_SCHEME, mode);
+            } finally {
+                syncChoices();
+            }
+        });
+    }
+    effect(() => {
+        requestedScheme();
+        syncChoices();
+    });
 
     const popover = (
         <Gtk.Popover cssClasses={[]}>
             <LinkedBox>
-                <Gtk.Button onClicked={() => bus.emit(SET_SCHEME, DarkModes.AUTO)}>
-                    <Adw.ButtonContent iconName="night-light-symbolic" label="Automatic" />
-                </Gtk.Button>
-                <Gtk.Button onClicked={() => bus.emit(SET_SCHEME, DarkModes.LIGHT)}>
-                    <Adw.ButtonContent iconName="weather-clear-symbolic" label="Light Mode" />
-                </Gtk.Button>
-                <Gtk.Button onClicked={() => bus.emit(SET_SCHEME, DarkModes.DARK)}>
-                    <Adw.ButtonContent iconName="weather-clear-night-symbolic" label="Dark Mode" />
-                </Gtk.Button>
+                {choices.map(({button}) => button)}
             </LinkedBox>
         </Gtk.Popover>
     );
 
     return {
         widget: (
-            <QuickToggleButton
+            <QuickControlButton
+                intent="action"
+                domain="Theme"
                 icon={bind(colorScheme, 'iconName')}
-                label={bind(colorScheme, 'colorScheme').as((c) => {
+                value={requestedScheme.as((c) => {
                     if (c === DarkModes.AUTO) return 'Auto';
                     if (c === DarkModes.LIGHT) return 'Light Mode';
                     return 'Dark Mode';
                 })}
+                actionLabel="Cycle theme"
                 onClick={() => {
                     if (colorScheme.colorScheme === DarkModes.LIGHT) {
                         bus.emit(SET_SCHEME, DarkModes.DARK);
@@ -48,7 +77,7 @@ export default (): QuickButton => {
                         bus.emit(SET_SCHEME, DarkModes.LIGHT);
                     }
                 }}
-                popover={popover}
+                menu={{label: 'Theme options', popover}}
             />
         ),
     };

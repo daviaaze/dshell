@@ -1,72 +1,68 @@
-# Spec: LockScreen
+# Spec: Lock screen
 
-> Full-screen session lock with PAM and fingerprint authentication, clock, and media controls.
+> Compositor-owned session lock with PAM password authentication and optional fingerprint verification. A visible password window or `ShellState.screenlocked` alone is not proof that the session is locked.
 
-## Overview
+## Implementation
 
-- **Source**: `src/widget/lockscreen/` (entry: `index.tsx`, `notifications.tsx`, `widgets.tsx`)
-- **Dependencies**: `AstalAuth`, `SessionLock` (`Gtk4SessionLock`), `FingerprintAuth`, `ShellState`, `Brightness`
-- **Type**: One `Astal.Window` per monitor, all edges anchored, `EXCLUSIVE` keymode; created dynamically when `ShellState.screenlocked` becomes true
+- **Window lifecycle**: [`packages/widgets/src/lockscreen/index.tsx`](../../packages/widgets/src/lockscreen/index.tsx).
+- **Password entry**: [`authPanel.tsx`](../../packages/widgets/src/lockscreen/authPanel.tsx).
+- **Compositor protocol**: [`SessionLockService`](../../packages/services/src/session/sessionLockService.ts), backed by `Gtk4SessionLock`.
+- **Authentication**: [`AuthSession`](../../packages/services/src/session/authSession.ts), [`PAM worker`](../../apps/shell/src/authWorker.ts), and [`FingerprintAuth`](../../packages/services/src/input/fingerprint.ts).
+- **Restart recovery**: [`ShellState`](../../packages/services/src/state/shellState.ts) and the [Hyprland defaults](../../nix/hyprland/default.nix).
 
-## Functional
+Each native session-lock `monitor` event creates an unrealized `Gtk.Window`. The native library assigns and maps that window after the protocol lock request. These are not ordinary Astal layer-shell overlays. Authentication starts only after the compositor confirms `locked`.
 
-### States
+## Authentication
 
-| # | State | Trigger | Expected behavior |
-|---|-------|---------|-------------------|
-| F1 | Locked | `ShellState.screenlocked` = true | `createRoot` creates lockscreens for all monitors; `SessionLock.Instance` locks the session; brightness saved and might be dimmed |
-| F2 | Unlocked | PAM or fingerprint success | Session unlocks, all lock windows destroyed, `ShellState.screenlocked` = false, brightness restored |
-| F3 | Idle | No input | Time spinner updates every second; date shown; password entry focused |
-| F4 | Authenticating | User enters password and presses Enter | `Pam.start_authenticate` called; status shows "Authenticating..."; 10s timeout |
-| F5 | Authentication failed | PAM returns fail/error | Status shows error message; password entry cleared |
-| F6 | Authentication timeout | No PAM response within PAM_TIMEOUT_MS (10s) | Status shows "Authentication timed out"; pamActive reset |
-| F7 | Fingerprint available | Fingerprint device detected and ready | Fingerprint sensor initialized in parallel; `verified` signal triggers unlock |
-| F8 | Fingerprint scanning | `fingerprint.start()` called | Spinner shown while state is "verifying" or "initializing" |
+| State | Expected behavior |
+|---|---|
+| Password submitted before lock confirmation or while another attempt is pending | Not accepted; entered text is retained |
+| Accepted password submission | Entry is cleared; one isolated PAM worker receives the password through stdin |
+| Invalid password or helper failure | Session remains locked; a fresh password attempt is possible |
+| PAM attempt takes longer than 10 seconds | Worker is terminated and its attempt generation retired; timeout is shown and retry is possible |
+| Retired worker completes late | Its result cannot authenticate the current session |
+| Valid password or active fingerprint verification succeeds | Authentication is cancelled/cleaned up, GTK lock surfaces are disposed while their native session exists, then the compositor lock is released |
+| Fingerprint service unavailable or cleanup fails | Password authentication remains independent and available |
+| Lock UI is disposed during shutdown | Active authentication is cancelled, but no compositor unlock is requested |
+| Shell-owned normal GTK windows are open when locking | Launcher/Quick Settings/switcher close; normal GTK toplevels are suspended so they cannot retain same-process keyboard ownership. Surviving windows return only after authenticated unlock |
 
-### Interactions
+The packaged worker path is fixed to the shell's installation directory. Passwords are not passed through argv or logged; only a successful worker exit with the exact success result is accepted. `scripts/dev.sh` builds a temporary worker for development.
 
-| # | Action | Expected behavior |
-|---|--------|-------------------|
-| I1 | Enter password + press Enter | PAM authentication started |
-| I2 | Password peek icon | Shows/hides password text (`showPeekIcon`) |
-| I3 | Fingerprint scan | Automatic — no user action beyond touching sensor |
-| I4 | Retry on fingerprint error | Click the error/retry button → `fingerprint.retry()` |
+Fingerprint D-Bus calls are asynchronous and bounded. Claim/start calls use a two-second limit; stop/release cleanup uses a one-second limit per call. Device operations are serialized, including across singleton replacement. A retired verification handler is disconnected immediately, and rearming requires acknowledged `VerifyStop` and `Release` before a fresh claim. A timeout or other uncertain cleanup failure does not count as successful teardown.
 
-### Edge cases
+Authentication does not succeed merely because a backend failed. Password success still requires PAM authentication; fingerprint uses the separate fprintd verification path. Bounded retries and password fallback are not a claim that hardware, PAM, or the operating system cannot fail.
 
-| # | Condition | Expected behavior |
-|---|-----------|-------------------|
-| E1 | No PAM module configured | PAM `auth-error` signal fires with "Service not configured" — shown as error |
-| E2 | SessionLock unavailable (Wayland compositor doesn't support ext-session-lock) | `SessionLock.Instance.new()` fails — widget still shown but can't actually lock screen |
-| E3 | Monitor hotplug while locked | Existing lockscreens remain; new lockscreen for added monitor not created (static `For each={monitors}` captured at lock time) |
-| E4 | Fingerprint unavailable / no device | `FingerprintAuth` init resolves; `available` = false; spinner and retry never shown |
-| E5 | Brightness save/restore fails | Brightness saved/restored in try-catch; logged as warning; no visible user impact |
+## Restart and monitor behavior
 
-## Visual (Adwaita alignment)
+| Event | Expected behavior |
+|---|---|
+| Shell starts while Hyprland reports `locked` | Lock UI is created immediately, without waiting for another lock command |
+| Hyprland IPC adapter or lock-state reply is unavailable | Startup fails closed and requires authentication |
+| Shell is stopped or killed while locked | The compositor retains the lock; its emergency lock screen may be visible until the replacement locker maps |
+| Replacement shell starts | It reacquires the lock and provides a fresh authentication session |
+| Compositor ends the native lock | Pending authentication and lock UI are disposed, and shell state is synchronized |
+| Monitor is added or removed while locked | Native monitor events add lock surfaces; removal does not cancel authentication on remaining outputs |
 
-### Theme tokens
+Hyprland requires `misc.allow_session_lock_restore = true` to permit a replacement locker to acquire a retained lock. Shade's NixOS Hyprland defaults enable this. Custom compositor configurations must preserve that setting for restart recovery; restarting the shell is not an unlock mechanism.
 
-| Element | Token / style class | Notes |
-|---------|--------------------|-------|
-| Window background | No explicit CSS | Uses Gtk theme defaults |
-| Clock | `title-1` `numeric` | Regular font size for date |
-| Time | `title-1` `numeric` with inline `font-size: 4em` | **Violation** — font-size hardcoded in inline css |
-| Avatar | `Adw.Avatar` | Standard Adw component |
-| Login card | `card` | Adw class; inline `padding:8px` |
-| Password entry | `Gtk.PasswordEntry` with `showPeekIcon` | Standard GTK |
-| Status message | `caption` | Adw style class |
-| Spinner | `Gtk.Spinner` | Standard GTK |
+## Presentation
 
-### Adwaita checklist
+The lock surface uses the native theme background and the existing `card`, `title-1`, `title-3`, `numeric`, and `caption` styles. The password field has an explicit accessible name and receives focus after mapping. Peek, clock, media, and notification controls retain their existing behavior. Notification content follows the separate lock-screen privacy preference.
 
-- [x] Uses `card` class for auth form
-- [x] Uses `title-1`, `numeric`, `title-3`, `caption` label classes
-- [ ] `font-size: 4em` should use theme typography
-- [x] Avatar shows user initials
-- [x] Verified in light and dark
+Settings cannot be presented while the shell is locked. Window suspension is a
+focus-ownership operation, not an unlock or disposal path: stopping the shell
+discards the suspended-window list without presenting it. This covers the
+reproduced case where an open PreferencesWindow prevented password keystrokes
+from reaching a lock entry that nevertheless reported focused.
 
-## Test plan
+## Verification
 
-- **Unit**: extract and test PAM authentication state machine, fingerprint lifecycle, brightness save/restore logic
-- **Compliance linter**: inline css with font-size; polling timer (1s clock); console in widgets.tsx
-- **Visual/manual**: screenshots locked/unlocked/failed/timeout states; test fingerprint retry flow
+The isolated VM exercised real PAM rejection followed by a correct password, a deliberately blocked 30-second PAM operation followed by the 10-second client timeout and a successful fresh password attempt, and a later lock held through the retired operation's completion window. It also exercised compositor lock retention across shell stop/start and `SIGKILL`, password recovery after each restart, a 65-second display-off interval, compositor-native headless monitor add/remove, and recovery with unavailable Hyprland IPC. Checks use `hyprctl -j locked`, not only screenshots or a shell boolean.
+
+Regression modules:
+
+- `packages/services/src/__tests__/authSession.test.ts`: activation, timeout/retry, stale results, disposal, and password fallback without fingerprint.
+- `packages/services/src/__tests__/fingerprint.test.ts`: queued teardown/rearm, pending claims, early terminal status, retired handlers, cleanup failure, and disposal/replacement.
+- `packages/services/src/__tests__/sessionLockService.test.ts`: no false lock confirmation, no pending-acquisition unlock, and rejected acquisition retry.
+
+The disposable VM's private fprintd fixture exercised device discovery, claim, an active swipe warning, no-match, acknowledged stop/release, re-claim, and a mock match. The compositor reported a real lock before verification and a real unlock after the match, and the normal shell was restored afterward. This proves protocol/client behavior only; it is not evidence of a physical reader, enrollment, or biometric authentication. Shortened idle checks do not establish overnight reliability.

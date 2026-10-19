@@ -32,40 +32,27 @@ function BarGroup({bar}: {bar: Bar}) {
                     slot="suffix"
                     cssClasses={['round']}
                     valign={Gtk.Align.CENTER}
-                    onNotifyActiveName={(self) =>
-                        bar.setPosition(Number(self.activeName) as Astal.WindowAnchor)
-                    }
                     ref={(self) => {
-                        const v = bar.position.peek();
-                        self.activeName = String(v ?? '');
-                        onCleanup(
-                            bar.position.subscribe(() => {
-                                self.activeName = String(bar.position());
-                            })
-                        );
+                        self.add(new Adw.Toggle({name: TOP.toString(), label: 'Top', iconName: 'orientation-landscape-symbolic'}));
+                        self.add(new Adw.Toggle({name: LEFT.toString(), label: 'Left', iconName: 'orientation-portrait-inverse-symbolic'}));
+                        self.add(new Adw.Toggle({name: RIGHT.toString(), label: 'Right', iconName: 'orientation-portrait-right-symbolic'}));
+                        self.add(new Adw.Toggle({name: BOTTOM.toString(), label: 'Bottom', iconName: 'orientation-landscape-inverse-symbolic'}));
+                        self.activeName = String(bar.position.peek());
+                        const changed = self.connect('notify::active-name', () => {
+                            if (self.activeName === null) return;
+                            const position = Number(self.activeName) as Astal.WindowAnchor;
+                            if (position !== bar.position.peek()) bar.setPosition(position);
+                        });
+                        const unsubscribe = bar.position.subscribe(() => {
+                            self.activeName = String(bar.position());
+                        });
+                        onCleanup(() => {
+                            unsubscribe();
+                            self.disconnect(changed);
+                            self.remove_all();
+                        });
                     }}
-                >
-                    <Adw.Toggle
-                        name={TOP.toString()}
-                        label={'Top'}
-                        iconName={'orientation-landscape-symbolic'}
-                    />
-                    <Adw.Toggle
-                        name={LEFT.toString()}
-                        label={'Left'}
-                        iconName={'orientation-portrait-inverse-symbolic'}
-                    />
-                    <Adw.Toggle
-                        name={RIGHT.toString()}
-                        label={'Right'}
-                        iconName={'orientation-portrait-right-symbolic'}
-                    />
-                    <Adw.Toggle
-                        name={BOTTOM.toString()}
-                        label={'Bottom'}
-                        iconName={'orientation-landscape-inverse-symbolic'}
-                    />
-                </Adw.ToggleGroup>
+                />
             </Adw.ActionRow>
 
             <Adw.SwitchRow

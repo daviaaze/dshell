@@ -8,7 +8,7 @@ import {getExpireMs} from '@shade/services/notifications/expire';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
-import {bind, createState, effect, For, onCleanup} from 'gnim';
+import {bind, computed, createState, effect, For, onCleanup} from 'gnim';
 import Notification from '../common/notification';
 import PopupWindow from '../common/PopupWindow';
 
@@ -39,6 +39,7 @@ const NotificationContent = ({
     const timers = new DismissTimers(removeNotif);
 
     const addNotification = (id: number) => {
+        timers.cancel(id);
         const n = notifd.get_notification(id);
         if (!n) return;
         setNotifications((prev) => {
@@ -46,12 +47,24 @@ const NotificationContent = ({
             const filtered = prev.filter((x) => x.id !== id);
             const next = filtered.concat(n);
             // Keep only the newest POPUP_CAP visible as toasts.
+            for (const evicted of next.slice(0, -POPUP_CAP)) {
+                timers.cancel(evicted.id);
+            }
             return next.slice(-POPUP_CAP);
         });
         // Critical notifications never auto-dismiss.
         if (n.urgency !== Notifd.Urgency.CRITICAL) {
             timers.schedule(id, getExpireMs(n, notifd));
         }
+    };
+
+    const resumeDismiss = (id: number) => {
+        const current = notifications().find((n) => n.id === id);
+        if (!current || current.urgency === Notifd.Urgency.CRITICAL) {
+            timers.cancel(id);
+            return;
+        }
+        timers.resume(id, getExpireMs(current, notifd));
     };
 
     const invokeDefault = (n: Notifd.Notification) => () => {
@@ -66,6 +79,7 @@ const NotificationContent = ({
             ref={(_self) => {
                 const node = {};
                 connectFor(node, notifd, 'notified', (_, id) => addNotification(id as number));
+                connectFor(node, notifd, 'resolved', (_, id) => removeNotif(id as number));
                 onCleanup(() => {
                     cleanupNode(node);
                     timers.clear();
@@ -79,9 +93,10 @@ const NotificationContent = ({
                         variant="popup"
                         closeAction={(_notif, _card) => removeNotif(n.id)}
                         pauseDismiss={() => timers.pause(n.id)}
-                        resumeDismiss={() => timers.resume(n.id, getExpireMs(n, notifd))}
+                        resumeDismiss={() => resumeDismiss(n.id)}
                         showProgress={showProgress}
                         onDefaultAction={invokeDefault(n)}
+                        onActionInvoked={() => removeNotif(n.id)}
                     />
                 )}
             </For>
@@ -101,9 +116,13 @@ export default () => {
         <PopupWindow
             name="notifications"
             margin={12}
-            visible={
-                notifd() !== null && notificationCount() > 0 && !dontDisturb() && !screenlocked()
-            }
+            visible={computed(
+                () =>
+                    notifd() !== null &&
+                    notificationCount() > 0 &&
+                    !dontDisturb() &&
+                    !screenlocked()
+            )}
             ref={(self) => WindowManager.get_default().setNotifications(self)}
         >
             {/* Singleton-array For defers child evaluation until notifd is non-null. */}

@@ -10,69 +10,68 @@ const LOG_TAG = 'settings-bluetooth';
 type ScanTimeout = GLib.Source;
 
 /** Toggle device connection, tracking in-flight address. */
-function toggleDevice(
+async function toggleDevice(
+    service: BluetoothService,
     device: Bluetooth.Device,
-    setConnectingAddress: (addr: string | null) => void
+    setConnectingAddress: (addr: string | null) => void,
+    setOperationError: (error: string | null) => void
 ) {
-    if (device.connected) {
-        device.disconnect_device((_, res) => {
-            try {
-                device.disconnect_device_finish(res);
-            } catch (e) {
-                logger.error(LOG_TAG, 'Disconnect failed:', e);
-            }
-            setConnectingAddress(null);
-        });
-    } else {
-        device.connect_device((_, res) => {
-            try {
-                device.connect_device_finish(res);
-            } catch (e) {
-                logger.error(LOG_TAG, 'Connect failed:', e);
-            }
-            setConnectingAddress(null);
-        });
-    }
     setConnectingAddress(device.address);
+    setOperationError(null);
+    try {
+        if (device.connected) await service.disconnectDevice(device);
+        else await service.connectDevice(device);
+    } catch (error) {
+        logger.error(LOG_TAG, 'Device connection change failed:', error);
+        setOperationError(String(error));
+    } finally {
+        setConnectingAddress(null);
+    }
 }
 
 /** Row for a paired device: icon, name, status, connect/disconnect, forget. */
 function PairedDeviceRow({
     device,
+    service,
     connectingAddress,
     setConnectingAddress,
 }: {
     device: Bluetooth.Device;
+    service: BluetoothService;
     connectingAddress: ReturnType<typeof createState<string | null>>[0];
     setConnectingAddress: (addr: string | null) => void;
 }) {
     const [showConfirmForget, setShowConfirmForget] = createState(false);
+    const [operationError, setOperationError] = createState<string | null>(null);
     const deviceConnecting = connectingAddress.as(
         (addr) => addr !== null && addr === device.address
     );
+    const connected = bind(device, 'connected');
 
     const statusText = computed(() => {
         if (deviceConnecting()) return 'Connecting...';
-        if (device.connected) return 'Connected';
+        if (connected()) return 'Connected';
         return 'Paired';
     });
 
     const handleForget = () => {
+        setOperationError(null);
         const bt = Bluetooth.get_default();
         const adapter = bt.adapter;
         if (!adapter) {
+            const error = 'Bluetooth adapter is unavailable';
             logger.error(LOG_TAG, 'Cannot forget a device without a Bluetooth adapter');
-            setShowConfirmForget(false);
+            setOperationError(error);
             return;
         }
         try {
             adapter.remove_device(device);
-        } catch (e) {
-            logger.error(LOG_TAG, 'Forget failed:', e);
+            setShowConfirmForget(false);
+        } catch (error) {
+            logger.error(LOG_TAG, 'Forget failed:', error);
+            setOperationError(String(error));
         }
-        setShowConfirmForget(false);
     };
-
     return (
         <Adw.ActionRow
             title={device.name || device.address}
@@ -82,7 +81,10 @@ function PairedDeviceRow({
                 iconName={'bluetooth-symbolic'}
                 pixelSize={24}
             />
-            {showConfirmForget() ? (
+            {operationError.as((message) => message ? (
+                <Gtk.Label label={message} cssClasses={['error', 'caption']} wrap />
+            ) : null)}
+            {showConfirmForget.as((show) => show ? (
                 <Gtk.Box spacing={6}>
                     <Gtk.Button
                         label={'Cancel'}
@@ -97,18 +99,23 @@ function PairedDeviceRow({
             ) : (
                 <Gtk.Box spacing={6}>
                     <Gtk.Button
-                        label={device.connected ? 'Disconnect' : 'Connect'}
-                        sensitive={!deviceConnecting()}
-                        onClicked={() => toggleDevice(device, setConnectingAddress)}
+                        label={connected.as((value) => value ? 'Disconnect' : 'Connect')}
+                        sensitive={deviceConnecting.as((value) => !value)}
+                        onClicked={() =>
+                            toggleDevice(service, device, setConnectingAddress, setOperationError)
+                        }
                     />
                     <Gtk.Button
                         label={'Forget'}
                         cssClasses={['destructive-action']}
-                        onClicked={() => setShowConfirmForget(true)}
+                        onClicked={() => {
+                            setOperationError(null);
+                            setShowConfirmForget(true);
+                        }}
                     />
                 </Gtk.Box>
-            )}
-            {deviceConnecting() && <Gtk.Spinner spinning={true} />}
+            ))}
+            <Gtk.Spinner visible={deviceConnecting} spinning={deviceConnecting} />
         </Adw.ActionRow>
     );
 }
@@ -116,48 +123,41 @@ function PairedDeviceRow({
 /** Row for an available (unpaired) device: icon, name, pair button. */
 function AvailableDeviceRow({
     device,
+    service,
     pairingAddress,
     setPairingAddress,
 }: {
     device: Bluetooth.Device;
+    service: BluetoothService;
     pairingAddress: ReturnType<typeof createState<string | null>>[0];
     setPairingAddress: (addr: string | null) => void;
 }) {
+    const [operationError, setOperationError] = createState<string | null>(null);
     const devicePairing = pairingAddress.as(
         (addr) => addr !== null && addr === device.address
     );
 
-    const handlePair = () => {
+    const handlePair = async () => {
         setPairingAddress(device.address);
-        device.connect_device((_, res) => {
-            try {
-                device.connect_device_finish(res);
-            } catch (e) {
-                logger.error(LOG_TAG, 'Pair failed:', e);
-            }
+        setOperationError(null);
+        try {
+            await service.connectDevice(device);
+        } catch (error) {
+            logger.error(LOG_TAG, 'Pair failed:', error);
+            setOperationError(String(error));
+        } finally {
             setPairingAddress(null);
-        });
+        }
     };
 
     return (
-        <Adw.ActionRow
-            title={device.name || device.address}
-            subtitle={'Available'}
-        >
-            <Gtk.Image
-                iconName={'bluetooth-symbolic'}
-                pixelSize={24}
-            />
-            <Gtk.Button
-                label={'Pair'}
-                sensitive={!devicePairing()}
-                onClicked={handlePair}
-            />
-            {devicePairing() && <Gtk.Spinner spinning={true} />}
+        <Adw.ActionRow title={device.name || device.address} subtitle={operationError.as((error) => error ?? 'Available')}>
+            <Gtk.Image iconName={'bluetooth-symbolic'} pixelSize={24} />
+            <Gtk.Button label={'Pair'} sensitive={devicePairing.as((value) => !value)} onClicked={handlePair} />
+            <Gtk.Spinner visible={devicePairing} spinning={devicePairing} />
         </Adw.ActionRow>
     );
 }
-
 export default () => {
     const service = BluetoothService.get_default();
     const bt = Bluetooth.get_default();
@@ -167,6 +167,8 @@ export default () => {
     const [isPowered, setIsPowered] = createState(bt.adapter?.powered ?? false);
     const [scanning, setScanning] = createState(bt.adapter?.discovering ?? false);
     const [scanTimeoutId, setScanTimeoutId] = createState<ScanTimeout | null>(null);
+    const [operationError, setOperationError] = createState<string | null>(null);
+    const [scanBusy, setScanBusy] = createState(false);
     let currentAdapter: Bluetooth.Adapter | null = null;
     let adapterPoweredSignalId = 0;
     let adapterDiscoveringSignalId = 0;
@@ -219,49 +221,57 @@ export default () => {
     const adapterAddedSignalId = bt.connect('adapter-added', updateAdapter);
     const adapterRemovedSignalId = bt.connect('adapter-removed', updateAdapter);
     updateAdapter();
-
+    let restoringPower = false;
     const handleTogglePower = (self: Adw.SwitchRow) => {
         const current = currentAdapter;
-        if (!current) return;
+        if (restoringPower || (current && self.active === current.powered)) return;
+        setOperationError(null);
         try {
+            if (!current) throw new Error('Bluetooth adapter is unavailable');
             current.powered = self.active;
-        } catch (e) {
-            logger.error(LOG_TAG, 'Toggle power failed:', e);
+        } catch (error) {
+            logger.error(LOG_TAG, 'Toggle power failed:', error);
+            setOperationError(String(error));
+        } finally {
+            restoringPower = true;
+            self.active = current?.powered ?? false;
+            setIsPowered(self.active);
+            restoringPower = false;
         }
     };
-
     const handleScan = () => {
         const current = currentAdapter;
         if (!current || !current.powered) return;
-
-        if (current.discovering) {
-            try {
+        setScanBusy(true);
+        setOperationError(null);
+        try {
+            if (current.discovering) {
                 current.stop_discovery();
                 setScanning(current.discovering);
                 clearScanTimeout();
-            } catch (e) {
-                logger.error(LOG_TAG, 'Stop discovery failed:', e);
+                return;
             }
-            return;
-        }
-
-        try {
             current.start_discovery();
             setScanning(current.discovering);
             const id = setTimeout(() => {
                 if (currentAdapter === current && current.discovering) {
                     try {
                         current.stop_discovery();
-                    } catch (e) {
-                        logger.error(LOG_TAG, 'Auto-stop discovery failed:', e);
+                    } catch (error) {
+                        logger.error(LOG_TAG, 'Auto-stop discovery failed:', error);
+                        setOperationError(String(error));
                     }
                     setScanning(current.discovering);
                 }
                 setScanTimeoutId(null);
             }, 30000);
             setScanTimeoutId(id);
-        } catch (e) {
-            logger.error(LOG_TAG, 'Start discovery failed:', e);
+        } catch (error) {
+            logger.error(LOG_TAG, 'Bluetooth scan failed:', error);
+            setScanning(current.discovering);
+            setOperationError(String(error));
+        } finally {
+            setScanBusy(false);
         }
     };
 
@@ -283,15 +293,12 @@ export default () => {
     });
 
     return (
-        <Adw.PreferencesPage
-            title={'Bluetooth'}
-            iconName={'bluetooth-symbolic'}
-        >
+        <>
             <Adw.PreferencesGroup
-                title={adapter() ? 'Bluetooth' : 'Bluetooth unavailable'}
-                description={adapter() ? 'Enable Bluetooth and manage devices' : 'No Bluetooth adapter is available'}
+                title={adapter.as((value) => value ? 'Bluetooth' : 'Bluetooth unavailable')}
+                description={adapter.as((value) => value ? 'Enable Bluetooth and manage devices' : 'No Bluetooth adapter is available')}
             >
-                {adapter() ? (
+                {adapter.as((value) => value ? (
                     <Adw.SwitchRow
                         title={'Bluetooth'}
                         subtitle={'Enable Bluetooth adapter'}
@@ -303,10 +310,13 @@ export default () => {
                         title={'No Bluetooth adapter'}
                         subtitle={'Connect or enable a Bluetooth adapter to manage devices'}
                     />
-                )}
+                ))}
+            {operationError.as((message) => message ? (
+                <Gtk.Label label={message} cssClasses={['error', 'caption']} wrap />
+            ) : null)}
             </Adw.PreferencesGroup>
 
-            {adapter() && (
+            {adapter.as((value) => value ? (
                 <>
                     <Adw.PreferencesGroup
                         title={'Paired Devices'}
@@ -318,51 +328,53 @@ export default () => {
                                 <PairedDeviceRow
                                     device={device}
                                     connectingAddress={connectingAddress}
+                                    service={service}
                                     setConnectingAddress={setConnectingAddress}
                                 />
                             )}
                         </For>
-                        {pairedDevices().length === 0 && (
+                        {pairedDevices.as((devices) => devices.length === 0 ? (
                             <Adw.ActionRow
                                 title={'No paired devices'}
                                 subtitle={'Scan to find and pair new devices'}
                             />
-                        )}
+                        ) : null)}
                     </Adw.PreferencesGroup>
 
                     <Adw.PreferencesGroup
                         title={'Available Devices'}
-                        description={scanning() ? 'Scanning for devices...' : 'Start scan to discover devices'}
+                        description={scanning.as((value) => value ? 'Scanning for devices...' : 'Start scan to discover devices')}
                         sensitive={isPowered}
                     >
                         <Gtk.Box halign={Gtk.Align.CENTER}>
                             <Gtk.Button
-                                label={scanning() ? 'Stop Scan' : 'Scan for Devices'}
-                                cssClasses={scanning() ? ['destructive-action'] : ['suggested-action']}
-                                sensitive={isPowered}
+                                label={scanning.as((value) => value ? 'Stop Scan' : 'Scan for Devices')}
+                                cssClasses={scanning.as((value) => value ? ['destructive-action'] : ['suggested-action'])}
+                                sensitive={isPowered.as((powered) => powered && !scanBusy())}
                                 onClicked={handleScan}
                             />
                         </Gtk.Box>
-                        {scanning() && <Gtk.Spinner spinning={true} />}
+                        <Gtk.Spinner visible={scanning} spinning={scanning} />
                         <For each={availableDevices}>
                             {(device) => (
                                 <AvailableDeviceRow
                                     device={device}
+                                    service={service}
                                     pairingAddress={pairingAddress}
                                     setPairingAddress={setPairingAddress}
                                 />
                             )}
                         </For>
-                        {!scanning() && availableDevices().length === 0 && (
+                        {computed(() => !scanning() && availableDevices().length === 0 ? (
                             <Adw.ActionRow
                                 title={'No devices found'}
                                 subtitle={'Click "Scan for Devices" to discover nearby devices'}
                             />
-                        )}
+                        ) : null)}
                     </Adw.PreferencesGroup>
                 </>
-            )}
-        </Adw.PreferencesPage>
+            ) : null)}
+        </>
     );
 };
 

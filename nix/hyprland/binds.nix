@@ -44,11 +44,6 @@ let
     "SUPER,V,exec,pkill pwvucontrol || pwvucontrol"
     "SUPER,E,exec,${uwsm-app cfg.defaultFileManager}"
     "SUPER,C,exec,${uwsm-app "code"}"
-    "SUPER,M,exec,shade-shell display-next"
-    "SUPERALT,M,exec,shade-shell display-mode-chooser"
-    "SUPERSHIFT,M,exec,shade-shell display-toggle-internal"
-    ",XF86Display,exec,shade-shell display-mode-chooser"
-    "SUPERSHIFT,V,exec,${shade-action "toggle-clipboard"}"
 
     # Was SUPERSHIFT,R, but that conflicts with screenshot record (same
     # mod+key tuple — Hyprland's silent last-wins would hide reload).
@@ -69,16 +64,6 @@ let
     "SUPER,Insert,movetoworkspace,special:scratchpad"
     "SUPER,Pause,movetoworkspace,special:scratchpad"
     "SUPER,S,layoutmsg,togglesplit"
-    "SUPER,Space,exec,${shade-action "toggle-applauncher"}"
-    "SUPER,n,exec,${shade-action "toggle-quicksettings"}"
-    "SUPER,w,exec,${shade-action "toggle-bar"}"
-    "SUPER,TAB,exec,${shade-action "toggle-windowswitcher"}"
-    "SUPER,comma,exec,${shade-action "toggle-settings"}"
-
-    ",Print,exec,${shade-action "screenshot-overlay"}"
-    "SUPERSHIFT,S,exec,${shade-action "screenshot"}"
-    "SUPERSHIFT,R,exec,${shade-action "record"}"
-    "SUPERSHIFT,P,exec,${shade-action "record-area"}"
 
     "SUPER,left,movefocus,l"
     "SUPER,right,movefocus,r"
@@ -111,6 +96,23 @@ let
     "SUPERSHIFTALT,k,movetoworkspace,emptynm"
     "SUPERALT,j,workspace,r-1"
     "SUPERALT,l,workspace,r+1"
+  ];
+
+  _bindd = [
+    "SUPER,M,shade-action:display-next,exec,shade-shell display-next"
+    "SUPERALT,M,shade-action:display-mode-chooser,exec,shade-shell display-mode-chooser"
+    "SUPERSHIFT,M,shade-action:display-toggle-internal,exec,shade-shell display-toggle-internal"
+    ",XF86Display,shade-action:display-mode-chooser,exec,shade-shell display-mode-chooser"
+    "SUPERSHIFT,V,shade-action:toggle-clipboard,exec,${shade-action "toggle-clipboard"}"
+    "SUPER,Space,shade-action:toggle-applauncher,exec,${shade-action "toggle-applauncher"}"
+    "SUPER,n,shade-action:toggle-quicksettings,exec,${shade-action "toggle-quicksettings"}"
+    "SUPER,w,shade-action:toggle-bar,exec,${shade-action "toggle-bar"}"
+    "SUPER,TAB,shade-action:toggle-windowswitcher,exec,${shade-action "toggle-windowswitcher"}"
+    "SUPER,comma,shade-action:toggle-settings,exec,${shade-action "toggle-settings"}"
+    ",Print,shade-action:screenshot-overlay,exec,${shade-action "screenshot-overlay"}"
+    "SUPERSHIFT,S,shade-action:screenshot,exec,${shade-action "screenshot"}"
+    "SUPERSHIFT,R,shade-action:record,exec,${shade-action "record"}"
+    "SUPERSHIFT,P,shade-action:record-area,exec,${shade-action "record-area"}"
   ];
 
   # --locked: Hyprland 0.56.2 moved locked binds from `bind` to `bindl`/`bindle`.
@@ -160,36 +162,31 @@ let
   # runtime; Hyprland silently takes the last entry. Catch duplicates at
   # build time so we never ship a dead key.
   #
-  # Bind line format: "[--locked],<mods>,<key>,<dispatcher>,<arg>". The key
-  # is always the second comma-separated field (or third if --locked).
+  # Bind/bindd lines share the first two fields (mods,key); bindd inserts a
+  # description before dispatcher/arg. The legacy --locked prefix is normalized
+  # by removing it before reading those fields.
   # ---------------------------------------------------------------------------
 
   # Split a bind string into its comma-separated fields.
   _splitBind = s: lib.splitString "," s;
 
-  # Extract the "key" field from a bind string. The key is the field right
-  # before the dispatcher, which is always the second field (or third if
-  # --locked is present).
+  # Extract the key and modifiers from their fixed leading fields; later
+  # dispatcher, description, and command fields may themselves contain commas.
   _keyOf =
     bindStr:
     let
       parts = _splitBind bindStr;
+      cleaned = if builtins.head parts == "--locked" then builtins.tail parts else parts;
     in
-    if builtins.head parts == "--locked" then builtins.elemAt parts 2 else builtins.elemAt parts 1;
+    builtins.elemAt cleaned 1;
 
-  # Extract the "modifiers" portion (everything before the key). Used to
-  # disambiguate e.g. "SUPER,comma" vs ",comma" (the latter being
-  # unmodded).
   _modsOf =
     bindStr:
     let
       parts = _splitBind bindStr;
-      # Drop --locked if present, then drop the last two fields
-      # (dispatcher + arg) to leave just the modifiers.
       cleaned = if builtins.head parts == "--locked" then builtins.tail parts else parts;
-      modCount = builtins.length cleaned - 2;
     in
-    lib.take modCount cleaned;
+    [ (builtins.head cleaned) ];
 
   # A "mods+key" tuple uniquely identifies a Hyprland binding. Two entries
   # with the same tuple are a conflict.
@@ -198,7 +195,7 @@ let
     key = _keyOf bindStr;
   };
 
-  _allBindLines = _bind ++ _bindl ++ _bindle ++ _bindm ++ _binde;
+  _allBindLines = _bind ++ _bindd ++ _bindl ++ _bindle ++ _bindm ++ _binde;
 
   # Find duplicate (mods,key) tuples.
   _keyDuplicates =
@@ -221,6 +218,7 @@ in
 {
   programs.hyprland.settings = {
     bind = _bind;
+    bindd = _bindd;
     bindl = _bindl;
     bindle = _bindle;
     bindm = _bindm;

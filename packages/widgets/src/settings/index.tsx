@@ -28,6 +28,7 @@ export const createSettingsWindow = (): Adw.PreferencesWindow => {
         <Adw.PreferencesWindow
             ref={(self) => WindowManager.get_default().setSettings(self)}
             hideOnClose={false}
+            modal={false}
             application={getApp()}
             name={'settings'}
             cssClasses={['background']}
@@ -35,87 +36,59 @@ export const createSettingsWindow = (): Adw.PreferencesWindow => {
             searchEnabled={true}
         >
             <Adw.PreferencesPage
-                title={'Appearance'}
+                title={'Personalization'}
                 iconName={'preferences-desktop-wallpaper-symbolic'}
             >
                 <Appearance />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage
-                title={'Displays'}
-                iconName={'preferences-desktop-display-symbolic'}
-            >
-                <Displays />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage
-                title={'Bar & Dock'}
-                iconName={'preferences-desktop-display-symbolic'}
-            >
                 <Bar />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage title={'Idle & Lock'} iconName={'system-lock-screen-symbolic'}>
-                <Idle />
-                <Power />
+            <Adw.PreferencesPage
+                title={'Devices'}
+                iconName={'preferences-desktop-display-symbolic'}
+            >
+                <Displays />
+                <Sound />
+                <Mouse />
             </Adw.PreferencesPage>
 
             <Adw.PreferencesPage
-                title={'Notifications'}
-                iconName={'preferences-system-notifications-symbolic'}
+                title={'Connectivity'}
+                iconName={'network-wireless-symbolic'}
             >
-                <Notifications />
-                <ScheduledDND />
+                <Network />
+                <Bluetooth />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage title={'Screen Capture'} iconName={'camera-photo-symbolic'}>
+            <Adw.PreferencesPage
+                title={'Privacy & Security'}
+                iconName={'system-lock-screen-symbolic'}
+            >
+                <Idle />
+                <Power />
+                <Notifications />
+                <ScheduledDND />
                 <ScreenCapture />
                 <ScreenShare />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage title={'Network'} iconName={'network-wireless-symbolic'}>
-                <Network />
-            </Adw.PreferencesPage>
-
-            <Bluetooth />
-
             <Adw.PreferencesPage
-                title={'Clock & Weather'}
-                iconName={'preferences-system-time-symbolic'}
+                title={'Applications'}
+                iconName={'preferences-desktop-apps-symbolic'}
             >
-                <Clock />
-                <Weather />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage title={'Timer'} iconName={'alarm-symbolic'}>
-                <Timer />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage title={'Sound'} iconName={'audio-volume-high-symbolic'}>
-                <Sound />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage title={'Mouse & Touchpad'} iconName={'input-mouse-symbolic'}>
-                <Mouse />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage title={'Keyboard Shortcuts'} iconName={'preferences-desktop-keyboard-shortcuts-symbolic'}>
-                <Shortcuts />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage title={'Default Apps'} iconName={'preferences-desktop-apps-symbolic'}>
                 <DefaultApps />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage title={'Startup Apps'} iconName={'system-run-symbolic'}>
                 <StartupApps />
             </Adw.PreferencesPage>
 
-            <Adw.PreferencesPage title={'About'} iconName={'help-about-symbolic'}>
+            <Adw.PreferencesPage
+                title={'System'}
+                iconName={'applications-engineering-symbolic'}
+            >
+                <Clock />
+                <Weather />
+                <Timer />
+                <Shortcuts />
                 <About />
-            </Adw.PreferencesPage>
-
-            <Adw.PreferencesPage title={'Debug'} iconName={'applications-engineering-symbolic'}>
                 <Debug />
             </Adw.PreferencesPage>
         </Adw.PreferencesWindow>

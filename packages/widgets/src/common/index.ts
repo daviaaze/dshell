@@ -9,7 +9,7 @@
  * ### Buttons
  * | Component | File | Description |
  * |-----------|------|-------------|
- * | `QuickToggleButton` | `quickToggleButton.tsx` | Toggle button with icon, label, and optional popover. Used in QS button grid. |
+ * | `QuickControlButton` | `quickControlButton.tsx` | Native toggle or command with separate domain, value, and optional options menu. |
  * | `IconButton` | `iconButton.tsx` | Button with icon, optional label, active state. |
  * | `IconMenuButton` | `iconButton.tsx` | Button with icon + dropdown arrow for menus. |
  * | `ActionButton` | `actionButton.tsx` | Destructive/colored action button. |
@@ -43,7 +43,7 @@
  * ## Usage
  *
  * ```tsx
- * import { QuickToggleButton } from "./quickToggleButton"
+ * import { QuickControlButton } from "./quickControlButton"
  * import { Slider } from "./slider"
  * import { IconButton } from "./iconButton"
  * ```
@@ -73,6 +73,6 @@ export {default as Notification} from './notification';
 export {usePopoverCleanup} from './popoverCleanup';
 export {PowerMenu} from './powerMenu';
 // Re-export all components for convenience
-export {QuickToggleButton} from './quickToggleButton';
+export {QuickControlButton} from './quickControlButton';
 export {Slider} from './slider';
 export {WeatherIcon, WeatherWidget} from './weatherWidget';

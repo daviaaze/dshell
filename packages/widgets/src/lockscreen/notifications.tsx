@@ -1,4 +1,5 @@
 import type Notifd from 'gi://AstalNotifd';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import logger from '@shade/core/logger';
@@ -102,6 +103,10 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
                                 <Gtk.Button
                                     label={'Dismiss'}
                                     onClicked={() => closeAction(n)}
+                                    ref={(self) => self.update_property(
+                                        [Gtk.AccessibleProperty.LABEL],
+                                        [new GObject.Value(GObject.TYPE_STRING, 'Dismiss notification')]
+                                    )}
                                 />
                             </Gtk.Box>
                         )

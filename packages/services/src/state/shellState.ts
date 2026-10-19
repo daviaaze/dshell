@@ -4,6 +4,7 @@ import logger from '@shade/core/logger';
 import ServiceRegistry from '@shade/core/serviceRegistry';
 import {Object as GObject, property, register} from 'gnim/gobject';
 import {bus} from '../bus';
+import {getHyprland} from '../hyprland';
 
 @register
 export default class ShellState extends GObject {
@@ -141,6 +142,17 @@ export default class ShellState extends GObject {
     /** Subscribe to command events from widgets. Called once at boot. */
     init() {
         if (this.#busSubscriptions.length > 0) return;
+        try {
+            const hyprland = getHyprland();
+            if (!hyprland) throw new Error('Hyprland IPC is unavailable');
+            const state = JSON.parse(hyprland.message('j/locked')) as {locked?: unknown};
+            if (typeof state.locked !== 'boolean') throw new Error('Invalid compositor lock state');
+            if (state.locked) this.screenlocked = true;
+        } catch (error) {
+            // A missing adapter or reply must not bypass authentication on restart.
+            logger.error('state', 'could not query compositor lock state; requiring authentication:', error);
+            this.screenlocked = true;
+        }
         this.#busSubscriptions.push(bus.on('shell:lock', () => this.lock()));
         this.#busSubscriptions.push(bus.on('shell:unlock', () => this.unlock()));
         this.#busSubscriptions.push(bus.on('shell:qs:close', () => this.closeQuickSettings()));

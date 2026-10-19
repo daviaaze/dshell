@@ -23,6 +23,7 @@ export default ({
     return (
         <Gtk.ToggleButton
             visible={visible}
+            cssClasses={vertical.as((v) => (v ? ['bar-vertical-content-button'] : []))}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             active={bind(shellState, 'qsOpen')}
             onClicked={() => shellState.toggleQuickSettings()}

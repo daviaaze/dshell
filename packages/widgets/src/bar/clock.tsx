@@ -1,11 +1,13 @@
+import Pango from 'gi://Pango?version=1.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {cityName, fmtDuration, fmtOffset} from '@shade/core/time';
 import Clock from '@shade/services/time/clock';
 import TimerService from '@shade/services/time/timerService';
-import {type Accessor, bind, computed, For} from 'gnim';
+import {type Accessor, bind, computed, effect, For} from 'gnim';
 import {TimerSection} from '../quicksettings/timer/TimerSection';
 
 /** One world-clock row: city name, tz id, time, and offset vs local. */
@@ -89,7 +91,9 @@ function ClockLabel({
             <Gtk.Box
                 visible={timerActive.as((a) => !a)}
                 spacing={4}
-                orientation={vertical.as(clockLayoutOrientation)}
+                orientation={vertical.as((v) =>
+                    v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
+                )}
             >
                 <Gtk.Label label={hour} cssClasses={['title-1', 'numeric']} />
                 <Gtk.Label label={minute} cssClasses={['title-1', 'numeric']} />
@@ -106,13 +110,14 @@ function ClockLabel({
                 visible={timerActive}
                 label={timerDisplay}
                 cssClasses={['title-1', 'numeric', 'accent']}
+                maxWidthChars={vertical.as((v) => (v ? 2 : 12))}
+                ellipsize={Pango.EllipsizeMode.END}
+                tooltipText={timerDisplay}
             />
         </Gtk.Box>
     );
 }
 
-export const clockLayoutOrientation = (vertical: boolean) =>
-    vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL;
 
 export default ({
     vertical,
@@ -127,7 +132,8 @@ export default ({
     const hour = wallTime.as((t) => t.format('%H')!);
     const minute = wallTime.as((t) => t.format('%M')!);
     const day = wallTime.as((t) => t.format('%d')!);
-    const month = wallTime.as((t) => t.format('%B')!);
+    const month = wallTime.as((t) => t.format(vertical() ? '%b' : '%B')!);
+    const fullDate = wallTime.as((t) => t.format('%A, %B %e, %Y') ?? '');
 
     const timer = TimerService.get_default();
     const timerRemaining = bind(timer, 'remaining');
@@ -136,9 +142,31 @@ export default ({
         const rem = timerRemaining();
         return rem < 0 ? '' : fmtDuration(rem);
     });
+    const buttonTooltip = computed(() => (timerActive() ? timerDisplay() : fullDate()));
 
     return (
-        <Gtk.MenuButton cursor={Gdk.Cursor.new_from_name('pointer', null)} visible={visible}>
+        <Gtk.MenuButton
+            cssClasses={vertical.as((v) => (v ? ['bar-vertical-content-button'] : []))}
+            cursor={Gdk.Cursor.new_from_name('pointer', null)}
+            visible={visible}
+            tooltipText={buttonTooltip}
+            ref={(self) => {
+                effect(() => {
+                    const accessibleName = timerActive()
+                        ? `Timer: ${timerDisplay()}`
+                        : `Time ${hour()}:${minute()}, ${fullDate()}`;
+                    self.update_property(
+                        [Gtk.AccessibleProperty.LABEL, Gtk.AccessibleProperty.DESCRIPTION],
+                        [
+                            new GObject.Value(GObject.TYPE_STRING, accessibleName),
+                            new GObject.Value(
+                                GObject.TYPE_STRING,
+                                'Opens the calendar, world clocks, and timer controls.'
+                            ),
+                        ]
+                    );
+                });
+            }}>
             <Gtk.Popover slot="popover">
                 <ClockPopover />
             </Gtk.Popover>

@@ -1,3 +1,4 @@
+import type {Accessor} from 'gnim';
 import Bluetooth from 'gi://AstalBluetooth';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
@@ -131,7 +132,7 @@ function disconnectBatterySignals(
     batterySignals.clear();
 }
 
-export default () => {
+export default ({vertical}: {vertical: Accessor<boolean>}) => {
     const bluetooth = Bluetooth.get_default();
     const bar = barSettings();
 
@@ -141,6 +142,11 @@ export default () => {
     // gtk_button_set_child assertion when Gnim re-renders <For> children.
     // Children are managed imperatively in refresh() instead.
     let iconBox: Gtk.Box | null = null;
+    effect(() => {
+        iconBox?.set_orientation(
+            vertical() ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
+        );
+    });
 
     effect(() => {
         const _hn = {};
@@ -173,7 +179,12 @@ export default () => {
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             tooltipText={tooltipText}
             ref={(self) => {
-                iconBox = new Gtk.Box({spacing: 4});
+                iconBox = new Gtk.Box({
+                    spacing: 4,
+                    orientation: vertical()
+                        ? Gtk.Orientation.VERTICAL
+                        : Gtk.Orientation.HORIZONTAL,
+                });
                 self.set_child(iconBox);
                 onCleanup(() => {
                     iconBox = null;

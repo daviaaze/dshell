@@ -11,6 +11,7 @@ import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {bind, computed, onCleanup} from 'gnim';
+import {BAR_EDGE_RESERVE} from '../bar/geometry';
 import {ButtonGrid} from './button-grid/index';
 import {DisplaySection} from './display';
 import {Expander} from './expander/index';
@@ -21,7 +22,6 @@ import {TrayBox} from './tray';
 const QUICKSETTINGS_WIDTH = 420;
 const QUICKSETTINGS_SPACING = 8;
 const WINDOW_MARGIN = 12;
-const BAR_EDGE_RESERVE = 48;
 
 function availableWidth(
     monitor: {width: number; scale: number} | null,
@@ -56,17 +56,6 @@ export default () => {
                 self.connect('realize', () => logger.log('quicksettings realized'));
                 self.connect('map', () => logger.log('quicksettings mapped'));
 
-                let originalKeymode: Astal.Keymode | null = null;
-                const restoreKeymode = () => {
-                    if (originalKeymode === null) return;
-                    self.keymode = originalKeymode;
-                    originalKeymode = null;
-                };
-                const chooserSignal = service.connect('mode-chooser-requested', () => {
-                    if (originalKeymode === null) originalKeymode = self.keymode;
-                    self.keymode = Astal.Keymode.EXCLUSIVE;
-                });
-                const unmapSignal = self.connect('unmap', restoreKeymode);
                 const keyController = Gtk.EventControllerKey.new();
                 keyController.connect('key-pressed', (_controller, keyval) => {
                     if (keyval !== Gdk.KEY_Escape || !self.visible) return false;
@@ -80,10 +69,7 @@ export default () => {
                 });
                 self.add_controller(keyController);
                 onCleanup(() => {
-                    service.disconnect(chooserSignal);
-                    self.disconnect(unmapSignal);
                     self.remove_controller(keyController);
-                    restoreKeymode();
                 });
             }}
             marginTop={WINDOW_MARGIN}
@@ -92,6 +78,8 @@ export default () => {
             marginEnd={WINDOW_MARGIN}
             application={getApp()}
             name={'quicksettings'}
+            namespace={'quicksettings'}
+            keymode={Astal.Keymode.ON_DEMAND}
             visible={bind(shellState, 'qsOpen')}
             onNotifyVisible={(self) => {
                 logger.log(`quicksettings visible -> ${self.visible}`);

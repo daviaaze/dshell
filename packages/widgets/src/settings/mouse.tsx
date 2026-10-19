@@ -37,13 +37,12 @@ export default () => {
         <Adw.ComboRow
           title="Acceleration Profile"
           subtitle="Pointer acceleration"
+          model={new Gtk.StringList({strings: ['Flat', 'Adaptive']})}
           selected={getOption('input:accel_profile', 'flat') === 'adaptive' ? 1 : 0}
           onNotifySelected={(row) => {
             setOption('input:accel_profile', row.selected === 0 ? 'flat' : 'adaptive');
           }}
-        >
-          <Gtk.StringList strings={['Flat', 'Adaptive']} />
-        </Adw.ComboRow>
+        />
 
         <Adw.SwitchRow
           title="Natural Scrolling"

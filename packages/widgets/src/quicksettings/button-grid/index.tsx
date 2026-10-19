@@ -1,4 +1,3 @@
-import {computed} from 'gnim';
 import Network from '../network/index';
 import QuickTimerButton from '../timer/QuickTimerButton';
 import Bluetooth from './bluetooth';
@@ -12,7 +11,7 @@ import Screenshot from './screenshot';
 import Touchpad from './touchpad';
 
 export const ButtonGrid = ({cols = 2}: {cols?: number}) => {
-    const items = computed(() => [
+    const items = [
         Powerprofiles(),
         Conservation(),
         ColorScheme(),
@@ -23,7 +22,7 @@ export const ButtonGrid = ({cols = 2}: {cols?: number}) => {
         QuickTimerButton(),
         NightLight(),
         Touchpad(),
-    ]);
+    ];
 
-    return <ReactiveGrid cols={cols} items={items()} />;
+    return <ReactiveGrid cols={cols} items={items} />;
 };

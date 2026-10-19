@@ -15,12 +15,9 @@ export interface HyprBind {
     repeat: boolean;
     nonmodal: boolean;
     hasDescription: boolean;
+    description?: string;
 }
 
-export interface ShellAction {
-    name: string;
-    description: string;
-}
 
 export interface CategorizedBinds {
     category: string;
@@ -52,10 +49,10 @@ const CATEGORY_MAP: Record<string, string> = {
     execr: 'System',
 };
 
-const SHELL_ACTION_DESCRIPTIONS: Record<string, string> = {
+export const SHELL_ACTION_DESCRIPTIONS: Readonly<Record<string, string>> = {
     'toggle-applauncher': 'Toggle app launcher',
     'toggle-quicksettings': 'Toggle quick settings',
-    'toggle-bar': 'Toggle top bar',
+    'toggle-bar': 'Show or hide bar',
     'toggle-windowswitcher': 'Toggle window switcher',
     'toggle-settings': 'Toggle settings',
     'toggle-clipboard': 'Toggle clipboard manager',
@@ -69,7 +66,35 @@ const SHELL_ACTION_DESCRIPTIONS: Record<string, string> = {
     'record-area': 'Record selected area',
     'record-window': 'Record active window',
     'record-output': 'Record active output',
+    'record-window-address': 'Record selected window',
+    'display-next': 'Cycle display layouts',
+    'display-mode': 'Preview display mode',
+    'display-mode-chooser': 'Choose display mode',
+    'display-toggle-internal': 'Toggle internal display',
     'toggle-touchpad': 'Toggle touchpad',
+};
+
+const DISPATCHER_DESCRIPTIONS: Readonly<Record<string, string>> = {
+    workspace: 'Switch workspace',
+    movetoworkspace: 'Move window to workspace',
+    movetoworkspacesilent: 'Move window to workspace without switching',
+    togglefloating: 'Toggle floating mode',
+    fullscreen: 'Toggle fullscreen',
+    focuswindow: 'Focus window',
+    movewindow: 'Move window',
+    resizewindow: 'Resize window',
+    killactive: 'Close active window',
+    togglepseudo: 'Toggle pseudo-tile mode',
+    pin: 'Pin window',
+    cyclenext: 'Cycle window focus',
+    changegroupactive: 'Change active window in group',
+    splitratio: 'Adjust split ratio',
+    togglesplit: 'Toggle split direction',
+    layoutopt: 'Change layout option',
+    swapnext: 'Swap with next window',
+    swapactiveworkspaces: 'Swap active workspaces',
+    exit: 'Exit Hyprland',
+    forcerendererreload: 'Reload the renderer',
 };
 
 @register
@@ -88,17 +113,11 @@ export default class Keybinds extends Object {
     }
 
     #binds: HyprBind[] = [];
-    #shellActions: ShellAction[] = [];
     #configPath = '';
 
     @property
     get binds(): HyprBind[] {
         return this.#binds;
-    }
-
-    @property
-    get shellActions(): ShellAction[] {
-        return this.#shellActions;
     }
 
     @property
@@ -128,12 +147,6 @@ export default class Keybinds extends Object {
                 this.#binds = [];
                 this.notify('binds');
             });
-    }
-
-    /** Set shell GActions (called from app bootstrap). */
-    setShellActions(actions: ShellAction[]): void {
-        this.#shellActions = actions;
-        this.notify('shellActions');
     }
 
     /** Get keybinds grouped by category. */
@@ -169,12 +182,27 @@ export default class Keybinds extends Object {
         return parts.join(' + ');
     }
 
-    /** Format bind description. */
+    /** Describe metadata or compositor behavior without interpreting command text. */
     formatDescription(bind: HyprBind): string {
-        if (bind.arg) {
-            return `${bind.dispatcher}: ${bind.arg}`;
+        const description = bind.description;
+        if (description?.startsWith('shade-action:')) {
+            const action = description.slice('shade-action:'.length);
+            if (Object.prototype.hasOwnProperty.call(SHELL_ACTION_DESCRIPTIONS, action)) {
+                return SHELL_ACTION_DESCRIPTIONS[action];
+            }
+            return bind.dispatcher === 'exec' || bind.dispatcher === 'execr'
+                ? 'Run command'
+                : 'Custom shortcut';
         }
-        return bind.dispatcher;
+        if (description) return description;
+
+        if (Object.prototype.hasOwnProperty.call(DISPATCHER_DESCRIPTIONS, bind.dispatcher)) {
+            const meaning = DISPATCHER_DESCRIPTIONS[bind.dispatcher];
+            return bind.arg ? `${meaning}: ${bind.arg}` : meaning;
+        }
+        return bind.dispatcher === 'exec' || bind.dispatcher === 'execr'
+            ? 'Run command'
+            : 'Custom shortcut';
     }
 
     #formatMod(mod: string): string {

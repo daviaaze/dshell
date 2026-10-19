@@ -7,6 +7,11 @@ import {Object, property, register, signal} from 'gnim/gobject';
 const GEOCLUE_BUS = 'org.freedesktop.GeoClue2';
 const GEOCLUE_CLIENT_IFACE = 'org.freedesktop.GeoClue2.Client';
 
+export interface Coordinates {
+    latitude: number;
+    longitude: number;
+}
+
 @register
 export default class Geolocation extends Object {
     private static instance: Geolocation;
@@ -19,7 +24,7 @@ export default class Geolocation extends Object {
     #latitude = 0;
     #longitude = 0;
     #available = false;
-    #detecting = false;
+    #detection: Promise<Coordinates> | null = null;
 
     @property
     get latitude() {
@@ -39,19 +44,22 @@ export default class Geolocation extends Object {
     @signal
     locationChanged(_lat: number, _lon: number): void {}
 
-    detect() {
-        if (this.#detecting) return;
-        this.#detecting = true;
-        this.#tryGeoClue()
-            .then((found) => {
-                this.#detecting = false;
-                if (!found) this.#tryIpGeolocation();
-            })
-            .catch((e) => {
-                this.#detecting = false;
-                logger.error('geo', 'GeoClue detection failed:', e);
-                this.#tryIpGeolocation();
-            });
+    detect(): Promise<Coordinates> {
+        if (this.#detection) return this.#detection;
+
+        let detection: Promise<Coordinates>;
+        detection = this.#runDetection().finally(() => {
+            if (this.#detection === detection) this.#detection = null;
+        });
+        this.#detection = detection;
+        return detection;
+    }
+
+    async #runDetection(): Promise<Coordinates> {
+        if (await this.#tryGeoClue()) {
+            return {latitude: this.#latitude, longitude: this.#longitude};
+        }
+        return await this.#tryIpGeolocation();
     }
 
     async #createDbusProxy(
@@ -232,37 +240,54 @@ export default class Geolocation extends Object {
         }
     }
 
-    #tryIpGeolocation() {
-        Process.execAsyncv(['curl', '-s', '--max-time', '5', 'https://ipapi.co/json/'])
-            .then((out) => {
-                if (!out) {
-                    logger.warn('geo', 'curl produced no output');
-                    return;
-                }
-                const data = JSON.parse(out);
-                if (!data) {
-                    logger.warn('geo', 'parsed response is null');
-                    return;
-                }
-                if (typeof data.latitude === 'number' && typeof data.longitude === 'number') {
-                    this.#update(data.latitude, data.longitude);
-                } else {
-                    logger.warn('geo', `no coordinates in response: ${out.slice(0, 200)}`);
-                }
-            })
-            .catch((e) => {
-                logger.error('geo', 'IP geolocation failed:', e);
-            });
+    async #tryIpGeolocation(): Promise<Coordinates> {
+        try {
+            const out = await Process.execAsyncv([
+                'curl',
+                '-s',
+                '--max-time',
+                '5',
+                'https://ipapi.co/json/',
+            ]);
+            if (!out) throw new Error('IP geolocation returned no response');
+
+            const data: unknown = JSON.parse(out);
+            if (
+                typeof data !== 'object' ||
+                data === null ||
+                !('latitude' in data) ||
+                !('longitude' in data) ||
+                typeof data.latitude !== 'number' ||
+                typeof data.longitude !== 'number'
+            ) {
+                throw new Error('IP geolocation response did not contain numeric coordinates');
+            }
+
+            const coordinates = {
+                latitude: data.latitude,
+                longitude: data.longitude,
+            };
+            this.#update(coordinates.latitude, coordinates.longitude);
+            return coordinates;
+        } catch (e) {
+            logger.error('geo', 'IP geolocation failed:', e);
+            throw e;
+        }
     }
 
     #update(lat: number, lon: number) {
-        if (this.#latitude === lat && this.#longitude === lon) return;
+        const coordinatesChanged = this.#latitude !== lat || this.#longitude !== lon;
+        const becameAvailable = !this.#available;
+        if (!coordinatesChanged && !becameAvailable) return;
+
         this.#latitude = lat;
         this.#longitude = lon;
         this.#available = true;
-        this.notify('latitude');
-        this.notify('longitude');
-        this.notify('available');
+        if (coordinatesChanged) {
+            this.notify('latitude');
+            this.notify('longitude');
+        }
+        if (becameAvailable) this.notify('available');
         this.locationChanged(lat, lon);
     }
 }

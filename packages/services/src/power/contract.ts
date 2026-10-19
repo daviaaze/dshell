@@ -6,6 +6,7 @@
 export interface PowerEvents {
     'power:inhibit:set-duration': number;
     'power:inhibit:set-idle': boolean;
+    'power:inhibit:start-indefinite': [];
     'power:profile:set': 'power-saver' | 'balanced' | 'performance';
     'power:conservation:toggle': void;
 

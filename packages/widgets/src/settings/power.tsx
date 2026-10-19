@@ -32,44 +32,42 @@ export default () => {
   const currentPowerButton = getLogindConfig('HandlePowerKey', 'poweroff');
   const currentLidClose = getLogindConfig('HandleLidSwitch', 'suspend');
   const currentLidClosePlugged = getLogindConfig('HandleLidSwitchExternalPower', 'suspend');
+  const actionModel = new Gtk.StringList({strings: ACTIONS.map((a) => ACTION_LABELS[a])});
 
   return (
     <Adw.PreferencesGroup title="Power Actions" description="Configure power button and lid behavior">
       <Adw.ComboRow
         title="Power Button"
         subtitle="Action when power button is pressed"
+        model={actionModel}
         selected={ACTIONS.indexOf(currentPowerButton)}
         onNotifySelected={(row) => {
           const action = ACTIONS[row.selected];
           if (action) setLogindConfig('HandlePowerKey', action);
         }}
-      >
-        <Gtk.StringList strings={ACTIONS.map(a => ACTION_LABELS[a])} />
-      </Adw.ComboRow>
+      />
 
       <Adw.ComboRow
         title="Lid Close (Battery)"
         subtitle="Action when laptop lid is closed on battery"
+        model={actionModel}
         selected={ACTIONS.indexOf(currentLidClose)}
         onNotifySelected={(row) => {
           const action = ACTIONS[row.selected];
           if (action) setLogindConfig('HandleLidSwitch', action);
         }}
-      >
-        <Gtk.StringList strings={ACTIONS.map(a => ACTION_LABELS[a])} />
-      </Adw.ComboRow>
+      />
 
       <Adw.ComboRow
         title="Lid Close (Plugged In)"
         subtitle="Action when laptop lid is closed while plugged in"
+        model={actionModel}
         selected={ACTIONS.indexOf(currentLidClosePlugged)}
         onNotifySelected={(row) => {
           const action = ACTIONS[row.selected];
           if (action) setLogindConfig('HandleLidSwitchExternalPower', action);
         }}
-      >
-        <Gtk.StringList strings={ACTIONS.map(a => ACTION_LABELS[a])} />
-      </Adw.ComboRow>
+      />
     </Adw.PreferencesGroup>
   );
 };

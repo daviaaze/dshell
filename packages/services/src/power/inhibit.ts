@@ -26,7 +26,7 @@ export default class Inhibit extends Object {
     #duration = 0;
     #elapsed = 0;
     #timerId: number | null = null;
-    #busSubscriptions: (() => void)[] = [];
+    #busSubscriptions: (() => void)[];
     #proxy: Gio.DBusProxy | null = null;
     #initialized = false;
 
@@ -51,13 +51,22 @@ export default class Inhibit extends Object {
             return;
         }
         if (this.#idle) {
-            // Already active — keep the running timer and elapsed time,
-            // so extending/shortening the duration doesn't restart the countdown.
-            this.notify('remaining');
+            // Keep elapsed finite work, but start a clock when switching from
+            // indefinite inhibition without releasing/reacquiring the inhibitor.
+            if (this.#timerId === null) this.#startTimer();
+            else this.notify('remaining');
             return;
         }
         this.#elapsed = 0;
         this.idle = true;
+    }
+
+    startIndefinite(): void {
+        this.#duration = 0;
+        this.#elapsed = 0;
+        this.#stopTimer();
+        this.idle = true;
+        this.notify('remaining');
     }
 
     set idle(state) {
@@ -192,6 +201,9 @@ export default class Inhibit extends Object {
             bus.on('power:inhibit:set-duration', (v) => this.setDuration(v))
         );
         this.#busSubscriptions.push(
+            bus.on('power:inhibit:start-indefinite', () => this.startIndefinite())
+        );
+        this.#busSubscriptions.push(
             bus.on('power:inhibit:set-idle', (v) => {
                 this.idle = v;
             })
@@ -206,6 +218,7 @@ export default class Inhibit extends Object {
 
     constructor() {
         super();
+        this.#busSubscriptions = [];
         this.#idle = false;
         this.#cookie = 0;
         this.#initialized = false;

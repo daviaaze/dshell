@@ -4,7 +4,7 @@ import {bus} from '@shade/services/bus';
 import NetworkService from '@shade/services/network/networkService';
 import {bind, computed, createState, With} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
-import {QuickToggleButton} from '../../common/quickToggleButton';
+import {QuickControlButton} from '../../common/quickControlButton';
 import type {QuickButton} from '../button-grid/quickButton';
 import {wifiIconName} from './utils';
 import WifiPopover from './wifiPopover';
@@ -13,37 +13,26 @@ const WifiQuicksettingsButton = (): QuickButton => {
     const net = NetworkService.get_default();
     const [connectingAp, setConnectingAp] = createState<string | null>(null);
 
-    const wifiIconName_ = computed(() => {
-        const enabled = net.wifiEnabled;
-        const strength = net.wifiStrength;
-        const state = net.wifiState;
-        if (!enabled) return 'network-wireless-offline-symbolic';
-        return wifiIconName(strength, enabled, state);
-    });
-
-    const icon = computed(() => {
-        const isConnecting = connectingAp();
-        return isConnecting ? 'content-loading-symbolic' : wifiIconName_();
-    });
-
-    const wifiCssClasses = computed(() => {
-        const state = net.wifiState;
-        // Network.DeviceState.ACTIVATED = 100
-        if (state === 100) {
-            return ['raised', 'suggested-action'];
-        }
-        return ['raised'];
-    });
-
     const wifiSsid = bind(net, 'wifiSsid');
     const wifiEnabled = bind(net, 'wifiEnabled');
+    const wifiState = bind(net, 'wifiState');
+    const wifiStrength = bind(net, 'wifiStrength');
 
-    const label = computed(() => {
+    const icon = computed(() =>
+        connectingAp()
+            ? 'content-loading-symbolic'
+            : wifiEnabled()
+              ? wifiIconName(wifiStrength(), wifiEnabled(), wifiState())
+              : 'network-wireless-offline-symbolic'
+    );
+
+    const value = computed(() => {
+        if (!wifiEnabled()) return 'Off';
         const ssid = wifiSsid();
-        const enabled = wifiEnabled();
-
-        if (!ssid || ssid === '...' || ssid.trim() === '') return enabled ? 'WiFi' : 'WiFi Off';
-        return ssid.length > 24 ? ssid.slice(0, 24) + '…' : ssid;
+        if (wifiState() !== 100 || !ssid || ssid === '...' || ssid.trim() === '') {
+            return 'Not connected';
+        }
+        return ssid;
     });
 
     const popover = (
@@ -68,15 +57,15 @@ const WifiQuicksettingsButton = (): QuickButton => {
 
     return {
         widget: (
-            <QuickToggleButton
+            <QuickControlButton
+                intent="toggle"
+                domain="Wi-Fi"
                 icon={icon}
-                cssClasses={wifiCssClasses}
-                label={label}
-                onClick={() => {
-                    bus.emit('network:wifi:toggle');
-                    return true;
-                }}
-                popover={popover}
+                value={value}
+                active={wifiEnabled}
+                actionLabel={wifiEnabled.as((enabled) => enabled ? 'Turn Wi-Fi off' : 'Turn Wi-Fi on')}
+                onClick={() => bus.emit('network:wifi:toggle')}
+                menu={{label: 'Wi-Fi options', popover}}
             />
         ),
         visible: bind(net, 'wifiReady'),

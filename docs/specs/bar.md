@@ -22,6 +22,10 @@
 | Vertical clock face uses four rows; horizontal placement preserves the horizontal face, and the active timer remains a single label | [`clock.tsx`](../../packages/widgets/src/bar/clock.tsx) |
 | Each monitor's bar unregisters and closes on cleanup | [`index.tsx`](../../packages/widgets/src/bar/index.tsx) |
 | Bar module visibility is controlled by settings | [`bar.gschema.ts`](../../packages/services/src/settings/bar.gschema.ts) |
+| Vertical width is bounded by a 48-logical-pixel native scroll viewport, shared with launcher/Quick Settings edge reservations | [`geometry.ts`](../../packages/widgets/src/bar/geometry.ts), [`index.tsx`](../../packages/widgets/src/bar/index.tsx) |
+| Vertical title/recording/Bluetooth content stacks; long values use bounded labels and full-value tooltips; month is abbreviated | Bar leaf components |
+| Vertical usage/indicator buttons remove horizontal native padding; usage labels stay bounded with full-value tooltips at enlarged fonts | [`systemUsage.tsx`](../../packages/widgets/src/bar/systemUsage.tsx), [`systemIndicators.tsx`](../../packages/widgets/src/bar/systemIndicators.tsx) |
+| Focused-client title/class changes update the bounded label and tooltip without requiring a different focused window | [`windowTitle.tsx`](../../packages/widgets/src/bar/windowTitle.tsx) |
 
 
 Component-specific interactions and fallback behavior should be verified in the owning component before adding them here.

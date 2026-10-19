@@ -1,10 +1,12 @@
 import Adw from 'gi://Adw?version=1';
+import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
 import {TEMP_MAX, TEMP_MIN} from '@shade/services/display/nightLight';
 import WindowManager from '@shade/services/state/windowManager';
 import PaletteGenerator from '@shade/style/palette';
-import {onCleanup} from 'gnim';
+import {bind, computed, onCleanup} from 'gnim';
 
 type Settings = ReturnType<typeof generalSettings>;
 
@@ -32,25 +34,25 @@ function ThemeToggle({settings}: {settings: Settings}) {
             slot="suffix"
             cssClasses={['round']}
             valign={Gtk.Align.CENTER}
-            onNotifyActiveName={(self) => {
-                const newVal = map[self.activeName ?? 'auto'] ?? 0;
-                if (newVal !== settings.colorScheme.peek()) {
-                    settings.setColorScheme(newVal);
-                }
-            }}
             ref={(self) => {
+                self.add(new Adw.Toggle({name: 'auto', label: 'Auto', iconName: 'night-light-symbolic'}));
+                self.add(new Adw.Toggle({name: 'light', label: 'Light', iconName: 'weather-clear-symbolic'}));
+                self.add(new Adw.Toggle({name: 'dark', label: 'Dark', iconName: 'weather-clear-night-symbolic'}));
                 self.activeName = NAMES[settings.colorScheme.peek()] ?? 'auto';
-                onCleanup(
-                    settings.colorScheme.subscribe(() => {
-                        self.activeName = NAMES[settings.colorScheme()] ?? 'auto';
-                    })
-                );
+                const changed = self.connect('notify::active-name', () => {
+                    const requested = map[self.activeName ?? 'auto'] ?? 0;
+                    if (requested !== settings.colorScheme.peek()) settings.setColorScheme(requested);
+                });
+                const unsubscribe = settings.colorScheme.subscribe(() => {
+                    self.activeName = NAMES[settings.colorScheme()] ?? 'auto';
+                });
+                onCleanup(() => {
+                    unsubscribe();
+                    self.disconnect(changed);
+                    self.remove_all();
+                });
             }}
-        >
-            <Adw.Toggle name={'auto'} label={'Auto'} iconName={'night-light-symbolic'} />
-            <Adw.Toggle name={'light'} label={'Light'} iconName={'weather-clear-symbolic'} />
-            <Adw.Toggle name={'dark'} label={'Dark'} iconName={'weather-clear-night-symbolic'} />
-        </Adw.ToggleGroup>
+        />
     );
 }
 
@@ -58,12 +60,22 @@ function ThemeToggle({settings}: {settings: Settings}) {
 function AppearanceGroup({settings}: {settings: Settings}) {
     const fileDialog = Gtk.FileDialog.new();
     fileDialog.set_default_filter(new Gtk.FileFilter({mimeTypes: ['image/*']}));
+    const scheme = ColorScheme.get_default();
+    const requested = bind(scheme, 'colorScheme');
+    const dark = bind(scheme, 'effectiveDark');
+    const error = bind(scheme, 'applyError');
+    const status = computed(() => error()
+        ? `Not fully applied: ${error()}`
+        : requested() === DarkModes.AUTO
+            ? `Auto using ${dark() ? 'Dark' : 'Light'}`
+            : `${dark() ? 'Dark' : 'Light'} active`);
 
     return (
         <Adw.PreferencesGroup title={'Appearance'} description={'Set cosmetic options'}>
             <Adw.ActionRow title={'System Theme'}>
                 <ThemeToggle settings={settings} />
             </Adw.ActionRow>
+            <Adw.ActionRow title={'Effective Appearance'} subtitle={status} />
             <Adw.ActionRow
                 activatable
                 title={'Wallpaper Day'}
@@ -86,9 +98,26 @@ function AppearanceGroup({settings}: {settings: Settings}) {
     );
 }
 
-/** Dynamic theming group: matugen toggle + manual regenerate. */
+/** Dynamic theming group: matugen toggle + completion-aware regeneration. */
 function ThemingGroup({settings}: {settings: Settings}) {
     const paletteGen = PaletteGenerator.get_default();
+    const busy = bind(paletteGen, 'generationBusy');
+    const error = bind(paletteGen, 'generationError');
+    const available = bind(paletteGen, 'available');
+    const wallpaperReady = computed(() => {
+        const wallpaper = settings.wallpaperDay();
+        return !!wallpaper && GLib.file_test(wallpaper, GLib.FileTest.IS_REGULAR);
+    });
+    const status = computed(() => {
+        if (busy()) return 'Generating colors from the day wallpaper…';
+        if (error()) return error() ?? '';
+        if (!available()) return 'Matugen is unavailable. Install matugen to generate colors.';
+        if (!wallpaperReady()) return 'Choose an existing day wallpaper to generate colors.';
+        return 'Ready to generate colors from the day wallpaper.';
+    });
+    const statusClasses = computed(() =>
+        error() || !available() ? ['error', 'caption'] : ['caption']
+    );
 
     return (
         <Adw.PreferencesGroup
@@ -97,7 +126,9 @@ function ThemingGroup({settings}: {settings: Settings}) {
         >
             <Adw.SwitchRow
                 title={'Enable Dynamic Theming'}
-                subtitle={paletteGen.available ? '' : 'Install matugen to enable'}
+                subtitle={available.as((isAvailable) =>
+                    isAvailable ? '' : 'Install matugen to enable'
+                )}
                 active={settings.dynamicThemingEnabled}
                 onNotifyActive={(self) => settings.setDynamicThemingEnabled(self.active)}
             />
@@ -109,7 +140,21 @@ function ThemingGroup({settings}: {settings: Settings}) {
                 marginEnd={8}
                 halign={Gtk.Align.CENTER}
                 label="Regenerate from Wallpaper"
-                onClicked={() => paletteGen.regenerate()}
+                sensitive={computed(() => available() && wallpaperReady() && !busy())}
+                onClicked={() => {
+                    void paletteGen.regenerate().catch(() => {
+                        // The service publishes the failure beside this action.
+                    });
+                }}
+            />
+            <Gtk.Label
+                label={status}
+                cssClasses={statusClasses}
+                wrap
+                xalign={0}
+                marginStart={12}
+                marginEnd={12}
+                marginBottom={12}
             />
         </Adw.PreferencesGroup>
     );

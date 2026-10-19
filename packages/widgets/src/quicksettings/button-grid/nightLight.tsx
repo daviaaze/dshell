@@ -2,7 +2,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import NightLight, {TEMP_MAX, TEMP_MIN} from '@shade/services/display/nightLight';
 import {bind, effect} from 'gnim';
-import {QuickToggleButton} from '../../common/quickToggleButton';
+import {QuickControlButton} from '../../common/quickControlButton';
 import type {QuickButton} from './quickButton';
 
 export default (): QuickButton => {
@@ -70,16 +70,19 @@ export default (): QuickButton => {
 
     return {
         widget: (
-            <QuickToggleButton
-                cssClasses={bind(nightLight, 'enabled').as((e) =>
-                    e ? ['raised', 'suggested-action'] : ['raised']
+            <QuickControlButton
+                intent="toggle"
+                active={bind(nightLight, 'enabled')}
+                icon={bind(nightLight, 'enabled').as((enabled) =>
+                    enabled ? 'night-light-symbolic' : 'night-light-disabled-symbolic'
                 )}
-                icon={bind(nightLight, 'enabled').as((e) =>
-                    e ? 'night-light-symbolic' : 'night-light-disabled-symbolic'
+                domain="Night Light"
+                value={bind(nightLight, 'enabled').as((enabled) => enabled ? 'On' : 'Off')}
+                actionLabel={bind(nightLight, 'enabled').as((enabled) =>
+                    enabled ? 'Turn Night Light off' : 'Turn Night Light on'
                 )}
-                label="Night Light"
                 onClick={() => bus.emit('display:nightlight:enabled', !nightLight.enabled)}
-                popover={popover}
+                menu={{label: 'Night Light options', popover}}
             />
         ),
     };

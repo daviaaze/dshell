@@ -11,6 +11,7 @@
  *   Stdout: [SELECTION][r]/screen:NAME  or  [SELECTION][r]/window:ID
  */
 
+import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
@@ -18,22 +19,15 @@ import {programArgs} from 'system';
 import './picker.css'; // auto-loaded as CssProvider by gnim dev/bundle
 import logger from '@shade/core/logger';
 import printOut from '@shade/core/stdout';
-import {
-    captureMonitorSync,
-    captureWindow,
-    cleanTempDir,
-    ensureTempDir,
-    GRIM_BIN,
-    loadTexture,
-    monPath,
-    runCapture,
-    windowAddr,
-    winPath,
-} from './capture';
+import {generalSettings} from '@shade/core/settings/general.gschema';
+import {initSettingsRoot} from '@shade/core/settingsRegistry';
+import {ColorScheme} from '@shade/services/display/colorScheme';
+import {Theme} from '@shade/style/theme';
+import {captureMonitor, captureWindow, cleanTempDir, ensureTempDir, GRIM_BIN} from './capture';
 import {MonitorPoller} from './poller';
 import {HYPRCTL_BIN, parseWindowList} from './protocol';
 import {buildSources} from './sources';
-import type {MonitorState, SelectFn, WindowState, XDPHWindow} from './types';
+import type {MonitorState, ParsedWindowList, PreviewHandle, SelectFn, WindowState} from './types';
 import {buildCombinedTab, buildScreensTab, buildWindowsTab, type CombinedTab, type Tab} from './ui';
 
 const CAT = 'share-picker';
@@ -86,7 +80,8 @@ function buildPicker(
     token: TokenState,
     select: SelectFn,
     monitors: MonitorState[],
-    windows: WindowState[]
+    windows: WindowState[],
+    windowListProvided: boolean
 ): PickerUi {
     const win = new Gtk.Window({
         application: app,
@@ -96,7 +91,7 @@ function buildPicker(
         resizable: true,
         decorated: false,
         hideOnClose: false,
-        cssClasses: ['picker-popup'],
+        cssClasses: ['picker-popup', 'background'],
     });
 
     const mainBox = new Gtk.Box({
@@ -122,10 +117,10 @@ function buildPicker(
     const screensTab = buildScreensTab(monitors, select);
     notebook.append_page(screensTab.page, new Gtk.Label({label: 'Screens'}));
 
-    const windowsTab = buildWindowsTab(windows, select);
+    const windowsTab = buildWindowsTab(windows, select, windowListProvided);
     notebook.append_page(windowsTab.page, new Gtk.Label({label: 'Windows'}));
 
-    const combinedTab = buildCombinedTab(monitors, windows, select);
+    const combinedTab = buildCombinedTab(monitors, windows, select, windowListProvided);
     notebook.append_page(combinedTab.page, new Gtk.Label({label: 'All'}));
 
     mainBox.append(notebook);
@@ -154,78 +149,47 @@ function buildPicker(
     return {win, notebook, screensTab, windowsTab, combinedTab};
 }
 
-function captureAllWindows(windows: WindowState[], screens: Tab, combined: CombinedTab): void {
-    windows.forEach((state, i) => {
-        if (!state.geometry) return;
-        const pic = screens.pics[i];
-        if (pic) captureWindow(state, [pic]);
-        // Also fill combined tab from the previous capture file
-        const combinedPic = combined.windowPics[i];
-        if (combinedPic) loadTexture(winPath(windowAddr(state)), combinedPic);
-    });
-}
-
-function captureCombinedOnce(
-    monitors: MonitorState[],
-    windows: WindowState[],
-    combined: CombinedTab
-): void {
-    monitors.forEach((state, i) => {
-        const pic = combined.monitorPics[i];
-        if (!pic) return;
-        const path = monPath(state.info.name);
-        runCapture([GRIM_BIN, '-s', '0.25', '-o', state.info.name, path], (ok) => {
-            if (ok) loadTexture(path, pic);
-        });
-    });
-    windows.forEach((state, i) => {
-        const pic = combined.windowPics[i];
-        const g = state.geometry;
-        if (!pic || !g) return;
-        const path = winPath(windowAddr(state));
-        runCapture(
-            [GRIM_BIN, '-s', '0.25', '-g', `${g.x},${g.y} ${g.width}x${g.height}`, path],
-            (ok) => {
-                if (ok) loadTexture(path, pic);
-            }
-        );
-    });
-}
-
-function setupCapture(ui: PickerUi, monitors: MonitorState[], windows: WindowState[]) {
+function setupCapture(ui: PickerUi, monitors: MonitorState[], windows: WindowState[]): () => void {
     const {screensTab, windowsTab, combinedTab, notebook} = ui;
-
-    // Live polling on the Screens tab; each tick also refreshes the
-    // combined-tab picture from the *previous* capture file.
-    const poller = new MonitorPoller(monitors, screensTab.pics, (state, i) => {
-        const pic = combinedTab.monitorPics[i];
-        if (pic) loadTexture(monPath(state.info.name), pic);
-    });
-
-    notebook.connect('switch-page', (_nb, _page, pageNum: number) => {
+    const monitorTargets = monitors.map((_, index) =>
+        [screensTab.previews[index], combinedTab.monitorPreviews[index]]
+            .filter((handle): handle is PreviewHandle => handle !== undefined));
+    const windowTargets = windows.map((_, index) =>
+        [windowsTab.previews[index], combinedTab.windowPreviews[index]]
+            .filter((handle): handle is PreviewHandle => handle !== undefined));
+    const poller = new MonitorPoller(monitors, monitorTargets);
+    const switched = notebook.connect('switch-page', (_notebook, _page, pageNum: number) => {
         poller.stop();
         if (pageNum === 0) {
             poller.start();
-        } else if (pageNum === 1) {
-            captureAllWindows(windows, windowsTab, combinedTab);
-        } else if (pageNum === 2) {
-            captureCombinedOnce(monitors, windows, combinedTab);
+        } else {
+            if (pageNum === 2) {
+                monitors.forEach((state, index) => captureMonitor(state, monitorTargets[index]));
+            }
+            windows.forEach((state, index) => captureWindow(state, windowTargets[index]));
         }
     });
-
-    // ── Initial capture — synchronous so previews render immediately ─
-    for (const state of monitors) {
-        captureMonitorSync(state, screensTab.pics);
-    }
+    monitors.forEach((state, index) => captureMonitor(state, monitorTargets[index]));
     poller.start();
+    return () => {
+        poller.stop();
+        if (GObject.signal_handler_is_connected(notebook, switched)) notebook.disconnect(switched);
+        for (const targets of [...monitorTargets, ...windowTargets]) {
+            for (const handle of targets) handle.dispose();
+        }
+    };
 }
 
 function onActivate(
     app: Gtk.Application,
     token: TokenState,
     select: SelectFn,
-    xdphWindows: XDPHWindow[]
-): void {
+    windowList: ParsedWindowList
+): () => void {
+    Adw.init();
+    initSettingsRoot();
+    ColorScheme.get_default().init(generalSettings());
+    Theme.get_default();
     ensureTempDir();
 
     logger.debug(
@@ -233,16 +197,16 @@ function onActivate(
         'XDPH_WINDOW_SHARING_LIST=' + (GLib.getenv('XDPH_WINDOW_SHARING_LIST') || '(null)')
     );
     logger.debug(CAT, `GRIM_BIN=${GRIM_BIN}, HYPRCTL_BIN=${HYPRCTL_BIN}`);
-    if (!GRIM_BIN.includes('/')) logger.warn(CAT, 'grim not found in PATH, previews will be blank');
+    if (!GRIM_BIN.includes('/')) logger.warn(CAT, 'grim not found in PATH, previews unavailable');
     if (!HYPRCTL_BIN.includes('/'))
         logger.warn(CAT, 'hyprctl not found in PATH, monitors/windows will be empty');
 
-    const {monitors, windows} = buildSources(xdphWindows);
+    const {monitors, windows} = buildSources(windowList.windows);
     logSources(monitors, windows);
 
-    const ui = buildPicker(app, token, select, monitors, windows);
+    const ui = buildPicker(app, token, select, monitors, windows, windowList.provided);
     ui.win.present();
-    setupCapture(ui, monitors, windows);
+    return setupCapture(ui, monitors, windows);
 }
 
 function main() {
@@ -253,8 +217,20 @@ function main() {
     const token: TokenState = {value: allowTokenDefault};
     const select = makeSelectFn(app, token);
 
-    app.connect('activate', () => onActivate(app, token, select, xdphWindows));
-    app.connect('shutdown', () => cleanTempDir());
+    let disposeCapture: (() => void) | null = null;
+    app.connect('activate', () => {
+        if (disposeCapture) {
+            app.get_active_window()?.present();
+            return;
+        }
+        disposeCapture = onActivate(app, token, select, xdphWindows);
+    });
+    app.connect('shutdown', () => {
+        disposeCapture?.();
+        disposeCapture = null;
+        ColorScheme.get_default().dispose();
+        cleanTempDir();
+    });
 
     app.run([]);
 }

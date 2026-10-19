@@ -2,6 +2,7 @@ import type Adw from 'gi://Adw?version=1';
 import {render} from '@gnim-js/gtk4';
 import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
+import ShellState from '@shade/services/state/shellState';
 import {createSettingsWindow} from './index';
 
 let settingsWindow: Adw.Window | null = null;
@@ -26,6 +27,9 @@ function disposeCurrentSettings() {
 }
 
 export function openSettings() {
+    const state = ShellState.get_default();
+    if (state.screenlocked) return;
+    state.qsOpen = false;
     const wm = WindowManager.get_default();
     const existing = wm.settings;
     if (existing && existing.visible) {

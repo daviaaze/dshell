@@ -1,70 +1,10 @@
+import GLib from 'gi://GLib?version=2.0';
+import GObject from 'gi://GObject?version=2.0';
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Keybinds, {type HyprBind} from '@shade/services/input/keybinds';
 import {computed, createState, For, onCleanup} from 'gnim';
 
-const DISPATCHER_DESCRIPTIONS: Record<string, string> = {
-    workspace: 'Switch workspace',
-    movetoworkspace: 'Move window to workspace',
-    movetoworkspacesilent: 'Move window to workspace without switching',
-    togglefloating: 'Toggle floating mode',
-    fullscreen: 'Toggle fullscreen',
-    focuswindow: 'Focus window',
-    movewindow: 'Move window',
-    resizewindow: 'Resize window',
-    killactive: 'Close active window',
-    togglepseudo: 'Toggle pseudo-tile mode',
-    pin: 'Pin window',
-    cyclenext: 'Cycle window focus',
-    changegroupactive: 'Change active window in group',
-    splitratio: 'Adjust split ratio',
-    togglesplit: 'Toggle split direction',
-    layoutopt: 'Change layout option',
-    swapnext: 'Swap with next window',
-    swapactiveworkspaces: 'Swap active workspaces',
-    exit: 'Exit Hyprland',
-    forcerendererreload: 'Reload the renderer',
-};
-
-const SHADE_COMMANDS: Array<[RegExp, string]> = [
-    [/\bshade-shell\s+toggle\s+launcher(?:\s|$)/, 'Toggle app launcher'],
-    [/\bshade-shell\s+toggle\s+quicksettings(?:\s|$)/, 'Toggle quick settings'],
-    [/\bshade-shell\s+toggle\s+bar(?:\s|$)/, 'Toggle top bar'],
-    [/\bshade-shell\s+toggle\s+windowswitcher(?:\s|$)/, 'Toggle window switcher'],
-    [/\bshade-shell\s+toggle\s+settings(?:\s|$)/, 'Toggle settings'],
-    [
-        /\bshade-shell\s+toggle\s+touchpad(?:\s|$)|\bshade-shell\s+touchpad(?:\s|$)/,
-        'Toggle touchpad',
-    ],
-    [/\bshade-shell\s+clipboard(?:\s|$)/, 'Open launcher in clipboard mode'],
-    [/\bshade-shell\s+open-clipboard(?:\s|$)/, 'Open clipboard history directly'],
-    [/\bshade-shell\s+lockscreen(?:\s|$)/, 'Lock the screen'],
-    [/\bshade-shell\s+screenshot-area(?:\s|$)/, 'Take a screenshot of a selected area'],
-    [/\bshade-shell\s+screenshot-overlay(?:\s|$)/, 'Open the capture overlay'],
-    [/\bshade-shell\s+screenshot(?:\s|$)/, 'Take a fullscreen screenshot'],
-    [/\bshade-shell\s+record-area(?:\s|$)/, 'Record a selected area'],
-    [/\bshade-shell\s+record-window(?:\s|$)/, 'Record the focused window'],
-    [/\bshade-shell\s+record-output(?:\s|$)/, 'Record the focused output'],
-    [/\bshade-shell\s+record(?:\s|$)/, 'Start fullscreen recording'],
-    [/\bshade-shell\s+display-next(?:\s|$)/, 'Cycle saved display layouts'],
-    [/\bshade-shell\s+display-mode-chooser(?:\s|$)/, 'Choose display mode'],
-    [/\bshade-shell\s+display-toggle-internal(?:\s|$)/, 'Toggle internal display'],
-    [/\bshade-shell\s+display-mode\s+internal-only(?:\s|$)/, 'Use internal-only display mode'],
-    [/\bshade-shell\s+display-mode\s+external-only(?:\s|$)/, 'Use external-only display mode'],
-    [/\bshade-shell\s+display-mode\s+extend(?:\s|$)/, 'Extend displays'],
-    [/\bshade-shell\s+display-mode\s+duplicate(?:\s|$)/, 'Duplicate displays'],
-];
-
-const describeBind = (bind: HyprBind, keybinds: Keybinds): string => {
-    if (bind.dispatcher === 'exec') {
-        const action = SHADE_COMMANDS.find(([pattern]) => pattern.test(bind.arg));
-        if (action) return action[1];
-    }
-
-    const description = DISPATCHER_DESCRIPTIONS[bind.dispatcher];
-    if (!description) return keybinds.formatDescription(bind);
-    return bind.arg ? `${description}: ${bind.arg}` : description;
-};
 
 export default () => {
     const keybinds = Keybinds.get_default();
@@ -89,10 +29,39 @@ export default () => {
         <>
             <Adw.PreferencesGroup
                 ref={(self) => {
-                    // Mapping occurs when the settings page is entered, including
-                    // when its existing window is shown again after being hidden.
-                    const mapSignal = self.connect('map', refresh);
-                    onCleanup(() => self.disconnect(mapSignal));
+                    let window: Adw.PreferencesWindow | null = null;
+                    let page: Adw.PreferencesPage | null = null;
+                    let pageSignal = 0;
+                    let visibilitySignal = 0;
+                    let active = false;
+                    const updateActive = () => {
+                        const next = window !== null && window.visible && window.get_visible_page() === page;
+                        const entered = next && !active;
+                        active = next;
+                        if (entered) refresh();
+                    };
+                    const mapSignal = self.connect('map', () => {
+                        if (!window) {
+                            const root = self.get_root();
+                            const owner = self.get_ancestor(Adw.PreferencesPage.$gtype);
+                            if (!(root instanceof Adw.PreferencesWindow) ||
+                                !(owner instanceof Adw.PreferencesPage)) return;
+                            window = root;
+                            page = owner;
+                            pageSignal = root.connect('notify::visible-page', updateActive);
+                            visibilitySignal = root.connect('notify::visible', updateActive);
+                        }
+                        // Group remapping during search/model rebuilding is not
+                        // navigation. Only entry into the selected visible page refreshes.
+                        updateActive();
+                    });
+                    onCleanup(() => {
+                        self.disconnect(mapSignal);
+                        if (window) {
+                            window.disconnect(pageSignal);
+                            window.disconnect(visibilitySignal);
+                        }
+                    });
                 }}
                 title="Keyboard Shortcuts"
                 description="View active keybindings"
@@ -133,12 +102,53 @@ export default () => {
                 {(group) => (
                     <Adw.PreferencesGroup title={group.category}>
                         <For each={computed(() => group.binds)}>
-                            {(bind: HyprBind) => (
-                                <Adw.ActionRow
-                                    title={describeBind(bind, keybinds)}
-                                    subtitle={keybinds.formatKeyCombo(bind) || 'No key specified'}
-                                />
-                            )}
+                            {(bind: HyprBind) => {
+                                const title = GLib.markup_escape_text(
+                                    keybinds.formatDescription(bind),
+                                    -1
+                                );
+                                return (
+                                    <Adw.ExpanderRow
+                                        title={title}
+                                        subtitle={keybinds.formatKeyCombo(bind) || 'No key specified'}
+                                    >
+                                        <Gtk.Box
+                                            orientation={Gtk.Orientation.VERTICAL}
+                                            spacing={8}
+                                            marginTop={8}
+                                            marginBottom={8}
+                                            marginStart={12}
+                                            marginEnd={12}
+                                        >
+                                            <Gtk.Label
+                                                label={bind.arg}
+                                                xalign={0}
+                                                selectable
+                                                wrap
+                                                cssClasses={['monospace']}
+                                            />
+                                            <Gtk.Button
+                                                label="Copy command"
+                                                halign={Gtk.Align.START}
+                                                onClicked={(self) =>
+                                                    self.get_display()?.get_clipboard().set(bind.arg)
+                                                }
+                                                ref={(self) =>
+                                                    self.update_property(
+                                                        [Gtk.AccessibleProperty.LABEL],
+                                                        [
+                                                            new GObject.Value(
+                                                                GObject.TYPE_STRING,
+                                                                'Copy command'
+                                                            ),
+                                                        ]
+                                                    )
+                                                }
+                                            />
+                                        </Gtk.Box>
+                                    </Adw.ExpanderRow>
+                                );
+                            }}
                         </For>
                     </Adw.PreferencesGroup>
                 )}

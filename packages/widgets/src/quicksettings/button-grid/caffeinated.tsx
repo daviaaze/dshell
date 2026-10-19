@@ -4,33 +4,34 @@ import {bus} from '@shade/services/bus';
 import Inhibit from '@shade/services/power/inhibit';
 import {bind, computed} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
-import {QuickToggleButton} from '../../common/quickToggleButton';
+import {QuickControlButton} from '../../common/quickControlButton';
 import type {QuickButton} from './quickButton';
 
 const SET_DURATION = 'power:inhibit:set-duration';
+const START_INDEFINITE = 'power:inhibit:start-indefinite';
 
 export default (): QuickButton => {
     const inhibit = Inhibit.get_default();
     const idle = bind(inhibit, 'idle');
     const remaining = bind(inhibit, 'remaining');
 
-    const label = computed(() => {
-        const _idle = idle();
+    const value = computed(() => {
+        if (!idle()) return 'Off';
         const rem = remaining();
-        if (!_idle) return 'Auto Sleep';
-        return rem ? `Keep Awake (${rem})` : 'Keep Awake';
+        return rem ? `Remaining ${rem}` : 'Indefinitely';
     });
 
     const icon = computed(() =>
         idle() ? 'weather-clear-symbolic' : 'weather-clear-night-symbolic'
     );
 
-    const cssClasses = computed(() => (idle() ? ['raised', 'suggested-action'] : ['raised']));
-
+    const actionLabel = computed(() =>
+        idle() ? 'Turn sleep prevention off' : 'Prevent sleep indefinitely'
+    );
     const popover = (
         <Gtk.Popover cssClasses={[]}>
             <LinkedBox>
-                <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 0)}>
+                <Gtk.Button onClicked={() => bus.emit(START_INDEFINITE, [])}>
                     <Adw.ButtonContent iconName="weather-clear-symbolic" label="Indefinitely" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 5)}>
@@ -53,7 +54,7 @@ export default (): QuickButton => {
                     visible={bind(inhibit, 'idle')}
                     onClicked={() => bus.emit('power:inhibit:set-idle', false)}
                 >
-                    <Adw.ButtonContent iconName="window-close-symbolic" label="Turn Off" />
+                    <Adw.ButtonContent iconName="window-close-symbolic" label="Off" />
                 </Gtk.Button>
             </LinkedBox>
         </Gtk.Popover>
@@ -61,15 +62,18 @@ export default (): QuickButton => {
 
     return {
         widget: (
-            <QuickToggleButton
-                cssClasses={cssClasses}
+            <QuickControlButton
+                intent="toggle"
+                active={idle}
                 icon={icon}
-                label={label}
+                domain="Sleep prevention"
+                value={value}
+                actionLabel={actionLabel}
                 onClick={() => {
                     if (inhibit.idle) bus.emit('power:inhibit:set-idle', false);
-                    else bus.emit(SET_DURATION, 0);
+                    else bus.emit(START_INDEFINITE, []);
                 }}
-                popover={popover}
+                menu={{label: 'Sleep prevention options', popover}}
             />
         ),
     };

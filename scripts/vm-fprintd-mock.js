@@ -6,6 +6,7 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import System from 'system';
 
 const SERVICE = 'net.reactivated.Fprint';
 const MANAGER_PATH = '/net/reactivated/Fprint/Manager';
@@ -131,8 +132,8 @@ function main() {
     const methodLog = (method, fields = {}) => log('method', {path: DEVICE_PATH, interface: DEVICE_INTERFACE, method, ...fields});
 
     try {
-        managerRegistration = connection.register_object(MANAGER_PATH, managerInfo, {
-            method_call(_connection, _sender, objectPath, interfaceName, methodName, _parameters, invocation) {
+        managerRegistration = connection.register_object(MANAGER_PATH, managerInfo,
+            (_connection, _sender, objectPath, interfaceName, methodName, _parameters, invocation) => {
                 log('method', {path: objectPath, interface: interfaceName, method: methodName});
                 if (methodName === 'GetDevices') {
                     invocation.return_value(new GLib.Variant('(ao)', [[DEVICE_PATH]]));
@@ -140,9 +141,9 @@ function main() {
                     invocation.return_dbus_error(`${MANAGER_INTERFACE}.UnknownMethod`, `Unsupported method ${methodName}`);
                 }
             },
-        });
-        deviceRegistration = connection.register_object(DEVICE_PATH, deviceInfo, {
-            method_call(_connection, _sender, objectPath, interfaceName, methodName, parameters, invocation) {
+            null, null);
+        deviceRegistration = connection.register_object(DEVICE_PATH, deviceInfo,
+            (_connection, _sender, objectPath, interfaceName, methodName, parameters, invocation) => {
                 const args = parameters ? parameters.deep_unpack() : [];
                 methodLog(methodName, args.length ? {arguments: args} : {});
                 switch (methodName) {
@@ -188,7 +189,7 @@ function main() {
                     invocation.return_dbus_error(`${DEVICE_INTERFACE}.UnknownMethod`, `Unsupported method ${methodName}`);
                 }
             },
-        });
+            null, null);
 
         nameOwnerId = Gio.bus_own_name_on_connection(
             connection,

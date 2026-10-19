@@ -2,11 +2,15 @@ import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import {cityName} from '@shade/core/time';
+import Clock from '@shade/services/time/clock';
+import {IconButton} from '../common/iconButton';
 import {createState, For} from 'gnim';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export default () => {
     const general = generalSettings();
+    const wallTime = Clock.get_default().wallTime;
 
     const [PRESET_TIMEZONES] = createState([
         'UTC',
@@ -67,26 +71,28 @@ export default () => {
                 </Gtk.MenuButton>
             </Adw.ActionRow>
             <For each={general.timezones}>
-                {(tz: string) => (
-                    <Adw.ActionRow
-                        title={tz.replaceAll('_', ' ')}
-                        subtitle={(() => {
-                            const gtz = GLib.TimeZone.new(tz);
-                            const now = GLib.DateTime.new_now(gtz)!;
-                            return now.format('%H:%M') ?? '';
-                        })()}
-                    >
-                        <Gtk.Button
-                            slot="suffix"
-                            cssClasses={['circular', 'destructive-action']}
-                            iconName="list-remove-symbolic"
-                            onClicked={() => {
-                                const current = general.timezones();
-                                general.setTimezones(current.filter((t) => t !== tz));
-                            }}
-                        />
-                    </Adw.ActionRow>
-                )}
+                {(tz: string) => {
+                    const timezone = GLib.TimeZone.new_identifier(tz);
+                    return (
+                        <Adw.ActionRow
+                            title={cityName(tz)}
+                            subtitle={wallTime.as((time) => {
+                                const local = timezone ? time.to_timezone(timezone)?.format('%H:%M') : null;
+                                return `${tz} — ${local ?? 'Time unavailable'}`;
+                            })}
+                        >
+                            <Gtk.Box slot="suffix" valign={Gtk.Align.CENTER}>
+                                <IconButton
+                                    icon="list-remove-symbolic"
+                                    accessibleLabel={`Remove ${tz} timezone`}
+                                    onClicked={() => {
+                                        general.setTimezones(general.timezones().filter((value) => value !== tz));
+                                    }}
+                                />
+                            </Gtk.Box>
+                        </Adw.ActionRow>
+                    );
+                }}
             </For>
         </Adw.PreferencesGroup>
     );

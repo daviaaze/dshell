@@ -44,6 +44,7 @@ let
     "shade-shell" = "apps/shell/src/main.ts";
     "shade-shell-greet" = "apps/greeter/src/main.ts";
     "shade-shell-share-picker" = "apps/share-picker/src/main.ts";
+    "shade-shell-auth-worker" = "apps/shell/src/authWorker.ts";
   };
 
   # Build a define-flag pair with a JS-string-literal value for rolldown.

@@ -1,4 +1,5 @@
 import Gtk from 'gi://Gtk?version=4.0';
+import logger from '@shade/core/logger';
 import WeatherLib from '@shade/services/location/weather';
 import {formatTime, windDirectionLabel} from '@shade/services/location/weatherUtils';
 import {type Accessor, bind, computed} from 'gnim';
@@ -93,6 +94,19 @@ const DetailsLine = ({
  */
 export const WeatherWidget = () => {
     const weather = WeatherLib.get_default();
+    const updateBusy = bind(weather, 'updateBusy');
+    const updateError = bind(weather, 'updateError');
+    const refreshStatus = computed(() =>
+        updateBusy() ? 'Updating weather…' : (updateError() ?? '')
+    );
+    const refreshStatusVisible = computed(() => updateBusy() || updateError() !== null);
+    const refreshWeather = async () => {
+        try {
+            await weather.refresh();
+        } catch (error) {
+            logger.error('weather', 'weather widget refresh failed:', error);
+        }
+    };
 
     const locationName = bind(weather, 'locationName');
     const tempSummary = bind(weather, 'tempSummary');
@@ -148,12 +162,29 @@ export const WeatherWidget = () => {
                         opacity={0.7}
                     />
                 </Gtk.Box>
-                <Gtk.Button
-                    onClicked={() => weather.refresh()}
-                    iconName="view-refresh-symbolic"
-                    cssClasses={['flat']}
+                <Gtk.Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={4}
                     valign={Gtk.Align.START}
-                />
+                >
+                    <Gtk.Button
+                        onClicked={refreshWeather}
+                        iconName="view-refresh-symbolic"
+                        cssClasses={['flat']}
+                        tooltipText="Refresh weather"
+                        sensitive={computed(() => !updateBusy())}
+                    />
+                    <Gtk.Label
+                        label={refreshStatus}
+                        visible={refreshStatusVisible}
+                        cssClasses={computed(() =>
+                            updateError() ? ['caption', 'error'] : ['caption']
+                        )}
+                        halign={Gtk.Align.CENTER}
+                        wrap
+                        maxWidthChars={20}
+                    />
+                </Gtk.Box>
             </Gtk.Box>
 
             {/* ── Separator ── */}

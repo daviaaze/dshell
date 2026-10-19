@@ -4,9 +4,9 @@
 
 ## Overview
 
-- **Source**: `src/apps/share-picker/` (entry: `main.ts`, plus `capture.ts`, `protocol.ts`, `poller.ts`, `sources.ts`, `types.ts`, `ui.ts`)
-- **Dependencies**: `grim` (screenshot), `hyprctl` (geometry queries), `Gtk.Application` (`com.caioasmuniz.shade_shell.share_picker`)
-- **Type**: Standalone Gtk.Application window (not part of main shell); decorated but no titlebar; launched by XDPH
+- **Source**: `apps/share-picker/src/` (`main.ts`, `capture.ts`, `protocol.ts`, `poller.ts`, `sources.ts`, `types.ts`, `ui.ts`)
+- **Dependencies**: `grim`, `hyprctl`, standalone `Gtk.Application` (`com.caioasmuniz.shade_shell.share_picker`)
+- **Type**: undecorated native-background window launched by XDPH; native Light/Dark preference is initialized without shell services.
 
 ## Functional
 
@@ -30,8 +30,8 @@
 
 | # | State | Trigger | Expected behavior |
 |---|-------|---------|-------------------|
-| F1 | Initial load | App activates | Temp directory created; monitors and windows loaded; Screens tab shown with initial captures; `MonitorPoller` starts |
-| F2 | Tab switch | User clicks "Windows" or "All" tab | Poller stopped; windows captured once via grim -g (or combined capture) |
+| F1 | Initial load | App activates | Present UI, then start asynchronous captures and source-specific round-robin polling |
+| F2 | Tab switch | User clicks Windows or All | Request matching primary/All preview handles only; never select a source or emit a successful portal response |
 | F3 | Selection made | User clicks a monitor or window thumbnail | `print()` to stdout with `[SELECTION][r]/screen:<name>` or `/window:<id>`; app quits |
 | F4 | Cancel | User clicks Cancel button or closes window | App quits with no selection |
 | F5 | Allow-restore toggled | User checks/unchecks "Allow restore token" checkbox | `tokenRestore` flag; `r` appended to selection output |
@@ -49,11 +49,14 @@
 
 | # | Condition | Expected behavior |
 |---|-----------|-------------------|
-| E1 | grim not in PATH | Warnings logged; previews show blank images |
-| E2 | hyprctl not in PATH | Monitor/window list empty |
-| E3 | No monitors (headless) | App still opens; UI shows no screens |
-| E4 | Window closed mid-capture | Temp directory cleaned on `shutdown` signal |
-| E5 | XDPH_WINDOW_SHARING_LIST empty/malformed | Parsed leniently; `parseWindowList` returns empty array; windows tab shows empty |
+| E1 | grim missing, capture failure or invalid texture | Preview unavailable; stale texture cleared; source remains selectable |
+| E2 | hyprctl unavailable | Query failure logged; corresponding source lists may be empty |
+| E3 | No monitors | Screens and the All screens section show No screens available |
+| E4 | Shutdown during capture | Poller disconnected/stopped and all handles disposed; late native completion cannot mutate widgets |
+| E5 | Window-list env absent | Window list unavailable with portal guidance |
+| E6 | Window-list env present empty/malformed | No windows available; parser retains `provided: true` |
+| E7 | Lazy preview / accepted capture | Preview not loaded / Loading preview respectively |
+| E8 | Multiple monitors | Each source decodes once and updates only its own primary/All handles |
 
 ## Visual (Adwaita alignment)
 
@@ -61,7 +64,7 @@
 
 | Element | Token / style class | Notes |
 |---------|--------------------|-------|
-| Window | `picker-popup` class - no decorations | `apps/share-picker/src/picker.css`: `border-radius: var(--window-radius)`; border uses `alpha(@window_bg_color, 0.08)` |
+| Window | `picker-popup background`, native Light/Dark | Theme-aware border and native opaque surface |
 | Title | `title-2` | Adw style class |
 | Notebook tabs | `Gtk.Notebook` | Standard GTK |
 | Thumbnails | `Gtk.Picture`, 240×135 | `CONTENT_SCALE_DOWN` |

@@ -20,10 +20,12 @@ import Adw from 'gi://Adw?version=1';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bind, computed, createState, onCleanup} from 'gnim';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
+import {presentPowerConfirmation} from '@shade/widgets/common/powerConfirmation';
 import {GreeterClock} from './clock';
 import {GreetSession} from './GreetSession';
 import {getGreeterKeyboardIndicator} from './keyboard';
@@ -52,6 +54,21 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     if (preselected) setUsername(preselected.username);
 
     const [selectedUser, setSelectedUser] = createState<GreeterUser | null>(preselected);
+    const knownUsersVisible = computed(() => !showPassword() && greeterUsers.length > 0);
+    const manualUsernameVisible = computed(() => !showPassword() && selectedUser() === null);
+    const otherAccountVisible = computed(() => !showPassword() && selectedUser() !== null);
+    let initialAutoStartQueued = false;
+    let initialAutoStartAllowed = true;
+    let initialAutoStartId = 0;
+    let entryFocusId = 0;
+    let pendingPasswordSubmit = false;
+
+    onCleanup(() => {
+        initialAutoStartAllowed = false;
+        pendingPasswordSubmit = false;
+        if (initialAutoStartId) GLib.source_remove(initialAutoStartId);
+        if (entryFocusId) GLib.source_remove(entryFocusId);
+    });
 
     // Session list: default (SHADE_SESSION_COMMAND) + discovered sessions
     const sessionList = buildSessionList();
@@ -62,6 +79,12 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     const stateBinding = bind(greeter, 'state');
     const errorBinding = bind(greeter, 'errorMessage');
     const infoBinding = bind(greeter, 'infoMessage');
+    const loginButtonSensitive = computed(
+        () =>
+            !showPassword() ||
+            stateBinding() === 'awaiting-input' ||
+            stateBinding() === 'error'
+    );
 
     // CapsLock and fingerprint state
     const [capsLock, setCapsLock] = createState(false);
@@ -69,6 +92,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
 
     // Keyboard layout
     const keyboardIndicator = getGreeterKeyboardIndicator();
+    const keyboardDescription = 'Layout switching is unavailable here; active layout is not queried.';
 
     // Wallpaper: resolve from GSettings (auto day/night by ColorScheme), fallback solid
     let wallpaper: ReturnType<typeof computed<Gio.File | null>> | null = null;
@@ -95,35 +119,50 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
         // GSettings not available in greeter — solid background
     }
 
-    const handleLogin = () => {
-        if (
-            greeter.state !== 'idle' &&
-            greeter.state !== 'error' &&
-            greeter.state !== 'awaiting-input'
-        )
-            return;
-
-        if (!showPassword()) {
-            if (!username().trim()) return;
-            greeter.start(username());
-            setShowPassword(true);
-            passwordEntry?.grab_focus();
-            setIsFingerprint(
-                greeter.infoMessage.toLowerCase().includes('finger') ||
-                    greeter.infoMessage.toLowerCase().includes('biometric')
-            );
-        } else {
-            if (greeter.state !== 'awaiting-input') return;
-            const pw = passwordEntry?.get_text() ?? '';
-            if (!pw) return;
-            greeter.postAuth(pw);
-            passwordEntry?.set_text('');
-            setIsFingerprint(false);
-        }
+    const startLogin = (account: string) => {
+        initialAutoStartAllowed = false;
+        pendingPasswordSubmit = false;
+        setShowPassword(true);
+        setIsFingerprint(
+            greeter.infoMessage.toLowerCase().includes('finger') ||
+                greeter.infoMessage.toLowerCase().includes('biometric')
+        );
+        greeter.start(account);
     };
 
-    // Return to the username step, aborting any in-flight auth
+    const handleLogin = () => {
+        if (!showPassword()) {
+            const account = username().trim();
+            if (!account) return;
+            startLogin(account);
+            return;
+        }
+
+        if (greeter.state === 'authenticated' || greeter.state === 'starting-session') return;
+        const account = (selectedUser()?.username ?? username()).trim();
+        const password = passwordEntry?.get_text() ?? '';
+        if (greeter.state === 'error') {
+            pendingPasswordSubmit = password.length > 0;
+            if (account) greeter.start(account);
+            return;
+        }
+        if (!password) return;
+        if (greeter.state !== 'awaiting-input') {
+            pendingPasswordSubmit = true;
+            return;
+        }
+
+        pendingPasswordSubmit = false;
+        greeter.postAuth(password);
+        passwordEntry?.set_text('');
+        setIsFingerprint(false);
+    };
+
+    // Return to account selection without automatically restarting PAM.
     const goBack = () => {
+        initialAutoStartAllowed = false;
+        if (greeter.state === 'authenticated' || greeter.state === 'starting-session') return;
+        pendingPasswordSubmit = false;
         greeter.reset();
         setShowPassword(false);
         passwordEntry?.set_text('');
@@ -133,19 +172,32 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     // Handle authentication success and error shake
     onCleanup(
         stateBinding.subscribe(() => {
-            if (stateBinding() === 'authenticated') {
+            const state = stateBinding();
+            if (state === 'awaiting-input' && pendingPasswordSubmit) {
+                pendingPasswordSubmit = false;
+                handleLogin();
+            } else if (state === 'authenticated') {
+                pendingPasswordSubmit = false;
                 setLastUsername(username());
                 const selected = sessionDropDown?.selected ?? 0;
                 const entry = sessionList[selected] ?? sessionList[0];
-                greeter.startSession(entry.command);
                 greeter.onSessionStarted = () => application.quit();
-            } else if (stateBinding() === 'error') {
+                greeter.startSession(entry.command);
+            } else if (state === 'error') {
+                pendingPasswordSubmit = false;
                 loginFormBox?.add_css_class('shake');
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
                     loginFormBox?.remove_css_class('shake');
                     return GLib.SOURCE_REMOVE;
                 });
             }
+        })
+    );
+
+    onCleanup(
+        infoBinding.subscribe(() => {
+            const info = infoBinding().toLowerCase();
+            setIsFingerprint(info.includes('finger') || info.includes('biometric'));
         })
     );
 
@@ -159,39 +211,61 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
             cssClasses={['card']}
             widthRequest={300}
         >
-            {/* User picker (avatars) or manual username entry */}
-            {greeterUsers.length > 0 ? (
-                <Gtk.Box
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    spacing={8}
-                    halign={Gtk.Align.CENTER}
-                    visible={showPassword.as((v) => !v)}
-                >
-                    {greeterUsers.map((user) => (
-                        <Gtk.Button
-                            tooltipText={user.realName}
-                            onClicked={() => {
-                                setSelectedUser(user);
-                                setUsername(user.username);
-                            }}
-                            cssClasses={['flat', 'circular']}
-                            opacity={selectedUser.as((sel) =>
-                                sel?.username === user.username ? 1 : 0.5
-                            )}
-                        >
-                            <Adw.Avatar size={48} showInitials text={user.realName} />
-                        </Gtk.Button>
-                    ))}
-                </Gtk.Box>
-            ) : (
-                <Gtk.Entry
-                    visible={showPassword.as((v) => !v)}
-                    placeholderText="Username"
-                    text={username}
-                    onNotifyText={(self) => setUsername(self.text)}
-                    onActivate={() => handleLogin()}
-                />
-            )}
+            {/* Known account picker or deliberate manual account entry */}
+            <Gtk.Box
+                orientation={Gtk.Orientation.HORIZONTAL}
+                spacing={8}
+                halign={Gtk.Align.CENTER}
+                visible={knownUsersVisible}
+            >
+                {greeterUsers.map((user) => (
+                    <Gtk.Button
+                        tooltipText={user.realName}
+                        onClicked={() => {
+                            setSelectedUser(user);
+                            setUsername(user.username);
+                            startLogin(user.username);
+                        }}
+                        cssClasses={['flat', 'circular']}
+                        opacity={selectedUser.as((selected) =>
+                            selected?.username === user.username ? 1 : 0.5
+                        )}
+                    >
+                        <Adw.Avatar size={48} showInitials text={user.realName} />
+                    </Gtk.Button>
+                ))}
+            </Gtk.Box>
+            <Gtk.Entry
+                visible={manualUsernameVisible}
+                placeholderText="Username"
+                text={username}
+                onNotifyText={(self) => setUsername(self.text)}
+                ref={(self) => {
+                    self.connect('map', () => {
+                        if (entryFocusId) GLib.source_remove(entryFocusId);
+                        entryFocusId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                            entryFocusId = 0;
+                            if (manualUsernameVisible() && self.get_mapped()) self.grab_focus();
+                            return GLib.SOURCE_REMOVE;
+                        });
+                    });
+                }}
+                onActivate={() => handleLogin()}
+            />
+            <Gtk.Button
+                visible={otherAccountVisible}
+                cssClasses={['flat']}
+                label="Use another account"
+                onClicked={() => {
+                    initialAutoStartAllowed = false;
+                    pendingPasswordSubmit = false;
+                    greeter.reset();
+                    setSelectedUser(null);
+                    setUsername('');
+                    setShowPassword(false);
+                    setIsFingerprint(false);
+                }}
+            />
 
             {/* Password entry with CapsLock indicator */}
             <Gtk.Box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} visible={showPassword}>
@@ -201,6 +275,15 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                     showPeekIcon
                     ref={(self) => {
                         passwordEntry = self;
+                        self.connect('map', () => {
+                            if (!showPassword()) return;
+                            if (entryFocusId) GLib.source_remove(entryFocusId);
+                            entryFocusId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                                entryFocusId = 0;
+                                if (showPassword() && self.get_mapped()) self.grab_focus();
+                                return GLib.SOURCE_REMOVE;
+                            });
+                        });
                     }}
                     onActivate={() => handleLogin()}
                 />
@@ -221,7 +304,11 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                 <Gtk.Image iconName="fingerprint-symbolic" pixelSize={48} />
                 <Adw.Spinner
                     visible={stateBinding.as(
-                        (s) => s === 'authenticating' || s === 'creating-session'
+                        (state) =>
+                            state === 'authenticating' ||
+                            state === 'creating-session' ||
+                            state === 'cancelling-session' ||
+                            state === 'starting-session'
                     )}
                 />
             </Gtk.Box>
@@ -241,21 +328,34 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                 label={infoBinding}
             />
 
-            {/* Loading indicator */}
             <Adw.Spinner
-                visible={stateBinding.as((s) => s === 'authenticating' || s === 'creating-session')}
+                visible={stateBinding.as(
+                    (state) =>
+                        state === 'authenticating' ||
+                        state === 'creating-session' ||
+                        state === 'cancelling-session' ||
+                        state === 'starting-session'
+                )}
             />
 
-            {/* Login button */}
+            {/* Log in only when PAM has asked for input; password stays editable while PAM waits. */}
             <Gtk.Button
                 cssClasses={['suggested-action']}
                 hexpand
                 label={showPassword.as((v) => (v ? 'Log In' : 'Continue'))}
+                sensitive={loginButtonSensitive}
                 onClicked={() => handleLogin()}
             />
 
-            {/* Back to username step */}
-            <Gtk.Button visible={showPassword} label="Back" onClicked={() => goBack()} />
+            {/* Back to account selection */}
+            <Gtk.Button
+                visible={showPassword}
+                sensitive={stateBinding.as(
+                    (state) => state !== 'authenticated' && state !== 'starting-session'
+                )}
+                label="Back"
+                onClicked={() => goBack()}
+            />
 
             {/* Session picker */}
             <Gtk.Box spacing={8} marginTop={8}>
@@ -284,28 +384,43 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
             css={wallpaper ? 'backdrop-filter: blur(40px) brightness(0.35);' : undefined}
         >
             {/* Top bar: keyboard layout (left) + power actions (right) */}
-            <Gtk.Box marginTop={16} marginStart={16} marginEnd={16}>
+            <Gtk.Box marginTop={16} marginStart={16} marginEnd={16} spacing={8}>
                 <Gtk.Label
                     cssClasses={['pill']}
                     label={keyboardIndicator}
                     halign={Gtk.Align.START}
-                />
-                <Gtk.Label
-                    label="Layout switching is unavailable here; active layout is not queried."
-                    halign={Gtk.Align.START}
+                    tooltipText={keyboardDescription}
+                    ref={(self) => {
+                        self.update_property(
+                            [Gtk.AccessibleProperty.DESCRIPTION],
+                            [new GObject.Value(GObject.TYPE_STRING, keyboardDescription)]
+                        );
+                    }}
                 />
                 <Gtk.Box hexpand />
                 <Gtk.Button
                     iconName="system-reboot-symbolic"
                     tooltipText="Restart"
-                    onClicked={() => reboot()}
+                    ref={(self) => {
+                        self.update_property(
+                            [Gtk.AccessibleProperty.LABEL],
+                            [new GObject.Value(GObject.TYPE_STRING, 'Restart')]
+                        );
+                    }}
+                    onClicked={(self) => presentPowerConfirmation(self, 'reboot', () => reboot())}
                 />
                 <Gtk.Button
                     iconName="system-shutdown-symbolic"
                     tooltipText="Power Off"
                     cssClasses={['destructive-action']}
                     marginStart={8}
-                    onClicked={() => powerOff()}
+                    ref={(self) => {
+                        self.update_property(
+                            [Gtk.AccessibleProperty.LABEL],
+                            [new GObject.Value(GObject.TYPE_STRING, 'Power Off')]
+                        );
+                    }}
+                    onClicked={(self) => presentPowerConfirmation(self, 'poweroff', () => powerOff())}
                 />
             </Gtk.Box>
 
@@ -461,6 +576,20 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                 win.add_controller(keyCtrl);
                 win.present();
                 win.fullscreen();
+                if (preselected && !initialAutoStartQueued) {
+                    initialAutoStartQueued = true;
+                    initialAutoStartId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                        initialAutoStartId = 0;
+                        if (
+                            initialAutoStartAllowed &&
+                            selectedUser()?.username === preselected.username &&
+                            !showPassword()
+                        ) {
+                            startLogin(preselected.username);
+                        }
+                        return GLib.SOURCE_REMOVE;
+                    });
+                }
             }}
         >
             {body}

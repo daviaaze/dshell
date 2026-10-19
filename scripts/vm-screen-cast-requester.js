@@ -18,10 +18,10 @@ function makeToken(label) {
 }
 
 function makeOptions(handleToken, extra = {}) {
-    return new GLib.Variant('a{sv}', {
+    return {
         handle_token: new GLib.Variant('s', handleToken),
         ...extra,
-    });
+    };
 }
 
 function requestPath(handleToken) {
@@ -181,6 +181,33 @@ async function requestScreenCast() {
 
     const sessionHandle = resultString(create.results, 'session_handle');
     log(`created portal session ${sessionHandle}`);
+    let sessionClosed = false;
+    let cancelled = false;
+    let closedWaiter = null;
+    const closedSubscription = connection.signal_subscribe(
+        PORTAL_BUS, SESSION, 'Closed', sessionHandle, null, Gio.DBusSignalFlags.NONE,
+        () => {
+            sessionClosed = true;
+            log(`portal session closed ${sessionHandle}`);
+            closedWaiter?.();
+        }
+    );
+    const waitForPortalClosure = () => new Promise((resolve, reject) => {
+        if (sessionClosed) {
+            resolve();
+            return;
+        }
+        const timeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
+            closedWaiter = null;
+            reject(new Error('Cancelled portal session did not emit Closed'));
+            return GLib.SOURCE_REMOVE;
+        });
+        closedWaiter = () => {
+            closedWaiter = null;
+            GLib.source_remove(timeout);
+            resolve();
+        };
+    });
 
     try {
         const selectToken = makeToken('select');
@@ -191,12 +218,13 @@ async function requestScreenCast() {
         const select = await portalRequest(
             'SelectSources',
             '(oa{sv})',
-            [new GLib.Variant('o', sessionHandle), selectOptions],
+            [sessionHandle, selectOptions],
             selectToken
         );
 
         if (select.code === 1) {
-            log('SelectSources was cancelled; closing the session');
+            cancelled = true;
+            log('SelectSources was cancelled; waiting for portal session closure');
             return;
         }
         if (select.code !== 0) {
@@ -208,12 +236,13 @@ async function requestScreenCast() {
         const start = await portalRequest(
             'Start',
             '(osa{sv})',
-            [new GLib.Variant('o', sessionHandle), new GLib.Variant('s', ''), startOptions],
+            [sessionHandle, '', startOptions],
             startToken
         );
 
         if (start.code === 1) {
-            log('Start was cancelled in the guest share picker; closing the session');
+            cancelled = true;
+            log('Start was cancelled in the guest share picker; waiting for portal session closure');
             return;
         }
         if (start.code !== 0) {
@@ -222,8 +251,22 @@ async function requestScreenCast() {
 
         log('Start accepted the guest screen/window selection; closing the session without opening a PipeWire remote');
     } finally {
-        // The ScreenCast portal has no Stop method; Session.Close ends its active streams.
-        await callSessionClose(sessionHandle);
+        // A cancelled source request may leave the frontend session alive.
+        // Close it once; accept a backend teardown race only after Closed.
+        try {
+            if (!sessionClosed) {
+                try {
+                    await callSessionClose(sessionHandle);
+                } catch (error) {
+                    if (!cancelled || Gio.dbus_error_get_remote_error(error) !== 'org.freedesktop.DBus.Error.UnknownMethod')
+                        throw error;
+                    await waitForPortalClosure();
+                    log('Cancelled session closure acknowledged after backend teardown');
+                }
+            }
+        } finally {
+            connection.signal_unsubscribe(closedSubscription);
+        }
     }
 }
 

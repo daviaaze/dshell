@@ -1,3 +1,4 @@
+import Pango from 'gi://Pango?version=1.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Weather from '@shade/services/location/weather';
@@ -21,6 +22,7 @@ export const WeatherButton = ({
             direction={vertical.as((v) => (v ? Gtk.ArrowType.RIGHT : Gtk.ArrowType.UP))}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             visible={visible}
+            cssClasses={vertical.as((v) => (v ? ['bar-vertical-content-button'] : []))}
             ref={usePopoverCleanup}
         >
             <Gtk.Popover
@@ -42,7 +44,13 @@ export const WeatherButton = ({
                 spacing={4}
             >
                 <Gtk.Image pixelSize={22} iconName={iconName} />
-                <Gtk.Label cssClasses={['heading']} label={tempLabel} />
+                <Gtk.Label
+                    cssClasses={['heading']}
+                    label={tempLabel}
+                    maxWidthChars={vertical.as((v) => (v ? 4 : 12))}
+                    ellipsize={Pango.EllipsizeMode.END}
+                    tooltipText={tempLabel}
+                />
             </Gtk.Box>
         </Gtk.MenuButton>
     );

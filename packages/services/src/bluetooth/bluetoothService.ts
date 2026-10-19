@@ -52,6 +52,32 @@ export default class BluetoothService extends Object {
         return this.isConnected ? 'bluetooth-active-symbolic' : 'bluetooth-disconnected-symbolic';
     }
 
+    connectDevice(device: Bluetooth.Device): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            device.connect_device((_, result) => {
+                try {
+                    device.connect_device_finish(result);
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        });
+    }
+
+    disconnectDevice(device: Bluetooth.Device): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            device.disconnect_device((_, result) => {
+                try {
+                    device.disconnect_device_finish(result);
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        });
+    }
+
     /** Initialize the AstalBluetooth D-Bus proxy. Call once during boot. */
     init(): void {
         if (this.#initialized) return;

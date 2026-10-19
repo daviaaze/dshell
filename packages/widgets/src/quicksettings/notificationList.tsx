@@ -2,6 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import type Notifd from 'gi://AstalNotifd';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {bus} from '@shade/services/bus';
@@ -106,17 +107,29 @@ const NotificationListContent = ({
             <Gtk.Button
                 cssClasses={['flat']}
                 iconName={'edit-clear-all-symbolic'}
-                tooltipText={'Clear all notifications'}
+                tooltipText={'Dismiss all active notifications'}
                 onClicked={() => dismissAll(notifd.get_notifications())}
+                ref={(self) => self.update_property(
+                    [Gtk.AccessibleProperty.LABEL],
+                    [new GObject.Value(GObject.TYPE_STRING, 'Dismiss all active notifications')]
+                )}
             />
             <Gtk.ToggleButton
                 onClicked={(self) => bus.emit('system:dnd:set', self.active)}
                 active={bind(dnd, 'dnd')}
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
-                iconName={'notifications-disabled-symbolic'}
-                tooltipText={'Do Not Disturb'}
-                cssClasses={bind(dnd, 'dnd').as((d) =>
-                    d ? ['suggested-action', 'warning'] : ['flat']
+                iconName={bind(dnd, 'dnd').as((enabled) =>
+                    enabled ? 'notifications-disabled-symbolic' : 'notifications-symbolic'
+                )}
+                tooltipText={bind(dnd, 'dnd').as((enabled) =>
+                    enabled ? 'Do Not Disturb on' : 'Do Not Disturb off'
+                )}
+                cssClasses={bind(dnd, 'dnd').as((enabled) =>
+                    enabled ? ['suggested-action', 'warning'] : ['flat']
+                )}
+                ref={(self) => self.update_property(
+                    [Gtk.AccessibleProperty.LABEL],
+                    [new GObject.Value(GObject.TYPE_STRING, 'Do Not Disturb')]
                 )}
             />
         </Gtk.Box>
@@ -179,6 +192,10 @@ const NotificationListContent = ({
                     tooltipText={'Delete from history'}
                     onClicked={() => history.remove(entry.id)}
                     slot="suffix"
+                    ref={(self) => self.update_property(
+                        [Gtk.AccessibleProperty.LABEL],
+                        [new GObject.Value(GObject.TYPE_STRING, 'Delete from history')]
+                    )}
                 />
             </Adw.ActionRow>
         );
@@ -214,6 +231,10 @@ const NotificationListContent = ({
                     tooltipText={'Dismiss this group'}
                     cssClasses={['flat']}
                     onClicked={() => dismissAll(notifications)}
+                    ref={(self) => self.update_property(
+                        [Gtk.AccessibleProperty.LABEL],
+                        [new GObject.Value(GObject.TYPE_STRING, 'Dismiss this group')]
+                    )}
                 />
             </Gtk.Box>
         );
@@ -225,7 +246,7 @@ const NotificationListContent = ({
                     notification={notifications[0]!}
                     variant="list"
                     showProgress={showProgress}
-                    closeAction={(n) => n.dismiss()}
+                    closeAction={(n) => dismissAll([n])}
                 />
                 <Gtk.Revealer revealChild={visible}>
                     <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
@@ -236,7 +257,7 @@ const NotificationListContent = ({
                                 notification={notif}
                                 variant="list"
                                 showProgress={showProgress}
-                                closeAction={(n) => n.dismiss()}
+                                closeAction={(n) => dismissAll([n])}
                             />
                         ))}
                     </Gtk.Box>
@@ -255,7 +276,7 @@ const NotificationListContent = ({
                 {(group: Notifd.Notification[]) =>
                     group.length === 1 ? (
                         <Notification
-                            closeAction={(n) => n.dismiss()}
+                            closeAction={(n) => dismissAll([n])}
                             showProgress={showProgress}
                             notification={group[0]!}
                             variant="list"

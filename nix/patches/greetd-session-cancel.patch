@@ -1,0 +1,403 @@
+diff --git a/greetd/src/session/interface.rs b/greetd/src/session/interface.rs
+--- a/greetd/src/session/interface.rs
++++ b/greetd/src/session/interface.rs
+@@ -1,6 +1,10 @@
+ use std::{
+     ffi::CString,
+-    os::unix::{io::AsRawFd, net::UnixDatagram},
++    os::{
++        fd::{AsRawFd, FromRawFd, OwnedFd},
++        unix::net::UnixDatagram,
++    },
++    sync::Arc,
+ };
+ 
+ use nix::{
+@@ -12,6 +16,7 @@
+ use async_trait::async_trait;
+ 
+ use tokio::net::UnixDatagram as TokioUnixDatagram;
++use tokio::sync::watch;
+ 
+ use super::worker::{
+     AuthMessageType, ParentToSessionChild, SessionChildToParent, SessionClass, TerminalMode,
+@@ -79,6 +84,51 @@
+     }
+ }
+ 
++fn worker_socket_pair() -> Result<(UnixDatagram, UnixDatagram), Error> {
++    let (parent, child) =
++        UnixDatagram::pair().map_err(|error| format!("could not create pipe: {}", error))?;
++    // Tokio requires nonblocking I/O; the worker endpoint must remain blocking.
++    parent.set_nonblocking(true)?;
++    Ok((parent, child))
++}
++
++fn open_pidfd(task: Pid) -> Result<Arc<OwnedFd>, Error> {
++    let fd = unsafe { libc::syscall(libc::SYS_pidfd_open, task.as_raw(), 0) };
++    if fd < 0 {
++        return Err(std::io::Error::last_os_error().into());
++    }
++    Ok(Arc::new(unsafe { OwnedFd::from_raw_fd(fd as _) }))
++}
++
++/// Cancel only this worker, never a later process which reused its PID.
++#[derive(Clone)]
++pub struct SessionCanceller {
++    pidfd: Arc<OwnedFd>,
++    cancelled: watch::Sender<bool>,
++}
++
++impl SessionCanceller {
++    pub fn cancel(&self) -> Result<(), Error> {
++        self.cancelled.send_replace(true);
++        let result = unsafe {
++            libc::syscall(
++                libc::SYS_pidfd_send_signal,
++                self.pidfd.as_raw_fd(),
++                libc::SIGKILL,
++                std::ptr::null::<libc::siginfo_t>(),
++                0,
++            )
++        };
++        if result < 0 {
++            let error = std::io::Error::last_os_error();
++            if error.raw_os_error() != Some(libc::ESRCH) {
++                return Err(error.into());
++            }
++        }
++        Ok(())
++    }
++}
++
+ #[derive(Debug)]
+ pub enum SessionState {
+     Question(AuthMessageType, String),
+@@ -90,14 +140,15 @@
+     task: Pid,
+     sock: TokioUnixDatagram,
+     last_msg: Option<SessionChildToParent>,
++    cancelled: watch::Receiver<bool>,
++    canceller: SessionCanceller,
+ }
+ 
+ impl Session {
+     /// Create a session started as an external process.
+     pub fn new_external() -> Result<Session, Error> {
+         // Pipe used to communicate the true PID of the final child.
+-        let (parentfd, childfd) =
+-            UnixDatagram::pair().map_err(|e| format!("could not create pipe: {}", e))?;
++        let (parentfd, childfd) = worker_socket_pair()?;
+ 
+         let raw_child = childfd.as_raw_fd();
+         let mut cur_flags = FdFlag::from_bits_retain(fcntl(raw_child, FcntlArg::F_GETFD)?);
+@@ -124,13 +175,37 @@
+             }
+         };
+ 
++        let pidfd = match open_pidfd(child) {
++            Ok(pidfd) => pidfd,
++            Err(error) => {
++                if let Ok(cancel) = serde_json::to_vec(&ParentToSessionChild::Cancel) {
++                    let _ = parentfd.send(&cancel);
++                }
++                return Err(error);
++            }
++        };
++        let (cancel_tx, cancel_rx) = watch::channel(false);
++
+         Ok(Session {
+             task: child,
+             sock: TokioUnixDatagram::from_std(parentfd)?,
+             last_msg: None,
++            cancelled: cancel_rx,
++            canceller: SessionCanceller {
++                pidfd,
++                cancelled: cancel_tx,
++            },
+         })
+     }
+ 
++    pub fn cancel_handle(&self) -> SessionCanceller {
++        self.canceller.clone()
++    }
++
++    pub fn pid(&self) -> Pid {
++        self.task
++    }
++
+     /// Initiates the session, which will cause authentication to begin.
+     pub async fn initiate(
+         &mut self,
+@@ -157,9 +232,17 @@
+ 
+     /// Return the current state of this session.
+     pub async fn get_state(&mut self) -> Result<SessionState, Error> {
++        if *self.cancelled.borrow() {
++            self.last_msg = None;
++            return Err("session cancelled".into());
++        }
+         let msg = match self.last_msg.take() {
+             Some(msg) => msg,
+-            None => SessionChildToParent::recv(&mut self.sock).await?,
++            None => tokio::select! {
++                biased;
++                _ = self.cancelled.changed() => return Err("session cancelled".into()),
++                message = SessionChildToParent::recv(&mut self.sock) => message?,
++            },
+         };
+ 
+         self.last_msg = Some(msg.clone());
+@@ -180,8 +263,7 @@
+     /// Cancel the session.
+     pub async fn cancel(&mut self) -> Result<(), Error> {
+         self.last_msg = None;
+-        ParentToSessionChild::Cancel.send(&mut self.sock).await?;
+-        Ok(())
++        self.canceller.cancel()
+     }
+ 
+     /// Send a response to an authentication question, or None to cancel the
+@@ -255,3 +337,43 @@
+         })
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use std::{sync::mpsc, thread, time::Duration};
++
++    #[test]
++    fn pending_worker_receive_does_not_block_cancellation() {
++        let (parent, child) = worker_socket_pair().unwrap();
++        child.send(b"ready").unwrap();
++        let (completed, completion) = mpsc::channel();
++        let worker = thread::spawn(move || {
++            let runtime = tokio::runtime::Builder::new_current_thread()
++                .enable_all()
++                .build()
++                .unwrap();
++            runtime.block_on(async move {
++                let socket = TokioUnixDatagram::from_std(parent).unwrap();
++                let mut buffer = [0; 16];
++                socket.recv(&mut buffer).await.unwrap();
++                let (cancel, mut cancelled) = watch::channel(false);
++                tokio::spawn(async move {
++                    tokio::time::sleep(Duration::from_millis(20)).await;
++                    cancel.send_replace(true);
++                });
++                let was_cancelled = tokio::select! {
++                    _ = cancelled.changed() => true,
++                    _ = socket.recv(&mut buffer) => false,
++                };
++                completed.send(was_cancelled).unwrap();
++            });
++        });
++        let result = completion.recv_timeout(Duration::from_secs(5));
++        // Also release a regressed blocking receive so a failed test leaves no hung thread.
++        let _ = child.send(b"release");
++        let joined = worker.join();
++        assert!(joined.is_ok(), "worker I/O test thread panicked");
++        assert!(matches!(result, Ok(true)), "worker receive starved cancellation");
++    }
++}
+diff --git a/greetd/src/context.rs b/greetd/src/context.rs
+--- a/greetd/src/context.rs
++++ b/greetd/src/context.rs
+@@ -6,15 +6,18 @@
+ 
+ use nix::{
+     sys::wait::{waitpid, WaitPidFlag, WaitStatus},
+-    unistd::alarm,
++    unistd::{alarm, Pid},
++};
++use tokio::{
++    sync::{Mutex, RwLock},
++    time::sleep,
+ };
+-use tokio::{sync::RwLock, time::sleep};
+ 
+ use crate::{
+     error::Error,
+     scrambler::Scrambler,
+     session::{
+-        interface::{Session, SessionChild, SessionState},
++        interface::{Session, SessionCanceller, SessionChild, SessionState},
+         worker::{AuthMessageType as SessAuthMessageType, SessionClass, TerminalMode},
+     },
+ };
+@@ -31,6 +34,12 @@
+     time: Instant,
+ }
+ 
++struct ActiveAuthentication {
++    greeter_pid: Pid,
++    pam_pid: Pid,
++    canceller: SessionCanceller,
++}
++
+ struct ContextInner {
+     current: Option<SessionChildSet>,
+     scheduled: Option<SessionSet>,
+@@ -40,6 +49,8 @@
+ /// Context keeps track of running sessions and start new ones.
+ pub struct Context {
+     inner: RwLock<ContextInner>,
++    configure: Mutex<()>,
++    active_cancel: RwLock<Option<ActiveAuthentication>>,
+     greeter_bin: String,
+     greeter_user: String,
+     greeter_service: String,
+@@ -67,6 +78,8 @@
+                 scheduled: None,
+                 configuring: None,
+             }),
++            configure: Mutex::new(()),
++            active_cancel: RwLock::new(None),
+             greeter_bin,
+             greeter_user,
+             greeter_service,
+@@ -177,24 +190,29 @@
+ 
+     /// Create a new session for configuration.
+     pub async fn create_session(&self, username: String) -> Result<(), Error> {
+-        {
++        let _configure = self.configure.lock().await;
++        let greeter_pid = {
+             let inner = self.inner.read().await;
+-            if inner.current.is_none() {
+-                return Err("session not active".into());
+-            }
++            let current = inner.current.as_ref().ok_or("session not active")?;
+             if inner.configuring.is_some() {
+                 return Err("a session is already being configured".into());
+             }
+             if inner.scheduled.is_some() {
+                 return Err("a session is already scheduled".into());
+             }
+-        }
++            current.child.task
++        };
+ 
+         let mut session_set = SessionSet {
+             session: Session::new_external()?,
+             time: Instant::now(),
+         };
+-        session_set
++        *self.active_cancel.write().await = Some(ActiveAuthentication {
++            greeter_pid,
++            pam_pid: session_set.session.pid(),
++            canceller: session_set.session.cancel_handle(),
++        });
++        if let Err(error) = session_set
+             .session
+             .initiate(
+                 &self.pam_service,
+@@ -205,27 +223,46 @@
+                 self.source_profile,
+                 &self.listener_path,
+             )
+-            .await?;
++            .await
++        {
++            let _ = session_set.session.cancel().await;
++            *self.active_cancel.write().await = None;
++            return Err(error);
++        }
+ 
+-        let mut session = Some(session_set);
+         let mut inner = self.inner.write().await;
+-        std::mem::swap(&mut session, &mut inner.configuring);
+-        drop(inner);
+-
+-        // If there was a session under configuration, cancel it.
+-        if let Some(mut s) = session {
+-            s.session.cancel().await?;
++        if !inner
++            .current
++            .as_ref()
++            .map(|current| current.child.owns_pid(greeter_pid))
++            .unwrap_or(false)
++        {
++            drop(inner);
++            let _ = session_set.session.cancel().await;
++            *self.active_cancel.write().await = None;
++            return Err("greeter exited during authentication setup".into());
+         }
+-
++        inner.configuring = Some(session_set);
+         Ok(())
+     }
+ 
+     /// Cancel the session being configured.
+     pub async fn cancel(&self) -> Result<(), Error> {
+-        let mut inner = self.inner.write().await;
+-        if let Some(mut s) = inner.configuring.take() {
+-            s.session.cancel().await?;
++        let _configure = self.configure.lock().await;
++        self.cancel_configuring().await
++    }
++
++    async fn cancel_configuring(&self) -> Result<(), Error> {
++        {
++            let active = self.active_cancel.read().await;
++            if let Some(active) = active.as_ref() {
++                active.canceller.cancel()?;
++            }
+         }
++        let mut inner = self.inner.write().await;
++        let _ = inner.configuring.take();
++        drop(inner);
++        *self.active_cancel.write().await = None;
+         Ok(())
+     }
+ 
+@@ -268,7 +305,9 @@
+ 
+     /// Schedule the session under configuration with the provided arguments.
+     pub async fn start(&self, cmd: Vec<String>, env: Vec<String>) -> Result<(), Error> {
++        let _configure = self.configure.lock().await;
+         let mut session = self.inner.write().await.configuring.take();
++        *self.active_cancel.write().await = None;
+ 
+         match &mut session {
+             Some(s) => match s.session.get_state().await? {
+@@ -337,12 +376,27 @@
+     /// This should be called on SIGCHLD.
+     pub async fn check_children(&self) -> Result<(), Error> {
+         loop {
+-            match waitpid(None, Some(WaitPidFlag::WNOHANG)) {
++            let _configure = self.configure.lock().await;
++            let status = waitpid(None, Some(WaitPidFlag::WNOHANG));
++            let active_exit = match &status {
++                Ok(WaitStatus::Exited(pid, ..)) | Ok(WaitStatus::Signaled(pid, ..)) => {
++                    self.active_cancel.read().await.as_ref().map(|active| {
++                        active.greeter_pid == *pid || active.pam_pid == *pid
++                    })
++                }
++                _ => None,
++            };
++            match status {
+                 // No scheduled exits.
+                 Ok(WaitStatus::StillAlive) => break Ok(()),
+ 
+                 // We got an exit, see if it's something we need to clean up.
+                 Ok(WaitStatus::Exited(pid, ..)) | Ok(WaitStatus::Signaled(pid, ..)) => {
++                    if active_exit == Some(true) {
++                        self.cancel_configuring().await?;
++                    } else if active_exit == Some(false) {
++                        continue;
++                    }
+                     let mut inner = self.inner.write().await;
+                     let (was_greeter, sesion_length) = match &inner.current {
+                         Some(s) if s.child.owns_pid(pid) => {
+@@ -403,6 +457,8 @@
+     /// Notify the Context that we want to terminate. This should be called on
+     /// SIGTERM.
+     pub async fn terminate(&self) -> Result<(), Error> {
++        let _configure = self.configure.lock().await;
++        let _ = self.cancel_configuring().await;
+         let mut inner = self.inner.write().await;
+         if let Some(mut sess) = inner.configuring.take() {
+             let _ = sess.session.cancel().await;

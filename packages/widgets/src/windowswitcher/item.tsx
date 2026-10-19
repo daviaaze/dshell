@@ -30,6 +30,20 @@ export default ({
             <Gtk.Label
                 label={client.title || client.class || 'Unknown'}
                 maxWidthChars={35}
+                wrap
+                wrapMode={Pango.WrapMode.WORD_CHAR}
+                lines={2}
+                tooltipText={client.title || client.class || 'Unknown'}
+                onQueryTooltip={(_self, _x, _y, _keyboard, tooltip) => {
+                    tooltip.set_custom(new Gtk.Label({
+                        label: client.title || client.class || 'Unknown',
+                        wrap: true,
+                        wrapMode: Pango.WrapMode.WORD_CHAR,
+                        maxWidthChars: 60,
+                        xalign: 0,
+                    }));
+                    return true;
+                }}
                 ellipsize={Pango.EllipsizeMode.END}
                 xalign={0}
                 cssClasses={['title-3']}

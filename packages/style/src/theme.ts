@@ -22,6 +22,7 @@
  * ```
  */
 import Adw from 'gi://Adw?version=1';
+import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Object as GObject, property, register} from 'gnim/gobject';
@@ -47,6 +48,118 @@ export type PaletteKey = keyof Palette;
 
 /** The set of keys a palette must provide. */
 export const PALETTE_KEYS: PaletteKey[] = ['bg', 'fg', 'primary', 'surface', 'shadow'];
+
+/** WCAG normal-text contrast benchmark used for accent text roles. */
+export const ACCENT_TEXT_CONTRAST_MIN = 4.5;
+
+type RGB = {r: number; g: number; b: number; a: number};
+
+function parseColor(value: string, label: string): RGB {
+    const parsed = new Gdk.RGBA();
+    if (typeof value !== 'string' || !parsed.parse(value)) {
+        throw new Error(`Invalid palette color for "${label}": ${String(value)}`);
+    }
+    return {r: parsed.red, g: parsed.green, b: parsed.blue, a: parsed.alpha};
+}
+
+function opaqueBackground(value: string): RGB {
+    const background = parseColor(value, 'bg');
+    if (background.a !== 1) {
+        throw new Error('Invalid palette color for "bg": window background must be opaque');
+    }
+    return background;
+}
+
+function composite(foreground: RGB, background: RGB): RGB {
+    const alpha = foreground.a;
+    return {
+        r: foreground.r * alpha + background.r * (1 - alpha),
+        g: foreground.g * alpha + background.g * (1 - alpha),
+        b: foreground.b * alpha + background.b * (1 - alpha),
+        a: 1,
+    };
+}
+
+function linearize(channel: number): number {
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function luminance(color: RGB): number {
+    return 0.2126 * linearize(color.r) +
+        0.7152 * linearize(color.g) +
+        0.0722 * linearize(color.b);
+}
+
+function ratioFromColors(foreground: RGB, background: RGB): number {
+    const foregroundLuminance = luminance(foreground);
+    const backgroundLuminance = luminance(background);
+    const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+    const darker = Math.min(foregroundLuminance, backgroundLuminance);
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+function serializeRgb(color: RGB): string {
+    const hex = (channel: number) =>
+        Math.round(Math.min(1, Math.max(0, channel)) * 255)
+            .toString(16)
+            .padStart(2, '0');
+    return `#${hex(color.r)}${hex(color.g)}${hex(color.b)}`;
+}
+
+function colorContrast(foreground: RGB, background: RGB): number {
+    return ratioFromColors(composite(foreground, background), background);
+}
+
+/** Calculate WCAG contrast after compositing a translucent foreground on an opaque background. */
+export function contrastRatio(foreground: string, background: string): number {
+    const parsedBackground = opaqueBackground(background);
+    return colorContrast(parseColor(foreground, 'foreground'), parsedBackground);
+}
+
+/** Resolve native accent backgrounds and text colors for a palette pair. */
+export function resolveAccentRoles(
+    primary: string,
+    background: string
+): {background: string; foreground: string; standalone: string} {
+    const parsedBackground = opaqueBackground(background);
+    const parsedPrimary = parseColor(primary, 'primary');
+    const isOpaque = parsedPrimary.a === 1;
+    const accentBackground = isOpaque
+        ? primary
+        : serializeRgb(composite(parsedPrimary, parsedBackground));
+    // Resolve against the color CSS will actually render, including 8-bit rounding.
+    const resolved = parseColor(accentBackground, 'primary');
+
+    const black: RGB = {r: 0, g: 0, b: 0, a: 1};
+    const white: RGB = {r: 1, g: 1, b: 1, a: 1};
+    const blackContrast = ratioFromColors(black, resolved);
+    const whiteContrast = ratioFromColors(white, resolved);
+    const foreground = blackContrast >= whiteContrast ? '#000000' : '#ffffff';
+
+    if (ratioFromColors(resolved, parsedBackground) >= ACCENT_TEXT_CONTRAST_MIN) {
+        return {background: accentBackground, foreground, standalone: accentBackground};
+    }
+
+    const toward = ratioFromColors(black, parsedBackground) >=
+        ratioFromColors(white, parsedBackground) ? black : white;
+    for (let step = 1; step <= 255; step++) {
+        const amount = step / 255;
+        const candidate: RGB = {
+            r: Math.round((resolved.r * (1 - amount) + toward.r * amount) * 255) / 255,
+            g: Math.round((resolved.g * (1 - amount) + toward.g * amount) * 255) / 255,
+            b: Math.round((resolved.b * (1 - amount) + toward.b * amount) * 255) / 255,
+            a: 1,
+        };
+        const serialized = serializeRgb(candidate);
+        if (ratioFromColors(candidate, parsedBackground) >= ACCENT_TEXT_CONTRAST_MIN) {
+            return {background: accentBackground, foreground, standalone: serialized};
+        }
+    }
+
+    // Either black or white always meets the benchmark against an opaque background.
+    throw new Error('Unable to resolve a readable standalone accent color');
+}
+
 
 // ── Default Adwaita-inspired palettes ──
 
@@ -260,19 +373,17 @@ export class Theme extends GObject {
             if (!value || value === 'undefined') {
                 throw new Error(`Invalid palette key "${key}": missing or undefined`);
             }
+            parseColor(value, key);
         }
 
-        // Derive --accent-color (standalone) from --accent-bg-color.
-        // Adwaita normally does this with oklab; we approximate by
-        // declaring it to match the accent background for consistency.
-        const accentFg = '#ffffff'; // Adwaita default accent foreground
+        const roles = resolveAccentRoles(p.primary, p.bg);
 
         return `* {
   --window-bg-color: ${p.bg};
   --window-fg-color: ${p.fg};
-  --accent-bg-color: ${p.primary};
-  --accent-fg-color: ${accentFg};
-  --accent-color: ${p.primary};
+  --accent-bg-color: ${roles.background};
+  --accent-fg-color: ${roles.foreground};
+  --accent-color: ${roles.standalone};
   --card-bg-color: ${p.surface};
   --shade-color: ${p.shadow};
 }`;

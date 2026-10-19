@@ -1,103 +1,32 @@
-import GLib from 'gi://GLib?version=2.0';
+import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
-import {computed, createState} from 'gnim';
-import {ActionButton} from './actionButton';
+import {presentPowerConfirmation, type ConfirmablePowerAction} from './powerConfirmation';
 
-const DESTRUCTIVE_ACTIONS = ['logout', 'reboot', 'poweroff'] as const;
-const CONFIRM_TIMEOUT_MS = 3000;
-
-const LABELS: Record<string, string> = {
-    logout: 'Log Out',
-    reboot: 'Reboot',
-    poweroff: 'Power Off',
-    suspend: 'Suspend',
-    lock: 'Lock',
+const POWER_EVENTS: Record<ConfirmablePowerAction, 'power:cmd:logout' | 'power:cmd:reboot' | 'power:cmd:poweroff'> = {
+    logout: 'power:cmd:logout', reboot: 'power:cmd:reboot', poweroff: 'power:cmd:poweroff',
 };
+const POWER_CHOICES: {action: ConfirmablePowerAction; label: string; icon: string}[] = [
+    {action: 'logout', label: 'Log Out', icon: 'system-log-out-symbolic'},
+    {action: 'reboot', label: 'Restart', icon: 'system-reboot-symbolic'},
+    {action: 'poweroff', label: 'Power Off', icon: 'system-shutdown-symbolic'},
+];
 
-const CONFIRM_LABELS: Record<string, string> = {
-    logout: 'Confirm Log Out?',
-    reboot: 'Confirm Reboot?',
-    poweroff: 'Confirm Power Off?',
-};
-
-export const PowerMenu = () => {
-    const [pendingAction, setPendingAction] = createState<string | null>(null);
-
-    const handleClick = (action: string) => {
-        if (action === 'lock') {
-            bus.emit('shell:lock');
-            return;
-        }
-        if (action === 'suspend') {
-            bus.emit('power:cmd:suspend');
-            return;
-        }
-
-        if (pendingAction() === action) {
-            // Confirm and execute
-            bus.emit(`power:cmd:${action}` as 'power:cmd:logout' | 'power:cmd:reboot' | 'power:cmd:poweroff');
-        } else {
-            setPendingAction(action);
-            GLib.timeout_add(CONFIRM_TIMEOUT_MS, GLib.PRIORITY_DEFAULT, () => {
-                setPendingAction(null);
-                return GLib.SOURCE_REMOVE;
-            });
-        }
-    };
-
-    const labelFor = (action: string) =>
-        computed(() => {
-            const pending = pendingAction();
-            if (pending === action) return CONFIRM_LABELS[action] ?? LABELS[action];
-            return LABELS[action];
-        });
-
-    const cssFor = (action: string) =>
-        computed(() => {
-            const pending = pendingAction();
-            if (pending === action) return ['flat', 'suggested-action'];
-            if (pending !== null) return ['flat', 'dim-label'];
-            return ['flat'];
-        });
-
-    const hideWhenPending = computed(() => pendingAction() === null);
-
-    return (
-        <Gtk.Popover cssClasses={['menu']}>
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                <ActionButton
-                    iconName="system-lock-screen-symbolic"
-                    label={labelFor('lock')}
-                    onClicked={() => handleClick('lock')}
-                    visible={hideWhenPending}
-                />
-                <ActionButton
-                    iconName="system-log-out-symbolic"
-                    label={labelFor('logout')}
-                    cssClasses={cssFor('logout')}
-                    onClicked={() => handleClick('logout')}
-                />
-                <ActionButton
-                    iconName="media-playback-pause-symbolic"
-                    label={labelFor('suspend')}
-                    onClicked={() => handleClick('suspend')}
-                    visible={hideWhenPending}
-                />
-                <ActionButton
-                    iconName="system-reboot-symbolic"
-                    label={labelFor('reboot')}
-                    cssClasses={cssFor('reboot')}
-                    onClicked={() => handleClick('reboot')}
-                />
-                <ActionButton
-                    iconName="system-shutdown-symbolic"
-                    label={labelFor('poweroff')}
-                    destructive
-                    cssClasses={cssFor('poweroff')}
-                    onClicked={() => handleClick('poweroff')}
-                />
-            </Gtk.Box>
-        </Gtk.Popover>
-    );
-};
+export const PowerMenu = () => (
+    <Gtk.Popover cssClasses={['menu']}>
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+            <Gtk.Button cssClasses={['flat']} onClicked={() => bus.emit('shell:lock')}>
+                <Adw.ButtonContent iconName="system-lock-screen-symbolic" label="Lock" />
+            </Gtk.Button>
+            <Gtk.Button cssClasses={['flat']} onClicked={() => bus.emit('power:cmd:suspend')}>
+                <Adw.ButtonContent iconName="media-playback-pause-symbolic" label="Suspend" />
+            </Gtk.Button>
+            {POWER_CHOICES.map(({action, label, icon}) => (
+                <Gtk.Button cssClasses={['flat']} onClicked={(self) =>
+                    presentPowerConfirmation(self, action, () => bus.emit(POWER_EVENTS[action]))}>
+                    <Adw.ButtonContent iconName={icon} label={label} />
+                </Gtk.Button>
+            ))}
+        </Gtk.Box>
+    </Gtk.Popover>
+);

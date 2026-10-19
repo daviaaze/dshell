@@ -5,7 +5,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import LayoutService, {type OutputInfo} from '@shade/services/display/layouts';
 import type {DisplayMode} from '@shade/services/display/modes';
 import {type Accessor, bind, computed, createState, For, onCleanup} from 'gnim';
-import {QuickToggleButton} from '../common/quickToggleButton';
+import {QuickControlButton} from '../common/quickControlButton';
 
 const SPACING = 8;
 
@@ -126,7 +126,7 @@ class DisplayFocusController {
             }
         }
         if (name === 'available-display-modes' || name === 'monitors') {
-            const focusedChoice = [...this.#modeButtons].find(([, button]) => button.has_focus());
+            const focusedChoice = [...this.#modeButtons].find(([, button]) => button.hasFocus);
             if (focusedChoice && !this.#service.availableDisplayModes.includes(focusedChoice[0])) {
                 this.#scheduleFocus('mode');
             }
@@ -135,7 +135,7 @@ class DisplayFocusController {
 
     #handleKey(keyval: number) {
         const modes = this.#service.availableDisplayModes as DisplayMode[];
-        const focusedIndex = modes.findIndex((mode) => this.#modeButtons.get(mode)?.has_focus());
+        const focusedIndex = modes.findIndex((mode) => this.#modeButtons.get(mode)?.hasFocus);
         if (focusedIndex < 0) return false;
         let nextIndex: number | null = null;
         if (keyval === Gdk.KEY_Left || keyval === Gdk.KEY_Up) {
@@ -178,7 +178,7 @@ class DisplayFocusController {
     attachModeButton(mode: DisplayMode, button: Gtk.Button) {
         this.#modeButtons.set(mode, button);
         const focusSignal = button.connect('notify::has-focus', () => {
-            if (button.has_focus()) this.#chooserFocusPending = false;
+            if (button.hasFocus) this.#chooserFocusPending = false;
         });
         const mapSignal = button.connect('map', () => {
             if (this.#chooserFocusPending) this.#scheduleFocus('mode');
@@ -280,6 +280,7 @@ function ModeChooser({
 }
 
 function SavedLayoutChoices({service}: {service: LayoutService}) {
+    const current = bind(service, 'current');
     return (
         <>
             <Gtk.Label
@@ -291,12 +292,14 @@ function SavedLayoutChoices({service}: {service: LayoutService}) {
             <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
                 <For each={bind(service, 'names')}>
                     {(name: string) => (
-                        <QuickToggleButton
+                        <QuickControlButton
+                            intent="action"
                             icon="video-display-symbolic"
-                            label={name}
-                            active={bind(service, 'current').as(
-                                (currentName) => currentName === name
+                            domain={name}
+                            value={current.as((currentName) =>
+                                currentName === name ? 'Current layout' : 'Saved layout'
                             )}
+                            actionLabel="Preview saved layout"
                             onClick={() => {
                                 const layout = service.get(name);
                                 if (layout) void service.preview(layout).catch(() => undefined);
@@ -320,22 +323,38 @@ function ConnectedOutputChoices({service}: {service: LayoutService}) {
             />
             <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
                 <For each={bind(service, 'monitors')}>
-                    {(monitor: OutputInfo) => (
-                        <QuickToggleButton
-                            icon="video-display-symbolic"
-                            label={
-                                monitor.mirror
-                                    ? `${monitor.description || monitor.name} — Mirrors ${monitor.mirror}`
-                                    : monitor.description || monitor.name
-                            }
-                            active={monitor.enabled}
-                            onClick={() =>
-                                void service
-                                    .setEnabled(monitor.name, !monitor.enabled)
-                                    .catch(() => undefined)
-                            }
-                        />
-                    )}
+                    {(monitor: OutputInfo) => {
+                        const outputs = bind(service, 'monitors');
+                        const enabledCount = computed(
+                            () => outputs().filter((output) => output.enabled).length
+                        );
+                        return (
+                            <QuickControlButton
+                                intent="toggle"
+                                icon="video-display-symbolic"
+                                domain={
+                                    monitor.mirror
+                                        ? `${monitor.description || monitor.name} — Mirrors ${monitor.mirror}`
+                                        : monitor.description || monitor.name
+                                }
+                                value={monitor.enabled ? 'Enabled' : 'Disabled'}
+                                active={monitor.enabled}
+                                sensitive={monitor.enabled
+                                    ? enabledCount.as((count) => count > 1)
+                                    : true}
+                                actionLabel={monitor.enabled && enabledCount() <= 1
+                                    ? 'At least one display must remain enabled'
+                                    : monitor.enabled
+                                      ? 'Disable display'
+                                      : 'Enable display'}
+                                onClick={() =>
+                                    void service
+                                        .setEnabled(monitor.name, !monitor.enabled)
+                                        .catch(() => undefined)
+                                }
+                            />
+                        );
+                    }}
                 </For>
             </Gtk.Box>
         </>

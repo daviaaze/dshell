@@ -16,13 +16,13 @@ import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, computed, createState, For} from 'gnim';
+import {BAR_EDGE_RESERVE} from '../bar/geometry';
 import AppButton from './appButton';
 import ClipboardButton from './clipboardButton';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 const LAUNCHER_WIDTH = 640;
 const WINDOW_MARGIN = 12;
-const BAR_EDGE_RESERVE = 48;
 
 function availableLauncherWidth(
     monitor: {width: number; scale: number} | null,

@@ -5,9 +5,8 @@
 import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
-import type Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
-import type {MonitorState, WindowState} from './types';
+import type {MonitorState, PreviewHandle, WindowState} from './types';
 
 const CAT = 'share-picker';
 
@@ -58,171 +57,87 @@ export function cleanTempDir(): void {
 
 // ── Capture helpers ──────────────────────────────────────────────
 
-/** Synchronous version — blocks until grim finishes. Use for initial captures. */
-export function runCaptureSync(cmd: string[]): boolean {
-    try {
-        const proc = Gio.Subprocess.new(
-            cmd,
-            Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_PIPE
-        );
-        const [, , err] = proc.communicate_utf8(null, null);
-        if (!proc.get_successful()) {
-            logger.error(CAT, `runCaptureSync: ${cmd.join(' ')}`, err?.trim() || '(no stderr)');
-            return false;
-        }
-        return true;
-    } catch (e) {
-        logger.error(CAT, `runCaptureSync new: ${cmd.join(' ')}`, e);
-        return false;
-    }
-}
-
-export function runCapture(cmd: string[], onDone: (ok: boolean) => void): void {
+function runCapture(cmd: string[], onDone: (ok: boolean) => void): void {
+    let completed = false;
+    const complete = (ok: boolean): void => {
+        if (completed) return;
+        completed = true;
+        onDone(ok);
+    };
+    let startFailed = false;
     try {
         const proc = Gio.Subprocess.new(
             cmd,
             Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_PIPE
         );
         proc.wait_check_async(null, (_proc, result) => {
+            let ok = false;
             try {
-                proc.wait_check_finish(result);
-                onDone(true);
+                ok = proc.wait_check_finish(result);
             } catch (e) {
                 logger.error(CAT, `runCapture: ${cmd.join(' ')}`, e);
-                onDone(false);
             }
+            complete(ok);
         });
     } catch (e) {
+        if (completed) throw e;
         logger.error(CAT, `runCapture new: ${cmd.join(' ')}`, e);
-        onDone(false);
+        startFailed = true;
+    }
+    if (startFailed) complete(false);
+}
+
+function updatePreviews(
+    state: MonitorState | WindowState,
+    previews: readonly PreviewHandle[],
+    texture: Gdk.Texture | null
+): void {
+    state.texture = texture;
+    for (const preview of previews) {
+        preview.setTexture(texture);
+        preview.setState(texture ? 'available' : 'unavailable');
     }
 }
 
-// ── Texture loading ──────────────────────────────────────────────
-
-export function loadTexture(path: string, picture: Gtk.Picture): void {
-    const exists = GLib.file_test(path, GLib.FileTest.EXISTS);
-    logger.debug(CAT, `loadTexture ${path} exists=${exists}`);
-    if (exists) {
-        try {
-            const tex = Gdk.Texture.new_from_filename(path);
-            picture.set_paintable(tex);
-        } catch (e) {
-            logger.error(CAT, `loadTexture: ${path}`, e);
-        }
-    }
-}
-
-function loadTextureAll(path: string, pictures: Gtk.Picture[]): void {
-    if (pictures.length === 0) return;
-    const exists = GLib.file_test(path, GLib.FileTest.EXISTS);
-    logger.debug(CAT, `loadTextureAll ${path} exists=${exists} count=${pictures.length}`);
-    if (exists) {
-        try {
-            const tex = Gdk.Texture.new_from_filename(path);
-            for (const pic of pictures) {
-                pic.set_paintable(tex);
-            }
-        } catch (e) {
-            logger.error(CAT, `loadTextureAll: ${path}`, e);
-        }
-    }
-}
-
-// ── Capture functions ────────────────────────────────────────────
-
-/** Synchronous monitor capture — blocks until done. For initial renders. */
-export function captureMonitorSync(state: MonitorState, pictures: Gtk.Picture[]): boolean {
-    const path = monPath(state.info.name);
-    logger.debug(CAT, `captureMonitorSync ${state.info.name} -> ${path}`);
-    const ok = runCaptureSync([GRIM_BIN, '-s', '0.25', '-o', state.info.name, path]);
-    logger.debug(CAT, `captureMonitorSync ${state.info.name} ok=${ok}`);
-    if (ok) {
-        try {
-            state.texture = Gdk.Texture.new_from_filename(path);
-        } catch (e) {
-            logger.error(CAT, `captureMonitorSync: Gdk.Texture.new_from_filename ${path}`, e);
-        }
-        for (const pic of pictures) {
-            try {
-                pic.set_paintable(Gdk.Texture.new_from_filename(path));
-            } catch (e) {
-                logger.error(CAT, `captureMonitorSync: pic.set_paintable ${path}`, e);
-            }
-        }
-    }
-    return ok;
-}
-
-/** Synchronous window capture — blocks until done. For initial renders. */
-export function captureWindowSync(state: WindowState, pictures: Gtk.Picture[]): boolean {
-    if (!state.geometry) return false;
-    const g = state.geometry;
-    const addr = windowAddr(state);
-    const path = winPath(addr);
-    const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
-    logger.debug(CAT, `captureWindowSync addr=${addr} geometry=${geometry} -> ${path}`);
-    const ok = runCaptureSync([GRIM_BIN, '-s', '0.25', '-g', geometry, path]);
-    logger.debug(CAT, `captureWindowSync ${addr} ok=${ok}`);
-    if (ok) {
-        try {
-            state.texture = Gdk.Texture.new_from_filename(path);
-        } catch (e) {
-            logger.error(CAT, `captureWindowSync: Gdk.Texture.new_from_filename ${path}`, e);
-        }
-        for (const pic of pictures) {
-            try {
-                pic.set_paintable(Gdk.Texture.new_from_filename(path));
-            } catch (e) {
-                logger.error(CAT, `captureWindowSync: pic.set_paintable ${path}`, e);
-            }
-        }
-    }
-    return ok;
-}
-
-export function captureMonitor(state: MonitorState, pictures: Gtk.Picture[]): void {
-    if (state.capturing) return;
+function captureSource(
+    state: MonitorState | WindowState,
+    previews: readonly PreviewHandle[],
+    path: string,
+    cmd: string[]
+): void {
     state.capturing = true;
-    const path = monPath(state.info.name);
-    logger.debug(CAT, `captureMonitor ${state.info.name} -> ${path}`);
-    runCapture([GRIM_BIN, '-s', '0.25', '-o', state.info.name, path], (ok) => {
+    for (const preview of previews) preview.setState('loading');
+    runCapture(cmd, (ok) => {
         state.capturing = false;
-        logger.debug(CAT, `captureMonitor ${state.info.name} ok=${ok}`);
+        let texture: Gdk.Texture | null = null;
         if (ok) {
             try {
-                state.texture = Gdk.Texture.new_from_filename(path);
+                texture = Gdk.Texture.new_from_filename(path);
             } catch (e) {
-                logger.error(CAT, `captureMonitor: Gdk.Texture.new_from_filename ${path}`, e);
+                logger.error(CAT, `captureSource: Gdk.Texture.new_from_filename ${path}`, e);
             }
-            loadTextureAll(path, pictures);
         }
+        updatePreviews(state, previews, texture);
     });
 }
 
-/** Address used for the temp file name of a window capture */
-export function windowAddr(state: WindowState): string {
-    return state.hyprAddress || state.info.address || state.info.id;
+export function captureMonitor(state: MonitorState, previews: readonly PreviewHandle[]): void {
+    if (state.capturing) return;
+    const path = monPath(state.info.name);
+    logger.debug(CAT, `captureMonitor ${state.info.name} -> ${path}`);
+    captureSource(state, previews, path, [GRIM_BIN, '-s', '0.25', '-o', state.info.name, path]);
 }
 
-export function captureWindow(state: WindowState, pictures: Gtk.Picture[]): void {
-    if (!state.geometry || state.capturing) return;
-    state.capturing = true;
+export function captureWindow(state: WindowState, previews: readonly PreviewHandle[]): void {
+    if (state.capturing) return;
+    if (!state.geometry) {
+        updatePreviews(state, previews, null);
+        return;
+    }
     const g = state.geometry;
-    const addr = windowAddr(state);
+    const addr = state.hyprAddress || state.info.address || state.info.id;
     const path = winPath(addr);
     const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
     logger.debug(CAT, `captureWindow addr=${addr} geometry=${geometry} -> ${path}`);
-    runCapture([GRIM_BIN, '-s', '0.25', '-g', geometry, path], (ok) => {
-        state.capturing = false;
-        logger.debug(CAT, `captureWindow ${addr} ok=${ok}`);
-        if (ok) {
-            try {
-                state.texture = Gdk.Texture.new_from_filename(path);
-            } catch (e) {
-                logger.error(CAT, `captureWindow: Gdk.Texture.new_from_filename ${path}`, e);
-            }
-            loadTextureAll(path, pictures);
-        }
-    });
+    captureSource(state, previews, path, [GRIM_BIN, '-s', '0.25', '-g', geometry, path]);
 }

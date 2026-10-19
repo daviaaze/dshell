@@ -348,10 +348,8 @@ function HotspotGroup({
     const [pending, setPending] = createState(false);
     const [pendingTarget, setPendingTarget] = createState(false);
     const [errorMsg, setErrorMsg] = createState<string | null>(null);
-    const [toggleRevision, bumpToggleRevision] = createState(0);
     const reportToggleError = (message: string) => {
         setErrorMsg(message);
-        bumpToggleRevision(toggleRevision() + 1);
     };
 
     const setHotspot = async (enabled: boolean, expectedWifi: Network.Wifi | null) => {
@@ -459,10 +457,9 @@ function HotspotGroup({
                     deviceVersion();
                     return hotspotUnavailableReason(network, client, w);
                 });
-                const switchActive = computed(() => {
-                    toggleRevision();
-                    return pending() ? pendingTarget() : (actualHotspot?.() ?? false);
-                });
+                const switchActive = computed(
+                    () => pending() ? pendingTarget() : (actualHotspot?.() ?? false)
+                );
                 const controlsEnabled = computed(
                     () =>
                         !pending() &&
@@ -510,6 +507,8 @@ function HotspotGroup({
                                         const current = network.wifi?.isHotspot ?? false;
                                         if (self.active !== current) {
                                             void setHotspot(self.active, w);
+                                            // A rejected toggle can leave the computed value unchanged.
+                                            self.active = switchActive();
                                         }
                                     }}
                                 />
@@ -539,16 +538,13 @@ function HotspotGroup({
                                     }
                                 />
                             </Adw.EntryRow>
+                            <Adw.ActionRow
+                                title="Hotspot error"
+                                subtitle={errorMsg.as((error) => error ?? '')}
+                                visible={errorMsg.as((error) => error !== null)}
+                                cssClasses={['error']}
+                            />
                         </Adw.PreferencesGroup>
-                        <Gtk.Label
-                            label={errorMsg.as((error) => error ?? '')}
-                            cssClasses={['error', 'caption']}
-                            visible={errorMsg.as((error) => error !== null)}
-                            wrap
-                            marginStart={12}
-                            marginEnd={12}
-                            marginBottom={12}
-                        />
                     </>
                 );
             }}

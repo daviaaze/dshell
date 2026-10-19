@@ -4,12 +4,12 @@ const XKB_LAYOUT_NAME = /^[a-zA-Z0-9_-]+$/;
 
 export function getGreeterKeyboardIndicator(): string {
     const xkbLayouts = GLib.getenv('XKB_DEFAULT_LAYOUT');
-    if (!xkbLayouts) return 'Configured XKB: unspecified';
+    if (!xkbLayouts) return 'Keyboard layout unavailable';
 
     const configuredLayout = xkbLayouts.split(',')[0]?.trim();
     if (!configuredLayout || !XKB_LAYOUT_NAME.test(configuredLayout)) {
-        return 'Configured XKB: unavailable';
+        return 'Keyboard layout unavailable';
     }
 
-    return `Configured XKB: ${configuredLayout.toUpperCase()}`;
+    return `Configured ${configuredLayout.toUpperCase()}`;
 }

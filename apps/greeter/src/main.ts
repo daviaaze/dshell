@@ -11,11 +11,16 @@
  * ```
  */
 
+import Adw from 'gi://Adw?version=1';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {render} from '@gnim-js/gtk4';
 import logger from '@shade/core/logger';
+import {generalSettings} from '@shade/core/settings/general.gschema';
+import {initSettingsRoot} from '@shade/core/settingsRegistry';
+import {ColorScheme} from '@shade/services/display/colorScheme';
+import {Theme} from '@shade/style/theme';
 import {exit, programArgs, programInvocationName} from 'system';
 import {Greeter} from './greeter-ui/index';
 
@@ -32,10 +37,16 @@ GLib.set_prgname('shade-shell-greet');
 
 app.connect('activate', () => {
     logger.info('greeter', 'activating greeter UI');
+    Adw.init();
+    initSettingsRoot();
+    ColorScheme.get_default().init(generalSettings());
+    Theme.get_default();
     // Render the greeter UI which creates its own Astal.Window
     const dispose = render(() => Greeter({application: app}), app);
     app.connect('shutdown', dispose);
 });
+
+app.connect('shutdown', () => ColorScheme.get_default().dispose());
 
 // ── Run ──
 

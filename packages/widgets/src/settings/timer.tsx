@@ -1,9 +1,11 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
-import {timerSettings} from '@shade/services/time/timer.gschema';
-
-/** Default countdown presets in minutes (mirrors schema default). */
-const DEFAULT_COUNTDOWN_PRESETS = [1, 5, 10, 15, 30, 60];
+import {validateCountdownPreset} from '@shade/services/time/countdownPresets';
+import {
+    DEFAULT_COUNTDOWN_PRESETS,
+    timerSettings,
+} from '@shade/services/time/timer.gschema';
+import {createState, onCleanup} from 'gnim';
 
 /** Pomodoro work/break duration rows. */
 function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>}) {
@@ -65,35 +67,75 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
     );
 }
 
-/** Countdown group — a preset adder and a reset-to-defaults row. */
+/** Countdown group — validated preset editor and one-step reset undo. */
 function CountdownGroup({settings}: {settings: ReturnType<typeof timerSettings>}) {
+    const [error, setError] = createState<string | null>(null);
+    const [undoSnapshot, setUndoSnapshot] = createState<number[] | null>(null);
+    const presetSubtitle = settings.countdownPresets.as((presets) =>
+        presets.map((m) => `${m}m`).join(', ')
+    );
+    onCleanup(() => setUndoSnapshot(null));
+
     return (
         <Adw.PreferencesGroup title={'Countdown'} description={'Quick timer presets in minutes'}>
             <Adw.EntryRow
                 title={'Add Preset (Enter duration in minutes, e.g. 1, 5, 10)'}
                 showApplyButton
                 onApply={(self) => {
-                    const value = parseInt(self.text.trim(), 10);
-                    if (isNaN(value) || value <= 0) return;
                     const current = settings.countdownPresets();
-                    if (!current.includes(value)) {
-                        settings.setCountdownPresets([...current, value].sort((a, b) => a - b));
+                    const result = validateCountdownPreset(self.text, current);
+                    if (result.kind !== 'valid') {
+                        setError(
+                            result.kind === 'empty'
+                                ? 'Enter a duration in whole minutes.'
+                                : result.kind === 'not-integer'
+                                  ? 'Enter a whole number of minutes.'
+                                  : result.kind === 'duplicate'
+                                    ? 'That preset already exists.'
+                                    : 'Enter a value from 1 to 2,147,483,647 minutes.'
+                        );
+                        return;
                     }
+
+                    settings.setCountdownPresets(
+                        [...new Set([...current, result.minutes])].sort((a, b) => a - b)
+                    );
+                    setUndoSnapshot(null);
+                    setError(null);
                     self.text = '';
                 }}
             />
-            <Adw.ActionRow
-                title={'Presets'}
-                subtitle={settings
-                    .countdownPresets()
-                    .map((m) => `${m}m`)
-                    .join(', ')}
-            >
+            {error.as(
+                (message) =>
+                    message && (
+                        <Gtk.Label
+                            label={message}
+                            cssClasses={['error', 'caption']}
+                            xalign={0}
+                            wrap
+                            marginStart={12}
+                            marginEnd={12}
+                        />
+                    )
+            )}
+            <Adw.ActionRow title={'Presets'} subtitle={presetSubtitle}>
                 <Gtk.Button
-                    cssClasses={['circular', 'destructive-action']}
-                    iconName="edit-clear-all-symbolic"
-                    tooltipText="Reset to defaults"
-                    onClicked={() => settings.setCountdownPresets(DEFAULT_COUNTDOWN_PRESETS)}
+                    label="Undo"
+                    sensitive={undoSnapshot.as((snapshot) => snapshot !== null)}
+                    onClicked={() => {
+                        const snapshot = undoSnapshot();
+                        if (snapshot === null) return;
+                        settings.setCountdownPresets(snapshot);
+                        setUndoSnapshot(null);
+                    }}
+                />
+                <Gtk.Button
+                    label="Restore default presets"
+                    onClicked={() => {
+                        setUndoSnapshot([...settings.countdownPresets()]);
+                        settings.setCountdownPresets([...DEFAULT_COUNTDOWN_PRESETS]);
+                        setError(null);
+                    }}
                 />
             </Adw.ActionRow>
         </Adw.PreferencesGroup>
