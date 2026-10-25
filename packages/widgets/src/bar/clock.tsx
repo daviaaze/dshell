@@ -118,7 +118,6 @@ function ClockLabel({
     );
 }
 
-
 export default ({
     vertical,
     visible = true,
@@ -146,8 +145,9 @@ export default ({
 
     return (
         <Gtk.MenuButton
-            cssClasses={vertical.as((v) => (v ? ['bar-vertical-content-button'] : []))}
-            cursor={Gdk.Cursor.new_from_name('pointer', null)}
+            cssClasses={vertical.as((v) =>
+                v ? ['flat', 'bar-vertical-content-button'] : ['flat']
+            )}
             visible={visible}
             tooltipText={buttonTooltip}
             ref={(self) => {
@@ -166,7 +166,8 @@ export default ({
                         ]
                     );
                 });
-            }}>
+            }}
+        >
             <Gtk.Popover slot="popover">
                 <ClockPopover />
             </Gtk.Popover>

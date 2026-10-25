@@ -22,7 +22,9 @@ export const WeatherButton = ({
             direction={vertical.as((v) => (v ? Gtk.ArrowType.RIGHT : Gtk.ArrowType.UP))}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             visible={visible}
-            cssClasses={vertical.as((v) => (v ? ['bar-vertical-content-button'] : []))}
+            cssClasses={vertical.as((v) =>
+                v ? ['flat', 'bar-vertical-content-button'] : ['flat']
+            )}
             ref={usePopoverCleanup}
         >
             <Gtk.Popover

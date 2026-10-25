@@ -76,7 +76,9 @@ export default ({
     return (
         <Gtk.Button
             visible={visible}
-            cssClasses={vertical.as((v) => (v ? ['bar-vertical-content-button'] : []))}
+            cssClasses={vertical.as((v) =>
+                v ? ['flat', 'bar-vertical-content-button'] : ['flat']
+            )}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             onClicked={() => {
                 const monitor = settings.systemMonitor();

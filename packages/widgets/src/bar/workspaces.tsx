@@ -3,7 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import {getHyprland} from '@shade/services/hyprland';
 import {getAppIcon} from '@shade/services/state/apps';
-import {type Accessor, bind, computed, For, With} from 'gnim';
+import {type Accessor, bind, computed, For} from 'gnim';
 
 const SPECIAL_WORKSPACE_ID = -99;
 export function bindWorkspaceClientIcon(
@@ -66,7 +66,7 @@ export default ({
                             : null;
                     });
 
-                    // Special workspace gets a distinct background
+                    // The special workspace is identified by its short label.
                     const isSpecial = ws.id === SPECIAL_WORKSPACE_ID;
 
                     return (
@@ -74,9 +74,19 @@ export default ({
                             orientation={vertical.as((v) =>
                                 v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                             )}
-                            cssClasses={['flat', 'card', ...(isSpecial ? ['accent'] : [])]}
                             spacing={4}
                         >
+                            <Gtk.Label
+                                label={isSpecial ? 'S' : String(ws.id)}
+                                cssClasses={[
+                                    'caption',
+                                    'numeric',
+                                    ...(isSpecial ? ['accent'] : []),
+                                ]}
+                                marginStart={4}
+                                marginEnd={4}
+                                tooltipText={isSpecial ? 'Special workspace' : `Workspace ${ws.id}`}
+                            />
                             <For each={bind(ws, 'clients')}>
                                 {(client: Hyprland.Client) => {
                                     const iconName = bindWorkspaceClientIcon(client);
@@ -92,17 +102,6 @@ export default ({
                                     );
                                 }}
                             </For>
-                            {/* show empty dot when ws is empty */}
-                            <With value={bind(ws, 'clients').as((clients) => clients.length < 1)}>
-                                {(isEmpty: boolean) =>
-                                    isEmpty ? (
-                                        <Gtk.ToggleButton
-                                            active={false}
-                                            cssClasses={['flat']}
-                                        ></Gtk.ToggleButton>
-                                    ) : null
-                                }
-                            </With>
                         </Gtk.Box>
                     );
                 }}

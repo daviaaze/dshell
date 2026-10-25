@@ -70,11 +70,7 @@ function CardHeader({
 }) {
     return (
         <Gtk.Box spacing={8}>
-            <Gtk.Image
-                pixelSize={24}
-                visible={!!snapshot.appIcon}
-                iconName={snapshot.appIcon}
-            />
+            <Gtk.Image pixelSize={24} visible={!!snapshot.appIcon} iconName={snapshot.appIcon} />
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
                 hexpand
@@ -96,7 +92,11 @@ function CardHeader({
                     />
                 </Gtk.Box>
                 {snapshot.appName ? (
-                    <Gtk.Label cssClasses={['caption', 'dimmed']} label={snapshot.appName} xalign={0} />
+                    <Gtk.Label
+                        cssClasses={['caption', 'dimmed']}
+                        label={snapshot.appName}
+                        xalign={0}
+                    />
                 ) : null}
             </Gtk.Box>
             <Gtk.Button
@@ -273,7 +273,9 @@ export default ({
                         <Gtk.Box
                             name={notification.id.toString()}
                             cssClasses={['card', urgencyClass].filter(Boolean)}
-                            css={'padding: 12px; margin: 12px; box-shadow: none; background-color: @window_bg_color;'}
+                            css={
+                                'padding: 12px; box-shadow: none; background-color: @window_bg_color;'
+                            }
                             spacing={8}
                             orientation={Gtk.Orientation.VERTICAL}
                             ref={(self) => {
@@ -300,7 +302,9 @@ export default ({
                                 useMarkup={useMarkup}
                                 onDefaultAction={onDefaultAction}
                             />
-                            {showProgress && !isCritical ? <CardProgress expireMs={expireMs} /> : null}
+                            {showProgress && !isCritical ? (
+                                <CardProgress expireMs={expireMs} />
+                            ) : null}
                             {hasActions ? (
                                 <CardActions
                                     notification={notification}

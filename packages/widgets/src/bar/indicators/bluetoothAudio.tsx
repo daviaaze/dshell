@@ -176,14 +176,13 @@ export default ({vertical}: {vertical: Accessor<boolean>}) => {
     return (
         <Gtk.Button
             visible={visible}
+            cssClasses={['flat']}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             tooltipText={tooltipText}
             ref={(self) => {
                 iconBox = new Gtk.Box({
                     spacing: 4,
-                    orientation: vertical()
-                        ? Gtk.Orientation.VERTICAL
-                        : Gtk.Orientation.HORIZONTAL,
+                    orientation: vertical() ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
                 });
                 self.set_child(iconBox);
                 onCleanup(() => {

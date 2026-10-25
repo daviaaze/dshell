@@ -8,7 +8,9 @@ export default ({visible = true}: {visible?: boolean | Accessor<boolean>}) => {
     return (
         <Gtk.ToggleButton
             visible={visible}
+            cssClasses={['flat']}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
+            tooltipText="Open applications"
             active={bind(shellState, 'launcherOpen')}
             onClicked={() => shellState.toggleLauncher()}
         >

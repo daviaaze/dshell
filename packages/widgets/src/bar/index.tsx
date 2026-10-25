@@ -5,9 +5,9 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {getApp} from '@shade/services/appHandle';
 import {Gdk2HyprMonitor, monitors} from '@shade/services/monitoring/monitors';
 import {barSettings} from '@shade/services/settings/bar.gschema';
+import Screenshot from '@shade/services/capture/screenshot';
 import WindowManager from '@shade/services/state/windowManager';
-
-import {type Accessor, For, onCleanup} from 'gnim';
+import {type Accessor, bind, computed, For, onCleanup, type JSX} from 'gnim';
 import Clock from './clock';
 import {BAR_EDGE_RESERVE} from './geometry';
 import BluetoothAudio from './indicators/bluetoothAudio';
@@ -24,6 +24,41 @@ const BAR_MARGIN = 4;
 
 type Bar = ReturnType<typeof barSettings>;
 
+interface BarClusterProps {
+    slot: 'start' | 'center' | 'end';
+    vertical: Accessor<boolean>;
+    visible: boolean | Accessor<boolean>;
+    children: JSX.Element | JSX.Element[];
+}
+
+/** A task-related group, using libadwaita's native card surface and flat controls. */
+function BarCluster({slot, vertical, visible, children}: BarClusterProps) {
+    const orientation = vertical.as((v) =>
+        v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
+    );
+
+    return (
+        <Gtk.Box
+            slot={slot}
+            visible={visible}
+            cssClasses={['card']}
+            halign={Gtk.Align.CENTER}
+            valign={Gtk.Align.CENTER}
+        >
+            <Gtk.Box
+                orientation={orientation}
+                spacing={vertical.as((v) => (v ? 4 : 8))}
+                marginTop={4}
+                marginBottom={4}
+                marginStart={4}
+                marginEnd={4}
+            >
+                {children}
+            </Gtk.Box>
+        </Gtk.Box>
+    );
+}
+
 /** Bar contents: start (launcher/usage), center (workspaces/title), end (indicators). */
 function BarContent({
     bar,
@@ -34,6 +69,19 @@ function BarContent({
     vertical: Accessor<boolean>;
     hyprMonitor: AstalHyprland.Monitor | null;
 }) {
+    const recording = bind(Screenshot.get_default(), 'recording');
+    const showStart = computed(() => bar.showLauncher() || bar.showSystemResources());
+    const showCenter = computed(
+        () => hyprMonitor !== null && (bar.showWorkspaces() || bar.showWindowTitle())
+    );
+    const showEnd = computed(
+        () =>
+            bar.showClock() ||
+            bar.showWeather() ||
+            bar.showSystemIndicators() ||
+            bar.showBluetoothBattery() ||
+            recording()
+    );
     const orient = vertical.as((v) => (v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL));
 
     return (
@@ -44,20 +92,19 @@ function BarContent({
             marginEnd={vertical.as((v) => (v ? 0 : 4))}
             orientation={orient}
         >
-            <Gtk.Box slot="start" cssClasses={['linked']} orientation={orient}>
+            <BarCluster slot="start" vertical={vertical} visible={showStart}>
                 <Launcher visible={bar.showLauncher} />
-                <Gtk.Separator visible={bar.showLauncher} />
+                <Gtk.Separator
+                    orientation={vertical.as((v) =>
+                        v ? Gtk.Orientation.HORIZONTAL : Gtk.Orientation.VERTICAL
+                    )}
+                    visible={bar.showLauncher.as((v) => v && bar.showSystemResources())}
+                />
                 <SystemUsage vertical={vertical} visible={bar.showSystemResources} />
-            </Gtk.Box>
+            </BarCluster>
 
-            <Gtk.Box
-                slot="center"
-                spacing={8}
-                valign={Gtk.Align.CENTER}
-                halign={Gtk.Align.CENTER}
-                orientation={orient}
-            >
-                {hyprMonitor ? (
+            <BarCluster slot="center" vertical={vertical} visible={showCenter}>
+                {hyprMonitor && bar.showWorkspaces() ? (
                     <Workspaces
                         vertical={vertical}
                         monitor={hyprMonitor}
@@ -65,19 +112,27 @@ function BarContent({
                     />
                 ) : null}
                 <WindowTitle vertical={vertical} visible={bar.showWindowTitle} />
-            </Gtk.Box>
+            </BarCluster>
 
-            <Gtk.Box slot="end" cssClasses={['linked']} orientation={orient}>
+            <BarCluster slot="end" vertical={vertical} visible={showEnd}>
                 <BluetoothAudio vertical={vertical} />
                 <RecordingIndicator vertical={vertical} />
                 <Clock vertical={vertical} visible={bar.showClock} />
-                <Gtk.Separator visible={bar.showClock.as((v) => v && bar.showWeather())} />
+                <Gtk.Separator
+                    orientation={vertical.as((v) =>
+                        v ? Gtk.Orientation.HORIZONTAL : Gtk.Orientation.VERTICAL
+                    )}
+                    visible={bar.showClock.as((v) => v && bar.showWeather())}
+                />
                 <WeatherButton vertical={vertical} visible={bar.showWeather} />
                 <Gtk.Separator
+                    orientation={vertical.as((v) =>
+                        v ? Gtk.Orientation.HORIZONTAL : Gtk.Orientation.VERTICAL
+                    )}
                     visible={bar.showWeather.as((v) => v && bar.showSystemIndicators())}
                 />
                 <SystemIndicators vertical={vertical} visible={bar.showSystemIndicators} />
-            </Gtk.Box>
+            </BarCluster>
         </Gtk.CenterBox>
     );
 }
@@ -105,8 +160,7 @@ function BarWindow({
                 });
             }}
             visible
-            cssClasses={['card', 'background']}
-            css={'box-shadow: none; background-color: @window_bg_color;'}
+            cssClasses={['bar-window']}
             marginTop={position.as((p) => (p === BOTTOM ? 0 : BAR_MARGIN))}
             marginLeft={position.as((p) => (p === RIGHT ? 0 : BAR_MARGIN))}
             marginBottom={position.as((p) => (p === TOP ? 0 : BAR_MARGIN))}

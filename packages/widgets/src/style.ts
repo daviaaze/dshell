@@ -24,4 +24,10 @@ button.bar-vertical-content-button,
   padding-left: 0;
   padding-right: 0;
 }
+
+/* Let the shell bar's task clusters read as native Adwaita cards. */
+.bar-window {
+  background-color: transparent;
+  box-shadow: none;
+}
 `);
