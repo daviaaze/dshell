@@ -79,7 +79,6 @@ export default () => {
             anchor={Astal.WindowAnchor.BOTTOM}
             layer={Astal.Layer.OVERLAY}
             visible={anyVisible}
-            frame={false}
             ref={(self) => WindowManager.get_default().setOsd(self)}
         >
             <Gtk.Box

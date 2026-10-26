@@ -64,9 +64,6 @@ export interface PopupWindowProps {
     /** Additional CSS classes. */
     cssClasses?: string[];
 
-    /** Whether to apply the .frame class (libadwaita border). Defaults to true. */
-    frame?: boolean;
-
     /** Width constraint (e.g. 420 for quicksettings). */
     widthRequest?: number;
 
@@ -128,8 +125,8 @@ export default (props: PopupWindowProps) => {
         heightRequest,
         monitor: monitorProp,
         $: widgetRef,
+        ref: refProp,
         children,
-        frame: frameProp,
     } = props;
 
     const barCfg = barSettings();
@@ -168,11 +165,14 @@ export default (props: PopupWindowProps) => {
             monitor={resolvedMonitor}
             widthRequest={widthRequest}
             heightRequest={heightRequest}
-            cssClasses={[...(frameProp === false ? [] : ['frame']), ...(cssClasses ?? [])]}
+            cssClasses={cssClasses ?? []}
             onNotifyVisible={(self: Astal.Window) => {
                 if (onVisibleChange) onVisibleChange(self.visible);
             }}
-            ref={widgetRef}
+            ref={(self: Astal.Window) => {
+                refProp?.(self);
+                widgetRef?.(self);
+            }}
         >
             <Gtk.EventControllerKey
                 ref={(self) => {

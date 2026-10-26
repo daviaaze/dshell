@@ -25,9 +25,14 @@ button.bar-vertical-content-button,
   padding-right: 0;
 }
 
-/* Let the shell bar's task clusters read as native Adwaita cards. */
+/* Bar clusters stay flat: no window shadow behind the transparent bar. */
 .bar-window {
   background-color: transparent;
+  box-shadow: none;
+}
+
+/* Shell surfaces are flat: Adwaita's card shadow reads as a stray border. */
+.card {
   box-shadow: none;
 }
 `);

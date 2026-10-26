@@ -1,4 +1,5 @@
 import Notifd from 'gi://AstalNotifd';
+import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import {generalSettings} from '@shade/core/settings/general.gschema';
@@ -6,6 +7,7 @@ import {DismissTimers} from '@shade/services/notifications/dismissTimers';
 import DndService from '@shade/services/notifications/dnd';
 import {getExpireMs} from '@shade/services/notifications/expire';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
+import {barSettings} from '@shade/services/settings/bar.gschema';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {bind, computed, createState, effect, For, onCleanup} from 'gnim';
@@ -14,6 +16,18 @@ import PopupWindow from '../common/PopupWindow';
 
 /** Max toasts visible simultaneously; older ones go to the QS list. */
 const POPUP_CAP = 3;
+
+const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
+
+/**
+ * Anchor toasts to the corner next to the bar. Anchoring to a full edge
+ * stretches the layer surface across the screen and swallows clicks.
+ */
+function cornerAnchor(position: number): number {
+    if (position === BOTTOM) return BOTTOM | RIGHT;
+    if (position === LEFT) return TOP | LEFT;
+    return TOP | RIGHT;
+}
 
 const NotificationContent = ({
     notifd,
@@ -116,6 +130,7 @@ export default () => {
         <PopupWindow
             name="notifications"
             margin={12}
+            anchor={barSettings().position.as(cornerAnchor)}
             visible={computed(
                 () =>
                     notifd() !== null &&
