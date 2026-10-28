@@ -21,7 +21,8 @@ import {TrayBox} from './tray';
 
 const QUICKSETTINGS_WIDTH = 420;
 const QUICKSETTINGS_SPACING = 8;
-const WINDOW_MARGIN = 12;
+/** Matches Hyprland `general:gaps_out` (nix/hyprland) so the panel aligns with tiled windows. */
+const WINDOW_MARGIN = 4;
 
 function availableWidth(
     monitor: {width: number; scale: number} | null,
