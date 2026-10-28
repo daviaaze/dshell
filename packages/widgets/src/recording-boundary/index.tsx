@@ -28,6 +28,7 @@ export default () => {
                 if (self) windowRefs.push(self);
             }}
             application={getApp()}
+            namespace={'shade-recording-boundary'}
             gdkmonitor={monitor}
             layer={Astal.Layer.OVERLAY}
             anchor={

@@ -363,7 +363,7 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         ).stdout.strip()
 
     def quick_settings_open(self) -> bool:
-        return any(layer.get("namespace") == "quicksettings" for layer in self.layers())
+        return any(layer.get("namespace") == "shade-quicksettings" for layer in self.layers())
 
     def open_quick_settings(self) -> None:
         if self.quick_settings_open():
@@ -3049,7 +3049,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                 # The pinned Wayland popup stalls under raw DoAction. Exercise
                 # real input using WINDOW bounds; SCREEN origins are unavailable.
                 bounds = power.get("window_bounds")
-                panels = [layer for layer in self.layers() if layer.get("namespace") == "quicksettings"]
+                panels = [layer for layer in self.layers() if layer.get("namespace") == "shade-quicksettings"]
                 if not isinstance(bounds, list) or len(bounds) != 4 or len(panels) != 1:
                     raise Unsupported(f"Cannot map the native menu control to its layer: {power}, {panels}")
                 x, y, width, height = map(int, bounds)
@@ -3177,7 +3177,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         toast = self.wait_until(
             "standalone notification popup",
             lambda: next(
-                (layer for layer in self.layers() if layer.get("namespace") == "notifications"),
+                (layer for layer in self.layers() if layer.get("namespace") == "shade-notifications"),
                 None,
             ),
             timeout=10,
@@ -3189,7 +3189,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         toast_capture = self.capture("notification-toast")
         self.wait_until(
             "toast expiry without opening Quick Settings",
-            lambda: not any(layer.get("namespace") == "notifications" for layer in self.layers()),
+            lambda: not any(layer.get("namespace") == "shade-notifications" for layer in self.layers()),
             timeout=10,
         )
         self.vnc("open Quick Settings notification list", "keydown", "super", "key", "n", "keyup", "super", "pause", "2")

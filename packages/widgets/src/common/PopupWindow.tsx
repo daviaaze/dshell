@@ -155,7 +155,7 @@ export default (props: PopupWindowProps) => {
     return (
         <Astal.Window
             name={name}
-            namespace={name}
+            namespace={`shade-${name}`}
             visible={visibleAccessor}
             application={getApp()}
             layer={layer}

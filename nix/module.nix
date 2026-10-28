@@ -35,6 +35,14 @@ in
           Enable layer rules to blur the widget's background in Hyprland.
         '';
       };
+      animations.enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Enable per-surface Hyprland layer animations for Shade popups
+          (quick settings, launcher, notifications, OSD).
+        '';
+      };
     };
 
     desktop = {
@@ -131,9 +139,22 @@ in
         };
       })
       (lib.mkIf (cfg.shell.enable && cfg.shell.blur.enable) {
+        # Wallpaper and the full-screen capture overlays are excluded: blurring them
+        # would smear the desktop/screenshot target.
         programs.hyprland.settings.layerrule = [
-          "blur on, match:namespace gtk4-layer-shell"
-          "ignore_alpha 0, match:namespace gtk4-layer-shell"
+          "blur on, match:namespace ^(shade-(bar|dock|quicksettings|launcher|notifications|osd|switcher|recording))$"
+          "ignore_alpha 0, match:namespace ^(shade-(bar|dock|quicksettings|launcher|notifications|osd|switcher|recording))$"
+        ];
+      })
+      (lib.mkIf (cfg.shell.enable && cfg.shell.animations.enable) {
+        # Per-surface open/close animations, matched on the shade-* namespaces.
+        programs.hyprland.settings.layerrule = [
+          "animation slide, match:namespace ^(shade-quicksettings)$"
+          "animation popin 90%, match:namespace ^(shade-launcher)$"
+          "animation slide, match:namespace ^(shade-notifications)$"
+          "animation fade, match:namespace ^(shade-osd)$"
+          # Selection overlays must appear instantly so they are not captured mid-fade.
+          "no_anim on, match:namespace ^(shade-(screenshot|recording-boundary))$"
         ];
       })
       (lib.mkIf cfg.greeter.enable {

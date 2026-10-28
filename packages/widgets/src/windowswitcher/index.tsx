@@ -209,6 +209,7 @@ export default () => {
             }}
             name={'windowswitcher'}
             application={getApp()}
+            namespace={'shade-switcher'}
             layer={Astal.Layer.OVERLAY}
             keymode={Astal.Keymode.EXCLUSIVE}
             visible={false}

@@ -27,6 +27,7 @@ export default () => {
         <Astal.Window
             name={'recording-bar'}
             application={getApp()}
+            namespace={'shade-recording'}
             layer={Astal.Layer.OVERLAY}
             marginTop={12}
             marginBottom={12}
@@ -37,7 +38,11 @@ export default () => {
             visible={bind(ss, 'recording')}
             css={'background-color: transparent;'}
         >
-            <Gtk.Box cssClasses={['card', 'background']} spacing={8} css={'box-shadow: none; padding: 6px 12px; background-color: @window_bg_color;'}>
+            <Gtk.Box
+                cssClasses={['card', 'background']}
+                spacing={8}
+                css={'box-shadow: none; padding: 6px 12px; background-color: @window_bg_color;'}
+            >
                 {/* Red recording dot */}
                 <Gtk.Image iconName="media-record-symbolic" cssClasses={['error']} pixelSize={16} />
 

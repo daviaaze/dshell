@@ -34,6 +34,7 @@ export const Wallpaper = () => {
                         });
                     }}
                     application={getApp()}
+                    namespace={'shade-wallpaper'}
                     gdkmonitor={monitor}
                     layer={Astal.Layer.BACKGROUND}
                     anchor={

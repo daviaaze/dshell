@@ -286,6 +286,7 @@ export default () => {
             }}
             name={LOG_TAG}
             application={getApp()}
+            namespace={'shade-screenshot'}
             layer={Astal.Layer.TOP}
             // ON_DEMAND (like every other popup in this codebase): the surface
             // only grabs keyboard when focused. EXCLUSIVE grabbed ALL keys as

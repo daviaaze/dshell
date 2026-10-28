@@ -166,6 +166,7 @@ function BarWindow({
             marginBottom={position.as((p) => (p === TOP ? 0 : BAR_MARGIN))}
             marginRight={position.as((p) => (p === LEFT ? 0 : BAR_MARGIN))}
             application={getApp()}
+            namespace={'shade-bar'}
             gdkmonitor={monitor}
             name={`bar-${monitor.get_description()}`}
             exclusivity={Astal.Exclusivity.EXCLUSIVE}

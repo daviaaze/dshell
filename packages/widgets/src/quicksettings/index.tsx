@@ -79,7 +79,7 @@ export default () => {
             marginEnd={WINDOW_MARGIN}
             application={getApp()}
             name={'quicksettings'}
-            namespace={'quicksettings'}
+            namespace={'shade-quicksettings'}
             keymode={Astal.Keymode.ON_DEMAND}
             visible={bind(shellState, 'qsOpen')}
             onNotifyVisible={(self) => {

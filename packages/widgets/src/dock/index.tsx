@@ -73,6 +73,7 @@ export default () => {
             layer={Astal.Layer.TOP}
             anchor={BOTTOM | LEFT | RIGHT}
             application={getApp()}
+            namespace={'shade-dock'}
             name="dock"
             exclusivity={Astal.Exclusivity.NORMAL}
             marginBottom={4}

@@ -30,7 +30,9 @@ function availableLauncherWidth(
     left: number,
     right: number
 ) {
-    const logicalWidth = monitor ? monitor.width / (monitor.scale || 1) : LAUNCHER_WIDTH + WINDOW_MARGIN * 2;
+    const logicalWidth = monitor
+        ? monitor.width / (monitor.scale || 1)
+        : LAUNCHER_WIDTH + WINDOW_MARGIN * 2;
     const barReserve = barPosition === left || barPosition === right ? BAR_EDGE_RESERVE : 0;
     return Math.max(1, Math.min(LAUNCHER_WIDTH, logicalWidth - WINDOW_MARGIN * 2 - barReserve));
 }
@@ -204,6 +206,7 @@ export default () => {
             marginStart={WINDOW_MARGIN}
             marginEnd={WINDOW_MARGIN}
             application={getApp()}
+            namespace={'shade-launcher'}
             visible={bind(shellState, 'launcherOpen')}
             onNotifyVisible={(self) => {
                 logger.log(`applauncher visible -> ${self.visible}`);
