@@ -241,14 +241,21 @@ in
           SDL_VIDEODRIVER = "wayland";
         };
 
-        # Explicitly configure UWSM compositor instead of relying on Hyprland
-        # package's built-in desktop file, which may not work correctly with
-        # NixOS's UWSM module. The NixOS-generated desktop file uses the
-        # compositor binary path directly, which is more reliable.
+        # UWSM derives XDG_CURRENT_DESKTOP from the executable name, so pointing
+        # it straight at start-hyprland exports "start-hyprland" and Hyprland
+        # shows its "XDG_CURRENT_DESKTOP managed externally" warning overlay on
+        # every login (it requires exactly "Hyprland"). A launcher *named*
+        # Hyprland keeps start-hyprland (watchdog) while yielding the right
+        # desktop name and UWSM's Hyprland plugin. It still execs the system
+        # start-hyprland to avoid version skew with the installed compositor.
         programs.uwsm.waylandCompositors.hyprland = {
           prettyName = "Hyprland";
           comment = "Hyprland compositor managed by UWSM";
-          binPath = "/run/current-system/sw/bin/start-hyprland";
+          binPath = "${
+            pkgs.writeShellScriptBin "Hyprland" ''
+              exec /run/current-system/sw/bin/start-hyprland "$@"
+            ''
+          }/bin/Hyprland";
         };
 
         programs.hyprland = {
