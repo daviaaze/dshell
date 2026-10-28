@@ -1025,6 +1025,66 @@ describe('LayoutService display modes and mirror transactions', () => {
             ).toBe(true);
         }
     );
+
+    it.async(
+        'keeps a rotated monitor rotated when it is the only one of a saved desk attached',
+        async () => {
+            const flat = (enabled = true, properties: Partial<OutputInfo> = {}) =>
+                output('DP-2', 3, enabled, {description: 'FLAT', ...properties});
+            const wide = output('DP-3', 4, true, {description: 'WIDE', position: '0x0'});
+            const adapter = new FakeAdapter([flat(), wide]);
+            const {instance} = service(adapter, {monitors: [], workspaces: {}}, true);
+            expect(
+                instance.save('desktop', {
+                    monitors: [
+                        spec(flat(true, {position: '-1080x-240', transform: 3})),
+                        spec(wide),
+                    ],
+                    workspaces: {},
+                })
+            ).toBe(true);
+
+            // Only the rotated monitor remains; Hyprland brings it up unrotated.
+            adapter.attached = [flat(true, {position: '0x0', transform: 0})];
+            await instance.reconcileNow();
+
+            expect(adapter.attached[0]?.transform).toBe(3);
+            expect(adapter.attached[0]?.position).toBe('0x0');
+            // The derived single-monitor layout is not a saved layout.
+            expect(instance.current).toBeNull();
+        }
+    );
+
+    it.async('does not touch a topology with no display known to any saved layout', async () => {
+        const adapter = new FakeAdapter([DP()]);
+        const {instance} = service(adapter, {monitors: [], workspaces: {}}, true);
+        expect(
+            instance.save('laptop', {monitors: [spec(EDP(true, {scale: 1}))], workspaces: {}})
+        ).toBe(true);
+        await instance.reconcileNow();
+        expect(adapter.writes.length).toBe(0);
+    });
+
+    it.async(
+        'reapplies the current layout on a forced reconcile after Hyprland reset the scale',
+        async () => {
+            const adapter = new FakeAdapter([EDP()]);
+            const {instance} = service(adapter, {monitors: [], workspaces: {}}, true);
+            expect(
+                instance.save('laptop', {monitors: [spec(EDP(true, {scale: 1}))], workspaces: {}})
+            ).toBe(true);
+            await instance.reconcileNow();
+            expect(instance.current).toBe('laptop');
+
+            // Config reload: same topology, Hyprland's auto scale took over.
+            adapter.attached = [EDP(true, {scale: 1.5})];
+            await instance.reconcileNow();
+            expect(adapter.attached[0]?.scale).toBe(1.5);
+
+            await instance.reconcileNow(true);
+            expect(adapter.attached[0]?.scale).toBe(1);
+        }
+    );
 });
 
 await run(import.meta.url);

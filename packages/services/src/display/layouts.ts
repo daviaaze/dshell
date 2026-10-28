@@ -16,6 +16,7 @@ import {
     detectDisplayMode,
     getAvailableDisplayModes,
     logicalMonitorSize,
+    resolveAutoRightPositions,
     setLayoutOutputEnabled,
 } from './modes';
 
@@ -103,6 +104,8 @@ type RawMode = {width?: unknown; height?: unknown; refreshRate?: unknown};
 type RawWorkspace = {id?: unknown; monitor?: unknown};
 
 const EMPTY_STORE: LayoutStore = {version: 1, current: null, layouts: {}};
+/** Ignore Hyprland `configreloaded` events this soon after our own monitor writes. */
+const RELOAD_ECHO_WINDOW_US = 2_000_000;
 
 export function renderMonitorSpec(spec: MonitorSpec): string {
     if (spec.disabled) return `monitor ${spec.name},disable`;
@@ -432,6 +435,8 @@ export class LayoutService extends GObject {
     #previewTimer: number | null = null;
     #previewGeneration = 0;
     #hotplugTimer: number | null = null;
+    #forceReconcile = false;
+    #lastWriteAt = 0;
 
     constructor(options: LayoutServiceOptions = {}) {
         super();
@@ -543,6 +548,13 @@ export class LayoutService extends GObject {
             this.#monitorIds = [
                 hyprland.connect('monitor-added', () => this.#scheduleReconcile()),
                 hyprland.connect('monitor-removed', () => this.#scheduleReconcile()),
+                // A config reload (e.g. after a system rebuild rewrites hyprland.conf)
+                // discards every `hyprctl keyword monitor` we issued, so re-apply.
+                hyprland.connect('config-reloaded', () => {
+                    const sinceWrite = GLib.get_monotonic_time() - this.#lastWriteAt;
+                    if (sinceWrite < RELOAD_ECHO_WINDOW_US) return;
+                    this.#scheduleReconcile(true);
+                }),
             ];
         void this.#reconcile(true);
     }
@@ -654,16 +666,20 @@ export class LayoutService extends GObject {
         }
     }
 
-    #scheduleReconcile(): void {
+    #scheduleReconcile(force = false): void {
+        this.#forceReconcile ||= force;
         if (this.#hotplugTimer !== null) this.#cancel(this.#hotplugTimer);
         this.#hotplugTimer = this.#schedule(500, () => {
             this.#hotplugTimer = null;
-            void this.#reconcile(false);
+            const forced = this.#forceReconcile;
+            this.#forceReconcile = false;
+            void this.#reconcile(forced);
         });
     }
 
-    async reconcileNow(): Promise<void> {
-        await this.#reconcile(false);
+    /** Re-read displays; `force` re-applies the matching layout even without a topology change. */
+    async reconcileNow(force = false): Promise<void> {
+        await this.#reconcile(force);
     }
     async #reconcile(startup: boolean): Promise<void> {
         await this.#enqueue(async () => {
@@ -729,7 +745,71 @@ export class LayoutService extends GObject {
             matches.find(([name]) => name === this.#store.current) ??
             matches.find(([name]) => name === this.#seedDefault) ??
             matches.sort(([a], [b]) => a.localeCompare(b))[0];
-        if (selected) await this.#applyCommitted(selected[0], selected[1], snapshot);
+        if (selected) {
+            await this.#applyCommitted(selected[0], selected[1], snapshot);
+            return;
+        }
+        const remembered = this.#rememberedLayout(snapshot.attached);
+        if (remembered) await this.#applyRemembered(remembered, snapshot);
+    }
+
+    /**
+     * Layout for a topology no saved layout covers (e.g. one monitor of a
+     * multi-monitor desk): each attached display keeps the mode, scale,
+     * rotation and VRR it has in the saved layouts, preferring the current
+     * layout, and enabled displays are arranged left to right. Returns null
+     * when no attached display appears in any saved layout.
+     */
+    #rememberedLayout(attached: OutputInfo[]): Layout | null {
+        const store = this.#load();
+        const layouts = Object.entries(store.layouts)
+            .filter(([, layout]) => layout.auto !== false)
+            .sort(
+                ([a], [b]) =>
+                    Number(b === store.current) - Number(a === store.current) || a.localeCompare(b)
+            )
+            .map(([, layout]) => layout);
+        let known = false;
+        let placed = 0;
+        const monitors = attached.map((output): MonitorSpec => {
+            if (!output.enabled) return specFromOutput(output, true);
+            const position = placed++ === 0 ? '0x0' : 'auto-right';
+            const saved = layouts
+                .flatMap((layout) => layout.monitors)
+                .find(
+                    (spec) =>
+                        !spec.disabled &&
+                        !spec.mirror &&
+                        (spec.description && output.description
+                            ? spec.description === output.description
+                            : spec.name === output.name)
+                );
+            if (!saved) return {...specFromOutput(output, false), position, mirror: null};
+            known = true;
+            return {
+                ...specFromOutput(output, false),
+                resolution: saved.resolution,
+                scale: saved.scale,
+                transform: saved.transform,
+                vrr: saved.vrr,
+                position,
+                mirror: null,
+            };
+        });
+        if (!known) return null;
+        return resolveAutoRightPositions({monitors, workspaces: {}}, attached);
+    }
+
+    /** Write a derived layout without making it the current saved layout. */
+    async #applyRemembered(layout: Layout, before: DisplaySnapshot): Promise<void> {
+        try {
+            const after = await this.#writeLayout(layout, before);
+            this.#publishOutputs(after.attached);
+        } catch (error) {
+            this.#setError(error);
+            if (error instanceof LayoutWriteFailure && error.changed)
+                await this.#restoreSnapshot(before, null);
+        }
     }
 
     #clearPreview(): void {
@@ -916,6 +996,8 @@ export class LayoutService extends GObject {
                 error instanceof Error ? error.message : String(error),
                 state.changed
             );
+        } finally {
+            this.#lastWriteAt = GLib.get_monotonic_time();
         }
     }
 
