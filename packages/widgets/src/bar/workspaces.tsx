@@ -5,7 +5,12 @@ import {getHyprland} from '@shade/services/hyprland';
 import {getAppIcon} from '@shade/services/state/apps';
 import {type Accessor, bind, computed, For} from 'gnim';
 
-const SPECIAL_WORKSPACE_ID = -99;
+/** Hyprland gives special workspaces negative ids (`special` = -99, named ones -98, -97, …). */
+function specialName(ws: Hyprland.Workspace): string | null {
+    if (ws.id >= 0) return null;
+    const name = (ws.name ?? '').replace(/^special:?/, '');
+    return name || 'special';
+}
 export function bindWorkspaceClientIcon(
     client: Hyprland.Client,
     resolveIcon: (client: Hyprland.Client) => string = getAppIcon
@@ -66,26 +71,33 @@ export default ({
                             : null;
                     });
 
-                    // The special workspace is identified by its short label.
-                    const isSpecial = ws.id === SPECIAL_WORKSPACE_ID;
+                    // Special workspaces (scratchpads) are labelled by name and only
+                    // shown while they hold windows: Hyprland keeps an empty one
+                    // around while it is toggled open, which would leave a stray entry.
+                    const special = specialName(ws);
+                    const label = special ? special.charAt(0).toUpperCase() : String(ws.id);
+                    const tooltip = special
+                        ? `${special.charAt(0).toUpperCase()}${special.slice(1)} (special workspace)`
+                        : `Workspace ${ws.id}`;
 
                     return (
                         <Gtk.Box
+                            visible={
+                                special
+                                    ? wsClients.as((clients) => toArray(clients).length > 0)
+                                    : true
+                            }
                             orientation={vertical.as((v) =>
                                 v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                             )}
                             spacing={4}
                         >
                             <Gtk.Label
-                                label={isSpecial ? 'S' : String(ws.id)}
-                                cssClasses={[
-                                    'caption',
-                                    'numeric',
-                                    ...(isSpecial ? ['accent'] : []),
-                                ]}
+                                label={label}
+                                cssClasses={['caption', 'numeric', ...(special ? ['accent'] : [])]}
                                 marginStart={4}
                                 marginEnd={4}
-                                tooltipText={isSpecial ? 'Special workspace' : `Workspace ${ws.id}`}
+                                tooltipText={tooltip}
                             />
                             <For each={bind(ws, 'clients')}>
                                 {(client: Hyprland.Client) => {
