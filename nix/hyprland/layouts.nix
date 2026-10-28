@@ -51,6 +51,36 @@ let
         default = null;
         description = "Variable refresh rate setting.";
       };
+      bitdepth = lib.mkOption {
+        type = lib.types.nullOr (lib.types.enum [ 8 10 ]);
+        default = null;
+        description = "Output bit depth; null keeps Hyprland's default (8).";
+      };
+      cm = lib.mkOption {
+        type = lib.types.nullOr (lib.types.enum [
+          "auto"
+          "srgb"
+          "wide"
+          "edid"
+          "hdr"
+          "hdredid"
+          "dcip3"
+          "dp3"
+          "adobe"
+        ]);
+        default = null;
+        description = "Color management preset; null keeps Hyprland's default (srgb).";
+      };
+      sdrbrightness = lib.mkOption {
+        type = lib.types.nullOr lib.types.number;
+        default = null;
+        description = "SDR content brightness multiplier; null keeps the default (1.0).";
+      };
+      sdrsaturation = lib.mkOption {
+        type = lib.types.nullOr lib.types.number;
+        default = null;
+        description = "SDR content saturation multiplier; null keeps the default (1.0).";
+      };
       mirror = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;

@@ -5,6 +5,7 @@
 import GLib from 'gi://GLib?version=2.0';
 import {describe, expect, it, run} from '../../__tests__/test-runner';
 import LayoutService, {
+    renderMonitorSpec,
     type DisplayAdapter,
     type DisplaySnapshot,
     type Layout,
@@ -43,6 +44,10 @@ function output(
         scale: properties.scale ?? 1,
         transform: properties.transform ?? 0,
         vrr: properties.vrr ?? null,
+        bitdepth: properties.bitdepth,
+        cm: properties.cm,
+        sdrbrightness: properties.sdrbrightness,
+        sdrsaturation: properties.sdrsaturation,
         disabled: !enabled,
         enabled,
         dpms: properties.dpms ?? true,
@@ -233,6 +238,24 @@ function service(
     return {instance, timers, storePath};
 }
 
+describe('monitor spec rendering', () => {
+    it('writes optional color fields after VRR and before the mirror', () => {
+        expect(renderMonitorSpec(spec(DP()))).toBe('monitor DP-1,1920x1080@60,1920x0,1,mirror,');
+        expect(
+            renderMonitorSpec({
+                ...spec(DP()),
+                transform: 2,
+                vrr: 1,
+                bitdepth: 10,
+                cm: 'hdr',
+                sdrbrightness: 1.2,
+                sdrsaturation: 0.8,
+            })
+        ).toBe(
+            'monitor DP-1,1920x1080@60,1920x0,1,transform,2,vrr,1,bitdepth,10,cm,hdr,sdrbrightness,1.2,sdrsaturation,0.8,mirror,'
+        );
+    });
+});
 describe('monitor snapshots', () => {
     it('parses monitor modes while retaining attached but inactive outputs', () => {
         const parsed = parseHyprlandSnapshot(
@@ -247,7 +270,10 @@ describe('monitor snapshots', () => {
                     y: 0,
                     scale: 1,
                     transform: 0,
-                    currentFormat: 'XRGB8888',
+                    currentFormat: 'XRGB2101010',
+                    colorManagementPreset: 'hdr',
+                    sdrBrightness: 1.2,
+                    sdrSaturation: 0.85,
                     availableModes: ['1920x1200@60.00Hz'],
                 },
             ],
@@ -257,6 +283,10 @@ describe('monitor snapshots', () => {
         expect(parsed.attached.length).toBe(1);
         expect(parsed.attached[0].enabled).toBe(false);
         expect(parsed.attached[0].resolution).toBe('1920x1200@60.00');
+        expect(parsed.attached[0].bitdepth).toBe(10);
+        expect(parsed.attached[0].cm).toBe('hdr');
+        expect(parsed.attached[0].sdrbrightness).toBe(1.2);
+        expect(parsed.attached[0].sdrsaturation).toBe(0.85);
         expect(parsed.workspaces?.[7]).toBe('eDP-1');
         expect(parsed.attached[0].modes[0]?.refreshRate).toBe(60);
     });
@@ -382,7 +412,16 @@ describe('display mode helpers', () => {
 
     it('preserves per-output mode settings and duplicates from the lexical source without a panel', () => {
         const attached = [
-            HDMI(true, {resolution: '2560x1440@59.95', scale: 1.25, transform: 1, vrr: 1}),
+            HDMI(true, {
+                resolution: '2560x1440@59.95',
+                scale: 1.25,
+                transform: 1,
+                vrr: 1,
+                bitdepth: 10,
+                cm: 'hdr',
+                sdrbrightness: 1.2,
+                sdrsaturation: 0.85,
+            }),
             DP(true, {resolution: '1280x1024@60', scale: 1.5}),
             DP2(),
         ];
@@ -395,6 +434,10 @@ describe('display mode helpers', () => {
         expect(hdmi?.scale).toBe(1.25);
         expect(hdmi?.transform).toBe(1);
         expect(hdmi?.vrr).toBe(1);
+        expect(hdmi?.bitdepth).toBe(10);
+        expect(hdmi?.cm).toBe('hdr');
+        expect(hdmi?.sdrbrightness).toBe(1.2);
+        expect(hdmi?.sdrsaturation).toBe(0.85);
         expect(dp?.mirror).toBe(null);
         expect(dp?.position).toBe('0x0');
         expect(buildDisplayMode('external-only', attached)).toBeNull();
@@ -500,6 +543,25 @@ describe('display mode helpers', () => {
     });
 });
 
+describe('LayoutService color settings', () => {
+    it.async('round-trips saved color settings through apply to adapter writes', async () => {
+        const adapter = new FakeAdapter([EDP()]);
+        const {instance} = service(adapter);
+        const monitor = {
+            ...spec(EDP()),
+            bitdepth: 10 as const,
+            cm: 'hdr',
+            sdrbrightness: 1.25,
+            sdrsaturation: 0.9,
+        };
+        expect(instance.save('hdr', {monitors: [monitor], workspaces: {}})).toBe(true);
+        expect(await instance.apply('hdr')).toBe(true);
+        expect(adapter.writes[0]?.bitdepth).toBe(10);
+        expect(adapter.writes[0]?.cm).toBe('hdr');
+        expect(adapter.writes[0]?.sdrbrightness).toBe(1.25);
+        expect(adapter.writes[0]?.sdrsaturation).toBe(0.9);
+    });
+});
 type ServiceModeApi = {
     previewMode(mode: string): Promise<boolean>;
     toggleInternal(): Promise<boolean>;

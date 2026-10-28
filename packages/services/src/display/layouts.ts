@@ -33,6 +33,10 @@ export interface MonitorSpec {
     scale: number;
     transform: number;
     vrr: number | null;
+    bitdepth?: 8 | 10 | null;
+    cm?: string | null;
+    sdrbrightness?: number | null;
+    sdrsaturation?: number | null;
     disabled: boolean;
     mirror?: string | null;
 }
@@ -86,6 +90,9 @@ type RawMonitor = {
     id?: unknown;
     description?: unknown;
     currentFormat?: unknown;
+    colorManagementPreset?: unknown;
+    sdrBrightness?: unknown;
+    sdrSaturation?: unknown;
     refreshRate?: unknown;
     x?: unknown;
     y?: unknown;
@@ -112,6 +119,10 @@ export function renderMonitorSpec(spec: MonitorSpec): string {
     const parts = [`monitor ${spec.name}`, spec.resolution, spec.position, `${spec.scale}`];
     if (spec.transform !== 0) parts.push('transform', `${spec.transform}`);
     if (spec.vrr != null && spec.vrr !== 0) parts.push('vrr', `${spec.vrr}`);
+    if (spec.bitdepth != null) parts.push('bitdepth', `${spec.bitdepth}`);
+    if (spec.cm != null) parts.push('cm', spec.cm);
+    if (spec.sdrbrightness != null) parts.push('sdrbrightness', `${spec.sdrbrightness}`);
+    if (spec.sdrsaturation != null) parts.push('sdrsaturation', `${spec.sdrsaturation}`);
     parts.push('mirror', spec.mirror ?? '');
     return parts.join(',');
 }
@@ -198,6 +209,12 @@ function mirrorSource(raw: RawMonitor, namesById: Map<string, string>): string |
     return source;
 }
 
+/** Hyprland only enables 10-bit output as an XRGB/XBGR2101010 scanout format. */
+function bitdepthFromFormat(format: unknown): 8 | 10 | undefined {
+    if (typeof format !== 'string') return undefined;
+    return /2101010$/.test(format) ? 10 : 8;
+}
+
 function monitorFromRaw(raw: RawMonitor, enabled: boolean, mirror: string | null): OutputInfo {
     const name = typeof raw.name === 'string' ? raw.name : '';
     if (!name) throw new Error('Hyprland returned a monitor without a connector name');
@@ -246,7 +263,10 @@ function monitorFromRaw(raw: RawMonitor, enabled: boolean, mirror: string | null
         position: `${x}x${y}`,
         scale: Number.isFinite(scale) && scale > 0 ? scale : 1,
         transform: Number(raw.transform ?? 0),
-        vrr: raw.vrr ? 1 : 0,
+        bitdepth: bitdepthFromFormat(raw.currentFormat),
+        cm: typeof raw.colorManagementPreset === 'string' ? raw.colorManagementPreset : undefined,
+        sdrbrightness: typeof raw.sdrBrightness === 'number' ? raw.sdrBrightness : undefined,
+        sdrsaturation: typeof raw.sdrSaturation === 'number' ? raw.sdrSaturation : undefined,
         mirror,
         disabled: !enabled,
         enabled,
@@ -353,6 +373,10 @@ function specFromOutput(output: OutputInfo, disabled = !output.enabled): Monitor
         scale: output.scale,
         transform: output.transform,
         vrr: output.vrr,
+        bitdepth: output.bitdepth,
+        cm: output.cm,
+        sdrbrightness: output.sdrbrightness,
+        sdrsaturation: output.sdrsaturation,
         disabled,
         mirror: normalizedMirror(output.mirror),
     };
@@ -643,6 +667,10 @@ export class LayoutService extends GObject {
                         scale: monitor.scale ?? 1,
                         transform: monitor.transform ?? 0,
                         vrr: monitor.vrr ?? null,
+                        bitdepth: monitor.bitdepth ?? null,
+                        cm: monitor.cm ?? null,
+                        sdrbrightness: monitor.sdrbrightness ?? null,
+                        sdrsaturation: monitor.sdrsaturation ?? null,
                         mirror: normalizedMirror(monitor.mirror),
                         disabled: monitor.disable ?? monitor.disabled ?? false,
                     })),
@@ -792,6 +820,10 @@ export class LayoutService extends GObject {
                 scale: saved.scale,
                 transform: saved.transform,
                 vrr: saved.vrr,
+                bitdepth: saved.bitdepth ?? output.bitdepth,
+                cm: saved.cm ?? output.cm,
+                sdrbrightness: saved.sdrbrightness ?? output.sdrbrightness,
+                sdrsaturation: saved.sdrsaturation ?? output.sdrsaturation,
                 position,
                 mirror: null,
             };

@@ -69,6 +69,10 @@ function modeSpec(output: OutputInfo): MonitorSpec {
         scale: Number.isFinite(output.scale) && output.scale > 0 ? output.scale : 1,
         transform: Number.isFinite(output.transform) ? output.transform : 0,
         vrr: Number.isFinite(output.vrr) ? output.vrr : null,
+        bitdepth: output.bitdepth,
+        cm: output.cm,
+        sdrbrightness: output.sdrbrightness,
+        sdrsaturation: output.sdrsaturation,
         disabled: false,
         mirror: null,
     };
