@@ -13,6 +13,7 @@ in
   imports = [
     ./binds.nix
     ./layouts.nix
+    ./expo.nix
   ];
 
   options.programs.shade.desktop.hyprland = {
@@ -64,6 +65,56 @@ in
           "2, monitor:DP-1, default:true"
       '';
     };
+    softwareCursor = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Render the cursor in software (cursor:no_hardware_cursors). Only
+        needed on GPUs/drivers with broken hardware cursor planes.
+      '';
+    };
+    hideIdleCursor = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Hide the cursor while typing and after 5 seconds of inactivity.";
+    };
+    smartGaps = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Remove gaps, border and rounding when a workspace has a single
+        tiled window.
+      '';
+    };
+    windowRules = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = ''
+          Default window rules: float utility dialogs (audio, network,
+          bluetooth, polkit, file choosers), Picture-in-Picture placement,
+          idle inhibit on fullscreen and ignoring app maximize requests.
+        '';
+      };
+    };
+    extraWindowRules = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "float on, match:class ^(org.gnome.Calculator)$" ];
+      description = "Extra Hyprland windowrule strings appended after the defaults.";
+    };
+    animations.preset = lib.mkOption {
+      type = lib.types.enum [
+        "adwaita"
+        "minimal"
+        "off"
+      ];
+      default = "adwaita";
+      description = ''
+        Animation style. "adwaita" mimics libadwaita curves, "minimal" keeps
+        only short fades (reduced motion), "off" disables animations.
+      '';
+    };
     binds.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -75,16 +126,103 @@ in
 
   config = lib.mkIf cfg.enable (
     let
+      gapsOut = 4;
+
+      # Utility dialogs that are unusable when tiled full-height.
+      floatClasses = [
+        "com\\.saivert\\.pwvucontrol"
+        "polkit-gnome-authentication-agent-1"
+        "nm-connection-editor"
+        "\\.?blueman-manager(-wrapped)?"
+        "xdg-desktop-portal-gtk"
+      ];
+      dialogTitles = [
+        "Open File"
+        "Open Files"
+        "Open Folder"
+        "Save File"
+        "Save As"
+        "Select a File"
+        "Abrir arquivo"
+        "Abrir arquivos"
+        "Abrir pasta"
+        "Salvar arquivo"
+        "Salvar como"
+        "Selecionar arquivo"
+      ];
+      floatClassRe = "^(${lib.concatStringsSep "|" floatClasses})$";
+      dialogTitleRe = "^(${lib.concatStringsSep "|" dialogTitles})(.*)$";
+      pip = "match:title ^(Picture-in-Picture)$";
+
+      windowRules =
+        lib.optionals cfg.windowRules.enable [
+          "float on, match:class ${floatClassRe}"
+          "center on, match:class ${floatClassRe}"
+          "float on, match:title ${dialogTitleRe}"
+          "center on, match:title ${dialogTitleRe}"
+          "float on, ${pip}"
+          "pin on, ${pip}"
+          "keep_aspect_ratio on, ${pip}"
+          "size 480 270, ${pip}"
+          "move (monitor_w-window_w-${toString gapsOut}) (monitor_h-window_h-${toString gapsOut}), ${pip}"
+          "idle_inhibit fullscreen, match:class .*"
+          # Apps maximizing themselves fight the tiling layout.
+          "suppress_event maximize, match:class .*"
+        ]
+        ++ lib.optionals cfg.smartGaps [
+          "border_size 0, match:float false, match:workspace w[tv1]"
+          "rounding 0, match:float false, match:workspace w[tv1]"
+        ]
+        ++ cfg.extraWindowRules;
+
+      smartGapsWorkspaces = lib.optionals cfg.smartGaps [
+        "w[tv1], gapsout:0, gapsin:0"
+      ];
+
+      animationPresets = {
+        adwaita = [
+          "windowsIn, 1, 4, emphasized, popin 85%"
+          "windowsOut, 1, 3, adw, popin 90%"
+          "windowsMove, 1, 4, emphasized, slide"
+          "fade, 1, 3, adw"
+          "border, 1, 6, adw"
+          "layersIn, 1, 3, emphasized, fade"
+          "layersOut, 1, 2, adw, fade"
+          "fadePopups, 1, 3, adw"
+          "workspaces, 1, 4, emphasized, slidefadevert 15%"
+          "specialWorkspace, 1, 4, emphasized, slidefadevert 20%"
+          "monitorAdded, 1, 5, adw"
+        ];
+        # Reduced motion: no slides or popins, only short fades.
+        minimal = [
+          "windows, 0"
+          "border, 0"
+          "fade, 1, 2, adw"
+          "layers, 1, 2, adw, fade"
+          "workspaces, 1, 2, adw, fade"
+        ];
+        off = [ ];
+      };
+
       # Default settings — kept separate so cfg.settings can override
       # specific keys via recursiveUpdate (list values replace entirely
       # rather than concatenating).
       defaultSettings = {
         monitor = [
-          ", preferred, auto-left, auto"
+          ", preferred, auto, 1"
         ];
 
         cursor = {
-          no_hardware_cursors = true;
+          no_hardware_cursors = cfg.softwareCursor;
+          hide_on_key_press = cfg.hideIdleCursor;
+          inactive_timeout = if cfg.hideIdleCursor then 5 else 0;
+        };
+
+        windowrule = windowRules;
+
+        render = {
+          # Auto: only scan out directly for fullscreen game-like content.
+          direct_scanout = 2;
         };
 
         input = {
@@ -99,7 +237,7 @@ in
 
         general = {
           gaps_in = 2;
-          gaps_out = 4;
+          gaps_out = gapsOut;
           float_gaps = 4;
           border_size = 2;
           "col.active_border" = "0xff3584e4";
@@ -115,6 +253,13 @@ in
         group = {
           "col.border_active" = "0xff3584e4";
           "col.border_inactive" = "0xff9a9996";
+          groupbar = {
+            font_size = 11;
+            gradients = false;
+            rounding = 6;
+            "col.active" = "0xff3584e4";
+            "col.inactive" = "0xff9a9996";
+          };
         };
 
         gesture = [
@@ -122,7 +267,12 @@ in
           "3, swipe, mod: SUPER, move"
           "3, swipe, mod: SUPERCONTROL, resize"
           "4, vertical, special, scratchpad"
+          "4, pinch, fullscreen"
         ];
+
+        gestures = {
+          workspace_swipe_forever = true;
+        };
 
         decoration = {
           rounding = 12;
@@ -140,21 +290,22 @@ in
         };
 
         animations = {
-          enabled = true;
+          enabled = cfg.animations.preset != "off";
           workspace_wraparound = false;
         };
 
-        animation = [
-          "windows,1,5,default,slide"
-          "layers,1,5,default,slide"
-          "border,1,10,default"
-          "fadePopups,1,5,default"
-          "workspaces,1,5,default,slidevert"
-          "monitorAdded,1,5,default"
+        bezier = [
+          # libadwaita's default ease-out
+          "adw, 0.25, 0.1, 0.25, 1"
+          "emphasized, 0.05, 0.7, 0.1, 1"
         ];
+
+        animation = animationPresets.${cfg.animations.preset};
 
         binds = {
           hide_special_on_workspace_change = true;
+          workspace_back_and_forth = true;
+          allow_workspace_cycles = true;
         };
 
         misc = {
@@ -164,7 +315,7 @@ in
           animate_mouse_windowdragging = false;
           vrr = 1;
           enable_swallow = true;
-          swallow_regex = "";
+          swallow_regex = "^(${lib.escapeRegex desktopCfg.defaultTerminal})$";
           layers_hog_keyboard_focus = true;
           focus_on_activate = true;
           disable_splash_rendering = true;
@@ -179,10 +330,6 @@ in
         dwindle = {
           preserve_split = true;
         };
-
-        layerrule = [
-          "no_anim on, match:namespace selection"
-        ];
 
         exec = [
           "hyprctl setcursor Adwaita 24"
@@ -203,7 +350,7 @@ in
           // {
             # Merge workspace rules: cfg.workspace replaces the default
             # scratchpad rule entirely, or you can include it in your list.
-            workspace = cfg.workspace;
+            workspace = cfg.workspace ++ smartGapsWorkspaces;
           }
         );
       }

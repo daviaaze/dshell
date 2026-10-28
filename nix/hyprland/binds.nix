@@ -37,6 +37,15 @@ let
     in
     ''if ${busctl} --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus NameHasOwner s ${dest} | grep -q 'true'; then ${gdbus} call --session --dest ${dest} --object-path ${object} --method ${method} '${action}' '[]' '{}'; rc=$?; [ $rc -ne 0 ] && ${notify} -a shade-shell -u critical "shade-action '${action}' failed" "gdbus returned exit code $rc"; else ${notify} -a shade-shell -u critical "shade-action '${action}' failed" "shade-shell is not running (bus name ${dest} not owned)"; exit 1; fi'';
 
+  # Step cursor:zoom_factor by $1 (0 = reset), clamped to 1..4.
+  zoom = pkgs.writeShellScript "shade-zoom" ''
+    step="$1"
+    cur=$(${lib.getExe' pkgs.hyprland "hyprctl"} getoption cursor:zoom_factor -j | ${lib.getExe pkgs.jq} '.float')
+    new=$(${lib.getExe pkgs.jq} -n --argjson c "$cur" --argjson s "$step" \
+      'if $s == 0 then 1 else [[($c + $s), 1] | max, 4] | min end')
+    exec ${lib.getExe' pkgs.hyprland "hyprctl"} keyword cursor:zoom_factor "$new"
+  '';
+
   # Raw bind lists (used by both hyprland and the duplicate detector).
   _bind = [
     "SUPER,Return,exec,${uwsm-app cfg.defaultTerminal}"
@@ -113,6 +122,17 @@ let
     "SUPERSHIFT,S,shade-action:screenshot,exec,${shade-action "screenshot"}"
     "SUPERSHIFT,R,shade-action:record,exec,${shade-action "record"}"
     "SUPERSHIFT,P,shade-action:record-area,exec,${shade-action "record-area"}"
+
+    "SUPERCTRLALT,left,Move window into group on the left,moveintogroup,l"
+    "SUPERCTRLALT,right,Move window into group on the right,moveintogroup,r"
+    "SUPERCTRLALT,up,Move window into group above,moveintogroup,u"
+    "SUPERCTRLALT,down,Move window into group below,moveintogroup,d"
+    "SUPERCTRLALT,G,Move window out of group,moveoutofgroup"
+    "SUPERALT,G,Lock active group,lockactivegroup,toggle"
+
+    "SUPER,mouse_up,Zoom in,exec,${zoom} 0.25"
+    "SUPER,mouse_down,Zoom out,exec,${zoom} -0.25"
+    "SUPER,0,Reset zoom,exec,${zoom} 0"
   ];
 
   # --locked: Hyprland 0.56.2 moved locked binds from `bind` to `bindl`/`bindle`.
