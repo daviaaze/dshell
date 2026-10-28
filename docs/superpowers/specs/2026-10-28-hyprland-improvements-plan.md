@@ -6,6 +6,22 @@
 > `dvision-thinkbook` (Intel, eDP-1 + docking). Toda sintaxe abaixo foi aceita por
 > `Hyprland --verify-config` 0.56.2 em 2026-10-28.
 
+## Status da implementação (2026-10-28)
+
+Fases 1–7 implementadas. A config gerada (VM e homelab) passa em `--verify-config`; os testes passam.
+Ainda falta validar em runtime, numa sessão real. Desvios do plano:
+
+- **Fase 0 não feita**: não havia sessão inspecionável. As classes de janela vieram dos `.desktop` e dos app-ids conhecidos.
+  Confirmar com `hyprctl clients -j` e ajustar se algum diálogo não flutuar.
+- **Fase 4**: o lockscreen usa `gtk4-session-lock`, e não layer-shell, então nenhuma `layerrule` se aplica a ele.
+  O namespace `selection` (morto) foi removido. Namespaces novos: `shade-{bar,dock,quicksettings,launcher,notifications,osd,switcher,recording,recording-boundary,screenshot,wallpaper}`.
+- **Fase 6**: o hyprexpo não existe mais no 0.56 e o Hyprspace não compila contra o 0.56.2. Foi usado o **hyprtasking**
+  (`overview.enable`, padrão `false`). O plugin é recompilado contra `programs.hyprland.package`.
+  Ele é carregado via `exec-once`, depois do parse da config, por isso os binds usam `exec hyprctl dispatch …`: um dispatcher do
+  plugin direto no bind geraria erro de config (overlay vermelho) em todo login. O gesto de 4 dedos para cima fica desligado
+  (`overview.gesture`), porque conflita com o scratchpad.
+- **Fase 7**: campos `bitdepth`, `cm`, `sdrbrightness` e `sdrsaturation` adicionados aos layouts (Nix e shell). Nenhum host os ativa ainda.
+
 ## Princípios
 
 - Defaults vão em `defaultSettings` (sobrescrevíveis via `programs.shade.desktop.hyprland.settings`).
