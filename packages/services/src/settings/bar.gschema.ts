@@ -19,7 +19,7 @@ export const barSettings = defineSettings('bar', (s) =>
         })
         .key('system-monitor', 's', {
             default: '',
-            summary: 'The System Monitor to be opened when clicking systemUsage widget',
+            summary: 'Command for the "Open System Monitor" button in the system usage popup',
         })
         .key('show-disk-usage', 'b', {
             default: false,
