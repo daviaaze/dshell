@@ -15,20 +15,18 @@ import Notification from '../common/notification';
 
 const HISTORY_VISIBLE_COUNT = 20;
 
+/** Notifications sorted newest-first. Does not mutate the input array. */
+function newestFirst(notifications: Notifd.Notification[]): Notifd.Notification[] {
+    return [...notifications].sort((a, b) => b.time - a.time);
+}
+
 /**
- * Sort notifications newest-first and group them by app, preserving
- * the order in which each app's most recent notification appeared.
- * Does not mutate the input array.
+ * App names ordered by each app's most recent notification. Strings are
+ * stable keys for `For`, so a dismissal only updates the affected group
+ * instead of rebuilding every group (which froze the shell on "dismiss all").
  */
-function groupByApp(notifications: Notifd.Notification[]): Notifd.Notification[][] {
-    const groups: Notifd.Notification[][] = [];
-    const sorted = [...notifications].sort((a, b) => b.time - a.time);
-    for (const notif of sorted) {
-        const group = groups.find((g) => g[0]!.appName === notif.appName);
-        if (group) group.push(notif);
-        else groups.push([notif]);
-    }
-    return groups;
+function appOrder(notifications: Notifd.Notification[]): string[] {
+    return [...new Set(newestFirst(notifications).map((n) => n.appName))];
 }
 
 /** Dismiss notifications from an idle callback (avoids mutating during signal emission). */
@@ -109,10 +107,12 @@ const NotificationListContent = ({
                 iconName={'edit-clear-all-symbolic'}
                 tooltipText={'Dismiss all active notifications'}
                 onClicked={() => dismissAll(notifd.get_notifications())}
-                ref={(self) => self.update_property(
-                    [Gtk.AccessibleProperty.LABEL],
-                    [new GObject.Value(GObject.TYPE_STRING, 'Dismiss all active notifications')]
-                )}
+                ref={(self) =>
+                    self.update_property(
+                        [Gtk.AccessibleProperty.LABEL],
+                        [new GObject.Value(GObject.TYPE_STRING, 'Dismiss all active notifications')]
+                    )
+                }
             />
             <Gtk.ToggleButton
                 onClicked={(self) => bus.emit('system:dnd:set', self.active)}
@@ -127,10 +127,12 @@ const NotificationListContent = ({
                 cssClasses={bind(dnd, 'dnd').as((enabled) =>
                     enabled ? ['suggested-action', 'warning'] : ['flat']
                 )}
-                ref={(self) => self.update_property(
-                    [Gtk.AccessibleProperty.LABEL],
-                    [new GObject.Value(GObject.TYPE_STRING, 'Do Not Disturb')]
-                )}
+                ref={(self) =>
+                    self.update_property(
+                        [Gtk.AccessibleProperty.LABEL],
+                        [new GObject.Value(GObject.TYPE_STRING, 'Do Not Disturb')]
+                    )
+                }
             />
         </Gtk.Box>
     );
@@ -192,32 +194,35 @@ const NotificationListContent = ({
                     tooltipText={'Delete from history'}
                     onClicked={() => history.remove(entry.id)}
                     slot="suffix"
-                    ref={(self) => self.update_property(
-                        [Gtk.AccessibleProperty.LABEL],
-                        [new GObject.Value(GObject.TYPE_STRING, 'Delete from history')]
-                    )}
+                    ref={(self) =>
+                        self.update_property(
+                            [Gtk.AccessibleProperty.LABEL],
+                            [new GObject.Value(GObject.TYPE_STRING, 'Delete from history')]
+                        )
+                    }
                 />
             </Adw.ActionRow>
         );
     };
 
-    const NotificationGroup = ({notifications}: {notifications: Notifd.Notification[]}) => {
+    const NotificationGroup = ({appName}: {appName: string}) => {
         const [visible, setVisible] = createState(false);
+        const notifications = bind(notifd, 'notifications').as((ns) =>
+            newestFirst(ns.filter((n) => n.appName === appName))
+        );
+        const first = notifications.as((ns) => ns.slice(0, 1));
+        const rest = notifications.as((ns) => ns.slice(1));
 
         const Heading = () => (
-            <Gtk.Box cssClasses={['toolbar']}>
+            <Gtk.Box cssClasses={['toolbar']} visible={notifications.as((ns) => ns.length > 1)}>
                 <Gtk.ToggleButton
                     onClicked={() => setVisible(!visible())}
                     active={visible}
                     cssClasses={['flat']}
                 >
                     <Gtk.Box>
-                        <Gtk.Image iconName={notifications[0]?.appIcon} />
-                        <Gtk.Label
-                            label={notifications[0]?.appName}
-                            hexpand
-                            cssClasses={['caption-heading']}
-                        />
+                        <Gtk.Image iconName={notifications.as((ns) => ns[0]?.appIcon ?? '')} />
+                        <Gtk.Label label={appName} hexpand cssClasses={['caption-heading']} />
                         <Gtk.Image
                             iconName={visible.as((v) =>
                                 v ? 'go-up-symbolic' : 'go-down-symbolic'
@@ -230,36 +235,35 @@ const NotificationListContent = ({
                     valign={Gtk.Align.END}
                     tooltipText={'Dismiss this group'}
                     cssClasses={['flat']}
-                    onClicked={() => dismissAll(notifications)}
-                    ref={(self) => self.update_property(
-                        [Gtk.AccessibleProperty.LABEL],
-                        [new GObject.Value(GObject.TYPE_STRING, 'Dismiss this group')]
-                    )}
+                    onClicked={() => dismissAll(notifications())}
+                    ref={(self) =>
+                        self.update_property(
+                            [Gtk.AccessibleProperty.LABEL],
+                            [new GObject.Value(GObject.TYPE_STRING, 'Dismiss this group')]
+                        )
+                    }
                 />
             </Gtk.Box>
+        );
+
+        const Item = ({notif}: {notif: Notifd.Notification}) => (
+            <Notification
+                notification={notif}
+                variant="list"
+                showProgress={showProgress}
+                closeAction={(n) => dismissAll([n])}
+            />
         );
 
         return (
             <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
                 <Heading />
-                <Notification
-                    notification={notifications[0]!}
-                    variant="list"
-                    showProgress={showProgress}
-                    closeAction={(n) => dismissAll([n])}
-                />
+                <For each={first}>{(notif: Notifd.Notification) => <Item notif={notif} />}</For>
                 <Gtk.Revealer revealChild={visible}>
                     <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-                        {/* Static slice — the parent For recreates this group
-                            whenever membership changes, so plain map is safe. */}
-                        {notifications.slice(1).map((notif) => (
-                            <Notification
-                                notification={notif}
-                                variant="list"
-                                showProgress={showProgress}
-                                closeAction={(n) => dismissAll([n])}
-                            />
-                        ))}
+                        <For each={rest}>
+                            {(notif: Notifd.Notification) => <Item notif={notif} />}
+                        </For>
                     </Gtk.Box>
                 </Gtk.Revealer>
             </Gtk.Box>
@@ -272,19 +276,8 @@ const NotificationListContent = ({
             orientation={Gtk.Orientation.VERTICAL}
             spacing={6}
         >
-            <For each={bind(notifd, 'notifications').as(groupByApp)}>
-                {(group: Notifd.Notification[]) =>
-                    group.length === 1 ? (
-                        <Notification
-                            closeAction={(n) => dismissAll([n])}
-                            showProgress={showProgress}
-                            notification={group[0]!}
-                            variant="list"
-                        />
-                    ) : (
-                        <NotificationGroup notifications={group} />
-                    )
-                }
+            <For each={bind(notifd, 'notifications').as(appOrder)}>
+                {(appName: string) => <NotificationGroup appName={appName} />}
             </For>
             <Adw.StatusPage
                 visible={bind(notifd, 'notifications').as((n) => n.length < 1)}
