@@ -17,8 +17,8 @@ export default ({wifi, connectingAp, setConnectingAp}: WifiPopoverProps) => {
     const scanning = bind(wifi, 'scanning');
 
     return (
-        <Gtk.Box cssClasses={['linked']} spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-            <Gtk.Box spacing={4}>
+        <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
+            <Gtk.Box spacing={0} cssClasses={['linked', 'horizontal']}>
                 <Gtk.Button
                     hexpand
                     sensitive={wifiEnabled}

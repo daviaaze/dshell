@@ -5,7 +5,7 @@ import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import NM from 'gi://NM?version=1.0';
 import logger from '@shade/core/logger';
-import {type Accessor, computed, createState} from 'gnim';
+import {type Accessor, computed, createState, effect, onCleanup} from 'gnim';
 import {
     type ApSnapshot,
     bssidEquals,
@@ -315,6 +315,24 @@ function createDoForget(
         });
     };
 }
+function focusPasswordOnOpen(
+    showPassword: Accessor<boolean>,
+    passwordEntry: Accessor<Gtk.Entry | null>
+): void {
+    effect(() => {
+        const entry = passwordEntry();
+        if (!showPassword() || !entry) return;
+        let source = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            source = 0;
+            if (showPassword() && entry.get_mapped()) entry.grab_focus();
+            return GLib.SOURCE_REMOVE;
+        });
+        onCleanup(() => {
+            if (source) GLib.source_remove(source);
+        });
+    });
+}
+
 // ── ApRow component ──
 
 function ApRow({snap, wifi, client, connectionRevision, isActive, isConnecting, setConnectingAp}: ApRowProps) {
@@ -338,6 +356,8 @@ function ApRow({snap, wifi, client, connectionRevision, isActive, isConnecting, 
     const doConnect = createDoConnect(client, wifi, snap, connectState);
     const doDisconnect = createDoDisconnect(client, wifi, snap, connectState);
     const doForget = createDoForget(client, wifi, snap, connectState);
+
+    focusPasswordOnOpen(showPassword, passwordEntry);
 
     const notActive = computed(() => !isActive());
     const canForget = computed(() => {
@@ -448,12 +468,11 @@ function ApRow({snap, wifi, client, connectionRevision, isActive, isConnecting, 
                         placeholderText="Password"
                         visibility={false}
                         hexpand
+                        onMap={(self) => {
+                            if (showPassword()) self.grab_focus();
+                        }}
                         ref={(self) => {
                             setPasswordEntry(self);
-                            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-                                self.grab_focus();
-                                return GLib.SOURCE_REMOVE;
-                            });
 
                             const controller = new Gtk.EventControllerKey();
                             controller.connect('key-pressed', (_ctrl, keyval) => {

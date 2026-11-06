@@ -36,7 +36,7 @@ export default ({
                         )}
                         valign={Gtk.Align.CENTER}
                         halign={Gtk.Align.CENTER}
-                        cssClasses={['linked']}
+                        cssClasses={vertical.as((v) => ['linked', v ? 'vertical' : 'horizontal'])}
                     >
                         <Gtk.Image iconName={appIcon} pixelSize={16} />
                         <Gtk.Label

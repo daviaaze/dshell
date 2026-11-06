@@ -59,7 +59,8 @@ export const QuickControlButton = (props: QuickControlButtonProps): GnimNode => 
         </Gtk.Button>
     );
     return (
-        <Gtk.Box spacing={0} cssClasses={computed(() => [
+        <Gtk.Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={computed(() => [
+            'horizontal',
             ...(props.menu ? ['linked'] : []),
             ...(isAccessor(props.cssClasses) ? props.cssClasses() : props.cssClasses ?? []),
         ])} hexpand={props.hexpand ?? true} visible={props.visible ?? true} sensitive={props.sensitive ?? true}>

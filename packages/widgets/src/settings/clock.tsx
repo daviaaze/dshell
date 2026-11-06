@@ -50,7 +50,7 @@ export default () => {
                             <Gtk.Box
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={4}
-                                cssClasses={['linked']}
+                                cssClasses={['linked', 'vertical']}
                             >
                                 <For each={PRESET_TIMEZONES}>
                                     {(tz: string) => (

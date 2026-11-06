@@ -82,7 +82,7 @@ export default () => {
                 halign={Gtk.Align.CENTER}
                 valign={Gtk.Align.END}
                 spacing={8}
-                cssClasses={['linked', 'card', 'background']}
+                cssClasses={['linked', 'horizontal', 'card', 'background']}
                 css={'background-color: @window_bg_color;'}
             >
                 <For each={dockItems}>

@@ -91,7 +91,7 @@ export const ControlPanel = ({ss, onCapture, onReset, onTargetChange}: ControlPa
                 spacing={8}
             >
                 {/* Mode toggle */}
-                <Gtk.Box spacing={4} homogeneous cssClasses={['linked']}>
+                <Gtk.Box spacing={4} homogeneous cssClasses={['linked', 'horizontal']}>
                     <ModeTab
                         label="Screenshot"
                         value="screenshot"

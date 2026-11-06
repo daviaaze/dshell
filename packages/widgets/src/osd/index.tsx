@@ -82,7 +82,7 @@ export default () => {
             ref={(self) => WindowManager.get_default().setOsd(self)}
         >
             <Gtk.Box
-                cssClasses={['linked', 'card', 'background']}
+                cssClasses={['linked', 'vertical', 'card', 'background']}
                 css={'box-shadow: none; padding: 12px; background-color: @window_bg_color;'}
                 orientation={Gtk.Orientation.VERTICAL}
                 valign={Gtk.Align.END}

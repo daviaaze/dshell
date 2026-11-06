@@ -65,7 +65,7 @@ export const AudioEndpointControl = ({
 
     const TabbedContent = () => (
         <Gtk.Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-            <Gtk.Box spacing={0} halign={Gtk.Align.CENTER} cssClasses={['linked']}>
+            <Gtk.Box spacing={0} halign={Gtk.Align.CENTER} cssClasses={['linked', 'horizontal']}>
                 <Gtk.ToggleButton
                     active={tab.as((t) => t === 'devices')}
                     onClicked={() => setTab('devices')}

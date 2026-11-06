@@ -2,7 +2,7 @@ import GObject from 'gi://GObject?version=2.0';
 import Network from 'gi://AstalNetwork';
 import type NM from 'gi://NM?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {type Accessor, computed, createState, For, onCleanup} from 'gnim';
+import {type Accessor, computed, createState, For, onCleanup, setChildren} from 'gnim';
 import ApRow from './apRow';
 import {type ApSnapshot, bssidEquals, bssidOf, snapshotNMAccessPoint} from './utils';
 
@@ -21,6 +21,29 @@ function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
         return b.strength - a.strength;
+    });
+}
+
+function preserveRowParents(box: Gtk.Box): void {
+    // Gnim's default renderer unparents every row on updates, clearing input focus.
+    Object.assign(box, {
+        [setChildren](children: GObject.Object[], previous: GObject.Object[]): boolean {
+            for (const child of previous) {
+                if (child instanceof Gtk.Widget && !children.includes(child)) box.remove(child);
+            }
+
+            let sibling: Gtk.Widget | null = null;
+            for (const child of children) {
+                if (!(child instanceof Gtk.Widget)) continue;
+                if (child.get_parent() !== box) {
+                    box.insert_child_after(child, sibling);
+                } else if (child.get_prev_sibling() !== sibling) {
+                    box.reorder_child_after(child, sibling);
+                }
+                sibling = child;
+            }
+            return true;
+        },
     });
 }
 
@@ -166,7 +189,7 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
     const sortedAps = computed(() => sortAps(aps(), activeAp()?.bssid ?? null));
 
     return (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card']} spacing={0} hexpand>
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card']} spacing={0} hexpand ref={preserveRowParents}>
             <For each={sortedAps} id={(snap) => snap.objectPath}>
                 {(snap: ApSnapshot) => {
                     const apBssid = snap.bssid;

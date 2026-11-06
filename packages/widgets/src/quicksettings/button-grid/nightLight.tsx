@@ -11,7 +11,7 @@ export default (): QuickButton => {
     const popover = (
         <Gtk.Popover cssClasses={[]}>
             <Gtk.Box
-                cssClasses={['toolbar', 'linked']}
+                cssClasses={['toolbar', 'linked', 'vertical']}
                 marginTop={8}
                 marginBottom={8}
                 marginStart={8}

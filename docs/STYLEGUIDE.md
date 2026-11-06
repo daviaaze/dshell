@@ -307,6 +307,12 @@ Example: `--blue-3` = `#3584e4`, `--red-1` = `#f66151`, `--dark-3` = `#3d3846`.
 | `.inline` | Neutral background (for search bars, tab bars) |
 | `.devel` | Striped header bar (for nightly apps) |
 
+Apply `.linked` to the immediate parent of the controls being joined, with no
+spacing between those controls. When assigning `cssClasses` in Gnim, include the
+container's native orientation class (`horizontal` or `vertical`): assigning the
+array replaces GTK's existing CSS classes, including its orientation class.
+The layout's `orientation` property alone does not restore a removed CSS class.
+
 ### Color Classes
 
 | Class | Color |

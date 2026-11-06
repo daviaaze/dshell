@@ -9,7 +9,7 @@ interface LinkedBoxProps {
 
 export const LinkedBox = (props: LinkedBoxProps) => (
     <Gtk.Box
-        cssClasses={['linked']}
+        cssClasses={['linked', 'vertical']}
         orientation={Gtk.Orientation.VERTICAL}
         spacing={props.spacing ?? 4}
         marginStart={props.margin ?? 8}

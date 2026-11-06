@@ -45,6 +45,7 @@
 | I8 | Power options | Lock/Suspend remain immediate; Log Out/Restart/Power Off require an explicit native dialog with Cancel as default/close response. Close the originating popover first; release its layer grab for the dialog; return focus only to a still-mapped parent after compositor ownership. Hiding/destroying the parent cancels without action |
 | I9 | Saved display layout | Preview a transaction; current committed layout is text, not a checked-looking preview command |
 | I10 | Bluetooth hotplug/power | Selected adapter add/remove and native powered notifications refresh the tile's checked state/value; the main action changes that adapter, while opening its options does not |
+| I11 | Wi-Fi password entry | Opening the password field focuses it once mapped. AP updates, reordering, and unrelated AP additions/removals preserve the entry, text, and current focus; hidden password fields must not steal focus. A removed AP/device may remove its own entry |
 
 ## Visual (Adwaita alignment)
 
@@ -71,6 +72,7 @@
 - **Unit**: test `ShellState.qsOpen` + `launcherOpen` mutual exclusion logic, slider value clamping
 - **Compliance linter**: file-size warning on `note` subfiles? Check individually; get_default in JSX
 - **Visual/manual**: screenshots of each module group; test scroll overflow
+- **Wi-Fi focus regression**: open a secure unsaved AP, type a partial password, and update signal strength, reorder APs, then add/remove another AP. Verify focus and text survive; deliberately focus another control and verify later updates do not pull focus back. The isolated GTK smoke exercised these transitions with controlled AP events, not a real authentication attempt.
 - **Native confirmation regression**: a harmless callback counter covers duplicate
   opens and explicit confirmation from an Astal parent. Fallback `closed` may
   precede `response`; cleanup must not consume the later valid response.

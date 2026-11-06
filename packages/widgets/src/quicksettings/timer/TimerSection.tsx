@@ -103,7 +103,7 @@ export const TimerSection = () => {
                 halign={Gtk.Align.FILL}
             >
                 {/* Mode tabs */}
-                <Gtk.Box cssClasses={['linked']} halign={Gtk.Align.CENTER}>
+                <Gtk.Box cssClasses={['linked', 'horizontal']} halign={Gtk.Align.CENTER}>
                     <Gtk.ToggleButton
                         active={selectedMode.as((m) => m === 'countdown')}
                         cssClasses={[]}
