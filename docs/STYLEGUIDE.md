@@ -408,6 +408,8 @@ Add both `.card` and `.activatable` to get hover/active states:
 
 `GtkButton` with `.card` gets this automatically.
 
+Shell cards and boxed preference groups are flat: `packages/widgets/src/style.ts` suppresses shadows on `.card`, `.boxed-list` and `.boxed-list-separate > row`. Keep native backgrounds, corners and interaction states; do not reintroduce component shadows when adjusting Adwaita styling.
+
 ### Validation States
 
 Use `.error`, `.success`, or `.warning` on `GtkEntry` to indicate

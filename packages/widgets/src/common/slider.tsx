@@ -7,6 +7,7 @@ type SliderProps = {
     icon: Accessor<string> | string;
     label?: string;
     iconTooltip?: string | Accessor<string>;
+    showIcon?: boolean;
     visible?: Accessor<boolean> | boolean;
     min: number;
     max: number;
@@ -33,11 +34,12 @@ export const Slider = (props: SliderProps) => {
         <Gtk.Box
             ref={props.ref}
             cssClasses={['slider', 'horizontal', ...(props.cssClasses ?? [])]}
+            orientation={Gtk.Orientation.HORIZONTAL}
             spacing={SLIDER_SPACING}
             visible={props.visible}
         >
             {props.onIconClick ? (
-                <Gtk.Button onClicked={props.onIconClick} tooltipText={props.iconTooltip}
+                <Gtk.Button visible={props.showIcon !== false} onClicked={props.onIconClick} tooltipText={props.iconTooltip}
                     ref={self => {
                         if (!props.iconTooltip) return;
                         effect(() => {
@@ -49,7 +51,7 @@ export const Slider = (props: SliderProps) => {
                     <Gtk.Image iconName={props.icon} />
                 </Gtk.Button>
             ) : (
-                <Gtk.Image iconName={props.icon} />
+                <Gtk.Image visible={props.showIcon !== false} iconName={props.icon} />
             )}
             <Astal.Slider
                 ref={self => {

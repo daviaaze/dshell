@@ -32,4 +32,11 @@ button.bar-vertical-content-button,
   box-shadow: none;
 }
 
+/* Shell surfaces stay flat; keep Adwaita's colors and rounded corners. */
+.card,
+.boxed-list,
+.boxed-list-separate > row {
+  box-shadow: none;
+}
+
 `);

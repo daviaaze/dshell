@@ -1,10 +1,9 @@
-import GObject from 'gi://GObject?version=2.0';
+import Adw from 'gi://Adw?version=1';
 import type Wireplumber from 'gi://AstalWp';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getVolumeIcon} from '@shade/services/audio/icons';
 import {bus} from '@shade/services/bus';
-import {type Accessor, bind, createState, For, With} from 'gnim';
-import AppMixer from '../quicksettings/appMixer';
+import {type Accessor, bind, For, With} from 'gnim';
 import {Slider} from './slider';
 
 export {getVolumeIcon};
@@ -12,110 +11,53 @@ export {getVolumeIcon};
 interface AudioControlProps {
     defaultDevice: Accessor<Wireplumber.Endpoint | null>;
     devices: Accessor<Wireplumber.Endpoint[]>;
-    visible?: Accessor<boolean> | boolean;
+    deviceTitle: string;
+    volumeTitle: string;
+    muteTitle: string;
     mutedIcon: string;
-    showAppMixer?: boolean;
 }
 
 export const AudioEndpointControl = ({
-    defaultDevice,
-    devices,
-    visible,
-    mutedIcon,
-    showAppMixer,
+    defaultDevice, devices, deviceTitle, volumeTitle, muteTitle, mutedIcon,
 }: AudioControlProps) => {
-    const [tab, setTab] = createState<'devices' | 'apps'>('devices');
     const radioGroup = new Gtk.CheckButton();
-
-    const DeviceWidget = ({device}: {device: Wireplumber.Endpoint}) => (
-        <Gtk.Box spacing={8} orientation={Gtk.Orientation.VERTICAL}>
-            <Gtk.Box spacing={8} orientation={Gtk.Orientation.HORIZONTAL} valign={Gtk.Align.CENTER}>
-                <Gtk.CheckButton
-                    group={radioGroup}
-                    active={bind(device, 'is-default')}
-                    onNotifyActive={({active}) => {
-                        if (active) device.isDefault = true;
-                    }}
-                    ref={(self) =>
-                        self.update_property(
-                            [Gtk.AccessibleProperty.LABEL],
-                            [
-                                new GObject.Value(
-                                    GObject.TYPE_STRING,
-                                    device.description ?? 'Select audio device'
-                                ),
-                            ]
-                        )
-                    }
-                />
-                <Gtk.Label
-                    label={device.description ?? undefined}
-                    maxWidthChars={30}
-                    ellipsize={3}
-                    hexpand
-                    halign={Gtk.Align.START}
-                    cssClasses={['body']}
-                />
-            </Gtk.Box>
-            <Slider
-                min={0}
-                max={100}
-                onIconClick={() => bus.emit('audio:toggle-mute', {device})}
-                icon={getVolumeIcon(device, mutedIcon)}
-                value={bind(device, 'volume').as((v) => v * 100)}
-                setValue={(value) => bus.emit('audio:set-volume', {device, value: value / 100})}
-            />
-        </Gtk.Box>
-    );
-
-    const DevicesList = () => (
-        <Gtk.Box spacing={12} orientation={Gtk.Orientation.VERTICAL}>
-            <For each={devices}>{(d) => <DeviceWidget device={d} />}</For>
-        </Gtk.Box>
-    );
-
-    const TabbedContent = () => (
-        <Gtk.Box spacing={0} orientation={Gtk.Orientation.VERTICAL}>
-            <Gtk.Box spacing={0} orientation={Gtk.Orientation.HORIZONTAL} halign={Gtk.Align.CENTER} cssClasses={['linked']}>
-                <Gtk.ToggleButton
-                    active={tab.as((t) => t === 'devices')}
-                    onClicked={() => setTab('devices')}
-                    label="Devices"
-                />
-                <Gtk.ToggleButton
-                    active={tab.as((t) => t === 'apps')}
-                    onClicked={() => setTab('apps')}
-                    label="Applications"
-                />
-            </Gtk.Box>
-            <Gtk.Box
-                visible={tab.as((t) => t === 'devices')}
-                spacing={12}
-                orientation={Gtk.Orientation.VERTICAL}
-            >
-                <For each={devices}>{(d) => <DeviceWidget device={d} />}</For>
-            </Gtk.Box>
-            <Gtk.Box
-                visible={tab.as((t) => t === 'apps')}
-                spacing={12}
-                orientation={Gtk.Orientation.VERTICAL}
-            >
-                <AppMixer />
-            </Gtk.Box>
-        </Gtk.Box>
-    );
-
     return (
-        <Gtk.Box visible={visible} spacing={12} orientation={Gtk.Orientation.VERTICAL}>
-            <With value={defaultDevice}>
-                {device => device ? (
-                    <Slider icon={getVolumeIcon(device, mutedIcon)} min={0} max={100}
-                        value={bind(device, 'volume').as(value => value * 100)}
-                        setValue={value => bus.emit('audio:set-volume', {device, value: value / 100})}
-                        onIconClick={() => bus.emit('audio:toggle-mute', {device})} />
-                ) : <Gtk.Label label="Selecione um dispositivo para usar como padrão." wrap xalign={0} />}
-            </With>
-            {showAppMixer ? <TabbedContent /> : <DevicesList />}
+        <Gtk.Box spacing={16} orientation={Gtk.Orientation.VERTICAL}>
+            <Adw.PreferencesGroup title={deviceTitle} visible={devices.as(items => items.length > 0)}>
+                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card', 'vertical']}>
+                    <For each={devices}>{device => (
+                        <Gtk.CheckButton group={radioGroup}
+                            label={bind(device, 'description').as(description => description || device.name || 'Dispositivo de áudio')}
+                            active={bind(device, 'is-default')}
+                            marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}
+                            onNotifyActive={self => {
+                                if (self.active && !device.isDefault) device.isDefault = true;
+                            }} />
+                    )}</For>
+                </Gtk.Box>
+            </Adw.PreferencesGroup>
+            <With value={defaultDevice}>{device => device ? (
+                <Gtk.Box spacing={12} orientation={Gtk.Orientation.VERTICAL}>
+                    <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                        <Gtk.Label label={volumeTitle} xalign={0} cssClasses={['heading']} />
+                        <Slider min={0} max={100} label={volumeTitle} showIcon={false}
+                            icon={getVolumeIcon(device, mutedIcon)}
+                            value={bind(device, 'volume').as(value => value * 100)}
+                            setValue={value => bus.emit('audio:set-volume', {device, value: value / 100})} />
+                    </Gtk.Box>
+                    <Adw.PreferencesGroup>
+                        <Adw.SwitchRow title={muteTitle} active={bind(device, 'mute')}
+                            onNotifyActive={self => {
+                                if (self.active !== device.mute) bus.emit('audio:toggle-mute', {device});
+                            }} />
+                    </Adw.PreferencesGroup>
+                </Gtk.Box>
+            ) : (
+                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                    <Gtk.Label label={volumeTitle} xalign={0} cssClasses={['heading']} />
+                    <Gtk.Label label="Indisponível" wrap xalign={0} cssClasses={['dimmed']} />
+                </Gtk.Box>
+            )}</With>
         </Gtk.Box>
     );
 };

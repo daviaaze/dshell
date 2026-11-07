@@ -27,14 +27,15 @@ import {Weather} from './expander/weather';
 import {WorldClock} from './expander/worldClock';
 import WifiQuickButton from './network';
 import {AudioCompact, AudioConfig, BrightnessSlider, MicCompact, MicConfig} from './sliders';
+import AppMixer from './appMixer';
 import {TrayBox} from './tray';
 
 const PANEL_WIDTH = 420;
 const WINDOW_MARGIN = 4;
-type QuickRoute = 'home' | 'wifi' | 'bluetooth' | 'audio' | 'microphone' | 'displays' | 'other' | 'data' | OtherRoute;
+type QuickRoute = 'home' | 'wifi' | 'bluetooth' | 'audio' | 'microphone' | 'mixer' | 'displays' | 'other' | 'data' | OtherRoute;
 const TITLES: Record<QuickRoute, string> = {
     home: 'Controles rápidos', wifi: 'Wi-Fi', bluetooth: 'Bluetooth',
-    audio: 'Saída de áudio', microphone: 'Microfone', displays: 'Telas',
+    audio: 'Saída de áudio', microphone: 'Microfone', mixer: 'Mixer de aplicativos', displays: 'Telas',
     other: 'Outros controles', data: 'Data e clima', profile: 'Energia',
     appearance: 'Aparência', capture: 'Captura', inhibit: 'Manter ativo',
     timer: 'Temporizador', nightlight: 'Luz noturna',
@@ -97,7 +98,7 @@ export default () => {
 
     return (
         <Astal.Window name="quicksettings" namespace="shade-quicksettings" application={getApp()}
-            title={title}
+            title={title} resizable={false}
             keymode={Astal.Keymode.ON_DEMAND} visible={bind(state, 'qsOpen')}
             anchor={bar.position.as(position => TOP | (position === LEFT ? LEFT : RIGHT))}
             marginTop={WINDOW_MARGIN} marginBottom={WINDOW_MARGIN} marginStart={WINDOW_MARGIN} marginEnd={WINDOW_MARGIN}
@@ -163,9 +164,14 @@ export default () => {
                                 {wifi.widget}{bluetooth.widget}
                             </Gtk.FlowBox>
                             <Gtk.Label label="Tela e som" cssClasses={['heading']} xalign={0} />
-                            <BrightnessSlider onOpen={self => navigate('displays', self)} />
-                            <AudioCompact onOpen={self => navigate('audio', self)} />
-                            <MicCompact onOpen={self => navigate('microphone', self)} />
+                            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card', 'frame', 'vertical']}>
+                                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={16}
+                                    marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
+                                    <BrightnessSlider onOpen={self => navigate('displays', self)} />
+                                    <AudioCompact onOpen={self => navigate('audio', self)} />
+                                    <MicCompact onOpen={self => navigate('microphone', self)} />
+                                </Gtk.Box>
+                            </Gtk.Box>
                             <Gtk.Button onClicked={self => navigate('other', self)}>
                                 <Gtk.Box spacing={12}>
                                     <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
@@ -189,10 +195,14 @@ export default () => {
                             <Gtk.Button label="Configurações de Bluetooth" onClicked={() => openSettings('bluetooth')} />
                         </Gtk.Box>
                         <Gtk.Box name="audio" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                            <AudioConfig /><Gtk.Button label="Configurações de som" onClicked={() => openSettings('sound')} />
+                            <AudioConfig onOpenMixer={self => navigate('mixer', self)} />
+                            <Gtk.Button label="Configurações de som" onClicked={() => openSettings('sound')} />
                         </Gtk.Box>
                         <Gtk.Box name="microphone" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                             <MicConfig /><Gtk.Button label="Configurações de som" onClicked={() => openSettings('sound')} />
+                        </Gtk.Box>
+                        <Gtk.Box name="mixer" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                            <AppMixer />
                         </Gtk.Box>
                         <Gtk.Box name="displays" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                             <DisplaySection /><Gtk.Button label="Configurações de telas"

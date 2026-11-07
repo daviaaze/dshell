@@ -177,12 +177,14 @@ export default () => {
                 )}
             </For>
             <Gtk.Box
+                orientation={Gtk.Orientation.VERTICAL} spacing={8}
                 visible={streams.as((s) => s.length === 0)}
                 halign={Gtk.Align.CENTER}
                 marginTop={12}
                 marginBottom={12}
             >
-                <Gtk.Label cssClasses={['body']} label="No active audio streams" />
+                <Gtk.Label cssClasses={['body']} label="Nenhum aplicativo reproduzindo áudio" wrap />
+                <Gtk.Label cssClasses={['caption', 'dimmed']} label="Os volumes individuais aparecem quando há reprodução" wrap />
             </Gtk.Box>
         </Gtk.Box>
     );
