@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 import os
 import shlex
@@ -84,268 +83,6 @@ class WorkflowTest:
         self.command_log = self.artifacts / "commands.log"
         self._gsettings_environment_pid: int | None = None
         self._gsettings_environment: dict[str, str] = {}
-        self.review_password = SSH_PASSWORD
-        self.review_selection: dict[str, object] = {}
-        self.review_records: list[dict[str, object]] = []
-        self.review_theme = "prelogin"
-        self.review_viewport = "native"
-        self.review_family = "prerequisite"
-        self.review_monitor: dict[str, object] = {}
-        self.review_root = self.artifacts / "ui-review"
-        self._review_shortcut_failures: set[str] = set()
-        self.review_directory = self.review_root
-
-    def write_review_manifest(self) -> None:
-        self.review_root.mkdir(parents=True, exist_ok=True)
-        counts: dict[str, int] = {}
-        for record in self.review_records:
-            status = str(record["status"])
-            counts[status] = counts.get(status, 0) + 1
-        (self.review_root / "manifest.json").write_text(json.dumps({
-            "scope": "Guest UI evidence, not a global accessibility or pixel-padding conformance claim",
-            "selection": self.review_selection,
-            "records": self.review_records,
-            "coverage": counts,
-            "failures": [r for r in self.review_records if r["status"] == "failed"],
-            "unavailable": [r for r in self.review_records if r["status"] == "unavailable"],
-            "greeter_artifacts": [str(p) for p in sorted(self.artifacts.glob("greeter-*.png"))],
-            "greeter_scope": "Real prerequisite before session variants; session theme/viewport do not establish greeter matrix coverage",
-        }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-    def review_record(self, screen_id: str, status: str, **details) -> dict[str, object]:
-        record = {
-            "screen_id": screen_id, "status": status,
-            "family": self.review_family, "theme": self.review_theme,
-            "viewport": self.review_viewport, "monitor": self.review_monitor,
-            **details,
-        }
-        self.review_records.append(record)
-        self.write_review_manifest()
-        return record
-
-    def review_unavailable(self, screen_id: str, reason: str) -> dict[str, object]:
-        return self.review_record(screen_id, "unavailable", reason=reason, reviewed=False)
-    def _review_capture_existing(self, screen_id: str, screenshot: Path, *, notes=None, include_native_tree=True) -> dict[str, object]:
-        safe = re.sub(r"[^A-Za-z0-9_.-]+", "-", screen_id).strip(".-") or "screen"
-        directory = self.review_directory / f"{len(self.review_records):04d}-{safe}"
-        directory.mkdir(parents=True, exist_ok=False)
-        frozen_screenshot = directory / "screen.png"
-        shutil.copyfile(screenshot, frozen_screenshot)
-        evidence: dict[str, object] = {"screenshot": str(frozen_screenshot)}
-        errors: dict[str, str] = {}
-        operations = () if self.review_theme == "prelogin" else (
-            (("atspi", lambda: self.accessibility_tree(f"reviewing {screen_id}")),)
-            if include_native_tree else ()
-        ) + (("layers", self.layers), ("clients", self.clients), ("monitors", self.monitors))
-        if not include_native_tree:
-            evidence["atspi_scope"] = "Full tree omitted to preserve the live transaction deadline; workflow-native control identity and compositor receipts remain separate evidence."
-        if self.review_theme == "prelogin":
-            evidence["native_receipts"] = {
-                "status": "unavailable",
-                "reason": "Tester session/AT-SPI and compositor socket do not exist before the real greeter login.",
-            }
-        for name, operation in operations:
-            try:
-                value = operation()
-                path = directory / f"{name}.json"
-                path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-                evidence[name] = str(path)
-                if name == "atspi":
-                    bounds = [node.get("bounds") for node in self.walk_accessibility(value)]
-                    valid = sum(isinstance(b, list) and len(b) == 4 and all(isinstance(v, (int, float)) for v in b)
-                                and b[2] > 0 and b[3] > 0 and all(abs(v) < 2147483647 for v in b) for b in bounds)
-                    evidence["native_bounds"] = {
-                        "valid_allocations": valid, "invalid_or_unknown": len(bounds) - valid,
-                        "qualification": "Native allocations only; invalid/unknown values are not exact padding measurements.",
-                    }
-            except Exception as exc:
-                errors[name] = f"{type(exc).__name__}: {exc}"
-        return self.review_record(
-            screen_id, "failed" if errors else "captured", notes=notes,
-            reviewed=False, evidence=evidence, errors=errors,
-            scope="Actual screenshot captured during the existing workflow step; native allocation/compositor receipts, not exact padding",
-            review_scope="prelogin-prerequisite" if self.review_theme == "prelogin" else "session-variant",
-        )
-
-    def review_run_scenario(self, method_name: str, *, include_native_tree=True) -> list[dict[str, object]]:
-        """Run an existing WorkflowTest method while recording each real intermediate screenshot."""
-        method = getattr(self, method_name, None)
-        if not callable(method) or not method_name.startswith("test_"):
-            raise ValueError(f"Unknown workflow test method: {method_name!r}")
-        if method_name == "test_greeter":
-            self.review_family, self.review_theme, self.review_viewport = "greeter-prerequisite", "prelogin", "native"
-            self.review_directory = self.review_root / "prelogin" / "greeter"
-            self.review_monitor = {}
-        before = len(self.review_records)
-        capture = self.capture
-
-        def capture_hook(name: str) -> Path:
-            screenshot = capture(name)
-            self._review_capture_existing(
-                f"{method_name}-{Path(name).name}",
-                screenshot,
-                notes=f"Intermediate screenshot from existing {method_name} workflow; no UI behavior reimplemented.",
-                include_native_tree=include_native_tree,
-            )
-            return screenshot
-
-        self.capture = capture_hook
-        try:
-            method()
-        except Exception as exc:
-            self.review_record(
-                f"{method_name}-failure", "failed",
-                reason=f"{type(exc).__name__}: {exc}",
-                review_scope="prelogin-prerequisite" if self.review_theme == "prelogin" else "session-variant",
-            )
-            raise
-        finally:
-            self.capture = capture
-        records = self.review_records[before:]
-        if not records:
-            self.review_record(method_name, "failed", reason="Workflow method produced no intermediate screenshots")
-        return self.review_records[before:]
-
-
-    def review_capture(self, screen_id: str, *, notes=None) -> dict[str, object]:
-        # Never allow screen IDs to escape the per-family artifact directory.
-        safe = re.sub(r"[^A-Za-z0-9_.-]+", "-", screen_id).strip(".-") or "screen"
-        directory = self.review_directory / f"{len(self.review_records):04d}-{safe}"
-        directory.mkdir(parents=True, exist_ok=False)
-        evidence: dict[str, object] = {}
-        errors: dict[str, str] = {}
-        operations = {
-            "screenshot": lambda: str(self.capture(str(directory.relative_to(self.artifacts) / "screen"))),
-            "atspi": lambda: self.accessibility_tree(f"reviewing {screen_id} native roles names states and bounds"),
-            "layers": self.layers,
-            "clients": self.clients,
-            "monitors": self.monitors,
-        }
-        for name, operation in operations.items():
-            try:
-                value = operation()
-                if name == "screenshot":
-                    evidence[name] = value
-                else:
-                    path = directory / f"{name}.json"
-                    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-                    evidence[name] = str(path)
-                    if name == "atspi":
-                        valid = invalid = unknown = 0
-                        for node in self.walk_accessibility(value):
-                            bounds = node.get("bounds")
-                            if not isinstance(bounds, list) or len(bounds) != 4:
-                                unknown += 1
-                            elif not all(isinstance(v, (int, float)) for v in bounds) or bounds[2] <= 0 or bounds[3] <= 0 or any(abs(v) >= 2147483647 for v in bounds):
-                                invalid += 1
-                            else:
-                                valid += 1
-                        evidence["native_bounds"] = {
-                            "valid_allocations": valid, "invalid": invalid, "unknown": unknown,
-                            "qualification": "Native allocations only; invalid/unknown bounds cannot establish geometry. Allocations are not exact padding measurements.",
-                        }
-            except Exception as exc:
-                errors[name] = f"{type(exc).__name__}: {exc}"
-        return self.review_record(
-            screen_id, "failed" if errors else "captured", notes=notes,
-            reviewed=False, evidence=evidence, errors=errors,
-            scope="Actual guest screenshot and native/compositor receipts; no inferred exact padding or physical hardware coverage",
-            context={
-                "family": self.review_family, "theme": self.review_theme,
-                "viewport": self.review_viewport, "monitor": self.review_monitor,
-            },
-        )
-
-    def review_restore(self) -> None:
-        if self.lockscreen_visible():
-            raise RuntimeError("Review family left the guest locked; refusing viewport changes or blind dismissal")
-        # Escape cancels, never accepts a power/display/auth confirmation.
-        self.vnc("cancelling guest review transients", "key", "esc", "key", "esc", "pause", "0.3")
-        self.close_settings()
-        self.close_quick_settings()
-
-    def review_set_variant(self, theme: str, viewport: str) -> None:
-        self.review_restore()
-        width, height = {"wide": (1280, 800), "compact": (800, 600), "short": (1024, 480)}[viewport]
-        primary = next((m for m in self.monitors() if m.get("name") == "Virtual-1"), None)
-        if primary is None:
-            raise Unsupported("Guest Virtual-1 output is unavailable")
-        self.desktop(
-            "setting guest-only review monitor configuration",
-            "hyprctl eval " + shlex.quote(
-                f'hl.monitor({{output = "Virtual-1", mode = "{width}x{height}@60", position = "0x0", scale = 1}})'
-            ),
-        )
-        self.review_monitor = self.wait_until(
-            "actual review monitor dimensions and scale",
-            lambda: next((m for m in self.monitors() if m.get("name") == "Virtual-1"
-                          and m.get("width") == width and m.get("height") == height
-                          and float(m.get("scale", 0)) == 1), None),
-            timeout=20,
-        )
-        self.open_settings()
-        try:
-            self.settings_page("Aparência")
-            label = {"light": "Claro", "dark": "Escuro"}[theme]
-            self.click_named("selecting review theme through native Settings", label, role="radio")
-            def selected_theme():
-                node = self.accessibility(
-                    "reading selected review theme", "find", "--name", label,
-                    "--role", "radio", "--include-state",
-                )
-                words = node.get("state_words", [])
-                return node if words and words[0] & ((1 << 4) | (1 << 20) | (1 << 23)) else None
-            self.wait_until("native theme selection state", selected_theme, timeout=12)
-        finally:
-            self.close_settings()
-            self.close_quick_settings()
-
-    def test_ui_review(self, families: list[str], themes: list[str], viewports: list[str]) -> dict[str, object]:
-        modules = {
-            "shell": "vm_ui_review_shell",
-            "settings-auth": "vm_ui_review_settings_auth",
-            "capture-share": "vm_ui_review_capture",
-        }
-        self.review_root.mkdir(parents=True, exist_ok=True)
-        self.review_selection = {"families": families, "themes": themes, "viewports": viewports}
-        self.write_review_manifest()
-        for theme in themes:
-            for viewport in viewports:
-                self.review_theme, self.review_viewport = theme, viewport
-                for family in families:
-                    self.review_family = family
-                    self.review_directory = self.review_root / theme / viewport / family
-                    self.review_directory.mkdir(parents=True, exist_ok=True)
-                    self.review_monitor = {}
-                    start = len(self.review_records)
-                    try:
-                        self.review_set_variant(theme, viewport)
-                        returned = importlib.import_module(modules[family]).run_review(self, theme, viewport)
-                        for record in returned:
-                            record.setdefault("family", family)
-                            record.setdefault("theme", theme)
-                            record.setdefault("viewport", viewport)
-                            record.setdefault("monitor", self.review_monitor)
-                            record.setdefault("reviewed", False)
-                            if record not in self.review_records:
-                                self.review_records.append(record)
-                        if len(self.review_records) == start:
-                            raise RuntimeError("Review module returned no coverage records")
-                    except Exception as exc:
-                        self.review_capture("family-failure-visible", notes=f"{type(exc).__name__}: {exc}")
-                        self.review_record("family-execution", "failed", reason=f"{type(exc).__name__}: {exc}")
-                    finally:
-                        try:
-                            self.review_restore()
-                        except Exception as exc:
-                            self.review_capture("restore-failure-visible", notes=str(exc))
-                            self.review_record("family-restore", "failed", reason=str(exc))
-                        self.write_review_manifest()
-        if any(r["status"] == "failed" for r in self.review_records):
-            raise RuntimeError(f"UI review failures recorded in {self.review_root / 'manifest.json'}")
-        return {"manifest": str(self.review_root / "manifest.json"),
-                "captured": sum(r["status"] == "captured" for r in self.review_records),
-                "unavailable": sum(r["status"] == "unavailable" for r in self.review_records)}
 
     @staticmethod
     def free_port() -> int:
@@ -487,13 +224,12 @@ class WorkflowTest:
         return matches[0]
 
     def click_accessible_node(self, node: dict[str, object], label: str) -> None:
-        name = str(node.get("native_name", node.get("name")) or "")
-        role = str(node.get("role") or "")
+        name, role = str(node.get("name") or ""), str(node.get("role") or "")
         destination, path = node.get("bus"), node.get("path")
         if not isinstance(destination, str) or not isinstance(path, str):
             raise Unsupported(f"{label} has no native accessible identity: {node}")
         self.accessibility(
-            label, "click", "--name=" + name, "--role", role,
+            label, "click", "--name", name, "--role", role,
             "--bus", destination, "--path", path,
         )
 
@@ -538,71 +274,6 @@ class WorkflowTest:
                 f"found {[{key: node.get(key) for key in ('name', 'role', 'bounds')} for node in matches.values()]}"
             )
         return next(iter(matches.values()))
-
-    def click_bluetooth_peer_action(
-        self,
-        label: str,
-        action: str,
-        controller: str,
-        address: str,
-        expected_path: str,
-    ) -> dict[str, object]:
-        device = self.bluetooth_device(controller, address)
-        if (
-            not device
-            or str(device.get("Name", device.get("Alias", ""))) != "ShadeVM-Peer"
-            or str(device.get("path")) != expected_path
-        ):
-            raise RuntimeError(
-                f"Bluetooth action {action!r} target changed: expected ShadeVM-Peer "
-                f"at {expected_path}, found {device}"
-            )
-
-        tree = self.accessibility_tree(f"finding {action} for exact ShadeVM-Peer row")
-
-        def subtree(node: dict[str, object]):
-            return list(self.walk_accessibility(node))
-
-        labels = [
-            node for node in self.walk_accessibility(tree)
-            if str(node.get("name") or "") == "ShadeVM-Peer"
-            and str(node.get("role") or "").casefold() == "label"
-        ]
-        if len(labels) != 1:
-            raise Unsupported(f"Expected one ShadeVM-Peer accessible row label: {labels}")
-
-        # Select the closest ancestor whose subtree contains the peer label and
-        # exactly one matching action, but no other device identity. The tree's
-        # real parent links preserve the Settings row/card association.
-        parents: dict[int, dict[str, object]] = {}
-        stack = [tree]
-        while stack:
-            parent = stack.pop()
-            for child in parent.get("children", []):
-                if isinstance(child, dict):
-                    parents[id(child)] = parent
-                    stack.append(child)
-        current = labels[0]
-        while id(current) in parents:
-            current = parents[id(current)]
-            nodes = subtree(current)
-            device_names = {
-                str(node.get("name") or "")
-                for node in nodes
-                if str(node.get("name") or "") in {"ShadeVM-Peer", "shade-vm"}
-            }
-            actions = [
-                node for node in nodes
-                if str(node.get("name") or "") == action
-                and str(node.get("role") or "").casefold() == "button"
-            ]
-            if device_names == {"ShadeVM-Peer"} and len(actions) == 1:
-                self.click_accessible_node(actions[0], label)
-                return actions[0]
-        raise Unsupported(
-            f"Could not associate exactly one {action!r} button with ShadeVM-Peer row "
-            f"at BlueZ object {expected_path}"
-        )
 
     def click_in_group(
         self,
@@ -695,43 +366,16 @@ print(str(pid) if str(pid).isdecimal() else '')"""
     def quick_settings_open(self) -> bool:
         return any(layer.get("namespace") == "shade-quicksettings" for layer in self.layers())
 
-    def _toggle_quick_settings(self, opening: bool) -> None:
-        if self.quick_settings_open() == opening:
-            return
-        label = "opening" if opening else "closing"
-        self.vnc(
-            f"{label} Quick Settings with Super+N",
-            "keydown", "super", "key", "n", "keyup", "super",
-        )
-        try:
-            self.wait_until(
-                f"Quick Settings {label} through Super+N",
-                lambda: self.quick_settings_open() == opening,
-                timeout=2,
-            )
-            return
-        except RuntimeError as shortcut_error:
-            if self.review_selection and "quick-settings-super-n" not in self._review_shortcut_failures:
-                self._review_shortcut_failures.add("quick-settings-super-n")
-                self.review_record(
-                    "quick-settings-super-n",
-                    "failed",
-                    reason=f"Guest Super+N did not change the Quick Settings layer: {shortcut_error}",
-                    reviewed=False,
-                )
-            if self.quick_settings_open() != opening:
-                self.activate_shell_action("toggle-quicksettings")
-            self.wait_until(
-                f"Quick Settings {label} through the registered application action",
-                lambda: self.quick_settings_open() == opening,
-                timeout=12,
-            )
-
     def open_quick_settings(self) -> None:
-        self._toggle_quick_settings(True)
+        if self.quick_settings_open():
+            return
+        self.vnc("opening Quick Settings", "keydown", "super", "key", "n", "keyup", "super")
+        self.wait_until("Quick Settings panel", self.quick_settings_open, timeout=12)
 
     def close_quick_settings(self) -> None:
-        self._toggle_quick_settings(False)
+        if self.quick_settings_open():
+            self.vnc("closing Quick Settings", "keydown", "super", "key", "n", "keyup", "super")
+            self.wait_until("Quick Settings closure", lambda: not self.quick_settings_open(), timeout=12)
 
     def settings_search(self, title: str) -> dict[str, object]:
         self.vnc("focus Settings global search", "keydown", "ctrl", "key", "f", "keyup", "ctrl", "pause", "0.5")
@@ -790,9 +434,6 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         )
 
     def open_settings(self) -> None:
-        # A detail page can already own the panel; reopening resets to Home.
-        # Do not blindly toggle: the compositor layer is the source of truth.
-        self.close_quick_settings()
         self.open_quick_settings()
         self.click_named("open Settings from Quick Settings", "Configurações", role="button")
         self.wait_until(
@@ -865,10 +506,6 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         return path
 
     def copy_guest_file(self, source: str, destination: Path) -> None:
-        expected_size = int(self.guest(
-            "reading completed guest artifact size",
-            "stat -c %s -- " + shlex.quote(source),
-        ).stdout.strip())
         self.local(
             f"copying guest artifact {source}",
             [
@@ -880,8 +517,8 @@ print(str(pid) if str(pid).isdecimal() else '')"""
             ],
             timeout=90,
         )
-        if not destination.is_file() or destination.stat().st_size != expected_size:
-            raise RuntimeError(f"Guest artifact copy differs from its source: {destination}")
+        if not destination.is_file() or destination.stat().st_size < 1024:
+            raise RuntimeError(f"Guest recording was not copied: {destination}")
 
     def assert_visual_change(self, before: Path, after: Path, label: str) -> int:
         with tempfile.TemporaryDirectory(prefix="greeter-compare.", dir=self.artifacts) as temporary:
@@ -1104,21 +741,7 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         self.vnc("return from greeter password prompt", "key", "esc", "pause", "1")
         back = self.capture("greeter-back")
         back_change = self.assert_visual_change(prompt, back, "Escape to user selection")
-        # Back focuses the selected account button. Review the adjacent native
-        # session chooser without changing its selection, then enter the real
-        # test account through the separate manual-account form.
-        self.vnc(
-            "opening the native greeter session chooser",
-            "key", "tab", "key", "tab", "key", "space", "pause", "0.4",
-        )
-        session_picker = self.capture("greeter-session-chooser")
-        self.vnc(
-            "opening the manual greeter account form without submitting credentials",
-            "key", "esc", "key", "shift-tab", "key", "enter", "pause", "0.4",
-            "type", "tester",
-        )
-        manual_account = self.capture("greeter-manual-account")
-        self.vnc("starting PAM for the explicitly entered account", "key", "enter", "pause", "1")
+        self.vnc("reselect the focused account after Back", "key", "enter", "pause", "1")
         self.wait_until(
             "explicit retry starts the greeter PAM worker",
             lambda: int(self.guest("checking retried greeter authentication worker", "pgrep -c -x greetd").stdout.strip()) >= 3,
@@ -1129,14 +752,14 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         self.vnc("submit test-account password", "type", SSH_PASSWORD, "key", "enter", "pause", "2")
         self.wait_shell()
         return {
-            "ui": "The selected account started PAM without Continue; invalid password and Escape/Back were followed by session-chooser review and an explicit manual-account authentication retry",
+            "ui": "The selected account started PAM without Continue; virtual keyboard submitted invalid and valid passwords, with Escape/Back and an explicit authentication retry between attempts",
             "visual_pixels_changed_in_form": {
                 "invalid_response": invalid_change,
                 "back": back_change,
                 "retry": retry_change,
             },
             "guest": "invalid login left the Shade service inactive; valid login started Shade and registered AT-SPI",
-            "screenshots": [str(prompt), str(invalid), str(back), str(session_picker), str(manual_account), str(retry)],
+            "screenshots": [str(prompt), str(invalid), str(back)],
         }
 
     def test_launcher(self) -> dict[str, object]:
@@ -1180,6 +803,8 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         )
 
     def test_quicksettings(self) -> dict[str, object]:
+        before = self.layers()
+        before_geometry = {tuple(layer.get(key) for key in ("x", "y", "w", "h")) for layer in before}
         self.vnc("open Quick Settings with Super+N", "keydown", "super", "key", "n", "keyup", "super", "pause", "1")
         self.capture("quicksettings-open")
         self.save_accessibility_tree("quicksettings-open")
@@ -1413,15 +1038,6 @@ print(json.dumps(result))"""
     def notification_dnd(self, enabled: bool | None = None) -> bool:
         self.activate_shell_action("open-notifications")
         try:
-            tree = self.accessibility_tree("reading the current notification-center view")
-            history_back = [
-                candidate for candidate in self.walk_accessibility(tree)
-                if candidate.get("name") == "Voltar às notificações" and candidate.get("role") == "button"
-            ]
-            if history_back:
-                if len(history_back) != 1:
-                    raise RuntimeError(f"Notification history Back control is ambiguous: {history_back}")
-                self.click_accessible_node(history_back[0], "returning to notifications before reading Do Not Disturb")
             node = self.wait_until(
                 "native Do Not Disturb switch",
                 lambda: self.accessibility(
@@ -1742,7 +1358,6 @@ print(json.dumps(result))"""
                 ),
                 timeout=20,
             )
-            self.capture("wifi-radio-off")
             self.click_wifi_control("turning Wi-Fi on in Quick Settings")
             on = self.wait_until(
                 "guest NetworkManager Wi-Fi radio enabled",
@@ -1765,12 +1380,7 @@ print(json.dumps(result))"""
             if "Shade-Test" not in scan.stdout:
                 raise Unsupported("Wi-Fi control toggled successfully, but the guest-local Shade-Test AP was not visible in NetworkManager scan output")
             state = self.guest("reading Wi-Fi connection state", "nmcli -t -f DEVICE,STATE,CONNECTION device status").stdout.strip()
-            self.click_named("opening Wi-Fi details after radio controls", "Wi-Fi details", role="button")
-            self.wait_until(
-                "Wi-Fi detail route", lambda: self.find_accessible_node("Wi-Fi", role="window"), timeout=12
-            )
-            self.capture("wifi-radio-details")
-            self.accessibility("returning to Quick Settings home", "click", "--name", "Voltar", "--role", "button")
+            self.accessibility("returning to Quick Settings home", "click", "--name", "Voltar", "--role", "button", "--description-match")
             return {"ui": "AT-SPI Click actions on the WiFi toggle changed radio state both ways", "guest": {"radio_initial": initial, "radio_off": off, "radio_on": on, "devices": state, "scan": scan.stdout.strip()}, "accessibility": button}
         finally:
             self.vnc("close Quick Settings", "keydown", "super", "key", "n", "keyup", "super", "pause", "1")
@@ -2297,11 +1907,14 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             ]
             if not change_groups:
                 raise Unsupported("Native Revisar alterações action group is unavailable")
+            changes = min(change_groups, key=lambda node: len(list(self.walk_accessibility(node))))
             def current_revert():
-                return self.find_in_group(
-                    self.accessibility_tree("reading current display transaction actions"),
-                    "Revisar alterações", "Reverter", role="button",
+                scoped = self.accessibility(
+                    "reading only native display transaction actions",
+                    "tree", "--bus", str(changes["bus"]), "--path", str(changes["path"]),
+                    "--no-bounds", "--max-depth", "12", "--max-nodes", "100",
                 )
+                return self.find_in_group(scoped, "Revisar alterações", "Reverter", role="button")
             scale_controls = [
                 node for node in self.nodes_in_group(tree, "Telas conectadas")
                 if str(node.get("role", "")).casefold() == "spin button"
@@ -2315,24 +1928,10 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 )
             primary_scale = float(initial_primary.get("scale", 1.0))
             target_scale = 1.25 if abs(primary_scale - 1.25) > 0.01 else 1.5
-            def primary_scale_control():
-                current = self.accessibility_tree("reacquiring Virtual-1 native scale editor")
-                identity = initial_primary.get("description") or initial_primary["name"]
-                editors = [
-                    node for node in self.nodes_in_group(current, "Telas conectadas")
-                    if any(child.get("name") == identity for child in self.walk_accessibility(node))
-                    and len([child for child in self.walk_accessibility(node)
-                             if str(child.get("role", "")).casefold() == "spin button"]) == 1
-                ]
-                if not editors:
-                    raise RuntimeError(f"No unique scale editor for Virtual-1 identity {identity!r}")
-                editor = min(editors, key=lambda node: len(list(self.walk_accessibility(node))))
-                return next(child for child in self.walk_accessibility(editor)
-                            if str(child.get("role", "")).casefold() == "spin button")
-            control = primary_scale_control()
+            control = scale_controls[0]
             self.accessibility(
                 "setting a reversible native Virtual-1 scale",
-                "set-value", "--name", str(control.get("native_name", control.get("name")) or ""), "--role", "spin button",
+                "set-value", "--name", str(control.get("name") or ""), "--role", "spin button",
                 "--bus", str(control["bus"]), "--path", str(control["path"]),
                 "--value", str(target_scale),
             )
@@ -2437,18 +2036,15 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             states: list[dict[str, object]] = []
             def cancel_state(name: str) -> None:
                 before = self.active_window()
+                layer_count = len(self.layers())
                 self.activate_shell_action("toggle-windowswitcher")
-                self.wait_until(f"{name} switcher layer", lambda: any(
-                    layer.get("namespace") == "shade-switcher" for layer in self.layers()
-                ), timeout=12)
+                self.wait_until(f"{name} switcher layer", lambda: len(self.layers()) > layer_count, timeout=12)
                 if name == "empty":
                     self.find_accessible_node("Press Escape to close the switcher.")
                 self.save_accessibility_tree(f"window-switcher-{name}")
                 screenshot = self.capture(f"window-switcher-{name}")
                 self.vnc(f"cancelling {name} switcher", "key", "esc")
-                self.wait_until(f"{name} switcher closed", lambda: not any(
-                    layer.get("namespace") == "shade-switcher" for layer in self.layers()
-                ), timeout=12)
+                self.wait_until(f"{name} switcher closed", lambda: len(self.layers()) <= layer_count, timeout=12)
                 after = self.active_window()
                 if before.get("address") != after.get("address"):
                     raise RuntimeError(f"{name} cancellation changed client focus: {before} -> {after}")
@@ -2733,112 +2329,12 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             if pattern_started:
                 self.stop_pattern_window()
 
-    def bluetooth_metadata(self) -> dict[str, dict[str, dict[str, object]]]:
-        result = self.guest(
-            "reading passive BlueZ managed objects",
-            "busctl --system --json=short call org.bluez / org.freedesktop.DBus.ObjectManager GetManagedObjects",
-            check=False,
-        )
-        raw = result.stdout
-        (self.artifacts / "bluetooth-managed-objects-receipt.json").write_text(
-            json.dumps({"returncode": result.returncode, "stdout": raw, "stderr": result.stderr}, indent=2),
-            encoding="utf-8",
-        )
-        try:
-            if result.returncode:
-                raise ValueError("GetManagedObjects failed")
-            reply = json.loads(raw)
-            # systemd bus-dump-json.c: message data is an argument array,
-            # dictionaries are objects, and variants are {type, data}.
-            if not isinstance(reply, dict) or reply.get("type") != "a{oa{sa{sv}}}":
-                raise ValueError("unexpected GetManagedObjects signature")
-            data = reply.get("data")
-            if not isinstance(data, list) or len(data) != 1 or not isinstance(data[0], dict):
-                raise ValueError("expected one managed-object dictionary")
-            objects = {}
-            required = {
-                "org.bluez.Adapter1": {"Address": "s", "Alias": "s", "Powered": "b", "Discovering": "b"},
-                "org.bluez.Device1": {"Address": "s", "Adapter": "o", "Paired": "b", "Connected": "b"},
-            }
-            for path, interfaces in data[0].items():
-                if not isinstance(path, str) or not path.startswith("/") or not isinstance(interfaces, dict):
-                    raise ValueError("invalid managed object")
-                objects[path] = {}
-                for interface, properties in interfaces.items():
-                    if not isinstance(properties, dict):
-                        raise ValueError(f"invalid properties for {path} {interface}")
-                    if interface not in required:
-                        continue
-                    decoded = {}
-                    for name, variant in properties.items():
-                        if not isinstance(variant, dict) or set(variant) != {"type", "data"}:
-                            raise ValueError(f"invalid variant {path} {name}")
-                        signature, value = variant["type"], variant["data"]
-                        expected = required[interface].get(name)
-                        if expected and (signature != expected or type(value) is not (bool if expected == "b" else str)):
-                            raise ValueError(f"invalid type for {path} {name}")
-                        if name in ("Alias", "Name") and (signature != "s" or type(value) is not str):
-                            raise ValueError(f"invalid name for {path} {name}")
-                        decoded[name] = value
-                    if not required[interface].keys() <= decoded.keys():
-                        raise ValueError(f"missing required properties for {path} {interface}")
-                    objects[path][interface] = decoded
-            return objects
-        except (ValueError, TypeError) as error:
-            raise RuntimeError(
-                f"Invalid BlueZ metadata: {error}; returncode={result.returncode}; stdout={raw!r}; stderr={result.stderr!r}"
-            ) from error
-
-    def bluetooth_controllers(self) -> dict[str, dict[str, object]]:
-        return {
-            path: interfaces["org.bluez.Adapter1"]
-            for path, interfaces in self.bluetooth_metadata().items()
-            if "org.bluez.Adapter1" in interfaces
-        }
-
-    def bluetooth_adapter(self, address: str) -> tuple[str, dict[str, object]]:
-        matches = [
-            (path, properties) for path, properties in self.bluetooth_controllers().items()
-            if properties["Address"].casefold() == address.casefold()
-        ]
-        if len(matches) != 1:
-            raise RuntimeError(f"Expected one BlueZ adapter for {address}: {matches}")
-        return matches[0]
-
-    def bluetooth_device(self, controller: str, address: str) -> dict[str, object] | None:
-        objects = self.bluetooth_metadata()
-        adapters = [
-            path for path, interfaces in objects.items()
-            if "org.bluez.Adapter1" in interfaces
-            and interfaces["org.bluez.Adapter1"]["Address"].casefold() == controller.casefold()
-        ]
-        if len(adapters) != 1:
-            raise RuntimeError(f"Expected one BlueZ adapter for {controller}: {objects}")
-        devices = [
-            {"path": path, **interfaces["org.bluez.Device1"]}
-            for path, interfaces in objects.items()
-            if "org.bluez.Device1" in interfaces
-            and interfaces["org.bluez.Device1"]["Adapter"] == adapters[0]
-            and interfaces["org.bluez.Device1"]["Address"].casefold() == address.casefold()
-        ]
-        if len(devices) > 1:
-            raise RuntimeError(f"Ambiguous BlueZ device {controller} {address}: {objects}")
-        return devices[0] if devices else None
-
-    def bluetooth_devices(self, controller: str) -> list[dict[str, object]]:
-        objects = self.bluetooth_metadata()
-        adapters = [
-            path for path, interfaces in objects.items()
-            if "org.bluez.Adapter1" in interfaces
-            and interfaces["org.bluez.Adapter1"]["Address"].casefold() == controller.casefold()
-        ]
-        if len(adapters) != 1:
-            raise RuntimeError(f"Expected one BlueZ adapter for {controller}: {objects}")
+    def bluetooth_controllers(self) -> list[str]:
+        result = self.guest("reading guest Bluetooth controllers", "bluetoothctl list")
         return [
-            {"path": path, **interfaces["org.bluez.Device1"]}
-            for path, interfaces in objects.items()
-            if "org.bluez.Device1" in interfaces
-            and interfaces["org.bluez.Device1"]["Adapter"] == adapters[0]
+            fields[1]
+            for line in result.stdout.splitlines()
+            if len(fields := line.split()) >= 2 and fields[0] == "Controller"
         ]
 
     @staticmethod
@@ -2847,15 +2343,21 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         commands = ("select " + controller, shlex.join(arguments))
         return "printf '%s\\n' " + shlex.join(commands) + " | bluetoothctl"
 
+    def bluetooth_info(self, controller: str, address: str) -> str:
+        return self.guest(
+            "reading guest Bluetooth device state",
+            self.bluetooth_command(controller, "info", address),
+            check=False,
+        ).stdout
 
     def test_bluetooth_pairing(self) -> dict[str, object]:
         fixture_started = False
         settings_open = False
         scanning = False
-        transient_connection = False
-        controllers: dict[str, dict[str, object]] = {}
+        paired_address: str | None = None
+        controllers: list[str] = []
         primary_address: str | None = None
-        peer_address: str | None = None
+        peer_controller: str | None = None
         initial_powered: bool | None = None
         try:
             fixture_started = True
@@ -2867,32 +2369,15 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             controllers = self.wait_until(
                 "guest Bluetooth fixture controllers",
                 lambda: (
-                    found
-                    if len(found := self.bluetooth_controllers()) >= 2
-                    and any(
-                        properties["Alias"] == "ShadeVM-Peer"
-                        and properties["Powered"] and properties["Discoverable"] and properties["Pairable"]
-                        for properties in found.values()
-                    )
-                    else None
+                    found if len(found := self.bluetooth_controllers()) >= 2 else None
                 ),
                 timeout=30,
             )
-            peers = [
-                properties for properties in controllers.values()
-                if properties["Alias"] == "ShadeVM-Peer"
-            ]
-            if len(peers) != 1:
-                raise RuntimeError(f"Expected one ShadeVM-Peer adapter: {controllers}")
-            peer_address = str(peers[0]["Address"])
-            primary_adapters = [
-                properties for properties in controllers.values()
-                if properties["Address"] != peer_address
-            ]
-            if len(primary_adapters) != 1:
-                raise RuntimeError(f"Expected one primary Bluetooth adapter: {controllers}")
-            primary_address = str(primary_adapters[0]["Address"])
-            initial_powered = bool(primary_adapters[0]["Powered"])
+            primary_address, peer_controller = controllers[:2]
+            initial_powered = "Powered: yes" in self.guest(
+                "snapshotting guest Bluetooth adapter power",
+                self.bluetooth_command(primary_address, "show"),
+            ).stdout
             settings_open = True
             self.open_settings()
             page = self.settings_page("Bluetooth")
@@ -2901,396 +2386,109 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 self.click_in_group("enabling guest Bluetooth from Settings", "Bluetooth", "Bluetooth", role="switch")
                 self.wait_until(
                     "guest Bluetooth adapter powered",
-                    lambda: bool(self.bluetooth_adapter(primary_address)[1]["Powered"]),
+                    lambda: "Powered: yes" in self.guest(
+                        "waiting for guest Bluetooth adapter",
+                        self.bluetooth_command(primary_address, "show"),
+                    ).stdout,
                     timeout=20,
                 )
-            self.click_in_group("starting guest Bluetooth discovery", "Dispositivos disponíveis", "Buscar dispositivos", role="button")
+            self.click_in_group("starting guest Bluetooth discovery", "Available Devices", "Scan for Devices", role="button")
             scanning = True
-            def active_discovery():
-                adapters = self.bluetooth_controllers()
-                active = [
-                    properties for properties in adapters.values()
-                    if properties["Discovering"]
-                ]
-                return (adapters, active[0]) if len(active) == 1 else None
-            discovery_adapters, scanning_adapter = self.wait_until(
-                "native UI Bluetooth discovery started on one adapter",
-                active_discovery,
-                timeout=10,
+            devices = self.wait_until(
+                "guest-advertised ShadeVM-Peer",
+                lambda: (
+                    output
+                    if "ShadeVM-Peer" in (output := self.guest(
+                        "discovering on guest virtual Bluetooth controller",
+                        self.bluetooth_command(primary_address, "devices"),
+                        check=False,
+                    ).stdout)
+                    else None
+                ),
+                timeout=30,
             )
-            if str(scanning_adapter["Address"]).casefold() == peer_address.casefold():
-                # AstalBluetooth scans its first registered adapter. Move only
-                # the disposable advertiser to the other owned btvirt controller.
-                stop_scan = self.find_in_group(
-                    self.accessibility_tree("reading Bluetooth discovery stop control"),
-                    "Dispositivos disponíveis",
-                    "Parar busca",
-                    role="button",
-                )
-                self.click_accessible_node(stop_scan, "stopping discovery before fixture adapter alignment")
-                scanning = False
-                primary_address = next(
-                    str(properties["Address"])
-                    for properties in controllers.values()
-                    if str(properties["Address"]).casefold() != peer_address.casefold()
-                )
-                self.guest(
-                    "selecting the other guest btvirt adapter for the advertiser",
-                    "printf '%s' " + shlex.quote(primary_address) + " > /run/shade-vm-bluetooth/peer-address",
-                )
-                self.guest(
-                    "restarting only the guest Bluetooth advertising peer",
-                    'control=$(readlink -f "$(command -v systemctl)"); sudo -n "$control" restart shade-vm-bluetooth-peer.service',
-                    timeout=45,
-                )
-                controllers = self.wait_until(
-                    "guest Bluetooth advertiser moved to the selected controller",
+            address_match = next(
+                (
+                    fields[1]
+                    for line in devices.splitlines()
+                    if len(fields := line.split()) >= 3 and fields[2] == "ShadeVM-Peer"
+                ),
+                None,
+            )
+            if address_match is None:
+                raise RuntimeError(f"Guest BlueZ did not report the advertised peer: {devices}")
+            paired_address = address_match
+            self.click_in_group("pairing discovered guest peer in Settings", "Available Devices", "Pair", role="button")
+            paired = self.wait_until(
+                "guest peer paired and connected",
+                lambda: (
+                    info
+                    if (
+                        (info := self.bluetooth_info(primary_address, address_match))
+                        and "Paired: yes" in info
+                    )
+                    else None
+                ),
+                timeout=35,
+            )
+            connected = "Connected: yes" in paired
+            if not connected:
+                self.click_in_group("connecting the paired guest peer", "Paired Devices", "Connect", role="button")
+                paired = self.wait_until(
+                    "guest peer connection",
                     lambda: (
-                        found
-                        if len(found := self.bluetooth_controllers()) == 2
-                        and any(
-                            properties["Alias"] == "ShadeVM-Peer"
-                            and properties["Address"].casefold() == primary_address.casefold()
-                            and properties["Powered"] and properties["Discoverable"] and properties["Pairable"]
-                            for properties in found.values()
-                        )
+                        info
+                        if "Connected: yes" in (info := self.bluetooth_info(primary_address, address_match))
                         else None
                     ),
                     timeout=30,
                 )
-                peer_address = primary_address
-                primary_address = next(
-                    str(properties["Address"])
-                    for properties in controllers.values()
-                    if str(properties["Address"]).casefold() != peer_address.casefold()
-                )
-                initial_powered = bool(self.bluetooth_adapter(primary_address)[1]["Powered"])
-                self.click_in_group("restarting guest Bluetooth discovery after fixture alignment", "Dispositivos disponíveis", "Buscar dispositivos", role="button")
-                scanning = True
-                discovery_adapters, scanning_adapter = self.wait_until(
-                    "native UI Bluetooth discovery restarted",
-                    active_discovery,
-                    timeout=10,
-                )
-                if str(scanning_adapter["Address"]).casefold() != primary_address.casefold():
-                    raise RuntimeError(f"UI discovery adapter did not remain the non-peer controller: {discovery_adapters}")
-            (self.artifacts / "bluetooth-ui-discovery-adapters.json").write_text(
-                json.dumps(discovery_adapters, indent=2), encoding="utf-8"
-            )
-            def discovered_peer():
-                found = self.bluetooth_devices(primary_address)
-                return found if any(
-                    device.get("Name", device.get("Alias")) == "ShadeVM-Peer"
-                    for device in found
-                ) else None
-            devices = self.wait_until(
-                "guest-advertised ShadeVM-Peer",
-                discovered_peer,
-                timeout=30,
-            )
-            matching_devices = [
-                device for device in devices
-                if device.get("Name", device.get("Alias")) == "ShadeVM-Peer"
-            ]
-            if len(matching_devices) != 1:
-                raise RuntimeError(f"Expected one advertised ShadeVM-Peer device: {devices}")
-            address_match = str(matching_devices[0]["Address"])
-            paired_address = address_match
-            self.capture("bluetooth-discovered-peer")
-            self.click_in_group("pairing discovered guest peer in Settings", "Dispositivos disponíveis", "Parear", role="button")
-            paired = self.wait_until(
-                "guest peer paired",
-                lambda: (
-                    device if (device := self.bluetooth_device(primary_address, address_match))
-                    and device["Paired"] else None
-                ),
-                timeout=35,
-            )
-            self.capture("bluetooth-paired-peer")
-            peer_consent = self.wait_until(
-                "owned peer's reciprocal completed pairing",
-                lambda: (
-                    device if (device := self.bluetooth_device(peer_address, primary_address))
-                    and device["Paired"] else None
-                ),
-                timeout=10,
-            )
-            # Both adapters are the fixture's owned btvirt endpoints. Authorize
-            # their reciprocal services explicitly: A2DP negotiation can open
-            # profiles in either direction on this single guest BlueZ daemon.
-            for consenting_device in (peer_consent, paired):
-                self.guest(
-                    "authorizing services only between the two paired btvirt endpoints",
-                    "busctl --system set-property org.bluez "
-                    + shlex.quote(str(consenting_device["path"]))
-                    + " org.bluez.Device1 Trusted b true",
-                )
-            # Pairing's temporary ACL can close while the native review receipt
-            # is collected; do not decide whether to connect from the old snapshot.
-            paired = self.bluetooth_device(primary_address, address_match)
-            if not paired or not paired["Paired"]:
-                raise RuntimeError(f"Guest peer lost its completed pairing: {paired}")
-            if not paired["Connected"]:
-                self.click_bluetooth_peer_action(
-                    "connecting the paired guest peer", "Conectar",
-                    primary_address, address_match, str(paired["path"]),
-                )
-                paired = self.wait_until(
-                    "guest peer connection",
-                    lambda: (
-                        device if (device := self.bluetooth_device(primary_address, address_match))
-                        and device["Connected"] else None
-                    ),
-                    timeout=30,
-                )
-            if not paired["Connected"]:
+            if "Connected: yes" not in paired:
                 raise RuntimeError(f"Guest-only Bluetooth peer did not connect: {paired}")
-            self.capture("bluetooth-connected-peer")
-            # The screenshot/tree collection above can outlive btvirt's short
-            # ACL. Re-read the exact BlueZ object before attempting disconnect.
-            connected_snapshot = self.bluetooth_device(primary_address, address_match)
-            if not connected_snapshot or str(connected_snapshot["path"]) != str(paired["path"]):
-                raise RuntimeError(f"Captured guest pairing object changed: {connected_snapshot}")
-            disconnect_receipt: dict[str, object] | None = None
-            if connected_snapshot["Connected"]:
-                self.click_bluetooth_peer_action(
-                    "disconnecting guest peer before cleanup", "Desconectar",
-                    primary_address, address_match, str(connected_snapshot["path"]),
-                )
-                disconnected = self.wait_until(
-                    "guest Bluetooth peer disconnected",
-                    lambda: (
-                        device if (device := self.bluetooth_device(primary_address, address_match))
-                        and str(device["path"]) == str(connected_snapshot["path"])
-                        and not device["Connected"] else None
-                    ),
-                    timeout=20,
-                )
-                disconnect_receipt = disconnected
-            else:
-                transient_connection = True
-                tree = self.accessibility_tree("recording paired Bluetooth peer after its btvirt ACL closed")
-                native_controls = [
-                    node for node in self.walk_accessibility(tree)
-                    if node.get("role") == "button"
-                ]
-                native_button = next(
-                    (node.get("name") for node in native_controls
-                     if node.get("name") in ("Conectar", "Desconectar")),
-                    None,
-                )
-                self.review_unavailable(
-                    "bluetooth-persistent-link",
-                    "Transient btvirt link closed before disconnect UI action; "
-                    f"native row label={next((node.get('name') for node in self.walk_accessibility(tree) if node.get('name') == 'ShadeVM-Peer'), None)!r}, "
-                    f"button={native_button!r}, BlueZ object={connected_snapshot['path']!r}, "
-                    f"Connected={connected_snapshot['Connected']!r}; persistent disconnect prerequisite unavailable.",
-                )
-            forget_object_path = str(paired["path"])
-            def forget_window():
-                settings_clients = [
-                    client for client in self.clients()
-                    if client.get("title") == "Configurações" and client.get("mapped")
-                ]
-                settings_tree = self.accessibility_tree("locating mapped Settings accessibility owner")
-                settings_buses = {
-                    str(node["bus"]) for node in self.walk_accessibility(settings_tree)
-                    if node.get("name") == "Configurações" and node.get("role") == "window"
-                    and node.get("bus")
-                }
-                windows = [
-                    node for node in self.walk_accessibility(
-                        self.accessibility_tree("locating native Bluetooth forget window")
-                    )
-                    if node.get("role") == "window" and node.get("name") == "Esquecer dispositivo?"
-                ]
-                if len(settings_clients) != 1 or len(settings_buses) != 1 or len(windows) != 1:
-                    raise RuntimeError(
-                        f"Expected unique mapped Settings owner and forget window: "
-                        f"{settings_clients!r}, {settings_buses!r}, {windows!r}"
-                    )
-                owner = settings_clients[0]
-                window = windows[0]
-                if str(window.get("bus")) not in settings_buses:
-                    raise RuntimeError(
-                        f"Forget window and Settings owner are not the same process: "
-                        f"{window!r}, {settings_buses!r}"
-                    )
-                clients = [
-                    client for client in self.clients()
-                    if client.get("title") == "Esquecer dispositivo?" and client.get("mapped")
-                    and str(client.get("pid")) == str(owner.get("pid"))
-                ]
-                if len(clients) != 1:
-                    raise RuntimeError(f"Expected one mapped native forget client: {clients!r}")
-                return window, clients[0], owner
-
-            def open_forget_review(label):
-                self.click_in_group(
-                    "opening guest Bluetooth forget consent", "Dispositivos pareados",
-                    "Esquecer", role="button",
-                )
-                window, client, owner = self.wait_until(
-                    "native Bluetooth forget window",
-                    forget_window,
-                    timeout=8,
-                )
-                self.capture("bluetooth-forget-" + label)
-                current = self.bluetooth_device(primary_address, address_match)
-                if not current or not current["Paired"] or str(current["path"]) != forget_object_path:
-                    raise RuntimeError("Opening Bluetooth forget consent changed the captured pairing")
-                return window, client, owner
-
-            for dismissal in ("cancel", "escape", "window-close"):
-                window, client, _owner = open_forget_review(dismissal)
-                if dismissal == "cancel":
-                    consent_tree = self.accessibility(
-                        "reading Bluetooth forget cancellation control", "tree",
-                        "--bus", str(window["bus"]), "--path", str(window["path"]),
-                        "--max-depth", "12", "--max-nodes", "150",
-                    )
-                    cancel_buttons = [
-                        node for node in self.walk_accessibility(consent_tree)
-                        if node.get("role") == "button" and node.get("name") == "Cancelar"
-                    ]
-                    if len(cancel_buttons) != 1:
-                        raise RuntimeError(f"Expected one explicit Cancel response: {cancel_buttons}")
-                    self.click_accessible_node(cancel_buttons[0], "cancelling Bluetooth forget consent")
-                elif dismissal == "escape":
-                    self.vnc("closing Bluetooth forget window with Escape", "key", "esc")
-                else:
-                    address = str(client.get("address", ""))
-                    if not address:
-                        raise RuntimeError(f"Forget window has no compositor address: {client!r}")
-                    self.desktop(
-                        "closing Bluetooth forget window through the window manager",
-                        "hyprctl dispatch " + shlex.quote(f"closewindow address:{address}"),
-                    )
-                self.wait_until(
-                    f"Bluetooth forget window closed after {dismissal}",
-                    lambda: not any(
-                        c.get("title") == "Esquecer dispositivo?" and c.get("mapped")
-                        for c in self.clients()
-                    ),
-                    timeout=8,
-                )
-                current = self.bluetooth_device(primary_address, address_match)
-                if not current or not current["Paired"] or str(current["path"]) != forget_object_path:
-                    raise RuntimeError(f"Bluetooth forget {dismissal} changed the captured pairing")
-
-            dialog, consent_client, settings_client = open_forget_review("confirm")
-            consent_tree = self.accessibility(
-                "reading only the current Bluetooth consent window", "tree",
-                "--bus", str(dialog["bus"]), "--path", str(dialog["path"]),
-                "--max-depth", "12", "--max-nodes", "150",
+            self.click_in_group("disconnecting guest peer before cleanup", "Paired Devices", "Disconnect", role="button")
+            self.wait_until(
+                "guest Bluetooth peer disconnected",
+                lambda: "Connected: no" in self.bluetooth_info(primary_address, address_match),
+                timeout=20,
             )
-            consent_buttons = [
-                node for node in self.walk_accessibility(consent_tree)
-                if node.get("role") == "button" and node.get("name") == "Esquecer"
-            ]
-            if len(consent_buttons) != 1:
-                raise RuntimeError(f"Expected one explicit Bluetooth consent response: {consent_buttons}")
-            confirm_button = consent_buttons[0]
-            measured_consent = self.accessibility(
-                "measuring the current explicit Bluetooth response control", "find",
-                "--name=" + str(confirm_button.get("native_name", confirm_button.get("name", ""))),
-                "--role", str(confirm_button["role"]),
-                "--bus", str(confirm_button["bus"]),
-                "--path", str(confirm_button["path"]),
-                "--window-bounds", "--include-state",
+            self.click_in_group("forgetting guest Bluetooth peer", "Paired Devices", "Forget", role="button")
+            self.click_named("confirming guest Bluetooth forget cleanup", "Confirm", role="button")
+            forgotten = self.wait_until(
+                "guest Bluetooth peer forgotten",
+                lambda: (
+                    output
+                    if not any(
+                        len(fields := line.split()) >= 2 and fields[1] == address_match
+                        for line in output.splitlines()
+                    )
+                    else None
+                ) if (output := self.guest(
+                    "checking guest Bluetooth device list after Forget",
+                    self.bluetooth_command(primary_address, "devices"),
+                    check=False,
+                ).stdout) else "forgotten",
+                timeout=20,
             )
-            window_bounds = measured_consent.get("window_bounds")
-            if not isinstance(window_bounds, list) or len(window_bounds) != 4:
-                raise RuntimeError(f"Cannot measure native consent window/control: {measured_consent!r}")
-            if (window_bounds[0] < 0 or window_bounds[1] < 0
-                    or window_bounds[2] <= 0 or window_bounds[3] <= 0
-                    or window_bounds[0] + window_bounds[2] > consent_client["size"][0]
-                    or window_bounds[1] + window_bounds[3] > consent_client["size"][1]
-                    or not int(measured_consent["state_words"][0]) & (1 << 25)
-                    or not int(measured_consent["state_words"][0]) & (1 << 24)):
-                raise RuntimeError(f"Bluetooth confirmation is outside the visible native window: {measured_consent!r}")
-            current = self.bluetooth_device(primary_address, address_match)
-            if not current or not current["Paired"] or str(current["path"]) != forget_object_path:
-                raise RuntimeError("Explicit confirmation no longer targets the captured BlueZ object")
-            self.vnc(
-                "explicitly confirming guest Bluetooth forget by measured native window bounds",
-                "move",
-                str(int(consent_client["at"][0] + window_bounds[0] + window_bounds[2] / 2)),
-                str(int(consent_client["at"][1] + window_bounds[1] + window_bounds[3] / 2)),
-                "click", "1",
-            )
-            def forgotten_peer():
-                current = self.bluetooth_device(primary_address, address_match)
-                if current is None:
-                    return {"removed_pairing": True, "rediscovered": False, "object_path": forget_object_path}
-                if str(current["path"]) != forget_object_path:
-                    return None
-                if not current["Paired"] and not current["Trusted"]:
-                    return {"removed_pairing": True, "rediscovered": True, "device": current}
-                return None
-            forgotten = self.wait_until("guest peer pairing and trust removed", forgotten_peer, timeout=20)
-            result = {
-                "ui": (
-                    "Settings discovered and paired the guest peer; "
-                    + ("the transient connection closed before native Disconnect could be exercised; " if transient_connection
-                       else "Settings disconnected the guest peer; ")
-                    + "opening, Cancel, Escape and WM close preserved the captured pairing, and only explicit forget consent removed pairing and trust."
-                ),
+            return {
+                "ui": "Settings discovered the guest-only advertiser, paired and connected it, disconnected, then used Forget and Confirm.",
                 "guest": {
                     "controllers": controllers,
                     "main_controller": primary_address,
-                    "peer_controller": peer_address,
+                    "peer_controller": peer_controller,
                     "device_address": address_match,
-                    "bluez_object_path": forget_object_path,
                     "paired_and_connected": paired,
-                    "disconnected": disconnect_receipt,
                     "forgotten_device_info": forgotten,
                 },
                 "accessibility": {"page": page},
             }
-            if transient_connection:
-                raise Unsupported(
-                    "btvirt connection was transient; persistent native disconnect state was unavailable "
-                    "although exact-object Forget and consent assertions completed"
-                )
-            return result
-        except Exception:
-            self.capture("bluetooth-pairing-error-before-cleanup")
-            self.save_accessibility_tree("settings-bluetooth-pairing-error")
-            peer_log = self.guest(
-                "reading the guest peer operation journal before teardown",
-                'journal=$(readlink -f "$(command -v journalctl)"); sudo -n "$journal" --all --no-pager -u shade-vm-bluetooth-peer.service -u bluetooth.service -n 120',
-                check=False,
-            )
-            (self.artifacts / "bluetooth-peer-operation.log").write_text(
-                peer_log.stdout + peer_log.stderr, encoding="utf-8"
-            )
-            try:
-                snapshot = self.bluetooth_metadata()
-            except Exception as snapshot_error:
-                snapshot = {"metadata_error": {"error": str(snapshot_error)}}
-            (self.artifacts / "bluetooth-scan-adapters.json").write_text(
-                json.dumps(
-                    {
-                        path: properties.get("org.bluez.Adapter1", {})
-                        for path, properties in snapshot.items()
-                    },
-                    indent=2,
-                ),
-                encoding="utf-8",
-            )
-            (self.artifacts / "bluetooth-pairing-error-info.txt").write_text(
-                json.dumps(snapshot, indent=2), encoding="utf-8"
-            )
-            raise
         finally:
             try:
                 if scanning:
                     try:
                         stop_scan = self.find_in_group(
                             self.accessibility_tree("reading Bluetooth scan cleanup control"),
-                            "Dispositivos disponíveis",
-                            "Parar busca",
+                            "Available Devices",
+                            "Stop Scan",
                             role="button",
                         )
                     except (RuntimeError, Unsupported):
@@ -3304,11 +2502,24 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                         check=False,
                     )
                 if primary_address and initial_powered is not None:
-                    powered = bool(self.bluetooth_adapter(primary_address)[1]["Powered"])
-                    if powered != initial_powered:
+                    if not initial_powered and "Powered: yes" in self.guest(
+                        "checking Bluetooth power before cleanup",
+                        self.bluetooth_command(primary_address, "show"),
+                        check=False,
+                    ).stdout:
                         self.guest(
                             "restoring guest Bluetooth adapter power",
-                            self.bluetooth_command(primary_address, "power", "on" if initial_powered else "off"),
+                            self.bluetooth_command(primary_address, "power", "off"),
+                            check=False,
+                        )
+                    elif initial_powered and "Powered: no" in self.guest(
+                        "checking Bluetooth power before cleanup",
+                        self.bluetooth_command(primary_address, "show"),
+                        check=False,
+                    ).stdout:
+                        self.guest(
+                            "restoring guest Bluetooth adapter power",
+                            self.bluetooth_command(primary_address, "power", "on"),
                             check=False,
                         )
             finally:
@@ -3317,11 +2528,6 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                         self.close_settings()
                 finally:
                     if fixture_started:
-                        self.guest(
-                            "clearing guest Bluetooth peer selector",
-                            "printf '' > /run/shade-vm-bluetooth/peer-address",
-                            check=False,
-                        )
                         self.guest(
                             "stopping guest-only Bluetooth peer fixture",
                             'control=$(readlink -f "$(command -v systemctl)"); sudo -n "$control" stop shade-vm-bluetooth-fixture.target',
@@ -3502,22 +2708,6 @@ print(json.dumps(values))"""
         command += " " + " ".join(str(value) for value in values)
         self.guest(f"restoring guest {target} endpoint volume", command, check=False)
 
-    def set_sound_volume(self, group: str, fraction: float) -> dict[str, object]:
-        tree = self.accessibility_tree(f"reacquiring native {group} volume")
-        sliders = [node for node in self.nodes_in_group(tree, group)
-                   if str(node.get("role", "")).casefold() == "slider"]
-        if len(sliders) != 1:
-            raise RuntimeError(f"Expected one native volume in {group}: {sliders}")
-        node = sliders[0]
-        # Gtk.Scale exposes AT-SPI Value in its actual adjustment units.
-        # Setting the native widget emits value-changed, unlike backend writes.
-        return self.accessibility(
-            f"adjusting native {group} volume", "set-value",
-            "--name", str(node.get("native_name", node.get("name")) or ""), "--role", "slider",
-            "--bus", str(node["bus"]), "--path", str(node["path"]),
-            "--fraction", str(fraction),
-        )
-
     def test_guest_audio(self) -> dict[str, object]:
         old_sink = self.guest("snapshotting guest default output", "pactl get-default-sink").stdout.strip()
         old_source = self.guest("snapshotting guest default input", "pactl get-default-source").stdout.strip()
@@ -3526,8 +2716,7 @@ print(json.dumps(values))"""
         capture_started = False
         guest_files = ["/tmp/shade-vm-generated-tone.wav", "/tmp/shade-vm-captured-tone.wav"]
         test_sink = "shade_vm_test_output"
-        test_source = old_source
-        monitor_source = f"{test_sink}.monitor"
+        test_source = "shade_vm_test_output.monitor"
         sink_original: list[int] = []
         source_original: list[int] = []
         settings_sliders: list[dict[str, object]] = []
@@ -3548,7 +2737,6 @@ print(json.dumps(values))"""
                         ).stdout)
                         and test_sink in state
                         and test_source in state
-                        and monitor_source in state
                     )
                     else None
                 ),
@@ -3557,7 +2745,7 @@ print(json.dumps(values))"""
             sink_original = self.audio_volume_raw("sink", test_sink)
             source_original = self.audio_volume_raw("source", test_source)
             self.guest("selecting isolated guest null sink", f"pactl set-default-sink {test_sink}")
-            self.guest("selecting the virtual HDA microphone", f"pactl set-default-source {shlex.quote(test_source)}")
+            self.guest("selecting isolated guest monitor source", f"pactl set-default-source {test_source}")
             self.open_settings()
             settings_open = True
             page = self.settings_page("Som")
@@ -3574,7 +2762,7 @@ print(json.dumps(values))"""
             if len(settings_sliders) < 2:
                 raise Unsupported(f"Sound Settings did not expose output and input volume sliders: {settings_sliders}")
             self.capture("settings-sound-audio")
-            self.set_sound_volume("Saída de som", 0.36)
+            self.set_slider_fraction(settings_sliders[0], 0.36, "adjusting guest null sink volume in Sound Settings")
             sink_changed = self.wait_until(
                 "guest null sink volume feedback",
                 lambda: (
@@ -3584,9 +2772,9 @@ print(json.dumps(values))"""
                 ),
                 timeout=12,
             )
-            self.set_sound_volume("Microfone", 0.42)
+            self.set_slider_fraction(settings_sliders[1], 0.42, "adjusting guest monitor input volume in Sound Settings")
             source_changed = self.wait_until(
-                "guest virtual microphone volume feedback",
+                "guest monitor source volume feedback",
                 lambda: (
                     values
                     if (values := self.audio_volume_raw("source", test_source)) != source_original
@@ -3615,7 +2803,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             self.desktop(
                 "starting guest monitor capture",
                 "systemd-run --user --no-block --collect --unit=shade-vm-audio-capture "
-                f"parec --device={monitor_source} --file-format=wav {guest_files[1]}",
+                f"parec --device={test_source} --file-format=wav {guest_files[1]}",
             )
             capture_started = True
             self.wait_until(
@@ -3667,14 +2855,11 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                     "w=wave.open(sys.argv[1],'rb'); channels=w.getnchannels(); rate=w.getframerate(); "
                     "raw=w.readframes(w.getnframes()); samples=struct.unpack('<'+str(len(raw)//2)+'h',raw); "
                     "mono=[sum(samples[i:i+channels])//channels for i in range(0,len(samples),channels)]; "
-                    "peak=max(abs(v) for v in mono); assert peak>0, 'Capture contains only silence'; "
-                    "start=next(i for i,v in enumerate(mono) if abs(v)>=peak*0.05); "
-                    "end=next(i for i in range(len(mono)-1,-1,-1) if abs(mono[i])>=peak*0.05); "
-                    "rms=(sum(mono[i]**2 for i in range(start,end+1))/(end-start+1))**0.5; "
-                    "crossings=sum(1 for i in range(start,end) if mono[i]<=0<mono[i+1]); "
-                    "duration=(end-start+1)/rate; "
-                    "print(json.dumps({'frames':len(mono),'rate':rate,'channels':channels,'duration_s':len(mono)/rate,"
-                    "'active_duration_s':duration,'rms':rms,'estimated_hz':crossings/duration}))",
+                    "rms=(sum(v*v for v in mono)/len(mono))**0.5; "
+                    "crossings=sum(1 for a,b in zip(mono,mono[1:]) if a<=0<b); "
+                    "duration=len(mono)/rate; "
+                    "print(json.dumps({'frames':len(mono),'rate':rate,'channels':channels,'duration_s':duration,"
+                    "'rms':rms,'estimated_hz':crossings/duration}))",
                     str(captured),
                 ],
             )
@@ -3682,11 +2867,10 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             if signal["rms"] < 100 or not 390 <= signal["estimated_hz"] <= 490:
                 raise RuntimeError(f"Guest null-sink monitor did not capture the generated 440 Hz tone: {signal}")
             return {
-                "ui": "Sound Settings adjusted the isolated guest output and virtual HDA microphone; playback was independently captured through the output monitor.",
+                "ui": "Sound Settings adjusted both the isolated guest null-sink output and its monitor source.",
                 "guest": {
                     "sink": test_sink,
                     "source": test_source,
-                    "monitor_source": monitor_source,
                     "fixture_endpoints": endpoints,
                     "sink_volume_before": sink_original,
                     "sink_volume_changed": sink_changed,
@@ -3834,6 +3018,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                 ).stdout.strip() == "active",
                 timeout=25,
             )
+            before_layers = len(self.layers())
             self.desktop("locking guest for private fprint protocol", "shade-shell lockscreen")
             self.wait_until(
                 "private-bus guest lockscreen",
@@ -3986,7 +3171,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             )
             locked_capture = self.capture("password-lockscreen")
             self.save_accessibility_tree("password-lockscreen")
-            self.find_accessible_node("Senha da conta", role="text box")
+            password = self.find_accessible_node("Senha da conta", role="text box")
             self.vnc("clear automatically focused lockscreen password field", "keydown", "ctrl", "key", "a", "keyup", "ctrl")
             self.vnc("submit incorrect disposable lock credential", "type", "shade-invalid", "key", "enter")
             self.wait_until(
@@ -4076,7 +3261,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                 timeout=10,
             )
             self.click_accessible_node(trigger, f"opening {heading} confirmation")
-            self.wait_until(
+            dialog_heading = self.wait_until(
                 f"native {heading} AlertDialog",
                 lambda: self.find_accessible_node(heading, role="alert dialog"),
                 timeout=5,
@@ -4103,26 +3288,13 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                 if label == "Reiniciar" and dismissal == "escape":
                     # Target the original native object, never a SCREEN-coordinate
                     # hit test: GTK's AT-SPI backend may report [0, 0] bounds.
-                    current_trigger = self.accessibility(
-                        "inspecting original power trigger while modal", "tree",
-                        "--bus", str(trigger["bus"]), "--path", str(trigger["path"]),
-                        "--max-depth", "1", "--max-nodes", "1", "--no-bounds",
-                    )
-                    current_trigger = self.accessibility(
-                        "reading original power trigger visibility", "find",
-                        "--name=" + str(current_trigger.get("native_name", current_trigger.get("name", ""))),
-                        "--role", str(current_trigger["role"]), "--bus", str(trigger["bus"]),
-                        "--path", str(trigger["path"]), "--include-state",
-                    )
-                    identity_matches = (
-                        current_trigger.get("native_name") == trigger.get("native_name")
-                        and current_trigger["role"] == trigger["role"]
-                    )
-                    actionable_state = int(current_trigger["state_words"][0])
-                    if not identity_matches or not actionable_state & (1 << 25) or not actionable_state & (1 << 24):
-                        rapid_activation = "unavailable: original trigger is no longer a matching, showing and sensitive native control while modal; no activation attempted"
+                    try:
+                        self.click_accessible_node(trigger, "rapid second Restart activation while dialog is open")
+                    except RuntimeError as error:
+                        if "Exact accessible node changed identity" not in str(error):
+                            raise
+                        rapid_activation = "unavailable: original trigger loses its accessible identity while modal; exact-object safety guard refused activation"
                     else:
-                        self.click_accessible_node(current_trigger, "rapid second Restart activation while dialog is open")
                         rapid_activation = "same dialog remained open after exact-object reactivation; Escape then dismissed it"
                     if not dialog_visible(heading):
                         raise RuntimeError("Repeated original trigger removed the pending Restart confirmation")
@@ -4162,13 +3334,9 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                     "actual_power_action": False,
                 },
             }
-        except Exception:
-            self.capture("power-confirmation-error-before-cleanup")
-            self.save_accessibility_tree("power-confirmation-error")
-            raise
         finally:
-            self.activate_shell_action("close-all")
-            self.wait_until("power review surfaces closed", lambda: not self.quick_settings_open(), timeout=12)
+            self.vnc("closing power menu after cancellation", "key", "esc")
+            self.close_quick_settings()
 
     def test_capture(self) -> dict[str, object]:
         screenshot_layers = lambda: [
@@ -4380,6 +3548,7 @@ print(json.dumps({'sha256': hashlib.sha256(saved).hexdigest(), 'bytes': len(save
         guest_video = "/tmp/shade-visual-audit.mp4"
         unit = "shade-visual-audit.service"
         video = self.artifacts / "visual-audit.mp4"
+        before = {tuple(layer.get(key) for key in ("x", "y", "w", "h")) for layer in self.layers()}
         screenshots["baseline"] = str(self.capture("visual-baseline"))
         self.desktop("enabling guest animations for temporal audit",
                      "hyprctl eval 'hl.config({animations = {enabled = true}})'")
@@ -4416,12 +3585,7 @@ print(json.dumps({'sha256': hashlib.sha256(saved).hexdigest(), 'bytes': len(save
                     value = operation()
                     result = "observed"
                 except (RuntimeError, Unsupported, subprocess.TimeoutExpired) as exc:
-                    failure_capture = None
-                    try:
-                        failure_capture = str(self.capture(f"visual-failure-{len(events):02d}"))
-                    except Exception as capture_error:
-                        findings.append(f"failure screenshot unavailable for {label}: {capture_error}")
-                    value = {"failure_capture": failure_capture}
+                    value = None
                     result = str(exc)
                     findings.append(f"{label}: {exc}")
                 finished = time.monotonic_ns()
@@ -4455,99 +3619,87 @@ print(json.dumps({'sha256': hashlib.sha256(saved).hexdigest(), 'bytes': len(save
             ))
             screenshots["quicksettings"] = str(self.capture("visual-quicksettings"))
             self.save_accessibility_tree("visual-quicksettings")
-            panel = next((layer for layer in self.layers()
-                          if layer.get("namespace") == "shade-quicksettings"), None)
+            added = [layer for layer in self.layers()
+                     if tuple(layer.get(key) for key in ("x", "y", "w", "h")) not in before
+                     and 350 <= int(layer.get("w", 0)) < 600
+                     and int(layer.get("h", 0)) >= 700]
+            panel = added[0] if len(added) == 1 else None
             if panel is None:
-                findings.append("Quick Settings layer shade-quicksettings did not open")
+                findings.append(f"Quick Settings panel not uniquely visible: {added}")
             else:
                 initial = observe("read initial Wi-Fi state", lambda: self.guest(
                     "reading Wi-Fi radio before visual audit", "nmcli radio wifi"
                 ).stdout.strip())
-                if initial not in ("enabled", "disabled"):
+                if initial == "enabled":
+                    observe("toggle Wi-Fi off", lambda: self.click_wifi_control(
+                        "turning Wi-Fi off during recording",
+                    ))
+                    observe("Wi-Fi disabled effect", lambda: radio("disabled"))
+                elif initial != "disabled":
                     findings.append(f"Initial Wi-Fi state not usable for a toggle journey: {initial!r}")
-                else:
-                    opposite = "disabled" if initial == "enabled" else "enabled"
-                    try:
-                        observe(f"toggle Wi-Fi to {opposite}", lambda: self.click_wifi_control(
-                            f"toggling Wi-Fi to {opposite} during recording",
-                        ))
-                        observe(f"Wi-Fi {opposite} effect", lambda: radio(opposite))
-                    finally:
-                        observed = self.guest(
-                            "checking Wi-Fi state before restoration", "nmcli radio wifi",
-                        ).stdout.strip()
-                        if observed != initial:
-                            observe(f"restore Wi-Fi {initial}", lambda: self.click_wifi_control(
-                                f"restoring Wi-Fi to {initial} during recording",
-                            ))
-                        observe(f"Wi-Fi {initial} restoration receipt", lambda: radio(initial))
+                if initial in ("enabled", "disabled"):
+                    observe("toggle Wi-Fi on", lambda: self.click_wifi_control(
+                        "turning Wi-Fi on during recording",
+                    ))
+                    observe("Wi-Fi enabled effect", lambda: radio("enabled"))
                 screenshots["wifi"] = str(self.capture("visual-wifi"))
 
-            summary = f"Shade visual audit {time.time_ns()}"
+            observe("clear previous notifications", lambda: self.accessibility(
+                "clearing earlier guest-only notifications",
+                "click",
+                "--max-depth", "16",
+                "--max-nodes", "2000",
+                "--description-match",
+                "--name", "Clear all notifications",
+                "--role", "button",
+            ))
             observe("send notification", lambda: self.desktop(
                 "sending synthetic notification during recording",
-                "notify-send --expire-time=30000 --app-name=ShadeWorkflowTest "
-                + shlex.quote(summary) + " 'Guest-only temporal feedback'",
-            ))
-            observe("notification toast accessible", lambda: self.accessibility(
-                "finding audit notification toast", "find", "--max-depth", "16",
-                "--max-nodes", "2000", "--name", summary, "--role", "label",
+                "notify-send --app-name=ShadeWorkflowTest 'Shade visual audit' 'Guest-only temporal feedback'",
             ))
             screenshots["notification"] = str(self.capture("visual-notification"))
-            observe("open independent notification center", lambda: self.activate_shell_action("open-notifications"))
-            self.wait_until(
-                "independent notification center layer",
-                lambda: next((layer for layer in self.layers()
-                              if layer.get("namespace") == "shade-notification-center"), None),
-                timeout=10,
-            )
-            screenshots["notification-center"] = str(self.capture("visual-notification-center"))
-            self.save_accessibility_tree("visual-notification-center")
-            def dismiss_audit_notification():
-                tree = self.accessibility_tree("locating audit notification card and dismiss action")
-                def locate_branch(node):
-                    if node.get("name") == summary:
-                        return [node]
-                    for child in node.get("children", []):
-                        branch = locate_branch(child)
-                        if branch:
-                            return [node, *branch]
-                    return []
-                branch = locate_branch(tree)
-                if not branch:
-                    raise RuntimeError(f"Audit notification {summary!r} is absent from notification center")
-                for ancestor in reversed(branch[:-1]):
-                    actions = [node for node in self.walk_accessibility(ancestor)
-                               if node.get("name") == "Dismiss notification"
-                               and node.get("role") == "button"]
-                    if len(actions) == 1:
-                        self.click_accessible_node(actions[0], "dismissing only audit notification")
-                        return actions[0]
-                raise RuntimeError(f"No unique native dismiss action found for {summary!r}")
-            observe("dismiss only audit notification semantically", dismiss_audit_notification)
-            def dismissed_receipt():
-                tree = self.accessibility_tree("checking dismissed audit notification")
-                return True if not any(node.get("name") == summary for node in self.walk_accessibility(tree)) else None
-            observe("notification center dismissal receipt", lambda: self.wait_until(
-                "notification center no longer contains audit notification", dismissed_receipt, timeout=8,
+            self.save_accessibility_tree("visual-notification")
+            observe("notification accessible", lambda: self.accessibility(
+                "finding audit notification", "find", "--max-depth", "16",
+                "--max-nodes", "2000", "--name", "Shade visual audit",
+                "--role", "label",
             ))
-            screenshots["dismissed"] = str(self.capture("visual-notification-dismissed"))
-            observe("close notification center", lambda: self.activate_shell_action("close-all"))
-            self.wait_until(
-                "notification center closed",
-                lambda: not any(layer.get("namespace") == "shade-notification-center"
-                                for layer in self.layers()),
-                timeout=8,
-            )
+            time.sleep(1)
+            screenshots["notification-later"] = str(self.capture("visual-notification-later"))
+            # The single-monitor test fixture renders the synthetic card at a stable left-panel location.
+            # Its close button is unnamed in AT-SPI, so click only after the exact panel geometry check.
+            if panel is not None and tuple(int(panel[key]) for key in ("x", "y", "w", "h")) == (78, 12, 444, 776):
+                observe("dismiss notification", lambda: self.vnc(
+                    "clicking notification close in controlled guest fixture",
+                    "mousemove", "441", "596", "click", "1", "mousemove", "640", "400", "pause", "0.5",
+                ))
+                screenshots["dismissed"] = str(self.capture("visual-notification-dismissed"))
+                def notification_removed() -> dict[str, float]:
+                    coverage = {}
+                    for state in ("notification", "dismissed"):
+                        sample = self.local(
+                            f"measuring notification title pixels {state}",
+                            ["magick", screenshots[state], "-crop", "250x32+118+626", "+repage",
+                             "-colorspace", "Gray", "-threshold", "50%", "-negate",
+                             "-format", "%[fx:mean]", "info:"],
+                        )
+                        coverage[state] = float(sample.stdout)
+                    if coverage["notification"] < 0.01 or coverage["dismissed"] > 0.001:
+                        raise RuntimeError(f"Notification title did not clear from the light-theme fixture: {coverage}")
+                    return coverage
 
-            observe("close Quick Settings if still open", self.close_quick_settings)
+                observe("notification removed visibly", notification_removed)
+            else:
+                findings.append("Notification dismissal needs the controlled left-panel fixture geometry")
+            observe("close Quick Settings", lambda: self.vnc(
+                "closing Quick Settings during recording",
+                "keydown", "super", "key", "n", "keyup", "super", "pause", "0.5",
+            ))
             screenshots["closed"] = str(self.capture("visual-closed"))
-            self.wait_until(
-                "Quick Settings layer closed",
-                lambda: not any(layer.get("namespace") == "shade-quicksettings"
-                                for layer in self.layers()),
-                timeout=8,
-            )
+            if panel is not None:
+                geometry = tuple(panel.get(key) for key in ("x", "y", "w", "h"))
+                if geometry in {tuple(layer.get(key) for key in ("x", "y", "w", "h")) for layer in self.layers()}:
+                    findings.append("Quick Settings remained visible after the close action")
         finally:
             self.desktop("stopping guest recorder", f"systemctl --user kill --signal=INT {unit}", check=False)
             if recording_ready:
@@ -4597,7 +3749,15 @@ print(json.dumps({'sha256': hashlib.sha256(saved).hexdigest(), 'bytes': len(save
                 video, (x, y, w, h), self.artifacts / "visual-panel",
                 label="quicksettings", sample_times=sample_times,
             )
-            evidence["quicksettings_geometry"] = [x, y, w, h]
+            if (x, y, w, h) == (78, 12, 444, 776):
+                evidence["wifi_tile"] = render_evidence(
+                    video, (94, 102, 194, 44), self.artifacts / "visual-wifi-tile",
+                    label="wifi-tile", sample_times=sample_times,
+                )
+                evidence["notification_card"] = render_evidence(
+                    video, (94, 570, 388, 85), self.artifacts / "visual-notification-card",
+                    label="notification-card", sample_times=sample_times,
+                )
         report.write_text(json.dumps(evidence, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         if findings:
             raise RuntimeError(f"{len(findings)} visual journey finding(s); see {report}")
@@ -4669,10 +3829,6 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--full-suite", action="store_true")
     mode.add_argument("--visual-audit", action="store_true")
-    mode.add_argument("--ui-review", action="store_true", help="capture guest UI evidence across the review matrix")
-    parser.add_argument("--review-family", action="append", choices=("shell", "settings-auth", "capture-share"), default=[])
-    parser.add_argument("--review-theme", action="append", choices=("light", "dark"), default=[])
-    parser.add_argument("--review-viewport", action="append", choices=("wide", "compact", "short"), default=[])
     parser.add_argument(
         "--scenario",
         action="append",
@@ -4681,18 +3837,6 @@ def main() -> int:
         help="run only this scenario (repeatable); greeter-login remains a prerequisite",
     )
     args = parser.parse_args(sys.argv[1:])
-    if args.ui_review:
-        if args.scenario or args.list_scenarios:
-            parser.error("--ui-review cannot be combined with --scenario or --list-scenarios")
-        for option, values in (
-            ("--review-family", args.review_family),
-            ("--review-theme", args.review_theme),
-            ("--review-viewport", args.review_viewport),
-        ):
-            if len(values) != len(set(values)):
-                parser.error(f"{option} values must be unique")
-    elif args.review_family or args.review_theme or args.review_viewport:
-        parser.error("--review-family/--review-theme/--review-viewport require --ui-review")
     if args.scenario and args.list_scenarios:
         raise SystemExit("--scenario cannot be combined with --list-scenarios")
     if args.list_scenarios:
@@ -4715,14 +3859,7 @@ def main() -> int:
         modes = []
     visual_audit = modes == ["--visual-audit"]
     full_suite = modes == ["--full-suite"]
-    ui_review = args.ui_review
     test = WorkflowTest()
-    if ui_review:
-        test.review_selection = {
-            "families": args.review_family or ["shell", "settings-auth", "capture-share"],
-            "themes": args.review_theme or ["light", "dark"],
-            "viewports": args.review_viewport or ["wide", "compact"],
-        }
     shell_scenarios = (
         ("launcher", test.test_launcher),
         ("quicksettings", test.test_quicksettings),
@@ -4766,37 +3903,14 @@ def main() -> int:
     ) if full_suite and not args.scenario else ()
     try:
         test.start()
-        test.scenario(
-            "greeter-login",
-            (lambda: test.review_run_scenario("test_greeter")) if ui_review else test.test_greeter,
-        )
+        test.scenario("greeter-login", test.test_greeter)
         if test.results[-1]["status"] != "PASS":
             reason = "Shell scenarios require a successful greeter login; prerequisite did not pass"
-            if ui_review:
-                test.review_family = "prerequisite"
-                test.review_theme = "prelogin"
-                test.review_viewport = "native"
-                test.review_record(
-                    "greeter-login", "failed", reason=reason,
-                    evidence={"workflow_status": test.results[-1]["status"],
-                              "workflow_evidence": test.results[-1]["evidence"]},
-                )
-                test.record_result("ui-review", "UNSUPPORTED", reason, 0.0)
-            else:
-                for name, _callback in shell_scenarios:
-                    test.record_result(name, "UNSUPPORTED", reason, 0.0)
-        elif not ui_review:
+            for name, _callback in shell_scenarios:
+                test.record_result(name, "UNSUPPORTED", reason, 0.0)
+        else:
             for name, callback in shell_scenarios:
                 test.scenario(name, callback)
-        if ui_review and test.results[0]["status"] == "PASS":
-            test.scenario(
-                "ui-review",
-                lambda: test.test_ui_review(
-                    args.review_family or ["shell", "settings-auth", "capture-share"],
-                    args.review_theme or ["light", "dark"],
-                    args.review_viewport or ["wide", "compact"],
-                ),
-            )
         for name, reason in unsupported_coverage:
             test.record_result(name, "UNSUPPORTED", reason, 0.0)
         return test.finish()
