@@ -4,46 +4,55 @@ import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import LayoutService, {type OutputInfo} from '@shade/services/display/layouts';
 import type {DisplayMode} from '@shade/services/display/modes';
-import {type Accessor, bind, computed, createState, For, onCleanup} from 'gnim';
+import {bind, computed, For, onCleanup, With} from 'gnim';
 import {QuickControlButton} from '../common/quickControlButton';
 
-const SPACING = 8;
+const SPACING = 12;
 
-function modeLabel(mode: string, outputs: OutputInfo[]) {
+function modeLabel(mode: DisplayMode, outputs: OutputInfo[]) {
     const hasInternal = outputs.some((output) => /^eDP-/.test(output.name));
     const externalCount = outputs.length - (hasInternal ? 1 : 0);
-    switch (mode) {
-        case 'internal-only':
-            return 'Internal only';
-        case 'external-only':
-            return `External only — ${externalCount} displays`;
-        case 'extend':
-            return `Extend — ${outputs.length} displays`;
-        case 'duplicate':
-            return `Duplicate — all ${outputs.length} displays`;
-        default:
-            return mode;
-    }
+    const name = {
+        'internal-only': 'Somente interna',
+        'external-only': 'Somente externa',
+        extend: 'Estender',
+        duplicate: 'Duplicar',
+    }[mode];
+    let count = outputs.length;
+    if (mode === 'internal-only') count = Number(hasInternal);
+    else if (mode === 'external-only') count = externalCount;
+    return `${name} · ${count} ${count === 1 ? 'monitor' : 'monitores'}`;
 }
 
-function currentModeLabel(mode: string) {
-    switch (mode) {
-        case 'internal-only':
-            return 'Internal only';
-        case 'external-only':
-            return 'External only';
-        case 'extend':
-            return 'Extend';
-        case 'duplicate':
-            return 'Duplicate';
-        default:
-            return 'Custom setup';
+function modeUnavailableReason(mode: DisplayMode, outputs: OutputInfo[]) {
+    const hasInternal = outputs.some((output) => /^eDP-/.test(output.name));
+    const hasExternal = outputs.some((output) => !/^eDP-/.test(output.name));
+    if (mode === 'internal-only' && !hasInternal) return 'sem tela interna';
+    if (mode === 'external-only') {
+        if (!hasExternal) return 'sem tela externa';
+        if (!hasInternal) return 'sem tela interna';
     }
+    if ((mode === 'extend' || mode === 'duplicate') && outputs.length < 2)
+        return 'conecte ao menos duas telas';
+    return '';
 }
+
+function monitorStatus(monitor: OutputInfo, enabledCount: number) {
+    const state = monitor.enabled ? 'Ativa' : 'Desativada';
+    const mirror = monitor.mirror ? ` · Espelha ${monitor.mirror}` : '';
+    const lastEnabled = monitor.enabled && enabledCount <= 1 ? ' · última tela ativa' : '';
+    return `${state}${mirror}${lastEnabled}`;
+}
+function monitorActionLabel(monitor: OutputInfo, enabledCount: number) {
+    if (monitor.enabled && enabledCount <= 1) return 'Ao menos uma tela deve permanecer ativa';
+    if (monitor.enabled) return 'Desativar tela';
+    return 'Ativar tela';
+}
+
+const DISPLAY_MODES: DisplayMode[] = ['internal-only', 'external-only', 'extend', 'duplicate'];
 
 class DisplayFocusController {
     #service: LayoutService;
-    #setChooserActive: (active: boolean) => void;
     #root: Gtk.Box | null = null;
     #emptyLabel: Gtk.Label | null = null;
     #revertButton: Gtk.Button | null = null;
@@ -55,11 +64,9 @@ class DisplayFocusController {
     #chooserSignal: number;
     #notifySignal: number;
 
-    constructor(service: LayoutService, setChooserActive: (active: boolean) => void) {
+    constructor(service: LayoutService) {
         this.#service = service;
-        this.#setChooserActive = setChooserActive;
         this.#chooserSignal = service.connect('mode-chooser-requested', () => {
-            this.#setChooserActive(true);
             this.#scheduleFocus('mode');
         });
         this.#notifySignal = service.connect('notify', (_source, pspec) =>
@@ -158,7 +165,6 @@ class DisplayFocusController {
             }
         });
         const unmapSignal = root.connect('unmap', () => {
-            this.#setChooserActive(false);
             this.#chooserFocusPending = false;
             this.#revertFocusPending = this.#service.pending !== null;
             this.#cancelFocusIdle();
@@ -223,141 +229,133 @@ class DisplayFocusController {
     }
 }
 
-function ModeChooser({
-    service,
-    active,
-    focus,
-}: {
-    service: LayoutService;
-    active: Accessor<boolean>;
-    focus: DisplayFocusController;
-}) {
+function ModeChooser({service, focus}: {service: LayoutService; focus: DisplayFocusController}) {
     const modes = bind(service, 'availableDisplayModes');
     const displayMode = bind(service, 'displayMode');
     const outputs = bind(service, 'monitors');
-    const emptyVisible = computed(() => active() && modes().length === 0);
+    const emptyVisible = computed(() => modes().length === 0);
     return (
-        <>
-            <Gtk.Label visible={active} label="Display modes" xalign={0} cssClasses={['caption']} />
-            <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL} visible={active}>
-                <For each={modes}>
-                    {(value: string) => {
-                        const mode = value as DisplayMode;
-                        return (
-                            <Gtk.Button
-                                ref={(self) => focus.attachModeButton(mode, self)}
-                                sensitive={modes.as((choices) => choices.includes(mode))}
-                                cssClasses={displayMode.as((currentMode) =>
-                                    currentMode === mode ? ['suggested-action'] : []
-                                )}
-                                tooltipText={
-                                    mode === 'duplicate'
-                                        ? 'Duplicates every attached display. Different resolutions or aspect ratios may scale or stretch the image.'
-                                        : undefined
-                                }
-                                onClicked={() =>
-                                    void service.previewMode(mode).catch(() => undefined)
-                                }
-                            >
-                                <Adw.ButtonContent
-                                    iconName="video-display-symbolic"
-                                    label={outputs.as((attached) => modeLabel(mode, attached))}
+        <Adw.PreferencesGroup title="Modos rápidos">
+            <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
+                {DISPLAY_MODES.map((mode: DisplayMode) => (
+                    <With value={modes.as((choices) => choices.includes(mode))}>
+                        {(available) =>
+                            available ? (
+                                <Gtk.Button
+                                    ref={(self) => focus.attachModeButton(mode, self)}
+                                    cssClasses={displayMode.as((currentMode) =>
+                                        currentMode === mode ? ['suggested-action'] : []
+                                    )}
+                                    tooltipText={
+                                        mode === 'duplicate'
+                                            ? 'Espelha todas as telas conectadas; diferenças de resolução podem redimensionar a imagem.'
+                                            : undefined
+                                    }
+                                    onClicked={() =>
+                                        void service.previewMode(mode).catch(() => undefined)
+                                    }
+                                >
+                                    <Adw.ButtonContent
+                                        iconName="video-display-symbolic"
+                                        label={outputs.as((attached) => modeLabel(mode, attached))}
+                                    />
+                                </Gtk.Button>
+                            ) : (
+                                <Adw.ActionRow
+                                    title={outputs.as((attached) => modeLabel(mode, attached))}
+                                    subtitle={outputs.as(
+                                        (attached) =>
+                                            `Indisponível: ${modeUnavailableReason(mode, attached)}`
+                                    )}
                                 />
-                            </Gtk.Button>
-                        );
-                    }}
-                </For>
+                            )
+                        }
+                    </With>
+                ))}
                 <Gtk.Label
                     ref={(self) => focus.attachEmptyLabel(self)}
-                    label="No attached displays"
+                    label="Conecte uma tela para escolher um modo."
                     xalign={0}
                     focusable
                     visible={emptyVisible}
+                    cssClasses={['caption']}
                 />
             </Gtk.Box>
-        </>
+        </Adw.PreferencesGroup>
     );
 }
 
 function SavedLayoutChoices({service}: {service: LayoutService}) {
     const current = bind(service, 'current');
+    const names = bind(service, 'names');
     return (
-        <>
-            <Gtk.Label
-                visible={bind(service, 'names').as((names) => names.length > 0)}
-                label="Layouts"
-                xalign={0}
-                cssClasses={['caption']}
-            />
-            <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-                <For each={bind(service, 'names')}>
-                    {(name: string) => (
-                        <QuickControlButton
-                            intent="action"
-                            icon="video-display-symbolic"
-                            domain={name}
-                            value={current.as((currentName) =>
-                                currentName === name ? 'Current layout' : 'Saved layout'
-                            )}
-                            actionLabel="Preview saved layout"
-                            onClick={() => {
-                                const layout = service.get(name);
-                                if (layout) void service.preview(layout).catch(() => undefined);
-                            }}
-                        />
-                    )}
-                </For>
-            </Gtk.Box>
-        </>
+        <Adw.PreferencesGroup
+            title="Layouts salvos"
+            visible={names.as((items) => items.length > 0)}
+        >
+            <For each={names}>
+                {(name: string) => (
+                    <QuickControlButton
+                        intent="action"
+                        icon="video-display-symbolic"
+                        domain={name}
+                        value={current.as((currentName) =>
+                            currentName === name ? 'Layout atual' : 'Perfil salvo'
+                        )}
+                        actionLabel="Pré-visualizar layout salvo"
+                        onClick={() => {
+                            const layout = service.get(name);
+                            if (layout) void service.preview(layout).catch(() => undefined);
+                        }}
+                    />
+                )}
+            </For>
+        </Adw.PreferencesGroup>
     );
 }
 
 function ConnectedOutputChoices({service}: {service: LayoutService}) {
+    const outputs = bind(service, 'monitors');
     return (
-        <>
-            <Gtk.Label
-                visible={bind(service, 'monitors').as((outputs) => outputs.length > 1)}
-                label="Monitors"
-                xalign={0}
-                cssClasses={['caption']}
-            />
-            <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-                <For each={bind(service, 'monitors')}>
-                    {(monitor: OutputInfo) => {
-                        const outputs = bind(service, 'monitors');
-                        const enabledCount = computed(
-                            () => outputs().filter((output) => output.enabled).length
-                        );
-                        return (
-                            <QuickControlButton
-                                intent="toggle"
-                                icon="video-display-symbolic"
-                                domain={
-                                    monitor.mirror
-                                        ? `${monitor.description || monitor.name} — Mirrors ${monitor.mirror}`
-                                        : monitor.description || monitor.name
-                                }
-                                value={monitor.enabled ? 'Enabled' : 'Disabled'}
+        <Adw.PreferencesGroup title="Monitores" visible={outputs.as((items) => items.length > 0)}>
+            <For each={outputs}>
+                {(monitor: OutputInfo) => {
+                    const enabledCount = computed(
+                        () => outputs().filter((output) => output.enabled).length
+                    );
+                    const actionLabel = enabledCount.as((count) =>
+                        monitorActionLabel(monitor, count)
+                    );
+                    return (
+                        <Adw.ActionRow
+                            title={monitor.description || monitor.name}
+                            subtitle={enabledCount.as((count) => monitorStatus(monitor, count))}
+                        >
+                            <Gtk.Switch
+                                slot="suffix"
+                                valign={Gtk.Align.CENTER}
                                 active={monitor.enabled}
-                                sensitive={monitor.enabled
-                                    ? enabledCount.as((count) => count > 1)
-                                    : true}
-                                actionLabel={monitor.enabled && enabledCount() <= 1
-                                    ? 'At least one display must remain enabled'
-                                    : monitor.enabled
-                                      ? 'Disable display'
-                                      : 'Enable display'}
-                                onClick={() =>
-                                    void service
-                                        .setEnabled(monitor.name, !monitor.enabled)
-                                        .catch(() => undefined)
+                                sensitive={
+                                    monitor.enabled ? enabledCount.as((count) => count > 1) : true
                                 }
+                                tooltipText={actionLabel}
+                                onNotifyActive={(self) => {
+                                    if (self.active === monitor.enabled) return;
+                                    void service
+                                        .setEnabled(monitor.name, self.active)
+                                        .then((applied) => {
+                                            if (!applied) self.active = monitor.enabled;
+                                        })
+                                        .catch(() => {
+                                            self.active = monitor.enabled;
+                                        });
+                                }}
                             />
-                        );
-                    }}
-                </For>
-            </Gtk.Box>
-        </>
+                        </Adw.ActionRow>
+                    );
+                }}
+            </For>
+        </Adw.PreferencesGroup>
     );
 }
 
@@ -375,19 +373,19 @@ function PreviewControls({
                 visible={bind(service, 'pending').as((deadline) => deadline !== null)}
             >
                 <Gtk.Label
-                    label="Reverts after 15 seconds unless kept"
+                    label="As alterações serão revertidas em 15 segundos"
                     cssClasses={['caption']}
                     hexpand
                     xalign={0}
                 />
                 <Gtk.Button
-                    label="Keep Changes"
+                    label="Manter"
                     hexpand
                     onClicked={() => void service.confirm().catch(() => false)}
                 />
                 <Gtk.Button
                     ref={(self) => focus.attachRevertButton(self)}
-                    label="Revert"
+                    label="Reverter"
                     hexpand
                     onClicked={() => void service.revert().catch(() => undefined)}
                 />
@@ -405,27 +403,21 @@ function PreviewControls({
 
 export const DisplaySection = () => {
     const service = LayoutService.get_default();
-    const outputs = bind(service, 'monitors');
-    const names = bind(service, 'names');
-    const displayMode = bind(service, 'displayMode');
-    const current = bind(service, 'current');
-    const [chooserActive, setChooserActive] = createState(false);
-    const focus = new DisplayFocusController(service, setChooserActive);
-    const visible = computed(() => outputs().length > 0 || names().length > 0 || chooserActive());
-    const headerLabel = computed(() => current() ?? currentModeLabel(displayMode()));
+    const focus = new DisplayFocusController(service);
 
     return (
         <Gtk.Box
             spacing={SPACING}
             orientation={Gtk.Orientation.VERTICAL}
-            visible={visible}
             ref={(self) => focus.attachRoot(self)}
         >
-            <Gtk.Box spacing={8}>
-                <Gtk.Label label="Display" xalign={0} cssClasses={['caption']} hexpand />
-                <Gtk.Label label={headerLabel} xalign={1} cssClasses={['caption']} />
-            </Gtk.Box>
-            <ModeChooser service={service} active={chooserActive} focus={focus} />
+            <Gtk.Label
+                label="Escolha um modo, ajuste monitores ou pré-visualize um layout salvo."
+                xalign={0}
+                wrap
+                cssClasses={['caption']}
+            />
+            <ModeChooser service={service} focus={focus} />
             <SavedLayoutChoices service={service} />
             <ConnectedOutputChoices service={service} />
             <PreviewControls service={service} focus={focus} />

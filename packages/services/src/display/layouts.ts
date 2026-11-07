@@ -22,6 +22,7 @@ import {
 
 export interface LayoutServiceSignalSignatures extends GObject.SignalSignatures {
     'mode-chooser-requested': LayoutService['modeChooserRequested'];
+    'external-preview-requested': LayoutService['externalPreviewRequested'];
     applied: LayoutService['applied'];
 }
 
@@ -336,7 +337,11 @@ const hyprlandAdapter: DisplayAdapter = {
     },
     async workspace(id, monitor) {
         await Process.execAsyncv(
-            ['hyprctl', 'eval', `hl.workspace_rule({workspace=${JSON.stringify(String(id))},monitor=${JSON.stringify(monitor)}})`],
+            [
+                'hyprctl',
+                'eval',
+                `hl.workspace_rule({workspace=${JSON.stringify(String(id))},monitor=${JSON.stringify(monitor)}})`,
+            ],
             true
         );
     },
@@ -501,6 +506,7 @@ export class LayoutService extends GObject {
         return getAvailableDisplayModes(this.#outputs);
     }
     @signal modeChooserRequested(): void {}
+    @signal externalPreviewRequested(): void {}
     @signal applied(_name: string): void {}
     drawArrangement(cr: Cairo.Context, width: number, height: number, layout: Layout): void {
         let rightEdge = 0;
@@ -542,7 +548,9 @@ export class LayoutService extends GObject {
     registerCommands(app: Gio.Application): void {
         const nextAction = Gio.SimpleAction.new('display-next', null);
         nextAction.connect('activate', () => {
-            void this.next();
+            void this.next().then((applied) => {
+                if (applied) this.externalPreviewRequested();
+            });
         });
         app.add_action(nextAction);
 
@@ -550,8 +558,10 @@ export class LayoutService extends GObject {
         modeAction.connect('activate', (_action, parameter) => {
             const mode = parameter?.get_string()[0];
             if (!mode) return;
-            void this.previewMode(mode as DisplayMode).then((applied) => {
-                if (applied) ShellState.get_default().qsOpen = true;
+            void this.#previewMode(mode as DisplayMode).then(({applied, previewed}) => {
+                if (!applied) return;
+                ShellState.get_default().qsOpen = true;
+                if (previewed) this.externalPreviewRequested();
             });
         });
         app.add_action(modeAction);
@@ -562,7 +572,9 @@ export class LayoutService extends GObject {
 
         const internalAction = Gio.SimpleAction.new('display-toggle-internal', null);
         internalAction.connect('activate', () => {
-            void this.toggleInternal();
+            void this.toggleInternal().then((applied) => {
+                if (applied) this.externalPreviewRequested();
+            });
         });
         app.add_action(internalAction);
     }
@@ -1344,24 +1356,29 @@ export class LayoutService extends GObject {
         return `Display mode is unavailable: ${mode}`;
     }
 
-    async previewMode(mode: DisplayMode): Promise<boolean> {
+    async #previewMode(mode: DisplayMode): Promise<{applied: boolean; previewed: boolean}> {
         return this.#enqueue(async () => {
             this.#load();
             const before = await this.#snapshotOrError();
-            if (!before) return false;
+            if (!before) return {applied: false, previewed: false};
             const modeName = String(mode);
             if (!isDisplayMode(modeName)) {
                 this.#setError(this.#unavailableModeError(modeName, before.attached));
-                return false;
+                return {applied: false, previewed: false};
             }
             const layout = buildDisplayMode(modeName, this.#modeInputs(before));
             if (!layout) {
                 this.#setError(this.#unavailableModeError(modeName, before.attached));
-                return false;
+                return {applied: false, previewed: false};
             }
-            if (this.#modeMatches(layout, before)) return true;
-            return this.#previewLayout(layout, before);
+            if (this.#modeMatches(layout, before)) return {applied: true, previewed: false};
+            const applied = await this.#previewLayout(layout, before);
+            return {applied, previewed: applied};
         });
+    }
+
+    async previewMode(mode: DisplayMode): Promise<boolean> {
+        return (await this.#previewMode(mode)).applied;
     }
 
     openModeChooser(): void {
@@ -1393,7 +1410,11 @@ export class LayoutService extends GObject {
         return this.#enqueue(async () => {
             try {
                 await Process.execAsyncv(
-                    ['hyprctl', 'dispatch', `hl.dsp.dpms({action=${JSON.stringify(on ? 'on' : 'off')},monitor=${JSON.stringify(name)}})`],
+                    [
+                        'hyprctl',
+                        'dispatch',
+                        `hl.dsp.dpms({action=${JSON.stringify(on ? 'on' : 'off')},monitor=${JSON.stringify(name)}})`,
+                    ],
                     true
                 );
                 const snapshot = await this.#adapter.snapshot();

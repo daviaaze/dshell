@@ -2,8 +2,10 @@
  * Behavioral tests for display profile persistence and transactions.
  */
 
+import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {describe, expect, it, run} from '../../__tests__/test-runner';
+import ShellState from '../../state/shellState';
 import LayoutService, {
     type DisplayAdapter,
     type DisplaySnapshot,
@@ -554,6 +556,54 @@ type ServiceModeApi = {
 };
 
 describe('LayoutService display modes and mirror transactions', () => {
+    it.async('requests external preview UI only for successful external commands', async () => {
+        const adapter = new FakeAdapter([EDP(), HDMI()]);
+        const {instance} = service(adapter);
+        const app = Gio.Application.new(null, Gio.ApplicationFlags.NON_UNIQUE);
+        const shellState = ShellState.get_default();
+        const previousQsOpen = shellState.qsOpen;
+        let requests = 0;
+        const signalId = instance.connect('external-preview-requested', () => requests++);
+        instance.registerCommands(app);
+        const action = app.lookup_action('display-mode');
+        if (!action) throw new Error('Display mode action was not registered');
+
+        try {
+            await instance.reconcileNow();
+            const editorLayout: Layout = {
+                monitors: [spec(EDP()), spec(HDMI(true, {position: '1920x0'}))],
+                workspaces: {},
+            };
+            expect(await instance.preview(editorLayout)).toBe(true);
+            expect(instance.pending !== null).toBe(true);
+            expect(requests).toBe(0);
+            const previewDeadline = instance.pending;
+            action.activate(new GLib.Variant('s', 'extend'));
+            await instance.reconcileNow();
+            expect(requests).toBe(0);
+            expect(instance.pending).toBe(previewDeadline);
+
+            await instance.revert();
+
+            action.activate(new GLib.Variant('s', 'external-only'));
+            await instance.reconcileNow();
+            expect(instance.pending !== null).toBe(true);
+            expect(requests).toBe(1);
+            await instance.revert();
+
+            adapter.failNext = true;
+            action.activate(new GLib.Variant('s', 'external-only'));
+            await instance.reconcileNow();
+            expect(instance.error !== null).toBe(true);
+            expect(instance.pending).toBeNull();
+            expect(requests).toBe(1);
+        } finally {
+            instance.disconnect(signalId);
+            instance.dispose();
+            shellState.qsOpen = previousQsOpen;
+        }
+    });
+
     it.async(
         'previews External only before disabling the panel and applies every attached external',
         async () => {

@@ -14,7 +14,7 @@
 
 ## Built-in display modes
 
-The available mode chooser is keyboard-focusable and is available in Quick Settings. It previews a selection without changing outputs on focus/navigation. A preview has a 15-second confirmation window; Keep Changes commits it, and Revert or timeout restores the previous arrangement. Starting another preview replaces the candidate while retaining the original rollback target.
+Open the dedicated **Telas** entry in Quick Settings to reach the available mode chooser, connected monitors and saved layouts. The separate **Configurações de telas** action opens advanced display settings. The mode chooser is keyboard-focusable: moving focus or navigating choices does not change outputs; activating a choice previews it. A preview has a 15-second confirmation window; Keep Changes commits it, and Revert or timeout restores the previous arrangement. Starting another preview replaces the candidate while retaining the original rollback target. Back or Escape attempts to revert a pending preview before leaving; a rollback failure is shown instead of silently navigating away.
 
 | Mode | Result |
 |------|--------|
@@ -25,11 +25,12 @@ The available mode chooser is keyboard-focusable and is available in Quick Setti
 
 Unavailable modes are omitted. A mode matching the current arrangement is a no-op. Duplicate retains each output's own resolution; source content can therefore scale or differ in aspect ratio on mirror destinations. Named layouts can store mixed arrangements, such as one mirrored pair plus an independently extended output; these are displayed as custom setups rather than extra built-in modes.
 
-Quick Settings individual-output switches use the same preview transaction. An enabled mirror destination is labeled with its source. Disabling a mirror source promotes a remaining destination and redirects its dependent destinations. The last enabled independent desktop cannot be disabled.
+Quick Settings individual-output switches and saved-layout selections use the same preview transaction. An enabled mirror destination is labeled with its source. Disabling a mirror source promotes a remaining destination and redirects its dependent destinations. The last enabled independent desktop cannot be disabled.
 
 ## Displays settings
 
 - Per-output resolution, scale, transform, position, VRR, enabled state, and mirror source are editable.
+- Per-output editors retain their widget identity while the draft changes, so editing one value does not recreate the focused input. Topology changes add/remove output rows; programmatic control synchronization must not feed values back into the draft or alter the confirmed arrangement.
 - Mirror sources are enabled independent outputs; mirror destinations cannot themselves be sources. Invalid dependencies are rejected on Apply without changing live outputs.
 - The arrangement canvas depicts independent desktop rectangles only; mirror destinations are represented in their output rows.
 - Mode selection immediately previews that mode and replaces the draft with the resulting live arrangement. Manual draft edits remain separate until Apply.
