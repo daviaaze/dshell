@@ -5,9 +5,9 @@ import PowerProfiles, {nextProfile, profileLabel} from '@shade/services/power/po
 import {createState, effect, onCleanup} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
 import {QuickControlButton} from '../../common/quickControlButton';
-import type {QuickButton} from './quickButton';
+import type {QuickDetailButton} from './quickButton';
 
-export default (): QuickButton => {
+export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const [iconName, setIconName] = createState('power-profile-balanced-symbolic');
     const [label, setLabel] = createState('');
     const [activeProfile, setActiveProfile] = createState<
@@ -66,15 +66,14 @@ export default (): QuickButton => {
         bus.emit('power:profile:set', p);
     };
 
-    const popover = (
-        <Gtk.Popover cssClasses={[]}>
-            <LinkedBox>
-                {choices.map(({button}) => button)}
-            </LinkedBox>
-        </Gtk.Popover>
+    const detail = (
+        <LinkedBox>
+            {choices.map(({button}) => button)}
+        </LinkedBox>
     );
 
     return {
+        detail,
         widget: (
             <QuickControlButton
                 intent="action"
@@ -83,7 +82,7 @@ export default (): QuickButton => {
                 value={label}
                 actionLabel="Cycle power profile"
                 onClick={() => setProfile(nextProfile(activeProfile()))}
-                menu={{label: 'Power profile options', popover}}
+                detail={{label: 'Power profile options', onOpen}}
             />
         ),
     };

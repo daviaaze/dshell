@@ -52,11 +52,13 @@ class Atspi:
         self.address = address
         self.deadline = time.monotonic() + COMMAND_TIMEOUT
 
-    def call(self, destination, path, interface, method, *args, signature=None):
+    def call(self, destination, path, interface, method, *args, signature=None, json_reply=False):
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
             raise AccessibilityError("AT-SPI command exceeded its %d-second time limit" % COMMAND_TIMEOUT)
         command = ["busctl", "--address=" + self.address, "--timeout=4s", "call", destination, path, interface, method]
+        if json_reply:
+            command.insert(3, "--json=short")
         if signature:
             command.append(signature)
         command.extend(map(str, args))
@@ -70,6 +72,8 @@ class Atspi:
             detail = exc.stderr.strip() or exc.stdout.strip() or "no D-Bus diagnostic"
             raise AccessibilityError("D-Bus call %s.%s failed on %s %s: %s" % (interface, method, destination, path, detail))
         try:
+            if json_reply:
+                return json.loads(result.stdout)
             return shlex.split(result.stdout)
         except ValueError as exc:
             raise AccessibilityError("Could not parse %s.%s reply %r: %s" % (interface, method, result.stdout.strip(), exc))
@@ -79,7 +83,7 @@ class Atspi:
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
             raise AccessibilityError("AT-SPI command exceeded its %d-second time limit" % COMMAND_TIMEOUT)
-        command = ["busctl", "--address=" + self.address, "--timeout=4s", "get-property", destination, path, interface, name]
+        command = ["busctl", "--address=" + self.address, "--timeout=4s", "--json=short", "get-property", destination, path, interface, name]
         try:
             result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=min(TIMEOUT, remaining))
         except FileNotFoundError:
@@ -89,16 +93,18 @@ class Atspi:
         except subprocess.CalledProcessError as exc:
             detail = exc.stderr.strip() or exc.stdout.strip() or "no D-Bus diagnostic"
             raise AccessibilityError("D-Bus property %s.%s failed on %s %s: %s" % (interface, name, destination, path, detail))
-        fields = shlex.split(result.stdout)
-        if len(fields) != 2 or fields[0] != "s":
-            raise AccessibilityError("Unexpected %s property reply from %s %s: %r" % (name, destination, path, fields))
-        return fields[1]
+        reply = json.loads(result.stdout)
+        value = reply.get("data")
+        if reply.get("type") != "s" or not isinstance(value, str):
+            raise AccessibilityError("Unexpected %s property reply from %s %s: %r" % (name, destination, path, reply))
+        return value
 
     def string(self, destination, path, method):
-        fields = self.call(destination, path, ACCESSIBLE, method)
-        if len(fields) < 2 or fields[0] != "s":
-            raise AccessibilityError("Unexpected %s reply from %s %s: %r" % (method, destination, path, fields))
-        return fields[1]
+        reply = self.call(destination, path, ACCESSIBLE, method, json_reply=True)
+        values = reply.get("data")
+        if reply.get("type") != "s" or not isinstance(values, list) or len(values) != 1 or not isinstance(values[0], str):
+            raise AccessibilityError("Unexpected %s reply from %s %s: %r" % (method, destination, path, reply))
+        return values[0]
 
 
     def children(self, destination, path):
@@ -307,7 +313,7 @@ def command_tree(atspi, args):
 
 
 def command_find(atspi, args):
-    node = locate(atspi, args)
+    node = locate(atspi, args, want_actions=args.actionable)
     if args.include_state:
         node["state_words"] = atspi.state_words(node["bus"], node["path"])
     if getattr(args, "window_bounds", False):
@@ -367,6 +373,15 @@ def command_focus(atspi, args):
     return {"focused": True, "node": node}
 
 
+def command_set_text(atspi, args):
+    node = locate(atspi, args)
+    reply = atspi.call(node["bus"], node["path"], "org.a11y.atspi.EditableText",
+                       "SetTextContents", args.text, signature="s")
+    if reply != ["b", "true"]:
+        raise AccessibilityError("AT-SPI rejected text entry on " + json.dumps(node))
+    return {"edited": True, "node": node}
+
+
 def command_set_value(atspi, args):
     node = locate(atspi, args)
     properties = "org.freedesktop.DBus.Properties"
@@ -388,21 +403,24 @@ def make_parser():
     tree.add_argument("--no-bounds", action="store_true", help="skip per-node screen geometry queries")
     find = commands.add_parser("find", help="find one exact accessible name")
     find.add_argument("--include-state", action="store_true", help="include the AT-SPI state bit words for the matched node")
+    find.add_argument("--actionable", action="store_true", help="require an available native AT-SPI action")
     find.add_argument("--window-bounds", action="store_true", help="also report native WINDOW-relative bounds; do not treat these as global coordinates")
     click = commands.add_parser("click", help="invoke one unambiguous AT-SPI click action")
     focus = commands.add_parser("focus", help="focus one native accessible input")
     value = commands.add_parser("set-value", help="set and read back a native AT-SPI Value.CurrentValue")
+    text = commands.add_parser("set-text", help="edit a native accessible text input")
+    text.add_argument("--text", required=True)
     value.add_argument("--value", type=float, required=True)
-    for command in (find, click, focus, value):
+    for command in (find, click, focus, value, text):
         command.add_argument("--description-match", action="store_true", help="also match the AT-SPI accessible description")
         command.add_argument("--name-contains", action="store_true", help="revalidate a stable name fragment when asynchronous status changes the rest")
-    for command in (tree, find, click, focus, value):
+    for command in (tree, find, click, focus, value, text):
         command.add_argument("--bus", help="activate only this previously observed accessible bus")
         command.add_argument("--path", help="activate only this previously observed accessible object path")
-    for command in (tree, find, click, focus, value):
+    for command in (tree, find, click, focus, value, text):
         command.add_argument("--max-depth", type=int, default=DEFAULT_DEPTH)
         command.add_argument("--max-nodes", type=int, default=DEFAULT_NODES)
-    for command in (find, click, focus, value):
+    for command in (find, click, focus, value, text):
         command.add_argument("--name", required=True)
         command.add_argument("--role")
     return parser
@@ -413,7 +431,7 @@ def main():
     try:
         address = bus_address()
         atspi = Atspi(address)
-        result = {"probe": command_probe, "tree": command_tree, "find": command_find, "click": command_click, "focus": command_focus, "set-value": command_set_value}[args.command](atspi, args) if args.command != "probe" else command_probe(atspi)
+        result = {"probe": command_probe, "tree": command_tree, "find": command_find, "click": command_click, "focus": command_focus, "set-value": command_set_value, "set-text": command_set_text}[args.command](atspi, args) if args.command != "probe" else command_probe(atspi)
         print(json.dumps(result, ensure_ascii=False))
         return 0
     except AccessibilityError as exc:

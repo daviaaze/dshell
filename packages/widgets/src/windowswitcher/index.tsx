@@ -148,8 +148,17 @@ function onOpen(state: SwitcherState) {
 export default () => {
     const hyprland = getHyprland();
     if (!hyprland) return null;
-    const [selectedIndex, setSelectedIndex] = createState(0);
+    const focusedMonitor = bind(hyprland, 'focused-monitor');
+    const panelWidth = computed(() => {
+        const monitor = focusedMonitor();
+        return monitor ? Math.max(1, Math.min(500, monitor.width / (monitor.scale || 1) - 32)) : 500;
+    });
+    const panelHeight = computed(() => {
+        const monitor = focusedMonitor();
+        return monitor ? Math.max(1, monitor.height / (monitor.scale || 1) - 64) : 600;
+    });
 
+    const [selectedIndex, setSelectedIndex] = createState(0);
     const [mru, setMru] = createState<string[]>([]);
 
     const updateMru = (client: AstalHyprland.Client | null) => {
@@ -220,7 +229,7 @@ export default () => {
                 Astal.WindowAnchor.LEFT |
                 Astal.WindowAnchor.RIGHT
             }
-            monitor={bind(hyprland, 'focused-monitor').as((m) => monitorIndexFromHyprland(m))}
+            monitor={focusedMonitor.as((m) => monitorIndexFromHyprland(m))}
             css={'background-color: transparent;'}
         >
             <Gtk.Box
@@ -232,28 +241,39 @@ export default () => {
                 valign={Gtk.Align.CENTER}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
-                widthRequest={500}
+                widthRequest={panelWidth}
                 cssClasses={['card', 'background']}
             >
-                <For each={clientsList}>
-                    {(client: AstalHyprland.Client) => (
-                        <SwitcherItem
-                            client={client}
-                            selected={selectedIndex.as((idx) => {
-                                const clients = clientsList() ?? [];
-                                return clients[idx]?.address === client.address;
-                            })}
-                        />
-                    )}
-                </For>
-                <Adw.StatusPage
-                    visible={clientsList.as((l) => l.length === 0)}
+                <Gtk.ScrolledWindow
+                    propagateNaturalHeight
+                    maxContentWidth={panelWidth}
+                    maxContentHeight={panelHeight}
+                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     vexpand
-                    cssClasses={['compact']}
-                    title="No Open Windows"
-                    description="Press Escape to close the switcher."
-                    iconName="window-new-symbolic"
-                />
+                >
+                    <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                        <For each={clientsList}>
+                            {(client: AstalHyprland.Client) => (
+                                <SwitcherItem
+                                    client={client}
+                                    selected={selectedIndex.as((idx) => {
+                                        const clients = clientsList() ?? [];
+                                        return clients[idx]?.address === client.address;
+                                    })}
+                                />
+                            )}
+                        </For>
+                        <Adw.StatusPage
+                            visible={clientsList.as((l) => l.length === 0)}
+                            vexpand
+                            cssClasses={['compact']}
+                            title="No Open Windows"
+                            description="Press Escape to close the switcher."
+                            iconName="window-new-symbolic"
+                        />
+                    </Gtk.Box>
+                </Gtk.ScrolledWindow>
             </Gtk.Box>
         </Astal.Window>
     );

@@ -57,13 +57,13 @@
 
 | Element | Token / style class | Notes |
 |---------|--------------------|-------|
-| Window background | No explicit CSS | Gtk theme default background |
-| Avatar | `Adw.Avatar(size=96, showInitials)` | Standard Adw component |
-| Username label | `title-1` | Large centered |
-| Login form | `card` + inline `padding: 24px; min-width: 300px` | Layout-only padding |
-| Button | `suggested-action` | Adw action class |
-| Error label | `caption` + `error` | Adw classes |
-| Spinner | `Adw.Spinner` | Adw component |
+| Window background | Configured wallpaper with native theme fallback | No other user's preferences are copied |
+| Avatar | `Adw.Avatar(size=64, showInitials)` | Inside the account/authentication panel |
+| Identity and headings | `title-2`, `title-3`, `heading` | Persistent labels, wrapping content |
+| Login form | Native `card`, GTK margins, `Adw.Clamp` and scroller | Adapts to available output space without a fixed minimum form width |
+| Button | `suggested-action` | One primary login action; account/session/power remain secondary |
+| Error label | `error` | Adjacent to the operation |
+| Progress | `Gtk.Spinner` and actual greetd state | Does not claim authentication success |
 
 ### Adwaita checklist
 

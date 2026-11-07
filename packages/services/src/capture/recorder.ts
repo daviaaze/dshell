@@ -5,7 +5,7 @@ import {getHyprland} from '../hyprland';
 import {getScreenCaptureSettings} from '../settings/screenCapture';
 import {toGrimGeometry} from './geometry';
 import {type BoundaryGeometry, RecorderBackend, RecordingFormat} from './types';
-import {buildRecordingArgs, formatDuration, notify, RECORDING_DIR, resolveBackend} from './utils';
+import {buildRecordingArgs, formatDuration, notify, publishCapture, requireCaptureFile, RECORDING_DIR, resolveBackend} from './utils';
 
 const ICON_ERROR = 'dialog-error-symbolic';
 const MSG_RECORDING_FAILED = 'Recording failed';
@@ -91,6 +91,7 @@ export class Recorder {
             quality
         );
 
+        publishCapture({state: 'busy', kind: 'recording'});
         logger.info('screenshot', `starting ${backendName} with args: ${args.join(' ')}`);
 
         const proc = this.#spawn(args, backendName);
@@ -101,7 +102,9 @@ export class Recorder {
 
         notify('Recording started', filename, 'media-record-symbolic');
 
-        if (options.geometry) this.#hooks.showBoundary(options.geometry);
+        if (options.geometry && settings.showRecordingBoundary()) {
+            this.#hooks.showBoundary(options.geometry);
+        }
 
         proc.connect('exit', () => this.#onExit(proc, options, backend, pref));
     }
@@ -152,15 +155,11 @@ export class Recorder {
         try {
             return Process.subprocessv(args);
         } catch (e) {
-            logger.error(
-                'screenshot',
-                `failed to spawn ${backendName}: ${e instanceof Error ? e.message : String(e)}`
-            );
-            notify(
-                MSG_RECORDING_FAILED,
-                `Could not start ${backendName}: ${e instanceof Error ? e.message : String(e)}`,
-                ICON_ERROR
-            );
+            const message = e instanceof Error ? e.message : String(e);
+            logger.error('screenshot', `failed to spawn ${backendName}: ${message}`);
+            publishCapture({state: 'error', message: `Could not start ${backendName}: ${message}`});
+            this.#hooks.notifyState();
+            notify(MSG_RECORDING_FAILED, `Could not start ${backendName}: ${message}`, ICON_ERROR);
             return null;
         }
     }
@@ -219,17 +218,17 @@ export class Recorder {
         logger.info('screenshot', `${name} exited after ${durationStr} (${durationMs}ms)`);
 
         if (success) {
-            notify(
-                'Recording stopped',
-                `Duration: ${durationStr}\nSaved to: ${this.#file}`,
-                'media-playback-stop-symbolic'
-            );
+            try {
+                requireCaptureFile(this.#file);
+                publishCapture({state: 'result', kind: 'recording', path: this.#file});
+                notify('Recording stopped', `Duration: ${durationStr}\nSaved to: ${this.#file}`, 'media-playback-stop-symbolic');
+            } catch (e) {
+                publishCapture({state: 'error', message: e instanceof Error ? e.message : String(e)});
+            }
         } else {
-            notify(
-                MSG_RECORDING_FAILED,
-                `${name} exited immediately (${durationMs}ms). Check geometry/output and that no other recorder is running.`,
-                ICON_ERROR
-            );
+            const message = `${name} exited immediately (${durationMs}ms). Check geometry/output and that no other recorder is running.`;
+            publishCapture({state: 'error', message});
+            notify(MSG_RECORDING_FAILED, message, ICON_ERROR);
         }
 
         this.#reset();

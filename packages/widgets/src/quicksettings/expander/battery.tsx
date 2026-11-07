@@ -75,11 +75,12 @@ export const Battery = () => {
                     )}
                 />
             </Gtk.Box>
-            <Gtk.LevelBar value={bind(battery, 'percentage')} widthRequest={100} heightRequest={50}>
-                <Gtk.Label
-                    label={bind(battery, 'percentage').as((p) => `${(p * 100).toFixed(0)}%`)}
+            <Gtk.Overlay>
+                <Gtk.LevelBar value={bind(battery, 'percentage')} widthRequest={100} heightRequest={50} />
+                <Gtk.Label slot="overlay"
+                    label={bind(battery, 'percentage').as(p => `${(p * 100).toFixed(0)}%`)}
                 />
-            </Gtk.LevelBar>
+            </Gtk.Overlay>
         </Gtk.Box>
     );
 };

@@ -3,10 +3,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 import BluetoothService from '@shade/services/bluetooth/bluetoothService';
-import {type Accessor, bind, computed, createState, For, onCleanup} from 'gnim';
-import {LinkedBox} from '../../common/linkedBox';
+import {type Accessor, bind, computed, createState, For, onCleanup, type GnimNode, With} from 'gnim';
 import {QuickControlButton} from '../../common/quickControlButton';
-import type {QuickButton} from './quickButton';
 
 /** Connect or disconnect a device, tracking the in-flight address. */
 async function toggleDevice(
@@ -28,7 +26,7 @@ async function toggleDevice(
     }
 }
 
-/** One device row in the popover: icon, name, spinner, connected check. */
+/** A device action uses the service's real connection operation. */
 function DeviceButton({
     device,
     service,
@@ -61,54 +59,48 @@ function DeviceButton({
     );
 }
 
-/** Popover listing all known bluetooth devices. */
-function DevicePopover({
+/** Device content remains mounted while the adapter is available. */
+function DeviceList({
     bluetooth,
     service,
     connectingAddress,
     setConnectingAddress,
-    operationError,
     setOperationError,
 }: {
     bluetooth: AstalBluetooth.Bluetooth;
     service: BluetoothService;
     connectingAddress: Accessor<string | null>;
     setConnectingAddress: (addr: string | null) => void;
-    operationError: Accessor<string | null>;
     setOperationError: (message: string | null) => void;
 }) {
+    const devices = bind(bluetooth, 'devices').as(items => toArray<AstalBluetooth.Device>(items));
     return (
-        <Gtk.Popover cssClasses={[]}>
-            <LinkedBox>
-                {operationError.as((message) => message ? (
-                    <Gtk.Label label={message} cssClasses={['error', 'caption']} wrap />
-                ) : null)}
-                <For each={bind(bluetooth, 'devices').as((d) => toArray<AstalBluetooth.Device>(d))}>
-                    {(device: AstalBluetooth.Device) => (
-                        <DeviceButton
-                            service={service}
-                            setOperationError={setOperationError}
-                            device={device}
-                            connectingAddress={connectingAddress}
-                            setConnectingAddress={setConnectingAddress}
-                        />
-                    )}
-                </For>
-            </LinkedBox>
-        </Gtk.Popover>
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+            <Gtk.Label label="Dispositivos" cssClasses={['heading']} xalign={0} />
+            <Gtk.Label label="Nenhum dispositivo encontrado. Busque dispositivos próximos ou abra as configurações para parear."
+                visible={devices.as(items => items.length === 0)} wrap xalign={0} />
+            <For each={devices}>
+                {(device: AstalBluetooth.Device) => (
+                    <DeviceButton
+                        service={service}
+                        setOperationError={setOperationError}
+                        device={device}
+                        connectingAddress={connectingAddress}
+                        setConnectingAddress={setConnectingAddress}
+                    />
+                )}
+            </For>
+        </Gtk.Box>
     );
 }
 
-export default (): QuickButton => {
-    // ButtonGrid items only render when quicksettings opens — D-Bus
-    // services are already available by then, so synchronous call is safe.
+export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: GnimNode} => {
     const bluetooth = AstalBluetooth.get_default();
     const service = BluetoothService.get_default();
     const [operationError, setOperationError] = createState<string | null>(null);
     const [connectingAddress, setConnectingAddress] = createState<string | null>(null);
 
     const isConnecting = connectingAddress.as((addr) => addr !== null);
-    const isVisible = bind(bluetooth, 'adapters').as((a) => a.length > 0);
     const [adapter, setAdapter] = createState<AstalBluetooth.Adapter | null>(bluetooth.adapter ?? null);
     const [isPowered, setIsPowered] = createState(adapter()?.powered ?? false);
     let currentAdapter: AstalBluetooth.Adapter | null = null;
@@ -154,11 +146,12 @@ export default (): QuickButton => {
     });
 
     const value = computed(() => {
-        if (!isPowered()) return 'Off';
+        if (!adapter()) return 'Indisponível';
+        if (!isPowered()) return 'Desativado';
         const connectedDevices = devices().filter((device) => device.connected());
-        if (connectedDevices.length === 0) return 'On, no devices';
+        if (connectedDevices.length === 0) return 'Ativado, sem dispositivos';
         if (connectedDevices.length === 1) return connectedDevices[0].name();
-        return `${connectedDevices.length} connected`;
+        return `${connectedDevices.length} conectados`;
     });
 
     return {
@@ -173,6 +166,7 @@ export default (): QuickButton => {
                 actionLabel={isPowered.as((powered) =>
                     powered ? 'Turn Bluetooth off' : 'Turn Bluetooth on'
                 )}
+                actionSensitive={adapter.as((current) => current !== null)}
                 onClick={() => {
                     const current = adapter();
                     if (!current) return;
@@ -184,21 +178,46 @@ export default (): QuickButton => {
                         setOperationError(String(error));
                     }
                 }}
-                menu={{
-                    label: 'Bluetooth devices',
-                    popover: (
-                        <DevicePopover
-                            bluetooth={bluetooth}
-                            service={service}
-                            connectingAddress={connectingAddress}
-                            setConnectingAddress={setConnectingAddress}
-                            operationError={operationError}
-                            setOperationError={setOperationError}
-                        />
-                    ),
-                }}
+                detail={{label: 'Bluetooth details', onOpen}}
             />
         ),
-        visible: isVisible,
+        detail: (
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <Gtk.Label label={operationError.as(message => message ?? '')}
+                    visible={operationError.as(message => !!message)} cssClasses={['error']} wrap />
+                <With value={adapter}>
+                    {current => current ? (
+                        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                            <Gtk.Box spacing={12}>
+                                <Gtk.Label label="Bluetooth" hexpand xalign={0} cssClasses={['heading']} />
+                                <Gtk.Switch active={isPowered} onNotifyActive={self => {
+                                    if (current.powered === self.active) return;
+                                    setOperationError(null);
+                                    try { current.powered = self.active; }
+                                    catch (error) { setOperationError(String(error)); }
+                                    finally { self.active = current.powered; }
+                                }} />
+                            </Gtk.Box>
+                            <Gtk.Box visible={isPowered} orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                                <Gtk.Button
+                                    label={bind(current, 'discovering').as(scanning => scanning ? 'Parar busca' : 'Buscar dispositivos')}
+                                    onClicked={() => {
+                                        setOperationError(null);
+                                        try {
+                                            if (current.discovering) current.stop_discovery();
+                                            else current.start_discovery();
+                                        } catch (error) { setOperationError(String(error)); }
+                                    }} />
+                                <DeviceList bluetooth={bluetooth} service={service}
+                                    connectingAddress={connectingAddress} setConnectingAddress={setConnectingAddress}
+                                    setOperationError={setOperationError} />
+                            </Gtk.Box>
+                            <Gtk.Label visible={isPowered.as(powered => !powered)}
+                                label="Bluetooth desativado. Ative para conectar um dispositivo." wrap />
+                        </Gtk.Box>
+                    ) : <Gtk.Label label="Bluetooth indisponível: conecte ou habilite um adaptador." wrap />}
+                </With>
+            </Gtk.Box>
+        ),
     };
 };

@@ -1,20 +1,21 @@
 import Astal from 'gi://Astal?version=4.0';
 import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Gtk from 'gi://Gtk?version=4.0';
+import {bind, computed, For, onCleanup} from 'gnim';
 import {toArray} from '@shade/core/gjsUtils';
 import {getApp} from '@shade/services/appHandle';
 import {getHyprland} from '@shade/services/hyprland';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import {getDesktopFileForClient} from '@shade/services/state/apps';
 import WindowManager from '@shade/services/state/windowManager';
-import {bind, computed, For, onCleanup} from 'gnim';
+import {openSettings} from '../settings/settingsOpen';
 import DockItem from './item';
 
 export default () => {
     const hyprland = getHyprland();
     if (!hyprland) return null;
     const bar = barSettings();
-    const {BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
+    const {BOTTOM} = Astal.WindowAnchor;
 
     const clients = bind(hyprland, 'clients').as((c) => toArray<AstalHyprland.Client>(c));
 
@@ -71,7 +72,7 @@ export default () => {
             }}
             visible={bar.dockEnabled}
             layer={Astal.Layer.TOP}
-            anchor={BOTTOM | LEFT | RIGHT}
+            anchor={BOTTOM}
             application={getApp()}
             namespace={'shade-dock'}
             name="dock"
@@ -83,7 +84,6 @@ export default () => {
                 valign={Gtk.Align.END}
                 spacing={8}
                 cssClasses={['linked', 'horizontal', 'card', 'background']}
-                css={'background-color: @window_bg_color;'}
             >
                 <For each={dockItems}>
                     {(item) => (
@@ -95,6 +95,20 @@ export default () => {
                         />
                     )}
                 </For>
+                <Gtk.Box
+                    visible={dockItems.as((items) => items.length === 0)}
+                    spacing={12}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={12}
+                    marginEnd={12}
+                >
+                    <Gtk.Label label="No applications pinned" />
+                    <Gtk.Button
+                        label="Configure dock"
+                        onClicked={() => openSettings('bar')}
+                    />
+                </Gtk.Box>
             </Gtk.Box>
         </Astal.Window>
     );

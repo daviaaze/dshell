@@ -1,3 +1,4 @@
+import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import type Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
@@ -108,67 +109,35 @@ const createLocks = (onUnlock: () => void) => {
                     application={getApp()}
                     cssClasses={['background']}
                 >
-                    <Gtk.Box
-                        vexpand
-                        hexpand
-                        orientation={Gtk.Orientation.VERTICAL}
-                        halign={Gtk.Align.CENTER}
+                    <Gtk.ScrolledWindow
+                        hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                        hexpand vexpand
                     >
-                        <Gtk.Box
-                            vexpand
-                            valign={Gtk.Align.START}
-                            marginTop={120}
-                            marginBottom={48}
-                        />
-                        <Gtk.Box vexpand valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER}>
-                            <Gtk.Box
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={16}
-                                marginTop={48}
-                                marginBottom={48}
-                                marginStart={48}
-                                marginEnd={48}
-                                cssClasses={['card']}
-                                css={'background-color: @window_bg_color;'}
-                            >
-                                <Gtk.Label
-                                    cssClasses={['title-1', 'numeric']}
-                                    label={time.as((t) => t.format('%R')!)}
-                                />
-                                <Gtk.Label
-                                    cssClasses={['title-3', 'numeric']}
-                                    label={time.as((t) => t.format('%A, %x')!)}
-                                />
+                        <Adw.Clamp maximumSize={420} tighteningThreshold={340}
+                            marginTop={24} marginBottom={24} marginStart={16} marginEnd={16}
+                            valign={Gtk.Align.CENTER}>
+                            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={24}>
+                                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}
+                                    halign={Gtk.Align.CENTER}>
+                                    <Gtk.Label cssClasses={['title-1', 'numeric']}
+                                        label={time.as(t => t.format('%R') ?? '')} />
+                                    <Gtk.Label cssClasses={['title-3']}
+                                        label={time.as(t => t.format('%A, %x') ?? '')} wrap />
+                                </Gtk.Box>
                                 <LockscreenAuthPanel
                                     authSession={authSession}
                                     fingerprint={fingerprint}
                                     fpStateBinding={fpStateBinding}
                                     fpErrorBinding={fpErrorBinding}
                                 />
+                                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                                    <LockscreenWidgets position="end" />
+                                    <LockscreenNotifications />
+                                </Gtk.Box>
                             </Gtk.Box>
-                        </Gtk.Box>
-                        <Gtk.Box
-                            vexpand
-                            valign={Gtk.Align.END}
-                            halign={Gtk.Align.CENTER}
-                            orientation={Gtk.Orientation.VERTICAL}
-                            marginBottom={64}
-                        >
-                            <Gtk.Box
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={12}
-                                marginTop={24}
-                                marginBottom={24}
-                                marginStart={24}
-                                marginEnd={24}
-                                cssClasses={['card']}
-                                css={'background-color: @window_bg_color;'}
-                            >
-                                <LockscreenWidgets position="end" />
-                                <LockscreenNotifications />
-                            </Gtk.Box>
-                        </Gtk.Box>
-                    </Gtk.Box>
+                        </Adw.Clamp>
+                    </Gtk.ScrolledWindow>
                 </Gtk.Window>
             )}
         </For>

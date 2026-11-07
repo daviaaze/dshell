@@ -1,95 +1,57 @@
 import Astal from 'gi://Astal?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import {getApp} from '@shade/services/appHandle';
 import AudioController from '@shade/services/audio/audioController';
+import {getVolumeIcon} from '@shade/services/audio/icons';
 import Brightness from '@shade/services/display/brightness';
+import {getHyprland} from '@shade/services/hyprland';
 import Touchpad from '@shade/services/input/touchpad';
+import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import WindowManager from '@shade/services/state/windowManager';
-import {bind, computed} from 'gnim';
-import PopupWindow from '../common/PopupWindow';
+import {bind, computed, onCleanup, With} from 'gnim';
 import Popup from './popup';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
 
-const OSD_WIDTH = 250;
-const OSD_MARGIN = 24;
-const OSD_SPACING = 12;
-
 export default () => {
-    const audioCtrl = AudioController.get_default();
-    const brightness = Brightness.get_default();
-    const touchpad = Touchpad.get_default();
-
-    // Real-time volume/mute/icon via AstalWp endpoint properties.
-    // bind() with chained props uses computed({equals:()=>false}) internally,
-    // so re-evaluates on every volume/mute/icon change on the endpoint.
-    const speakerVol = bind(audioCtrl as any, 'defaultSpeaker', 'volume');
-    const speakerIcon = bind(audioCtrl as any, 'defaultSpeaker', 'volumeIcon');
-    const micVol = bind(audioCtrl as any, 'defaultMicrophone', 'volume');
-    const micIcon = bind(audioCtrl as any, 'defaultMicrophone', 'volumeIcon');
-
-    // Each OSD popup's reveal is owned by its domain service (AudioController,
-    // Brightness, Touchpad) via an OsdTimer, so the popups stay pure UI.
-    const speakerReveal = bind(audioCtrl, 'speakerOsdVisible');
-    const screenReveal = bind(brightness, 'screenOsdVisible');
-    const kbdReveal = bind(brightness, 'kbdOsdVisible');
-    const micReveal = bind(audioCtrl, 'micOsdVisible');
-    const touchpadReveal = bind(touchpad, 'osdVisible');
-
-    const anyVisible = computed(
-        () => speakerReveal() || screenReveal() || kbdReveal() || micReveal() || touchpadReveal()
-    );
-
-    const popupList = [
-        <Popup
-            widget={Slider({
-                iconName: speakerIcon,
-                value: speakerVol,
-            })}
-            reveal={speakerReveal}
-        />,
-        <Popup
-            widget={Slider({
-                iconName: 'display-brightness-symbolic',
-                value: bind(brightness, 'screen'),
-            })}
-            reveal={screenReveal}
-        />,
-        <Popup
-            widget={Slider({
-                iconName: 'keyboard-brightness-symbolic',
-                value: computed(() => brightness.kbd),
-            })}
-            reveal={kbdReveal}
-        />,
-        <Popup
-            widget={Slider({
-                iconName: micIcon,
-                value: micVol,
-            })}
-            reveal={micReveal}
-        />,
-        <Popup widget={<TouchpadOsd />} reveal={touchpadReveal} />,
-    ];
-
-    return (
-        <PopupWindow
-            name="osd"
-            widthRequest={OSD_WIDTH}
-            margin={OSD_MARGIN}
-            anchor={Astal.WindowAnchor.BOTTOM}
-            layer={Astal.Layer.OVERLAY}
-            visible={anyVisible}
-            ref={(self) => WindowManager.get_default().setOsd(self)}
-        >
-            <Gtk.Box
-                cssClasses={['linked', 'vertical', 'card', 'background']}
-                css={'box-shadow: none; padding: 12px; background-color: @window_bg_color;'}
-                orientation={Gtk.Orientation.VERTICAL}
-                valign={Gtk.Align.END}
-                spacing={OSD_SPACING}
-            >
-                {popupList}
-            </Gtk.Box>
-        </PopupWindow>
-    );
+    const hyprland=getHyprland();
+    if(!hyprland) return null;
+    const audio=AudioController.get_default();
+    const brightness=Brightness.get_default();
+    const touchpad=Touchpad.get_default();
+    const speaker=bind(audio,'defaultSpeaker');
+    const microphone=bind(audio,'defaultMicrophone');
+    const speakerReveal=bind(audio,'speakerOsdVisible');
+    const micReveal=bind(audio,'micOsdVisible');
+    const screenReveal=bind(brightness,'screenOsdVisible');
+    const keyboardReveal=bind(brightness,'kbdOsdVisible');
+    const touchpadReveal=bind(touchpad,'osdVisible');
+    const screen=bind(brightness,'screen');
+    const keyboard=bind(brightness,'kbd');
+    const visible=computed(()=>(speakerReveal()&&speaker()!==null)||(micReveal()&&microphone()!==null)
+        ||(screenReveal()&&screen()>=0)||(keyboardReveal()&&keyboard()>=0)||touchpadReveal());
+    return <Astal.Window name="osd" namespace="shade-osd" application={getApp()}
+        visible={visible} keymode={Astal.Keymode.NONE} layer={Astal.Layer.OVERLAY}
+        anchor={Astal.WindowAnchor.BOTTOM} margin={24} widthRequest={250}
+        cssClasses={[]} css="background-color: transparent;"
+        monitor={bind(hyprland,'focused-monitor').as(monitorIndexFromHyprland)}
+        ref={self=>{
+            const manager=WindowManager.get_default();
+            manager.setOsd(self);
+            onCleanup(()=>{if(manager.osd===self) manager.setOsd(null);});
+        }}>
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card','background','vertical']} spacing={8}>
+            <With value={speaker}>{device=>device ?
+                <Popup widget={Slider({iconName:getVolumeIcon(device,'audio-volume-muted-symbolic'),value:bind(device,'volume')})}
+                    reveal={speakerReveal}/> : null}</With>
+            <Popup widget={Slider({iconName:'display-brightness-symbolic',value:screen})}
+                reveal={computed(()=>screenReveal()&&screen()>=0)}/>
+            <Popup widget={Slider({iconName:'keyboard-brightness-symbolic',value:keyboard})}
+                reveal={computed(()=>keyboardReveal()&&keyboard()>=0)}/>
+            <With value={microphone}>{device=>device ?
+                <Popup widget={Slider({iconName:getVolumeIcon(device,'microphone-sensitivity-muted-symbolic'),value:bind(device,'volume')})}
+                    reveal={micReveal}/> : null}</With>
+            <Popup widget={<TouchpadOsd/>} reveal={touchpadReveal}/>
+        </Gtk.Box>
+    </Astal.Window>;
 };

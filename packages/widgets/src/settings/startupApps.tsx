@@ -44,10 +44,10 @@ export default () => {
 
     return (
         <Adw.PreferencesGroup
-            title="Startup Applications"
-            description="App-provided startup entries appear here."
+            title="Aplicativos ao entrar"
+            description="Gerencie as entradas de inicialização fornecidas pelos aplicativos."
             ref={(self) => {
-                const retry = new Gtk.Button({label: 'Retry read'});
+                const retry = new Gtk.Button({label: 'Tentar ler novamente'});
                 const clicked = retry.connect('clicked', retryRead);
                 self.set_header_suffix(retry);
                 onCleanup(() => {
@@ -75,8 +75,8 @@ export default () => {
                     result.issues.length === 0 &&
                     result.directoryError === null && (
                         <Adw.ActionRow
-                            title="No startup entries found"
-                            subtitle="Startup entries supplied by applications will appear here."
+                            title="Nenhum aplicativo ao entrar"
+                            subtitle="As entradas fornecidas pelos aplicativos aparecerão aqui."
                         />
                     )
             )}

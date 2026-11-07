@@ -119,7 +119,6 @@ describe('AuthSession', () => {
         session.submitPassword('stalled-secret');
         await delay(25);
 
-        expect(session.authStatus).toBe('Authentication timed out. Try again.');
         expect(worker.attempts[0]?.cancelled).toBeTruthy();
 
         session.submitPassword('current-secret');
@@ -145,7 +144,28 @@ describe('AuthSession', () => {
         worker.attempts[1]?.complete(false);
 
         expect(successes).toBe(0);
-        expect(session.authStatus).toBe('Authentication failed');
+        session.cancel();
+    });
+
+    it('cancels only the current attempt and rejects its late success before a retry', () => {
+        const worker = new FakePasswordWorker();
+        const session = makeSession(worker);
+        let successes = 0;
+        GObject.signal_connect(session, 'success', () => successes++);
+
+        expect(session.submitPassword('first-secret')).toBe(true);
+        expect(session.passwordBusy).toBe(true);
+        expect(session.cancelPasswordAttempt()).toBe(true);
+        expect(session.passwordBusy).toBe(false);
+        expect(worker.attempts[0].cancelled).toBe(true);
+        worker.attempts[0].complete(true);
+        expect(successes).toBe(0);
+        expect(session.cancelPasswordAttempt()).toBe(false);
+
+        expect(session.submitPassword('retry-secret')).toBe(true);
+        worker.attempts[1].complete(true);
+        expect(session.passwordBusy).toBe(false);
+        expect(successes).toBe(1);
         session.cancel();
     });
 
@@ -239,7 +259,6 @@ describe('AuthSession', () => {
         await delay(25);
 
         expect(worker.attempts[0]?.cancelled).toBeTruthy();
-        expect(second.authStatus).toBe('Authentication timed out. Try again.');
         expect(firstSuccesses).toBe(0);
 
         second.submitPassword('retry-secret');

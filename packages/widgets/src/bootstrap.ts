@@ -55,6 +55,7 @@ import './screenshot-ui/widget';
 import './recording-bar/widget';
 import './recording-boundary/widget';
 import './notifications/widget';
+import './notification-center/widget';
 import './settings/widget';
 
 export function createAppContext(app: Adw.Application): AppContext {

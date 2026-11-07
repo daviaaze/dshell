@@ -1,11 +1,11 @@
-import type Adw from 'gi://Adw?version=1';
+import type Gtk from 'gi://Gtk?version=4.0';
 import {render} from '@gnim-js/gtk4';
 import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
 import ShellState from '@shade/services/state/shellState';
-import {createSettingsWindow} from './index';
+import {createSettingsWindow, navigateSettings, type SettingsDestination} from './index';
 
-let settingsWindow: Adw.Window | null = null;
+let settingsWindow: Gtk.Window | null = null;
 let settingsDispose: (() => void) | null = null;
 
 /**
@@ -26,13 +26,15 @@ function disposeCurrentSettings() {
     dispose?.();
 }
 
-export function openSettings() {
+export function openSettings(destination?: SettingsDestination): void {
     const state = ShellState.get_default();
     if (state.screenlocked) return;
-    state.qsOpen = false;
+    state.closeAll();
+
     const wm = WindowManager.get_default();
     const existing = wm.settings;
     if (existing && existing.visible) {
+        if (destination) navigateSettings(existing, destination);
         existing.present();
         return;
     }
@@ -42,7 +44,7 @@ export function openSettings() {
     }
     disposeCurrentSettings();
 
-    const dispose = render(() => createSettingsWindow(), getApp());
+    const dispose = render(() => createSettingsWindow(destination), getApp());
     const win = wm.settings;
     if (!win) {
         dispose();

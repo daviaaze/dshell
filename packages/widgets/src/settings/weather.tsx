@@ -12,14 +12,14 @@ export default () => {
     const locationError = bind(weather, 'locationError');
     const updateBusy = bind(weather, 'updateBusy');
     const updateError = bind(weather, 'updateError');
-    const locationStatus = computed(() => (locationBusy() ? 'Detecting location…' : ''));
-    const updateStatus = computed(() => (updateBusy() ? 'Updating weather…' : ''));
+    const locationStatus = computed(() => (locationBusy() ? 'Detectando localização…' : ''));
+    const updateStatus = computed(() => (updateBusy() ? 'Atualizando dados do clima…' : ''));
 
     return (
-        <Adw.PreferencesGroup title={'Weather'} description={'Weather options'}>
+        <Adw.PreferencesGroup title={'Clima e localização'} description={'Origem da localização e atualização da previsão.'}>
             <Adw.SwitchRow
-                title={'Auto Location'}
-                subtitle={'Automatically detect your location'}
+                title={'Detectar localização automaticamente'}
+                subtitle={'Desative para editar as coordenadas manualmente.'}
                 active={settings.autoLocation}
                 onNotifyActive={(self) => settings.setAutoLocation(self.active)}
             />
@@ -36,7 +36,7 @@ export default () => {
                 onNotifyValue={(self) => settings.setLongitude(self.value)}
             />
             <Adw.ActionRow
-                title={'Detect Location Now'}
+                title={'Detectar localização agora'}
                 subtitle={locationStatus}
                 activatable
                 sensitive={computed(() => !locationBusy())}
@@ -66,7 +66,7 @@ export default () => {
                 marginBottom={12}
             />
             <Adw.ActionRow
-                title={'Update Weather'}
+                title={'Atualizar clima'}
                 subtitle={updateStatus}
                 activatable
                 sensitive={computed(() => !updateBusy())}

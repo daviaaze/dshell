@@ -5,15 +5,12 @@ import {getScreenCaptureSettings} from '@shade/services/settings/screenCapture';
 import {bind} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
 import {QuickControlButton} from '../../common/quickControlButton';
-import type {QuickButton} from './quickButton';
+import type {QuickDetailButton} from './quickButton';
 
-// Dismiss the popover and run `fn` shortly after, so the selector/overlay
-// that follows gets a clean input grab instead of fighting the popover.
+// Run selector/overlay actions after navigation has yielded the input grab.
 const dismissAnd =
     (fn: () => void, delay = 150) =>
-    (btn: Gtk.Button) => {
-        const root = btn.get_root();
-        if (root instanceof Gtk.Popover) root.popdown();
+    (_btn: Gtk.Button) => {
         setTimeout(fn, delay);
     };
 
@@ -71,7 +68,7 @@ function PrefsSection({
                 label="Record Audio"
                 active={bind(screenshot.prefs, 'audio')}
                 onNotifyActive={({active}) => {
-                    screenshot.prefs.audio = active;
+                    if (screenshot.prefs.audio !== active) screenshot.prefs.audio = active;
                 }}
             />
             {/* WebM (VP9). Unchecked = MP4 (H.264), the default. */}
@@ -79,7 +76,9 @@ function PrefsSection({
                 label="WebM"
                 active={captureSettings.recordingFormat() === 1}
                 onNotifyActive={({active}) => {
-                    captureSettings.setRecordingFormat(active ? 1 : 0);
+                    const format = active ? 1 : 0;
+                    if (captureSettings.recordingFormat() !== format)
+                        captureSettings.setRecordingFormat(format);
                 }}
             />
         </Gtk.Box>
@@ -120,32 +119,31 @@ function VirtualMonitorButton({
     );
 }
 
-export default (): QuickButton => {
+export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const screenshot = Screenshot.get_default();
     const captureSettings = getScreenCaptureSettings();
 
-    const popover = (
-        <Gtk.Popover cssClasses={[]}>
-            <Gtk.Box
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={8}
-                marginTop={8}
-                marginBottom={8}
-                marginStart={8}
-                marginEnd={8}
-            >
-                <ScreenshotSection ss={screenshot} />
-                <Gtk.Separator />
-                <RecordingSection ss={screenshot} />
-                <Gtk.Separator />
-                <PrefsSection screenshot={screenshot} captureSettings={captureSettings} />
-                <Gtk.Separator />
-                <VirtualMonitorButton screenshot={screenshot} captureSettings={captureSettings} />
-            </Gtk.Box>
-        </Gtk.Popover>
+    const detail = (
+        <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={8}
+            marginTop={8}
+            marginBottom={8}
+            marginStart={8}
+            marginEnd={8}
+        >
+            <ScreenshotSection ss={screenshot} />
+            <Gtk.Separator />
+            <RecordingSection ss={screenshot} />
+            <Gtk.Separator />
+            <PrefsSection screenshot={screenshot} captureSettings={captureSettings} />
+            <Gtk.Separator />
+            <VirtualMonitorButton screenshot={screenshot} captureSettings={captureSettings} />
+        </Gtk.Box>
     );
 
     return {
+        detail,
         widget: (
             <QuickControlButton
                 intent="toggle"
@@ -159,7 +157,7 @@ export default (): QuickButton => {
                 )}
                 actionLabel="Start or stop full-screen recording"
                 onClick={() => screenshot.toggleRecording()}
-                menu={{label: 'Capture options', popover}}
+                detail={{label: 'Capture options', onOpen}}
             />
         ),
     };

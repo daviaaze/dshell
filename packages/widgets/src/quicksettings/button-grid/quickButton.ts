@@ -10,3 +10,7 @@ export interface QuickButton {
     widget: GnimNode;
     visible?: Accessor<boolean>;
 }
+
+export interface QuickDetailButton extends QuickButton {
+    detail: GnimNode;
+}

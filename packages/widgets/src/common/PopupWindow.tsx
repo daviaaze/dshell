@@ -49,6 +49,9 @@ export interface PopupWindowProps {
     /** Astal layer preference. Defaults to OVERLAY. */
     layer?: Astal.Layer;
 
+    /** Keyboard ownership; passive toasts use NONE. */
+    keymode?: Astal.Keymode;
+
     /** Margin from the window edges. Defaults to 12. */
     margin?: number;
 
@@ -117,6 +120,7 @@ export default (props: PopupWindowProps) => {
         visible,
         anchor: anchorProp,
         layer,
+        keymode,
         margin: marginProp,
         onClose,
         onVisibleChange,
@@ -159,7 +163,7 @@ export default (props: PopupWindowProps) => {
             visible={visibleAccessor}
             application={getApp()}
             layer={layer}
-            keymode={Astal.Keymode.ON_DEMAND}
+            keymode={keymode ?? Astal.Keymode.ON_DEMAND}
             anchor={anchorValue}
             margin={resolvedMargin}
             monitor={resolvedMonitor}

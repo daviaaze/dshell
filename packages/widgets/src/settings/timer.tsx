@@ -10,7 +10,7 @@ import {createState, onCleanup} from 'gnim';
 /** Pomodoro work/break duration rows. */
 function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>}) {
     return (
-        <Adw.PreferencesGroup title={'Pomodoro'} description={'Work/break cycle durations'}>
+        <Adw.PreferencesGroup title={'Pomodoro'} description={'Ciclo de trabalho e pausas em minutos.'}>
             <Adw.SpinRow
                 ref={(self) => {
                     self.adjustment = new Gtk.Adjustment({
@@ -20,8 +20,8 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
                         value: settings.pomodoroWorkDuration(),
                     });
                 }}
-                title={'Work Duration'}
-                subtitle={'Minutes per work session'}
+                title={'Trabalho'}
+                subtitle={'Duração de cada período de trabalho em minutos.'}
                 onNotifyValue={(self) => settings.setPomodoroWorkDuration(self.value)}
             />
             <Adw.SpinRow
@@ -33,8 +33,8 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
                         value: settings.pomodoroBreakDuration(),
                     });
                 }}
-                title={'Short Break Duration'}
-                subtitle={'Minutes per short break'}
+                title={'Pausa curta'}
+                subtitle={'Duração em minutos.'}
                 onNotifyValue={(self) => settings.setPomodoroBreakDuration(self.value)}
             />
             <Adw.SpinRow
@@ -46,8 +46,8 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
                         value: settings.pomodoroLongBreakDuration(),
                     });
                 }}
-                title={'Long Break Duration'}
-                subtitle={'Minutes per long break'}
+                title={'Pausa longa'}
+                subtitle={'Duração em minutos.'}
                 onNotifyValue={(self) => settings.setPomodoroLongBreakDuration(self.value)}
             />
             <Adw.SpinRow
@@ -59,8 +59,8 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
                         value: settings.pomodoroSessionsBeforeLongBreak(),
                     });
                 }}
-                title={'Sessions Before Long Break'}
-                subtitle={'Number of work sessions between long breaks'}
+                title={'Sessões antes da pausa longa'}
+                subtitle={'Número de sessões de trabalho entre pausas longas.'}
                 onNotifyValue={(self) => settings.setPomodoroSessionsBeforeLongBreak(self.value)}
             />
         </Adw.PreferencesGroup>
@@ -77,9 +77,9 @@ function CountdownGroup({settings}: {settings: ReturnType<typeof timerSettings>}
     onCleanup(() => setUndoSnapshot(null));
 
     return (
-        <Adw.PreferencesGroup title={'Countdown'} description={'Quick timer presets in minutes'}>
+        <Adw.PreferencesGroup title={'Contagem regressiva'} description={'Presets em minutos inteiros.'}>
             <Adw.EntryRow
-                title={'Add Preset (Enter duration in minutes, e.g. 1, 5, 10)'}
+                title={'Adicionar preset (minutos inteiros)'}
                 showApplyButton
                 onApply={(self) => {
                     const current = settings.countdownPresets();
@@ -87,12 +87,12 @@ function CountdownGroup({settings}: {settings: ReturnType<typeof timerSettings>}
                     if (result.kind !== 'valid') {
                         setError(
                             result.kind === 'empty'
-                                ? 'Enter a duration in whole minutes.'
+                                ? 'Informe uma duração em minutos inteiros.'
                                 : result.kind === 'not-integer'
-                                  ? 'Enter a whole number of minutes.'
+                                  ? 'Informe um número inteiro de minutos.'
                                   : result.kind === 'duplicate'
-                                    ? 'That preset already exists.'
-                                    : 'Enter a value from 1 to 2,147,483,647 minutes.'
+                                    ? 'Este preset já existe.'
+                                    : 'Informe de 1 a 2.147.483.647 minutos.'
                         );
                         return;
                     }
@@ -118,9 +118,9 @@ function CountdownGroup({settings}: {settings: ReturnType<typeof timerSettings>}
                         />
                     )
             )}
-            <Adw.ActionRow title={'Presets'} subtitle={presetSubtitle}>
+            <Adw.ActionRow title={'Presets existentes'} subtitle={presetSubtitle}>
                 <Gtk.Button
-                    label="Undo"
+                    label="Desfazer última restauração"
                     sensitive={undoSnapshot.as((snapshot) => snapshot !== null)}
                     onClicked={() => {
                         const snapshot = undoSnapshot();
@@ -130,7 +130,7 @@ function CountdownGroup({settings}: {settings: ReturnType<typeof timerSettings>}
                     }}
                 />
                 <Gtk.Button
-                    label="Restore default presets"
+                    label="Restaurar presets padrão"
                     onClicked={() => {
                         setUndoSnapshot([...settings.countdownPresets()]);
                         settings.setCountdownPresets([...DEFAULT_COUNTDOWN_PRESETS]);

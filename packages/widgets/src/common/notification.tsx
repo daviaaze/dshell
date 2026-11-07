@@ -69,7 +69,7 @@ function CardHeader({
     closeLabel: string;
 }) {
     return (
-        <Gtk.Box spacing={8}>
+        <Gtk.Box spacing={8} orientation={Gtk.Orientation.HORIZONTAL}>
             <Gtk.Image pixelSize={24} visible={!!snapshot.appIcon} iconName={snapshot.appIcon} />
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
@@ -77,7 +77,7 @@ function CardHeader({
                 spacing={2}
                 ref={(self) => addDefaultAction(self, onDefaultAction)}
             >
-                <Gtk.Box spacing={6}>
+                <Gtk.Box spacing={6} orientation={Gtk.Orientation.HORIZONTAL}>
                     <Gtk.Label
                         wrap
                         hexpand
@@ -138,7 +138,7 @@ function CardBody({
     onDefaultAction?: () => void;
 }) {
     return (
-        <Gtk.Box spacing={8} ref={(self) => addDefaultAction(self, onDefaultAction)}>
+        <Gtk.Box spacing={8} orientation={Gtk.Orientation.HORIZONTAL} ref={(self) => addDefaultAction(self, onDefaultAction)}>
             {snapshot.image ? (
                 <Gtk.Image
                     file={snapshot.image}
@@ -194,7 +194,7 @@ function CardActions({
     onActionInvoked?: () => void;
 }) {
     return (
-        <Gtk.Box spacing={4}>
+        <Gtk.Box spacing={4} orientation={Gtk.Orientation.HORIZONTAL}>
             <For each={computed(() => actions.filter((a) => a.label && a.label.trim() !== ''))}>
                 {(action: Notifd.Action) => (
                     <Gtk.Button
@@ -273,9 +273,6 @@ export default ({
                         <Gtk.Box
                             name={notification.id.toString()}
                             cssClasses={['card', urgencyClass].filter(Boolean)}
-                            css={
-                                'padding: 12px; box-shadow: none; background-color: @window_bg_color;'
-                            }
                             spacing={8}
                             orientation={Gtk.Orientation.VERTICAL}
                             ref={(self) => {

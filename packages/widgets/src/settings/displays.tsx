@@ -84,13 +84,13 @@ function modeLabel(mode: string, outputs: OutputInfo[]) {
     const externalCount = outputs.length - (hasInternal ? 1 : 0);
     switch (mode) {
         case 'internal-only':
-            return 'Internal only';
+            return 'Somente tela interna';
         case 'external-only':
-            return `External only — ${externalCount} displays`;
+            return `Somente externas — ${externalCount} telas`;
         case 'extend':
-            return `Extend — ${outputs.length} displays`;
+            return `Estender — ${outputs.length} telas`;
         case 'duplicate':
-            return `Duplicate — all ${outputs.length} displays`;
+            return `Espelhar — ${outputs.length} telas`;
         default:
             return mode;
     }
@@ -313,7 +313,7 @@ function DisplayModeChoices({
     const displayMode = bind(service, 'displayMode');
     const outputs = bind(service, 'monitors');
     return (
-        <Adw.PreferencesGroup title="Display modes">
+        <Adw.PreferencesGroup title="Modo de exibição">
             <Gtk.Box spacing={8}>
                 <For each={modes}>
                     {(value: string) => {
@@ -327,7 +327,7 @@ function DisplayModeChoices({
                                 )}
                                 tooltipText={
                                     mode === 'duplicate'
-                                        ? 'Duplicates every attached display. Different resolutions or aspect ratios may scale or stretch the image.'
+                                        ? 'Espelha todas as telas conectadas. Resoluções ou proporções diferentes podem redimensionar ou distorcer a imagem.'
                                         : undefined
                                 }
                                 onClicked={() => onPreview(mode)}
@@ -460,7 +460,7 @@ function DisplayLayoutGroup({
 }) {
     const outputs = bind(service, 'monitors');
     return (
-        <Adw.PreferencesGroup title="Display Layout">
+        <Adw.PreferencesGroup title="Arranjo das telas">
             <ArrangementCanvas
                 service={service}
                 draft={draft}
@@ -468,15 +468,15 @@ function DisplayLayoutGroup({
                 onCanvas={onCanvas}
             />
             <Adw.ActionRow
-                title="Arrangement"
+                title="Arranjo"
                 subtitle={outputs.as(
                     (attached) =>
-                        `${attached.filter((item) => item.enabled).length} active of ${attached.length} attached`
+                        `${attached.filter((item) => item.enabled).length} ativas de ${attached.length} telas conectadas`
                 )}
             />
             <Adw.ActionRow
-                title="Window tiling"
-                subtitle="Display modes change screens, not how windows tile. Configure tiling per workspace in Hyprland."
+                title="Janelas e áreas de trabalho"
+                subtitle="O arranjo altera as telas, não o tiling das janelas."
             />
         </Adw.PreferencesGroup>
     );
@@ -501,7 +501,8 @@ function MirrorSourceRow({
     );
     return (
         <Adw.ComboRow
-            title="Mirror source"
+            title="Origem do espelhamento"
+            model={new Gtk.StringList({strings: choices.map((choice) => choice.label)})}
             selected={selectedIndex}
             sensitive={!monitor.disabled}
             onNotifySelected={(row) => {
@@ -516,9 +517,7 @@ function MirrorSourceRow({
                     position: source?.position ?? spec.position,
                 }));
             }}
-        >
-            <Gtk.StringList strings={choices.map((choice) => choice.label)} />
-        </Adw.ComboRow>
+        />
     );
 }
 
@@ -537,7 +536,8 @@ function ResolutionRow({
     const modeIndex = Math.max(0, modes.indexOf(monitor?.resolution ?? output.resolution));
     return (
         <Adw.ComboRow
-            title="Resolution and refresh rate"
+            title="Resolução e taxa de atualização"
+            model={new Gtk.StringList({strings: modes})}
             selected={modeIndex}
             sensitive={modes.length > 0 && !!monitor && !monitor.disabled}
             onNotifySelected={(row) => {
@@ -547,9 +547,7 @@ function ResolutionRow({
                     updateMonitor(monitor.name, (spec) => ({...spec, resolution: mode}));
                 }
             }}
-        >
-            <Gtk.StringList strings={modes} />
-        </Adw.ComboRow>
+        />
     );
 }
 
@@ -563,7 +561,7 @@ function ScaleRow({
     updateMonitor: DraftModel['updateMonitor'];
 }) {
     return (
-        <Adw.ActionRow title="Scale">
+        <Adw.ActionRow title="Escala">
             <Gtk.SpinButton
                 adjustment={Gtk.Adjustment.new(
                     monitor?.scale ?? output.scale,
@@ -596,7 +594,12 @@ function RotationRow({
 }) {
     return (
         <Adw.ComboRow
-            title="Rotation"
+            title="Rotação"
+            model={
+                new Gtk.StringList({
+                    strings: ['Normal', '90° horário', '180°', '90° anti-horário'],
+                })
+            }
             selected={(monitor?.transform ?? output.transform) % 4}
             sensitive={!!monitor && !monitor.disabled}
             onNotifySelected={(row) => {
@@ -607,17 +610,13 @@ function RotationRow({
                     }));
                 }
             }}
-        >
-            <Gtk.StringList
-                strings={['Normal', '90° clockwise', '180°', '90° counter-clockwise']}
-            />
-        </Adw.ComboRow>
+        />
     );
 }
 
 function DisplayPowerRow({service, output}: {service: LayoutService; output: OutputInfo}) {
     return (
-        <Adw.ActionRow title="Display power">
+        <Adw.ActionRow title="Tela ligada" subtitle="Controle de energia da saída; separado de habilitar no arranjo.">
             <Gtk.Switch
                 active={output.dpms}
                 onNotifyActive={(self) => {
@@ -646,12 +645,12 @@ function DisplayOutputEditor({
     const monitor = layout.monitors.find((spec) => spec.name === output.name);
     if (!monitor) return null;
     const enabled = !monitor.disabled;
-    const mirrorCaption = monitor.mirror ? ` · Mirrors ${monitor.mirror}` : '';
+    const mirrorCaption = monitor.mirror ? ` · Espelha ${monitor.mirror}` : '';
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
             <Adw.ActionRow
                 title={output.description || output.name}
-                subtitle={`${enabled ? 'Enabled' : 'Disabled'} · ${monitor.resolution}${mirrorCaption}`}
+                subtitle={`${enabled ? 'Habilitada' : 'Desabilitada'} · ${monitor.resolution}${mirrorCaption}`}
             >
                 <Gtk.Switch
                     active={enabled}
@@ -703,13 +702,18 @@ function ConnectedDisplays({
         ));
     });
     return (
-        <Adw.PreferencesGroup title="Connected Displays">
+        <Adw.PreferencesGroup title="Telas conectadas">
             <Adw.ActionRow
                 visible={outputs.as((items) => items.length === 0)}
-                title="No displays detected"
-                subtitle="Connect a display. Available outputs update automatically."
+                title="Nenhuma tela detectada"
+                subtitle="Conecte uma tela. As saídas disponíveis são atualizadas automaticamente."
             />
             {editorRows}
+            <Adw.ActionRow
+                visible={outputs.as((items) => items.length === 0)}
+                title="Revisar saídas"
+                subtitle="Nenhuma saída está disponível para aplicar alterações."
+            />
         </Adw.PreferencesGroup>
     );
 }
@@ -727,8 +731,8 @@ function SavedLayouts({
 }) {
     const [layoutName, setLayoutName] = createState('');
     return (
-        <Adw.PreferencesGroup title="Saved Layouts">
-            <Adw.ActionRow title="Automatically apply matching layouts">
+        <Adw.PreferencesGroup title="Layouts salvos">
+            <Adw.ActionRow title="Aplicar automaticamente layouts correspondentes" subtitle="Somente layouts compatíveis e validados.">
                 <Gtk.Switch
                     active={bind(service, 'autoApply')}
                     onNotifyActive={(self) => {
@@ -737,22 +741,27 @@ function SavedLayouts({
                     }}
                 />
             </Adw.ActionRow>
+            <Adw.ActionRow
+                visible={bind(service, 'names').as((names) => names.length === 0)}
+                title="Nenhum layout salvo"
+                subtitle="Salve uma configuração confirmada para reutilizá-la."
+            />
             {bind(service, 'names').as((names) =>
                 names.map((name) => (
                     <Adw.ActionRow title={name}>
-                        <Gtk.Button label="Apply" onClicked={() => onApply(name)} />
-                        <Gtk.Button label="Delete" onClicked={() => service.remove(name)} />
+                        <Gtk.Button label="Aplicar como prévia" onClicked={() => onApply(name)} />
+                        <Gtk.Button label="Remover" onClicked={() => service.remove(name)} />
                     </Adw.ActionRow>
                 ))
             )}
-            <Adw.ActionRow title="Save current arrangement">
+            <Adw.ActionRow title="Salvar configuração confirmada">
                 <Gtk.Entry
-                    placeholderText="Layout name"
+                    placeholderText="Nome do layout"
                     hexpand
                     onChanged={(self) => setLayoutName(self.text)}
                 />
                 <Gtk.Button
-                    label="Save layout"
+                    label="Salvar layout"
                     sensitive={saveEligible}
                     onClicked={() => onSave(layoutName())}
                 />
@@ -810,29 +819,46 @@ export default () => {
                 }}
                 onSave={saveCurrent}
             />
-            <Adw.PreferencesGroup title="Display Changes" onMap={model.synchronizeTopology}>
-            <Gtk.Box spacing={8}>
-                <Gtk.Button label="Apply" hexpand onClicked={() => void actions.applyDraft()} />
-                <Gtk.Button
-                    label="Keep Changes"
-                    hexpand
-                    visible={bind(service, 'pending').as((deadline) => deadline !== null)}
-                    onClicked={() => void actions.confirm()}
+            <Adw.PreferencesGroup title="Revisar alterações" onMap={model.synchronizeTopology}>
+                <Adw.ActionRow
+                    title={bind(service, 'pending').as((deadline) =>
+                        deadline === null ? 'Estado confirmado' : 'Prévia em andamento'
+                    )}
+                    subtitle={bind(service, 'pending').as((deadline) =>
+                        deadline === null
+                            ? saveEligible()
+                                ? 'Alterações confirmadas. Este layout pode ser salvo.'
+                                : 'O arranjo atual está confirmado.'
+                            : `Confirme as alterações antes do prazo ou restaure o estado anterior.`
+                    )}
                 />
-                <Gtk.Button
-                    label="Revert"
-                    hexpand
-                    visible={bind(service, 'pending').as((deadline) => deadline !== null)}
-                    onClicked={() => void actions.revert()}
+                <Gtk.Box spacing={8}>
+                    <Gtk.Button
+                        label="Aplicar alterações"
+                        hexpand
+                        sensitive={computed(() => service.monitors.length > 0 && service.pending === null)}
+                        onClicked={() => void actions.applyDraft()}
+                    />
+                    <Gtk.Button
+                        label="Manter alterações"
+                        hexpand
+                        visible={bind(service, 'pending').as((deadline) => deadline !== null)}
+                        onClicked={() => void actions.confirm()}
+                    />
+                    <Gtk.Button
+                        label="Reverter"
+                        hexpand
+                        visible={bind(service, 'pending').as((deadline) => deadline !== null)}
+                        onClicked={() => void actions.revert()}
+                    />
+                </Gtk.Box>
+                <Gtk.Label
+                    visible={bind(service, 'error').as((error) => error !== null)}
+                    label={bind(service, 'error').as((error) => error ?? '')}
+                    wrap
+                    xalign={0}
+                    cssClasses={['error']}
                 />
-            </Gtk.Box>
-            <Gtk.Label
-                visible={bind(service, 'error').as((error) => error !== null)}
-                label={bind(service, 'error').as((error) => error ?? '')}
-                wrap
-                xalign={0}
-                cssClasses={['error']}
-            />
             </Adw.PreferencesGroup>
         </>
     );

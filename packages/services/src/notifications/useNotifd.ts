@@ -1,40 +1,32 @@
 import type Notifd from 'gi://AstalNotifd';
 import GLib from 'gi://GLib?version=2.0';
-import {type Accessor, createState, effect} from 'gnim';
+import {type Accessor, createState, effect, onCleanup} from 'gnim';
 import {getNotifdSafe, isNotifdResolved, watchNotifdInit} from './guard';
 
-/**
- * Reactive access to the AstalNotifd singleton.
- *
- * Returns an Accessor that is `null` while initializing, or permanently
- * `null` when a foreign notification daemon owns the bus name.
- *
- * Never blocks the main loop: if the singleton was already resolved
- * (services-init phase), the value is set synchronously; otherwise the
- * first D-Bus proxy construction is deferred to idle.
- *
- * Must be called inside a gnim reactive scope (component body).
- */
-export function useNotifd(): Accessor<Notifd.Notifd | null> {
-    const [notifd, setNotifd] = createState<Notifd.Notifd | null>(null);
+export interface NotifdResource {
+    value: Accessor<Notifd.Notifd | null>;
+    resolved: Accessor<boolean>;
+}
 
-    effect(() => {
-        // Fast path: resolved during services-init (success or failure).
-        if (isNotifdResolved()) {
-            setNotifd(getNotifdSafe());
-            return;
-        }
-
-        // Slow path: defer resolution so widget mount doesn't block
-        // on the D-Bus proxy handshake (up to 25s with a foreign daemon).
+/** A null value is unavailable only after resolution; pending is a separate state. */
+export function useNotifd(): NotifdResource {
+    const initialized = isNotifdResolved();
+    const [value, setValue] = createState<Notifd.Notifd | null>(initialized ? getNotifdSafe() : null);
+    const [resolved, setResolved] = createState(initialized);
+    if (!initialized) effect(() => {
         let done = false;
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        let source = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            source = 0;
+            setValue(getNotifdSafe());
+            setResolved(true);
             done = true;
-            setNotifd(getNotifdSafe());
             return GLib.SOURCE_REMOVE;
         });
         watchNotifdInit(() => done);
+        onCleanup(() => {
+            done = true;
+            if (source) GLib.source_remove(source);
+        });
     });
-
-    return notifd;
+    return {value, resolved};
 }

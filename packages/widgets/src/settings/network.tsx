@@ -15,9 +15,10 @@ import {
 import {showConnectionEditor} from './connectionEditor';
 import {showHiddenNetworkDialog} from './hiddenNetworkDialog';
 
+import ApList from '../quicksettings/network/apList';
+
 const NET_ICON_PREFIX = 16;
 const NET_ICON_SUFFIX = 14;
-const NET_SIGNAL_BAR_WIDTH = 50;
 
 /** Get all known (saved) WiFi connections from NM.Client. */
 function getKnownNetworks(client: NM.Client): {
@@ -214,19 +215,54 @@ function deactivateHotspot(
     return promise;
 }
 
+/** Available Wi-Fi networks and refresh state, using the quick-settings network rows. */
+function AvailableNetworksGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
+    const [connectingAp, setConnectingAp] = createState<string | null>(null);
+    return (
+        <With value={wifi}>
+            {(w) => w ? (
+                <Adw.PreferencesGroup
+                    title="Redes disponíveis"
+                    description={bind(w, 'scanning').as((scanning) =>
+                        scanning ? 'Buscando redes próximas…' : 'Redes próximas e estado da conexão'
+                    )}
+                >
+                    <Adw.ActionRow
+                        title="Buscar redes"
+                        subtitle={bind(w, 'scanning').as((scanning) =>
+                            scanning ? 'A busca está em andamento; a conexão permanece disponível.' : 'Atualizar redes Wi-Fi próximas'
+                        )}
+                    >
+                        <Gtk.Button
+                            valign={Gtk.Align.CENTER}
+                            label={bind(w, 'scanning').as((scanning) => scanning ? 'Buscando…' : 'Buscar')}
+                            sensitive={bind(w, 'enabled')}
+                            onClicked={() => w.scan()}
+                        />
+                        <Gtk.Spinner visible={bind(w, 'scanning')} spinning={bind(w, 'scanning')} />
+                    </Adw.ActionRow>
+                    <ApList
+                        wifi={w}
+                        connectingAp={connectingAp}
+                        setConnectingAp={setConnectingAp}
+                    />
+                </Adw.PreferencesGroup>
+            ) : null}
+        </With>
+    );
+}
 
 /** Wi-Fi group: adapter state, signal level, and hidden-network entry. */
 function WifiGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
     return (
-        <Adw.PreferencesGroup title="Wi-Fi" description="Wireless network connections">
+        <Adw.PreferencesGroup title="Adaptador Wi-Fi" description="Conexão e intensidade do sinal">
             <With value={wifi}>
                 {(w) =>
                     w ? (
                         <Adw.SwitchRow
                             title="Wi-Fi"
-                            subtitle={bind(w, 'ssid').as((ssid) =>
-                                ssid ? `Connected to ${ssid}` : 'Not connected'
-                            )}
+                            subtitle={computed(() => !bind(w, 'enabled')() ? 'Wi-Fi desligado' :
+                                bind(w, 'ssid')() ? `Conectado a ${w.ssid}` : 'Não conectado')}
                             active={bind(w, 'enabled')}
                             onNotifyActive={(self) => {
                                 w.enabled = self.active;
@@ -234,8 +270,8 @@ function WifiGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
                         />
                     ) : (
                         <Adw.ActionRow
-                            title="No Wi-Fi adapter"
-                            subtitle="Wireless features are unavailable"
+                            title="Wi-Fi indisponível"
+                            subtitle="Nenhum adaptador compatível foi detectado."
                         />
                     )
                 }
@@ -244,29 +280,30 @@ function WifiGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
                 {(w) =>
                     w ? (
                         <Adw.ActionRow
-                            title="Signal Strength"
-                            subtitle={bind(w, 'strength').as((s) => `${s}%`)}
+                            title="Intensidade do sinal"
+                            subtitle={computed(() => bind(w, 'ssid')() ? `${bind(w, 'strength')()}%` : 'Sem rede conectada')}
                         >
                             <Gtk.LevelBar
                                 valign={Gtk.Align.CENTER}
                                 value={bind(w, 'strength').as((s) => strengthFraction(s))}
-                                widthRequest={NET_SIGNAL_BAR_WIDTH}
+                                visible={bind(w, 'ssid').as((ssid) => !!ssid)}
                             />
                         </Adw.ActionRow>
                     ) : null
                 }
             </With>
             <Adw.ActionRow
-                title="Connect to Hidden Network…"
-                subtitle={wifi.as((w) =>
-                    w
-                        ? 'Connect to a network not broadcasting its name'
-                        : 'No Wi-Fi adapter available'
-                )}
-                activatable={wifi.as((w) => w !== null)}
-                sensitive={wifi.as((w) => w !== null)}
+                title="Conectar à rede oculta…"
+                subtitle={computed(() => {
+                    const w = wifi();
+                    return !w ? 'Requer adaptador Wi-Fi.' : !bind(w, 'enabled')() ?
+                        'Ative o Wi-Fi primeiro.' : 'Conectar a uma rede que não anuncia seu nome';
+                })}
+                activatable={computed(() => !!wifi() && bind(wifi()!, 'enabled')())}
+                sensitive={computed(() => !!wifi() && bind(wifi()!, 'enabled')())}
                 onActivated={(self) => {
-                    if (wifi()) showHiddenNetworkDialog(self);
+                    const parent = self.get_root();
+                    if (wifi()?.enabled && parent instanceof Gtk.Window) showHiddenNetworkDialog(parent);
                 }}
             >
                 <Gtk.Image iconName="network-wireless-symbolic" pixelSize={NET_ICON_PREFIX} />
@@ -282,7 +319,10 @@ function KnownNetworkRow({net, onChanged}: {net: KnownNetwork; onChanged: () => 
             title={net.ssid}
             subtitle={net.secLabel}
             activatable
-            onActivated={(self) => showConnectionEditor(net.ssid, net.connections, self, onChanged)}
+            onActivated={self => {
+                const parent = self.get_root();
+                if (parent instanceof Gtk.Window) showConnectionEditor(net.ssid, net.connections, parent, onChanged);
+            }}
         >
             <Gtk.Image
                 iconName={
@@ -301,7 +341,7 @@ function KnownNetworkRow({net, onChanged}: {net: KnownNetwork; onChanged: () => 
                         .then(onChanged)
                         .catch((e: Error) => logger.error(LOG_TAG, 'forget failed:', e.message));
                 }}
-                tooltipText="Forget Network"
+                tooltipText="Esquecer rede"
             >
                 <Gtk.Image iconName="user-trash-symbolic" pixelSize={NET_ICON_SUFFIX} />
             </Gtk.Button>
@@ -312,19 +352,19 @@ function KnownNetworkRow({net, onChanged}: {net: KnownNetwork; onChanged: () => 
 /** Wired group: ethernet state row. */
 function WiredGroup({wired}: {wired: Accessor<Network.Wired | null>}) {
     return (
-        <Adw.PreferencesGroup title="Wired" description="Ethernet connection">
+        <Adw.PreferencesGroup title="Conexão por cabo" description="Estado da conexão Ethernet">
             <With value={wired}>
                 {(w) =>
                     w ? (
                         <Adw.ActionRow
-                            title="Wired Connection"
+                            title="Conexão por cabo"
                             subtitle={bind(w, 'state').as((s) =>
-                                s === Network.DeviceState.ACTIVATED ? 'Connected' : 'Disconnected'
+                                s === Network.DeviceState.ACTIVATED ? 'Conectado à rede' : 'Desconectado'
                             )}
                         >
                             <Gtk.Image iconName={bind(w, 'icon-name')} />
                         </Adw.ActionRow>
-                    ) : null
+                    ) : <Adw.ActionRow title="Conexão por cabo indisponível" subtitle="Nenhum adaptador Ethernet foi detectado." />
                 }
             </With>
         </Adw.PreferencesGroup>
@@ -481,13 +521,13 @@ function HotspotGroup({
                     return capabilityError() === null && (wifiEnabled?.() ?? false);
                 });
                 const subtitle = computed(() => {
-                    if (pending()) return pendingTarget() ? 'Starting…' : 'Stopping…';
-                    if (actualHotspot?.()) return 'Active';
+                    if (pending()) return pendingTarget() ? 'Ativando…' : 'Desativando…';
+                    if (actualHotspot?.()) return 'Hotspot em funcionamento';
                     return (
                         capabilityError() ??
                         ((wifiEnabled?.() ?? false)
-                            ? 'Inactive'
-                            : 'Turn on Wi-Fi to start a hotspot')
+                            ? 'Desligado'
+                            : 'Ative o Wi-Fi para iniciar um hotspot')
                     );
                 });
 
@@ -495,7 +535,7 @@ function HotspotGroup({
                     <>
                         <Adw.PreferencesGroup
                             title="Hotspot"
-                            description="Create a WPA2-protected Wi-Fi access point"
+                            description="Compartilhar uma conexão por uma rede Wi-Fi protegida WPA2"
                         >
                             <Adw.ActionRow title="Hotspot" subtitle={subtitle}>
                                 <Gtk.Switch
@@ -513,33 +553,26 @@ function HotspotGroup({
                                     }}
                                 />
                             </Adw.ActionRow>
-                            <Adw.EntryRow title="Network name" sensitive={controlsEnabled}>
-                                <Gtk.Entry
-                                    placeholderText="SSID (1–32 bytes)"
-                                    text={ssid}
-                                    ref={(entry) =>
-                                        entry.connect('notify::text', () => {
-                                            setSsid(entry.get_text());
-                                            setErrorMsg(null);
-                                        })
-                                    }
-                                />
-                            </Adw.EntryRow>
-                            <Adw.EntryRow title="Password" sensitive={controlsEnabled}>
-                                <Gtk.Entry
-                                    placeholderText="8–63 bytes"
-                                    text={password}
-                                    visibility={false}
-                                    ref={(entry) =>
-                                        entry.connect('notify::text', () => {
-                                            setPassword(entry.get_text());
-                                            setErrorMsg(null);
-                                        })
-                                    }
-                                />
-                            </Adw.EntryRow>
+                            <Adw.EntryRow
+                                title="Nome da rede"
+                                sensitive={controlsEnabled}
+                                text={ssid}
+                                onNotifyText={(entry) => {
+                                    setSsid(entry.text);
+                                    setErrorMsg(null);
+                                }}
+                            />
+                            <Adw.PasswordEntryRow
+                                title="Senha da rede"
+                                sensitive={controlsEnabled}
+                                text={password}
+                                onNotifyText={(entry) => {
+                                    setPassword(entry.text);
+                                    setErrorMsg(null);
+                                }}
+                            />
                             <Adw.ActionRow
-                                title="Hotspot error"
+                                title="Não foi possível alterar o hotspot"
                                 subtitle={errorMsg.as((error) => error ?? '')}
                                 visible={errorMsg.as((error) => error !== null)}
                                 cssClasses={['error']}
@@ -555,13 +588,14 @@ function HotspotGroup({
 /** Connectivity group: internet access status. */
 function ConnectivityGroup({network}: {network: NetworkService}) {
     return (
-        <Adw.PreferencesGroup title="Connectivity" description="Internet access status">
+        <Adw.PreferencesGroup title="Acesso à internet" description="Estar conectado a uma rede não garante acesso à internet.">
             <Adw.ActionRow
-                title="Connectivity"
+                title="Estado da internet"
                 subtitle={bind(network, 'connectivity').as((c) => {
-                    if (c === Network.Connectivity.FULL) return 'Full internet access';
-                    if (c === Network.Connectivity.LIMITED) return 'Limited connectivity';
-                    return 'No connectivity';
+                    if (c === Network.Connectivity.FULL) return 'Acesso à internet';
+                    if (c === Network.Connectivity.LIMITED) return 'Conectividade limitada';
+                    if (c === Network.Connectivity.PORTAL) return 'Autenticação na rede necessária';
+                    return 'Sem acesso confirmado à internet';
                 })}
             />
         </Adw.PreferencesGroup>
@@ -593,16 +627,21 @@ export default () => {
     return (
         <>
             <WifiGroup wifi={wifi} />
+            <AvailableNetworksGroup wifi={wifi} />
             <Adw.PreferencesGroup
-                title="Known Networks"
-                description="Saved Wi-Fi networks"
-                visible={wifi.as((w) => w !== null)}
+                title="Redes conhecidas"
+                description="Configurações Wi-Fi guardadas; selecione uma rede para editar."
             >
                 <For each={knownNetworks}>
                     {(net: KnownNetwork) => (
                         <KnownNetworkRow net={net} onChanged={onKnownChanged} />
                     )}
                 </For>
+                <Adw.ActionRow
+                    title="Nenhuma rede conhecida"
+                    subtitle="As redes salvas aparecerão aqui."
+                    visible={knownNetworks.as((networks) => networks.length === 0)}
+                />
             </Adw.PreferencesGroup>
             <WiredGroup wired={wired} />
             <HotspotGroup

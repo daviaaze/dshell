@@ -17,6 +17,30 @@ export const MAGICK_BIN = Process.findBinary('magick');
 
 // ── Directory helpers ─────────────────────────────────────────────
 
+export type CaptureUpdate =
+    | {state: 'busy'; kind: 'screenshot' | 'recording'}
+    | {state: 'result'; kind: 'screenshot' | 'recording'; path: string}
+    | {state: 'error'; message: string}
+    | {state: 'idle'};
+
+const captureObservers = new Set<(update: CaptureUpdate) => void>();
+export function observeCapture(observer: (update: CaptureUpdate) => void): () => void {
+    captureObservers.add(observer);
+    return () => captureObservers.delete(observer);
+}
+export function publishCapture(update: CaptureUpdate): void {
+    for (const observer of [...captureObservers]) observer(update);
+}
+
+export function requireCaptureFile(path: string): void {
+    const info = Gio.File.new_for_path(path).query_info(
+        'standard::size,standard::type', Gio.FileQueryInfoFlags.NONE, null
+    );
+    if (info.get_file_type() !== Gio.FileType.REGULAR || info.get_size() === 0) {
+        throw new Error('O arquivo de captura está vazio ou não foi concluído.');
+    }
+}
+
 /**
  * Ensure SCREENSHOT_DIR exists. If it cannot be created, falls back to /tmp
  * and updates SCREENSHOT_DIR. Logs errors via logger.
@@ -192,18 +216,21 @@ export function freshScreenshotFilename(ext = 'png'): string {
  * The single post-capture pipeline every screenshot path funnels through:
  * clipboard copy, notification, and the sound-alert bus event.
  */
-export function finalizeImage(filename: string, area: boolean): void {
-    copyImageToClipboard(filename);
+export async function finalizeImage(filename: string, area: boolean): Promise<void> {
+    requireCaptureFile(filename);
+    await copyImageToClipboard(filename);
     notify('Screenshot saved', filename, 'camera-photo-symbolic');
     if (area) {
         bus.emit('capture:screenshot:area');
     } else {
         bus.emit('capture:screenshot', true);
     }
+    publishCapture({state: 'result', kind: 'screenshot', path: filename});
 }
 
 /** Shared failure notification for capture paths. */
 export function notifyCaptureFailed(detail: string): void {
+    publishCapture({state: 'error', message: detail});
     notify('Screenshot failed', detail, 'dialog-error-symbolic');
 }
 
@@ -216,24 +243,36 @@ export function notifyCaptureFailed(detail: string): void {
  * Uses Gio.Subprocess with stdin pipe instead of shell redirect
  * because GLib.shell_parse_argv does not handle shell operators like <.
  */
-export function copyImageToClipboard(filename: string): void {
+export async function copyImageToClipboard(filename: string): Promise<void> {
     try {
         const wlCopy = Process.findBinary('wl-copy');
         if (wlCopy !== 'wl-copy') {
             const file = Gio.File.new_for_path(filename);
             const [ok, contents] = file.load_contents(null);
-            if (ok && contents) {
-                const proc = Gio.Subprocess.new(
-                    [wlCopy, '--type', 'image/png'],
-                    Gio.SubprocessFlags.STDIN_PIPE
-                );
-                const stdin = proc.get_stdin_pipe();
-                if (stdin) {
-                    stdin.write_all(contents, null);
-                    stdin.close(null);
-                }
-                proc.wait(null);
+            if (!ok || !contents) {
+                throw new Error(`Could not read clipboard image: ${filename}`);
             }
+            const proc = Gio.Subprocess.new(
+                [wlCopy, '--type', 'image/png'],
+                Gio.SubprocessFlags.STDIN_PIPE
+            );
+            // Writing a PNG can fill the pipe; wl-copy can also need clipboard
+            // events served by this GJS loop before its launcher exits.
+            // communicate_async owns stdin closure and reaps that launcher;
+            // wl-copy owns its detached clipboard server after a successful exit.
+            const {promise, resolve, reject} = Promise.withResolvers<void>();
+            proc.communicate_async(new GLib.Bytes(contents), null, (_, result) => {
+                try {
+                    proc.communicate_finish(result);
+                    if (!proc.get_successful()) {
+                        throw new Error(`wl-copy exited with status ${proc.get_exit_status()}`);
+                    }
+                    resolve();
+                } catch (e) {
+                    reject(e);
+                }
+            });
+            await promise;
             logger.debug('screenshot', `copied to clipboard via wl-copy: ${filename}`);
             return;
         }
@@ -248,19 +287,21 @@ export function copyImageToClipboard(filename: string): void {
         // Fallback: use Gdk clipboard
         const display = Gdk.Display.get_default();
         if (!display) {
-            logger.warn('screenshot', 'no display for clipboard copy');
-            return;
+            throw new Error('No display for clipboard copy');
         }
         const texture = Gdk.Texture.new_from_filename(filename);
         const clipboard = display.get_clipboard();
         const bytes = texture.save_to_png_bytes();
         const provider = Gdk.ContentProvider.new_for_bytes('image/png', bytes);
-        clipboard.set_content(provider);
+        if (!clipboard.set_content(provider)) {
+            throw new Error('Could not set image clipboard content');
+        }
         logger.debug('screenshot', `copied to clipboard via Gdk: ${filename}`);
     } catch (e) {
         logger.warn(
             'screenshot',
             `clipboard copy failed: ${e instanceof Error ? e.message : String(e)}`
         );
+        throw e;
     }
 }

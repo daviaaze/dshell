@@ -1,3 +1,4 @@
+import GObject from 'gi://GObject?version=2.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import AudioController from '@shade/services/audio/audioController';
@@ -21,40 +22,67 @@ export default ({
     const shellState = ShellState.get_default();
     const audioCtrl = AudioController.get_default();
     return (
-        <Gtk.ToggleButton
+        <Gtk.Box
             visible={visible}
-            cssClasses={vertical.as((v) =>
-                v ? ['flat', 'bar-vertical-content-button'] : ['flat']
+            spacing={4}
+            orientation={vertical.as((v) =>
+                v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
             )}
-            cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            active={bind(shellState, 'qsOpen')}
-            onClicked={() => shellState.toggleQuickSettings()}
-            ref={(self) => {
-                const scrollCtrl = new Gtk.EventControllerScroll({
-                    flags: Gtk.EventControllerScrollFlags.VERTICAL,
-                });
-                scrollCtrl.connect('scroll', (_ctrl, _dx: number, dy: number) => {
-                    audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
-                    return false;
-                });
-                self.add_controller(scrollCtrl);
-            }}
         >
-            <Gtk.Box
-                spacing={4}
-                orientation={vertical.as((v) =>
-                    v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
+            <Gtk.ToggleButton
+                cssClasses={vertical.as((v) =>
+                    v ? ['flat', 'bar-vertical-content-button'] : ['flat']
                 )}
+                cursor={Gdk.Cursor.new_from_name('pointer', null)}
+                active={bind(shellState, 'qsOpen')}
+                onClicked={() => shellState.toggleQuickSettings()}
+                ref={(self) => {
+                    const scrollCtrl = new Gtk.EventControllerScroll({
+                        flags: Gtk.EventControllerScrollFlags.VERTICAL,
+                    });
+                    scrollCtrl.connect('scroll', (_ctrl, _dx: number, dy: number) => {
+                        audioCtrl.adjustVolume(dy > 0 ? -0.025 : 0.025);
+                        return false;
+                    });
+                    self.add_controller(scrollCtrl);
+                }}
             >
-                <KeepAwakeIndicator />
-                <PowerIndicator />
-                <BluetoothIndicator />
-                <NetworkIndicator />
-                <BatteryIndicator />
-                <MicrophoneIndicator />
-                <SpeakerIndicator />
-                <DNDIndicator />
-            </Gtk.Box>
-        </Gtk.ToggleButton>
+                <Gtk.Box
+                    spacing={4}
+                    orientation={vertical.as((v) =>
+                        v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
+                    )}
+                >
+                    <KeepAwakeIndicator />
+                    <PowerIndicator />
+                    <BluetoothIndicator />
+                    <NetworkIndicator />
+                    <BatteryIndicator />
+                    <MicrophoneIndicator />
+                    <SpeakerIndicator />
+                    <DNDIndicator />
+                </Gtk.Box>
+            </Gtk.ToggleButton>
+            <Gtk.ToggleButton
+                cssClasses={vertical.as((v) =>
+                    v ? ['flat', 'bar-vertical-content-button'] : ['flat']
+                )}
+                cursor={Gdk.Cursor.new_from_name('pointer', null)}
+                active={bind(shellState, 'notificationsOpen')}
+                onClicked={(self) => {
+                    shellState.toggleNotifications();
+                    self.active = shellState.notificationsOpen;
+                }}
+                tooltipText="Notifications"
+                ref={(self) =>
+                    self.update_property(
+                        [Gtk.AccessibleProperty.LABEL],
+                        [new GObject.Value(GObject.TYPE_STRING, 'Open notification center')]
+                    )
+                }
+            >
+                <Gtk.Image iconName="notifications-symbolic" />
+            </Gtk.ToggleButton>
+        </Gtk.Box>
     );
 };

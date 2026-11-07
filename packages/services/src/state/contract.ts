@@ -4,6 +4,7 @@ export interface ShellEvents {
     'shell:lockscreen': void;
     'shell:launcher:toggle': void;
     'shell:qs:toggle': void;
+    'shell:notifications:toggle': void;
     'shell:bar:toggle': void;
     'shell:windowswitcher:toggle': void;
 
@@ -12,6 +13,8 @@ export interface ShellEvents {
     'shell:unlock': void;
     'shell:qs:close': void;
     'shell:launcher:close': void;
+    'shell:notifications:open': void;
+    'shell:notifications:close': void;
 
     /** Commands — delegate to widget actions */
     'shell:clipboard:toggle': void;

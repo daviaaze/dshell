@@ -4,11 +4,11 @@ import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
 import {bind, effect} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
 import {QuickControlButton} from '../../common/quickControlButton';
-import type {QuickButton} from './quickButton';
+import type {QuickDetailButton} from './quickButton';
 
 const SET_SCHEME = 'display:colorscheme:set';
 
-export default (): QuickButton => {
+export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const colorScheme = ColorScheme.get_default();
     const requestedScheme = bind(colorScheme, 'colorScheme');
     const group = new Gtk.CheckButton();
@@ -46,15 +46,14 @@ export default (): QuickButton => {
         syncChoices();
     });
 
-    const popover = (
-        <Gtk.Popover cssClasses={[]}>
-            <LinkedBox>
-                {choices.map(({button}) => button)}
-            </LinkedBox>
-        </Gtk.Popover>
+    const detail = (
+        <LinkedBox>
+            {choices.map(({button}) => button)}
+        </LinkedBox>
     );
 
     return {
+        detail,
         widget: (
             <QuickControlButton
                 intent="action"
@@ -77,7 +76,7 @@ export default (): QuickButton => {
                         bus.emit(SET_SCHEME, DarkModes.LIGHT);
                     }
                 }}
-                menu={{label: 'Theme options', popover}}
+                detail={{label: 'Theme options', onOpen}}
             />
         ),
     };

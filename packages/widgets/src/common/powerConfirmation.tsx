@@ -7,9 +7,9 @@ import GLib from 'gi://GLib?version=2.0';
 export type ConfirmablePowerAction = 'logout' | 'reboot' | 'poweroff';
 const openDialogs = new WeakMap<Gtk.Window, Adw.AlertDialog>();
 const COPY: Record<ConfirmablePowerAction, {heading: string; body: string; confirm: string}> = {
-    logout: {heading: 'Log out?', body: 'This ends your session. Unsaved work may be lost.', confirm: 'Log out'},
-    reboot: {heading: 'Restart?', body: 'This restarts the computer and ends all sessions. Unsaved work may be lost.', confirm: 'Restart'},
-    poweroff: {heading: 'Power off?', body: 'This shuts down the computer and ends all sessions. Unsaved work may be lost.', confirm: 'Power off'},
+    logout: {heading: 'Sair da sessão?', body: 'Os aplicativos desta sessão serão fechados. Trabalho não salvo pode ser perdido.', confirm: 'Sair da sessão'},
+    reboot: {heading: 'Reiniciar o computador?', body: 'As sessões serão encerradas e o computador será reiniciado. Trabalho não salvo pode ser perdido.', confirm: 'Reiniciar'},
+    poweroff: {heading: 'Desligar o computador?', body: 'As sessões serão encerradas e o computador será desligado. Trabalho não salvo pode ser perdido.', confirm: 'Desligar'},
 };
 
 function restoreConfirmationFocus(root: Gtk.Window, target: Gtk.Widget, previousKeymode: Astal.Keymode | null): void {
@@ -60,7 +60,7 @@ export function presentPowerConfirmation(parent: Gtk.Widget, action: Confirmable
     const copy = COPY[action];
     const dialog = new Adw.AlertDialog({heading: copy.heading, body: copy.body,
         defaultResponse: 'cancel', closeResponse: 'cancel'});
-    dialog.add_response('cancel', 'Cancel');
+    dialog.add_response('cancel', 'Cancelar');
     dialog.add_response('confirm', copy.confirm);
     dialog.set_response_appearance('confirm', Adw.ResponseAppearance.DESTRUCTIVE);
     let alive = true;

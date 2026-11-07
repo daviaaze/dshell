@@ -2,6 +2,7 @@
  * GTK widget builders for the picker UI.
  */
 import Gtk from 'gi://Gtk?version=4.0';
+import GObject from 'gi://GObject?version=2.0';
 import type {MonitorState, PreviewHandle, PreviewState, SelectFn, WindowState} from './types';
 
 const PICTURE_W = 240;
@@ -108,13 +109,14 @@ function noWindows(provided: boolean): Gtk.Widget {
 
 function buildFlowBox(): Gtk.FlowBox {
     return new Gtk.FlowBox({
-        minChildrenPerLine: 2,
+        minChildrenPerLine: 1,
         maxChildrenPerLine: 4,
         selectionMode: Gtk.SelectionMode.NONE,
         columnSpacing: 8,
         rowSpacing: 8,
         homogeneous: true,
         hexpand: true,
+        valign: Gtk.Align.START,
     });
 }
 
@@ -152,6 +154,9 @@ function buildCard(
     }
 
     const button = new Gtk.Button({child: inner, cssClasses: ['flat']});
+    // Preview loading must not change the identity of the selectable source.
+    button.update_property([Gtk.AccessibleProperty.LABEL],
+        [new GObject.Value(GObject.TYPE_STRING, [labelText, subText].filter(Boolean).join(' — '))]);
     button.connect('clicked', onClick);
 
     flow.append(new Gtk.FlowBoxChild({child: button}));

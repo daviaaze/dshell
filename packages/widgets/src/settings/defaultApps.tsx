@@ -17,18 +17,18 @@ type AppCategory =
     | {label: string; contentType: string};
 
 const CATEGORIES: AppCategory[] = [
-    {label: 'Web Browser', contentType: 'x-scheme-handler/http'},
-    {label: 'Email Client', contentType: 'x-scheme-handler/mailto'},
-    {label: 'Music Player', family: 'audio'},
-    {label: 'Video Player', family: 'video'},
-    {label: 'Photo Viewer', family: 'image'},
-    {label: 'Text Editor', contentType: 'text/plain'},
-    {label: 'File Manager', contentType: 'inode/directory'},
+    {label: 'Navegador web', contentType: 'x-scheme-handler/http'},
+    {label: 'Cliente de e-mail', contentType: 'x-scheme-handler/mailto'},
+    {label: 'Reprodutor de música', family: 'audio'},
+    {label: 'Reprodutor de vídeo', family: 'video'},
+    {label: 'Visualizador de imagens', family: 'image'},
+    {label: 'Editor de texto', contentType: 'text/plain'},
+    {label: 'Gerenciador de arquivos', contentType: 'inode/directory'},
     {label: 'Terminal', contentType: 'x-scheme-handler/terminal'},
 ];
 
 function appName(app: Gio.AppInfo | null): string {
-    return app ? app.get_display_name() || app.get_name() || 'Unknown application' : 'No default app';
+    return app ? app.get_display_name() || app.get_name() || 'Aplicativo desconhecido' : 'Nenhum aplicativo padrão';
 }
 
 function readType(contentType: string, mimeType: string): DefaultAppTypeState {
@@ -244,9 +244,9 @@ function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
         if (selectionOffset) {
             // Native ComboRow auto-selects index zero and rejects an invalid
             // selection on a populated model. This row never represents an app.
-            model.append(snapshot.model.defaults.kind === 'mixed' ? 'Mixed defaults'
-                : snapshot.model.defaults.kind === 'unread' ? 'Defaults unavailable'
-                : 'No default application');
+            model.append(snapshot.model.defaults.kind === 'mixed' ? 'Padrões diferentes'
+                : snapshot.model.defaults.kind === 'unread' ? 'Padrões indisponíveis'
+                : 'Nenhum aplicativo padrão');
         }
         snapshot.model.choices.forEach((choice) => model.append(selectableAppLabel(choice.app)));
         row.model = model;

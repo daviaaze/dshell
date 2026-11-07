@@ -5,12 +5,12 @@ import Inhibit from '@shade/services/power/inhibit';
 import {bind, computed} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
 import {QuickControlButton} from '../../common/quickControlButton';
-import type {QuickButton} from './quickButton';
+import type {QuickDetailButton} from './quickButton';
 
 const SET_DURATION = 'power:inhibit:set-duration';
 const START_INDEFINITE = 'power:inhibit:start-indefinite';
 
-export default (): QuickButton => {
+export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const inhibit = Inhibit.get_default();
     const idle = bind(inhibit, 'idle');
     const remaining = bind(inhibit, 'remaining');
@@ -28,39 +28,38 @@ export default (): QuickButton => {
     const actionLabel = computed(() =>
         idle() ? 'Turn sleep prevention off' : 'Prevent sleep indefinitely'
     );
-    const popover = (
-        <Gtk.Popover cssClasses={[]}>
-            <LinkedBox>
-                <Gtk.Button onClicked={() => bus.emit(START_INDEFINITE, [])}>
-                    <Adw.ButtonContent iconName="weather-clear-symbolic" label="Indefinitely" />
-                </Gtk.Button>
-                <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 5)}>
-                    <Adw.ButtonContent
-                        iconName="preferences-system-time-symbolic"
-                        label="5 minutes"
-                    />
-                </Gtk.Button>
-                <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 15)}>
-                    <Adw.ButtonContent
-                        iconName="preferences-system-time-symbolic"
-                        label="15 minutes"
-                    />
-                </Gtk.Button>
-                <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 60)}>
-                    <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="1 hour" />
-                </Gtk.Button>
-                <Gtk.Separator visible={bind(inhibit, 'idle')} />
-                <Gtk.Button
-                    visible={bind(inhibit, 'idle')}
-                    onClicked={() => bus.emit('power:inhibit:set-idle', false)}
-                >
-                    <Adw.ButtonContent iconName="window-close-symbolic" label="Off" />
-                </Gtk.Button>
-            </LinkedBox>
-        </Gtk.Popover>
+    const detail = (
+        <LinkedBox>
+            <Gtk.Button onClicked={() => bus.emit(START_INDEFINITE, [])}>
+                <Adw.ButtonContent iconName="weather-clear-symbolic" label="Indefinitely" />
+            </Gtk.Button>
+            <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 5)}>
+                <Adw.ButtonContent
+                    iconName="preferences-system-time-symbolic"
+                    label="5 minutes"
+                />
+            </Gtk.Button>
+            <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 15)}>
+                <Adw.ButtonContent
+                    iconName="preferences-system-time-symbolic"
+                    label="15 minutes"
+                />
+            </Gtk.Button>
+            <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 60)}>
+                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="1 hour" />
+            </Gtk.Button>
+            <Gtk.Separator visible={bind(inhibit, 'idle')} />
+            <Gtk.Button
+                visible={bind(inhibit, 'idle')}
+                onClicked={() => bus.emit('power:inhibit:set-idle', false)}
+            >
+                <Adw.ButtonContent iconName="window-close-symbolic" label="Off" />
+            </Gtk.Button>
+        </LinkedBox>
     );
 
     return {
+        detail,
         widget: (
             <QuickControlButton
                 intent="toggle"
@@ -73,7 +72,7 @@ export default (): QuickButton => {
                     if (inhibit.idle) bus.emit('power:inhibit:set-idle', false);
                     else bus.emit(START_INDEFINITE, []);
                 }}
-                menu={{label: 'Sleep prevention options', popover}}
+                detail={{label: 'Sleep prevention options', onOpen}}
             />
         ),
     };

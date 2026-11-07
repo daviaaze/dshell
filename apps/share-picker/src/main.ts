@@ -25,7 +25,7 @@ import {ColorScheme} from '@shade/services/display/colorScheme';
 import {Theme} from '@shade/style/theme';
 import {captureMonitor, captureWindow, cleanTempDir, ensureTempDir, GRIM_BIN} from './capture';
 import {MonitorPoller} from './poller';
-import {HYPRCTL_BIN, parseWindowList} from './protocol';
+import {HYPRCTL_BIN, getHyprClients, getHyprMonitors, parseWindowList} from './protocol';
 import {buildSources} from './sources';
 import type {MonitorState, ParsedWindowList, PreviewHandle, SelectFn, WindowState} from './types';
 import {buildCombinedTab, buildScreensTab, buildWindowsTab, type CombinedTab, type Tab} from './ui';
@@ -52,6 +52,7 @@ function makeSelectFn(app: Gtk.Application, token: TokenState): SelectFn {
             printOut(`[SELECTION]${token.value ? 'r' : ''}/${kind}:${id}`);
         } catch (e) {
             logger.error(CAT, `select: print failed for ${kind}:${id}`, e);
+            throw e;
         }
         try {
             app.quit();
@@ -85,11 +86,11 @@ function buildPicker(
 ): PickerUi {
     const win = new Gtk.Window({
         application: app,
-        title: 'Share Screen / Window',
-        defaultWidth: 720,
-        defaultHeight: 520,
+        title: 'Escolha o que compartilhar',
+        defaultWidth: 760,
+        defaultHeight: 600,
         resizable: true,
-        decorated: false,
+        decorated: true,
         hideOnClose: false,
         cssClasses: ['picker-popup', 'background'],
     });
@@ -103,45 +104,114 @@ function buildPicker(
         marginEnd: 12,
     });
 
-    mainBox.append(
-        new Gtk.Label({
-            label: 'Select what to share',
-            cssClasses: ['title-2'],
-            halign: Gtk.Align.START,
-        })
-    );
-
-    const notebook = new Gtk.Notebook();
+    const heading = new Gtk.Label({
+        label: 'Escolha o que compartilhar',
+        cssClasses: ['title-2'],
+        halign: Gtk.Align.START,
+    });
+    mainBox.append(heading);
+    const explanation = new Gtk.Label({
+        label: 'Inspecionar a prévia não autoriza compartilhamento.',
+        wrap: true,
+        xalign: 0,
+        cssClasses: ['dim-label'],
+    });
+    mainBox.append(explanation);
+    const notebook = new Gtk.Notebook({vexpand: true});
     notebook.set_scrollable(true);
-
-    const screensTab = buildScreensTab(monitors, select);
-    notebook.append_page(screensTab.page, new Gtk.Label({label: 'Screens'}));
-
-    const windowsTab = buildWindowsTab(windows, select, windowListProvided);
-    notebook.append_page(windowsTab.page, new Gtk.Label({label: 'Windows'}));
-
-    const combinedTab = buildCombinedTab(monitors, windows, select, windowListProvided);
-    notebook.append_page(combinedTab.page, new Gtk.Label({label: 'All'}));
+    let pending: {kind: 'screen' | 'window'; id: string} | null = null;
+    const review = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 12, visible: false});
+    const picture = new Gtk.Picture({heightRequest: 180, canShrink: true});
+    const summary = new Gtk.Label({wrap: true, xalign: 0, selectable: true});
+    const confirm = new Gtk.Button({label: 'Compartilhar', sensitive: false, cssClasses: ['suggested-action']});
+    let submitted = false;
+    const reset = () => {
+        pending = null;
+        picture.paintable = null;
+        review.visible = false;
+        notebook.visible = true;
+        confirm.sensitive = false;
+        heading.label = 'Escolha o que compartilhar';
+        explanation.label = 'Inspecionar a prévia não autoriza compartilhamento.';
+    };
+    const choose: SelectFn = (kind, id) => {
+        const monitor = monitors.find((source) => source.info.name === id);
+        const window = windows.find((source) => source.info.id === id);
+        if (kind === 'screen' ? !monitor : !window) return;
+        pending = {kind, id};
+        picture.paintable = kind === 'screen' ? monitor?.texture ?? null : window?.texture ?? null;
+        summary.label = kind === 'screen'
+            ? `${monitor?.info.description || id}\nTela inteira; outras janelas visíveis também podem ser expostas.`
+            : `${window?.info.title || id}\n${window?.info.clazz || ''}`;
+        heading.label = kind === 'screen' ? 'Revise a tela escolhida' : 'Revise a janela escolhida';
+        explanation.label = 'A prévia pode estar indisponível; a fonte só será enviada após Compartilhar. O aplicativo solicitante controla o início da transmissão.';
+        confirm.sensitive = true;
+        notebook.visible = false;
+        review.visible = true;
+    };
+    review.append(picture);
+    review.append(summary);
+    const change = new Gtk.Button({label: 'Escolher outra fonte', halign: Gtk.Align.START});
+    change.connect('clicked', reset);
+    review.append(change);
+    const screensTab = buildScreensTab(monitors, choose);
+    notebook.append_page(screensTab.page, new Gtk.Label({label: 'Telas'}));
+    const windowsTab = buildWindowsTab(windows, choose, windowListProvided);
+    notebook.append_page(windowsTab.page, new Gtk.Label({label: 'Janelas'}));
+    const combinedTab = buildCombinedTab(monitors, windows, choose, windowListProvided);
+    notebook.append_page(combinedTab.page, new Gtk.Label({label: 'Todas as fontes'}));
 
     mainBox.append(notebook);
+    mainBox.append(review);
 
     // ── Token restore checkbox ──────────────────────────
     const tokenBox = new Gtk.CheckButton({
-        label: 'Allow restore token',
+        label: 'Permitir token de restauração',
         active: token.value,
+        visible: token.value || programArgs.includes('--allow-token'),
     });
     tokenBox.connect('toggled', () => {
         token.value = tokenBox.active;
     });
     mainBox.append(tokenBox);
 
-    // ── Cancel ──────────────────────────────────────────
-    const cancelBtn = new Gtk.Button({
-        label: 'Cancel',
-        halign: Gtk.Align.CENTER,
-    });
+    mainBox.append(new Gtk.Label({
+        label: 'O token pertence a este pedido; não salva uma preferência do shell.',
+        wrap: true, xalign: 0, cssClasses: ['caption', 'dim-label'],
+    }));
+    const actions = new Gtk.Box({spacing: 12, halign: Gtk.Align.END});
+    const back = new Gtk.Button({label: 'Voltar'});
+    back.connect('clicked', reset);
+    actions.append(back);
+    const cancelBtn = new Gtk.Button({label: 'Cancelar'});
     cancelBtn.connect('clicked', () => app.quit());
-    mainBox.append(cancelBtn);
+    actions.append(cancelBtn);
+    confirm.connect('clicked', () => {
+        if (!pending || submitted) return;
+        const {kind, id} = pending;
+        const source = windows.find((item) => item.info.id === id);
+        const exists = kind === 'screen'
+            ? getHyprMonitors().some((item) => item.name === id)
+            : getHyprClients().some((item) => item.mapped && !item.hidden &&
+                (source?.hyprAddress ? item.address === source.hyprAddress :
+                    source ? item.class === source.info.clazz && item.title === source.info.title : false));
+        if (!exists) {
+            reset();
+            explanation.label = 'A fonte não está mais disponível. Escolha outra fonte ou cancele.';
+            return;
+        }
+        submitted = true;
+        confirm.sensitive = false;
+        try {
+            select(kind, id);
+        } catch {
+            submitted = false;
+            confirm.sensitive = true;
+            explanation.label = 'Não foi possível enviar a escolha ao portal. Tente novamente ou cancele.';
+        }
+    });
+    actions.append(confirm);
+    mainBox.append(actions);
 
     GObject.signal_connect(win, 'close-request', () => app.quit());
     win.set_child(mainBox);

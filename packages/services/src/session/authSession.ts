@@ -103,6 +103,22 @@ export default class AuthSession extends Object {
     #savedBrightness = -1;
     #initialized = false;
     #authStatus = '';
+    #passwordError = '';
+
+    @property
+    get passwordBusy(): boolean {
+        return this.#activeAttempt !== null;
+    }
+
+    @property
+    get passwordError(): string {
+        return this.#passwordError;
+    }
+
+    #setPasswordError(message: string): void {
+        this.#passwordError = message;
+        this.notify('password-error');
+    }
 
     /** Human-readable auth status for UI display. */
     @property
@@ -140,6 +156,7 @@ export default class AuthSession extends Object {
 
         this.#activeAttempt = null;
         this.#attemptGeneration++;
+        this.notify('password-busy');
         try {
             attempt.cancel();
         } catch (e) {
@@ -174,10 +191,13 @@ export default class AuthSession extends Object {
         const generation = ++this.#attemptGeneration;
         const attempt: ActiveAttempt = {generation, cancel: () => {}};
         this.#activeAttempt = attempt;
+        this.#setPasswordError('');
+        this.notify('password-busy');
         this.authStatus = 'Authenticating...';
         this.#pamTimeout.start(this.#pamTimeoutMs, () => {
             if (!this.#isCurrentAttempt(attempt)) return;
             this.#retireAttempt(attempt);
+            this.#setPasswordError('A verificação demorou demais. Tente novamente.');
             this.authStatus = 'Authentication timed out. Try again.';
         });
 
@@ -189,6 +209,7 @@ export default class AuthSession extends Object {
                     this.#complete();
                     this.success();
                 } else {
+                    this.#setPasswordError('Senha não aceita. Confira a senha e tente novamente.');
                     this.authStatus = 'Authentication failed';
                 }
             });
@@ -201,9 +222,20 @@ export default class AuthSession extends Object {
             logger.error('auth', 'could not run PAM authentication worker:', e);
             if (this.#isCurrentAttempt(attempt)) {
                 this.#retireAttempt(attempt);
+                this.#setPasswordError('Não foi possível verificar a senha. Tente novamente.');
                 this.authStatus = 'Authentication error';
             }
         }
+        return true;
+    }
+
+    /** Cancel just the current password attempt without ending the locked session. */
+    cancelPasswordAttempt(): boolean {
+        const attempt = this.#activeAttempt;
+        if (!attempt || this.#disposed || this.#completed) return false;
+        this.#retireAttempt(attempt);
+        this.#setPasswordError('');
+        this.authStatus = 'Tentativa interrompida. A sessão continua bloqueada.';
         return true;
     }
 

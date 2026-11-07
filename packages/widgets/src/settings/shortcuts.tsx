@@ -26,75 +26,49 @@ export default () => {
     onCleanup(() => keybinds.disconnect(bindsSignal));
 
     return (
-        <>
+        <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={18}
+            ref={(self) => {
+                const mapSignal = self.connect('map', () => {
+                    if (self.get_root() instanceof Gtk.Window) refresh();
+                });
+                onCleanup(() => self.disconnect(mapSignal));
+            }}
+        >
             <Adw.PreferencesGroup
-                ref={(self) => {
-                    let window: Adw.PreferencesWindow | null = null;
-                    let page: Adw.PreferencesPage | null = null;
-                    let pageSignal = 0;
-                    let visibilitySignal = 0;
-                    let active = false;
-                    const updateActive = () => {
-                        const next = window !== null && window.visible && window.get_visible_page() === page;
-                        const entered = next && !active;
-                        active = next;
-                        if (entered) refresh();
-                    };
-                    const mapSignal = self.connect('map', () => {
-                        if (!window) {
-                            const root = self.get_root();
-                            const owner = self.get_ancestor(Adw.PreferencesPage.$gtype);
-                            if (!(root instanceof Adw.PreferencesWindow) ||
-                                !(owner instanceof Adw.PreferencesPage)) return;
-                            window = root;
-                            page = owner;
-                            pageSignal = root.connect('notify::visible-page', updateActive);
-                            visibilitySignal = root.connect('notify::visible', updateActive);
-                        }
-                        // Group remapping during search/model rebuilding is not
-                        // navigation. Only entry into the selected visible page refreshes.
-                        updateActive();
-                    });
-                    onCleanup(() => {
-                        self.disconnect(mapSignal);
-                        if (window) {
-                            window.disconnect(pageSignal);
-                            window.disconnect(visibilitySignal);
-                        }
-                    });
-                }}
-                title="Keyboard Shortcuts"
-                description="View active keybindings"
+                title="Atalhos de teclado"
+                description="Consultar ações e comandos ativos do Hyprland."
             >
                 <Adw.ActionRow
-                    title="Refresh keybindings"
-                    subtitle="Read the current bindings from Hyprland"
+                    title="Atualizar atalhos"
+                    subtitle="Ler os atalhos atuais do Hyprland."
                 >
                     <Gtk.Button
                         slot="suffix"
                         valign={Gtk.Align.CENTER}
                         iconName="view-refresh-symbolic"
-                        tooltipText="Refresh active keybindings"
+                        tooltipText="Atualizar atalhos ativos"
                         onClicked={refresh}
                     />
                 </Adw.ActionRow>
-                <Adw.ActionRow title="Hyprland configuration" subtitle={keybinds.configPath}>
+                <Adw.ActionRow title="Configuração do Hyprland" subtitle={keybinds.configPath}>
                     <Gtk.Button
                         slot="suffix"
                         valign={Gtk.Align.CENTER}
-                        label="Open"
+                        label="Abrir"
                         onClicked={() => keybinds.openConfig()}
                     />
                 </Adw.ActionRow>
                 <Adw.ActionRow
                     visible={categories.as((groups) => groups.length === 0)}
                     title={loaded.as((isLoaded) =>
-                        isLoaded ? 'No active keybindings available' : 'Loading active keybindings…'
+                        isLoaded ? 'Nenhum atalho ativo disponível' : 'Carregando atalhos ativos…'
                     )}
                     subtitle={loaded.as((isLoaded) =>
                         isLoaded
-                            ? 'No bindings are available. Hyprland may be unavailable or have no configured binds; check the compositor and configuration, then refresh.'
-                            : 'Fetching the current bindings from Hyprland.'
+                            ? 'Hyprland pode estar indisponível ou sem atalhos configurados. Confira o compositor e atualize.'
+                            : 'Consultando os atalhos atuais do Hyprland.'
                     )}
                 />
             </Adw.PreferencesGroup>
@@ -110,7 +84,7 @@ export default () => {
                                 return (
                                     <Adw.ExpanderRow
                                         title={title}
-                                        subtitle={keybinds.formatKeyCombo(bind) || 'No key specified'}
+                                        subtitle={keybinds.formatKeyCombo(bind) || 'Nenhuma tecla informada'}
                                     >
                                         <Gtk.Box
                                             orientation={Gtk.Orientation.VERTICAL}
@@ -128,7 +102,7 @@ export default () => {
                                                 cssClasses={['monospace']}
                                             />
                                             <Gtk.Button
-                                                label="Copy command"
+                                                label="Copiar comando"
                                                 halign={Gtk.Align.START}
                                                 onClicked={(self) =>
                                                     self.get_display()?.get_clipboard().set(bind.arg)
@@ -139,7 +113,7 @@ export default () => {
                                                         [
                                                             new GObject.Value(
                                                                 GObject.TYPE_STRING,
-                                                                'Copy command'
+                                                                'Copiar comando'
                                                             ),
                                                         ]
                                                     )
@@ -153,6 +127,6 @@ export default () => {
                     </Adw.PreferencesGroup>
                 )}
             </For>
-        </>
+        </Gtk.Box>
     );
 };

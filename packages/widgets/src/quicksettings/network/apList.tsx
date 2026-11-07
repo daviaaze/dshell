@@ -1,6 +1,6 @@
 import GObject from 'gi://GObject?version=2.0';
 import Network from 'gi://AstalNetwork';
-import type NM from 'gi://NM?version=1.0';
+import NM from 'gi://NM?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {type Accessor, computed, createState, For, onCleanup, setChildren} from 'gnim';
 import ApRow from './apRow';
@@ -10,6 +10,11 @@ interface ApListProps {
     wifi: Network.Wifi;
     connectingAp: Accessor<string | null>;
     setConnectingAp: (v: string | null) => void;
+}
+
+function deviceObjectPath(device: NM.Device): string {
+    // Device.get_path() is the optional hardware path, not NM.Object's D-Bus ID.
+    return NM.Object.prototype.get_path.call(device);
 }
 
 function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
@@ -147,7 +152,7 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
     const readWifiDevice = (): NM.DeviceWifi | null => {
         try {
             const current = (wifi.device as NM.DeviceWifi | null) ?? null;
-            if (!current || current.get_path() === ignoredDevicePath) return null;
+            if (!current || deviceObjectPath(current) === ignoredDevicePath) return null;
             ignoredDevicePath = null;
             return current;
         } catch {
@@ -158,12 +163,12 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
     const syncDevice = () => attachDevice(readWifiDevice());
     const wifiDeviceId = wifi.connect('notify::device', syncDevice);
     const addedDeviceId = client.connect('device-added', (_client, added) => {
-        if (added.get_path() === ignoredDevicePath) ignoredDevicePath = null;
+        if (deviceObjectPath(added) === ignoredDevicePath) ignoredDevicePath = null;
         syncDevice();
     });
     const removedDeviceId = client.connect('device-removed', (_client, removed) => {
-        const removedPath = removed.get_path();
-        if (device?.get_path() === removedPath) {
+        const removedPath = deviceObjectPath(removed);
+        if (device && deviceObjectPath(device) === removedPath) {
             ignoredDevicePath = removedPath;
             detachDevice();
         }
@@ -189,10 +194,14 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
     const sortedAps = computed(() => sortAps(aps(), activeAp()?.bssid ?? null));
 
     return (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card']} spacing={0} hexpand ref={preserveRowParents}>
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card', 'vertical']} spacing={0} hexpand ref={preserveRowParents}>
             <For each={sortedAps} id={(snap) => snap.objectPath}>
                 {(snap: ApSnapshot) => {
                     const apBssid = snap.bssid;
+                    const strength = computed(() => {
+                        aps();
+                        return apSnapshots.get(snap.objectPath)?.strength ?? snap.strength;
+                    });
 
                     const isActive = computed(() => {
                         const active = activeAp();
@@ -212,6 +221,7 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
                     return (
                         <ApRow
                             snap={snap}
+                            strength={strength}
                             wifi={wifi}
                             client={client}
                             connectionRevision={connectionRevision}
@@ -222,6 +232,9 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
                     );
                 }}
             </For>
+            <Gtk.Label visible={aps.as(items => items.length === 0)}
+                label="Nenhuma rede disponível." wrap marginTop={12} marginBottom={12}
+                marginStart={12} marginEnd={12} cssClasses={['dimmed']} />
         </Gtk.Box>
     );
 };

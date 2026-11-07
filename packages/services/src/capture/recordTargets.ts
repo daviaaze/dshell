@@ -1,6 +1,12 @@
+import {publishCapture} from './utils';
 import logger from '@shade/core/logger';
 import {bus} from '../bus';
-import {getHyprland} from '../hyprland';
+import {
+    getHyprland,
+    getHyprlandClientSnapshot,
+    normalizeHyprlandAddress,
+    type HyprlandClientSnapshot,
+} from '../hyprland';
 import type {BoundaryGeometry, ScreenshotHandle} from './types';
 import {slurpAreaRecording, useSlurpForSelection} from './captureFlow';
 import {notify} from './utils';
@@ -28,6 +34,7 @@ function clientGeometry(c: {
 export function recordArea(ss: ScreenshotHandle) {
     if (ss.recording) return;
     if (useSlurpForSelection()) {
+        publishCapture({state: 'busy', kind: 'recording'});
         slurpAreaRecording(ss);
         return;
     }
@@ -74,15 +81,24 @@ export function recordWindowByAddress(ss: ScreenshotHandle, address: string) {
     if (ss.recording) return;
     const hyprland = getHyprland();
     if (!hyprland) return;
-    const clients = hyprland.clients || [];
-    const target = clients.find((c) => c.address === address);
+    let target: HyprlandClientSnapshot | undefined;
+    try {
+        target = getHyprlandClientSnapshot().find(
+            (client) => client.address === normalizeHyprlandAddress(address)
+        );
+    } catch (error) {
+        logger.error('screenshot', `failed to query window geometry: ${error}`);
+        notify(MSG_RECORDING_FAILED, 'Window geometry unavailable', ICON_ERROR);
+        return;
+    }
     if (!target) {
         logger.error('screenshot', `window with address ${address} not found`);
         notify(MSG_RECORDING_FAILED, 'Window not found', ICON_ERROR);
         return;
     }
-    logger.debug('screenshot', `window geometry: ${toLog(clientGeometry(target))}`);
-    ss.startRecording({geometry: clientGeometry(target)});
+    const geometry = clientGeometry(target);
+    logger.debug('screenshot', `window geometry: ${toLog(geometry)}`);
+    ss.startRecording({geometry});
     bus.emit('capture:record:window');
 }
 
@@ -90,14 +106,33 @@ export function recordWindow(ss: ScreenshotHandle) {
     if (ss.recording) return;
     const hyprland = getHyprland();
     if (!hyprland) return;
-    const client = hyprland.focusedClient;
-    if (!client) {
+    let target: HyprlandClientSnapshot | undefined;
+    let focusedAddress: string | undefined;
+    try {
+        const focused = JSON.parse(hyprland.message('j/activewindow')) as {address?: string};
+        focusedAddress = focused.address;
+        if (focusedAddress) {
+            const address = normalizeHyprlandAddress(focusedAddress);
+            target = getHyprlandClientSnapshot().find((client) => client.address === address);
+        }
+    } catch (error) {
+        logger.error('screenshot', `failed to query focused window geometry: ${error}`);
+        notify(MSG_RECORDING_FAILED, 'Window geometry unavailable', ICON_ERROR);
+        return;
+    }
+    if (!focusedAddress) {
         logger.error('screenshot', 'no focused client, cannot record window');
         notify(MSG_RECORDING_FAILED, 'No window focused', ICON_ERROR);
         return;
     }
-    logger.debug('screenshot', `window geometry: ${toLog(clientGeometry(client))}`);
-    ss.startRecording({geometry: clientGeometry(client)});
+    if (!target) {
+        logger.error('screenshot', `focused window ${focusedAddress} not found`);
+        notify(MSG_RECORDING_FAILED, 'Window not found', ICON_ERROR);
+        return;
+    }
+    const geometry = clientGeometry(target);
+    logger.debug('screenshot', `window geometry: ${toLog(geometry)}`);
+    ss.startRecording({geometry});
     bus.emit('capture:record:window');
 }
 

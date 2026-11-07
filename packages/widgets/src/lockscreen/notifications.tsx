@@ -4,7 +4,6 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import logger from '@shade/core/logger';
 import {generalSettings} from '@shade/core/settings/general.gschema';
-import {isNotifdResolved} from '@shade/services/notifications/guard';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
 import {createState, effect, For, onCleanup} from 'gnim';
 import Notification from '../common/notification';
@@ -95,17 +94,19 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
                                 spacing={8}
                                 halign={Gtk.Align.FILL}
                             >
-                                <Gtk.Label
-                                    label={'New notification'}
-                                    hexpand
-                                    halign={Gtk.Align.START}
-                                />
-                                <Gtk.Button
-                                    label={'Dismiss'}
+                                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}
+                                    marginTop={12} marginBottom={12} marginStart={12} hexpand>
+                                    <Gtk.Label label="Nova notificação" cssClasses={['heading']} xalign={0} />
+                                    <Gtk.Label label="Conteúdo oculto até desbloquear."
+                                        cssClasses={['caption', 'dimmed']} wrap xalign={0} />
+                                </Gtk.Box>
+                                <Gtk.Button iconName="window-close-symbolic"
+                                    cssClasses={['flat', 'circular']} valign={Gtk.Align.CENTER}
+                                    tooltipText="Dispensar notificação" marginEnd={8}
                                     onClicked={() => closeAction(n)}
-                                    ref={(self) => self.update_property(
+                                    ref={self => self.update_property(
                                         [Gtk.AccessibleProperty.LABEL],
-                                        [new GObject.Value(GObject.TYPE_STRING, 'Dismiss notification')]
+                                        [new GObject.Value(GObject.TYPE_STRING, 'Dispensar notificação')]
                                     )}
                                 />
                             </Gtk.Box>
@@ -118,10 +119,10 @@ const LockscreenContent = ({notifd}: {notifd: Notifd.Notifd}) => {
 };
 
 export const LockscreenNotifications = () => {
-    const notifd = useNotifd();
+    const {value: notifd, resolved} = useNotifd();
 
     effect(() => {
-        if (isNotifdResolved() && notifd() === null) {
+        if (resolved() && notifd() === null) {
             logger.warn('lockscreen', 'Notifd unavailable — no notifications on lockscreen');
         }
     });

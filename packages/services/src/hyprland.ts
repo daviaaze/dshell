@@ -31,6 +31,42 @@ export function getHyprland(): AstalHyprland.Hyprland | null {
     return cached;
 }
 
+export interface HyprlandClientSnapshot {
+    address: string;
+    title: string;
+    mapped: boolean;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+/** Read compositor geometry at the capture action, never Astal's cached clients. */
+export function getHyprlandClientSnapshot(): HyprlandClientSnapshot[] {
+    const hyprland = getHyprland();
+    if (!hyprland) throw new Error('Hyprland is unavailable');
+    const clients = JSON.parse(hyprland.message('j/clients')) as Array<{
+        address: string;
+        title: string;
+        mapped: boolean;
+        at: [number, number];
+        size: [number, number];
+    }>;
+    return clients.filter((client) => client.mapped).map((client) => ({
+        address: normalizeHyprlandAddress(client.address),
+        title: client.title,
+        mapped: client.mapped,
+        x: client.at[0],
+        y: client.at[1],
+        width: client.size[0],
+        height: client.size[1],
+    }));
+}
+
+export function normalizeHyprlandAddress(address: string): string {
+    return address.replace(/^0x/, '');
+}
+
 /** Re-exported types for convenience. */
 export type {AstalHyprland};
 export const Hyprland = AstalHyprland;

@@ -79,11 +79,15 @@ export function buildGeometry(target: string, sel: SelectionState): BoundaryGeom
         if (!sel.selActive || !sel.dragStart || !sel.dragEnd) return null;
         const rect = normalizeRect(sel.dragStart, sel.dragEnd);
         if (rect.width < 5 || rect.height < 5) return null;
+        const x = Math.round(origin.x + rect.x);
+        const y = Math.round(origin.y + rect.y);
+        const right = Math.round(origin.x + rect.x + rect.width);
+        const bottom = Math.round(origin.y + rect.y + rect.height);
         return {
-            x: origin.x + rect.x,
-            y: origin.y + rect.y,
-            width: rect.width,
-            height: rect.height,
+            x,
+            y,
+            width: right - x,
+            height: bottom - y,
         };
     }
 

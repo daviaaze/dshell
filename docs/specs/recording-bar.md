@@ -1,59 +1,9 @@
-# Spec: RecordingBar
+# Recording and capture feedback
 
-> Floating indicator bar shown during screen recording.
+Source: [`index.tsx`](../../packages/widgets/src/recording-bar/index.tsx), bar entry point [`indicators/recording.tsx`](../../packages/widgets/src/bar/indicators/recording.tsx), service [`screenshot.ts`](../../packages/services/src/capture/screenshot.ts).
 
-## Overview
+The bottom-right focused-monitor overlay is visible while recording, capture preparation is busy, a result path exists, or an error exists. During recording it shows elapsed duration, audio indicator when capture preferences request audio, and Stop (`stopRecording()`). While capture preparation is busy it shows a spinner. On successful result it displays the actual path, a screenshot preview for image captures, and Open file/Open folder/Done actions. Errors display service feedback and can be dismissed. The bar indicator is a separate recording affordance; this surface also handles screenshot results/errors and is not only a recording bar.
 
-- **Source**: `src/widget/recording-bar/` (entry: `index.tsx`)
-- **Dependencies**: `Screenshot` service (`recording`, `recording-elapsed`, `audio` properties), `AstalHyprland`
-- **Type**: `Astal.Window`, layer `OVERLAY`, anchored bottom-right, follows `focusedMonitor`; visible when `Screenshot.recording` is true
+The optional recording boundary is a separate transparent layer surface: it paints only the per-output dashed edges and accepts neither keyboard nor pointer input. Starting a recording reads the current boundary preference; disabling it leaves no boundary layer.
 
-## Functional
-
-### States
-
-| # | State | Trigger | Expected behavior |
-|---|-------|---------|-------------------|
-| F1 | Not recording | `ss.recording` = false | Window hidden |
-| F2 | Recording (no audio) | `ss.recording` = true, `ss.audio` = false | Window shown; red dot + "REC" label + elapsed timer; no audio icon |
-| F3 | Recording (with audio) | `ss.recording` = true, `ss.audio` = true | Window shown; includes microphone icon after separator |
-| F4 | Elapsed timer | Recording in progress | Timer updates reactively from `ss.recording-elapsed`; format: `M:SS` or `H:MM:SS` |
-
-### Interactions
-
-| # | Action | Expected behavior |
-|---|--------|-------------------|
-| I1 | Click stop button | `Screenshot.stopRecording()` called; recording stops; bar hides |
-
-### Edge cases
-
-| # | Condition | Expected behavior |
-|---|-----------|-------------------|
-| E1 | Recording-elapsed is null | Shown as `0:00` (formatDuration handles null via `?? 0`) |
-| E2 | Focused monitor changes mid-recording | Bar moves to new focused monitor (binding to `focusedMonitor`) |
-
-## Visual (Adwaita alignment)
-
-### Theme tokens
-
-| Element | Token / style class | Notes |
-|---------|--------------------|-------|
-| Window | Inline `css` (`background-color: transparent;`) | Transparent background |
-| Bar body | `card` + `frame` + `background` | Adw classes |
-| Recording dot | `media-record-symbolic` icon, inline `css: color: #FF0000` | **Violation** — hardcoded color |
-| "REC" label | Inline `css: color: #FF0000; font-weight: bold; font-size: 13px` | **Violation** — hardcoded color |
-| Elapsed time | Inline `css: font-family: monospace; font-size: 13px` | Layout/typography only |
-| Stop button | `circular` + `destructive-action` | Adw classes |
-
-### Adwaita checklist
-
-- [x] Uses `card` `frame` `background` on bar body
-- [x] Stop button uses `destructive-action` (Adw)
-- [ ] **Recording dot and "REC" label hardcode color #FF0000** — needs `--shade-error` or `@error_bg_color`
-- [x] Icons are symbolic
-
-## Test plan
-
-- **Unit**: test `formatDuration` (0, <60s, >=60m, >=60min)
-- **Compliance linter**: hardcoded-color errors (recording dot, REC label), inline css with color
-- **Visual/manual**: screenshots recording with/without audio, elapsed timer at various values, stop button click
+Manual: initiate a capture and recording through the overlay on a suitable session, inspect busy and actual result/error states, open the file/folder and stop recording. Do not claim output correctness from UI state alone; inspect the real file. Proposed procedures only, not new VM results.

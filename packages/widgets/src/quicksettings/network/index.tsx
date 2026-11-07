@@ -2,17 +2,17 @@ import type AstalNetwork from 'gi://AstalNetwork?version=0.1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import NetworkService from '@shade/services/network/networkService';
-import {bind, computed, createState, With} from 'gnim';
-import {LinkedBox} from '../../common/linkedBox';
+import {bind, computed, createState, type GnimNode, With} from 'gnim';
 import {QuickControlButton} from '../../common/quickControlButton';
-import type {QuickButton} from '../button-grid/quickButton';
 import {wifiIconName} from './utils';
-import WifiPopover from './wifiPopover';
+import WifiDetails from './wifiDetails';
 
-const WifiQuicksettingsButton = (): QuickButton => {
+export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: GnimNode} => {
     const net = NetworkService.get_default();
     const [connectingAp, setConnectingAp] = createState<string | null>(null);
 
+    const wifi = bind(net, 'wifi');
+    const ready = bind(net, 'wifiReady');
     const wifiSsid = bind(net, 'wifiSsid');
     const wifiEnabled = bind(net, 'wifiEnabled');
     const wifiState = bind(net, 'wifiState');
@@ -27,32 +27,20 @@ const WifiQuicksettingsButton = (): QuickButton => {
     );
 
     const value = computed(() => {
-        if (!wifiEnabled()) return 'Off';
-        const ssid = wifiSsid();
-        if (wifiState() !== 100 || !ssid || ssid === '...' || ssid.trim() === '') {
-            return 'Not connected';
-        }
-        return ssid;
+        if (!wifi()) return ready() ? 'Indisponível' : 'Carregando…';
+        if (!wifiEnabled()) return 'Desativado';
+        if (connectingAp()) return 'Conectando…';
+        if (wifiState() !== 100) return 'Não conectado';
+        const ssid = wifiSsid()?.trim();
+        return ssid && ssid !== '...' ? ssid : 'Conectado';
     });
 
-    const popover = (
-        <Gtk.Popover cssClasses={[]} position={Gtk.PositionType.LEFT}>
-            <LinkedBox>
-                <With value={bind(net, 'wifi')}>
-                    {(w: AstalNetwork.Wifi | null) =>
-                        w ? (
-                            <WifiPopover
-                                wifi={w}
-                                connectingAp={connectingAp}
-                                setConnectingAp={setConnectingAp}
-                            />
-                        ) : (
-                            <Gtk.Label label={net.wifiReady ? 'No WiFi device' : 'Loading…'} />
-                        )
-                    }
-                </With>
-            </LinkedBox>
-        </Gtk.Popover>
+    const detail = (
+        <With value={wifi}>
+            {(device: AstalNetwork.Wifi | null) => device ? (
+                <WifiDetails wifi={device} connectingAp={connectingAp} setConnectingAp={setConnectingAp} status={value} />
+            ) : <Gtk.Label label={ready.as(value => value ? 'Nenhum adaptador Wi-Fi disponível.' : 'Carregando Wi-Fi…')} wrap />}
+        </With>
     );
 
     return {
@@ -65,11 +53,10 @@ const WifiQuicksettingsButton = (): QuickButton => {
                 active={wifiEnabled}
                 actionLabel={wifiEnabled.as((enabled) => enabled ? 'Turn Wi-Fi off' : 'Turn Wi-Fi on')}
                 onClick={() => bus.emit('network:wifi:toggle')}
-                menu={{label: 'Wi-Fi options', popover}}
+                actionSensitive={wifi.as(device => device !== null)}
+                detail={{label: 'Wi-Fi details', onOpen}}
             />
         ),
-        visible: bind(net, 'wifiReady'),
+        detail,
     };
 };
-
-export default WifiQuicksettingsButton;

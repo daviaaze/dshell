@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shlex
@@ -376,50 +377,69 @@ print(str(pid) if str(pid).isdecimal() else '')"""
             self.vnc("closing Quick Settings", "keydown", "super", "key", "n", "keyup", "super")
             self.wait_until("Quick Settings closure", lambda: not self.quick_settings_open(), timeout=12)
 
+    def settings_search(self, title: str) -> dict[str, object]:
+        self.vnc("focus Settings global search", "keydown", "ctrl", "key", "f", "keyup", "ctrl", "pause", "0.5")
+        entry = self.find_accessible_node("Buscar nas configurações", role="search box")
+        return self.accessibility(
+            "set exact UTF8 Settings query", "set-text",
+            "--name", "Buscar nas configurações", "--role", "search box",
+            "--bus", str(entry["bus"]), "--path", str(entry["path"]), "--text", title,
+        )
+
     def settings_page(self, title: str) -> dict[str, object]:
-        clients = [client for client in self.clients() if client.get("title") == "Shade Settings"]
+        clients = [client for client in self.clients() if client.get("title") == "Configurações"]
         if len(clients) != 1:
             raise Unsupported(f"Settings window is not unique: {clients}")
-        key = (clients[0].get("address"), clients[0].get("stableId"))
-        if getattr(self, "_settings_navigation_key", None) != key:
-            tree = self.accessibility(
-                "reading stable native Settings navigation identities", "tree", "--no-bounds",
-                "--max-depth", "24", "--max-nodes", "4000",
-            )
-            self._settings_navigation = {}
-            for node in self.walk_accessibility(tree):
-                if node.get("role") == "tab panel":
-                    entry = (str(node.get("name") or ""), str(node["role"]))
-                    self._settings_navigation.setdefault(entry, []).append(node)
-            self._settings_navigation_key = key
-        owners = self._settings_navigation.get((title, "tab panel"), [])
-        if len(owners) != 1:
-            raise Unsupported(f"Settings category lacks a unique native panel: {title}")
-        owner = owners[0]
-        # Adwaita rebuilds header tabs when group/search models change.
-        tab = self.accessibility(
-            f"finding current native Settings tab {title}", "find",
-            "--max-depth", "24", "--max-nodes", "4000",
-            "--name", title, "--role", "tab",
+        self.settings_search(title)
+        def first_exact_result():
+            tree = self.accessibility_tree(f"reading Settings search results for {title}")
+            rows = [
+                node for node in self.nodes_in_group(tree, "Resultados de busca")
+                if node.get("role") == "list item"
+            ]
+            # A setting in another module can share the module's title; Enter
+            # deliberately opens the ranked first result, not a unique label.
+            return rows[0] if rows and rows[0].get("name") == title else None
+        self.wait_until(
+            f"Settings ranked exact-title result {title}", first_exact_result,
+            timeout=12,
         )
-        self.click_accessible_node(tab, f"select Settings page {title}")
-        def visible_panel():
-            panel = self.accessibility(
-                f"verifying Settings page {title}", "find", "--include-state",
-                "--name", title, "--role", "tab panel",
-                "--bus", str(owner["bus"]), "--path", str(owner["path"]),
-            )
-            words = panel.get("state_words", [])
-            return panel if words and int(words[0]) & (1 << 25) else None
-        return self.wait_until(f"visible Settings page {title}", visible_panel, timeout=15)
+        self.vnc(f"open exact Settings destination {title}", "key", "enter")
+
+        def visible_destination():
+            tree = self.accessibility_tree(f"reading current Settings destination {title}")
+            # A preference group may repeat its containing NavigationPage title.
+            # Match outermost named pages, not every nested group with that name.
+            groups = []
+            pending = [tree]
+            while pending:
+                node = pending.pop()
+                if node.get("role") == "group" and node.get("name") == title:
+                    groups.append(node)
+                else:
+                    pending.extend(node.get("children", []))
+            if len(groups) != 1:
+                return None
+            group = groups[0]
+            descendants = [
+                node for node in self.walk_accessibility(group)
+                if node is not group and node.get("role") != "group" and node.get("bounds")
+            ]
+            if not descendants:
+                return None
+            return {"bounds": group.get("bounds"), "group": group, "visible_descendants": descendants}
+
+        return self.wait_until(
+            f"native Settings group and visible title {title}", visible_destination, timeout=12,
+        )
 
     def open_settings(self) -> None:
         self.open_quick_settings()
-        self.click_named("open Settings from Quick Settings", "Open Settings", role="button")
+        self.click_named("open Settings from Quick Settings", "Configurações", role="button")
         self.wait_until(
             "Shade Settings window",
             lambda: any(
-                "settings" in str(client.get("title", "")).casefold()
+                client.get("title") == "Configurações"
                 for client in self.clients()
             ),
             timeout=15,
@@ -428,7 +448,7 @@ print(str(pid) if str(pid).isdecimal() else '')"""
     def close_settings(self) -> None:
         settings_clients = [
             client for client in self.clients()
-            if "settings" in str(client.get("title", "")).casefold()
+            if client.get("title") == "Configurações"
         ]
         if not settings_clients:
             return
@@ -630,6 +650,8 @@ print(str(pid) if str(pid).isdecimal() else '')"""
             NIX_DISK_IMAGE=str(self.state / "disk.img"),
             QEMU_NET_OPTS=f"restrict=on,hostfwd=tcp:127.0.0.1:{self.ssh_port}-:22",
             QEMU_OPTS=(
+                # The guest fixture pins virtio-vga to the legacy pci.0 bus.
+                "-machine pc "
                 f"-display vnc=127.0.0.1:{self.vnc_port - 5900} "
                 f"-monitor unix:{self.monitor},server,nowait"
             ),
@@ -704,10 +726,6 @@ print(str(pid) if str(pid).isdecimal() else '')"""
     def test_greeter(self) -> dict[str, object]:
         if self.user_service_active("checking tester session before greeter test"):
             raise RuntimeError("Tester Shade session was already active before the greeter scenario")
-        ready = self.artifacts / "greeter-ready.png"
-        size = self.local("reading greeter screen size", ["magick", "identify", "-format", "%wx%h", str(ready)]).stdout.strip()
-        if size != "1280x800":
-            raise Unsupported(f"Greeter pointer fixture requires a 1280x800 screen; got {size}")
 
         self.wait_until(
             "selected account starts its PAM worker without Continue",
@@ -723,7 +741,12 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         self.vnc("return from greeter password prompt", "key", "esc", "pause", "1")
         back = self.capture("greeter-back")
         back_change = self.assert_visual_change(prompt, back, "Escape to user selection")
-        self.vnc("reopen greeter password prompt", "move", "640", "517", "click", "1", "pause", "1")
+        self.vnc("reselect the focused account after Back", "key", "enter", "pause", "1")
+        self.wait_until(
+            "explicit retry starts the greeter PAM worker",
+            lambda: int(self.guest("checking retried greeter authentication worker", "pgrep -c -x greetd").stdout.strip()) >= 3,
+            timeout=15,
+        )
         retry = self.capture("greeter-password-retry")
         retry_change = self.assert_visual_change(back, retry, "Continue after Back")
         self.vnc("submit test-account password", "type", SSH_PASSWORD, "key", "enter", "pause", "2")
@@ -740,31 +763,34 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         }
 
     def test_launcher(self) -> dict[str, object]:
-        before = self.layers()
-        before_geometry = {tuple(layer.get(key) for key in ("x", "y", "w", "h")) for layer in before}
+        if any(layer.get("namespace") == "shade-launcher" for layer in self.layers()):
+            raise RuntimeError("Launcher was already open before its activation scenario")
         self.vnc("open launcher with Super+Space", "keydown", "super", "key", "space", "keyup", "super", "pause", "3")
         self.capture("launcher-open")
         self.save_accessibility_tree("launcher-open")
-        entry = self.accessibility("finding launcher search entry", "find", "--max-depth", "16", "--max-nodes", "2000", "--name", "", "--role", "text box")
-        opened = self.layers()
-        launcher = next(
-            (
-                layer
-                for layer in opened
-                if tuple(layer.get(key) for key in ("x", "y", "w", "h")) not in before_geometry
-                and int(layer.get("w", 0)) >= 600
-                and int(layer.get("h", 0)) >= 700
-            ),
-            None,
+        entry = self.accessibility(
+            "finding launcher search entry", "find", "--max-depth", "16", "--max-nodes", "2000",
+            "--name", "", "--role", "text box",
         )
-        if launcher is None:
-            raise RuntimeError(f"Super+Space did not add the launcher layer: {opened}")
-        launcher_geometry = tuple(launcher.get(key) for key in ("x", "y", "w", "h"))
+        launcher = self.wait_until(
+            "launcher compositor layer",
+            lambda: next(
+                (layer for layer in self.layers() if layer.get("namespace") == "shade-launcher"),
+                None,
+            ),
+            timeout=10,
+        )
         self.vnc("close launcher with Escape", "key", "esc", "pause", "1")
-        remaining = self.layers()
-        if launcher_geometry in {tuple(layer.get(key) for key in ("x", "y", "w", "h")) for layer in remaining}:
-            raise RuntimeError("Launcher layer remained after Escape")
-        return {"ui": "VNC Super+Space opened the launcher; Escape removed its layer", "accessibility": entry, "guest": {"launcher_geometry": launcher_geometry, "remaining_layer_count": len(remaining)}}
+        self.wait_until(
+            "launcher closure after Escape",
+            lambda: not any(layer.get("namespace") == "shade-launcher" for layer in self.layers()),
+            timeout=10,
+        )
+        return {
+            "ui": "VNC Super+Space opened the launcher; Escape removed its layer",
+            "accessibility": entry,
+            "guest": {"launcher_namespace": launcher.get("namespace")},
+        }
 
     def wifi_control(self) -> dict[str, object]:
         return self.find_accessible_node("Wi-Fi:", role="toggle button", contains=True)
@@ -785,13 +811,7 @@ print(str(pid) if str(pid).isdecimal() else '')"""
         wifi = self.wifi_control()
         opened = self.layers()
         quicksettings = next(
-            (
-                layer
-                for layer in opened
-                if tuple(layer.get(key) for key in ("x", "y", "w", "h")) not in before_geometry
-                and 350 <= int(layer.get("w", 0)) < 600
-                and int(layer.get("h", 0)) >= 700
-            ),
+            (layer for layer in opened if layer.get("namespace") == "shade-quicksettings"),
             None,
         )
         if quicksettings is None:
@@ -920,7 +940,7 @@ result = []
 for path in glob.glob('/proc/[0-9]*/cmdline'):
     try:
         argv = [part.decode(errors='replace') for part in open(path, 'rb').read().split(b'\\0') if part]
-        if argv and os.path.basename(argv[0]) in ('wf-recorder', 'wl-screenrec'):
+        if argv and os.path.basename(argv[0]) in ('wf-recorder', 'wl-screenrec', 'gpu-screen-recorder'):
             result.append({'pid': int(path.split('/')[2]), 'backend': os.path.basename(argv[0]), 'argv': argv})
     except (OSError, ValueError):
         pass
@@ -935,11 +955,41 @@ print(json.dumps(result))"""
         processes = json.loads(result.stdout)
         return [process for process in processes if isinstance(process, dict)]
 
+    def assert_recording_geometry(
+        self, argv: list[str], x: int, y: int, width: int, height: int,
+        *, edge_tolerance: int = 0,
+    ) -> str:
+        backend = Path(argv[0]).name if argv else ""
+        if any(type(value) is not int for value in (x, y, width, height)):
+            raise RuntimeError(f"Recording rectangle must contain integer pixels: {(x, y, width, height)}")
+        if backend in {"wf-recorder", "wl-screenrec"}:
+            flag, expected = "-g", f"{x},{y} {width}x{height}"
+        elif backend == "gpu-screen-recorder":
+            flag, expected = "-region", f"{width}x{height}+{x}+{y}"
+        else:
+            raise RuntimeError(f"Unknown recording backend: {argv}")
+        if argv.count(flag) != 1:
+            raise RuntimeError(f"Recorder must receive exactly one {flag} rectangle: {argv}")
+        index = argv.index(flag) + 1
+        if index >= len(argv):
+            raise RuntimeError(f"{backend} did not receive {flag} {expected!r}: {argv}")
+        actual = argv[index]
+        if actual != expected:
+            match = re.fullmatch(r"(-?\d+),(-?\d+) (\d+)x(\d+)", actual)
+            if edge_tolerance and backend in {"wf-recorder", "wl-screenrec"} and match:
+                ax, ay, aw, ah = map(int, match.groups())
+                expected_edges = (x, y, x + width, y + height)
+                actual_edges = (ax, ay, ax + aw, ay + ah)
+                if all(abs(a - b) <= edge_tolerance for a, b in zip(actual_edges, expected_edges)):
+                    return actual
+            raise RuntimeError(f"{backend} did not receive {flag} {expected!r}: {argv}")
+        return actual
+
     def stop_recording(self) -> None:
         try:
             node = self.accessibility(
                 "finding visible recording Stop control",
-                "find", "--description-match", "--name", "Stop recording",
+                "find", "--description-match", "--name", "Parar gravação",
                 "--role", "button",
             )
             self.click_accessible_node(node, "stop recording from its visible control")
@@ -947,7 +997,8 @@ print(json.dumps(result))"""
             self.desktop(
                 "requesting graceful recorder stop during cleanup",
                 "pkill -INT -x wf-recorder 2>/dev/null || true; "
-                "pkill -INT -x wl-screenrec 2>/dev/null || true",
+                "pkill -INT -x wl-screenrec 2>/dev/null || true; "
+                "pkill -INT -x gpu-screen-recorder 2>/dev/null || true",
                 check=False,
             )
         self.wait_until(
@@ -968,30 +1019,69 @@ print(json.dumps(result))"""
             if window
             else [
                 "10,20:#ff0000", "55,20:#00ff00", "170,20:#0000ff",
-                "280,20:#ffffff", "10,150:#ff8000", "55,150:#00ffff",
-                "170,150:#ff00ff", "280,150:#ffff00",
+                "300,20:#ffffff", "10,150:#ff8000", "55,150:#00ffff",
+                "170,150:#ff00ff", "300,150:#ffff00",
             ]
+            # Keep samples inside color blocks, away from 4:2:0 edge blending.
         )
         return self.local(
             f"asserting decoded crop content for {video.name}",
             [
                 "python3", str(ROOT / "scripts/vm-recording-frame-assert.py"),
                 str(video), str(width), str(height),
+                "--tolerance", "24",
                 *[arg for point in points for arg in ("--sample", point)],
             ],
             timeout=40,
         )
 
+    def notification_dnd(self, enabled: bool | None = None) -> bool:
+        self.activate_shell_action("open-notifications")
+        try:
+            node = self.wait_until(
+                "native Do Not Disturb switch",
+                lambda: self.accessibility(
+                    "finding native Do Not Disturb switch", "find", "--max-depth", "32",
+                    "--max-nodes", "4000", "--include-state", "--actionable",
+                    "--name", "Não perturbe", "--role", "switch",
+                ),
+                timeout=10,
+            )
+            def read_state() -> bool:
+                current = self.accessibility(
+                    "reading exact native Do Not Disturb state", "find", "--max-depth", "32",
+                    "--max-nodes", "4000", "--include-state", "--name", "Não perturbe",
+                    "--role", "switch", "--bus", str(node["bus"]), "--path", str(node["path"]),
+                )
+                return bool(int(current["state_words"][0]) & (1 << 4))
+
+            initial = read_state()
+            if enabled is not None and initial != enabled:
+                self.click_accessible_node(node, "setting native Do Not Disturb state")
+                self.wait_until(
+                    "requested native Do Not Disturb state",
+                    lambda: read_state() == enabled,
+                    timeout=10,
+                )
+            return initial
+        finally:
+            self.activate_shell_action("close-all")
+
     def test_area_recording(self) -> dict[str, object]:
         original_engine_raw = self.gsetting("area-selection-engine")
         original_engine = original_engine_raw.strip("'\"")
         original_boundary = self.gsetting("show-recording-boundary")
+        original_backend = self.gsetting("recorder-backend")
+        original_dnd: bool | None = None
         pattern_started = False
         pattern: dict[str, object] = {}
         evidence: list[dict[str, object]] = []
         active_guest_videos: set[str] = set()
         log_marker = self.desktop("marking area recording log time", "date +%s").stdout.strip()
         try:
+            original_dnd = self.notification_dnd()
+            self.notification_dnd(True)
+            self.gsetting("recorder-backend", "1")
             pattern_started = True
             pattern = self.start_pattern_window()
             if original_engine not in {"overlay", "slurp"}:
@@ -1036,17 +1126,27 @@ print(json.dumps(result))"""
                         "move", str(x1), str(y1), "mouseup", "1",
                     )
                     if engine == "overlay":
-                        self.vnc(f"confirming {engine} rectangle", "key", "enter")
+                        self.vnc(f"reviewing {engine} rectangle", "key", "enter")
+                        if self.recording_processes():
+                            raise RuntimeError("Area selection/review started recording before explicit confirmation")
+                        confirmation = self.wait_until(
+                            "reviewed recording area confirmation",
+                            lambda: self.find_accessible_node("Start recording", role="button"),
+                            timeout=12,
+                        )
+                        self.click_accessible_node(confirmation, "confirming the reviewed recording area")
                     recorder = self.wait_until(
                         f"{engine} {boundary=} recorder",
                         lambda: next(iter(self.recording_processes()), None),
                         timeout=20,
                     )
                     argv = [str(arg) for arg in recorder.get("argv", [])]
-                    if "-g" not in argv or argv[argv.index("-g") + 1] != f"320x200+{x0}+{y0}":
-                        raise RuntimeError(
-                            f"Recorder did not receive selected geometry 320x200+{x0}+{y0}: {argv}"
-                        )
+                    # Absolute VNC tablet positions are fractional. Slurp floors
+                    # pixel edges; GTK's selection path rounds them instead.
+                    self.assert_recording_geometry(
+                        argv, x0, y0, 320, 200,
+                        edge_tolerance=1 if engine == "slurp" else 0,
+                    )
                     output_index = argv.index("-f") + 1 if "-f" in argv else -1
                     if output_index < 0 or output_index >= len(argv):
                         raise RuntimeError(f"Recorder command has no output file: {argv}")
@@ -1099,6 +1199,8 @@ print(json.dumps(result))"""
             }
         finally:
             try:
+                if any(layer.get("namespace") == "shade-screenshot" for layer in self.layers()):
+                    self.vnc("canceling the unfinished guest selection overlay", "key", "esc", "pause", "0.3")
                 if self.recording_processes():
                     self.stop_recording()
             finally:
@@ -1116,8 +1218,15 @@ print(json.dumps(result))"""
                                     check=False,
                                 )
                         finally:
-                            if pattern_started:
-                                self.stop_pattern_window()
+                            try:
+                                if pattern_started:
+                                    self.stop_pattern_window()
+                            finally:
+                                try:
+                                    self.gsetting("recorder-backend", original_backend)
+                                finally:
+                                    if original_dnd is not None:
+                                        self.notification_dnd(original_dnd)
 
     def wait_bar_position(self, position: str, raw_value: str, timeout: float = 20) -> dict[str, object]:
         deadline = time.monotonic() + timeout
@@ -1130,7 +1239,7 @@ print(json.dumps(result))"""
             if raw == raw_value and geometry == position:
                 consecutive.append(last)
                 if len(consecutive) == 3:
-                    return {"samples": consecutive}
+                    return {**last, "samples": consecutive}
             else:
                 consecutive.clear()
             time.sleep(0.25)
@@ -1149,16 +1258,22 @@ print(json.dumps(result))"""
             self.open_settings()
             opened_settings = True
             self.save_accessibility_tree("settings-home")
-            page = self.settings_page("Personalization")
+            page = self.settings_page("Barra e dock")
             self.capture("settings-bar-position")
             self.save_accessibility_tree("settings-bar-position")
             bounds = page.get("bounds")
             if not isinstance(bounds, list) or len(bounds) != 4 or int(bounds[2]) < 400 or int(bounds[3]) < 400:
                 raise RuntimeError(f"Bar & Dock page is not selected in Settings: {page}")
 
-            self.click_named("establishing known Top bar baseline", "Top", role="toggle button")
+            self.click_named("establishing known Top bar baseline", "Superior", role="radio")
             top = self.wait_bar_position("Top", "2")
-            self.click_named("moving visible Bar position control to Bottom", "Bottom", role="toggle button")
+            self.click_named("moving visible Bar position control to Left", "Esquerda", role="radio")
+            left = self.wait_bar_position("Left", "8")
+            self.capture("bar-left")
+            self.click_named("moving visible Bar position control to Right", "Direita", role="radio")
+            right = self.wait_bar_position("Right", "4")
+            self.capture("bar-right")
+            self.click_named("moving visible Bar position control to Bottom", "Inferior", role="radio")
             bottom = self.wait_bar_position("Bottom", "16")
             bottom_capture = self.capture("bar-bottom")
             bottom_layers = self.layers()
@@ -1203,12 +1318,14 @@ print(json.dumps(result))"""
                 f"expected geometry {saved_position}, got {restoration}"
             )
         return {
-            "ui": "Visible Bar & Dock controls established Top, moved to Bottom, and restored the exact saved position.",
+            "ui": "Native Bar & Dock controls exercised all four edges and restored the exact saved position.",
             "guest": {
                 "saved_raw": saved_raw,
                 "saved_position": saved_position,
                 "initial_geometry": initial_geometry,
                 "top_stable_samples": top,
+                "left_stable_samples": left,
+                "right_stable_samples": right,
                 "bottom_stable_samples": bottom,
                 "bottom_layer": bottom_bar,
                 "bottom_screenshot": str(bottom_capture),
@@ -1219,9 +1336,13 @@ print(json.dumps(result))"""
         }
 
     def test_wifi(self) -> dict[str, object]:
-        self.vnc("open Wi-Fi controls", "keydown", "super", "key", "n", "keyup", "super", "pause", "1")
+        self.open_quick_settings()
         try:
-            self.save_accessibility_tree("wifi-controls")
+            self.wait_until(
+                "Quick Settings Wi-Fi toggle",
+                lambda: self.find_accessible_node("Wi-Fi:", role="toggle button", contains=True),
+                timeout=10,
+            )
             button = self.wifi_control()
             initial = self.guest("reading initial Wi-Fi radio", "nmcli radio wifi", timeout=30).stdout.strip()
             if initial != "enabled":
@@ -1259,6 +1380,7 @@ print(json.dumps(result))"""
             if "Shade-Test" not in scan.stdout:
                 raise Unsupported("Wi-Fi control toggled successfully, but the guest-local Shade-Test AP was not visible in NetworkManager scan output")
             state = self.guest("reading Wi-Fi connection state", "nmcli -t -f DEVICE,STATE,CONNECTION device status").stdout.strip()
+            self.accessibility("returning to Quick Settings home", "click", "--name", "Voltar", "--role", "button", "--description-match")
             return {"ui": "AT-SPI Click actions on the WiFi toggle changed radio state both ways", "guest": {"radio_initial": initial, "radio_off": off, "radio_on": on, "devices": state, "scan": scan.stdout.strip()}, "accessibility": button}
         finally:
             self.vnc("close Quick Settings", "keydown", "super", "key", "n", "keyup", "super", "pause", "1")
@@ -1338,17 +1460,19 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                     lambda: self.guest("waiting for guest Wi-Fi radio", "nmcli radio wifi").stdout.strip() == "enabled",
                     timeout=20,
                 )
-            self.click_named("opening Wi-Fi access-point list", "Wi-Fi options", role="toggle button")
-            self.click_named("scanning guest Wi-Fi access points", "Scan", role="button")
+            self.click_named("opening Wi-Fi details", "Wi-Fi details", role="button")
+            self.click_named("scanning guest Wi-Fi access points", "Buscar redes", role="button")
             self.wait_until(
                 "guest-local Shade-Test AP in NetworkManager",
                 lambda: "Shade-Test" in str(self.wifi_guest_state(device).get("scan", "")),
                 timeout=25,
             )
-            self.click_named("selecting guest-local Shade-Test network", "Shade-Test", role="label")
+            self.click_named(
+                "selecting guest-local Shade-Test network", "Shade-Test", role="button", contains=True
+            )
             self.wait_until(
                 "Shade-Test credential prompt",
-                lambda: self.find_accessible_node("Password", contains=True, role="text"),
+                lambda: self.find_accessible_node("Senha de Shade-Test", role="text box"),
                 timeout=8,
             )
             connection_attempted = True
@@ -1369,7 +1493,10 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             if not profiles_after_connect:
                 raise RuntimeError("NetworkManager connected but did not save the guest Shade-Test profile")
             self.capture("wifi-credentials-connected")
-            self.click_named("disconnecting guest Shade-Test from its visible row", "Shade-Test", role="label")
+            self.click_named(
+                "disconnecting guest Shade-Test from its visible row",
+                "Shade-Test", role="button", contains=True,
+            )
             disconnected = self.wait_until(
                 "guest Wi-Fi disconnection",
                 lambda: (
@@ -1426,19 +1553,23 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
 
     def test_window_target_capture(self) -> dict[str, object]:
         original_audio = self.gsetting("record-audio")
+        original_backend = self.gsetting("recorder-backend")
+        original_dnd: bool | None = None
         overlay_open = False
         guest_video: str | None = None
         screenshot_guest: str | None = None
         pattern_started = False
         pattern: dict[str, object] = {}
         try:
+            original_dnd = self.notification_dnd()
+            self.notification_dnd(True)
+            self.gsetting("recorder-backend", "1")
             pattern_started = True
             pattern = self.start_pattern_window()
             client_size = pattern.get("size")
             client_at = pattern.get("at")
             if client_size != [480, 320] or client_at != [100, 100]:
                 raise RuntimeError(f"Window capture pattern geometry is not deterministic: {pattern}")
-            before_layers = len(self.layers())
             screenshot_marker = self.desktop(
                 "marking window-target screenshot artifact time", "date +%s.%N"
             ).stdout.strip()
@@ -1446,17 +1577,37 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             self.desktop("opening Shade capture target picker", "shade-shell screenshot-overlay")
             self.wait_until(
                 "Shade screenshot target picker",
-                lambda: len(self.layers()) > before_layers,
+                lambda: any(layer.get("namespace") == "shade-screenshot" for layer in self.layers()),
                 timeout=12,
             )
+            image_mode = self.find_accessible_node("Image", role="toggle button")
+            image_state = self.accessibility(
+                "reading the retained capture mode", "find", "--name", "Image",
+                "--role", "toggle button", "--bus", str(image_mode["bus"]),
+                "--path", str(image_mode["path"]), "--include-state",
+            )
+            # A previous area recording deliberately leaves Recording selected.
+            # GTK toggle buttons expose PRESSED; CHECKED also covers radio roles.
+            if not image_state["state_words"][0] & ((1 << 20) | (1 << 4)):
+                self.click_accessible_node(image_mode, "selecting explicit Image mode")
             self.click_named("choosing Window screenshot target", "Window", role="toggle button")
+            self.capture("window-target-before-selection")
             self.vnc(
                 "selecting guest pattern window for screenshot",
-                "move", "340", "260", "click", "1", "key", "enter",
+                "move", "340", "260", "click", "1", "pause", "0.3", "key", "enter",
             )
+            self.capture("window-target-after-selection")
+            if self.recording_processes():
+                raise RuntimeError("Reviewing a screenshot unexpectedly started a recorder")
+            confirmation = self.wait_until(
+                "reviewed window image confirmation",
+                lambda: self.find_accessible_node("Capture image", role="button"),
+                timeout=12,
+            )
+            self.click_accessible_node(confirmation, "confirming the reviewed window image")
             self.wait_until(
                 "window screenshot overlay closure",
-                lambda: len(self.layers()) <= before_layers,
+                lambda: not any(layer.get("namespace") == "shade-screenshot" for layer in self.layers()),
                 timeout=12,
             )
             overlay_open = False
@@ -1492,7 +1643,6 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 raise RuntimeError(f"Window screenshot is not the selected guest window: {image_probe}")
 
             self.gsetting("record-audio", "false")
-            record_layers = len(self.layers())
             record_marker = self.desktop(
                 "marking window-target recording time", "date +%s.%N"
             ).stdout.strip()
@@ -1500,18 +1650,26 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             self.desktop("opening Shade recording target picker", "shade-shell screenshot-overlay")
             self.wait_until(
                 "Shade recording target picker",
-                lambda: len(self.layers()) > record_layers,
+                lambda: any(layer.get("namespace") == "shade-screenshot" for layer in self.layers()),
                 timeout=12,
             )
-            self.click_named("selecting Record mode", "Record", role="toggle button")
+            self.click_named("selecting Recording mode", "Recording", role="toggle button")
             self.click_named("selecting Window recording target", "Window", role="toggle button")
             self.vnc(
                 "selecting guest pattern window for recording",
-                "move", "340", "260", "click", "1", "key", "enter",
+                "move", "340", "260", "click", "1", "pause", "0.3", "key", "enter",
             )
+            if self.recording_processes():
+                raise RuntimeError("Selecting a window started recording before explicit confirmation")
+            confirmation = self.wait_until(
+                "reviewed window recording confirmation",
+                lambda: self.find_accessible_node("Start recording", role="button"),
+                timeout=12,
+            )
+            self.click_accessible_node(confirmation, "confirming the reviewed window recording")
             self.wait_until(
                 "window recording target overlay closure",
-                lambda: len(self.layers()) <= record_layers,
+                lambda: not any(layer.get("namespace") == "shade-screenshot" for layer in self.layers()),
                 timeout=12,
             )
             overlay_open = False
@@ -1521,9 +1679,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 timeout=20,
             )
             argv = [str(arg) for arg in recorder.get("argv", [])]
-            expected_geometry = "480x320+100+100"
-            if "-g" not in argv or argv[argv.index("-g") + 1] != expected_geometry:
-                raise RuntimeError(f"Window recorder did not receive the selected window bounds: {argv}")
+            expected_geometry = self.assert_recording_geometry(argv, 100, 100, 480, 320)
             if any(arg in {"-a", "--audio"} or arg.startswith("--audio=") for arg in argv):
                 raise RuntimeError(f"Audio was enabled in a window-target recording command: {argv}")
             if self.gsetting("record-audio") != "false":
@@ -1593,79 +1749,126 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                                     check=False,
                                 )
                         finally:
-                            if pattern_started:
-                                self.stop_pattern_window()
+                            try:
+                                if pattern_started:
+                                    self.stop_pattern_window()
+                            finally:
+                                try:
+                                    self.gsetting("recorder-backend", original_backend)
+                                finally:
+                                    if original_dnd is not None:
+                                        self.notification_dnd(original_dnd)
 
     def test_settings_page_registry(self) -> dict[str, object]:
-        category_groups = {
-            "Personalization": ["Appearance", "Dynamic Theming", "Night Light", "Bar", "Dock", "Pinned Apps", "Modules"],
-            "Devices": ["Display modes", "Display Layout", "Connected Displays", "Saved Layouts", "Display Changes", "Output", "Input", "Mouse", "Touchpad"],
-            "Connectivity": ["Wi-Fi", "Wired", "Hotspot", "Connectivity", "Bluetooth", "Paired Devices", "Available Devices"],
-            "Privacy & Security": ["Idle Management", "Power Actions", "Notifications", "Sound Alerts", "Scheduled DND", "Recording", "Screenshot", "Recording Boundary", "Overlay", "Screen Share"],
-            "Applications": ["Default Applications", "Startup Applications"],
-            "System": ["Clock", "Pomodoro", "Countdown", "Keyboard Shortcuts", "System Information", "Debug"],
-        }
+        destinations = [
+            "Aparência", "Barra e dock", "Telas", "Som", "Mouse e touchpad",
+            "Conexões", "Bluetooth", "Bloqueio e energia", "Energia", "Notificações",
+            "Não perturbe", "Captura de tela", "Compartilhamento de tela",
+            "Aplicativos padrão", "Aplicativos ao entrar", "Relógio", "Clima",
+            "Temporizador", "Atalhos", "Sobre o sistema", "Diagnóstico",
+        ]
         visited: list[dict[str, object]] = []
-        feature_groups: list[dict[str, str]] = []
         opened_settings = False
         try:
             self.open_settings()
             opened_settings = True
-            for category, expected_groups in category_groups.items():
-                panel = self.settings_page(category)
-                bounds = panel.get("bounds")
-                if not isinstance(bounds, list) or len(bounds) != 4 or int(bounds[2]) <= 0 or int(bounds[3]) <= 0:
-                    raise RuntimeError(f"Settings category {category!r} did not render usable content: {panel}")
-                tree = self.accessibility_tree(f"reading {category} feature groups")
-                found = []
-                missing = []
-                for group_title in expected_groups:
-                    try:
-                        self.nodes_in_group(tree, group_title)
-                    except Unsupported:
-                        missing.append(group_title)
-                        continue
-                    found.append(group_title)
-                    feature_groups.append({"category": category, "group": group_title})
-                if missing:
-                    raise RuntimeError(
-                        f"Settings category {category!r} is missing mapped feature groups {missing}; "
-                        f"found {found}"
-                    )
-                screenshot = self.capture(f"settings-category-{len(visited) + 1:02d}")
-                visited.append({
-                    "title": category,
-                    "panel": panel,
-                    "feature_groups": found,
-                    "screenshot": str(screenshot),
-                })
-            if len(visited) != 6:
-                raise RuntimeError(f"Expected all six native Settings categories, visited {len(visited)}")
-
-            self.vnc(
-                "searching Settings for a control outside System",
-                "keydown", "ctrl", "key", "f", "keyup", "ctrl",
-                "type", "Scan for Devices", "pause", "0.5",
-            )
-            search_evidence = self.wait_until(
-                "native Settings search for Connectivity control",
-                lambda: self.find_accessible_node("Scan for Devices", role="button"),
+            for title in destinations:
+                page = self.settings_page(title)
+                screenshot = self.capture(f"settings-destination-{len(visited) + 1:02d}")
+                visited.append({"title": title, "page": page, "screenshot": str(screenshot)})
+            self.settings_search("Bluetooth")
+            search_result = self.wait_until(
+                "global Settings exact Bluetooth result",
+                lambda: self.find_in_group(self.accessibility_tree("reading global search results"),
+                    "Resultados de busca", "Bluetooth", role="list item"),
                 timeout=12,
             )
+            self.vnc("open Bluetooth from global Settings search", "key", "enter")
+            bluetooth = self.wait_until(
+                "Bluetooth destination opened from search",
+                lambda: next((
+                    {"bounds": node.get("bounds"), "group": node, "visible_descendants": [
+                        child for child in self.walk_accessibility(node)
+                        if child is not node and child.get("role") != "group" and child.get("bounds")
+                    ]}
+                    for node in self.walk_accessibility(self.accessibility_tree("reading opened Bluetooth destination"))
+                    if node.get("role") == "group" and node.get("name") == "Bluetooth"
+                    and any(child is not node and child.get("role") != "group" and child.get("bounds")
+                            for child in self.walk_accessibility(node))
+                ), None),
+                timeout=10,
+            )
+            self.accessibility(
+                "returning to global Settings search", "click", "--name", "Voltar",
+                "--role", "button", "--description-match",
+            )
+            restored_result = self.wait_until(
+                "restored Bluetooth search result with preserved query",
+                lambda: self.find_in_group(self.accessibility_tree("reading restored search results"),
+                    "Resultados de busca", "Bluetooth", role="list item"),
+                timeout=10,
+            )
+            self.wait_until(
+                "restored Settings search field",
+                lambda: self.find_accessible_node("Buscar nas configurações", role="search box"),
+                timeout=10,
+            )
             return {
-                "ui": "Visited all six native Settings categories, inspected their mapped feature groups, and used built-in search to find Scan for Devices outside the selected System category.",
-                "guest": {
-                    "visited_categories": visited,
-                    "category_count": len(visited),
-                    "feature_groups": feature_groups,
-                    "feature_group_count": len(feature_groups),
+                "ui": "Visited the 21 Settings destinations and returned from global search results with the query intact.",
+                "guest": {"visited_destinations": visited, "destination_count": len(visited)},
+                "accessibility": {
+                    "search_result": search_result,
+                    "opened_destination": bluetooth,
+                    "restored_search_result": restored_result,
                 },
-                "accessibility": {"cross_category_search_result": search_evidence},
             }
         finally:
             if opened_settings:
                 self.close_settings()
             self.close_quick_settings()
+    def test_settings_search_keyboard(self) -> dict[str, object]:
+        opened_settings = False
+        try:
+            self.open_settings()
+            opened_settings = True
+            # Keep typing and Enter on one VNC connection: a second SSH/AT-SPI
+            # command would let the native debounce expire before the key.
+            self.vnc(
+                "type and immediately open Bluetooth before search debounce settles",
+                "keydown", "ctrl", "key", "f", "keyup", "ctrl", "pause", "0.2",
+                "keydown", "ctrl", "key", "a", "keyup", "ctrl",
+                "type", "Bluetooth", "key", "enter", "pause", "0.5",
+            )
+            bluetooth = self.wait_until(
+                "Bluetooth destination opened by immediate search Enter",
+                lambda: next((
+                    {"bounds": node.get("bounds"), "group": node, "visible_descendants": [
+                        child for child in self.walk_accessibility(node)
+                        if child is not node and child.get("role") != "group" and child.get("bounds")
+                    ]}
+                    for node in self.walk_accessibility(self.accessibility_tree("reading immediate Bluetooth destination"))
+                    if node.get("role") == "group" and node.get("name") == "Bluetooth"
+                    and any(child is not node and child.get("role") != "group" and child.get("bounds")
+                            for child in self.walk_accessibility(node))
+                ), None),
+                timeout=10,
+            )
+            self.vnc("returning to preserved Settings search with Escape", "key", "esc")
+            restored_result = self.wait_until(
+                "restored Bluetooth result after immediate keyboard navigation",
+                lambda: self.find_in_group(self.accessibility_tree("reading immediate search restoration"),
+                    "Resultados de busca", "Bluetooth", role="list item"),
+                timeout=10,
+            )
+            return {
+                "ui": "Global UTF8 query opened the native Bluetooth group by immediate physical Enter before debounce, then Back preserved the query result.",
+                "accessibility": {"opened_destination": bluetooth, "restored_search_result": restored_result},
+            }
+        finally:
+            if opened_settings:
+                self.close_settings()
+            self.close_quick_settings()
+
 
     def test_displays_preview(self) -> dict[str, object]:
         initial_monitors = self.monitors()
@@ -1692,18 +1895,18 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             )
             self.open_settings()
             settings_open = True
-            page = self.settings_page("Devices")
+            page = self.settings_page("Telas")
             tree = self.accessibility_tree("reading display controls before preview")
             self.save_accessibility_tree("settings-displays-preview")
             change_groups = [
                 node for node in self.walk_accessibility(tree)
-                if node.get("name") == "Display Changes" and any(
-                    child.get("name") == "Apply" and child.get("role") == "button"
+                if node.get("name") == "Revisar alterações" and any(
+                    child.get("name") == "Aplicar alterações" and child.get("role") == "button"
                     for child in self.walk_accessibility(node)
                 )
             ]
             if not change_groups:
-                raise Unsupported("Native Display Changes action group is unavailable")
+                raise Unsupported("Native Revisar alterações action group is unavailable")
             changes = min(change_groups, key=lambda node: len(list(self.walk_accessibility(node))))
             def current_revert():
                 scoped = self.accessibility(
@@ -1711,9 +1914,9 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                     "tree", "--bus", str(changes["bus"]), "--path", str(changes["path"]),
                     "--no-bounds", "--max-depth", "12", "--max-nodes", "100",
                 )
-                return self.find_in_group(scoped, "Display Changes", "Revert", role="button")
+                return self.find_in_group(scoped, "Revisar alterações", "Reverter", role="button")
             scale_controls = [
-                node for node in self.nodes_in_group(tree, "Connected Displays")
+                node for node in self.nodes_in_group(tree, "Telas conectadas")
                 if str(node.get("role", "")).casefold() == "spin button"
                 and isinstance(node.get("bounds"), list)
                 and len(node["bounds"]) == 4
@@ -1732,7 +1935,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 "--bus", str(control["bus"]), "--path", str(control["path"]),
                 "--value", str(target_scale),
             )
-            self.click_in_group("applying reversible display preview", "Display Changes", "Apply", role="button")
+            self.click_in_group("applying reversible display preview", "Revisar alterações", "Aplicar alterações", role="button")
             preview_pending = True
             revert_control = self.wait_until(
                 "display preview controls",
@@ -1787,7 +1990,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         finally:
             try:
                 if preview_pending:
-                    self.click_in_group("reverting pending display preview during cleanup", "Display Changes", "Revert", role="button")
+                    self.click_in_group("reverting pending display preview during cleanup", "Revisar alterações", "Reverter", role="button")
                     self.wait_until(
                         "display preview cleanup",
                         lambda: (
@@ -1861,12 +2064,12 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             settings = next(
                 (
                     client for client in self.clients()
-                    if "settings" in str(client.get("title", "")).casefold()
+                    if client.get("title") == "Configurações"
                 ),
                 None,
             )
             if settings is None:
-                raise RuntimeError("Shade Settings client disappeared before switcher exercise")
+                raise RuntimeError("Configurações client disappeared before switcher exercise")
             address = str(settings.get("address", ""))
             self.desktop(
                 "focusing Settings before switcher selection",
@@ -1998,7 +2201,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             lambda: next(
                 (
                     client for client in self.clients()
-                    if client.get("title") == "Share Screen / Window"
+                    if client.get("title") == "Escolha o que compartilhar"
                 ),
                 None,
             ),
@@ -2008,22 +2211,25 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         self.save_accessibility_tree(f"share-picker-{kind}")
         def choose_source(fragment: str) -> None:
             button = self.find_accessible_node(fragment, role="button", contains=True)
-            self.accessibility(
-                f"choosing the actual picker button for {fragment}",
-                "click", "--name", fragment, "--name-contains", "--role", "button",
-                "--bus", str(button["bus"]), "--path", str(button["path"]),
+            self.click_accessible_node(button, f"choosing source {fragment}")
+            review_heading = "Revise a tela escolhida" if kind == "screen" else "Revise a janela escolhida"
+            self.wait_until(
+                f"reviewing selected source {fragment}",
+                lambda: self.find_accessible_node(review_heading, role="label"),
+                timeout=10,
             )
+            self.click_named("confirming reviewed share source", "Compartilhar", role="button")
         if kind == "screen":
-            self.click_named("show guest screen sources", "Screens", role="tab")
+            self.click_named("show guest screen sources", "Telas", role="tab")
             primary = next((item for item in self.monitors() if item.get("name") == "Virtual-1"), None)
             if primary is None:
                 raise RuntimeError("Portal screen selection has no Virtual-1 primary output")
             choose_source(str(primary["name"]))
         elif kind == "window":
-            self.click_named("show guest window sources", "Windows", role="tab")
+            self.click_named("show guest window sources", "Janelas", role="tab")
             choose_source("org.shade.WorkflowPattern")
         elif kind == "cancel":
-            self.click_named("cancelling the real Shade share picker", "Cancel", role="button")
+            self.click_named("cancelling the real Shade share picker", "Cancelar", role="button")
         else:
             raise ValueError(f"Unknown portal scenario kind: {kind}")
         self.wait_until(
@@ -2174,7 +2380,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             ).stdout
             settings_open = True
             self.open_settings()
-            page = self.settings_page("Connectivity")
+            page = self.settings_page("Bluetooth")
             self.save_accessibility_tree("settings-bluetooth-peer")
             if not initial_powered:
                 self.click_in_group("enabling guest Bluetooth from Settings", "Bluetooth", "Bluetooth", role="switch")
@@ -2542,12 +2748,12 @@ print(json.dumps(values))"""
             self.guest("selecting isolated guest monitor source", f"pactl set-default-source {test_source}")
             self.open_settings()
             settings_open = True
-            page = self.settings_page("Devices")
+            page = self.settings_page("Som")
             self.save_accessibility_tree("settings-sound-audio")
             sound_tree = self.accessibility_tree("reading guest Sound endpoint sliders")
             settings_sliders = [
                 node
-                for group_title in ("Output", "Input")
+                for group_title in ("Saída de som", "Microfone")
                 for node in self.nodes_in_group(sound_tree, group_title)
                 if str(node.get("role", "")).casefold() == "slider"
                 and isinstance(node.get("bounds"), list)
@@ -2929,7 +3135,8 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         except (RuntimeError, Unsupported):
             return False
         return any(
-            "password" in str(node.get("name") or "").casefold()
+            str(node.get("name") or "") == "Senha da conta"
+            and str(node.get("role") or "").casefold() == "text box"
             and isinstance(node.get("bounds"), list)
             and len(node["bounds"]) == 4
             and int(node["bounds"][2]) > 0
@@ -2957,27 +3164,29 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             self.wait_until(
                 "native password lock with normal Settings window suspended",
                 lambda: native_locked() and self.lockscreen_visible() and not any(
-                    client.get("title") == "Shade Settings" and client.get("mapped")
+                    client.get("title") == "Configurações" and client.get("mapped")
                     for client in self.clients()
                 ),
                 timeout=20,
             )
             locked_capture = self.capture("password-lockscreen")
             self.save_accessibility_tree("password-lockscreen")
+            password = self.find_accessible_node("Senha da conta", role="text box")
+            self.vnc("clear automatically focused lockscreen password field", "keydown", "ctrl", "key", "a", "keyup", "ctrl")
             self.vnc("submit incorrect disposable lock credential", "type", "shade-invalid", "key", "enter")
             self.wait_until(
                 "real password rejection while compositor remains locked",
-                lambda: self.find_accessible_node("Authentication failed", role="label"),
+                lambda: self.find_accessible_node("", role="alert", contains=True),
                 timeout=20,
             )
             if not native_locked():
                 raise RuntimeError("Wrong password released compositor lock")
             wrong_capture = self.capture("password-lockscreen-wrong")
-            self.vnc("submit correct disposable lock credential", "type", SSH_PASSWORD, "key", "enter")
+            self.vnc("entering correct disposable lock credential", "keydown", "ctrl", "key", "a", "keyup", "ctrl", "type", SSH_PASSWORD, "key", "enter")
             self.wait_until(
                 "authenticated native unlock and restored Settings",
                 lambda: not native_locked() and not self.lockscreen_visible() and any(
-                    client.get("title") == "Shade Settings" and client.get("mapped")
+                    client.get("title") == "Configurações" and client.get("mapped")
                     for client in self.clients()
                 ),
                 timeout=30,
@@ -3013,7 +3222,8 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         actions = tuple(
             (label, heading, dismissal)
             for label, heading in (
-                ("Log Out", "Log out?"), ("Restart", "Restart?"), ("Power Off", "Power off?")
+                ("Sair da sessão", "Sair da sessão?"), ("Reiniciar", "Reiniciar o computador?"),
+                ("Desligar", "Desligar o computador?")
             )
             for dismissal in ("cancel", "escape", "window")
         )
@@ -3041,31 +3251,13 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         def open_action(label: str, heading: str, dismissal: str) -> dict[str, object]:
             if not self.quick_settings_open():
                 self.open_quick_settings()
-            power = self.accessibility(
-                "finding Power options in Quick Settings",
-                "find", "--name", "Power options", "--role", "toggle button", "--include-state", "--window-bounds",
+            menu = self.accessibility(
+                "finding native session and power menu", "find", "--name", "Sessão e energia", "--actionable",
             )
-            if not (power["state_words"][0] & (1 << 20)):
-                # The pinned Wayland popup stalls under raw DoAction. Exercise
-                # real input using WINDOW bounds; SCREEN origins are unavailable.
-                bounds = power.get("window_bounds")
-                panels = [layer for layer in self.layers() if layer.get("namespace") == "shade-quicksettings"]
-                if not isinstance(bounds, list) or len(bounds) != 4 or len(panels) != 1:
-                    raise Unsupported(f"Cannot map the native menu control to its layer: {power}, {panels}")
-                x, y, width, height = map(int, bounds)
-                panel = panels[0]
-                if min(x, y) < 0 or width <= 0 or height <= 0 or x + width > int(panel["w"]) or y + height > int(panel["h"]):
-                    raise Unsupported(f"Native menu bounds exceed the observed layer: {bounds}, {panel}")
-                self.vnc(
-                    "opening Power options with measured native input",
-                    "move", str(int(panel["x"]) + 8), str(int(panel["y"]) + 8),
-                    "click", "1", "pause", "0.2",
-                    "move", str(int(panel["x"]) + x + width // 2),
-                    str(int(panel["y"]) + y + height // 2), "click", "1", "pause", "0.3",
-                )
+            self.click_accessible_node(menu, "opening session and power menu")
             trigger = self.wait_until(
                 f"mapped native {label} power action",
-                lambda: self.find_accessible_node(label, role="button"),
+                lambda: self.accessibility("finding native power action", "find", "--name", label, "--role", "button", "--actionable"),
                 timeout=10,
             )
             self.click_accessible_node(trigger, f"opening {heading} confirmation")
@@ -3081,11 +3273,11 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         try:
             observed: list[str] = []
             rapid_activation = "not attempted"
-            open_action("Restart", "Restart?", "parent-hide")
+            open_action("Reiniciar", "Reiniciar o computador?", "parent-hide")
             self.activate_shell_action("toggle-quicksettings")
             self.wait_until(
                 "hidden Quick Settings cancels its pending confirmation",
-                lambda: not self.quick_settings_open() and not dialog_visible("Restart?"),
+                lambda: not self.quick_settings_open() and not dialog_visible("Reiniciar o computador?"),
                 timeout=10,
             )
             assert_session_survived("hiding the confirmation parent")
@@ -3093,7 +3285,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             # an unmapped fallback need not emit AlertDialog::closed.
             for label, heading, dismissal in actions:
                 trigger = open_action(label, heading, dismissal)
-                if label == "Restart" and dismissal == "escape":
+                if label == "Reiniciar" and dismissal == "escape":
                     # Target the original native object, never a SCREEN-coordinate
                     # hit test: GTK's AT-SPI backend may report [0, 0] bounds.
                     try:
@@ -3108,7 +3300,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                         raise RuntimeError("Repeated original trigger removed the pending Restart confirmation")
                     assert_session_survived("rapid second Restart activation")
                 if dismissal == "cancel":
-                    self.click_named(f"cancelling {heading}", "Cancel", role="button")
+                    self.click_named(f"cancelling {heading}", "Cancelar", role="button")
                 elif dismissal == "escape":
                     self.vnc(f"dismissing {heading} with Escape", "key", "esc", "pause", "0.3")
                 else:
@@ -3145,14 +3337,17 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             self.close_quick_settings()
 
     def test_capture(self) -> dict[str, object]:
-        before = len(self.layers())
+        screenshot_layers = lambda: [
+            layer for layer in self.layers() if layer.get("namespace") == "shade-screenshot"
+        ]
+        before = len(screenshot_layers())
         self.vnc("open capture overlay with Print", "key", "sysrq", "pause", "1")
         self.capture("capture-overlay-open")
-        overlay = len(self.layers())
+        overlay = len(screenshot_layers())
         if overlay <= before:
             raise RuntimeError("Print did not open the screenshot overlay layer")
         self.vnc("cancel capture overlay with Escape", "key", "esc", "pause", "1")
-        if len(self.layers()) != before:
+        if len(screenshot_layers()) != before:
             raise RuntimeError("Capture overlay remained visible after Escape")
         marker = self.desktop("marking screenshot output time", "date +%s.%N").stdout.strip()
         self.vnc("take full screenshot with Super+Shift+S", "keydown", "super", "keydown", "shift", "key", "s", "keyup", "shift", "keyup", "super", "pause", "2")
@@ -3163,10 +3358,34 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         files = json.loads(output.stdout)
         if not files:
             raise RuntimeError("Screenshot shortcut did not create a new PNG under ~/Pictures/Screenshots")
-        return {"ui": "VNC Print opened and Escape cancelled the overlay; Super+Shift+S took a screenshot", "guest": files, "layers": f"{before} -> {overlay} -> {len(self.layers())}"}
+        self.wait_until(
+            "completed capture feedback after clipboard handoff",
+            lambda: self.find_accessible_node("Concluir", role="button"),
+            timeout=15,
+        )
+        clipboard_probe = """import hashlib, json, pathlib, subprocess, sys
+saved = pathlib.Path(sys.argv[1]).read_bytes()
+clipboard = subprocess.check_output(['wl-paste', '--type', 'image/png'], timeout=10)
+if clipboard != saved:
+    raise RuntimeError('Clipboard PNG differs from the saved screenshot')
+print(json.dumps({'sha256': hashlib.sha256(saved).hexdigest(), 'bytes': len(saved)}))"""
+        clipboard = json.loads(self.desktop(
+            "verifying actual screenshot clipboard bytes",
+            "python3 -c " + shlex.quote(clipboard_probe) + " " + shlex.quote(files[-1]),
+            timeout=15,
+        ).stdout)
+        # A saved file alone did not catch the synchronous clipboard deadlock.
+        self.activate_shell_action("close-all")
+        self.click_named("dismissing completed capture feedback", "Concluir", role="button")
+        return {
+            "ui": "Print opened and Escape cancelled selection; the screenshot completed with identical clipboard PNG bytes and a responsive shell",
+            "guest": {"files": files, "clipboard": clipboard},
+            "layers": f"{before} -> {overlay} -> {len(screenshot_layers())}",
+        }
 
     def test_notifications_dnd(self) -> dict[str, object]:
-        before_state = None
+        before_dnd = None
+
         summary = f"Shade workflow smoke {time.time_ns()}"
         self.desktop(
             "sending synthetic notification",
@@ -3188,52 +3407,69 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         )
         toast_capture = self.capture("notification-toast")
         self.wait_until(
-            "toast expiry without opening Quick Settings",
+            "toast expiry without opening notification center",
             lambda: not any(layer.get("namespace") == "shade-notifications" for layer in self.layers()),
             timeout=10,
         )
-        self.vnc("open Quick Settings notification list", "keydown", "super", "key", "n", "keyup", "super", "pause", "2")
         try:
-            quicksettings = any(350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700 for layer in self.layers())
-            if not quicksettings:
-                self.vnc("retry opening Quick Settings notification list", "keydown", "super", "key", "n", "keyup", "super", "pause", "2")
-                quicksettings = any(350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700 for layer in self.layers())
-            if not quicksettings:
-                raise RuntimeError("Super+N did not open Quick Settings for the notification scenario")
+            self.activate_shell_action("open-notifications")
+            center = self.wait_until(
+                "independent notification center compositor layer",
+                lambda: next(
+                    (layer for layer in self.layers() if layer.get("namespace") == "shade-notification-center"),
+                    None,
+                ),
+                timeout=10,
+            )
             self.capture("notification-center")
             self.save_accessibility_tree("notification-center")
-            notification = self.accessibility("finding synthetic notification", "find", "--max-depth", "16", "--max-nodes", "2000", "--name", summary)
-            try:
-                dnd = self.accessibility("finding Do Not Disturb control", "find", "--max-depth", "16", "--max-nodes", "2000", "--include-state", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
-            except Unsupported as exc:
-                raise Unsupported(f"Synthetic notification is visible, but the Do Not Disturb control is not accessible by its tooltip/name: {exc}")
-            before_state = dnd["state_words"]
-            self.accessibility("toggling Do Not Disturb", "click", "--max-depth", "16", "--max-nodes", "2000", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
-            after = self.accessibility("verifying Do Not Disturb state", "find", "--max-depth", "16", "--max-nodes", "2000", "--include-state", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
-            if before_state == after["state_words"]:
-                raise Unsupported("Do Not Disturb click did not change its exposed AT-SPI state words")
-            self.accessibility("restoring Do Not Disturb state", "click", "--max-depth", "16", "--max-nodes", "2000", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
-            restored = self.accessibility("verifying restored Do Not Disturb state", "find", "--max-depth", "16", "--max-nodes", "2000", "--include-state", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
-            if restored["state_words"] != before_state:
+            dnd = self.accessibility(
+                "finding Do Not Disturb toggle in notification center", "find", "--max-depth", "32",
+                "--max-nodes", "4000", "--include-state", "--actionable", "--name", "Não perturbe",
+                "--role", "switch",
+            )
+            before_dnd = dnd["state_words"]
+            self.click_accessible_node(dnd, "toggling Do Not Disturb in notification center")
+            after = self.accessibility(
+                "verifying Do Not Disturb state", "find", "--max-depth", "32", "--max-nodes", "4000",
+                "--include-state", "--name", "Não perturbe", "--role", "switch",
+                "--bus", str(dnd["bus"]), "--path", str(dnd["path"]),
+            )
+            if before_dnd == after["state_words"]:
+                raise RuntimeError("Do Not Disturb native action did not change its exposed AT-SPI state words")
+            self.click_accessible_node(dnd, "restoring Do Not Disturb state")
+            restored = self.accessibility(
+                "verifying restored Do Not Disturb state", "find", "--max-depth", "32", "--max-nodes", "4000",
+                "--include-state", "--name", "Não perturbe", "--role", "switch",
+                "--bus", str(dnd["bus"]), "--path", str(dnd["path"]),
+            )
+            if restored["state_words"] != before_dnd:
                 raise RuntimeError("Restoring Do Not Disturb did not recover its initial exposed state")
             return {
-                "ui": "notification appeared as a standalone toast, expired, remained in Quick Settings, and DND toggled and restored",
+                "ui": "notification appeared as a standalone toast, expired, and DND in the independent notification center toggled and restored",
                 "toast": {"layer": toast, "screenshot": str(toast_capture), "accessibility": toast_notification},
-                "accessibility": {"notification": notification, "dnd_before": dnd, "dnd_after": after, "dnd_restored": restored},
+                "center": center,
+                "accessibility": {"dnd_before": dnd, "dnd_after": after, "dnd_restored": restored},
             }
         finally:
-            try:
-                panel_open = any(350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700 for layer in self.layers())
-                if before_state is not None and panel_open:
-                    current = self.accessibility("checking Do Not Disturb before cleanup", "find", "--max-depth", "16", "--max-nodes", "2000", "--include-state", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
-                    if current["state_words"] != before_state:
-                        self.accessibility("restoring Do Not Disturb after scenario", "click", "--max-depth", "16", "--max-nodes", "2000", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
-                        restored = self.accessibility("verifying Do Not Disturb cleanup", "find", "--max-depth", "16", "--max-nodes", "2000", "--include-state", "--description-match", "--name", "Do Not Disturb", "--role", "toggle button")
-                        if restored["state_words"] != before_state:
-                            raise RuntimeError("Do Not Disturb cleanup did not restore its original exposed state")
-            finally:
-                if any(350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700 for layer in self.layers()):
-                    self.vnc("close Quick Settings after notification test", "keydown", "super", "key", "n", "keyup", "super", "pause", "1")
+            if before_dnd is not None:
+                current = self.accessibility(
+                    "checking Do Not Disturb before cleanup", "find", "--max-depth", "32",
+                    "--max-nodes", "4000", "--include-state", "--name", "Não perturbe",
+                    "--role", "switch", "--bus", str(dnd["bus"]), "--path", str(dnd["path"]),
+                    check=False,
+                )
+                if current.get("state_words") != before_dnd and current.get("bus") and current.get("path"):
+                    self.click_accessible_node(dnd, "restoring Do Not Disturb after scenario")
+                    restored = self.accessibility(
+                        "verifying Do Not Disturb cleanup state", "find", "--max-depth", "32",
+                        "--max-nodes", "4000", "--include-state", "--name", str(dnd["name"]),
+                        "--role", str(dnd["role"]), "--bus", str(dnd["bus"]),
+                        "--path", str(dnd["path"]),
+                    )
+                    if restored["state_words"] != before_dnd:
+                        raise RuntimeError("Do Not Disturb cleanup did not recover its initial exposed state")
+            self.activate_shell_action("close-all")
 
     def test_notification_history(self) -> dict[str, object]:
         history_view_open = False
@@ -3244,41 +3480,29 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             + shlex.quote(summary)
             + " 'Guest-only notification history check'",
         )
-        self.vnc("open Quick Settings for notification history", "keydown", "super", "key", "n", "keyup", "super", "pause", "2")
+        self.activate_shell_action("open-notifications")
         try:
-            if not any(350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700 for layer in self.layers()):
-                raise RuntimeError("Quick Settings did not open for notification history")
-
+            self.wait_until(
+                "independent notification center compositor layer",
+                lambda: next(
+                    (layer for layer in self.layers() if layer.get("namespace") == "shade-notification-center"),
+                    None,
+                ),
+                timeout=10,
+            )
             self.save_accessibility_tree("notification-history")
             history_button = self.accessibility(
-                "finding notification history control",
-                "find",
-                "--max-depth", "16",
-                "--max-nodes", "2000",
-                "--description-match",
-                "--name", "View history",
+                "finding notification history control", "find", "--max-depth", "32",
+                "--max-nodes", "4000", "--name", "Histórico",
                 "--role", "button",
             )
-            self.accessibility(
-                "opening notification history",
-                "click",
-                "--max-depth", "16",
-                "--max-nodes", "2000",
-                "--description-match",
-                "--name", "View history",
-                "--role", "button",
-            )
+            self.click_accessible_node(history_button, "opening notification history")
             history_view_open = True
             self.save_accessibility_tree("notification-history-open")
             entry = self.accessibility(
-                "finding unique notification in history",
-                "find",
-                "--max-depth", "16",
-                "--max-nodes", "2000",
-                "--name", summary,
-                "--role", "list item",
+                "finding unique notification in history", "find", "--max-depth", "32",
+                "--max-nodes", "4000", "--name", summary, "--role", "list item",
             )
-
             probe_code = (
                 "import json,pathlib,sys,time\n"
                 "path=pathlib.Path.home()/'.cache/shade/notifications.json'\n"
@@ -3296,7 +3520,7 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
                 "python3 -c " + shlex.quote(probe_code) + " " + shlex.quote(summary),
             )
             return {
-                "ui": "unique synthetic notification appeared in the History view",
+                "ui": "unique synthetic notification appeared in the notification center History view",
                 "accessibility": {"history_button": history_button, "entry": entry},
                 "guest": json.loads(persisted.stdout),
                 "summary": summary,
@@ -3305,17 +3529,13 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
             try:
                 if history_view_open:
                     self.accessibility(
-                        "restoring active notification view",
-                        "click",
-                        "--max-depth", "16",
-                        "--max-nodes", "2000",
-                        "--description-match",
-                        "--name", "Back to notifications",
-                        "--role", "button",
+                        "restoring active notification view", "click", "--max-depth", "32",
+                        "--max-nodes", "4000",
+                        "--name", "Voltar às notificações", "--role", "button",
                     )
             finally:
-                if any(350 <= int(layer.get("w", 0)) < 600 and int(layer.get("h", 0)) >= 700 for layer in self.layers()):
-                    self.vnc("close Quick Settings after notification history", "keydown", "super", "key", "n", "keyup", "super", "pause", "1")
+                self.activate_shell_action("close-all")
+
 
     def test_visual_audit(self) -> dict[str, object]:
         """Record one real UI journey; keep behavior findings separate from capture failures."""
@@ -3541,6 +3761,13 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
         return evidence
 
     def finish(self) -> int:
+        if self.qemu is not None and self.qemu.poll() is None:
+            logs = self.guest(
+                "collecting guest shell journal for UI diagnostics",
+                "journalctl --user -u shade-shell.service -b --no-pager",
+                timeout=20, check=False,
+            )
+            (self.artifacts / "shell-journal.log").write_text(logs.stdout + logs.stderr, encoding="utf-8")
         print(f"Artifacts: {self.artifacts}", flush=True)
         statuses = [str(item["status"]) for item in self.results]
         print("Workflow results: " + ", ".join(f"{item['scenario']}={item['status']}" for item in self.results), flush=True)
@@ -3594,9 +3821,39 @@ with wave.open('/tmp/shade-vm-generated-tone.wav', 'wb') as output:
 def main() -> int:
     if not os.environ.get("IN_NIX_SHELL"):
         os.execvp("nix", ["nix", "develop", "-c", "python3", str(Path(__file__).resolve()), *sys.argv[1:]])
-    modes = sys.argv[1:]
-    if modes not in ([], ["--visual-audit"], ["--full-suite"]):
-        raise SystemExit("Usage: scripts/vm-workflow-test.py [--visual-audit | --full-suite]")
+    parser = argparse.ArgumentParser(description="Run the Shade VM workflow scenarios")
+    parser.add_argument("--list-scenarios", action="store_true", help="list scenario IDs for selective VM runs")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--full-suite", action="store_true")
+    mode.add_argument("--visual-audit", action="store_true")
+    parser.add_argument(
+        "--scenario",
+        action="append",
+        default=[],
+        metavar="ID",
+        help="run only this scenario (repeatable); greeter-login remains a prerequisite",
+    )
+    args = parser.parse_args(sys.argv[1:])
+    if args.scenario and args.list_scenarios:
+        raise SystemExit("--scenario cannot be combined with --list-scenarios")
+    if args.list_scenarios:
+        print("greeter-login")
+        print("launcher quicksettings settings-bar-position wifi capture notifications-dnd settings-search-keyboard")
+        print("area-recording wifi-credential-connect window-target-capture settings-page-registry window-switcher")
+        print("settings-displays-preview share-picker-portal bluetooth-pairing guest-brightness")
+        print("audio-capture-playback fprintd-private-bus-protocol power-confirmation-cancel lock-unlock notification-history")
+        print("visual-audit")
+        return 0
+    if len(set(args.scenario)) != len(args.scenario):
+        raise SystemExit("--scenario IDs must be unique")
+    if args.visual_audit:
+        if args.scenario:
+            parser.error("--visual-audit cannot be combined with --scenario")
+        modes = ["--visual-audit"]
+    elif args.full_suite or args.scenario:
+        modes = ["--full-suite"]
+    else:
+        modes = []
     visual_audit = modes == ["--visual-audit"]
     full_suite = modes == ["--full-suite"]
     test = WorkflowTest()
@@ -3607,6 +3864,7 @@ def main() -> int:
         ("wifi", test.test_wifi),
         ("capture", test.test_capture),
         ("notifications-dnd", test.test_notifications_dnd),
+        ("settings-search-keyboard", test.test_settings_search_keyboard),
     )
     if visual_audit:
         shell_scenarios = (("visual-audit", test.test_visual_audit),)
@@ -3628,11 +3886,18 @@ def main() -> int:
             ("notification-history", test.test_notification_history),
             ("visual-audit", test.test_visual_audit),
         )
+    if args.scenario:
+        selected = set(args.scenario)
+        available = dict(shell_scenarios)
+        unknown = selected - set(available) - {"greeter-login"}
+        if unknown:
+            raise SystemExit(f"Unknown scenario ID(s): {', '.join(sorted(unknown))}")
+        shell_scenarios = tuple(item for item in shell_scenarios if item[0] in selected)
     unsupported_coverage = (
         ("host-device-io", "Physical host USB, Wi-Fi, Bluetooth, audio, microphone, and backlight devices are not passed through; tests use guest-local virtual fixtures."),
         ("biometric-auth", "Physical fingerprint sensors, enrollment, biometric-backed PAM, and real biometric authentication are excluded; only the isolated guest protocol/client mock is exercised."),
         ("power-actions", "Real suspend, logout, reboot, and power-off actions are excluded; only opening and cancelling the guest confirmation UI is exercised."),
-    ) if full_suite else ()
+    ) if full_suite and not args.scenario else ()
     try:
         test.start()
         test.scenario("greeter-login", test.test_greeter)

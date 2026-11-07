@@ -1,64 +1,7 @@
-# Spec: WindowSwitcher
+# Window switcher
 
-> Super+Tab window switcher with MRU ordering, keyboard navigation, and Super/Meta-release selection.
+Sources: [`index.tsx`](../../packages/widgets/src/windowswitcher/index.tsx), [`item.tsx`](../../packages/widgets/src/windowswitcher/item.tsx), widget action [`widget.ts`](../../packages/widgets/src/windowswitcher/widget.ts).
 
-## Overview
+The hidden full-edge focused-monitor `Astal.Window` uses `OVERLAY` and exclusive keyboard mode. It orders current Hyprland clients by an in-memory most-recently-used list, selects index 1 initially when more than one client exists, and clamps selection when clients disappear. Tab/Right and Shift-Tab/Left cycle; Return focuses; Escape closes; Q kills the selected client. Releasing Super/Meta focuses the selected client after hiding/flushing the layer grab. Opening focuses the selection container. This MRU state is not a persistence promise.
 
-- **Source**: `packages/widgets/src/windowswitcher/`
-- **Dependencies**: `AstalHyprland`, `WindowManager`
-- **Type**: `Astal.Window`, layer `OVERLAY`, keymode `EXCLUSIVE`, covers entire monitor; toggled via exported `toggleWindowSwitcher()` function
-
-## Functional
-
-### States
-
-| # | State | Trigger | Expected behavior |
-|---|-------|---------|-------------------|
-| F1 | Hidden | Default | Window hidden; no MRU tracking active for navigation |
-| F2 | Shown | `toggleWindowSwitcher()` called | Present the native surface before inner focus; window-level key capture handles navigation; reactive MRU order chooses the previously focused client at index 1 when one exists |
-| F3 | Empty / no windows | Hyprland has zero clients | Opaque native content surface with No Open Windows and Press Escape to close the switcher; Escape still closes |
-
-### Interactions
-
-| # | Action | Expected behavior |
-|---|--------|-------------------|
-| I1 | Tab / Right arrow | Advance selection forward (wraps around) |
-| I2 | Shift+Tab / Left arrow | Move selection backward (wraps) |
-| I3 | Enter / KP_Enter | Hide the switcher and flush its Wayland unmap before asking Hyprland to focus the selected client |
-| I4 | Escape | Close switcher without focusing |
-| I5 | Q | Kill the selected client |
-| I6 | Super/Meta key released | Use the same release-before-focus selection path and close the switcher |
-| I7 | Super held (no other key) | Switcher stays open; selection unchanged |
-
-### Edge cases
-
-| # | Condition | Expected behavior |
-|---|-----------|-------------------|
-| E1 | Client closes while switcher open | Selection index clamped to valid range; list updates reactively |
-| E2 | Super released with no clients | Switcher closes, no-op |
-| E3 | Switcher shown with < 2 clients | Only one item; Tab wraps to same item; Enter selects only client |
-| E4 | Monitor focus changes | Switcher follows `focusedMonitor` |
-
-## Visual (Adwaita alignment)
-
-### Theme tokens
-
-| Element | Token / style class | Notes |
-|---------|--------------------|-------|
-| Window background | Inline `css` (`background-color: transparent;`) | Transparent; no theme color needed |
-| Centered content | `card background`, width request 500 | Native opaque surface inside the transparent full-monitor overlay |
-| Status page | `compact` on `Adw.StatusPage` | Custom compact variant |
-| Window title | Wrapped, at most two lines, end ellipsis | Full title uses a bounded native word/character-wrapped tooltip, including unbroken long tokens |
-
-### Adwaita checklist
-
-- [ ] Window transparent — intentional (overlay)
-- [x] Status page uses symbolic icon
-- [x] Label classes: `title-2`, `caption`
-- [ ] Verify in light and dark variants
-
-## Test plan
-
-- **Unit**: extract and test `getSortedClients` MRU sorting logic, selection index clamping
-- **Compliance linter**: no expected violations
-- **Visual/manual**: screenshots with 1 client, 5+ clients, empty state
+Manual: use the configured switcher action with multiple disposable windows; test forward/reverse selection, Return, Super release, Escape, Q only with a disposable target, and client disappearance. Verify focus returns to the intended client. Proposed checks, not new VM results.

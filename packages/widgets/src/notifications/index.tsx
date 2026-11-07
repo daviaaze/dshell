@@ -14,7 +14,7 @@ import {bind, computed, createState, effect, For, onCleanup} from 'gnim';
 import Notification from '../common/notification';
 import PopupWindow from '../common/PopupWindow';
 
-/** Max toasts visible simultaneously; older ones go to the QS list. */
+/** Max toasts visible simultaneously; older ones remain in the notification center. */
 const POPUP_CAP = 3;
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
@@ -119,7 +119,7 @@ const NotificationContent = ({
 };
 
 export default () => {
-    const notifd = useNotifd();
+    const {value: notifd} = useNotifd();
     const [notificationCount, setNotificationCount] = createState(0);
     const dontDisturb = bind(DndService.get_default(), 'dnd');
     const settings = generalSettings();
@@ -130,6 +130,8 @@ export default () => {
         <PopupWindow
             name="notifications"
             margin={12}
+            layer={Astal.Layer.OVERLAY}
+            keymode={Astal.Keymode.NONE}
             anchor={barSettings().position.as(cornerAnchor)}
             visible={computed(
                 () =>

@@ -20,11 +20,12 @@ Each native session-lock `monitor` event creates an unrealized `Gtk.Window`. The
 | Accepted password submission | Entry is cleared; one isolated PAM worker receives the password through stdin |
 | Invalid password or helper failure | Session remains locked; a fresh password attempt is possible |
 | PAM attempt takes longer than 10 seconds | Worker is terminated and its attempt generation retired; timeout is shown and retry is possible |
+| Interrupt password verification | The current worker is retired and stopped without ending the locked session; a fresh attempt is allowed and late success from the cancelled generation is ignored |
 | Retired worker completes late | Its result cannot authenticate the current session |
 | Valid password or active fingerprint verification succeeds | Authentication is cancelled/cleaned up, GTK lock surfaces are disposed while their native session exists, then the compositor lock is released |
 | Fingerprint service unavailable or cleanup fails | Password authentication remains independent and available |
 | Lock UI is disposed during shutdown | Active authentication is cancelled, but no compositor unlock is requested |
-| Shell-owned normal GTK windows are open when locking | Launcher/Quick Settings/switcher close; normal GTK toplevels are suspended so they cannot retain same-process keyboard ownership. Surviving windows return only after authenticated unlock |
+| Shell-owned normal GTK windows are open when locking | Launcher/Quick Settings/notification center/switcher close; normal GTK toplevels are suspended so they cannot retain same-process keyboard ownership. Surviving windows return only after authenticated unlock |
 
 The packaged worker path is fixed to the shell's installation directory. Passwords are not passed through argv or logged; only a successful worker exit with the exact success result is accepted. `scripts/dev.sh` builds a temporary worker for development.
 
@@ -47,7 +48,14 @@ Hyprland requires `misc.allow_session_lock_restore = true` to permit a replaceme
 
 ## Presentation
 
-The lock surface uses the native theme background and the existing `card`, `title-1`, `title-3`, `numeric`, and `caption` styles. The password field has an explicit accessible name and receives focus after mapping. Peek, clock, media, and notification controls retain their existing behavior. Notification content follows the separate lock-screen privacy preference.
+The native background contains a scrollable, width-clamped column with clock,
+identity, authentication and privacy-controlled notifications. The password
+field has an explicit accessible name; it receives focus after mapping and
+after a failed or interrupted attempt in the submitting panel. Actual
+`passwordBusy` and `passwordError` state drives sensitivity, progress and nearby
+feedback. Fingerprint starts automatically when available; “Usar senha” focuses
+the independent password field rather than claiming to cancel the biometric
+backend. Peek, media and notification dismissal retain their existing behavior.
 
 Settings cannot be presented while the shell is locked. Window suspension is a
 focus-ownership operation, not an unlock or disposal path: stopping the shell
@@ -57,11 +65,17 @@ from reaching a lock entry that nevertheless reported focused.
 
 ## Verification
 
-The isolated VM exercised real PAM rejection followed by a correct password, a deliberately blocked 30-second PAM operation followed by the 10-second client timeout and a successful fresh password attempt, and a later lock held through the retired operation's completion window. It also exercised compositor lock retention across shell stop/start and `SIGKILL`, password recovery after each restart, a 65-second display-off interval, compositor-native headless monitor add/remove, and recovery with unavailable Hyprland IPC. Checks use `hyprctl -j locked`, not only screenshots or a shell boolean.
+The redesigned panel was exercised in native GTK with a controlled password
+worker: initial focus, disabled input during verification, interruption without
+session completion, rejected late success, and focus restoration after rejection
+all passed. This UI scenario does not certify PAM, compositor lock ownership, or
+physical fingerprint hardware.
+
+Earlier isolated VM protocol validation exercised real PAM rejection followed by a correct password, a deliberately blocked 30-second PAM operation followed by the 10-second client timeout and a successful fresh password attempt, and a later lock held through the retired operation's completion window. It also exercised compositor lock retention across shell stop/start and `SIGKILL`, password recovery after each restart, a 65-second display-off interval, compositor-native headless monitor add/remove, and recovery with unavailable Hyprland IPC. Checks use `hyprctl -j locked`, not only screenshots or a shell boolean.
 
 Regression modules:
 
-- `packages/services/src/__tests__/authSession.test.ts`: activation, timeout/retry, stale results, disposal, and password fallback without fingerprint.
+- `packages/services/src/__tests__/authSession.test.ts`: activation, timeout/retry, interruption without ending the session, stale results, disposal, and password fallback without fingerprint.
 - `packages/services/src/__tests__/fingerprint.test.ts`: queued teardown/rearm, pending claims, early terminal status, retired handlers, cleanup failure, and disposal/replacement.
 - `packages/services/src/__tests__/sessionLockService.test.ts`: no false lock confirmation, no pending-acquisition unlock, and rejected acquisition retry.
 

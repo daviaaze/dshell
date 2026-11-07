@@ -35,9 +35,9 @@ function ThemeToggle({settings}: {settings: Settings}) {
             cssClasses={['round']}
             valign={Gtk.Align.CENTER}
             ref={(self) => {
-                self.add(new Adw.Toggle({name: 'auto', label: 'Auto', iconName: 'night-light-symbolic'}));
-                self.add(new Adw.Toggle({name: 'light', label: 'Light', iconName: 'weather-clear-symbolic'}));
-                self.add(new Adw.Toggle({name: 'dark', label: 'Dark', iconName: 'weather-clear-night-symbolic'}));
+                self.add(new Adw.Toggle({name: 'auto', label: 'Automático', iconName: 'night-light-symbolic'}));
+                self.add(new Adw.Toggle({name: 'light', label: 'Claro', iconName: 'weather-clear-symbolic'}));
+                self.add(new Adw.Toggle({name: 'dark', label: 'Escuro', iconName: 'weather-clear-night-symbolic'}));
                 self.activeName = NAMES[settings.colorScheme.peek()] ?? 'auto';
                 const changed = self.connect('notify::active-name', () => {
                     const requested = map[self.activeName ?? 'auto'] ?? 0;
@@ -64,37 +64,53 @@ function AppearanceGroup({settings}: {settings: Settings}) {
     const requested = bind(scheme, 'colorScheme');
     const dark = bind(scheme, 'effectiveDark');
     const error = bind(scheme, 'applyError');
-    const status = computed(() => error()
-        ? `Not fully applied: ${error()}`
-        : requested() === DarkModes.AUTO
-            ? `Auto using ${dark() ? 'Dark' : 'Light'}`
-            : `${dark() ? 'Dark' : 'Light'} active`);
+    const status = computed(() => requested() === DarkModes.AUTO
+        ? `O modo automático está usando a aparência ${dark() ? 'escura' : 'clara'}.`
+        : `Aparência ${dark() ? 'escura' : 'clara'} ativa.`);
 
     return (
-        <Adw.PreferencesGroup title={'Appearance'} description={'Set cosmetic options'}>
-            <Adw.ActionRow title={'System Theme'}>
-                <ThemeToggle settings={settings} />
-            </Adw.ActionRow>
-            <Adw.ActionRow title={'Effective Appearance'} subtitle={status} />
-            <Adw.ActionRow
-                activatable
-                title={'Wallpaper Day'}
-                subtitle={settings.wallpaperDay}
-                iconName={'image-x-generic-symbolic'}
-                onActivated={() => pickWallpaper(fileDialog, (p) => settings.setWallpaperDay(p))}
-            >
-                <Gtk.Image file={settings.wallpaperDay} />
-            </Adw.ActionRow>
-            <Adw.ActionRow
-                activatable
-                title={'Wallpaper Night'}
-                subtitle={settings.wallpaperNight}
-                iconName={'image-x-generic-symbolic'}
-                onActivated={() => pickWallpaper(fileDialog, (p) => settings.setWallpaperNight(p))}
-            >
-                <Gtk.Image file={settings.wallpaperNight} />
-            </Adw.ActionRow>
-        </Adw.PreferencesGroup>
+        <>
+            <Adw.PreferencesGroup title="Tema" description="Escolha o tema e consulte a aparência efetiva.">
+                <Adw.ActionRow title="Tema solicitado">
+                    <ThemeToggle settings={settings} />
+                </Adw.ActionRow>
+                <Adw.ActionRow title="Aparência efetiva" subtitle={status} />
+                <Adw.ActionRow
+                    visible={error.as(Boolean)}
+                    title="Aplicação parcial"
+                    subtitle={error.as((message) => message
+                        ? `A solicitação foi mantida. ${message}`
+                        : '')}
+                >
+                    <Gtk.Button
+                        slot="suffix"
+                        label="Tentar aplicar novamente"
+                        valign={Gtk.Align.CENTER}
+                        onClicked={() => { scheme.colorScheme = requested(); }}
+                    />
+                </Adw.ActionRow>
+            </Adw.PreferencesGroup>
+            <Adw.PreferencesGroup title="Wallpaper" description="Imagens para o dia e para a noite.">
+                <Adw.ActionRow
+                    activatable
+                    title="Wallpaper do dia"
+                    subtitle={settings.wallpaperDay}
+                    iconName={'image-x-generic-symbolic'}
+                    onActivated={() => pickWallpaper(fileDialog, (p) => settings.setWallpaperDay(p))}
+                >
+                    <Gtk.Image file={settings.wallpaperDay} />
+                </Adw.ActionRow>
+                <Adw.ActionRow
+                    activatable
+                    title="Wallpaper da noite"
+                    subtitle={settings.wallpaperNight}
+                    iconName={'image-x-generic-symbolic'}
+                    onActivated={() => pickWallpaper(fileDialog, (p) => settings.setWallpaperNight(p))}
+                >
+                    <Gtk.Image file={settings.wallpaperNight} />
+                </Adw.ActionRow>
+            </Adw.PreferencesGroup>
+        </>
     );
 }
 
@@ -109,11 +125,11 @@ function ThemingGroup({settings}: {settings: Settings}) {
         return !!wallpaper && GLib.file_test(wallpaper, GLib.FileTest.IS_REGULAR);
     });
     const status = computed(() => {
-        if (busy()) return 'Generating colors from the day wallpaper…';
-        if (error()) return error() ?? '';
-        if (!available()) return 'Matugen is unavailable. Install matugen to generate colors.';
-        if (!wallpaperReady()) return 'Choose an existing day wallpaper to generate colors.';
-        return 'Ready to generate colors from the day wallpaper.';
+        if (busy()) return 'Gerando cores do wallpaper do dia…';
+        if (error()) return `Não foi possível gerar as cores: ${error()}`;
+        if (!available()) return 'O gerador matugen não está disponível. O tema nativo continua utilizável.';
+        if (!wallpaperReady()) return 'Escolha uma imagem do dia existente para gerar as cores.';
+        return 'Pronto para gerar. A geração usa o wallpaper do dia.';
     });
     const statusClasses = computed(() =>
         error() || !available() ? ['error', 'caption'] : ['caption']
@@ -121,13 +137,14 @@ function ThemingGroup({settings}: {settings: Settings}) {
 
     return (
         <Adw.PreferencesGroup
-            title={'Dynamic Theming'}
-            description={'Extract accent colors from wallpaper'}
+            title="Cores do wallpaper"
+            description="Geração dinâmica de cores a partir do wallpaper do dia."
         >
             <Adw.SwitchRow
-                title={'Enable Dynamic Theming'}
+                title="Usar cores do wallpaper"
+                sensitive={available}
                 subtitle={available.as((isAvailable) =>
-                    isAvailable ? '' : 'Install matugen to enable'
+                    isAvailable ? '' : 'Requer o gerador matugen.'
                 )}
                 active={settings.dynamicThemingEnabled}
                 onNotifyActive={(self) => settings.setDynamicThemingEnabled(self.active)}
@@ -139,7 +156,7 @@ function ThemingGroup({settings}: {settings: Settings}) {
                 marginStart={8}
                 marginEnd={8}
                 halign={Gtk.Align.CENTER}
-                label="Regenerate from Wallpaper"
+                label="Regenerar do wallpaper"
                 sensitive={computed(() => available() && wallpaperReady() && !busy())}
                 onClicked={() => {
                     void paletteGen.regenerate().catch(() => {
@@ -164,11 +181,11 @@ function ThemingGroup({settings}: {settings: Settings}) {
 function NightLightGroup({settings}: {settings: Settings}) {
     return (
         <Adw.PreferencesGroup
-            title={'Night Light'}
-            description={'Reduce eye strain with warm colors'}
+            title="Luz noturna"
+            description="Temperatura de cor e agenda."
         >
             <Adw.SwitchRow
-                title={'Enable Night Light'}
+                title="Luz noturna"
                 active={settings.nightLightEnabled}
                 onNotifyActive={(self) => settings.setNightLightEnabled(self.active)}
             />
@@ -181,13 +198,15 @@ function NightLightGroup({settings}: {settings: Settings}) {
                         value: settings.nightLightTemperature(),
                     });
                 }}
-                title={'Color Temperature'}
-                subtitle={'Lower values are warmer (redder)'}
+                title="Temperatura de cor"
+                subtitle="Em kelvin (K). Valores menores produzem cores mais quentes."
+                sensitive={settings.nightLightEnabled}
                 onNotifyValue={(self) => settings.setNightLightTemperature(Math.round(self.value))}
             />
             <Adw.SwitchRow
-                title={'Auto Schedule'}
-                subtitle={'Enable at sunset, disable at sunrise'}
+                title="Do pôr ao nascer do sol"
+                subtitle="A agenda depende da localização e dos horários calculados."
+                sensitive={settings.nightLightEnabled}
                 active={settings.nightLightAutoSchedule}
                 onNotifyActive={(self) => settings.setNightLightAutoSchedule(self.active)}
             />

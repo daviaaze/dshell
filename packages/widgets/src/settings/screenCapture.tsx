@@ -53,8 +53,8 @@ function EnumToggleRow({
 function RecordingGroup({settings}: {settings: Settings}) {
     return (
         <Adw.PreferencesGroup
-            title={'Recording'}
-            description={'Screen recording backend and format'}
+            title={'Gravação de tela'}
+            description={'Backend e formato da gravação.'}
         >
             <EnumToggleRow
                 title={'Backend'}
@@ -64,12 +64,12 @@ function RecordingGroup({settings}: {settings: Settings}) {
                 toggles={[
                     {name: '0', label: 'wl-screenrec', iconName: 'media-record-symbolic'},
                     {name: '1', label: 'wf-recorder', iconName: 'media-record-symbolic'},
-                    {name: '2', label: 'Auto', iconName: 'emblem-system-symbolic'},
+                    {name: '2', label: 'Automático', iconName: 'emblem-system-symbolic'},
                 ]}
             />
 
             <EnumToggleRow
-                title={'Container Format'}
+                title={'Formato'}
                 value={settings.recordingFormat}
                 fallback={0}
                 setter={(v) => settings.setRecordingFormat(Number(v))}
@@ -80,20 +80,20 @@ function RecordingGroup({settings}: {settings: Settings}) {
             />
 
             <EnumToggleRow
-                title={'Quality'}
+                title={'Qualidade'}
                 value={settings.recordingQuality}
                 fallback={1}
                 setter={(v) => settings.setRecordingQuality(Number(v))}
                 toggles={[
-                    {name: '0', label: 'Low'},
-                    {name: '1', label: 'Medium'},
-                    {name: '2', label: 'High'},
+                    {name: '0', label: 'Baixa'},
+                    {name: '1', label: 'Média'},
+                    {name: '2', label: 'Alta'},
                 ]}
             />
 
             <Adw.SwitchRow
-                title={'Record Audio'}
-                subtitle={'Capture system audio by default'}
+                title={'Gravar áudio do sistema'}
+                subtitle={'Incluir áudio do sistema por padrão.'}
                 active={settings.recordAudio}
                 onNotifyActive={(self) => settings.setRecordAudio(self.active)}
             />
@@ -104,9 +104,9 @@ function RecordingGroup({settings}: {settings: Settings}) {
 /** Screenshot group: PNG/JPEG format. */
 function ScreenshotGroup({settings}: {settings: Settings}) {
     return (
-        <Adw.PreferencesGroup title={'Screenshot'} description={'Screenshot image format'}>
+        <Adw.PreferencesGroup title={'Imagem'} description={'Formato das capturas de imagem.'}>
             <EnumToggleRow
-                title={'Image Format'}
+                title={'Formato de imagem'}
                 value={settings.screenshotFormat}
                 fallback={0}
                 setter={(v) => settings.setScreenshotFormat(Number(v))}
@@ -123,16 +123,16 @@ function ScreenshotGroup({settings}: {settings: Settings}) {
 function BoundaryGroup({settings}: {settings: Settings}) {
     return (
         <Adw.PreferencesGroup
-            title={'Recording Boundary'}
-            description={'Visual indicator for active recordings'}
+            title={'Áudio e indicação'}
+            description={'Indicador visual da área de gravação.'}
         >
             <Adw.SwitchRow
-                title={'Show Recording Boundary'}
-                subtitle={'Red border around recorded/shared area'}
+                title={'Mostrar limite da área gravada'}
+                subtitle={'Borda ao redor da área gravada ou compartilhada.'}
                 active={settings.showRecordingBoundary}
                 onNotifyActive={(self) => settings.setShowRecordingBoundary(self.active)}
             />
-            <Adw.ActionRow title={'Boundary Color'} subtitle={settings.recordingBoundaryColor}>
+            <Adw.ActionRow title={'Cor do limite'} subtitle={settings.recordingBoundaryColor}>
                 <Gtk.ColorDialogButton
                     valign={Gtk.Align.CENTER}
                     dialog={new Gtk.ColorDialog()}
@@ -153,26 +153,26 @@ function BoundaryGroup({settings}: {settings: Settings}) {
 /** Overlay group: freeze screen + preview thumbnails. */
 function OverlayGroup({settings}: {settings: Settings}) {
     return (
-        <Adw.PreferencesGroup title={'Overlay'} description={'Capture overlay behavior'}>
+        <Adw.PreferencesGroup title={'Seleção de área'} description={'Comportamento da seleção de captura.'}>
             <EnumToggleRow
-                title={'Area Selection'}
+                title={'Motor de seleção'}
                 value={settings.areaSelectionEngine}
                 fallback={'overlay'}
                 setter={(v) => settings.setAreaSelectionEngine(String(v))}
                 toggles={[
-                    {name: 'overlay', label: 'Panel', iconName: 'input-mouse-symbolic'},
+                    {name: 'overlay', label: 'Painel', iconName: 'input-mouse-symbolic'},
                     {name: 'slurp', label: 'slurp', iconName: 'input-keyboard-symbolic'},
                 ]}
             />
             <Adw.SwitchRow
-                title={'Freeze Screen'}
-                subtitle={'Pause screen when opening capture overlay'}
+                title={'Congelar tela ao abrir seleção'}
+                subtitle={'Pausar a imagem durante a seleção de captura.'}
                 active={settings.overlayFreezeEnabled}
                 onNotifyActive={(self) => settings.setOverlayFreezeEnabled(self.active)}
             />
             <Adw.SwitchRow
-                title={'Preview Thumbnails'}
-                subtitle={'Show live previews in capture overlay'}
+                title={'Mostrar previews do alvo'}
+                subtitle={'Exibir prévias na seleção de captura.'}
                 active={settings.previewThumbnailsEnabled}
                 onNotifyActive={(self) => settings.setPreviewThumbnailsEnabled(self.active)}
             />
@@ -184,11 +184,11 @@ function OverlayGroup({settings}: {settings: Settings}) {
 function VirtualMonitorGroup({settings}: {settings: Settings}) {
     return (
         <Adw.PreferencesGroup
-            title={'Virtual Monitor'}
-            description={'Default resolution and refresh rate'}
+            title={'Monitor virtual'}
+            description={'Resolução e taxa de atualização padrão.'}
         >
             <Adw.EntryRow
-                title={'Resolution'}
+                title={'Resolução'}
                 showApplyButton
                 text={settings.virtualMonitorResolution}
                 onApply={(self) => settings.setVirtualMonitorResolution(self.text)}
@@ -202,8 +202,8 @@ function VirtualMonitorGroup({settings}: {settings: Settings}) {
                         value: settings.virtualMonitorFps(),
                     });
                 }}
-                title={'Refresh Rate'}
-                subtitle={'Frames per second'}
+                title={'Taxa de atualização'}
+                subtitle={'Quadros por segundo (fps).'}
                 onNotifyValue={(self) => settings.setVirtualMonitorFps(self.value)}
             />
         </Adw.PreferencesGroup>

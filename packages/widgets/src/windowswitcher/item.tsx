@@ -17,7 +17,6 @@ export default ({
         marginBottom={5}
         marginStart={14}
         marginEnd={14}
-        css={'border-radius: calc(var(--window-radius) * 1.5);'}
         valign={Gtk.Align.CENTER}
     >
         <Gtk.Image iconName={getAppIcon(client)} pixelSize={48} valign={Gtk.Align.CENTER} />
@@ -61,9 +60,6 @@ export default ({
             cssClasses={['numeric', 'caption']}
             valign={Gtk.Align.CENTER}
             halign={Gtk.Align.END}
-            css={
-                'background-color: alpha(@window_bg_color, 0.6); border-radius: var(--window-radius); padding: 2px 10px; min-width: 24px;'
-            }
         />
     </Gtk.Box>
 );

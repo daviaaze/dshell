@@ -1,125 +1,33 @@
-# Spec: Settings
+# Settings
 
-> Source-linked reference to the current Settings implementation. Source descriptions are not claims of runtime verification.
+Source-linked reference, not a claim of runtime verification. Sources: [`index.tsx`](../../packages/widgets/src/settings/index.tsx), [`settingsOpen.ts`](../../packages/widgets/src/settings/settingsOpen.ts), feature pages under `../../packages/widgets/src/settings/`.
 
+## Navigation and lifecycle
 
-## Overview
+Settings is a lazily rendered native `Adw.ApplicationWindow`, composed with `Adw.NavigationSplitView` and a `Gtk.Stack`; it is not an `Adw.PreferencesWindow`. The sidebar has 13 task rows; their 21 content modules remain mounted in the stack, so module-local subscriptions/lifecycles are not recreated just by navigating. Sidebar task titles group related modules, rather than defining a separate category/content count.
 
-- **Source**: [`packages/widgets/src/settings/`](../../packages/widgets/src/settings/) (page composition: [`index.tsx`](../../packages/widgets/src/settings/index.tsx); lazy lifecycle: [`settingsOpen.ts`](../../packages/widgets/src/settings/settingsOpen.ts))
-- **Settings groups**: settings components use the relevant schemas and services under [`packages/services/src/`](../../packages/services/src/).
-- **Type**: nonmodal `Adw.PreferencesWindow`, rendered lazily when Settings is opened. Standalone Settings must not retain libadwaita's default application-modal grab and block shell-layer keyboard input.
-- `openSettings()` releases Quick Settings' layer keyboard ownership before presenting the existing or newly rendered nonmodal window. An invisible existing instance is closed/disposed before replacement; close-request disposes the current rendered tree.
+| Task | Modules |
+|---|---|
+| Aparência | Aparência |
+| Barra e dock | Barra e dock |
+| Telas | Telas |
+| Som | Som |
+| Mouse e touchpad | Mouse e touchpad |
+| Conexões | Conexões, Bluetooth |
+| Bloqueio e energia | Bloqueio e energia, Energia |
+| Notificações | Notificações, Não perturbe |
+| Captura e compartilhamento | Captura de tela, Compartilhamento de tela |
+| Aplicativos | Aplicativos padrão, Aplicativos ao entrar |
+| Tempo e concentração | Relógio, Clima, Temporizador |
+| Atalhos | Atalhos |
+| Sistema e diagnóstico | Sobre o sistema, Diagnóstico |
 
-## Functional
+Search is one `Gtk.SearchEntry` outside the split. It searches task metadata and visible native page labels, subtitles, buttons and tooltips; matching results navigate to the relevant module/control. Exact module-title matches rank first; Enter opens the first current result, including when the search debounce has not fired. `Ctrl+F` focuses search. Back returns to the originating section/search result, and in collapsed layout returns to the sidebar. Escape from a search-opened destination preserves the query and returns to its results instead of clearing it. The native content page announces the same current title as the common header. `openSettings(destination?)` routes in the same window; when already visible it navigates/presents that window. Opening closes shell transient surfaces and is refused while `screenlocked`; close disposes the rendered tree. A hidden old instance is closed/disposed before replacement.
 
-### Pages
+## Ownership and invariants
 
-| Category | Feature groups in order |
-|----------|-------------------------|
-| Personalization | Appearance; Bar & Dock |
-| Devices | Displays; Sound; Mouse & Touchpad |
-| Connectivity | Network; Bluetooth |
-| Privacy & Security | Idle & Lock; Notifications; Screen Capture |
-| Applications | Default Apps; Startup Apps |
-| System | Clock & Weather; Timer; Keyboard Shortcuts; About; Debug |
+Feature pages and their service/schema own setting persistence and effects; the navigation shell does not promise every control has the same write semantics. In particular, Displays preview/confirmation/timed rollback belongs to `LayoutService`; startup-app writes preserve unrelated keyfile entries and reconcile failures; media defaults operate only on readable supported formats; sound controls reflect live endpoint membership/state. Consult the owning page/service before making backend claims.
 
-The six categories retain all 17 feature topics and native preferences search.
-Displays contributes sibling preference groups, including Connected Displays and
-Display Changes; an empty output list and a failed snapshot are separate states.
-Display preview, confirmation and timed rollback remain owned by `LayoutService`.
+## Manual verification
 
-
-### Interactions
-
-| # | Action | Expected behavior |
-|---|--------|-------------------|
-| I1 | Navigate via sidebar | `Adw.PreferencesWindow` provides page navigation |
-| I2 | Search settings | `searchEnabled=true` enables built-in preferences search |
-
-### Lifecycle notes
-
-- Category titles and feature composition follow [`index.tsx`](../../packages/widgets/src/settings/index.tsx); Bluetooth contributes preference groups within Connectivity.
-- Settings is a lazy widget; its open action calls `openSettings()` to render the window on demand. The lifecycle behavior above follows [`settingsOpen.ts`](../../packages/widgets/src/settings/settingsOpen.ts).
-- This table identifies page composition, not per-control persistence or service behavior. Check the relevant page and service before describing those details.
-
-### Application persistence
-
-- Startup entries are parsed as keyfiles. Only `[Desktop Entry].Hidden` is
-  changed; other groups, unknown keys, comments and translations are retained.
-  Missing directories are not created by reads. Empty, partial-read and
-  directory-failure states are distinct; failed writes reconcile the native
-  switch and remain visible until another attempt or Retry read.
-- Music, Video and Photo defaults cover registered concrete media formats.
-  A selected application changes only its readable supported formats. Other
-  defaults remain unchanged; every attempted write is reread and partial
-  results show per-format failures without rollback.
-- A whole-family app selection is shown only for a uniform confirmed default.
-  This GTK/libadwaita version auto-selects the first populated item even when
-  assigned `INVALID_LIST_POSITION`; mixed/unread/unset states therefore use an
-  explicit non-app status item rather than falsely selecting an application.
-  Writes/model reconciliation run after the native selection signal unwinds.
-
-### Live data and countdowns
-
-- Sound distinguishes no endpoint from actual zero volume and mute. Defaults
-  resolve only to endpoint IDs present in the current speaker/microphone lists;
-  removal cannot leave stale controls. Native endpoint description/name,
-  volume and mute notifications update the rows. Desired changes use
-  `AudioController` and reconcile to actual endpoint state.
-  Mutable native default proxies report `notify::id`, not an Audio-level default
-  pointer change; the controller forwards that event before resolving list membership.
-- Countdown presets require whole signed-decimal input normalized to a safe
-  integer in 1..2,147,483,647 minutes. Invalid/duplicate input is retained with
-  guidance. Successful edits update Settings and Quick Settings reactively.
-  Restore default presets has a page-local one-step Undo of the exact prior list.
-- World clocks show location, timezone ID and time using the shared
-  `Clock.wallTime` minute tick, with no per-row timer or navigation needed.
-
-### Operation results
-
-- Dynamic theming publishes busy/error state and resolves Regenerate only after
-  valid palette application. Same-wallpaper work is coalesced; superseded work
-  cannot replace newer colors or clear newer status. Failures retain the prior
-  valid palette.
-- Bluetooth connect/disconnect await native finish; device, scan and power
-  failures are local and busy state settles. A failed Forget keeps its
-  confirmation open rather than claiming the device was removed.
-- Detect Location and Update Weather show adjacent busy/error feedback.
-  Auto Location off means Detect persists coordinates only; Update is separate.
-  Weather serializes native requests and matches each Promise to its completion.
-  Disposal rejects pending work, aborts Info, and retires late detection results.
-
-### Keyboard shortcut metadata
-
-- Shade-owned defaults use Hyprland described bindings with
-  `shade-action:<registered-id>`. One service formatter handles metadata and
-  compositor meanings; unknown command text is never guessed into a Shade action.
-- Native expander rows show the task and combo first; details expose a selectable
-  exact command and Copy command. Authored descriptions render literally.
-- Refresh occurs on entry into the selected visible System page or explicit
-  Refresh, not on preference-group remapping while results/search rebuild.
-
-### GTK/libadwaita compatibility
-
-- Mouse and power `Gtk.DropDown` controls install their `Gtk.StringList` model before applying the selected index. Reassigning the model from a ref callback resets an existing selection.
-- Sound page sections are sibling `Adw.PreferencesGroup` widgets, not a group nested inside another group.
-- Hotspot validation errors are `Adw.ActionRow` children of their preferences group. A rejected activation restores the switch to the backend's unchanged state.
-- Enum toggle choices are populated through native `Adw.ToggleGroup.add()` before
-  applying the persisted selection and connecting change handlers. Native
-  ownership/`remove_all()` handles teardown; the pinned renderer cannot remove
-  declarative `Adw.Toggle` children. Opening or navigating Settings must preserve
-  requested non-first selections.
-- Shortcut labels escape markup from compositor-provided keybind descriptions, preserving literal characters such as `<A&B>`.
-- Read GTK focus booleans through `hasFocus`/`isActive` properties. In the pinned
-  GJS runtime, snake-case property aliases can shadow similarly named C methods;
-  calling `has_focus()`/`is_active()` throws even when generated types list them.
-
-
-## Visual (Adwaita alignment)
-
-The window is an `Adw.PreferencesWindow` with the `background` CSS class. Its pages use `Adw.PreferencesPage` and symbolic icon names; built-in search is enabled. Individual page controls use their respective Adwaita widgets. See [`index.tsx`](../../packages/widgets/src/settings/index.tsx) and the [GTK4/libadwaita style guide](../STYLEGUIDE.md).
-
-## Test plan
-
-- **Functional/manual**: inspect navigation and search and compare page behavior with its current implementation. In the disposable Hyprland VM, Sound, Mouse, and Power pages rendered; power actions retained their configured selections; a synthetic `class:<A&B>` shortcut description rendered literally in search. Rejecting an empty hotspot password displayed the inline error, left the switch off, and did not change active NetworkManager connections. Closing Settings preserved the shell's MainPID. These observations do not cover every page or control.
-- **Visual/manual**: inspect the preferences window in the supported color schemes; no screenshot baseline is asserted here.
+On a suitable unlocked GTK/Hyprland session: open Settings from the shell and from a routed entry point; navigate all 13 tasks and verify the intended 21 modules; search by page and control label, open a result, use Back, clear search, and test `Ctrl+F`. Repeat at narrow width, close/reopen and inspect lifecycle. For persistence claims, change one concrete setting and inspect its owning service/backend state; for display changes verify preview, confirm and rollback. These are proposed checks, not new VM results.

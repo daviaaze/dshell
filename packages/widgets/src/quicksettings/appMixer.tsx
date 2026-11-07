@@ -39,7 +39,6 @@ function OutputSelector({
                 ref={(self) => {
                     popoverRef = self;
                 }}
-                cssClasses={[]}
             >
                 <Gtk.Box
                     spacing={4}

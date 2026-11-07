@@ -2,7 +2,6 @@ import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango?version=1.0';
 import {type Accessor, computed, effect, type GnimNode, isAccessor} from 'gnim';
-import {usePopoverCleanup} from './popoverCleanup';
 
 type Reactive<T> = T | Accessor<T>;
 interface QuickControlBaseProps {
@@ -10,20 +9,23 @@ interface QuickControlBaseProps {
     domain: string;
     value: Reactive<string>;
     actionLabel: Reactive<string>;
-    menu?: {label: string; popover: GnimNode};
+    detail?: {label: string; onOpen: (self: Gtk.Button) => void; visible?: Reactive<boolean>};
+    actionSensitive?: Reactive<boolean>;
     cssClasses?: Reactive<string[]>;
     hexpand?: boolean;
     visible?: Reactive<boolean>;
     sensitive?: Reactive<boolean>;
 }
 type QuickControlButtonProps = QuickControlBaseProps & (
-    | {intent: 'toggle'; active: Reactive<boolean>; onClick: () => void}
-    | {intent: 'action'; active?: never; onClick: () => void}
+    | {intent: 'toggle'; active: Reactive<boolean>; onClick: (self: Gtk.Button) => void}
+    | {intent: 'action'; active?: never; onClick: (self: Gtk.Button) => void}
 );
 
 export const QuickControlButton = (props: QuickControlButtonProps): GnimNode => {
     const value = computed(() => isAccessor(props.value) ? props.value() : props.value);
     const action = computed(() => isAccessor(props.actionLabel) ? props.actionLabel() : props.actionLabel);
+    const detail = props.detail;
+    const detailVisible = detail?.visible ?? !!detail;
     const initialize = (self: Gtk.Button) => {
         effect(() => {
             self.update_property(
@@ -37,7 +39,7 @@ export const QuickControlButton = (props: QuickControlButtonProps): GnimNode => 
         }
     };
     const content = (
-        <Gtk.Box spacing={8}>
+        <Gtk.Box spacing={8} orientation={Gtk.Orientation.HORIZONTAL}>
             <Gtk.Image iconName={props.icon} />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
                 <Gtk.Label label={props.domain} xalign={0} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={16} />
@@ -46,34 +48,33 @@ export const QuickControlButton = (props: QuickControlButtonProps): GnimNode => 
         </Gtk.Box>
     );
     const primary = props.intent === 'toggle' ? (
-        <Gtk.ToggleButton hexpand tooltipText={action} ref={initialize}
+        <Gtk.ToggleButton hexpand sensitive={props.actionSensitive ?? true} tooltipText={action} ref={initialize}
             onClicked={(self) => {
-                try { props.onClick(); }
+                try { props.onClick(self); }
                 finally { self.active = isAccessor(props.active) ? props.active() : props.active; }
             }}>
             {content}
         </Gtk.ToggleButton>
     ) : (
-        <Gtk.Button hexpand tooltipText={action} ref={initialize} onClicked={props.onClick}>
+        <Gtk.Button hexpand sensitive={props.actionSensitive ?? true} tooltipText={action} ref={initialize} onClicked={props.onClick}>
             {content}
         </Gtk.Button>
     );
     return (
-        <Gtk.Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={computed(() => [
-            'horizontal',
-            ...(props.menu ? ['linked'] : []),
-            ...(isAccessor(props.cssClasses) ? props.cssClasses() : props.cssClasses ?? []),
-        ])} hexpand={props.hexpand ?? true} visible={props.visible ?? true} sensitive={props.sensitive ?? true}>
+        <Gtk.Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={computed(() => {
+            const classes = ['horizontal'];
+            const visible = isAccessor(detailVisible) ? detailVisible() : detailVisible;
+            if (visible) classes.push('linked');
+            const extra = isAccessor(props.cssClasses) ? props.cssClasses() : props.cssClasses;
+            if (extra) classes.push(...extra);
+            return classes;
+        })} hexpand={props.hexpand ?? true} visible={props.visible ?? true} sensitive={props.sensitive ?? true}>
             {primary}
-            {props.menu && (
-                <Gtk.MenuButton iconName={'pan-down-symbolic'} tooltipText={props.menu.label}
-                    ref={(self) => {
-                        self.update_property([Gtk.AccessibleProperty.LABEL],
-                            [new GObject.Value(GObject.TYPE_STRING, props.menu!.label)]);
-                        usePopoverCleanup(self);
-                    }}>
-                    {props.menu.popover}
-                </Gtk.MenuButton>
+            {detail && (
+                <Gtk.Button iconName="go-next-symbolic" tooltipText={detail.label} visible={detailVisible}
+                    ref={self => self.update_property([Gtk.AccessibleProperty.LABEL],
+                        [new GObject.Value(GObject.TYPE_STRING, detail.label)])}
+                    onClicked={detail.onOpen} />
             )}
         </Gtk.Box>
     );

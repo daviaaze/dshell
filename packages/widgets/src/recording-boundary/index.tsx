@@ -1,12 +1,12 @@
 import Astal from 'gi://Astal?version=4.0';
-import type Gdk from 'gi://Gdk?version=4.0';
+import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import {getApp} from '@shade/services/appHandle';
 import Screenshot from '@shade/services/capture/screenshot';
+import {setBoundaryInputPassthrough} from '@shade/services/capture/boundaryInput';
 import {
     type BoundaryGeometry,
-    parseColor,
     visibleBoundaryEdges,
 } from '@shade/services/capture/types';
 import {monitors} from '@shade/services/monitoring/monitors';
@@ -16,7 +16,8 @@ import {bind, onCleanup} from 'gnim';
 export default () => {
     const ss = Screenshot.get_default();
     const captureSettings = getScreenCaptureSettings();
-    const defaultColor = parseColor(captureSettings.recordingBoundaryColor());
+    const defaultColor = new Gdk.RGBA();
+    defaultColor.parse(captureSettings.recordingBoundaryColor());
     const BORDER_WIDTH = 3;
     const BORDER_ALPHA = 0.65;
     const monList = toArray<Gdk.Monitor>(monitors.peek());
@@ -30,7 +31,9 @@ export default () => {
             application={getApp()}
             namespace={'shade-recording-boundary'}
             gdkmonitor={monitor}
-            layer={Astal.Layer.OVERLAY}
+            keymode={Astal.Keymode.NONE}
+            cssClasses={[]}
+            css={'background-color: transparent;'}
             anchor={
                 Astal.WindowAnchor.TOP |
                 Astal.WindowAnchor.RIGHT |
@@ -44,6 +47,10 @@ export default () => {
                 hexpand
                 vexpand
                 ref={(self) => {
+                    self.connect('map', () => {
+                        const surface = self.get_native()?.get_surface();
+                        if (surface) setBoundaryInputPassthrough(surface);
+                    });
                     self.set_draw_func((_area, cr, _w, _h) => {
                         if (!ss.boundaryGeometry) return;
                         const geom = ss.boundaryGeometry as BoundaryGeometry;
@@ -51,9 +58,9 @@ export default () => {
                         if (edges.length === 0) return;
 
                         cr.setSourceRGBA(
-                            defaultColor.r,
-                            defaultColor.g,
-                            defaultColor.b,
+                            defaultColor.red,
+                            defaultColor.green,
+                            defaultColor.blue,
                             BORDER_ALPHA
                         );
                         cr.setLineWidth(BORDER_WIDTH);
@@ -71,9 +78,7 @@ export default () => {
     ));
 
     onCleanup(() => {
-        for (const w of windowRefs) {
-            w.close();
-        }
+        for (const w of windowRefs) w.close();
     });
 
     return windows;

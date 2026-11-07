@@ -9,9 +9,9 @@ function readOsInfo(): string {
         const content = GLib.file_get_contents('/etc/os-release')[1];
         const text = new TextDecoder().decode(content);
         const match = text.match(/^PRETTY_NAME="([^"]+)"/m);
-        return match ? match[1] : 'Unknown';
+        return match ? match[1] : 'Não disponível';
     } catch {
-        return 'Unknown';
+        return 'Não disponível';
     }
 }
 
@@ -19,7 +19,7 @@ function readKernelVersion(): string {
     try {
         return Process.exec('uname -r').trim();
     } catch {
-        return 'Unknown';
+        return 'Não disponível';
     }
 }
 
@@ -28,9 +28,9 @@ function readCpuInfo(): string {
         const content = GLib.file_get_contents('/proc/cpuinfo')[1];
         const text = new TextDecoder().decode(content);
         const match = text.match(/^model name\s*:\s*(.+)$/m);
-        return match ? match[1].trim() : 'Unknown';
+        return match ? match[1].trim() : 'Não disponível';
     } catch {
-        return 'Unknown';
+        return 'Não disponível';
     }
 }
 
@@ -44,9 +44,9 @@ function readMemoryInfo(): string {
             const gb = (kb / 1024 / 1024).toFixed(1);
             return `${gb} GB`;
         }
-        return 'Unknown';
+        return 'Não disponível';
     } catch {
-        return 'Unknown';
+        return 'Não disponível';
     }
 }
 
@@ -54,18 +54,18 @@ function readGpuInfo(): string {
     try {
         const output = Process.exec('lspci | grep VGA');
         const match = output.match(/VGA compatible controller: (.+)$/m);
-        return match ? match[1].trim() : 'Unknown';
+        return match ? match[1].trim() : 'Não disponível';
     } catch {
-        return 'Unknown';
+        return 'Não disponível';
     }
 }
 
 function readDiskInfo(): string {
     try {
         const output = Process.exec("df -h / | awk 'NR==2 {print $2\" total, \"$3\" used\"}'");
-        return output.trim() || 'Unknown';
+        return output.trim() || 'Não disponível';
     } catch {
-        return 'Unknown';
+        return 'Não disponível';
     }
 }
 
@@ -97,18 +97,18 @@ export default () => {
     };
 
     return (
-        <Adw.PreferencesGroup title="System Information">
-            <Adw.ActionRow title="Operating System" subtitle={os} />
-            <Adw.ActionRow title="Hostname" subtitle={hostname} />
+        <Adw.PreferencesGroup title="Sobre este sistema">
+            <Adw.ActionRow title="Sistema operacional" subtitle={os} />
+            <Adw.ActionRow title="Nome do computador" subtitle={hostname} />
             <Adw.ActionRow title="Kernel" subtitle={kernel} />
-            <Adw.ActionRow title="Processor" subtitle={cpu} />
-            <Adw.ActionRow title="Memory" subtitle={memory} />
-            <Adw.ActionRow title="Graphics" subtitle={gpu} />
-            <Adw.ActionRow title="Disk" subtitle={disk} />
+            <Adw.ActionRow title="Processador" subtitle={cpu} />
+            <Adw.ActionRow title="Memória" subtitle={memory} />
+            <Adw.ActionRow title="Gráficos" subtitle={gpu} />
+            <Adw.ActionRow title="Disco" subtitle={disk} />
 
             <Gtk.Box marginTop={16} halign={Gtk.Align.CENTER}>
                 <Gtk.Button
-                    label="Copy to Clipboard"
+                    label="Copiar informações do sistema"
                     cssClasses={['suggested-action']}
                     onClicked={copyToClipboard}
                 />

@@ -1,20 +1,43 @@
-/**
- * Smoke test for ShellState — singleton identity and the
- * bindable launcherOpen property default before init().
- */
 import ShellState from '../state/shellState';
 import {describe, expect, it, run} from './test-runner';
 
-describe('ShellState', () => {
-    it('returns the same singleton on repeated get_default()', () => {
-        const a = ShellState.get_default();
-        const b = ShellState.get_default();
-        expect(a).toBe(b);
+function reset(): ShellState {
+    const state = ShellState.get_default();
+    state.screenlocked = false;
+    state.closeAll();
+    return state;
+}
+
+describe('ShellState transient surfaces', () => {
+    it('opens notifications without retaining other panels and closes them idempotently', () => {
+        const state = reset();
+        state.launcherOpen = true;
+        state.qsOpen = true;
+        state.openNotifications();
+        expect(state.notificationsOpen).toBe(true);
+        expect(state.launcherOpen).toBe(false);
+        expect(state.qsOpen).toBe(false);
+        state.closeAll();
+        state.closeAll();
+        expect(state.notificationsOpen).toBe(false);
     });
 
-    it('launcherOpen defaults to false before init()', () => {
-        const s = ShellState.get_default();
-        expect(s.launcherOpen).toBe(false);
+    it('closes transient content on lock and refuses to reopen it until unlocked', () => {
+        const state = reset();
+        state.openNotifications();
+        state.screenlocked = true;
+        expect(state.notificationsOpen).toBe(false);
+        state.launcherOpen = true;
+        state.qsOpen = true;
+        state.notificationsOpen = true;
+        state.openNotifications();
+        expect(state.launcherOpen).toBe(false);
+        expect(state.qsOpen).toBe(false);
+        expect(state.notificationsOpen).toBe(false);
+        state.screenlocked = false;
+        state.openNotifications();
+        expect(state.notificationsOpen).toBe(true);
+        state.closeAll();
     });
 });
 

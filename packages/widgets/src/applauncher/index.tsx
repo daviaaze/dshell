@@ -22,7 +22,7 @@ import ClipboardButton from './clipboardButton';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 const LAUNCHER_WIDTH = 640;
-const WINDOW_MARGIN = 12;
+const WINDOW_MARGIN = 4;
 
 function availableLauncherWidth(
     monitor: {width: number; scale: number} | null,
@@ -238,7 +238,6 @@ export default () => {
             <Gtk.Box
                 widthRequest={launcherWidth}
                 cssClasses={['card']}
-                css={'box-shadow: none; background-color: @window_bg_color;'}
                 marginTop={8}
                 marginBottom={8}
                 marginStart={8}

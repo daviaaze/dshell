@@ -3,6 +3,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import type Wireplumber from 'gi://AstalWp';
 import {bind, computed, effect, With} from 'gnim';
 import AudioController from '@shade/services/audio/audioController';
+import AppMixer from '@shade/services/audio/mixer';
+import AppMixerControls from '../quicksettings/appMixer';
 
 function EndpointControls({
     endpoint,
@@ -17,17 +19,17 @@ function EndpointControls({
     const description = bind(endpoint, 'description');
     const endpointName = bind(endpoint, 'name');
     const name = computed(() =>
-        description() || endpointName() || (kind === 'output' ? 'Output device' : 'Microphone')
+        description() || endpointName() || (kind === 'output' ? 'Dispositivo de saída' : 'Microfone')
     );
     let restoringMute = false;
 
     return (
         <>
-            <Adw.ActionRow title={kind === 'output' ? 'Output device' : 'Microphone'} subtitle={name} />
             <Adw.ActionRow
-                title="Volume"
-                subtitle={volume.as((value) => `${Math.round(value * 100)}%`)}
-            >
+                title={kind === 'output' ? 'Saída atual' : 'Microfone atual'}
+                subtitle={name}
+            />
+            <Adw.ActionRow title={kind === 'output' ? 'Volume de saída' : 'Volume do microfone'}>
                 <Gtk.Scale
                     orientation={Gtk.Orientation.HORIZONTAL}
                     adjustment={new Gtk.Adjustment({
@@ -52,14 +54,14 @@ function EndpointControls({
                 />
             </Adw.ActionRow>
             <Adw.SwitchRow
-                title="Mute"
+                title={kind === 'output' ? 'Silenciar saída' : 'Silenciar microfone'}
+                subtitle={kind === 'output' ? 'Silencia o dispositivo selecionado.' : 'Silencia o microfone selecionado.'}
                 active={muted}
                 onNotifyActive={(self) => {
                     if (restoringMute || self.active === endpoint.mute) return;
                     try {
                         audio.setMute(endpoint, self.active);
                     } finally {
-                        // A failed/rejected native request is not the confirmed state.
                         restoringMute = true;
                         self.active = endpoint.mute;
                         restoringMute = false;
@@ -74,36 +76,51 @@ export default () => {
     const audio = AudioController.get_default();
     const defaultSpeaker = bind(audio, 'defaultSpeaker');
     const defaultMic = bind(audio, 'defaultMicrophone');
+    const mixerStreams = bind(AppMixer.get_default(), 'streams');
 
     return (
         <>
-            <Adw.PreferencesGroup title="Output">
+            <Adw.PreferencesGroup title="Saída de som" description="Dispositivo padrão, volume e silenciar.">
                 <With value={defaultSpeaker}>
                     {(endpoint) =>
                         endpoint ? (
                             <EndpointControls endpoint={endpoint} kind="output" />
                         ) : (
                             <Adw.ActionRow
-                                title="No output device available"
-                                subtitle="Connect or enable an output device to adjust its volume and mute."
+                                title="Nenhuma saída disponível"
+                                subtitle="Conecte ou habilite um dispositivo de saída para ajustar volume e silêncio."
                             />
                         )
                     }
                 </With>
             </Adw.PreferencesGroup>
-
-            <Adw.PreferencesGroup title="Input">
+            <Adw.PreferencesGroup title="Microfone" description="Dispositivo de entrada padrão.">
                 <With value={defaultMic}>
                     {(endpoint) =>
                         endpoint ? (
                             <EndpointControls endpoint={endpoint} kind="microphone" />
                         ) : (
                             <Adw.ActionRow
-                                title="No microphone available"
-                                subtitle="Connect or enable a microphone to adjust its volume and mute."
+                                title="Nenhum microfone disponível"
+                                subtitle="Conecte ou habilite um microfone para ajustar volume e silêncio."
                             />
                         )
                     }
+                </With>
+            </Adw.PreferencesGroup>
+            <Adw.PreferencesGroup
+                title="Dispositivos e aplicativos"
+                description="Fluxos de áudio ativos e controles do mixer."
+            >
+                <With value={mixerStreams}>
+                    {(streams) => streams.length > 0 ? (
+                        <AppMixerControls />
+                    ) : (
+                        <Adw.ActionRow
+                            title="Nenhum aplicativo reproduzindo áudio"
+                            subtitle="Os fluxos ativos aparecerão aqui com seus controles."
+                        />
+                    )}
                 </With>
             </Adw.PreferencesGroup>
         </>

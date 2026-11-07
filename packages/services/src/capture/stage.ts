@@ -106,7 +106,7 @@ export class Stage {
                 await Process.execAsync(`cp "${this.#pixPath}" "${filename}"`);
             }
 
-            finalizeImage(filename, geometry !== null);
+            await finalizeImage(filename, geometry !== null);
             return true;
         } catch (e) {
             logger.error('screenshot', `capture failed: ${e}`);

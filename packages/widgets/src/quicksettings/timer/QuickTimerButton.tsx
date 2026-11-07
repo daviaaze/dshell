@@ -3,7 +3,7 @@ import {bus} from '@shade/services/bus';
 import TimerService from '@shade/services/time/timerService';
 import {bind, computed} from 'gnim';
 import {QuickControlButton} from '../../common/quickControlButton';
-import type {QuickButton} from '../button-grid/quickButton';
+import type {QuickDetailButton} from '../button-grid/quickButton';
 import {TimerSection} from './TimerSection';
 
 function fmtShort(ms: number): string {
@@ -14,36 +14,29 @@ function fmtShort(ms: number): string {
     return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export default (): QuickButton => {
+export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const timer = TimerService.get_default();
     const remaining = bind(timer, 'remaining');
-    let popover: Gtk.Popover | null = null;
-
     const value = computed(() => fmtShort(remaining()));
     const icon = 'emoji-recent-symbolic';
-    const popoverContent = (
-        <Gtk.Popover
-            cssClasses={[]}
-            ref={(self) => {
-                popover = self;
-            }}
+
+    const detail = (
+        <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={8}
+            marginTop={8}
+            marginBottom={8}
+            marginStart={8}
+            marginEnd={8}
+            widthRequest={230}
+            halign={Gtk.Align.FILL}
         >
-            <Gtk.Box
-                orientation={Gtk.Orientation.VERTICAL}
-                spacing={8}
-                marginTop={8}
-                marginBottom={8}
-                marginStart={8}
-                marginEnd={8}
-                widthRequest={230}
-                halign={Gtk.Align.FILL}
-            >
-                <TimerSection />
-            </Gtk.Box>
-        </Gtk.Popover>
+            <TimerSection />
+        </Gtk.Box>
     );
 
     return {
+        detail,
         widget: (
             <QuickControlButton
                 intent="action"
@@ -51,11 +44,11 @@ export default (): QuickButton => {
                 icon={icon}
                 value={value}
                 actionLabel={remaining.as((ms) => ms >= 0 ? 'Cancel timer' : 'Open timer options')}
-                onClick={() => {
+                onClick={(self) => {
                     if (timer.remaining >= 0) bus.emit('timer:cmd:cancel');
-                    else popover?.popup();
+                    else onOpen(self);
                 }}
-                menu={{label: 'Timer options', popover: popoverContent}}
+                detail={{label: 'Timer options', onOpen, visible: remaining.as(value => value >= 0)}}
             />
         ),
     };

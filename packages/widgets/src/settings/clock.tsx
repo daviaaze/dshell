@@ -35,9 +35,9 @@ export default () => {
     const TZ_POPOVER_MAX_HEIGHT = 300;
 
     return (
-        <Adw.PreferencesGroup title="Clock" description="World clock timezones">
+        <Adw.PreferencesGroup title="Relógios mundiais" description="Adicione fusos horários e consulte a hora local.">
             <Adw.ActionRow
-                title="Timezones"
+                title="Adicionar fuso horário"
                 subtitle={general.timezones.as((tzs) => tzs.join(', '))}
             >
                 <Gtk.MenuButton slot="suffix" ref={usePopoverCleanup}>
@@ -78,7 +78,7 @@ export default () => {
                             title={cityName(tz)}
                             subtitle={wallTime.as((time) => {
                                 const local = timezone ? time.to_timezone(timezone)?.format('%H:%M') : null;
-                                return `${tz} — ${local ?? 'Time unavailable'}`;
+                                return `${tz} — ${local ?? 'Hora indisponível'}`;
                             })}
                         >
                             <Gtk.Box slot="suffix" valign={Gtk.Align.CENTER}>

@@ -87,7 +87,7 @@ const notifdSingleton = new DeferredSingleton<Notifd.Notifd>(
         if (!canInitNotifd()) throw new Error('Foreign notification daemon detected');
         const daemon = Notifd.get_default();
         // Toast expiry is local presentation; unresolved notifications remain
-        // available in Quick Settings until explicitly dismissed.
+        // available in the notification center until explicitly dismissed.
         daemon.set_ignore_timeout(true);
         return daemon;
     },

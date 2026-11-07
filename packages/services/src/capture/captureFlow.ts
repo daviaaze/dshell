@@ -5,7 +5,7 @@ import {bus} from '../bus';
 import {getScreenCaptureSettings} from '../settings/screenCapture';
 import {parseGrimGeometry, toGrimGeometry} from './geometry';
 import type {BoundaryGeometry, ScreenshotHandle} from './types';
-import {finalizeImage, freshScreenshotFilename, GRIM_BIN, notify} from './utils';
+import {finalizeImage, freshScreenshotFilename, GRIM_BIN, notify, publishCapture} from './utils';
 
 /**
  * Capture flows — fullscreen/area screenshot entry points and the overlay
@@ -20,16 +20,13 @@ import {finalizeImage, freshScreenshotFilename, GRIM_BIN, notify} from './utils'
 /** Fullscreen live screenshot (grim, no stage). */
 export function screenshotFullscreen() {
     const filename = freshScreenshotFilename();
-
     Process.execAsync(`${GRIM_BIN} "${filename}"`)
-        .then(() => {
-            try {
-                finalizeImage(filename, false);
-            } catch (e) {
-                logger.error('screenshot', 'post-capture failed:', e);
-            }
-        })
-        .catch((e) => logger.error('screenshot', 'grim failed:', e));
+        .then(() => finalizeImage(filename, false))
+        .catch((e) => {
+            const message = e instanceof Error ? e.message : String(e);
+            logger.error('screenshot', 'capture failed:', e);
+            publishCapture({state: 'error', message});
+        });
 }
 
 /**
@@ -70,25 +67,44 @@ export function useSlurpForSelection(): boolean {
 
 /** Slurp-based area screenshot: select via slurp, then live grim capture. */
 export async function slurpAreaScreenshot() {
-    const geometry = await slurpGeometry();
-    if (!geometry) return;
-    captureGeometryLive(geometry);
+    try {
+        const geometry = await slurpGeometry();
+        if (!geometry) {
+            publishCapture({state: 'idle'});
+            return;
+        }
+        await captureGeometryLive(geometry);
+    } catch (e) {
+        publishCapture({state: 'error', message: e instanceof Error ? e.message : String(e)});
+    }
 }
 
 /** Slurp-based area recording: select via slurp, then record that geometry. */
 export async function slurpAreaRecording(ss: ScreenshotHandle) {
-    const geometry = await slurpGeometry();
-    if (!geometry) return;
-    ss.startRecording({geometry});
-    bus.emit('capture:record:area');
+    try {
+        const geometry = await slurpGeometry();
+        if (!geometry) {
+            publishCapture({state: 'idle'});
+            return;
+        }
+        ss.startRecording({geometry});
+        bus.emit('capture:record:area');
+    } catch (e) {
+        publishCapture({state: 'error', message: e instanceof Error ? e.message : String(e)});
+    }
 }
 
 /** Live grim capture of a global-compositor geometry (no stage frame). */
-export function captureGeometryLive(geometry: BoundaryGeometry) {
+export async function captureGeometryLive(geometry: BoundaryGeometry) {
     const filename = freshScreenshotFilename();
-    Process.execAsync(`${GRIM_BIN} -g "${toGrimGeometry(geometry)}" "${filename}"`)
-        .then(() => finalizeImage(filename, true))
-        .catch((e) => logger.error('screenshot', 'grim failed:', e));
+    try {
+        await Process.execAsync(`${GRIM_BIN} -g "${toGrimGeometry(geometry)}" "${filename}"`);
+        await finalizeImage(filename, true);
+    } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        logger.error('screenshot', 'grim failed:', e);
+        publishCapture({state: 'error', message});
+    }
 }
 
 /**

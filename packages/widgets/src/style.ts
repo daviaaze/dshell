@@ -11,11 +11,12 @@ registerStyleSheet(`
 /* Window switcher: opaque item background, accent when selected */
 .switcher-item {
   background-color: @window_bg_color;
-  border-radius: calc(var(--window-radius) * 1.5);
+  border-radius: var(--window-radius);
 }
 .switcher-item-selected {
-  background-color: alpha(@accent_bg_color, 0.85);
-  border-radius: calc(var(--window-radius) * 1.5);
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+  border-radius: var(--window-radius);
 }
 
 /* Keep vertical text controls inside the fixed 48px bar viewport. */
@@ -31,8 +32,4 @@ button.bar-vertical-content-button,
   box-shadow: none;
 }
 
-/* Shell surfaces are flat: Adwaita's card shadow reads as a stray border. */
-.card {
-  box-shadow: none;
-}
 `);

@@ -9,17 +9,17 @@ export default () => {
     return (
         <>
             <Adw.PreferencesGroup
-                title={'Debug'}
-                description={'Development and troubleshooting options'}
+                title={'Diagnóstico'}
+                description={'Logs locais e categorias para investigação.'}
             >
                 <Adw.SwitchRow
-                    title={'Enable Debug Logging'}
-                    subtitle={'Show DEBUG-level messages in journald'}
+                    title={'Ativar logs de depuração'}
+                    subtitle={'Habilita mensagens DEBUG em journald; pode aumentar o detalhe local.'}
                     active={settings.debugEnabled}
                     onNotifyActive={(self) => settings.setDebugEnabled(self.active)}
                 />
                 <Adw.EntryRow
-                    title={'Add Category (mount, state, theme, dbus, exec, perf, memory)'}
+                    title={'Adicionar categorias (mount, state, theme, dbus, exec, perf, memory)'}
                     showApplyButton
                     onApply={(self) => {
                         const cats = self.text
@@ -40,8 +40,8 @@ export default () => {
             </Adw.PreferencesGroup>
 
             <Adw.PreferencesGroup
-                title={'Active Categories'}
-                description={'Currently enabled debug categories'}
+                title={'Categorias ativas'}
+                description={'Filtro de categorias de depuração.'}
                 visible={settings.debugCategories.as((cats) => cats.length > 0)}
             >
                 <For each={settings.debugCategories}>
@@ -63,7 +63,7 @@ export default () => {
                     cssClasses={['circular', 'destructive-action']}
                     halign={Gtk.Align.CENTER}
                     iconName="edit-clear-all-symbolic"
-                    label="Clear All"
+                    label="Limpar todas as categorias"
                     onClicked={() => settings.setDebugCategories([])}
                 />
             </Adw.PreferencesGroup>

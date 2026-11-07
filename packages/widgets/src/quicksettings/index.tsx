@@ -1,133 +1,213 @@
+import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
+import GLib from 'gi://GLib?version=2.0';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
 import {getApp} from '@shade/services/appHandle';
-import {bus} from '@shade/services/bus';
 import LayoutService from '@shade/services/display/layouts';
 import {getHyprland} from '@shade/services/hyprland';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import {bind, computed, onCleanup} from 'gnim';
+import {bind, computed, createState, onCleanup} from 'gnim';
 import {BAR_EDGE_RESERVE} from '../bar/geometry';
-import {ButtonGrid} from './button-grid/index';
+import {PowerMenu} from '../common/powerMenu';
+import {openSettings} from '../settings/settingsOpen';
+import BluetoothQuickButton from './button-grid/bluetooth';
+import {createOtherControls, type OtherRoute} from './button-grid/index';
+import {ReactiveGrid} from './button-grid/reactiveGrid';
 import {DisplaySection} from './display';
-import {Expander} from './expander/index';
-import {NotificationList} from './notificationList';
-import {AudioConfig, BrightnessSlider, MicConfig} from './sliders';
+import {Battery} from './expander/battery';
+import {Calendar} from './expander/calendar';
+import {Media} from './expander/media';
+import {Weather} from './expander/weather';
+import {WorldClock} from './expander/worldClock';
+import WifiQuickButton from './network';
+import {AudioCompact, AudioConfig, BrightnessSlider, MicCompact, MicConfig} from './sliders';
 import {TrayBox} from './tray';
 
-const QUICKSETTINGS_WIDTH = 420;
-const QUICKSETTINGS_SPACING = 8;
-/** Matches Hyprland `general:gaps_out` (nix/hyprland) so the panel aligns with tiled windows. */
+const PANEL_WIDTH = 420;
 const WINDOW_MARGIN = 4;
-
-function availableWidth(
-    monitor: {width: number; scale: number} | null,
-    preferred: number,
-    barPosition: number,
-    left: number,
-    right: number
-) {
-    const logicalWidth = monitor
-        ? monitor.width / (monitor.scale || 1)
-        : preferred + WINDOW_MARGIN * 2;
-    const barReserve = barPosition === left || barPosition === right ? BAR_EDGE_RESERVE : 0;
-    return Math.max(1, Math.min(preferred, logicalWidth - WINDOW_MARGIN * 2 - barReserve));
-}
+type QuickRoute = 'home' | 'wifi' | 'bluetooth' | 'audio' | 'microphone' | 'displays' | 'other' | 'data' | OtherRoute;
+const TITLES: Record<QuickRoute, string> = {
+    home: 'Controles rápidos', wifi: 'Wi-Fi', bluetooth: 'Bluetooth',
+    audio: 'Saída de áudio', microphone: 'Microfone', displays: 'Telas',
+    other: 'Outros controles', data: 'Data e clima', profile: 'Energia',
+    appearance: 'Aparência', capture: 'Captura', inhibit: 'Manter ativo',
+    timer: 'Temporizador', nightlight: 'Luz noturna',
+};
 
 export default () => {
-    const barCfg = barSettings();
     const hyprland = getHyprland();
     if (!hyprland) return null;
-    const shellState = ShellState.get_default();
-    const service = LayoutService.get_default();
-    const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
-    const focusedMonitor = bind(hyprland, 'focused-monitor');
-    const settingsWidth = computed(() =>
-        availableWidth(focusedMonitor(), QUICKSETTINGS_WIDTH, barCfg.position(), LEFT, RIGHT)
-    );
+    const state = ShellState.get_default();
+    const layouts = LayoutService.get_default();
+    const bar = barSettings();
+    const [route, setRoute] = createState<QuickRoute>('home');
+    const [navigationError, setNavigationError] = createState('');
+    const [headerHeight, setHeaderHeight] = createState(0);
+    const monitor = bind(hyprland, 'focused-monitor');
+    const {TOP, LEFT, RIGHT} = Astal.WindowAnchor;
+    const sidebar = computed(() => bar.position() === LEFT || bar.position() === RIGHT);
+    const width = computed(() => {
+        const current = monitor();
+        const available = current ? current.width / (current.scale || 1) : PANEL_WIDTH + WINDOW_MARGIN * 2;
+        return Math.max(1, Math.min(PANEL_WIDTH, available - WINDOW_MARGIN * 2 - (sidebar() ? BAR_EDGE_RESERVE : 0)));
+    });
+    const maxHeight = computed(() => {
+        const current = monitor();
+        const available = current ? current.height / (current.scale || 1) : 720;
+        return Math.max(1, available - WINDOW_MARGIN * 2 - headerHeight() - (sidebar() ? 0 : BAR_EDGE_RESERVE));
+    });
+    const history: {route: QuickRoute; origin: Gtk.Widget}[] = [];
+    let focusSource = 0;
+    let alive = true;
+    const goBack = () => {
+        const previous = history.pop();
+        setRoute(previous?.route ?? 'home');
+        if (focusSource) GLib.source_remove(focusSource);
+        focusSource = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            focusSource = 0;
+            if (previous?.origin.get_mapped()) previous.origin.grab_focus();
+            return GLib.SOURCE_REMOVE;
+        });
+    };
+    const leavePage = (next: () => void) => {
+        if (route() !== 'displays') { next(); return; }
+        void layouts.revert().then(() => { if (alive) next(); }).catch(error => {
+            if (alive) setNavigationError(`Não foi possível reverter as alterações de tela: ${String(error)}`);
+        });
+    };
+    const navigate = (destination: QuickRoute, self: Gtk.Button) => {
+        history.push({route: route(), origin: self});
+        setNavigationError('');
+        setRoute(destination);
+    };
+    const wifi = WifiQuickButton(self => navigate('wifi', self));
+    const bluetooth = BluetoothQuickButton(self => navigate('bluetooth', self));
+    const other = createOtherControls((destination, self) => navigate(destination, self));
+    const title = computed(() => other.pages.find(page => page.id === route())?.title ?? TITLES[route()]);
+    onCleanup(() => {
+        alive = false;
+        if (focusSource) GLib.source_remove(focusSource);
+    });
 
     return (
-        <Astal.Window
-            ref={(self) => {
-                WindowManager.get_default().setQuicksettings(self);
-                self.connect('realize', () => logger.log('quicksettings realized'));
-                self.connect('map', () => logger.log('quicksettings mapped'));
-
-                const keyController = Gtk.EventControllerKey.new();
-                keyController.connect('key-pressed', (_controller, keyval) => {
-                    if (keyval !== Gdk.KEY_Escape || !self.visible) return false;
-                    void service
-                        .revert()
-                        .catch(() => undefined)
-                        .finally(() => {
-                            shellState.qsOpen = false;
-                        });
+        <Astal.Window name="quicksettings" namespace="shade-quicksettings" application={getApp()}
+            title={title}
+            keymode={Astal.Keymode.ON_DEMAND} visible={bind(state, 'qsOpen')}
+            anchor={bar.position.as(position => TOP | (position === LEFT ? LEFT : RIGHT))}
+            marginTop={WINDOW_MARGIN} marginBottom={WINDOW_MARGIN} marginStart={WINDOW_MARGIN} marginEnd={WINDOW_MARGIN}
+            monitor={monitor.as(monitorIndexFromHyprland)} widthRequest={width}
+            cssClasses={[]} css="background-color: transparent;"
+            ref={self => {
+                const manager = WindowManager.get_default();
+                manager.setQuicksettings(self);
+                const keys = Gtk.EventControllerKey.new();
+                keys.connect('key-pressed', (_controller, key) => {
+                    if (key !== Gdk.KEY_Escape || !self.visible) return false;
+                    leavePage(route() === 'home' ? () => state.closeQuickSettings() : goBack);
                     return true;
                 });
-                self.add_controller(keyController);
+                self.add_controller(keys);
                 onCleanup(() => {
-                    self.remove_controller(keyController);
+                    self.remove_controller(keys);
+                    if (manager.quicksettings === self) manager.setQuicksettings(null);
                 });
             }}
-            marginTop={WINDOW_MARGIN}
-            marginBottom={WINDOW_MARGIN}
-            marginStart={WINDOW_MARGIN}
-            marginEnd={WINDOW_MARGIN}
-            application={getApp()}
-            name={'quicksettings'}
-            namespace={'shade-quicksettings'}
-            keymode={Astal.Keymode.ON_DEMAND}
-            visible={bind(shellState, 'qsOpen')}
-            onNotifyVisible={(self) => {
-                logger.log(`quicksettings visible -> ${self.visible}`);
-                if (
-                    (barCfg.position() === LEFT || barCfg.position() === RIGHT) &&
-                    self.visible &&
-                    ShellState.get_default().launcherOpen
-                )
-                    bus.emit('shell:launcher:close');
-                shellState.qsOpen = self.visible;
-            }}
-            cssClasses={[]}
-            css={'background-color: transparent;'}
-            anchor={barCfg.position.as((p) => TOP | (p === LEFT ? LEFT : RIGHT) | BOTTOM)}
-            widthRequest={settingsWidth}
-            monitor={focusedMonitor.as((m) => monitorIndexFromHyprland(m))}
-        >
-            <Gtk.Box
-                cssClasses={['card']}
-                css={'box-shadow: none; background-color: @window_bg_color;'}
-                orientation={Gtk.Orientation.VERTICAL}
-            >
-                <Gtk.ScrolledWindow
-                    propagateNaturalHeight
-                    maxContentWidth={settingsWidth}
-                    propagateNaturalWidth={false}
-                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                    vexpand
-                >
-                    <Gtk.Box
-                        spacing={QUICKSETTINGS_SPACING}
-                        marginTop={16}
-                        marginBottom={16}
-                        marginStart={16}
-                        marginEnd={16}
-                        orientation={Gtk.Orientation.VERTICAL}
-                    >
-                        <ButtonGrid />
-                        <DisplaySection />
-                        <BrightnessSlider />
-                        <AudioConfig />
-                        <MicConfig />
-                        <TrayBox />
-                        <Expander />
-                        <NotificationList />
-                    </Gtk.Box>
+            onNotifyVisible={self => {
+                state.qsOpen = self.visible;
+                if (!self.visible) {
+                    const leavingDisplays = route() === 'displays';
+                    setRoute('home');
+                    history.length = 0;
+                    if (leavingDisplays) void layouts.revert().catch(error =>
+                        logger.warn('quicksettings', 'display rollback failed:', error));
+                }
+            }}>
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card', 'vertical']}>
+                <Adw.HeaderBar showStartTitleButtons={false} showEndTitleButtons={false}
+                    ref={self => setHeaderHeight(self.measure(Gtk.Orientation.VERTICAL, -1)[1])}>
+                    <Gtk.Button slot="start" visible={route.as(value => value !== 'home')}
+                        iconName="go-previous-symbolic" tooltipText="Voltar"
+                        onClicked={() => leavePage(goBack)} />
+                    <Gtk.Button slot="start" visible={route.as(value => value === 'home')}
+                        iconName="preferences-system-symbolic" tooltipText="Configurações"
+                        ref={self => self.update_property([Gtk.AccessibleProperty.LABEL],
+                            [new GObject.Value(GObject.TYPE_STRING, 'Configurações')])}
+                        onClicked={() => openSettings()} />
+                    <Adw.WindowTitle slot="title" title={title} />
+                    <Gtk.MenuButton slot="end" visible={route.as(value => value === 'home')}
+                        iconName="system-shutdown-symbolic" tooltipText="Sessão e energia"
+                        ref={self => self.update_property([Gtk.AccessibleProperty.LABEL],
+                            [new GObject.Value(GObject.TYPE_STRING, 'Sessão e energia')])}>
+                        <PowerMenu />
+                    </Gtk.MenuButton>
+                    <Gtk.Button slot="end" iconName="window-close-symbolic" tooltipText="Fechar controles rápidos"
+                        onClicked={() => leavePage(() => state.closeQuickSettings())} />
+                </Adw.HeaderBar>
+                <Gtk.Label visible={navigationError.as(Boolean)} label={navigationError} wrap
+                    cssClasses={['error']} marginStart={16} marginEnd={16} />
+                <Gtk.ScrolledWindow propagateNaturalHeight maxContentHeight={maxHeight}
+                    hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+                    <Gtk.Stack visibleChildName={route} hhomogeneous={false} vhomogeneous={false}
+                        transitionType={Gtk.StackTransitionType.CROSSFADE}
+                        marginTop={16} marginBottom={16} marginStart={16} marginEnd={16}>
+                        <Gtk.Box name="home" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={16}>
+                            <Gtk.Label label="Conexões" cssClasses={['heading']} xalign={0} />
+                            <Gtk.FlowBox selectionMode={Gtk.SelectionMode.NONE} minChildrenPerLine={1}
+                                maxChildrenPerLine={2} homogeneous columnSpacing={8} rowSpacing={8}>
+                                {wifi.widget}{bluetooth.widget}
+                            </Gtk.FlowBox>
+                            <Gtk.Label label="Tela e som" cssClasses={['heading']} xalign={0} />
+                            <BrightnessSlider onOpen={self => navigate('displays', self)} />
+                            <AudioCompact onOpen={self => navigate('audio', self)} />
+                            <MicCompact onOpen={self => navigate('microphone', self)} />
+                            <Gtk.Button onClicked={self => navigate('other', self)}>
+                                <Gtk.Box spacing={12}>
+                                    <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
+                                        <Gtk.Label label="Outros controles" xalign={0} />
+                                        <Gtk.Label label="Energia, aparência, captura e timer" wrap xalign={0} cssClasses={['caption', 'dimmed']} />
+                                    </Gtk.Box>
+                                    <Gtk.Image iconName="go-next-symbolic" />
+                                </Gtk.Box>
+                            </Gtk.Button>
+                            <Gtk.Box spacing={8} homogeneous>
+                                <Gtk.Button label="Data e clima" onClicked={self => navigate('data', self)} />
+                                <Gtk.Button label="Notificações" onClicked={() => state.openNotifications()} />
+                            </Gtk.Box>
+                        </Gtk.Box>
+                        <Gtk.Box name="wifi" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                            {wifi.detail}
+                            <Gtk.Button label="Configurações de rede" onClicked={() => openSettings('network')} />
+                        </Gtk.Box>
+                        <Gtk.Box name="bluetooth" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                            {bluetooth.detail}
+                            <Gtk.Button label="Configurações de Bluetooth" onClicked={() => openSettings('bluetooth')} />
+                        </Gtk.Box>
+                        <Gtk.Box name="audio" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                            <AudioConfig /><Gtk.Button label="Configurações de som" onClicked={() => openSettings('sound')} />
+                        </Gtk.Box>
+                        <Gtk.Box name="microphone" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                            <MicConfig /><Gtk.Button label="Configurações de som" onClicked={() => openSettings('sound')} />
+                        </Gtk.Box>
+                        <Gtk.Box name="displays" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                            <DisplaySection /><Gtk.Button label="Configurações de telas"
+                                onClicked={() => leavePage(() => openSettings('displays'))} />
+                        </Gtk.Box>
+                        <Gtk.Box name="other" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={16}>
+                            <ReactiveGrid items={other.buttons} cols={2} /><Battery /><Media /><TrayBox />
+                        </Gtk.Box>
+                        <Gtk.Box name="data" slot="named" orientation={Gtk.Orientation.VERTICAL} spacing={16}>
+                            <Calendar /><Weather /><WorldClock />
+                            <Gtk.Button label="Configurações de clima" onClicked={() => openSettings('weather')} />
+                        </Gtk.Box>
+                        {other.pages.map(page => <Gtk.Box name={page.id} slot="named"
+                            orientation={Gtk.Orientation.VERTICAL} spacing={12}>{page.body}</Gtk.Box>)}
+                    </Gtk.Stack>
                 </Gtk.ScrolledWindow>
             </Gtk.Box>
         </Astal.Window>

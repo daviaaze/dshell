@@ -44,9 +44,9 @@ export default () => {
     }
 
     return (
-        <Adw.PreferencesGroup title="Scheduled DND" description="Automatically enable Do Not Disturb">
+        <Adw.PreferencesGroup title="Agenda de não perturbe" description="Agenda local, ativa somente enquanto esta página existir; não é persistida.">
             <Adw.SwitchRow
-                title="Enable Schedule"
+                title="Ativar agenda"
                 active={enabled()}
                 onNotifyActive={(self) => {
                     setEnabled(self.active);
@@ -60,8 +60,8 @@ export default () => {
             />
 
             <Adw.SpinRow
-                title="Start Hour"
-                subtitle="Hour to enable DND (24-hour format)"
+                title="Começa às"
+                subtitle="Hora local em formato de 24 horas."
                 adjustment={new Gtk.Adjustment({
                     value: startHour(),
                     lower: 0,
@@ -75,8 +75,8 @@ export default () => {
             />
 
             <Adw.SpinRow
-                title="End Hour"
-                subtitle="Hour to disable DND (24-hour format)"
+                title="Termina às"
+                subtitle="Hora local em formato de 24 horas."
                 adjustment={new Gtk.Adjustment({
                     value: endHour(),
                     lower: 0,

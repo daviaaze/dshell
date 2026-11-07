@@ -13,6 +13,7 @@ import {
 } from './captureFlow';
 import {registerCommands} from './commands';
 import RecordingPrefs from './prefs';
+import {observeCapture, type CaptureUpdate} from './utils';
 import {Recorder} from './recorder';
 import {
     recordArea,
@@ -84,7 +85,40 @@ export default class Screenshot extends Object {
     #boundaryGeometry: BoundaryGeometry | null = null;
     #virtualMonitors: VirtualMonitor[] = [];
 
-    // ── Recording ────────────────────────────────────────────────
+    #captureBusy = false;
+    #captureResult = '';
+    #captureError = '';
+    #captureKind = '';
+    #captureObserverCleanup: (() => void) | undefined;
+
+    @property
+    get captureBusy() { return this.#captureBusy; }
+    @property
+    get captureResult() { return this.#captureResult; }
+    @property
+    get captureError() { return this.#captureError; }
+    @property
+    get captureKind() { return this.#captureKind; }
+
+    #setCapture(update: CaptureUpdate) {
+        this.#captureBusy = update.state === 'busy';
+        this.#captureResult = update.state === 'result' ? update.path : '';
+        this.#captureError = update.state === 'error' ? update.message : '';
+        if (update.state === 'busy' || update.state === 'result') this.#captureKind = update.kind;
+        else if (update.state === 'idle') this.#captureKind = '';
+        this.notify('capture-busy');
+        this.notify('capture-result');
+        this.notify('capture-error');
+        this.notify('capture-kind');
+    }
+
+    constructor(...args: ConstructorParameters<typeof Object>) {
+        super(...args);
+        this.#captureObserverCleanup = observeCapture((update) => this.#setCapture(update));
+    }
+    clearCaptureFeedback() {
+        this.#setCapture({state: 'idle'});
+    }
 
     @property
     get recordingElapsed() {
@@ -123,14 +157,11 @@ export default class Screenshot extends Object {
 
         if (!v) {
             this.#stage.cleanup();
-            this.#overlayQuick = false;
+            this.overlayQuick = false;
         }
     }
 
-    /**
-     * Quick-select mode (replaces the old region-selector): minimal UI —
-     * no control panel, click/Enter confirms immediately.
-     */
+    /** Minimal area selection with explicit review and confirmation controls. */
     @property
     get overlayQuick() {
         return this.#overlayQuick;
@@ -216,6 +247,7 @@ export default class Screenshot extends Object {
     screenshot(fullscreen: boolean) {
         if (!fullscreen) {
             if (useSlurpForSelection()) {
+                this.#setCapture({state: 'busy', kind: 'screenshot'});
                 slurpAreaScreenshot();
                 return;
             }
@@ -226,6 +258,7 @@ export default class Screenshot extends Object {
             this.overlayOpen = true;
             return;
         }
+        this.#setCapture({state: 'busy', kind: 'screenshot'});
         screenshotFullscreen();
     }
 
@@ -253,6 +286,7 @@ export default class Screenshot extends Object {
     }
 
     async captureFromStage(geometry: BoundaryGeometry | null) {
+        this.#setCapture({state: 'busy', kind: 'screenshot'});
         const ok = await this.#stage.captureCrop(geometry);
         if (ok) this.overlayOpen = false;
     }
@@ -345,6 +379,8 @@ export default class Screenshot extends Object {
     }
 
     dispose() {
+        this.#captureObserverCleanup?.();
+        this.#captureObserverCleanup = undefined;
         this.#recorder.dispose();
         this.#stage.cleanup();
     }

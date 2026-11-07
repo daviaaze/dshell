@@ -62,85 +62,44 @@ export function rectOverlap(
  * visible edge segments. Pure geometry — no Cairo, no GI types — so it
  * belongs in the service layer, not the rendering widget.
  */
-export function visibleBoundaryEdges(geom: BoundaryGeometry, monitor: MonitorRect): LineSegment[] {
-    const {x: mx, y: my, width: mw, height: mh} = monitor;
-    if (!rectOverlap(geom.x, geom.y, geom.width, geom.height, mx, my, mw, mh)) {
-        return [];
-    }
-    const localX = geom.x - mx;
-    const localY = geom.y - my;
-    const localW = geom.width;
-    const localH = geom.height;
+export function visibleBoundaryEdges(
+    rect: BoundaryGeometry,
+    monitor: MonitorRect
+): LineSegment[] {
+    const left = Math.max(rect.x, monitor.x);
+    const top = Math.max(rect.y, monitor.y);
+    const right = Math.min(rect.x + rect.width, monitor.x + monitor.width);
+    const bottom = Math.min(rect.y + rect.height, monitor.y + monitor.height);
+    if (right <= left || bottom <= top) return [];
+
     const edges: LineSegment[] = [];
-    // Top
-    if (localY >= 0 && localY < mh) {
-        edges.push({
-            x1: Math.max(0, localX),
-            y1: localY,
-            x2: Math.min(mw, localX + localW),
-            y2: localY,
-        });
+    if (rect.y >= monitor.y && rect.y <= monitor.y + monitor.height) {
+        edges.push({x1: left - monitor.x, y1: rect.y - monitor.y, x2: right - monitor.x, y2: rect.y - monitor.y});
     }
-    // Bottom
-    if (localY + localH >= 0 && localY + localH < mh) {
-        edges.push({
-            x1: Math.max(0, localX),
-            y1: localY + localH,
-            x2: Math.min(mw, localX + localW),
-            y2: localY + localH,
-        });
+    if (rect.y + rect.height >= monitor.y && rect.y + rect.height <= monitor.y + monitor.height) {
+        edges.push({x1: left - monitor.x, y1: rect.y + rect.height - monitor.y, x2: right - monitor.x, y2: rect.y + rect.height - monitor.y});
     }
-    // Left
-    if (localX >= 0 && localX < mw) {
-        edges.push({
-            x1: localX,
-            y1: Math.max(0, localY),
-            x2: localX,
-            y2: Math.min(mh, localY + localH),
-        });
+    if (rect.x >= monitor.x && rect.x <= monitor.x + monitor.width) {
+        edges.push({x1: rect.x - monitor.x, y1: top - monitor.y, x2: rect.x - monitor.x, y2: bottom - monitor.y});
     }
-    // Right
-    if (localX + localW >= 0 && localX + localW < mw) {
-        edges.push({
-            x1: localX + localW,
-            y1: Math.max(0, localY),
-            x2: localX + localW,
-            y2: Math.min(mh, localY + localH),
-        });
+    if (rect.x + rect.width >= monitor.x && rect.x + rect.width <= monitor.x + monitor.width) {
+        edges.push({x1: rect.x + rect.width - monitor.x, y1: top - monitor.y, x2: rect.x + rect.width - monitor.x, y2: bottom - monitor.y});
     }
     return edges;
 }
-
-/** Parse "#rrggbb" → normalized RGBA (alpha is a rendering concern, left at 1). */
-export function parseColor(hex: string): {r: number; g: number; b: number; a: number} {
-    const h = hex.replace('#', '');
-    return {
-        r: parseInt(h.substring(0, 2), 16) / 255,
-        g: parseInt(h.substring(2, 4), 16) / 255,
-        b: parseInt(h.substring(4, 6), 16) / 255,
-        a: 1.0,
-    };
-}
-
-/**
- * Public API surface of the Screenshot service, consumed by helper
- * modules (captureFlow, commands, recordTargets).  Defined here as
- * an interface so helpers never import the Screenshot class directly,
- * eliminating the type-only circular dependency.
- *
- * Geometry is typed (`BoundaryGeometry`) end-to-end; grim/magick strings
- * exist only at process boundaries (see geometry.ts).
- */
 export interface ScreenshotHandle {
     // ── Bindable properties ──
     selectedMode: CaptureMode;
     selectedTarget: CaptureTarget;
     overlayOpen: boolean;
-    /** Quick-select mode: minimal UI, confirm-on-click (was region-selector). */
+    /** Quick-select mode: minimal UI, click/Enter confirms immediately. */
     overlayQuick: boolean;
     recording: boolean;
     stageHasFrame: boolean;
-
+    captureBusy: boolean;
+    captureResult: string;
+    captureError: string;
+    clearCaptureFeedback(): void;
     // ── Methods ──
     screenshot(fullscreen: boolean): void;
     toggleOverlay(): void;

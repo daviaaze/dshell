@@ -53,63 +53,78 @@ export default () => {
     const settings = generalSettings();
 
     return (
-        <Adw.PreferencesGroup
-            title={'Idle Management'}
-            description={'Screen lock, display power, and sleep behavior'}
-        >
+        <>
+            <Adw.PreferencesGroup
+                title={'Bloqueio de sessão'}
+                description={'Inatividade antes do bloqueio; duração em segundos.'}
+            >
             <Adw.SwitchRow
-                title={'Auto Lock'}
-                subtitle={'Lock screen after idle timeout'}
+                title={'Bloquear automaticamente'}
+                subtitle={'Bloquear a sessão após o tempo de inatividade.'}
                 active={settings.autoLockEnabled}
                 onNotifyActive={(self) => settings.setAutoLockEnabled(self.active)}
             />
             <TimedSpinRow
-                title={'Idle Timeout'}
-                subtitle={'Seconds of inactivity before locking'}
+                title={'Tempo de inatividade antes do bloqueio'}
+                subtitle={'Duração em segundos antes de bloquear a sessão.'}
                 value={settings.idleTimeout}
                 lower={() => 60}
                 upper={() => 1800}
                 setter={(v) => settings.setIdleTimeout(v)}
             />
+            </Adw.PreferencesGroup>
+            <Adw.PreferencesGroup
+                title={'Escurecer e desligar tela'}
+                description={'Durações em segundos; os controles dependem de suas opções.'}
+            >
             <Adw.SwitchRow
-                title={'Dim Before Lock'}
-                subtitle={'Lower brightness before auto-lock'}
+                title={'Escurecer antes do bloqueio'}
+                subtitle={'Reduzir o brilho antes do bloqueio automático.'}
                 active={settings.screenDimEnabled}
+                sensitive={settings.autoLockEnabled}
                 onNotifyActive={(self) => settings.setScreenDimEnabled(self.active)}
             />
             <TimedSpinRow
-                title={'Dim Timeout'}
-                subtitle={'Seconds before lock to start dimming'}
+                title={'Começar a escurecer'}
+                subtitle={'Segundos de inatividade; limitado pelo tempo de bloqueio.'}
                 value={settings.screenDimTimeout}
+                sensitive={settings.screenDimEnabled}
                 lower={() => 30}
                 upper={() => Math.max(30, settings.idleTimeout() - 10)}
                 reloads={[settings.idleTimeout]}
                 setter={(v) => settings.setScreenDimTimeout(v)}
             />
             <Adw.SwitchRow
-                title={'Turn Off Display'}
-                subtitle={'Power off screen after idle (DPMS)'}
+                title={'Desligar tela após inatividade'}
+                subtitle={'Desligar a tela via DPMS, sem suspender o sistema.'}
                 active={settings.dpmsEnabled}
+                sensitive={settings.autoLockEnabled}
                 onNotifyActive={(self) => settings.setDpmsEnabled(self.active)}
             />
             <TimedSpinRow
-                title={'Display Timeout'}
-                subtitle={'Seconds before turning off display'}
+                title={'Desligar tela após'}
+                subtitle={'Segundos de inatividade antes de desligar a tela.'}
                 value={settings.dpmsTimeout}
+                sensitive={settings.dpmsEnabled}
                 lower={() => settings.idleTimeout() + 10}
                 upper={() => 3600}
                 reloads={[settings.idleTimeout]}
                 setter={(v) => settings.setDpmsTimeout(v)}
             />
+            </Adw.PreferencesGroup>
+            <Adw.PreferencesGroup
+                title={'Suspender'}
+                description={'Suspensão automática após inatividade.'}
+            >
             <Adw.SwitchRow
-                title={'Auto Suspend'}
-                subtitle={'Suspend system after prolonged inactivity'}
+                title={'Suspender automaticamente'}
+                subtitle={'Suspender o sistema após inatividade prolongada.'}
                 active={settings.suspendEnabled}
                 onNotifyActive={(self) => settings.setSuspendEnabled(self.active)}
             />
             <TimedSpinRow
-                title={'Suspend Timeout'}
-                subtitle={'Seconds before suspending'}
+                title={'Suspender após'}
+                subtitle={'Segundos; ative a suspensão automática para editar.'}
                 value={settings.suspendTimeout}
                 lower={() => settings.dpmsTimeout() + 10}
                 upper={() => 7200}
@@ -119,5 +134,6 @@ export default () => {
                 setter={(v) => settings.setSuspendTimeout(v)}
             />
         </Adw.PreferencesGroup>
+        </>
     );
 };

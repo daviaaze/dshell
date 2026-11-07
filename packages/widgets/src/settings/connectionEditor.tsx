@@ -3,54 +3,30 @@ import Gtk from 'gi://Gtk?version=4.0';
 import type NM from 'gi://NM?version=1.0';
 import {render} from '@gnim-js/gtk4';
 import logger from '@shade/core/logger';
-import {type Accessor, createState, onCleanup} from 'gnim';
+import {type Accessor, createState} from 'gnim';
 import {
     commitChangesAsync,
     deleteConnectionAsync,
     securityLabelFromKeyMgmt,
 } from '../quicksettings/network/utils';
 
-const NET_ICON_PREFIX = 16;
 const LOG_TAG = 'settings-network';
 
-/** Password entry with a visibility toggle. */
+/** Password entry for the saved network credential. */
 function SecurityGroup({
-    showPassword,
-    setShowPassword,
+    password,
     setPassword,
 }: {
-    showPassword: Accessor<boolean>;
-    setShowPassword: (v: boolean) => void;
+    password: Accessor<string>;
     setPassword: (v: string) => void;
 }) {
     return (
-        <Adw.PreferencesGroup title="Security">
-            <Adw.EntryRow title="Password">
-                <Gtk.Entry
-                    placeholderText="WiFi password"
-                    ref={(entry) => {
-                        entry.visibility = !showPassword();
-                        onCleanup(
-                            showPassword.subscribe(() => {
-                                entry.visibility = !showPassword();
-                            })
-                        );
-                        entry.connect('notify::text', () => setPassword(entry.get_text()));
-                    }}
-                />
-                <Gtk.Button
-                    slot="suffix"
-                    cssClasses={['flat']}
-                    onClicked={() => setShowPassword(!showPassword())}
-                >
-                    <Gtk.Image
-                        iconName={showPassword.as((v) =>
-                            v ? 'eye-not-looking-symbolic' : 'eye-open-negative-filled-symbolic'
-                        )}
-                        pixelSize={NET_ICON_PREFIX}
-                    />
-                </Gtk.Button>
-            </Adw.EntryRow>
+        <Adw.PreferencesGroup title="Segurança">
+            <Adw.PasswordEntryRow
+                title="Senha da rede"
+                text={password}
+                onNotifyText={(entry) => setPassword(entry.text)}
+            />
         </Adw.PreferencesGroup>
     );
 }
@@ -73,14 +49,15 @@ function ActionsBox({
                 <Gtk.Button
                     hexpand
                     cssClasses={['suggested-action']}
-                    label={saving.as((s) => (s ? 'Saving…' : 'Save Changes'))}
+                    label={saving.as((s) => (s ? 'Salvando…' : 'Salvar alterações'))}
                     sensitive={saving.as((s) => !s)}
                     onClicked={onSave}
                 />
                 <Gtk.Button
                     hexpand
                     cssClasses={['destructive-action']}
-                    label="Forget Network"
+                    label="Esquecer rede"
+                    sensitive={saving.as((value) => !value)}
                     onClicked={onForget}
                 />
             </Gtk.Box>
@@ -105,8 +82,7 @@ function EditorContent({
     isSecureConn,
     autoConnect,
     setAutoConnect,
-    showPassword,
-    setShowPassword,
+    password,
     setPassword,
     saving,
     errorMsg,
@@ -118,8 +94,7 @@ function EditorContent({
     isSecureConn: boolean;
     autoConnect: Accessor<boolean>;
     setAutoConnect: (v: boolean) => void;
-    showPassword: Accessor<boolean>;
-    setShowPassword: (v: boolean) => void;
+    password: Accessor<string>;
     setPassword: (v: string) => void;
     saving: Accessor<boolean>;
     errorMsg: Accessor<string | null>;
@@ -140,26 +115,19 @@ function EditorContent({
             <Gtk.ScrolledWindow propagateNaturalHeight vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
                 <Adw.PreferencesPage>
                     <Adw.PreferencesGroup
-                        title="Connection"
+                        title="Conexão"
                         description={securityLabelFromKeyMgmt(
                             settingSecurity?.get_key_mgmt() ?? null
-                        )}
+                        ) ?? 'Rede aberta'}
                     >
                         <Adw.SwitchRow
-                            title="Connect automatically"
+                            title="Conectar automaticamente"
+                            subtitle="Conectar a esta rede quando estiver ao alcance"
                             active={autoConnect}
                             onNotifyActive={(self) => setAutoConnect(self.active)}
                         />
                     </Adw.PreferencesGroup>
-
-                    {isSecureConn && (
-                        <SecurityGroup
-                            showPassword={showPassword}
-                            setShowPassword={setShowPassword}
-                            setPassword={setPassword}
-                        />
-                    )}
-
+                    {isSecureConn && <SecurityGroup password={password} setPassword={setPassword} />}
                     <ActionsBox
                         saving={saving}
                         errorMsg={errorMsg}
@@ -175,7 +143,7 @@ function EditorContent({
 export function showConnectionEditor(
     ssid: string,
     connections: NM.RemoteConnection[],
-    parent: Adw.ActionRow,
+    parent: Gtk.Widget | Gtk.Window,
     onForgotten?: () => void
 ) {
     if (connections.length === 0) return;
@@ -185,9 +153,10 @@ export function showConnectionEditor(
     const settingSecurity = conn.get_setting_wireless_security();
     const isSecureConn = settingSecurity !== null;
 
-    const root = parent.get_root();
+    const root = parent instanceof Gtk.Window ? parent : parent.get_root();
+    if (!(root instanceof Gtk.Window)) return;
     const dialog = new Adw.Window({
-        transientFor: root instanceof Gtk.Window ? root : null,
+        transientFor: root,
         modal: true,
         title: ssid,
         defaultWidth: 400,
@@ -197,11 +166,11 @@ export function showConnectionEditor(
 
     const [autoConnect, setAutoConnect] = createState(settingConn ? settingConn.autoconnect : true);
     const [password, setPassword] = createState(isSecureConn ? (settingSecurity?.psk ?? '') : '');
-    const [showPassword, setShowPassword] = createState(false);
     const [saving, setSaving] = createState(false);
     const [errorMsg, setErrorMsg] = createState<string | null>(null);
 
     const saveChanges = () => {
+        if (saving()) return;
         setSaving(true);
         setErrorMsg(null);
         try {
@@ -228,12 +197,19 @@ export function showConnectionEditor(
     };
 
     const forgetNetwork = () => {
+        if (saving()) return;
+        setSaving(true);
+        setErrorMsg(null);
         deleteConnectionAsync(conn)
             .then(() => {
                 dialog.close();
                 onForgotten?.();
             })
-            .catch((e: Error) => logger.error(LOG_TAG, 'forget failed:', e.message));
+            .catch((e: Error) => {
+                logger.error(LOG_TAG, 'forget failed:', e.message);
+                setErrorMsg(e.message);
+                setSaving(false);
+            });
     };
 
     const disposeDialog = render(
@@ -244,8 +220,7 @@ export function showConnectionEditor(
                 isSecureConn={isSecureConn}
                 autoConnect={autoConnect}
                 setAutoConnect={setAutoConnect}
-                showPassword={showPassword}
-                setShowPassword={setShowPassword}
+                password={password}
                 setPassword={setPassword}
                 saving={saving}
                 errorMsg={errorMsg}

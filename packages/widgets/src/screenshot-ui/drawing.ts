@@ -243,7 +243,7 @@ function drawHints(
     if (target === 'area') {
         drawLabel(
             cr,
-            'Drag to select · Click a window to snap · Enter to confirm · Esc to cancel',
+            'Drag to select · Click a window to snap · Enter to review · Esc to cancel',
             width / 2,
             height - 32,
             Cairo.FontWeight.NORMAL,

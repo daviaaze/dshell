@@ -17,9 +17,10 @@ interface DialogState {
 
 /** Activate a new NM connection for the hidden SSID, surfacing errors. */
 async function connectHidden(state: DialogState, onSuccess: () => void) {
-    const name = state.ssid().trim();
-    if (!name) {
-        state.setErrorMsg('Network name is required');
+    if (state.connecting()) return;
+    const name = state.ssid();
+    if (!name.trim() || new TextEncoder().encode(name).length > 32) {
+        state.setErrorMsg('Informe um nome de rede com até 32 bytes UTF-8.');
         return;
     }
     state.setConnecting(true);
@@ -27,14 +28,14 @@ async function connectHidden(state: DialogState, onSuccess: () => void) {
 
     const network = Network.get_default();
     const wifi = network.wifi;
-    if (!wifi) {
-        state.setErrorMsg('No WiFi device available');
+    if (!wifi?.enabled) {
+        state.setErrorMsg('Ative um adaptador Wi-Fi antes de conectar.');
         state.setConnecting(false);
         return;
     }
 
     try {
-        const connection = createNMConnection(name, state.password().trim() || undefined, true);
+        const connection = createNMConnection(name, state.password() || undefined, true);
         await new Promise<void>((resolve, reject) => {
             network.client.add_and_activate_connection_async(
                 connection,
@@ -86,42 +87,34 @@ function DialogContent({
             <Adw.HeaderBar
                 ref={(self) => {
                     self.titleWidget = new Adw.WindowTitle({
-                        title: 'Hidden Network',
-                        cssClasses: ['title-3'],
+                        title: 'Conectar à rede oculta',
                     });
                 }}
                 showEndTitleButtons={false}
             />
             <Adw.PreferencesPage>
-                <Adw.PreferencesGroup title="Network Details">
-                    <Adw.EntryRow title="Network Name">
-                        <Gtk.Entry
-                            placeholderText="SSID"
-                            ref={(entry) =>
-                                entry.connect('notify::text', () => setSsid(entry.get_text()))
-                            }
-                        />
-                    </Adw.EntryRow>
-                    <Adw.EntryRow title="Password">
-                        <Gtk.Entry
-                            placeholderText="Password (optional)"
-                            visibility={false}
-                            ref={(entry) =>
-                                entry.connect('notify::text', () => setPassword(entry.get_text()))
-                            }
-                        />
-                    </Adw.EntryRow>
+                <Adw.PreferencesGroup title="Identificação da rede" description="Informe o SSID exato. Deixe a senha vazia somente para redes abertas.">
+                    <Adw.EntryRow
+                        title="Nome da rede (SSID)"
+                        sensitive={state.connecting.as((value) => !value)}
+                        onNotifyText={(entry) => setSsid(entry.text)}
+                    />
+                    <Adw.PasswordEntryRow
+                        title="Senha da rede"
+                        sensitive={state.connecting.as((value) => !value)}
+                        onNotifyText={(entry) => setPassword(entry.text)}
+                    />
                 </Adw.PreferencesGroup>
 
                 <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <Gtk.Button
                         hexpand
                         cssClasses={['suggested-action']}
-                        label={state.connecting.as((c) => (c ? 'Connecting…' : 'Connect'))}
+                        label={state.connecting.as((c) => (c ? 'Conectando…' : 'Conectar'))}
                         sensitive={state.connecting.as((c) => !c)}
                         onClicked={onConnect}
                     />
-                    <Gtk.Button hexpand label="Cancel" onClicked={onCancel} />
+                    <Gtk.Button hexpand label="Cancelar" onClicked={onCancel} />
                 </Gtk.Box>
 
                 <Gtk.Label
@@ -138,12 +131,13 @@ function DialogContent({
     );
 }
 
-export async function showHiddenNetworkDialog(parent: Adw.ActionRow) {
-    const root = parent.get_root();
+export async function showHiddenNetworkDialog(parent: Gtk.Widget | Gtk.Window) {
+    const root = parent instanceof Gtk.Window ? parent : parent.get_root();
+    if (!(root instanceof Gtk.Window)) return;
     const dialog = new Adw.Window({
-        transientFor: root instanceof Gtk.Window ? root : null,
+        transientFor: root,
         modal: true,
-        title: 'Connect to Hidden Network',
+        title: 'Conectar à rede oculta',
         defaultWidth: 400,
         defaultHeight: 250,
         cssClasses: ['background'],

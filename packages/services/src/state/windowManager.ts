@@ -1,4 +1,3 @@
-import type Adw from 'gi://Adw?version=1';
 import type Astal from 'gi://Astal?version=4.0';
 import type Gtk from 'gi://Gtk?version=4.0';
 import {property} from '@shade/core/decorators';
@@ -45,7 +44,8 @@ export default class WindowManager extends Object {
     #osd: Astal.Window | null = null;
     #applauncher: Astal.Window | null = null;
     #notifications: Astal.Window | null = null;
-    #settings: Adw.Window | null = null;
+    #notificationCenter: Astal.Window | null = null;
+    #settings: Gtk.Window | null = null;
     #dock: Astal.Window | null = null;
     // ── Getters ──
 
@@ -82,6 +82,11 @@ export default class WindowManager extends Object {
     @property
     get notifications() {
         return this.#notifications;
+    }
+
+    @property
+    get notificationCenter() {
+        return this.#notificationCenter;
     }
 
     @property
@@ -148,7 +153,12 @@ export default class WindowManager extends Object {
         this.notify('notifications');
     }
 
-    setSettings(win: Adw.Window | null) {
+    setNotificationCenter(win: Astal.Window | null) {
+        this.#notificationCenter = win;
+        this.notify('notification-center');
+    }
+
+    setSettings(win: Gtk.Window | null) {
         this.#settings = win;
         this.notify('settings');
     }

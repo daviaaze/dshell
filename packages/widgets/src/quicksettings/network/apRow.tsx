@@ -1,7 +1,7 @@
 import type Network from 'gi://AstalNetwork';
-import Gdk from 'gi://Gdk?version=4.0';
 import type Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import NM from 'gi://NM?version=1.0';
 import logger from '@shade/core/logger';
@@ -34,6 +34,7 @@ async function guardedOp(fn: () => Promise<void>): Promise<void> {
 
 interface ApRowProps {
     snap: ApSnapshot;
+    strength: Accessor<number>;
     wifi: Network.Wifi;
     client: NM.Client;
     connectionRevision: Accessor<number>;
@@ -335,7 +336,7 @@ function focusPasswordOnOpen(
 
 // ── ApRow component ──
 
-function ApRow({snap, wifi, client, connectionRevision, isActive, isConnecting, setConnectingAp}: ApRowProps) {
+function ApRow({snap, strength, wifi, client, connectionRevision, isActive, isConnecting, setConnectingAp}: ApRowProps) {
     const apSsid = snap.ssid;
     const apBssid = snap.bssid;
     const secure = snap.secure;
@@ -371,9 +372,9 @@ function ApRow({snap, wifi, client, connectionRevision, isActive, isConnecting, 
         }
     });
 
-    const prefixIcon = secure
-        ? 'network-wireless-encrypted-symbolic'
-        : signalIconName(snap.strength);
+    const strengthIcon = strength.as(signalIconName);
+    const strengthTooltip = strength.as(value => `${value}%`);
+    const prefixIcon = secure ? 'network-wireless-encrypted-symbolic' : strengthIcon;
 
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
@@ -417,18 +418,18 @@ function ApRow({snap, wifi, client, connectionRevision, isActive, isConnecting, 
                         </Gtk.Box>
 
                         <Gtk.Image
-                            iconName={signalIconName(snap.strength)}
+                            iconName={strengthIcon}
                             pixelSize={AP_ICON_SIZE}
                             valign={Gtk.Align.CENTER}
                             visible={secure}
-                            tooltipText={`${snap.strength}%`}
+                            tooltipText={strengthTooltip}
                         />
                         <Gtk.Image
-                            iconName={signalIconName(snap.strength)}
+                            iconName={strengthIcon}
                             pixelSize={AP_ICON_SIZE}
                             valign={Gtk.Align.CENTER}
                             visible={notActive.as((na) => na && !secure)}
-                            tooltipText={`${snap.strength}%`}
+                            tooltipText={strengthTooltip}
                         />
 
                         <Gtk.Image
@@ -465,24 +466,18 @@ function ApRow({snap, wifi, client, connectionRevision, isActive, isConnecting, 
             >
                 <Gtk.Box spacing={4} marginStart={28} marginEnd={4} marginTop={4} marginBottom={4}>
                     <Gtk.Entry
-                        placeholderText="Password"
+                        placeholderText="Senha"
                         visibility={false}
                         hexpand
+                        widthChars={12}
+                        onActivate={self => doConnect(self.get_text() || undefined)}
                         onMap={(self) => {
                             if (showPassword()) self.grab_focus();
                         }}
                         ref={(self) => {
                             setPasswordEntry(self);
-
-                            const controller = new Gtk.EventControllerKey();
-                            controller.connect('key-pressed', (_ctrl, keyval) => {
-                                if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
-                                    doConnect(self.get_text() || undefined);
-                                    return true;
-                                }
-                                return false;
-                            });
-                            self.add_controller(controller);
+                            self.update_property([Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, `Senha de ${apSsid}`)]);
                         }}
                     />
                     <Gtk.Button

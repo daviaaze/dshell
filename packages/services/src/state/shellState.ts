@@ -18,6 +18,7 @@ export default class ShellState extends GObject {
     #launcherOpen = false;
     #launcherQuery = '';
     #qsOpen = false;
+    #notificationsOpen = false;
     #screenlocked = false;
     #busSubscriptions: (() => void)[] = [];
 
@@ -38,7 +39,7 @@ export default class ShellState extends GObject {
 
     set launcherOpen(v: boolean) {
         logger.debug('state', `ShellState.launcherOpen ${this.#launcherOpen} -> ${v}`);
-        this.#launcherOpen = v;
+        this.#launcherOpen = v && !this.#screenlocked;
         this.notify('launcher-open');
     }
 
@@ -49,8 +50,20 @@ export default class ShellState extends GObject {
 
     set qsOpen(v: boolean) {
         logger.debug('state', `ShellState.qsOpen ${this.#qsOpen} -> ${v}`);
-        this.#qsOpen = v;
+        this.#qsOpen = v && !this.#screenlocked;
         this.notify('qs-open');
+    }
+
+    @property
+    get notificationsOpen() {
+        return this.#notificationsOpen;
+    }
+
+    set notificationsOpen(v: boolean) {
+        const next = v && !this.#screenlocked;
+        if (next === this.#notificationsOpen) return;
+        this.#notificationsOpen = next;
+        this.notify('notifications-open');
     }
 
     @property
@@ -62,7 +75,10 @@ export default class ShellState extends GObject {
         logger.info('state', `ShellState.screenlocked ${this.#screenlocked} -> ${v}`);
         this.#screenlocked = v;
         this.notify('screenlocked');
-        if (v) bus.emit('shell:lockscreen');
+        if (v) {
+            this.closeAll();
+            bus.emit('shell:lockscreen');
+        }
     }
 
     toggleLauncher() {
@@ -114,6 +130,23 @@ export default class ShellState extends GObject {
         bus.emit('shell:qs:toggle');
     }
 
+    openNotifications() {
+        if (this.#screenlocked) return;
+        this.closeLauncher();
+        this.closeQuickSettings();
+        this.notificationsOpen = true;
+    }
+
+    closeNotifications() {
+        this.notificationsOpen = false;
+    }
+
+    toggleNotifications() {
+        if (this.#notificationsOpen) this.closeNotifications();
+        else this.openNotifications();
+        bus.emit('shell:notifications:toggle');
+    }
+
     toggleBar() {
         const wm =
             ServiceRegistry.get_default().resolve<import('./windowManager').default>(
@@ -136,6 +169,7 @@ export default class ShellState extends GObject {
     closeAll() {
         this.closeLauncher();
         this.closeQuickSettings();
+        this.closeNotifications();
         this.hideWindowSwitcher();
     }
 
@@ -157,6 +191,8 @@ export default class ShellState extends GObject {
         this.#busSubscriptions.push(bus.on('shell:unlock', () => this.unlock()));
         this.#busSubscriptions.push(bus.on('shell:qs:close', () => this.closeQuickSettings()));
         this.#busSubscriptions.push(bus.on('shell:launcher:close', () => this.closeLauncher()));
+        this.#busSubscriptions.push(bus.on('shell:notifications:open', () => this.openNotifications()));
+        this.#busSubscriptions.push(bus.on('shell:notifications:close', () => this.closeNotifications()));
     }
 
     #onToggleSettings: (() => void) | null = null;
@@ -187,6 +223,8 @@ export default class ShellState extends GObject {
         const actions: Record<string, () => void> = {
             'toggle-applauncher': () => this.toggleLauncher(),
             'toggle-quicksettings': () => this.toggleQuickSettings(),
+            'toggle-notifications': () => this.toggleNotifications(),
+            'open-notifications': () => this.openNotifications(),
             'toggle-bar': () => this.toggleBar(),
             'toggle-windowswitcher': () => this.toggleWindowSwitcher(),
             'toggle-settings': () => this.toggleSettings(),

@@ -49,9 +49,9 @@ function PairedDeviceRow({
     const connected = bind(device, 'connected');
 
     const statusText = computed(() => {
-        if (deviceConnecting()) return 'Connecting...';
-        if (connected()) return 'Connected';
-        return 'Paired';
+        if (deviceConnecting()) return 'Conectando…';
+        if (connected()) return 'Conectado';
+        return 'Pareado';
     });
 
     const handleForget = () => {
@@ -87,11 +87,11 @@ function PairedDeviceRow({
             {showConfirmForget.as((show) => show ? (
                 <Gtk.Box spacing={6}>
                     <Gtk.Button
-                        label={'Cancel'}
+                        label="Cancelar"
                         onClicked={() => setShowConfirmForget(false)}
                     />
                     <Gtk.Button
-                        label={'Confirm'}
+                        label="Confirmar"
                         cssClasses={['destructive-action']}
                         onClicked={handleForget}
                     />
@@ -99,14 +99,14 @@ function PairedDeviceRow({
             ) : (
                 <Gtk.Box spacing={6}>
                     <Gtk.Button
-                        label={connected.as((value) => value ? 'Disconnect' : 'Connect')}
+                        label={connected.as((value) => value ? 'Desconectar' : 'Conectar')}
                         sensitive={deviceConnecting.as((value) => !value)}
                         onClicked={() =>
                             toggleDevice(service, device, setConnectingAddress, setOperationError)
                         }
                     />
                     <Gtk.Button
-                        label={'Forget'}
+                        label="Esquecer"
                         cssClasses={['destructive-action']}
                         onClicked={() => {
                             setOperationError(null);
@@ -151,9 +151,9 @@ function AvailableDeviceRow({
     };
 
     return (
-        <Adw.ActionRow title={device.name || device.address} subtitle={operationError.as((error) => error ?? 'Available')}>
+        <Adw.ActionRow title={device.name || device.address} subtitle={operationError.as((error) => error ?? 'Disponível')}>
             <Gtk.Image iconName={'bluetooth-symbolic'} pixelSize={24} />
-            <Gtk.Button label={'Pair'} sensitive={devicePairing.as((value) => !value)} onClicked={handlePair} />
+            <Gtk.Button label="Parear" sensitive={devicePairing.as((value) => !value)} onClicked={handlePair} />
             <Gtk.Spinner visible={devicePairing} spinning={devicePairing} />
         </Adw.ActionRow>
     );
@@ -295,8 +295,8 @@ export default () => {
     return (
         <>
             <Adw.PreferencesGroup
-                title={adapter.as((value) => value ? 'Bluetooth' : 'Bluetooth unavailable')}
-                description={adapter.as((value) => value ? 'Enable Bluetooth and manage devices' : 'No Bluetooth adapter is available')}
+                title={adapter.as((value) => value ? 'Bluetooth' : 'Bluetooth indisponível')}
+                description={adapter.as((value) => value ? 'Ative o Bluetooth e gerencie dispositivos.' : 'Nenhum adaptador Bluetooth foi detectado.')}
             >
                 {adapter.as((value) => value ? (
                     <Adw.SwitchRow
@@ -307,20 +307,20 @@ export default () => {
                     />
                 ) : (
                     <Adw.ActionRow
-                        title={'No Bluetooth adapter'}
-                        subtitle={'Connect or enable a Bluetooth adapter to manage devices'}
+                        title="Nenhum adaptador Bluetooth"
+                        subtitle="Conecte ou habilite um adaptador Bluetooth para gerenciar dispositivos."
                     />
                 ))}
             {operationError.as((message) => message ? (
-                <Gtk.Label label={message} cssClasses={['error', 'caption']} wrap />
+                <Adw.ActionRow title="Não foi possível alterar o Bluetooth" subtitle={message} cssClasses={['error']} />
             ) : null)}
             </Adw.PreferencesGroup>
 
             {adapter.as((value) => value ? (
                 <>
                     <Adw.PreferencesGroup
-                        title={'Paired Devices'}
-                        description={'Previously paired devices'}
+                        title="Dispositivos pareados"
+                        description="Dispositivos conhecidos; conecte, desconecte ou remova o pareamento."
                         sensitive={isPowered}
                     >
                         <For each={pairedDevices}>
@@ -335,20 +335,20 @@ export default () => {
                         </For>
                         {pairedDevices.as((devices) => devices.length === 0 ? (
                             <Adw.ActionRow
-                                title={'No paired devices'}
-                                subtitle={'Scan to find and pair new devices'}
+                                title="Nenhum dispositivo pareado"
+                                subtitle="Busque dispositivos próximos para parear."
                             />
                         ) : null)}
                     </Adw.PreferencesGroup>
 
                     <Adw.PreferencesGroup
-                        title={'Available Devices'}
-                        description={scanning.as((value) => value ? 'Scanning for devices...' : 'Start scan to discover devices')}
+                        title="Dispositivos disponíveis"
+                        description={scanning.as((value) => value ? 'Buscando dispositivos próximos…' : 'Inicie uma busca para encontrar dispositivos.')}
                         sensitive={isPowered}
                     >
                         <Gtk.Box halign={Gtk.Align.CENTER}>
                             <Gtk.Button
-                                label={scanning.as((value) => value ? 'Stop Scan' : 'Scan for Devices')}
+                                label={scanning.as((value) => value ? 'Parar busca' : 'Buscar dispositivos')}
                                 cssClasses={scanning.as((value) => value ? ['destructive-action'] : ['suggested-action'])}
                                 sensitive={isPowered.as((powered) => powered && !scanBusy())}
                                 onClicked={handleScan}
@@ -367,8 +367,8 @@ export default () => {
                         </For>
                         {computed(() => !scanning() && availableDevices().length === 0 ? (
                             <Adw.ActionRow
-                                title={'No devices found'}
-                                subtitle={'Click "Scan for Devices" to discover nearby devices'}
+                                title="Nenhum dispositivo encontrado"
+                                subtitle="Inicie uma busca para descobrir dispositivos próximos."
                             />
                         ) : null)}
                     </Adw.PreferencesGroup>

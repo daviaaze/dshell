@@ -5,12 +5,12 @@ import { Process } from '@shade/core/process';
 const ACTIONS = ['poweroff', 'reboot', 'suspend', 'hibernate', 'lock', 'nothing'] as const;
 type PowerAction = typeof ACTIONS[number];
 const ACTION_LABELS: Record<PowerAction, string> = {
-  poweroff: 'Power Off',
-  reboot: 'Restart',
-  suspend: 'Suspend',
-  hibernate: 'Hibernate',
-  lock: 'Lock Screen',
-  nothing: 'Do Nothing',
+  poweroff: 'Desligar',
+  reboot: 'Reiniciar',
+  suspend: 'Suspender',
+  hibernate: 'Hibernar',
+  lock: 'Bloquear sessão',
+  nothing: 'Não fazer nada',
 };
 
 export default () => {
@@ -35,10 +35,10 @@ export default () => {
   const actionModel = new Gtk.StringList({strings: ACTIONS.map((a) => ACTION_LABELS[a])});
 
   return (
-    <Adw.PreferencesGroup title="Power Actions" description="Configure power button and lid behavior">
+    <Adw.PreferencesGroup title="Botão de energia e tampa" description="Comportamento do botão físico e da tampa; requer autorização do sistema.">
       <Adw.ComboRow
-        title="Power Button"
-        subtitle="Action when power button is pressed"
+        title="Ao pressionar o botão de energia"
+        subtitle="Ação do botão físico."
         model={actionModel}
         selected={ACTIONS.indexOf(currentPowerButton)}
         onNotifySelected={(row) => {
@@ -48,8 +48,8 @@ export default () => {
       />
 
       <Adw.ComboRow
-        title="Lid Close (Battery)"
-        subtitle="Action when laptop lid is closed on battery"
+        title="Fechar tampa / na bateria"
+        subtitle="Comportamento ao usar a bateria."
         model={actionModel}
         selected={ACTIONS.indexOf(currentLidClose)}
         onNotifySelected={(row) => {
@@ -59,8 +59,8 @@ export default () => {
       />
 
       <Adw.ComboRow
-        title="Lid Close (Plugged In)"
-        subtitle="Action when laptop lid is closed while plugged in"
+        title="Fechar tampa / ligado à energia"
+        subtitle="Comportamento com alimentação externa."
         model={actionModel}
         selected={ACTIONS.indexOf(currentLidClosePlugged)}
         onNotifySelected={(row) => {

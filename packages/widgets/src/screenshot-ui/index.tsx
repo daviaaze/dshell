@@ -4,10 +4,10 @@ import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
 import {getApp} from '@shade/services/appHandle';
 import Screenshot from '@shade/services/capture/screenshot';
-import {getHyprland} from '@shade/services/hyprland';
+import {getHyprland, getHyprlandClientSnapshot} from '@shade/services/hyprland';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import {type Accessor, bind, createState} from 'gnim';
+import {type Accessor, bind, computed, createState} from 'gnim';
 import {ControlPanel} from './controlPanel';
 import {draw} from './drawing';
 import {
@@ -45,6 +45,8 @@ interface OverlayState {
     monOrigin: Accessor<Point>;
     setMonOrigin: (v: Point) => void;
     daRef: {current: Gtk.DrawingArea | null};
+    reviewing: Accessor<boolean>;
+    setReviewing: (value: boolean) => void;
 }
 
 function getSelectionState(state: OverlayState): SelectionState {
@@ -61,6 +63,7 @@ function getSelectionState(state: OverlayState): SelectionState {
 }
 
 function resetSelection(state: OverlayState) {
+    state.setReviewing(false);
     state.setDragStart(null);
     state.setDragEnd(null);
     state.setSelActive(false);
@@ -68,8 +71,21 @@ function resetSelection(state: OverlayState) {
 }
 
 // ── Event handlers ────────────────────────────────────────────────
+/** Resolve the actual canvas origin, including GTK allocation/border offsets. */
+function updateCanvasOrigin(state: OverlayState): boolean {
+    const canvas = state.daRef.current;
+    const root = canvas?.get_root();
+    const monitor = state.hyprland.focusedMonitor;
+    if (!canvas || !(root instanceof Gtk.Window) || !monitor) return false;
+    const [valid, x, y] = canvas.translate_coordinates(root, 0, 0);
+    if (!valid) return false;
+    const origin = getMonitorOrigin(monitor);
+    state.setMonOrigin({x: origin.x + x, y: origin.y + y});
+    return true;
+}
 
 function onDragBegin(state: OverlayState, sx: number, sy: number) {
+    if (state.reviewing()) return;
     if (state.ss.selectedTarget !== 'area') return;
     state.setDragStart({x: sx, y: sy});
     state.setDragEnd({x: sx, y: sy});
@@ -88,19 +104,15 @@ function onDragUpdate(state: OverlayState, ox: number, oy: number) {
 }
 
 function onDragEnd(state: OverlayState) {
-    if (!state.selActive()) return;
+    if (state.reviewing() || !state.selActive()) return;
     const s = normalizeRect(state.dragStart()!, state.dragEnd()!);
     if (s.width < 5 || s.height < 5) resetSelection(state);
     state.daRef.current?.queue_draw();
 }
 
-/**
- * Click behavior unified across targets:
- * - hit a window → area mode selects its rect; window mode selects the window.
- * - miss in quick mode with an existing selection → confirm immediately
- *   (this is the region-selector's click-outside-to-confirm behavior).
- */
+/** Source clicks only select; capture requires the review action. */
 function onClickPressed(state: OverlayState, cx: number, cy: number) {
+    if (state.reviewing()) return;
     const hit = windowAt(state.windows(), cx, cy, state.monOrigin());
     if (hit) {
         if (state.ss.selectedTarget === 'window') {
@@ -117,30 +129,30 @@ function onClickPressed(state: OverlayState, cx: number, cy: number) {
         state.daRef.current?.queue_draw();
         return;
     }
+}
 
-    if (state.ss.overlayQuick) {
-        const geom = buildGeometry(state.ss.selectedTarget, getSelectionState(state));
-        if (geom) state.ss.confirmOverlay('area', geom);
-    }
+function reviewCurrentSelection(state: OverlayState) {
+    if (state.reviewing()) return;
+    const target = state.ss.selectedTarget;
+    const geometry = buildGeometry(target, getSelectionState(state));
+    if (target !== 'fullscreen' && !geometry) return;
+    state.setReviewing(true);
 }
 
 /** Confirm the current selection: crop from stage (screenshot) or record. */
 function executeCapture(state: OverlayState) {
+    if (!state.reviewing() || state.ss.captureBusy) return;
     const target = state.ss.selectedTarget;
     const geom = buildGeometry(target, getSelectionState(state));
-
-    if (
-        (target === 'area' && !state.selActive()) ||
-        (target === 'window' && !state.selectedWindow())
-    )
+    if (target !== 'fullscreen' && !geom) {
+        state.setReviewing(false);
         return;
-
+    }
     const geomLabel = geom ? `${geom.width}x${geom.height}+${geom.x}+${geom.y}` : 'full';
     logger.info(
         LOG_TAG,
         `capture: mode=${state.ss.selectedMode}, target=${target}, geom=${geomLabel}`
     );
-
     state.ss.confirmOverlay(target, geom);
 }
 
@@ -150,15 +162,22 @@ function handleKey(state: OverlayState, keyval: number): boolean {
         return true;
     }
     if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
-        executeCapture(state);
+        if (!state.reviewing()) reviewCurrentSelection(state);
         return true;
     }
+    // Enter never commits capture: the explicit review/confirm controls own consent.
     return false;
 }
 
 function handleTargetChange(state: OverlayState, value: string) {
+    if (state.reviewing()) return;
     if (value === 'window' || value === 'area') {
-        state.setWindows(loadWindows(state.hyprland.get_clients()));
+        try {
+            state.setWindows(loadWindows(getHyprlandClientSnapshot()));
+        } catch (error) {
+            logger.error(LOG_TAG, `failed to refresh window geometry: ${error}`);
+            state.setWindows([]);
+        }
     }
     state.daRef.current?.queue_draw();
 }
@@ -193,6 +212,11 @@ function SelectionArea({state}: {state: OverlayState}) {
     return (
         <Gtk.DrawingArea
             slot="overlay"
+            focusable
+            onMap={self => {
+                updateCanvasOrigin(state);
+                self.grab_focus();
+            }}
             ref={(self) => {
                 state.daRef.current = self;
                 self.set_draw_func((_da, cr, w, h) =>
@@ -211,15 +235,30 @@ function SelectionArea({state}: {state: OverlayState}) {
                 // renderer appends them via vfunc_add_child, which GTK4
                 // ignores for controllers, so drag/click never attached).
                 const drag = Gtk.GestureDrag.new();
-                drag.connect('drag-begin', (_g, sx, sy) => onDragBegin(state, sx, sy));
+                drag.connect('drag-begin', (_g, sx, sy) => {
+                    if (state.ss.selectedTarget !== 'area' || state.reviewing()) return;
+                    if (!updateCanvasOrigin(state)) {
+                        drag.set_state(Gtk.EventSequenceState.DENIED);
+                        return;
+                    }
+                    self.grab_focus();
+                    onDragBegin(state, sx, sy);
+                });
                 drag.connect('drag-update', (_g, ox, oy) => onDragUpdate(state, ox, oy));
                 drag.connect('drag-end', () => onDragEnd(state));
                 self.add_controller(drag);
 
                 const click = Gtk.GestureClick.new();
                 click.set_button(1);
-                click.connect('pressed', (_g, _n, cx, cy) => onClickPressed(state, cx, cy));
+                click.connect('pressed', (_g, _n, cx, cy) => {
+                    if (!updateCanvasOrigin(state)) return;
+                    self.grab_focus();
+                    onClickPressed(state, cx, cy);
+                });
                 self.add_controller(click);
+                // Grouped controllers share state: do not deny a valid window
+                // press merely because the drag callback is inactive in that mode.
+                click.group(drag);
 
                 // Right-click = cancel/dismiss, always available escape hatch.
                 const cancel = Gtk.GestureClick.new();
@@ -250,6 +289,7 @@ export default () => {
     const [selectedWindow, setSelectedWindow] = createState<WinInfo | null>(null);
     const [windows, setWindows] = createState<WinInfo[]>([]);
     const [monOrigin, setMonOrigin] = createState<Point>({x: 0, y: 0});
+    const [reviewing, setReviewing] = createState(false);
 
     const state: OverlayState = {
         hyprland,
@@ -267,22 +307,40 @@ export default () => {
         monOrigin,
         setMonOrigin,
         daRef: {current: null},
+        reviewing,
+        setReviewing,
     };
-
+    const target = bind(ss, 'selectedTarget');
+    const focusedMonitor = bind(hyprland, 'focused-monitor');
+    const targetSummary = computed(() => {
+        const selectedTarget = target();
+        if (selectedTarget === 'fullscreen') return 'Full desktop';
+        const selection = getSelectionState(state);
+        const monitor = focusedMonitor();
+        const geometry = buildGeometry(selectedTarget, selection);
+        if (!geometry) {
+            if (selectedTarget === 'window') return 'No window selected';
+            if (selectedTarget === 'area') return 'No area selected';
+            return 'No monitor selected';
+        }
+        const rectangle = `${geometry.x},${geometry.y} · ${geometry.width}×${geometry.height}`;
+        if (selectedTarget === 'window') {
+            const window = selectedWindow();
+            return `${window?.title || 'Untitled window'} (${window?.address}) · ${rectangle}`;
+        }
+        if (selectedTarget === 'monitor') return `Monitor ${monitor?.name ?? ''} · ${rectangle}`;
+        return `Area · ${rectangle}`;
+    });
     return (
         <Astal.Window
             ref={(self) => {
                 WindowManager.get_default().setOverlay(self);
-                // Keyboard: Esc/Enter must work during selection. Controllers
-                // can't mount as Gtk.Overlay children, so add imperatively.
-                // Attach at the window AND the selection surface so a focus
-                // shift can never strand the user in an exclusive-key grab.
-                const attachKey = () => {
-                    const key = Gtk.EventControllerKey.new();
-                    key.connect('key-pressed', (_c, keyval) => handleKey(state, keyval));
-                    self.add_controller(key);
-                };
-                attachKey();
+                // Capture keys before focused controls; Enter reviews but never
+                // activates the capture confirmation as an implicit default.
+                const key = Gtk.EventControllerKey.new();
+                key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
+                key.connect('key-pressed', (_c, keyval) => handleKey(state, keyval));
+                self.add_controller(key);
             }}
             name={LOG_TAG}
             application={getApp()}
@@ -297,8 +355,13 @@ export default () => {
             visible={isVisible}
             onNotifyVisible={(self) => {
                 if (self.visible) {
-                    setMonOrigin(getMonitorOrigin(hyprland.focusedMonitor));
-                    setWindows(loadWindows(hyprland.get_clients()));
+                    updateCanvasOrigin(state);
+                    try {
+                        setWindows(loadWindows(getHyprlandClientSnapshot()));
+                    } catch (error) {
+                        logger.error(LOG_TAG, `failed to refresh window geometry: ${error}`);
+                        setWindows([]);
+                    }
                 }
                 resetSelection(state);
             }}
@@ -319,18 +382,18 @@ export default () => {
                     it replaces the main child and the stage never renders). */}
                 <SelectionArea state={state} />
 
-                {/* Control panel — hidden in quick-select mode */}
-                {bind(ss, 'overlayQuick').as(
-                    (q) =>
-                        !q && (
-                            <ControlPanel
-                                ss={ss}
-                                onCapture={() => executeCapture(state)}
-                                onReset={() => resetSelection(state)}
-                                onTargetChange={(v) => handleTargetChange(state, v)}
-                            />
-                        )
-                )}
+                <ControlPanel
+                    quick={bind(ss, 'overlayQuick')}
+                    ss={ss}
+                    reviewing={reviewing}
+                    targetSummary={targetSummary}
+                    onBack={() => setReviewing(false)}
+                    onReview={() => reviewCurrentSelection(state)}
+                    onCapture={() => executeCapture(state)}
+                    onCancel={() => ss.hideOverlay()}
+                    onReset={() => resetSelection(state)}
+                    onTargetChange={(value) => handleTargetChange(state, value)}
+                />
             </Gtk.Overlay>
         </Astal.Window>
     );

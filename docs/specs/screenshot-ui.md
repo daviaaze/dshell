@@ -1,67 +1,13 @@
-# Spec: ScreenshotUI
+# Screenshot and recording selection overlay
 
-> Full-screen area/window/monitor capture overlay with dimming, selection drawing, and mode switching.
+Sources: [`index.tsx`](../../packages/widgets/src/screenshot-ui/index.tsx), [`controlPanel.tsx`](../../packages/widgets/src/screenshot-ui/controlPanel.tsx), [`drawing.ts`](../../packages/widgets/src/screenshot-ui/drawing.ts), [`Screenshot`](../../packages/services/src/capture/screenshot.ts) and capture flow under `../../packages/services/src/capture/`.
 
-## Overview
+The unified full-monitor overlay uses the frozen screenshot stage for screenshots, selection drawing, and a control panel. Targets include fullscreen, area, window and monitor; recording can use a transparent live background. Selecting/dragging only chooses a target. The explicit Review target action (or Enter) enters a review state; capture/start is a separate explicit confirmation. Review disables changing the target until Back. Escape and cancel hide without capture. A too-small area is invalid. Busy state prevents duplicate confirmation; service publishes busy, result path or error for the recording-bar feedback surface. Quick mode hides mode/target selectors, but retains the same review and explicit confirmation controls.
 
-- **Source**: `src/widget/screenshot-ui/` (entry: `index.tsx`, `audioSourcePicker.tsx`, `formatQualitySelector.tsx`, `preview.tsx`)
-- **Dependencies**: `Screenshot` service, `AstalHyprland`, `getScreenCaptureSettings`
-- **Type**: `Astal.Window`, full-screen overlay on focused monitor; managed by the `Screenshot` service (shown when capture mode is activated)
+The service's screenshot crop and recording paths differ; a preview or selection does not prove backend capture correctness. Multi-monitor coordinates and output behavior are backend/compositor dependent; do not promise an outcome absent runtime evidence.
 
-## Functional
+Window selection reads current compositor rectangles at the action boundary rather than Astal's cached positions. DrawingArea-local input is translated through the real canvas origin; area selections round global near/far edges to compositor pixels before invoking capture backends. Selection and review show the actual chosen target and rectangle, or an explicit no-selection state. They remain separate persistent pages; changing or cancelling a selection does not commit capture.
 
-### States
+Screenshot completion copies PNG bytes asynchronously to the clipboard before publishing the result. The GTK main loop remains available for Wayland clipboard events; clipboard/finalization failures reach the normal capture error state.
 
-| # | State | Trigger | Expected behavior |
-|---|-------|---------|-------------------|
-| F1 | Screenshot mode | `ss.selectedMode = 'screenshot'` | Frozen screenshot of the desktop shown as background; dim overlay and selection drawn on top |
-| F2 | Recording mode | `ss.selectedMode = 'recording'` | Live desktop visible through transparent areas; dim overlay and selection drawn on top |
-| F3 | Target: area | User selects "area" mode | Drag interaction enabled; dim rect drawn around selection; dimensions shown |
-| F4 | Target: window | User selects "window" mode | Window outlines shown; hover highlights windows; selection snaps to window geometry |
-| F5 | Target: monitor | User selects "monitor" mode | Selected monitor highlighted; no drag interaction needed |
-| F6 | No selection active | Initial state | Entire screen dimmed; no selection rect (depending on mode) |
-| F7 | Recording in progress | Capture started via area/window/monitor | Overlay closes; recording boundary shown instead |
-
-### Interactions
-
-| # | Action | Expected behavior |
-|---|--------|-------------------|
-| I1 | Click and drag (area mode) | Selection rectangle drawn; dimming inverted around selection |
-| I2 | Hover over window (window mode) | Window highlighted with light fill; title shown |
-| I3 | Click window (window mode) | That window selected as capture target |
-| I4 | Click confirm button | Capture initiated via `Screenshot` service; overlay closes |
-| I5 | Click cancel / Escape | Overlay closes; no capture |
-| I6 | Open audio source picker | Audio input selection dialog opens |
-| I7 | Select format/quality | Format and quality settings updated in `getScreenCaptureSettings` |
-
-### Edge cases
-
-| # | Condition | Expected behavior |
-|---|-----------|-------------------|
-| E1 | Selection too small (< 5px) | Ignored; no capture or outline |
-| E2 | Window moved during selection | Geometry captured at selection time; no live tracking |
-| E3 | Multiple monitors | Overlay on focused monitor only; selected window can be on any monitor |
-| E4 | No windows open (window mode) | No outlines; user must switch to area or monitor mode |
-
-## Visual (Adwaita alignment)
-
-### Theme tokens
-
-| Element | Token / style class | Notes |
-|---------|--------------------|-------|
-| Dim overlay | Cairo `DIM_COLOR = rgba(0,0,0,0.35)` | Hardcoded Cairo color — drawn, not CSS |
-| Selection border | Cairo `BORDER_COLOR = #3584e4` | Hardcoded — Adwaita accent color |
-| Selection text | Cairo white | Overlay info text |
-| Window highlight | Cairo `WINDOW_HINT_COLOR = rgba(255,255,255,0.15)` | Light tint |
-
-### Adwaita checklist
-
-- [ ] Selection visuals use Cairo — not CSS theme tokens (acceptable for drawing surface)
-- [ ] Toolbar buttons use Adw `flat`/`circular` classes
-- [ ] Icons are symbolic
-
-## Test plan
-
-- **Unit**: extract and test selection normalization, monitor origin calculation, window-list loading from Hyprland
-- **Compliance linter**: file-size violation (717 lines); timer in widget layer; inline css with color property
-- **Visual/manual**: screenshots of area/window/monitor modes, confirm/cancel flow, audio source picker
+Manual: on a suitable session select fullscreen, area, window and monitor targets; verify selection enters review and only explicit confirmation starts capture; cancel at each stage and inspect no result is emitted. Exercise busy/error feedback using actual outcomes, inspect the produced file, and test a multi-output setup separately. These are proposed checks, not new VM results.
