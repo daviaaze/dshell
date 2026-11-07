@@ -472,7 +472,11 @@ export default () => {
                                     <Gtk.Box spacing={12}>
                                         <Gtk.Image iconName="video-display-symbolic" />
                                         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
-                                            <Gtk.Label label="Telas" xalign={0} />
+                                            <Gtk.Label
+                                                label="Telas"
+                                                xalign={0}
+                                                cssClasses={['heading']}
+                                            />
                                             <Gtk.Label
                                                 label="Modos, monitores e layouts salvos"
                                                 wrap
@@ -485,8 +489,13 @@ export default () => {
                                 </Gtk.Button>
                                 <Gtk.Button onClicked={(self) => navigate('other', self)}>
                                     <Gtk.Box spacing={12}>
+                                        <Gtk.Image iconName="preferences-system-symbolic" />
                                         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
-                                            <Gtk.Label label="Outros controles" xalign={0} />
+                                            <Gtk.Label
+                                                label="Outros controles"
+                                                xalign={0}
+                                                cssClasses={['heading']}
+                                            />
                                             <Gtk.Label
                                                 label="Energia, aparência, captura e timer"
                                                 wrap

@@ -79,6 +79,12 @@ function sameMonitorSpec(left: MonitorSpec, right: MonitorSpec) {
     );
 }
 
+function connectedSummary(active: number, total: number) {
+    const activeLabel = active === 1 ? 'ativa' : 'ativas';
+    const totalLabel = total === 1 ? 'tela conectada' : 'telas conectadas';
+    return `${active} ${activeLabel} de ${total} ${totalLabel}`;
+}
+
 function modeLabel(mode: string, outputs: OutputInfo[]) {
     const hasInternal = outputs.some((output) => /^eDP-/.test(output.name));
     const externalCount = outputs.length - (hasInternal ? 1 : 0);
@@ -86,7 +92,7 @@ function modeLabel(mode: string, outputs: OutputInfo[]) {
         case 'internal-only':
             return 'Somente tela interna';
         case 'external-only':
-            return `Somente externas — ${externalCount} telas`;
+            return `Somente externas — ${externalCount} ${externalCount === 1 ? 'tela' : 'telas'}`;
         case 'extend':
             return `Estender — ${outputs.length} telas`;
         case 'duplicate':
@@ -113,7 +119,7 @@ function buildMirrorChoices(
         ...(currentMirror && !hasCurrentCandidate
             ? [{source: currentMirror, label: `Unavailable: ${currentMirror}`}]
             : []),
-        {source: null, label: 'Independent display'},
+        {source: null, label: 'Tela independente'},
         ...candidates,
     ];
 }
@@ -313,7 +319,10 @@ function DisplayModeChoices({
     const displayMode = bind(service, 'displayMode');
     const outputs = bind(service, 'monitors');
     return (
-        <Adw.PreferencesGroup title="Modo de exibição">
+        <Adw.PreferencesGroup
+            title="Modo de exibição"
+            visible={outputs.as((attached) => attached.length >= 2)}
+        >
             <Gtk.Box spacing={8}>
                 <For each={modes}>
                     {(value: string) => {
@@ -359,13 +368,15 @@ function arrangementGeometry(layout: Layout, outputs: OutputInfo[], width: numbe
     const top = Math.min(...active.map((item) => item.y));
     const right = Math.max(...active.map((item) => item.x + item.width));
     const bottom = Math.max(...active.map((item) => item.y + item.height));
+    const boundsWidth = Math.max(1, right - left);
+    const boundsHeight = Math.max(1, bottom - top);
+    const factor = Math.min((width - 24) / boundsWidth, (height - 24) / boundsHeight);
     return {
         left,
         top,
-        factor: Math.min(
-            (width - 24) / Math.max(1, right - left),
-            (height - 24) / Math.max(1, bottom - top)
-        ),
+        factor,
+        offsetX: Math.max(0, (width - (boundsWidth * factor + 24)) / 2),
+        offsetY: Math.max(0, (height - (boundsHeight * factor + 24)) / 2),
     };
 }
 
@@ -388,12 +399,26 @@ function ArrangementCanvas({
             contentHeight={250}
             heightRequest={250}
             hexpand
+            marginTop={12}
+            marginBottom={12}
+            marginStart={12}
+            marginEnd={12}
             ref={(self) => {
                 canvas = self;
                 onCanvas(self);
-                self.set_draw_func((_area, cr, width, height) =>
-                    service.drawArrangement(cr, width, height, draft())
-                );
+                self.set_draw_func((_area, cr, width, height) => {
+                    const layout = draft();
+                    const geometry = arrangementGeometry(
+                        resolveAutoRightPositions(layout, service.monitors),
+                        service.monitors,
+                        width,
+                        height
+                    );
+                    cr.save();
+                    if (geometry) cr.translate(geometry.offsetX, geometry.offsetY);
+                    service.drawArrangement(cr, width, height, layout);
+                    cr.restore();
+                });
                 const drag = Gtk.GestureDrag.new();
                 drag.connect('drag-begin', (_gesture, x, y) => {
                     const current = resolveAutoRightPositions(draft(), service.monitors);
@@ -404,8 +429,8 @@ function ArrangementCanvas({
                         self.get_height()
                     );
                     if (!geometry) return;
-                    const logicalX = (x - 12) / geometry.factor + geometry.left;
-                    const logicalY = (y - 12) / geometry.factor + geometry.top;
+                    const logicalX = (x - 12 - geometry.offsetX) / geometry.factor + geometry.left;
+                    const logicalY = (y - 12 - geometry.offsetY) / geometry.factor + geometry.top;
                     const selected = current.monitors.find((spec) => {
                         if (spec.disabled || spec.mirror) return false;
                         const output = service.monitors.find((entry) => entry.name === spec.name);
@@ -461,17 +486,21 @@ function DisplayLayoutGroup({
     const outputs = bind(service, 'monitors');
     return (
         <Adw.PreferencesGroup title="Arranjo das telas">
-            <ArrangementCanvas
-                service={service}
-                draft={draft}
-                updateMonitor={updateMonitor}
-                onCanvas={onCanvas}
-            />
+            <Adw.PreferencesRow activatable={false}>
+                <ArrangementCanvas
+                    service={service}
+                    draft={draft}
+                    updateMonitor={updateMonitor}
+                    onCanvas={onCanvas}
+                />
+            </Adw.PreferencesRow>
             <Adw.ActionRow
                 title="Arranjo"
-                subtitle={outputs.as(
-                    (attached) =>
-                        `${attached.filter((item) => item.enabled).length} ativas de ${attached.length} telas conectadas`
+                subtitle={outputs.as((attached) =>
+                    connectedSummary(
+                        attached.filter((item) => item.enabled).length,
+                        attached.length
+                    )
                 )}
             />
             <Adw.ActionRow
@@ -706,7 +735,7 @@ function DisplayOutputEditor({
 }) {
     const monitor = computed(() => layout().monitors.find((spec) => spec.name === output()?.name));
     return (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+        <Gtk.ListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={['boxed-list']}>
             <Adw.ActionRow
                 title={output.as((current) => current?.description || current?.name || '')}
                 subtitle={monitor.as((current) =>
@@ -738,7 +767,7 @@ function DisplayOutputEditor({
             <ScaleRow monitor={monitor} output={output} updateMonitor={updateMonitor} />
             <RotationRow monitor={monitor} output={output} updateMonitor={updateMonitor} />
             <DisplayPowerRow service={service} output={output} />
-        </Gtk.Box>
+        </Gtk.ListBox>
     );
 }
 
