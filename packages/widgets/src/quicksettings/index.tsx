@@ -144,8 +144,12 @@ export default () => {
                 navigationError() && errorLabel
                     ? errorLabel.measure(Gtk.Orientation.VERTICAL, Math.floor(panelWidth))[1]
                     : 0;
+            const footerWidth = Math.max(
+                1,
+                Math.floor(panelWidth - padding.left - padding.right - 32)
+            );
             const footerHeight = advancedButton?.get_visible()
-                ? advancedButton.measure(Gtk.Orientation.VERTICAL, Math.floor(panelWidth))[1] + 20
+                ? advancedButton.measure(Gtk.Orientation.VERTICAL, footerWidth)[1] + 20
                 : 0;
             setChrome(
                 header.measure(Gtk.Orientation.VERTICAL, Math.floor(panelWidth))[1] +
