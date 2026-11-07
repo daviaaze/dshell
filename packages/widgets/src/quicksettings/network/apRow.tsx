@@ -8,6 +8,8 @@ import {IconNames} from '@shade/core/iconNames';
 import logger from '@shade/core/logger';
 import {type Accessor, computed, createState, effect, onCleanup} from 'gnim';
 import {
+    AP_ICON_SIZE,
+    AP_TRASH_ICON_SIZE,
     type ApSnapshot,
     bssidEquals,
     bssidOf,
@@ -16,8 +18,6 @@ import {
     createNMConnection,
     deleteConnectionAsync,
     signalIconName,
-    AP_ICON_SIZE,
-    AP_TRASH_ICON_SIZE,
 } from './utils';
 
 // ── Operation guard: prevent concurrent WiFi operations ──
@@ -113,15 +113,12 @@ function waitForActivation(active: NM.ActiveConnection): Promise<void> {
         else resolve();
     };
 
-    handlerId = active.connect(
-        'state-changed',
-        (_active, state: number, reason: number) => {
-            if (state === NM.ActiveConnectionState.ACTIVATED) finish();
-            else if (state === NM.ActiveConnectionState.DEACTIVATED) {
-                finish(activationError(reason));
-            }
+    handlerId = active.connect('state-changed', (_active, state: number, reason: number) => {
+        if (state === NM.ActiveConnectionState.ACTIVATED) finish();
+        else if (state === NM.ActiveConnectionState.DEACTIVATED) {
+            finish(activationError(reason));
         }
-    );
+    });
 
     const state: number = active.state;
     if (state === NM.ActiveConnectionState.ACTIVATED) finish();
@@ -159,10 +156,7 @@ function activateNMConnection(
     }
     return promise;
 }
-function deactivateNMConnection(
-    client: NM.Client,
-    active: NM.ActiveConnection
-): Promise<void> {
+function deactivateNMConnection(client: NM.Client, active: NM.ActiveConnection): Promise<void> {
     const {promise, resolve, reject} = Promise.withResolvers<void>();
     client.deactivate_connection_async(active, null, (_source, result) => {
         try {
@@ -176,7 +170,6 @@ function deactivateNMConnection(
     });
     return promise;
 }
-
 
 interface ConnectState {
     lastConnectMs: number;
@@ -261,13 +254,7 @@ function createDoConnect(
                         snap.ssid,
                         snap.secure ? password : undefined
                     );
-                    await activateNMConnection(
-                        client,
-                        connection,
-                        device,
-                        snap.objectPath,
-                        true
-                    );
+                    await activateNMConnection(client, connection, device, snap.objectPath, true);
                 }
                 state.setShowPassword(false);
             } finally {
@@ -337,7 +324,16 @@ function focusPasswordOnOpen(
 
 // ── ApRow component ──
 
-function ApRow({snap, strength, wifi, client, connectionRevision, isActive, isConnecting, setConnectingAp}: ApRowProps) {
+function ApRow({
+    snap,
+    strength,
+    wifi,
+    client,
+    connectionRevision,
+    isActive,
+    isConnecting,
+    setConnectingAp,
+}: ApRowProps) {
     const apSsid = snap.ssid;
     const apBssid = snap.bssid;
     const secure = snap.secure;
@@ -374,7 +370,7 @@ function ApRow({snap, strength, wifi, client, connectionRevision, isActive, isCo
     });
 
     const strengthIcon = strength.as(signalIconName);
-    const strengthTooltip = strength.as(value => `${value}%`);
+    const strengthTooltip = strength.as((value) => `${value}%`);
     const prefixIcon = secure ? 'network-wireless-encrypted-symbolic' : strengthIcon;
 
     return (
@@ -395,7 +391,6 @@ function ApRow({snap, strength, wifi, client, connectionRevision, isActive, isCo
                         else doConnect();
                     }}
                 >
-
                     <Gtk.Box spacing={12}>
                         <Gtk.Image iconName={prefixIcon} pixelSize={AP_ICON_SIZE} />
 
@@ -408,6 +403,7 @@ function ApRow({snap, strength, wifi, client, connectionRevision, isActive, isCo
                             <Gtk.Label
                                 hexpand
                                 halign={Gtk.Align.FILL}
+                                xalign={0}
                                 label={apSsid}
                                 ellipsize={3}
                             />
@@ -471,14 +467,16 @@ function ApRow({snap, strength, wifi, client, connectionRevision, isActive, isCo
                         visibility={false}
                         hexpand
                         widthChars={12}
-                        onActivate={self => doConnect(self.get_text() || undefined)}
+                        onActivate={(self) => doConnect(self.get_text() || undefined)}
                         onMap={(self) => {
                             if (showPassword()) self.grab_focus();
                         }}
                         ref={(self) => {
                             setPasswordEntry(self);
-                            self.update_property([Gtk.AccessibleProperty.LABEL],
-                                [new GObject.Value(GObject.TYPE_STRING, `Senha de ${apSsid}`)]);
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, `Senha de ${apSsid}`)]
+                            );
                         }}
                     />
                     <Gtk.Button

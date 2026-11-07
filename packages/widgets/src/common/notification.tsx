@@ -2,11 +2,13 @@ import Adw from 'gi://Adw?version=1';
 import Notifd from 'gi://AstalNotifd';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import Pango from 'gi://Pango?version=1.0';
 import {relativeTime} from '@shade/core/time';
 import {tickWhileAttached} from '@shade/core/widgetTimer';
 import {getExpireMs} from '@shade/services/notifications/expire';
 import {getNotifdSafe} from '@shade/services/notifications/guard';
-import {bind, computed, For, type Accessor} from 'gnim';
+import {type Accessor, bind, computed, For} from 'gnim';
+
 interface NotificationSnapshot {
     summary: string;
     body: string;
@@ -130,15 +132,21 @@ function CardBody({
     maxChars,
     useMarkup,
     onDefaultAction,
+    compact,
 }: {
     snapshot: NotificationSnapshot;
     imagePixelSize: number;
     maxChars: number;
     useMarkup: boolean;
     onDefaultAction?: () => void;
+    compact: boolean;
 }) {
     return (
-        <Gtk.Box spacing={8} orientation={Gtk.Orientation.HORIZONTAL} ref={(self) => addDefaultAction(self, onDefaultAction)}>
+        <Gtk.Box
+            spacing={8}
+            orientation={Gtk.Orientation.HORIZONTAL}
+            ref={(self) => addDefaultAction(self, onDefaultAction)}
+        >
             {snapshot.image ? (
                 <Gtk.Image
                     file={snapshot.image}
@@ -150,6 +158,8 @@ function CardBody({
                 wrap
                 hexpand
                 maxWidthChars={maxChars}
+                lines={compact ? 3 : -1}
+                ellipsize={compact ? Pango.EllipsizeMode.END : Pango.EllipsizeMode.NONE}
                 // Libadwait .body class: increased line height for legible text.
                 cssClasses={['body']}
                 useMarkup={useMarkup}
@@ -230,6 +240,7 @@ export default ({
     showProgress = false,
     showActions = true,
     variant = 'popup',
+    compact = false,
     onDefaultAction,
     onActionInvoked,
 }: {
@@ -240,6 +251,7 @@ export default ({
     showProgress?: boolean;
     showActions?: boolean;
     variant?: 'popup' | 'list' | 'lockscreen';
+    compact?: boolean;
     onDefaultAction?: () => void;
     onActionInvoked?: () => void;
 }) => {
@@ -267,7 +279,9 @@ export default ({
                         {expireTimeout: current.expireTimeout},
                         getNotifdSafe()
                     );
-                    const urgencyClass = isCritical ? 'error' : isLow ? 'dimmed' : '';
+                    let urgencyClass = '';
+                    if (isCritical) urgencyClass = 'error';
+                    else if (isLow) urgencyClass = 'dimmed';
 
                     return (
                         <Gtk.Box
@@ -285,30 +299,40 @@ export default ({
                                 }
                             }}
                         >
-                            <CardHeader
-                                snapshot={current}
-                                isCritical={isCritical}
-                                onClose={handleClose}
-                                onDefaultAction={onDefaultAction}
-                                closeLabel={closeLabel}
-                            />
-                            <CardBody
-                                snapshot={current}
-                                imagePixelSize={imagePixelSize}
-                                maxChars={maxChars}
-                                useMarkup={useMarkup}
-                                onDefaultAction={onDefaultAction}
-                            />
-                            {showProgress && !isCritical ? (
-                                <CardProgress expireMs={expireMs} />
-                            ) : null}
-                            {hasActions ? (
-                                <CardActions
-                                    notification={notification}
-                                    actions={current.actions}
-                                    onActionInvoked={onActionInvoked}
+                            <Gtk.Box
+                                orientation={Gtk.Orientation.VERTICAL}
+                                spacing={8}
+                                marginTop={variant === 'popup' ? 12 : 0}
+                                marginBottom={variant === 'popup' ? 12 : 0}
+                                marginStart={variant === 'popup' ? 12 : 0}
+                                marginEnd={variant === 'popup' ? 12 : 0}
+                            >
+                                <CardHeader
+                                    snapshot={current}
+                                    isCritical={isCritical}
+                                    onClose={handleClose}
+                                    onDefaultAction={onDefaultAction}
+                                    closeLabel={closeLabel}
                                 />
-                            ) : null}
+                                <CardBody
+                                    snapshot={current}
+                                    imagePixelSize={imagePixelSize}
+                                    maxChars={maxChars}
+                                    useMarkup={useMarkup}
+                                    compact={compact}
+                                    onDefaultAction={onDefaultAction}
+                                />
+                                {showProgress && !isCritical ? (
+                                    <CardProgress expireMs={expireMs} />
+                                ) : null}
+                                {hasActions ? (
+                                    <CardActions
+                                        notification={notification}
+                                        actions={current.actions}
+                                        onActionInvoked={onActionInvoked}
+                                    />
+                                ) : null}
+                            </Gtk.Box>
                         </Gtk.Box>
                     );
                 }}

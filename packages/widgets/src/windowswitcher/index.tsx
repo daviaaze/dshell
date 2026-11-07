@@ -12,11 +12,14 @@ import {type Accessor, bind, computed, createState, For, onCleanup, type Setter}
 import SwitcherItem from './item';
 
 let switcherWindow: Astal.Window | null = null;
+let reconcileSwitcherMru: (() => void) | null = null;
 
 export const toggleWindowSwitcher = () => {
     if (switcherWindow) {
         const nextVisible = !switcherWindow.visible;
         logger.debug('wm', `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`);
+        // Read the latest client before mapping the exclusive layer can take focus.
+        if (nextVisible) reconcileSwitcherMru?.();
         switcherWindow.visible = nextVisible;
     } else {
         logger.debug('wm', 'windowSwitcher toggled (no window yet)');
@@ -152,7 +155,9 @@ export default () => {
     const focusedMonitor = bind(hyprland, 'focused-monitor');
     const panelWidth = computed(() => {
         const monitor = focusedMonitor();
-        return monitor ? Math.max(1, Math.min(500, monitor.width / (monitor.scale || 1) - 32)) : 500;
+        return monitor
+            ? Math.max(1, Math.min(500, monitor.width / (monitor.scale || 1) - 32))
+            : 500;
     });
     const panelHeight = computed(() => {
         const monitor = focusedMonitor();
@@ -199,6 +204,7 @@ export default () => {
     return (
         <Astal.Window
             ref={(self) => {
+                reconcileSwitcherMru = () => updateMru(focusedClient());
                 switcherWindow = self;
                 const keys = new Gtk.EventControllerKey({
                     propagationPhase: Gtk.PropagationPhase.CAPTURE,
@@ -213,6 +219,7 @@ export default () => {
                 onCleanup(() => {
                     self.remove_controller(keys);
                     switcherWindow = null;
+                    reconcileSwitcherMru = null;
                     focusedClientUnsubscribe();
                     clampUnsubscribe();
                 });

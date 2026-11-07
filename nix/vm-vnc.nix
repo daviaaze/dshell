@@ -24,41 +24,70 @@ let
     controllers=()
     for _ in {1..30}; do
       mapfile -t controllers < <("$bluetoothctl" list | ${pkgs.gawk}/bin/awk '$1 == "Controller" { print $2 }')
-      if [ "''${#controllers[@]}" -ge 2 ]; then
+      if [ "''${#controllers[@]}" -eq 2 ]; then
         break
       fi
       ${pkgs.coreutils}/bin/sleep 1
     done
-    if [ "''${#controllers[@]}" -lt 2 ]; then
+    if [ "''${#controllers[@]}" -ne 2 ]; then
       echo "Expected two guest-local btvirt controllers" >&2
       exit 1
     fi
 
     peer="''${controllers[1]}"
-    "$bluetoothctl" <<EOF
+    # Data only: never source user-writable environment or shell commands.
+    selected=$(${pkgs.coreutils}/bin/cat /run/shade-vm-bluetooth/peer-address)
+    if [ -n "$selected" ]; then
+      if [[ ! "$selected" =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]]; then
+        echo "Invalid guest Bluetooth peer MAC selector" >&2
+        exit 1
+      fi
+      selected="''${selected^^}"
+      if [ "$selected" != "''${controllers[0]^^}" ] && [ "$selected" != "''${controllers[1]^^}" ]; then
+        echo "Selected peer is not one of the two guest btvirt controllers" >&2
+        exit 1
+      fi
+      peer="$selected"
+    fi
+    {
+    ${pkgs.coreutils}/bin/cat <<EOF
     select $peer
     power on
     system-alias ShadeVM-Peer
-    pairable-timeout 0
     discoverable-timeout 0
-    agent NoInputNoOutput
     default-agent
     pairable on
     discoverable on
     advertise peripheral
     EOF
+    # Agent and advertisement registrations belong to this D-Bus connection.
+    # Keep stdin open so bluetoothctl stays alive until systemd stops the fixture.
+    ${pkgs.coreutils}/bin/sleep infinity
+    } | "$bluetoothctl" --agent=NoInputNoOutput
   '';
   bluetoothPeerStop = pkgs.writeShellScript "shade-vm-bluetooth-peer-stop" ''
     set -u
     bluetoothctl=${bluezTesting}/bin/bluetoothctl
     controllers=()
     mapfile -t controllers < <("$bluetoothctl" list | ${pkgs.gawk}/bin/awk '$1 == "Controller" { print $2 }')
-    if [ "''${#controllers[@]}" -lt 2 ]; then
+    if [ "''${#controllers[@]}" -ne 2 ]; then
       exit 0
     fi
 
+    # A restart reads the NEW selector only in ExecStart. Locate the OLD peer
+    # by its fixture alias so stop never mutates the newly selected controller.
+    peer=
+    for controller in "''${controllers[@]}"; do
+      if "$bluetoothctl" show "$controller" | ${pkgs.gnugrep}/bin/grep -qE '^[[:space:]]*Alias: ShadeVM-Peer$'; then
+        peer="$controller"
+        break
+      fi
+    done
+    [ -n "$peer" ] || exit 0
     main="''${controllers[0]}"
-    peer="''${controllers[1]}"
+    if [ "$main" = "$peer" ]; then
+      main="''${controllers[1]}"
+    fi
 
     # Disable only modes enabled on the fixture peer.
     "$bluetoothctl" <<EOF || true
@@ -268,8 +297,7 @@ in
     ];
     partOf = [ "shade-vm-bluetooth-fixture.target" ];
     serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
+      Type = "simple";
       ExecStart = bluetoothPeerStart;
       ExecStopPost = bluetoothPeerStop;
     };
@@ -309,6 +337,8 @@ in
     "d /home/tester/.config 0755 tester users - -"
     "d /home/tester/.config/hypr 0755 tester users - -"
     "C+ /home/tester/.config/hypr/xdph.conf 0644 tester users - ${xdphTesterConfig}"
+    "d /run/shade-vm-bluetooth 0755 root root - -"
+    "f /run/shade-vm-bluetooth/peer-address 0600 tester users - -"
   ];
 
   security.sudo.extraRules = [
@@ -316,11 +346,19 @@ in
       users = [ "tester" ];
       commands = [
         {
-          command = "${pkgs.systemd}/bin/systemctl start shade-vm-bluetooth-fixture.target";
+          command = "${config.systemd.package}/bin/systemctl start shade-vm-bluetooth-fixture.target";
           options = [ "NOPASSWD" ];
         }
         {
-          command = "${pkgs.systemd}/bin/systemctl stop shade-vm-bluetooth-fixture.target";
+          command = "${config.systemd.package}/bin/systemctl stop shade-vm-bluetooth-fixture.target";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "${config.systemd.package}/bin/systemctl restart shade-vm-bluetooth-peer.service";
+          options = [ "NOPASSWD" ];
+        }
+        {
+          command = "${config.systemd.package}/bin/journalctl --all --no-pager -u shade-vm-bluetooth-peer.service -u bluetooth.service -n 120";
           options = [ "NOPASSWD" ];
         }
       ];
@@ -345,7 +383,6 @@ in
         # VM-friendly Hyprland settings
         monitor = [
           "Virtual-1, preferred, auto, 1"
-          "Virtual-2, disable"
         ];
         decoration = {
           blur.enabled = false;
@@ -438,6 +475,10 @@ in
     wl-clipboard
     glib
     libnotify
+    # Real application backends for disposable media/tray UI reviews.
+    ffmpeg
+    (mpv.override { scripts = [ mpvScripts.mpris ]; })
+    networkmanagerapplet
     # For debugging
     d-spy
     gtk4

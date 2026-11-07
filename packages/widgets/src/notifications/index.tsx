@@ -1,16 +1,17 @@
-import Notifd from 'gi://AstalNotifd';
 import Astal from 'gi://Astal?version=4.0';
+import Notifd from 'gi://AstalNotifd';
 import Gtk from 'gi://Gtk?version=4.0';
 import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import {generalSettings} from '@shade/core/settings/general.gschema';
+import {getHyprland} from '@shade/services/hyprland';
 import {DismissTimers} from '@shade/services/notifications/dismissTimers';
 import DndService from '@shade/services/notifications/dnd';
 import {getExpireMs} from '@shade/services/notifications/expire';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import ShellState from '@shade/services/state/shellState';
-import WindowManager from '@shade/services/state/windowManager';
-import {bind, computed, createState, effect, For, onCleanup} from 'gnim';
+import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
+import {type Accessor, bind, computed, createState, effect, For, onCleanup} from 'gnim';
 import Notification from '../common/notification';
 import PopupWindow from '../common/PopupWindow';
 
@@ -20,23 +21,26 @@ const POPUP_CAP = 3;
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
 
 /**
- * Anchor toasts to the corner next to the bar. Anchoring to a full edge
- * stretches the layer surface across the screen and swallows clicks.
+ * Anchor toasts away from the bar-side corner used by adjacent applets and
+ * quick settings, without stretching the layer surface across the screen.
  */
 function cornerAnchor(position: number): number {
     if (position === BOTTOM) return BOTTOM | RIGHT;
-    if (position === LEFT) return TOP | LEFT;
-    return TOP | RIGHT;
+    if (position === LEFT) return TOP | RIGHT;
+    if (position === RIGHT) return TOP | LEFT;
+    return BOTTOM | RIGHT;
 }
 
 const NotificationContent = ({
     notifd,
     setNotificationCount,
     showProgress,
+    maxHeight,
 }: {
     notifd: Notifd.Notifd;
     setNotificationCount: (n: number) => void;
     showProgress: boolean;
+    maxHeight: Accessor<number>;
 }) => {
     const [notifications, setNotifications] = createState<Notifd.Notification[]>([]);
 
@@ -87,34 +91,42 @@ const NotificationContent = ({
     };
 
     return (
-        <Gtk.Box
-            spacing={8}
-            orientation={Gtk.Orientation.VERTICAL}
-            ref={(_self) => {
-                const node = {};
-                connectFor(node, notifd, 'notified', (_, id) => addNotification(id as number));
-                connectFor(node, notifd, 'resolved', (_, id) => removeNotif(id as number));
-                onCleanup(() => {
-                    cleanupNode(node);
-                    timers.clear();
-                });
-            }}
+        <Gtk.ScrolledWindow
+            propagateNaturalHeight
+            maxContentHeight={maxHeight}
+            hscrollbarPolicy={Gtk.PolicyType.NEVER}
+            vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         >
-            <For each={notifications}>
-                {(n: Notifd.Notification) => (
-                    <Notification
-                        notification={n}
-                        variant="popup"
-                        closeAction={(_notif, _card) => removeNotif(n.id)}
-                        pauseDismiss={() => timers.pause(n.id)}
-                        resumeDismiss={() => resumeDismiss(n.id)}
-                        showProgress={showProgress}
-                        onDefaultAction={invokeDefault(n)}
-                        onActionInvoked={() => removeNotif(n.id)}
-                    />
-                )}
-            </For>
-        </Gtk.Box>
+            <Gtk.Box
+                spacing={8}
+                orientation={Gtk.Orientation.VERTICAL}
+                ref={(_self) => {
+                    const node = {};
+                    connectFor(node, notifd, 'notified', (_, id) => addNotification(id as number));
+                    connectFor(node, notifd, 'resolved', (_, id) => removeNotif(id as number));
+                    onCleanup(() => {
+                        cleanupNode(node);
+                        timers.clear();
+                    });
+                }}
+            >
+                <For each={notifications}>
+                    {(n: Notifd.Notification) => (
+                        <Notification
+                            notification={n}
+                            variant="popup"
+                            compact
+                            closeAction={(_notif, _card) => removeNotif(n.id)}
+                            pauseDismiss={() => timers.pause(n.id)}
+                            resumeDismiss={() => resumeDismiss(n.id)}
+                            showProgress={showProgress}
+                            onDefaultAction={invokeDefault(n)}
+                            onActionInvoked={() => removeNotif(n.id)}
+                        />
+                    )}
+                </For>
+            </Gtk.Box>
+        </Gtk.ScrolledWindow>
     );
 };
 
@@ -124,23 +136,35 @@ export default () => {
     const dontDisturb = bind(DndService.get_default(), 'dnd');
     const settings = generalSettings();
     const showProgress = settings.notificationShowProgress();
-    const screenlocked = bind(ShellState.get_default(), 'screenlocked');
+    const shellState = ShellState.get_default();
+    const screenlocked = bind(shellState, 'screenlocked');
+    const centerOpen = bind(shellState, 'notificationsOpen');
+    const bar = barSettings();
+    const hyprland = getHyprland();
+    if (!hyprland) return null;
+    const monitor = bind(hyprland, 'focused-monitor');
+    const windowMonitor = computed(() => monitorIndexFromHyprland(monitor()));
+    const maxHeight = computed(() => {
+        const current = monitor();
+        return Math.max(1, current ? current.height / (current.scale || 1) - 8 : 720);
+    });
 
     return (
         <PopupWindow
             name="notifications"
-            margin={12}
+            margin={4}
             layer={Astal.Layer.OVERLAY}
             keymode={Astal.Keymode.NONE}
-            anchor={barSettings().position.as(cornerAnchor)}
+            anchor={bar.position.as(cornerAnchor)}
+            monitor={windowMonitor}
             visible={computed(
                 () =>
                     notifd() !== null &&
                     notificationCount() > 0 &&
                     !dontDisturb() &&
-                    !screenlocked()
+                    !screenlocked() &&
+                    !centerOpen()
             )}
-            ref={(self) => WindowManager.get_default().setNotifications(self)}
         >
             {/* Singleton-array For defers child evaluation until notifd is non-null. */}
             <For each={notifd.as((n) => (n ? [n] : []))}>
@@ -148,6 +172,7 @@ export default () => {
                     <NotificationContent
                         notifd={n}
                         setNotificationCount={setNotificationCount}
+                        maxHeight={maxHeight}
                         showProgress={showProgress}
                     />
                 )}

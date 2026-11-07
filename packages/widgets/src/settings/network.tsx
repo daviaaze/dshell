@@ -7,6 +7,7 @@ import NM from 'gi://NM?version=1.0';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 import {type Accessor, bind, computed, createState, For, onCleanup, With} from 'gnim';
+import ApList from '../quicksettings/network/apList';
 import {
     deleteConnectionAsync,
     securityLabelFromKeyMgmt,
@@ -14,8 +15,6 @@ import {
 } from '../quicksettings/network/utils';
 import {showConnectionEditor} from './connectionEditor';
 import {showHiddenNetworkDialog} from './hiddenNetworkDialog';
-
-import ApList from '../quicksettings/network/apList';
 
 const NET_ICON_PREFIX = 16;
 const NET_ICON_SUFFIX = 14;
@@ -117,10 +116,7 @@ function hotspotUnavailableReason(
     return null;
 }
 
-function findManagedHotspot(
-    client: NM.Client,
-    device: NM.DeviceWifi
-): NM.ActiveConnection | null {
+function findManagedHotspot(client: NM.Client, device: NM.DeviceWifi): NM.ActiveConnection | null {
     try {
         for (const active of toArray<NM.ActiveConnection>(client.get_active_connections())) {
             if (
@@ -193,10 +189,7 @@ function addAndActivateHotspot(
     return promise;
 }
 
-function deactivateHotspot(
-    client: NM.Client,
-    active: NM.ActiveConnection
-): Promise<void> {
+function deactivateHotspot(client: NM.Client, active: NM.ActiveConnection): Promise<void> {
     const {promise, resolve, reject} = Promise.withResolvers<void>();
     client.deactivate_connection_async(
         active,
@@ -220,34 +213,45 @@ function AvailableNetworksGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
     const [connectingAp, setConnectingAp] = createState<string | null>(null);
     return (
         <With value={wifi}>
-            {(w) => w ? (
-                <Adw.PreferencesGroup
-                    title="Redes disponíveis"
-                    description={bind(w, 'scanning').as((scanning) =>
-                        scanning ? 'Buscando redes próximas…' : 'Redes próximas e estado da conexão'
-                    )}
-                >
-                    <Adw.ActionRow
-                        title="Buscar redes"
-                        subtitle={bind(w, 'scanning').as((scanning) =>
-                            scanning ? 'A busca está em andamento; a conexão permanece disponível.' : 'Atualizar redes Wi-Fi próximas'
+            {(w) =>
+                w ? (
+                    <Adw.PreferencesGroup
+                        title="Redes disponíveis"
+                        description={bind(w, 'scanning').as((scanning) =>
+                            scanning
+                                ? 'Buscando redes próximas…'
+                                : 'Redes próximas e estado da conexão'
                         )}
                     >
-                        <Gtk.Button
-                            valign={Gtk.Align.CENTER}
-                            label={bind(w, 'scanning').as((scanning) => scanning ? 'Buscando…' : 'Buscar')}
-                            sensitive={bind(w, 'enabled')}
-                            onClicked={() => w.scan()}
+                        <Adw.ActionRow
+                            title="Buscar redes"
+                            subtitle={bind(w, 'scanning').as((scanning) =>
+                                scanning
+                                    ? 'A busca está em andamento; a conexão permanece disponível.'
+                                    : 'Atualizar redes Wi-Fi próximas'
+                            )}
+                        >
+                            <Gtk.Button
+                                valign={Gtk.Align.CENTER}
+                                label={bind(w, 'scanning').as((scanning) =>
+                                    scanning ? 'Buscando…' : 'Buscar'
+                                )}
+                                sensitive={bind(w, 'enabled')}
+                                onClicked={() => w.scan()}
+                            />
+                            <Gtk.Spinner
+                                visible={bind(w, 'scanning')}
+                                spinning={bind(w, 'scanning')}
+                            />
+                        </Adw.ActionRow>
+                        <ApList
+                            wifi={w}
+                            connectingAp={connectingAp}
+                            setConnectingAp={setConnectingAp}
                         />
-                        <Gtk.Spinner visible={bind(w, 'scanning')} spinning={bind(w, 'scanning')} />
-                    </Adw.ActionRow>
-                    <ApList
-                        wifi={w}
-                        connectingAp={connectingAp}
-                        setConnectingAp={setConnectingAp}
-                    />
-                </Adw.PreferencesGroup>
-            ) : null}
+                    </Adw.PreferencesGroup>
+                ) : null
+            }
         </With>
     );
 }
@@ -261,8 +265,11 @@ function WifiGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
                     w ? (
                         <Adw.SwitchRow
                             title="Wi-Fi"
-                            subtitle={computed(() => !bind(w, 'enabled')() ? 'Wi-Fi desligado' :
-                                bind(w, 'ssid')() ? `Conectado a ${w.ssid}` : 'Não conectado')}
+                            subtitle={computed(() => {
+                                if (!bind(w, 'enabled')()) return 'Wi-Fi desligado';
+                                if (bind(w, 'ssid')()) return `Conectado a ${w.ssid}`;
+                                return 'Não conectado';
+                            })}
                             active={bind(w, 'enabled')}
                             onNotifyActive={(self) => {
                                 w.enabled = self.active;
@@ -281,7 +288,11 @@ function WifiGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
                     w ? (
                         <Adw.ActionRow
                             title="Intensidade do sinal"
-                            subtitle={computed(() => bind(w, 'ssid')() ? `${bind(w, 'strength')()}%` : 'Sem rede conectada')}
+                            subtitle={computed(() =>
+                                bind(w, 'ssid')()
+                                    ? `${bind(w, 'strength')()}%`
+                                    : 'Sem rede conectada'
+                            )}
                         >
                             <Gtk.LevelBar
                                 valign={Gtk.Align.CENTER}
@@ -296,14 +307,16 @@ function WifiGroup({wifi}: {wifi: Accessor<Network.Wifi | null>}) {
                 title="Conectar à rede oculta…"
                 subtitle={computed(() => {
                     const w = wifi();
-                    return !w ? 'Requer adaptador Wi-Fi.' : !bind(w, 'enabled')() ?
-                        'Ative o Wi-Fi primeiro.' : 'Conectar a uma rede que não anuncia seu nome';
+                    if (!w) return 'Requer adaptador Wi-Fi.';
+                    if (!bind(w, 'enabled')()) return 'Ative o Wi-Fi primeiro.';
+                    return 'Conectar a uma rede que não anuncia seu nome';
                 })}
                 activatable={computed(() => !!wifi() && bind(wifi()!, 'enabled')())}
                 sensitive={computed(() => !!wifi() && bind(wifi()!, 'enabled')())}
                 onActivated={(self) => {
                     const parent = self.get_root();
-                    if (wifi()?.enabled && parent instanceof Gtk.Window) showHiddenNetworkDialog(parent);
+                    if (wifi()?.enabled && parent instanceof Gtk.Window)
+                        showHiddenNetworkDialog(parent);
                 }}
             >
                 <Gtk.Image iconName="network-wireless-symbolic" pixelSize={NET_ICON_PREFIX} />
@@ -319,9 +332,10 @@ function KnownNetworkRow({net, onChanged}: {net: KnownNetwork; onChanged: () => 
             title={net.ssid}
             subtitle={net.secLabel}
             activatable
-            onActivated={self => {
+            onActivated={(self) => {
                 const parent = self.get_root();
-                if (parent instanceof Gtk.Window) showConnectionEditor(net.ssid, net.connections, parent, onChanged);
+                if (parent instanceof Gtk.Window)
+                    showConnectionEditor(net.ssid, net.connections, parent, onChanged);
             }}
         >
             <Gtk.Image
@@ -359,12 +373,19 @@ function WiredGroup({wired}: {wired: Accessor<Network.Wired | null>}) {
                         <Adw.ActionRow
                             title="Conexão por cabo"
                             subtitle={bind(w, 'state').as((s) =>
-                                s === Network.DeviceState.ACTIVATED ? 'Conectado à rede' : 'Desconectado'
+                                s === Network.DeviceState.ACTIVATED
+                                    ? 'Conectado à rede'
+                                    : 'Desconectado'
                             )}
                         >
                             <Gtk.Image iconName={bind(w, 'icon-name')} />
                         </Adw.ActionRow>
-                    ) : <Adw.ActionRow title="Conexão por cabo indisponível" subtitle="Nenhum adaptador Ethernet foi detectado." />
+                    ) : (
+                        <Adw.ActionRow
+                            title="Conexão por cabo indisponível"
+                            subtitle="Nenhum adaptador Ethernet foi detectado."
+                        />
+                    )
                 }
             </With>
         </Adw.PreferencesGroup>
@@ -442,10 +463,7 @@ function HotspotGroup({
                     createHotspotConnection(ssidValue, passwordValue),
                     device
                 );
-                if (
-                    network.wifi?.device !== device ||
-                    !deviceIsPresent(client, device)
-                ) {
+                if (network.wifi?.device !== device || !deviceIsPresent(client, device)) {
                     throw new Error('Wi-Fi adapter was removed during hotspot activation');
                 }
                 if (
@@ -497,8 +515,8 @@ function HotspotGroup({
                     deviceVersion();
                     return hotspotUnavailableReason(network, client, w);
                 });
-                const switchActive = computed(
-                    () => pending() ? pendingTarget() : (actualHotspot?.() ?? false)
+                const switchActive = computed(() =>
+                    pending() ? pendingTarget() : (actualHotspot?.() ?? false)
                 );
                 const controlsEnabled = computed(
                     () =>
@@ -588,7 +606,10 @@ function HotspotGroup({
 /** Connectivity group: internet access status. */
 function ConnectivityGroup({network}: {network: NetworkService}) {
     return (
-        <Adw.PreferencesGroup title="Acesso à internet" description="Estar conectado a uma rede não garante acesso à internet.">
+        <Adw.PreferencesGroup
+            title="Acesso à internet"
+            description="Estar conectado a uma rede não garante acesso à internet."
+        >
             <Adw.ActionRow
                 title="Estado da internet"
                 subtitle={bind(network, 'connectivity').as((c) => {
@@ -611,15 +632,37 @@ export default () => {
     const wired = bind(network, 'wired');
     const [knownVersion, bumpKnown] = createState(0);
     const [deviceVersion, bumpDeviceVersion] = createState(0);
+    let knownClient = client;
+    let connectionAddedSignal: number;
+    let connectionRemovedSignal: number;
     const knownNetworks = computed(() => {
         knownVersion(); // track dependency for recompute on bumpKnown
-        return getKnownNetworks(client);
+        return getKnownNetworks(knownClient);
     });
     const onKnownChanged = () => bumpKnown(knownVersion() + 1);
+    const connectKnownSignals = () => {
+        connectionAddedSignal = knownClient.connect('connection-added', onKnownChanged);
+        connectionRemovedSignal = knownClient.connect('connection-removed', onKnownChanged);
+    };
+    const disconnectKnownSignals = () => {
+        knownClient.disconnect(connectionAddedSignal);
+        knownClient.disconnect(connectionRemovedSignal);
+    };
+    connectKnownSignals();
+    const clientChangedSignal = network.connect('notify::client', () => {
+        const nextClient = network.client as NM.Client;
+        if (nextClient === knownClient) return;
+        disconnectKnownSignals();
+        knownClient = nextClient;
+        connectKnownSignals();
+        onKnownChanged();
+    });
     const onDevicesChanged = () => bumpDeviceVersion(deviceVersion() + 1);
     const deviceAddedSignal = client.connect('device-added', onDevicesChanged);
     const deviceRemovedSignal = client.connect('device-removed', onDevicesChanged);
     onCleanup(() => {
+        network.disconnect(clientChangedSignal);
+        disconnectKnownSignals();
         client.disconnect(deviceAddedSignal);
         client.disconnect(deviceRemovedSignal);
     });

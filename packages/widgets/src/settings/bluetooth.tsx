@@ -1,10 +1,11 @@
 import Adw from 'gi://Adw?version=1';
-import GLib from 'gi://GLib?version=2.0';
-import Gtk from 'gi://Gtk?version=4.0';
 import Bluetooth from 'gi://AstalBluetooth';
-import {bind, computed, createState, For, onCleanup} from 'gnim';
-import BluetoothService from '@shade/services/bluetooth/bluetoothService';
+import Gdk from 'gi://Gdk?version=4.0';
+import type GLib from 'gi://GLib?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
+import BluetoothService from '@shade/services/bluetooth/bluetoothService';
+import {bind, computed, createState, For, onCleanup} from 'gnim';
 
 const LOG_TAG = 'settings-bluetooth';
 type ScanTimeout = GLib.Source;
@@ -41,8 +42,8 @@ function PairedDeviceRow({
     connectingAddress: ReturnType<typeof createState<string | null>>[0];
     setConnectingAddress: (addr: string | null) => void;
 }) {
-    const [showConfirmForget, setShowConfirmForget] = createState(false);
     const [operationError, setOperationError] = createState<string | null>(null);
+    const [forgetting, setForgetting] = createState(false);
     const deviceConnecting = connectingAddress.as(
         (addr) => addr !== null && addr === device.address
     );
@@ -54,67 +55,107 @@ function PairedDeviceRow({
         return 'Pareado';
     });
 
-    const handleForget = () => {
+    const handleForget = async () => {
+        if (forgetting()) return;
+        setForgetting(true);
         setOperationError(null);
-        const bt = Bluetooth.get_default();
-        const adapter = bt.adapter;
-        if (!adapter) {
-            const error = 'Bluetooth adapter is unavailable';
-            logger.error(LOG_TAG, 'Cannot forget a device without a Bluetooth adapter');
-            setOperationError(error);
-            return;
-        }
         try {
-            adapter.remove_device(device);
-            setShowConfirmForget(false);
+            await service.forgetDevice(device);
         } catch (error) {
-            logger.error(LOG_TAG, 'Forget failed:', error);
+            logger.error(LOG_TAG, 'Forget failed:', String(error));
             setOperationError(String(error));
+        } finally {
+            setForgetting(false);
         }
     };
+    const confirmForget = (parent: Gtk.Widget) => {
+        const root = parent.get_root();
+        if (!(root instanceof Gtk.Window)) return;
+        const dialog = new Adw.Window({
+            transientFor: root,
+            modal: true,
+            title: 'Esquecer dispositivo?',
+            defaultWidth: 420,
+            resizable: false,
+            cssClasses: ['background'],
+        });
+        const content = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            spacing: 16,
+            marginTop: 20,
+            marginBottom: 20,
+            marginStart: 20,
+            marginEnd: 20,
+        });
+        content.append(
+            new Gtk.Label({
+                label: 'Esquecer dispositivo?',
+                xalign: 0,
+                cssClasses: ['title-2'],
+            })
+        );
+        content.append(
+            new Gtk.Label({
+                label: `O dispositivo ${device.name || device.address} será removido dos dispositivos pareados.`,
+                wrap: true,
+                xalign: 0,
+                hexpand: true,
+            })
+        );
+        const buttons = new Gtk.Box({
+            orientation: Gtk.Orientation.HORIZONTAL,
+            spacing: 8,
+            halign: Gtk.Align.END,
+        });
+        const cancel = new Gtk.Button({label: 'Cancelar'});
+        cancel.connect('clicked', () => dialog.close());
+        const forget = new Gtk.Button({
+            label: 'Esquecer',
+            cssClasses: ['destructive-action'],
+        });
+        let responded = false;
+        forget.connect('clicked', () => {
+            if (responded) return;
+            responded = true;
+            dialog.close();
+            void handleForget();
+        });
+        buttons.append(cancel);
+        buttons.append(forget);
+        content.append(buttons);
+        const keys = new Gtk.EventControllerKey();
+        keys.connect('key-pressed', (_controller, keyval) => {
+            if (keyval !== Gdk.KEY_Escape) return false;
+            dialog.close();
+            return true;
+        });
+        dialog.add_controller(keys);
+        dialog.set_content(content);
+        dialog.present();
+    };
     return (
-        <Adw.ActionRow
-            title={device.name || device.address}
-            subtitle={statusText}
-        >
-            <Gtk.Image
-                iconName={'bluetooth-symbolic'}
-                pixelSize={24}
-            />
-            {operationError.as((message) => message ? (
-                <Gtk.Label label={message} cssClasses={['error', 'caption']} wrap />
-            ) : null)}
-            {showConfirmForget.as((show) => show ? (
-                <Gtk.Box spacing={6}>
-                    <Gtk.Button
-                        label="Cancelar"
-                        onClicked={() => setShowConfirmForget(false)}
-                    />
-                    <Gtk.Button
-                        label="Confirmar"
-                        cssClasses={['destructive-action']}
-                        onClicked={handleForget}
-                    />
-                </Gtk.Box>
-            ) : (
-                <Gtk.Box spacing={6}>
-                    <Gtk.Button
-                        label={connected.as((value) => value ? 'Desconectar' : 'Conectar')}
-                        sensitive={deviceConnecting.as((value) => !value)}
-                        onClicked={() =>
-                            toggleDevice(service, device, setConnectingAddress, setOperationError)
-                        }
-                    />
-                    <Gtk.Button
-                        label="Esquecer"
-                        cssClasses={['destructive-action']}
-                        onClicked={() => {
-                            setOperationError(null);
-                            setShowConfirmForget(true);
-                        }}
-                    />
-                </Gtk.Box>
-            ))}
+        <Adw.ActionRow title={device.name || device.address} subtitle={statusText}>
+            <Gtk.Image iconName={'bluetooth-symbolic'} pixelSize={24} />
+            {operationError.as((message) =>
+                message ? (
+                    <Gtk.Label label={message} cssClasses={['error', 'caption']} wrap />
+                ) : null
+            )}
+            <Gtk.Box spacing={6}>
+                <Gtk.Button
+                    label={connected.as((value) => (value ? 'Desconectar' : 'Conectar'))}
+                    sensitive={deviceConnecting.as((value) => !value)}
+                    onClicked={() =>
+                        toggleDevice(service, device, setConnectingAddress, setOperationError)
+                    }
+                />
+                <Gtk.Button
+                    label="Esquecer"
+                    cssClasses={['destructive-action']}
+                    sensitive={forgetting.as((value) => !value)}
+                    onClicked={(self) => confirmForget(self)}
+                />
+            </Gtk.Box>
             <Gtk.Spinner visible={deviceConnecting} spinning={deviceConnecting} />
         </Adw.ActionRow>
     );
@@ -133,15 +174,13 @@ function AvailableDeviceRow({
     setPairingAddress: (addr: string | null) => void;
 }) {
     const [operationError, setOperationError] = createState<string | null>(null);
-    const devicePairing = pairingAddress.as(
-        (addr) => addr !== null && addr === device.address
-    );
+    const devicePairing = pairingAddress.as((addr) => addr !== null && addr === device.address);
 
     const handlePair = async () => {
         setPairingAddress(device.address);
         setOperationError(null);
         try {
-            await service.connectDevice(device);
+            await service.pairDevice(device);
         } catch (error) {
             logger.error(LOG_TAG, 'Pair failed:', error);
             setOperationError(String(error));
@@ -151,9 +190,16 @@ function AvailableDeviceRow({
     };
 
     return (
-        <Adw.ActionRow title={device.name || device.address} subtitle={operationError.as((error) => error ?? 'Disponível')}>
+        <Adw.ActionRow
+            title={device.name || device.address}
+            subtitle={operationError.as((error) => error ?? 'Disponível')}
+        >
             <Gtk.Image iconName={'bluetooth-symbolic'} pixelSize={24} />
-            <Gtk.Button label="Parear" sensitive={devicePairing.as((value) => !value)} onClicked={handlePair} />
+            <Gtk.Button
+                label="Parear"
+                sensitive={devicePairing.as((value) => !value)}
+                onClicked={handlePair}
+            />
             <Gtk.Spinner visible={devicePairing} spinning={devicePairing} />
         </Adw.ActionRow>
     );
@@ -175,13 +221,9 @@ export default () => {
 
     const devices = bind(service, 'devices');
 
-    const pairedDevices = computed(() =>
-        devices().filter((d) => d.paired)
-    );
+    const pairedDevices = computed(() => devices().filter((d) => d.paired));
 
-    const availableDevices = computed(() =>
-        devices().filter((d) => !d.paired)
-    );
+    const availableDevices = computed(() => devices().filter((d) => !d.paired));
 
     const clearScanTimeout = () => {
         const timeoutId = scanTimeoutId();
@@ -197,7 +239,8 @@ export default () => {
             clearScanTimeout();
             if (currentAdapter) {
                 if (adapterPoweredSignalId) currentAdapter.disconnect(adapterPoweredSignalId);
-                if (adapterDiscoveringSignalId) currentAdapter.disconnect(adapterDiscoveringSignalId);
+                if (adapterDiscoveringSignalId)
+                    currentAdapter.disconnect(adapterDiscoveringSignalId);
             }
             currentAdapter = nextAdapter;
             adapterPoweredSignalId = 0;
@@ -295,86 +338,111 @@ export default () => {
     return (
         <>
             <Adw.PreferencesGroup
-                title={adapter.as((value) => value ? 'Bluetooth' : 'Bluetooth indisponível')}
-                description={adapter.as((value) => value ? 'Ative o Bluetooth e gerencie dispositivos.' : 'Nenhum adaptador Bluetooth foi detectado.')}
+                title={adapter.as((value) => (value ? 'Bluetooth' : 'Bluetooth indisponível'))}
+                description={adapter.as((value) =>
+                    value
+                        ? 'Ative o Bluetooth e gerencie dispositivos.'
+                        : 'Nenhum adaptador Bluetooth foi detectado.'
+                )}
             >
-                {adapter.as((value) => value ? (
-                    <Adw.SwitchRow
-                        title={'Bluetooth'}
-                        subtitle={'Enable Bluetooth adapter'}
-                        active={isPowered}
-                        onNotifyActive={(self) => handleTogglePower(self)}
-                    />
-                ) : (
-                    <Adw.ActionRow
-                        title="Nenhum adaptador Bluetooth"
-                        subtitle="Conecte ou habilite um adaptador Bluetooth para gerenciar dispositivos."
-                    />
-                ))}
-            {operationError.as((message) => message ? (
-                <Adw.ActionRow title="Não foi possível alterar o Bluetooth" subtitle={message} cssClasses={['error']} />
-            ) : null)}
+                {adapter.as((value) =>
+                    value ? (
+                        <Adw.SwitchRow
+                            title={'Bluetooth'}
+                            subtitle={'Enable Bluetooth adapter'}
+                            active={isPowered}
+                            onNotifyActive={(self) => handleTogglePower(self)}
+                        />
+                    ) : (
+                        <Adw.ActionRow
+                            title="Nenhum adaptador Bluetooth"
+                            subtitle="Conecte ou habilite um adaptador Bluetooth para gerenciar dispositivos."
+                        />
+                    )
+                )}
+                {operationError.as((message) =>
+                    message ? (
+                        <Adw.ActionRow
+                            title="Não foi possível alterar o Bluetooth"
+                            subtitle={message}
+                            cssClasses={['error']}
+                        />
+                    ) : null
+                )}
             </Adw.PreferencesGroup>
 
-            {adapter.as((value) => value ? (
-                <>
-                    <Adw.PreferencesGroup
-                        title="Dispositivos pareados"
-                        description="Dispositivos conhecidos; conecte, desconecte ou remova o pareamento."
-                        sensitive={isPowered}
-                    >
-                        <For each={pairedDevices}>
-                            {(device) => (
-                                <PairedDeviceRow
-                                    device={device}
-                                    connectingAddress={connectingAddress}
-                                    service={service}
-                                    setConnectingAddress={setConnectingAddress}
-                                />
+            {adapter.as((value) =>
+                value ? (
+                    <>
+                        <Adw.PreferencesGroup
+                            title="Dispositivos pareados"
+                            description="Dispositivos conhecidos; conecte, desconecte ou remova o pareamento."
+                            sensitive={isPowered}
+                        >
+                            <For each={pairedDevices}>
+                                {(device) => (
+                                    <PairedDeviceRow
+                                        device={device}
+                                        connectingAddress={connectingAddress}
+                                        service={service}
+                                        setConnectingAddress={setConnectingAddress}
+                                    />
+                                )}
+                            </For>
+                            {pairedDevices.as((devices) =>
+                                devices.length === 0 ? (
+                                    <Adw.ActionRow
+                                        title="Nenhum dispositivo pareado"
+                                        subtitle="Busque dispositivos próximos para parear."
+                                    />
+                                ) : null
                             )}
-                        </For>
-                        {pairedDevices.as((devices) => devices.length === 0 ? (
-                            <Adw.ActionRow
-                                title="Nenhum dispositivo pareado"
-                                subtitle="Busque dispositivos próximos para parear."
-                            />
-                        ) : null)}
-                    </Adw.PreferencesGroup>
+                        </Adw.PreferencesGroup>
 
-                    <Adw.PreferencesGroup
-                        title="Dispositivos disponíveis"
-                        description={scanning.as((value) => value ? 'Buscando dispositivos próximos…' : 'Inicie uma busca para encontrar dispositivos.')}
-                        sensitive={isPowered}
-                    >
-                        <Gtk.Box halign={Gtk.Align.CENTER}>
-                            <Gtk.Button
-                                label={scanning.as((value) => value ? 'Parar busca' : 'Buscar dispositivos')}
-                                cssClasses={scanning.as((value) => value ? ['destructive-action'] : ['suggested-action'])}
-                                sensitive={isPowered.as((powered) => powered && !scanBusy())}
-                                onClicked={handleScan}
-                            />
-                        </Gtk.Box>
-                        <Gtk.Spinner visible={scanning} spinning={scanning} />
-                        <For each={availableDevices}>
-                            {(device) => (
-                                <AvailableDeviceRow
-                                    device={device}
-                                    service={service}
-                                    pairingAddress={pairingAddress}
-                                    setPairingAddress={setPairingAddress}
-                                />
+                        <Adw.PreferencesGroup
+                            title="Dispositivos disponíveis"
+                            description={scanning.as((value) =>
+                                value
+                                    ? 'Buscando dispositivos próximos…'
+                                    : 'Inicie uma busca para encontrar dispositivos.'
                             )}
-                        </For>
-                        {computed(() => !scanning() && availableDevices().length === 0 ? (
-                            <Adw.ActionRow
-                                title="Nenhum dispositivo encontrado"
-                                subtitle="Inicie uma busca para descobrir dispositivos próximos."
-                            />
-                        ) : null)}
-                    </Adw.PreferencesGroup>
-                </>
-            ) : null)}
+                            sensitive={isPowered}
+                        >
+                            <Gtk.Box halign={Gtk.Align.CENTER}>
+                                <Gtk.Button
+                                    label={scanning.as((value) =>
+                                        value ? 'Parar busca' : 'Buscar dispositivos'
+                                    )}
+                                    cssClasses={scanning.as((value) =>
+                                        value ? ['destructive-action'] : ['suggested-action']
+                                    )}
+                                    sensitive={isPowered.as((powered) => powered && !scanBusy())}
+                                    onClicked={handleScan}
+                                />
+                            </Gtk.Box>
+                            <Gtk.Spinner visible={scanning} spinning={scanning} />
+                            <For each={availableDevices}>
+                                {(device) => (
+                                    <AvailableDeviceRow
+                                        device={device}
+                                        service={service}
+                                        pairingAddress={pairingAddress}
+                                        setPairingAddress={setPairingAddress}
+                                    />
+                                )}
+                            </For>
+                            {computed(() =>
+                                !scanning() && availableDevices().length === 0 ? (
+                                    <Adw.ActionRow
+                                        title="Nenhum dispositivo encontrado"
+                                        subtitle="Inicie uma busca para descobrir dispositivos próximos."
+                                    />
+                                ) : null
+                            )}
+                        </Adw.PreferencesGroup>
+                    </>
+                ) : null
+            )}
         </>
     );
 };
-

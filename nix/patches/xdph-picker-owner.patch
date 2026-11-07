@@ -1,0 +1,21 @@
+diff --git a/src/shared/ScreencopyShared.hpp b/src/shared/ScreencopyShared.hpp
+--- a/src/shared/ScreencopyShared.hpp
++++ b/src/shared/ScreencopyShared.hpp
+@@ -46 +46 @@
+-SSelectionData   promptForScreencopySelection();
++SSelectionData   promptForScreencopySelection(const std::string& sessionHandle);
+diff --git a/src/portals/Screencopy.cpp b/src/portals/Screencopy.cpp
+--- a/src/portals/Screencopy.cpp
++++ b/src/portals/Screencopy.cpp
+@@ -228 +228 @@
+-        SHAREDATA = promptForScreencopySelection();
++        SHAREDATA = promptForScreencopySelection(sessionHandle);
+diff --git a/src/shared/ScreencopyShared.cpp b/src/shared/ScreencopyShared.cpp
+--- a/src/shared/ScreencopyShared.cpp
++++ b/src/shared/ScreencopyShared.cpp
+@@ -42 +42 @@
+-SSelectionData promptForScreencopySelection() {
++SSelectionData promptForScreencopySelection(const std::string& sessionHandle) {
+@@ -62 +62,2 @@
+     proc.addEnv("XDPH_WINDOW_SHARING_LIST", buildWindowList()); // buildWindowList will sanitize any shell stuff in case the picker (qt) does something funky? It shouldn't.
++    proc.addEnv("XDPH_SESSION_HANDLE", sessionHandle);

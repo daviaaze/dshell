@@ -1,20 +1,18 @@
 import Adw from 'gi://Adw?version=1';
-import Gtk from 'gi://Gtk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import {
     buildDefaultAppFamilyModel,
-    registeredMimeFamilyTypes,
-    setDefaultAppForTypes,
     type DefaultAppFamilyModel,
     type DefaultAppTypeState,
     type DefaultAppWriteResult,
     type MimeFamily,
+    registeredMimeFamilyTypes,
+    setDefaultAppForTypes,
 } from '@shade/services/desktop/defaultApps';
 
-type AppCategory =
-    | {label: string; family: MimeFamily}
-    | {label: string; contentType: string};
+type AppCategory = {label: string; family: MimeFamily} | {label: string; contentType: string};
 
 const CATEGORIES: AppCategory[] = [
     {label: 'Navegador web', contentType: 'x-scheme-handler/http'},
@@ -28,7 +26,9 @@ const CATEGORIES: AppCategory[] = [
 ];
 
 function appName(app: Gio.AppInfo | null): string {
-    return app ? app.get_display_name() || app.get_name() || 'Aplicativo desconhecido' : 'Nenhum aplicativo padrão';
+    return app
+        ? app.get_display_name() || app.get_name() || 'Aplicativo desconhecido'
+        : 'Nenhum aplicativo padrão';
 }
 
 function readType(contentType: string, mimeType: string): DefaultAppTypeState {
@@ -102,7 +102,9 @@ function categoryDetailLines(
     }
     if (lastWrite) {
         for (const result of lastWrite.results) {
-            const type = snapshot.model.types.find((entry) => entry.contentType === result.contentType);
+            const type = snapshot.model.types.find(
+                (entry) => entry.contentType === result.contentType
+            );
             const mimeType = type?.mimeType ?? result.contentType;
             lines.push(
                 result.error === null
@@ -172,7 +174,8 @@ function stateDescription(category: AppCategory, model: DefaultAppFamilyModel): 
     } else if (model.defaults.kind === 'none') {
         description = `No app is currently the default for any of these ${model.types.length} registered format${model.types.length === 1 ? '' : 's'}.`;
     } else if (model.defaults.kind === 'mixed') {
-        description = 'Defaults differ across the registered formats; choosing an app changes only formats it supports.';
+        description =
+            'Defaults differ across the registered formats; choosing an app changes only formats it supports.';
     } else {
         description = `Choose a default for ${category.label}.`;
     }
@@ -202,7 +205,7 @@ function selectableAppLabel(app: Gio.AppInfo): string {
 }
 
 function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
-    const row = new Adw.ComboRow({title: category.label});
+    const row = new Adw.ComboRow({title: category.label, subtitleLines: 0});
     const details = new Adw.ExpanderRow({
         title: `${category.label} format details`,
         subtitle: 'Read and write results by format',
@@ -226,10 +229,23 @@ function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
         renderCategoryDetails(detailBox, details, categoryDetailLines(snapshot, lastWrite));
 
     const describe = () => {
+        const defaults = snapshot.model.defaults;
+        let status: string;
+        if (snapshot.discoveryError) {
+            status = 'Padrões indisponíveis';
+        } else if (defaults.kind === 'uniform') {
+            status = appName(defaults.app);
+        } else if (defaults.kind === 'mixed') {
+            status = 'Padrões diferentes';
+        } else if (defaults.kind === 'unread') {
+            status = 'Padrões indisponíveis';
+        } else {
+            status = 'Nenhum aplicativo padrão';
+        }
         const description = snapshot.discoveryError
             ? `Could not read registered formats: ${snapshot.discoveryError}`
             : stateDescription(category, snapshot.model);
-        row.subtitle = lastWrite ? `${resultDescription(lastWrite)} ${description}` : description;
+        row.subtitle = `${status}. ${lastWrite ? `${resultDescription(lastWrite)} ` : ''}${description}`;
     };
 
     const reconcileSelection = () => {
@@ -244,9 +260,15 @@ function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
         if (selectionOffset) {
             // Native ComboRow auto-selects index zero and rejects an invalid
             // selection on a populated model. This row never represents an app.
-            model.append(snapshot.model.defaults.kind === 'mixed' ? 'Padrões diferentes'
-                : snapshot.model.defaults.kind === 'unread' ? 'Padrões indisponíveis'
-                : 'Nenhum aplicativo padrão');
+            let placeholder: string;
+            if (snapshot.discoveryError || snapshot.model.defaults.kind === 'unread') {
+                placeholder = 'Padrões indisponíveis';
+            } else if (snapshot.model.defaults.kind === 'mixed') {
+                placeholder = 'Padrões diferentes';
+            } else {
+                placeholder = 'Nenhum aplicativo padrão';
+            }
+            model.append(placeholder);
         }
         snapshot.model.choices.forEach((choice) => model.append(selectableAppLabel(choice.app)));
         row.model = model;
@@ -260,10 +282,16 @@ function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
     row.connect('notify::selected', () => {
         if (reconciling || pendingWrite) return;
         const choice = snapshot.model.choices[row.selected - selectionOffset];
-        if (!choice || choice.supportedContentTypes.every((contentType) => {
-            const current = snapshot.model.types.find((type) => type.contentType === contentType)?.current;
-            return current !== null && current !== undefined && current.equal(choice.app);
-        })) return;
+        if (
+            !choice ||
+            choice.supportedContentTypes.every((contentType) => {
+                const current = snapshot.model.types.find(
+                    (type) => type.contentType === contentType
+                )?.current;
+                return current !== null && current !== undefined && current.equal(choice.app);
+            })
+        )
+            return;
 
         row.sensitive = false;
         // Replacing a native selection model during its notify signal can

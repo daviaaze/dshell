@@ -6,7 +6,7 @@ import BluetoothService from '@shade/services/bluetooth/bluetoothService';
 import {type Accessor, bind, computed, createState, For, onCleanup, type GnimNode, With} from 'gnim';
 import {QuickControlButton} from '../../common/quickControlButton';
 
-/** Connect or disconnect a device, tracking the in-flight address. */
+/** Pair, connect or disconnect a device, tracking the in-flight address. */
 async function toggleDevice(
     service: BluetoothService,
     device: AstalBluetooth.Device,
@@ -17,6 +17,7 @@ async function toggleDevice(
     setOperationError(null);
     try {
         if (device.connected) await service.disconnectDevice(device);
+        else if (!device.paired) await service.pairDevice(device);
         else await service.connectDevice(device);
     } catch (error) {
         logger.error('bluetooth', 'Device connection change failed:', error);
@@ -26,7 +27,7 @@ async function toggleDevice(
     }
 }
 
-/** A device action uses the service's real connection operation. */
+/** A device action pairs new devices and toggles paired connections. */
 function DeviceButton({
     device,
     service,

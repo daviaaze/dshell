@@ -1,5 +1,6 @@
 import Adw from 'gi://Adw?version=1';
 import Network from 'gi://AstalNetwork';
+import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {render} from '@gnim-js/gtk4';
 import logger from '@shade/core/logger';
@@ -92,41 +93,62 @@ function DialogContent({
                 }}
                 showEndTitleButtons={false}
             />
-            <Adw.PreferencesPage>
-                <Adw.PreferencesGroup title="Identificação da rede" description="Informe o SSID exato. Deixe a senha vazia somente para redes abertas.">
-                    <Adw.EntryRow
-                        title="Nome da rede (SSID)"
-                        sensitive={state.connecting.as((value) => !value)}
-                        onNotifyText={(entry) => setSsid(entry.text)}
-                    />
-                    <Adw.PasswordEntryRow
-                        title="Senha da rede"
-                        sensitive={state.connecting.as((value) => !value)}
-                        onNotifyText={(entry) => setPassword(entry.text)}
-                    />
-                </Adw.PreferencesGroup>
-
-                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <Gtk.Button
-                        hexpand
-                        cssClasses={['suggested-action']}
-                        label={state.connecting.as((c) => (c ? 'Conectando…' : 'Conectar'))}
-                        sensitive={state.connecting.as((c) => !c)}
-                        onClicked={onConnect}
-                    />
-                    <Gtk.Button hexpand label="Cancelar" onClicked={onCancel} />
-                </Gtk.Box>
-
-                <Gtk.Label
-                    label={state.errorMsg.as((e) => e ?? '')}
-                    cssClasses={['error', 'caption']}
-                    visible={state.errorMsg.as((e) => e !== null)}
-                    wrap
-                    marginStart={12}
-                    marginEnd={12}
+            <Gtk.ScrolledWindow
+                vexpand
+                propagateNaturalHeight
+                hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+            >
+                <Gtk.Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={12}
+                    marginTop={12}
                     marginBottom={12}
+                    marginStart={18}
+                    marginEnd={18}
+                >
+                    <Adw.PreferencesGroup
+                        title="Identificação da rede"
+                        description="Informe o SSID exato. Deixe a senha vazia somente para redes abertas."
+                    >
+                        <Adw.EntryRow
+                            title="Nome da rede (SSID)"
+                            sensitive={state.connecting.as((value) => !value)}
+                            onNotifyText={(entry) => setSsid(entry.text)}
+                        />
+                        <Adw.PasswordEntryRow
+                            title="Senha da rede"
+                            sensitive={state.connecting.as((value) => !value)}
+                            onNotifyText={(entry) => setPassword(entry.text)}
+                        />
+                    </Adw.PreferencesGroup>
+
+                    <Gtk.Label
+                        label={state.errorMsg.as((e) => e ?? '')}
+                        cssClasses={['error', 'caption']}
+                        visible={state.errorMsg.as((e) => e !== null)}
+                        wrap
+                        xalign={0}
+                    />
+                </Gtk.Box>
+            </Gtk.ScrolledWindow>
+            <Gtk.Box
+                spacing={12}
+                homogeneous
+                marginTop={12}
+                marginBottom={18}
+                marginStart={18}
+                marginEnd={18}
+            >
+                <Gtk.Button hexpand label="Cancelar" onClicked={onCancel} />
+                <Gtk.Button
+                    hexpand
+                    cssClasses={['suggested-action']}
+                    label={state.connecting.as((c) => (c ? 'Conectando…' : 'Conectar'))}
+                    sensitive={state.connecting.as((c) => !c)}
+                    onClicked={onConnect}
                 />
-            </Adw.PreferencesPage>
+            </Gtk.Box>
         </Gtk.Box>
     );
 }
@@ -139,9 +161,17 @@ export async function showHiddenNetworkDialog(parent: Gtk.Widget | Gtk.Window) {
         modal: true,
         title: 'Conectar à rede oculta',
         defaultWidth: 400,
-        defaultHeight: 250,
         cssClasses: ['background'],
     });
+    const keys = new Gtk.EventControllerKey({
+        propagationPhase: Gtk.PropagationPhase.CAPTURE,
+    });
+    keys.connect('key-pressed', (_controller, key) => {
+        if (key !== Gdk.KEY_Escape) return false;
+        dialog.close();
+        return true;
+    });
+    dialog.add_controller(keys);
 
     const [ssid, setSsid] = createState('');
     const [password, setPassword] = createState('');

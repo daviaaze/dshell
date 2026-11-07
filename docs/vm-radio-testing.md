@@ -20,7 +20,32 @@ QEMU_OPTS='-display vnc=127.0.0.1:0 -monitor unix:/tmp/shade-vm-monitor.sock,ser
 
 The VM uses plain virtio VGA so QEMU's VNC backend can expose its screen. VNC listens on host loopback port 5900; guest SSH is forwarded only to host loopback port 2222.
 
-## Automated workflow and temporal review
+### Current UI-review evidence mode
+
+Use `--ui-review` to run real guest workflow steps while retaining screenshots and available native/compositor receipts. It is an evidence-capture workflow, **not** a human visual review, WCAG/accessibility certification, or exact padding/conformance measurement.
+
+```sh
+# Default matrix: shell, settings-auth, capture-share × light/dark × wide/compact
+python3 scripts/vm-workflow-test.py --ui-review
+
+# Select matrix dimensions; each option may be repeated (values must be unique)
+python3 scripts/vm-workflow-test.py --ui-review \
+  --review-family shell --review-family capture-share \
+  --review-theme dark \
+  --review-viewport wide --review-viewport short
+```
+
+Families are `shell`, `settings-auth`, and `capture-share`; themes are `light` and `dark`; viewports are `wide`, `compact`, and `short`. The guest uses `Virtual-1` at 1280×800, 800×600, or 1024×480 respectively, scale 1, and selects the theme through Settings. The real greeter is a separate pre-login prerequisite, not repeated across the session matrix. Matrix flags require `--ui-review`; it cannot be combined with `--scenario` or `--list-scenarios`. Artifacts are retained under the printed run directory, in `ui-review/manifest.json` and per-screen directories.
+
+The host dev shell provides `vncdo` with its `service-identity` Python runtime dependency so Twisted can initialize; use the normal `nix develop` environment for these workflows.
+
+Manifest records distinguish `captured`, `failed`, and `unavailable`; a captured record has `reviewed: false`. Review screenshots are actual UI states reached during the workflow. AT-SPI allocations and compositor receipts provide supporting identity/geometry/context, **not** exact padding measurements. AT-SPI/native receipts may be unavailable or intentionally omitted, and greeter receipts are unavailable before login. Inspect images and records manually; absence of an error or a captured screenshot does not establish a visual/accessibility pass. Greeter captures are prerequisite evidence, not evidence that every family/theme/viewport greeter combination was tested.
+
+The UI-review shell family starts guest-local real media playback with **mpv + MPRIS** (null audio/video output; it verifies guest playback/provider state, not physical audio), and starts **`nm-applet --indicator`** to inspect its native StatusNotifierItem/menu (does not change network state). These are temporary user services cleaned up by the fixture; their UI presence is not a physical-device test.
+
+The Bluetooth VM has two guest-local `btvirt` controllers. Its peer service selects one controller using `/run/shade-vm-bluetooth/peer-address` (empty selects the default peer); the selector must be a MAC address matching one of those two controllers. The service advertises a pairable `ShadeVM-Peer` and keeps `bluetoothctl` alive so the agent/advertising state remains registered. Stop cleanup disables fixture modes and removes only the two controllers' counterpart pairing entries. This makes a guest UI pairing attempt possible; it does **not** imply that pairing succeeded, and no successful-pairing claim is made here.
+
+Audio fixtures are distinct: a guest null sink provides a `.monitor` source for capturing generated playback signal, while a separate virtual **HDA microphone** provides an input endpoint for Sound Settings. The HDA input is not the null sink monitor, neither fixture is a host microphone/device, and successful settings interaction does not establish physical audio I/O.
 
 ```sh
 # Existing multi-scenario workflow smoke test
@@ -36,13 +61,7 @@ python3 scripts/vm-workflow-test.py --full-suite
 nix develop -c python3 -m unittest discover -s scripts -p 'test_*.py'
 ```
 
-The default smoke test and `--visual-audit` retain their existing behavior. The
-`--full-suite` mode starts one `vm-vnc` guest, logs in once through the real
-greeter, then runs the default scenarios, notification-history check, and
-recording audit sequentially against that same guest. Every mode uses a
-disposable guest disk and cleans up QEMU and disk state on exit. Guest VNC and
-SSH remain loopback-only; the tests never operate the host desktop or radios.
-The command prints its retained artifact directory.
+`--full-suite` starts one `vm-vnc` guest, logs in once through the real greeter, then runs the default scenarios, notification-history check, and recording audit sequentially against that same guest. The newer `--ui-review` mode is a separate matrix: it captures actual workflow screenshots and available native/compositor receipts but does not perform manual review or accessibility/padding certification. Every mode uses a disposable guest disk and cleans up QEMU and disk state on exit. Guest VNC and SSH remain loopback-only; the tests never operate the host desktop or radios. The command prints its retained artifact directory.
 
 `scripts/vm-workflow-test.py` writes `results.json` in that directory and prints
 one `PASS`, `FAIL`, or `UNSUPPORTED` result per executed or explicitly excluded
@@ -59,11 +78,7 @@ duration. This separates guest boot and setup overhead from scenario time and
 identifies whether the next optimization should target Nix builds, SSH/UI
 round-trips, or video evidence processing.
 
-Across completed pilot runs, greeter login, launcher, Quick Settings, Wi-Fi
-radio toggling, and screenshot capture have passed. Bar-position selection/state
-verification and finding the synthetic notification through AT-SPI have failed
-in some runs. Check the current run's `results.json`; do not assume those
-outcomes are fixed or treat the suite as green.
+**Historical pilot results (not current coverage).** Earlier runs recorded passing greeter login, launcher, Quick Settings, Wi-Fi toggling, and screenshots; some runs failed the bar-position state check and synthetic-notification AT-SPI lookup. Those outcomes are retained as dated pilot history only. Use the current run's `results.json` and `ui-review/manifest.json`; do not infer current success or failure from this paragraph.
 
 | Scenario | UI evidence | Independent guest evidence |
 |---|---|---|
@@ -72,28 +87,13 @@ outcomes are fixed or treat the suite as green.
 | Quick Settings | `Super+N` opens and closes the panel | Hyprland layer appears and is removed |
 | Bar position | Settings is opened from the shell and the Bar & Dock page is selected; the position control is clicked | Bar layer geometry is checked; the saved preference value is not independently read |
 | Wi-Fi | The Wi-Fi tile is clicked off and on through AT-SPI | NetworkManager reports disabled then enabled; the isolated AP scan is checked |
-| Screenshot | The overlay is opened and cancelled, then opened again and confirmed with the screenshot shortcut | A new screenshot appears in the disposable guest's output directory |
-| Notifications/DND | A synthetic guest notification is sent; Quick Settings and its DND control are inspected | Active notification visibility and DND state are checked when accessible |
+| Screenshot | The overlay is opened and cancelled, then opened again and explicitly confirmed | A new screenshot appears in the disposable guest's output directory |
+| Notifications/DND | A synthetic guest notification is sent; the Notification Center and its DND control are inspected | Active notification visibility and DND state are checked when accessible |
 | Notification history (`--full-suite`) | A uniquely titled synthetic notification is opened in the History view | The same summary is present in `~/.cache/shade/notifications.json` |
 
-The smoke suite does **not** cover Wi-Fi credential entry or connection to
-`Shade-Test`; the guest-local AP is only scanned. The extended runner reports
-the following gaps as `UNSUPPORTED`, not as passing tests: Wi-Fi credential
-connection, window-target capture, display preview/revert, Settings page
-navigation beyond Bar & Dock, window switcher, lock/unlock, Bluetooth pairing,
-portal-backed share-picker, guest brightness, audio playback/capture,
-biometrics, and power actions. Positive Bluetooth pairing has no advertising
-peer; the guest has only `Virtual-1`; no guest portal requester is established;
-brightness has no guest endpoint; QEMU audio uses host PulseAudio. Host
-audio/microphone use, biometric claims, and suspend/reboot/power-off actions
-are excluded rather than attempted.
+The default smoke suite does **not** cover Wi-Fi credential entry or connection to `Shade-Test`; it only scans the guest-local AP. In its guest-session variants, the extended workflow records excluded scenarios as `UNSUPPORTED`, not passing tests. A guest-local Bluetooth peer now makes a pairing attempt possible, but does not establish pairing success. Current audio fixture limits, including the distinction between the null-sink monitor and virtual HDA input, are described above. The VM has only `Virtual-1` unless another fixture is explicitly created, no guest portal requester is established, and biometric and destructive power actions remain excluded.
 
-Notification/DND coverage requires reliable notification delivery and
-accessible controls. A failed AT-SPI lookup is not evidence that the underlying
-feature is absent. Screenshots prove rendered pixels only, not widget identity
-or successful user interaction. The recording/temporal review described below
-is separate visual evidence; `--full-suite` runs it after the shell scenarios
-in the same guest session.
+Notification/DND coverage requires reliable notification delivery and accessible controls. A failed AT-SPI lookup is not evidence that the feature is absent. Screenshots show rendered pixels, not by themselves widget identity, user interaction, or a pass. The older `--visual-audit` temporal review and newer `--ui-review` evidence mode are distinct; `--full-suite` runs the former after its shell scenarios, while `--ui-review` runs its own selected matrix.
 
 
 AT-SPI name/role searches still scan the bounded tree to prove a result is unique,

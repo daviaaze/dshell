@@ -140,15 +140,20 @@ class Atspi:
         if len(fields) != 5 or fields[0] not in ("iiii", "(iiii)"):
             return None
         try:
-            return [int(value) for value in fields[1:]]
+            bounds = [int(value) for value in fields[1:]]
+            if coordinates == SCREEN_COORDS and bounds == [0, 0, 0, 0]:
+                return None
+            return bounds
         except ValueError:
             return None
 
     def summary(self, destination, path):
+        name = self.property_string(destination, path, ACCESSIBLE, "Name")
         return {
             "bus": destination,
             "path": path,
-            "name": self.property_string(destination, path, ACCESSIBLE, "Name"),
+            "name": name,
+            "native_name": name,
             "role": self.string(destination, path, "GetRoleName"),
             "bounds": None,
         }
@@ -218,12 +223,19 @@ def locate(atspi, args, want_actions=False):
         raise AccessibilityError("An exact node requires both --bus and --path")
     if destination and path:
         node = atspi.node(destination, path)
-        name_matches = args.name.casefold() in node["name"].casefold() if contains else node["name"].casefold() == args.name.casefold()
+        identity_name = node.get("native_name", node["name"])
+        name_matches = args.name.casefold() == identity_name.casefold()
         if (not name_matches
                 or (args.role and node["role"].casefold() != args.role.casefold())):
-            raise AccessibilityError("Exact accessible node changed identity; refusing activation: " + json.dumps(node))
+            raise AccessibilityError("Exact accessible node changed native identity; refusing activation: " + json.dumps(node))
         if want_actions:
             node["actions"] = atspi.actions(node)
+            if not node["actions"] and node["role"].casefold() != "tab":
+                raise AccessibilityError("Exact node has no advertised native action: " + json.dumps(node))
+        if getattr(args, "showing", False):
+            words = atspi.state_words(node["bus"], node["path"])
+            if not words[0] & (1 << 25):
+                raise AccessibilityError("Exact node is not currently showing: " + json.dumps(node))
         return node
     try:
         root = atspi.summary(REGISTRY, ROOT_PATH)
@@ -253,6 +265,11 @@ def locate(atspi, args, want_actions=False):
             except AccessibilityError:
                 pass
         if matched and role_matches:
+            if getattr(args, "showing", False):
+                words = atspi.state_words(node["bus"], node["path"])
+                if not words[0] & (1 << 25):
+                    stack.extend(reversed(node.get("children", [])))
+                    continue
             if want_actions:
                 try:
                     node["actions"] = atspi.actions(node)
@@ -316,6 +333,12 @@ def command_find(atspi, args):
     node = locate(atspi, args, want_actions=args.actionable)
     if args.include_state:
         node["state_words"] = atspi.state_words(node["bus"], node["path"])
+    if getattr(args, "include_actions", False):
+        try:
+            node["actions"] = atspi.actions(node)
+        except AccessibilityError as exc:
+            node["actions"] = []
+            node["action_error"] = str(exc)
     if getattr(args, "window_bounds", False):
         node["window_bounds"] = atspi.bounds(node["bus"], node["path"], 1)
     return node
@@ -364,13 +387,81 @@ def command_click(atspi, args):
     return {"clicked": True, "action": action, "node": node}
 
 
+def command_select_row(atspi, args):
+    # Selection is not activation: only selectable native list children qualify.
+    node = locate(atspi, args)
+    if (node["bus"] != args.bus or node["path"] != args.path
+            or node.get("native_name", node["name"]) != args.name or node["role"] != args.role):
+        raise AccessibilityError("Row changed exact bus/path/native-name/role identity; refusing selection: " + json.dumps(node))
+    if node["role"].casefold() != "list item":
+        raise AccessibilityError("select-row supports native list item rows only: " + json.dumps(node))
+    words = atspi.state_words(node["bus"], node["path"])
+    if not words or not (words[0] & (1 << 19)):
+        raise AccessibilityError(
+            "Row is not AT-SPI SELECTABLE; SelectChild cannot activate a nonselectable "
+            "AdwActionRow. Use an advertised native action, or native keyboard navigation "
+            "from a verified focused widget; no activation was attempted: " + json.dumps(node)
+        )
+    parent_reply = atspi.call(
+        node["bus"], node["path"], "org.freedesktop.DBus.Properties",
+        "Get", ACCESSIBLE, "Parent", signature="ss",
+    )
+    if len(parent_reply) != 4 or parent_reply[:2] != ["v", "(so)"]:
+        raise AccessibilityError("Unexpected row parent reply: " + repr(parent_reply))
+    destination, path = parent_reply[2:]
+    parent = atspi.summary(destination, path)
+    if parent["role"].casefold() not in ("list", "list box"):
+        raise AccessibilityError("Row parent is not a native list: " + json.dumps(parent))
+    interfaces = atspi.call(destination, path, ACCESSIBLE, "GetInterfaces")
+    selection = "org.a11y.atspi.Selection"
+    if (len(interfaces) < 2 or interfaces[0] != "as"
+            or interfaces[1] != str(len(interfaces) - 2) or selection not in interfaces[2:]):
+        raise AccessibilityError("Native row parent does not advertise Selection: " + repr(interfaces))
+    children = atspi.children(destination, path)
+    matches = [
+        index for index, child in enumerate(children)
+        if child["bus"] == node["bus"] and child["path"] == node["path"]
+    ]
+    if len(matches) != 1:
+        raise AccessibilityError("Row is not a unique direct child of its native list")
+    index = matches[0]
+    reply = atspi.call(destination, path, selection, "SelectChild", index, signature="i")
+    if reply != ["b", "true"]:
+        raise AccessibilityError("Native row SelectChild was rejected: " + repr(reply))
+    actual = atspi.summary(node["bus"], node["path"])
+    if any(actual[key] != node[key] for key in ("bus", "path", "native_name", "role")):
+        raise AccessibilityError("Row native identity changed after SelectChild: " + json.dumps(actual))
+    current_children = atspi.children(destination, path)
+    if index >= len(current_children) or current_children[index] != children[index]:
+        raise AccessibilityError("Native list child identity changed after SelectChild")
+    selected = atspi.call(destination, path, selection, "IsChildSelected", index, signature="i")
+    if selected != ["b", "true"]:
+        raise AccessibilityError("Native row selection was not confirmed: " + repr(selected))
+    actual["state_words"] = atspi.state_words(node["bus"], node["path"])
+    return {
+        "selected": True, "selection_verified": True, "action": "SelectChild",
+        "reply": reply, "selection_reply": selected, "child_index": index,
+        "parent": parent, "node": actual,
+    }
+
+
+
+
 def command_focus(atspi, args):
     node = locate(atspi, args)
-    reply = atspi.call(node["bus"], node["path"], COMPONENT, "GrabFocus")
+    try:
+        reply = atspi.call(node["bus"], node["path"], COMPONENT, "GrabFocus")
+    except AccessibilityError as exc:
+        raise AccessibilityError(
+            "Native GrabFocus is unavailable for this exact node; no keyboard target "
+            "was established. Navigate from another verified focused widget: " + str(exc)
+        )
     if reply != ["b", "true"]:
-        raise AccessibilityError("AT-SPI rejected focus on " + json.dumps(node))
+        raise AccessibilityError("AT-SPI rejected focus; no keyboard target was established: " + json.dumps(node))
     node["state_words"] = atspi.state_words(node["bus"], node["path"])
-    return {"focused": True, "node": node}
+    if not node["state_words"] or not (node["state_words"][0] & (1 << 12)):
+        raise AccessibilityError("GrabFocus returned true but native FOCUSED state was not confirmed: " + json.dumps(node))
+    return {"focused": True, "focus_verified": True, "node": node}
 
 
 def command_set_text(atspi, args):
@@ -386,6 +477,18 @@ def command_set_value(atspi, args):
     node = locate(atspi, args)
     properties = "org.freedesktop.DBus.Properties"
     interface = "org.a11y.atspi.Value"
+    if args.fraction is None and args.value is None:
+        raise AccessibilityError("set-value requires --value or --fraction")
+    if args.fraction is not None:
+        minimum = atspi.call(node["bus"], node["path"], properties, "Get",
+                             interface, "MinimumValue", signature="ss")
+        maximum = atspi.call(node["bus"], node["path"], properties, "Get",
+                             interface, "MaximumValue", signature="ss")
+        if (len(minimum) != 3 or minimum[:2] != ["v", "d"]
+                or len(maximum) != 3 or maximum[:2] != ["v", "d"]):
+            raise AccessibilityError("Native Value range unavailable for " + json.dumps(node))
+        fraction = min(1.0, max(0.0, args.fraction))
+        args.value = float(minimum[2]) + fraction * (float(maximum[2]) - float(minimum[2]))
     atspi.call(node["bus"], node["path"], properties, "Set",
                interface, "CurrentValue", "d", args.value, signature="ssv")
     reply = atspi.call(node["bus"], node["path"], properties, "Get",
@@ -403,24 +506,28 @@ def make_parser():
     tree.add_argument("--no-bounds", action="store_true", help="skip per-node screen geometry queries")
     find = commands.add_parser("find", help="find one exact accessible name")
     find.add_argument("--include-state", action="store_true", help="include the AT-SPI state bit words for the matched node")
+    find.add_argument("--include-actions", action="store_true", help="report advertised actions without requiring one")
     find.add_argument("--actionable", action="store_true", help="require an available native AT-SPI action")
     find.add_argument("--window-bounds", action="store_true", help="also report native WINDOW-relative bounds; do not treat these as global coordinates")
+    find.add_argument("--showing", action="store_true", help="require the native AT-SPI SHOWING state")
     click = commands.add_parser("click", help="invoke one unambiguous AT-SPI click action")
     focus = commands.add_parser("focus", help="focus one native accessible input")
+    row = commands.add_parser("select-row", help="select and verify an exact selectable native list row (not action-row activation)")
     value = commands.add_parser("set-value", help="set and read back a native AT-SPI Value.CurrentValue")
     text = commands.add_parser("set-text", help="edit a native accessible text input")
     text.add_argument("--text", required=True)
-    value.add_argument("--value", type=float, required=True)
+    value.add_argument("--value", type=float)
+    value.add_argument("--fraction", type=float, help="set fraction of the native Value minimum-to-maximum range")
     for command in (find, click, focus, value, text):
         command.add_argument("--description-match", action="store_true", help="also match the AT-SPI accessible description")
         command.add_argument("--name-contains", action="store_true", help="revalidate a stable name fragment when asynchronous status changes the rest")
-    for command in (tree, find, click, focus, value, text):
+    for command in (tree, find, click, focus, value, text, row):
         command.add_argument("--bus", help="activate only this previously observed accessible bus")
         command.add_argument("--path", help="activate only this previously observed accessible object path")
-    for command in (tree, find, click, focus, value, text):
+    for command in (tree, find, click, focus, value, text, row):
         command.add_argument("--max-depth", type=int, default=DEFAULT_DEPTH)
         command.add_argument("--max-nodes", type=int, default=DEFAULT_NODES)
-    for command in (find, click, focus, value, text):
+    for command in (find, click, focus, value, text, row):
         command.add_argument("--name", required=True)
         command.add_argument("--role")
     return parser
@@ -431,7 +538,7 @@ def main():
     try:
         address = bus_address()
         atspi = Atspi(address)
-        result = {"probe": command_probe, "tree": command_tree, "find": command_find, "click": command_click, "focus": command_focus, "set-value": command_set_value, "set-text": command_set_text}[args.command](atspi, args) if args.command != "probe" else command_probe(atspi)
+        result = {"probe": command_probe, "tree": command_tree, "find": command_find, "click": command_click, "focus": command_focus, "select-row": command_select_row, "set-value": command_set_value, "set-text": command_set_text}[args.command](atspi, args) if args.command != "probe" else command_probe(atspi)
         print(json.dumps(result, ensure_ascii=False))
         return 0
     except AccessibilityError as exc:

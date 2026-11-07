@@ -3,11 +3,11 @@ import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import type Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getApp} from '@shade/services/appHandle';
+import Screenshot from '@shade/services/capture/screenshot';
 import {Gdk2HyprMonitor, monitors} from '@shade/services/monitoring/monitors';
 import {barSettings} from '@shade/services/settings/bar.gschema';
-import Screenshot from '@shade/services/capture/screenshot';
 import WindowManager from '@shade/services/state/windowManager';
-import {type Accessor, bind, computed, For, onCleanup, type JSX} from 'gnim';
+import {type Accessor, bind, computed, For, type JSX, onCleanup} from 'gnim';
 import Clock from './clock';
 import {BAR_EDGE_RESERVE} from './geometry';
 import BluetoothAudio from './indicators/bluetoothAudio';
@@ -182,19 +182,32 @@ function BarWindow({
                     const content = (
                         <BarContent bar={bar} vertical={vertical} hyprMonitor={hyprMonitor} />
                     );
+                    // A NEVER policy propagates the child's minimum along that
+                    // axis, allowing a layer surface to grow beyond its monitor.
+                    // Scroll only along the anchored axis: the compositor supplies
+                    // its available size, including updates when the monitor resizes.
                     return isVertical ? (
                         <Gtk.ScrolledWindow
                             widthRequest={BAR_EDGE_RESERVE}
                             minContentWidth={BAR_EDGE_RESERVE}
                             maxContentWidth={BAR_EDGE_RESERVE}
                             propagateNaturalWidth
+                            propagateNaturalHeight={false}
+                            overlayScrolling
                             hscrollbarPolicy={Gtk.PolicyType.EXTERNAL}
-                            vscrollbarPolicy={Gtk.PolicyType.NEVER}
+                            vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                         >
                             {content}
                         </Gtk.ScrolledWindow>
                     ) : (
-                        content
+                        <Gtk.ScrolledWindow
+                            propagateNaturalWidth={false}
+                            overlayScrolling
+                            hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                            vscrollbarPolicy={Gtk.PolicyType.NEVER}
+                        >
+                            {content}
+                        </Gtk.ScrolledWindow>
                     );
                 }}
             </For>

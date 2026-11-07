@@ -8,6 +8,8 @@ The service's screenshot crop and recording paths differ; a preview or selection
 
 Window selection reads current compositor rectangles at the action boundary rather than Astal's cached positions. DrawingArea-local input is translated through the real canvas origin; area selections round global near/far edges to compositor pixels before invoking capture backends. Selection and review show the actual chosen target and rectangle, or an explicit no-selection state. They remain separate persistent pages; changing or cancelling a selection does not commit capture.
 
+The control panel is centered in a 480px clamp and scrolls vertically on short displays. Long target summaries wrap to at most two lines with an ellipsis and a full-value tooltip. Its input bounds follow the visible centered panel rather than stretching across the monitor, so area drags can begin outside the panel.
+
 Screenshot completion copies PNG bytes asynchronously to the clipboard before publishing the result. The GTK main loop remains available for Wayland clipboard events; clipboard/finalization failures reach the normal capture error state.
 
 Manual: on a suitable session select fullscreen, area, window and monitor targets; verify selection enters review and only explicit confirmation starts capture; cancel at each stage and inspect no result is emitted. Exercise busy/error feedback using actual outcomes, inspect the produced file, and test a multi-output setup separately. These are proposed checks, not new VM results.

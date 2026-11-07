@@ -28,6 +28,8 @@ Search is one `Gtk.SearchEntry` outside the split. It searches task metadata and
 
 Feature pages and their service/schema own setting persistence and effects; the navigation shell does not promise every control has the same write semantics. In particular, Displays preview/confirmation/timed rollback belongs to `LayoutService`; startup-app writes preserve unrelated keyfile entries and reconcile failures; media defaults operate only on readable supported formats; sound controls reflect live endpoint membership/state. Consult the owning page/service before making backend claims.
 
+The hidden Wi-Fi dialog keeps its Cancel/Connect footer outside the vertically scrollable form; it has no fixed 250px height. Escape closes without submitting. Form spacing and the dialog's native surface are independent from the shell layer's outer margins.
+
 ## Manual verification
 
 On a suitable unlocked GTK/Hyprland session: open Settings from the shell and from a routed entry point; navigate all 13 tasks and verify the intended 21 modules; search by page and control label, open a result, use Back, clear search, and test `Ctrl+F`. Repeat at narrow width, close/reopen and inspect lifecycle. For persistence claims, change one concrete setting and inspect its owning service/backend state; for display changes verify preview, confirm and rollback. These are proposed checks, not new VM results.

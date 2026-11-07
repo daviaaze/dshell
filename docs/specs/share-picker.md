@@ -6,4 +6,8 @@ XDPH launches a standalone GTK application, not a shell widget or settings page.
 
 Source cards retain a stable accessible identity while their preview loads or becomes unavailable. The native source grid adapts down to one column; preview status is separate from the source name.
 
+The fixed action row remains outside the review viewport so Back, Cancel and Share stay reachable when a long window title or preview exceeds the available height. The heading and summary are bounded visually; their complete text remains available by tooltip.
+
+The configured XDPH package passes the portal session handle as `XDPH_SESSION_HANDLE`. The picker watches the original requester's unique session-bus name, waits for its initial ownership check before enabling submission, and exits without a selection if that requester disappears. The application stays alive while awaiting the asynchronous check; shutdown removes the watch and preview resources. Malformed portal metadata fails closed. Invocations without portal metadata remain standalone protocol invocations. This handles requester disappearance; it does not claim to make XDPH's synchronous picker call generally asynchronous or fix every cancellation from a still-connected requester.
+
 Manual: invoke through XDPH on a suitable session; inspect previews/tabs, select then review, choose another, cancel and close while confirming no selection line; explicitly share a live source and inspect stdout protocol. Test stale-source rejection and restore-token request state. Proposed checks, not new VM results.

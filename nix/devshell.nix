@@ -5,6 +5,16 @@
   wrapperPackages,
   ...
 }:
+let
+  vncdo =
+    (pkgs.python3Packages.override {
+      overrides = self: super: {
+        vncdo = super.vncdo.overridePythonAttrs (old: {
+          propagatedBuildInputs = (old.propagatedBuildInputs or [ ]) ++ [ self.service-identity ];
+        });
+      };
+    }).vncdo;
+in
 {
   default = pkgs.mkShell {
     LD_PRELOAD = "${pkgs.gtk4-layer-shell}/lib/libgtk4-layer-shell.so";
@@ -30,10 +40,10 @@
         graphviz # dot, for scripts/deps-graph.sh rendering
         ffmpeg-headless # inspect timestamped VM screen recordings
         python3
-        python3Packages.vncdo
         python3Packages.mcp
         openssh # ssh client for VM D-Bus testing
         sshpass # password auth for local VM SSH
-      ]);
+      ])
+      ++ [ vncdo ];
   };
 }

@@ -4,8 +4,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {cityName} from '@shade/core/time';
 import Clock from '@shade/services/time/clock';
-import {IconButton} from '../common/iconButton';
 import {createState, For} from 'gnim';
+import {IconButton} from '../common/iconButton';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 
 export default () => {
@@ -35,22 +35,35 @@ export default () => {
     const TZ_POPOVER_MAX_HEIGHT = 300;
 
     return (
-        <Adw.PreferencesGroup title="Relógios mundiais" description="Adicione fusos horários e consulte a hora local.">
+        <Adw.PreferencesGroup
+            title="Relógios mundiais"
+            description="Adicione fusos horários e consulte a hora local."
+        >
             <Adw.ActionRow
                 title="Adicionar fuso horário"
                 subtitle={general.timezones.as((tzs) => tzs.join(', '))}
             >
-                <Gtk.MenuButton slot="suffix" ref={usePopoverCleanup}>
-                    <Gtk.Button cssClasses={['circular']} iconName="list-add-symbolic" />
-                    <Gtk.Popover>
+                <Gtk.MenuButton
+                    slot="suffix"
+                    ref={usePopoverCleanup}
+                    cssClasses={['circular']}
+                    iconName="list-add-symbolic"
+                    tooltipText="Adicionar fuso horário"
+                >
+                    <Gtk.Popover slot="popover" position={Gtk.PositionType.LEFT}>
                         <Gtk.ScrolledWindow
+                            minContentWidth={240}
+                            minContentHeight={0}
                             maxContentHeight={TZ_POPOVER_MAX_HEIGHT}
+                            propagateNaturalHeight
+                            propagateNaturalWidth
+                            hscrollbarPolicy={Gtk.PolicyType.NEVER}
                             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                         >
                             <Gtk.Box
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={4}
-                                cssClasses={['linked', 'vertical']}
+                                cssClasses={['vertical']}
                             >
                                 <For each={PRESET_TIMEZONES}>
                                     {(tz: string) => (
@@ -77,7 +90,9 @@ export default () => {
                         <Adw.ActionRow
                             title={cityName(tz)}
                             subtitle={wallTime.as((time) => {
-                                const local = timezone ? time.to_timezone(timezone)?.format('%H:%M') : null;
+                                const local = timezone
+                                    ? time.to_timezone(timezone)?.format('%H:%M')
+                                    : null;
                                 return `${tz} — ${local ?? 'Hora indisponível'}`;
                             })}
                         >
@@ -86,7 +101,9 @@ export default () => {
                                     icon="list-remove-symbolic"
                                     accessibleLabel={`Remove ${tz} timezone`}
                                     onClicked={() => {
-                                        general.setTimezones(general.timezones().filter((value) => value !== tz));
+                                        general.setTimezones(
+                                            general.timezones().filter((value) => value !== tz)
+                                        );
                                     }}
                                 />
                             </Gtk.Box>

@@ -489,29 +489,49 @@ function MirrorSourceRow({
     updateMonitor,
 }: {
     service: LayoutService;
-    layout: Layout;
-    monitor: MonitorSpec | undefined;
+    layout: Accessor<Layout>;
+    monitor: Accessor<MonitorSpec | undefined>;
     updateMonitor: DraftModel['updateMonitor'];
 }) {
-    if (!monitor) return null;
-    const choices = buildMirrorChoices(layout, monitor, service.monitors);
-    const selectedIndex = Math.max(
-        0,
-        choices.findIndex((choice) => choice.source === (monitor.mirror ?? null))
-    );
+    const outputs = bind(service, 'monitors');
+    const choices = computed(() => {
+        const current = monitor();
+        return current ? buildMirrorChoices(layout(), current, outputs()) : [];
+    });
+    let synchronizing = false;
     return (
         <Adw.ComboRow
             title="Origem do espelhamento"
-            model={new Gtk.StringList({strings: choices.map((choice) => choice.label)})}
-            selected={selectedIndex}
-            sensitive={!monitor.disabled}
+            ref={(row) => {
+                const synchronize = () => {
+                    synchronizing = true;
+                    try {
+                        row.model = new Gtk.StringList({
+                            strings: choices().map((choice) => choice.label),
+                        });
+                        row.selected = Math.max(
+                            0,
+                            choices().findIndex(
+                                (choice) => choice.source === (monitor()?.mirror ?? null)
+                            )
+                        );
+                    } finally {
+                        synchronizing = false;
+                    }
+                };
+                onCleanup(choices.subscribe(synchronize));
+                synchronize();
+            }}
+            sensitive={monitor.as((current) => !!current && !current.disabled)}
             onNotifySelected={(row) => {
-                const selected = choices[row.selected];
-                if (!selected || (monitor.mirror ?? null) === selected.source) return;
+                if (synchronizing) return;
+                const current = monitor();
+                const selected = choices()[row.selected];
+                if (!current || !selected || (current.mirror ?? null) === selected.source) return;
                 const source = selected.source
-                    ? layout.monitors.find((spec) => spec.name === selected.source)
+                    ? layout().monitors.find((spec) => spec.name === selected.source)
                     : null;
-                updateMonitor(monitor.name, (spec) => ({
+                updateMonitor(current.name, (spec) => ({
                     ...spec,
                     mirror: selected.source,
                     position: source?.position ?? spec.position,
@@ -526,25 +546,45 @@ function ResolutionRow({
     output,
     updateMonitor,
 }: {
-    monitor: MonitorSpec | undefined;
-    output: OutputInfo;
+    monitor: Accessor<MonitorSpec | undefined>;
+    output: Accessor<OutputInfo | undefined>;
     updateMonitor: DraftModel['updateMonitor'];
 }) {
-    const modes = output.modes.map(
-        (mode) => `${mode.width}x${mode.height}@${mode.refreshRate.toFixed(2)}`
+    const modes = output.as((current) =>
+        (current?.modes ?? []).map(
+            (mode) => `${mode.width}x${mode.height}@${mode.refreshRate.toFixed(2)}`
+        )
     );
-    const modeIndex = Math.max(0, modes.indexOf(monitor?.resolution ?? output.resolution));
+    const selection = computed(() => ({
+        modes: modes(),
+        resolution: monitor()?.resolution ?? output()?.resolution,
+    }));
+    let synchronizing = false;
     return (
         <Adw.ComboRow
             title="Resolução e taxa de atualização"
-            model={new Gtk.StringList({strings: modes})}
-            selected={modeIndex}
-            sensitive={modes.length > 0 && !!monitor && !monitor.disabled}
+            ref={(row) => {
+                const synchronize = () => {
+                    synchronizing = true;
+                    try {
+                        const current = selection();
+                        row.model = new Gtk.StringList({strings: current.modes});
+                        row.selected = Math.max(0, current.modes.indexOf(current.resolution ?? ''));
+                    } finally {
+                        synchronizing = false;
+                    }
+                };
+                onCleanup(selection.subscribe(synchronize));
+                synchronize();
+            }}
+            sensitive={computed(() => modes().length > 0 && !!monitor() && !monitor()?.disabled)}
             onNotifySelected={(row) => {
-                if (!monitor) return;
-                const mode = modes[row.selected];
-                if (mode && mode !== monitor.resolution) {
-                    updateMonitor(monitor.name, (spec) => ({...spec, resolution: mode}));
+                if (synchronizing) return;
+                const current = monitor();
+                if (!current) return;
+                const mode = modes()[row.selected];
+                if (mode && mode !== current.resolution) {
+                    updateMonitor(current.name, (spec) => ({...spec, resolution: mode}));
                 }
             }}
         />
@@ -556,26 +596,35 @@ function ScaleRow({
     output,
     updateMonitor,
 }: {
-    monitor: MonitorSpec | undefined;
-    output: OutputInfo;
+    monitor: Accessor<MonitorSpec | undefined>;
+    output: Accessor<OutputInfo | undefined>;
     updateMonitor: DraftModel['updateMonitor'];
 }) {
+    const scale = computed(() => monitor()?.scale ?? output()?.scale ?? 1);
+    let synchronizing = false;
     return (
         <Adw.ActionRow title="Escala">
             <Gtk.SpinButton
-                adjustment={Gtk.Adjustment.new(
-                    monitor?.scale ?? output.scale,
-                    0.5,
-                    3,
-                    0.05,
-                    0.1,
-                    0
-                )}
+                adjustment={Gtk.Adjustment.new(1, 0.5, 3, 0.05, 0.1, 0)}
+                ref={(spin) => {
+                    const synchronize = () => {
+                        synchronizing = true;
+                        try {
+                            spin.value = scale();
+                        } finally {
+                            synchronizing = false;
+                        }
+                    };
+                    onCleanup(scale.subscribe(synchronize));
+                    synchronize();
+                }}
                 digits={2}
-                sensitive={!!monitor && !monitor.disabled}
+                sensitive={monitor.as((current) => !!current && !current.disabled)}
                 onValueChanged={(spin) => {
-                    if (monitor && Math.abs(monitor.scale - spin.value) > 0.0001) {
-                        updateMonitor(monitor.name, (spec) => ({...spec, scale: spin.value}));
+                    if (synchronizing) return;
+                    const current = monitor();
+                    if (current && Math.abs(current.scale - spin.value) > 0.0001) {
+                        updateMonitor(current.name, (spec) => ({...spec, scale: spin.value}));
                     }
                 }}
             />
@@ -588,8 +637,8 @@ function RotationRow({
     output,
     updateMonitor,
 }: {
-    monitor: MonitorSpec | undefined;
-    output: OutputInfo;
+    monitor: Accessor<MonitorSpec | undefined>;
+    output: Accessor<OutputInfo | undefined>;
     updateMonitor: DraftModel['updateMonitor'];
 }) {
     return (
@@ -600,11 +649,12 @@ function RotationRow({
                     strings: ['Normal', '90° horário', '180°', '90° anti-horário'],
                 })
             }
-            selected={(monitor?.transform ?? output.transform) % 4}
-            sensitive={!!monitor && !monitor.disabled}
+            selected={computed(() => (monitor()?.transform ?? output()?.transform ?? 0) % 4)}
+            sensitive={monitor.as((current) => !!current && !current.disabled)}
             onNotifySelected={(row) => {
-                if (monitor && row.selected !== monitor.transform % 4) {
-                    updateMonitor(monitor.name, (spec) => ({
+                const current = monitor();
+                if (current && row.selected !== current.transform % 4) {
+                    updateMonitor(current.name, (spec) => ({
                         ...spec,
                         transform: row.selected,
                     }));
@@ -614,14 +664,26 @@ function RotationRow({
     );
 }
 
-function DisplayPowerRow({service, output}: {service: LayoutService; output: OutputInfo}) {
+function DisplayPowerRow({
+    service,
+    output,
+}: {
+    service: LayoutService;
+    output: Accessor<OutputInfo | undefined>;
+}) {
     return (
-        <Adw.ActionRow title="Tela ligada" subtitle="Controle de energia da saída; separado de habilitar no arranjo.">
+        <Adw.ActionRow
+            title="Tela ligada"
+            subtitle="Controle de energia da saída; separado de habilitar no arranjo."
+        >
             <Gtk.Switch
-                active={output.dpms}
+                valign={Gtk.Align.CENTER}
+                active={output.as((current) => current?.dpms ?? false)}
+                sensitive={output.as((current) => !!current)}
                 onNotifyActive={(self) => {
-                    if (self.active !== output.dpms) {
-                        void service.setDpms(output.name, self.active).catch(() => undefined);
+                    const current = output();
+                    if (current && self.active !== current.dpms) {
+                        void service.setDpms(current.name, self.active).catch(() => undefined);
                     }
                 }}
             />
@@ -637,27 +699,30 @@ function DisplayOutputEditor({
     setDraftIfChanged,
 }: {
     service: LayoutService;
-    output: OutputInfo;
-    layout: Layout;
+    output: Accessor<OutputInfo | undefined>;
+    layout: Accessor<Layout>;
     updateMonitor: DraftModel['updateMonitor'];
     setDraftIfChanged: DraftModel['setIfChanged'];
 }) {
-    const monitor = layout.monitors.find((spec) => spec.name === output.name);
-    if (!monitor) return null;
-    const enabled = !monitor.disabled;
-    const mirrorCaption = monitor.mirror ? ` · Espelha ${monitor.mirror}` : '';
+    const monitor = computed(() => layout().monitors.find((spec) => spec.name === output()?.name));
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
             <Adw.ActionRow
-                title={output.description || output.name}
-                subtitle={`${enabled ? 'Habilitada' : 'Desabilitada'} · ${monitor.resolution}${mirrorCaption}`}
+                title={output.as((current) => current?.description || current?.name || '')}
+                subtitle={monitor.as((current) =>
+                    current
+                        ? `${!current.disabled ? 'Habilitada' : 'Desabilitada'} · ${current.resolution}${current.mirror ? ` · Espelha ${current.mirror}` : ''}`
+                        : ''
+                )}
             >
                 <Gtk.Switch
-                    active={enabled}
+                    valign={Gtk.Align.CENTER}
+                    active={monitor.as((current) => !!current && !current.disabled)}
+                    sensitive={monitor.as((current) => !!current)}
                     onNotifyActive={(self) => {
-                        const current = layout.monitors.find((spec) => spec.name === output.name);
+                        const current = monitor();
                         if (!current || current.disabled === !self.active) return;
-                        const next = setLayoutOutputEnabled(layout, output.name, self.active);
+                        const next = setLayoutOutputEnabled(layout(), current.name, self.active);
                         if (next) setDraftIfChanged(next);
                         else self.active = !current.disabled;
                     }}
@@ -689,18 +754,7 @@ function ConnectedDisplays({
     setDraftIfChanged: DraftModel['setIfChanged'];
 }) {
     const outputs = bind(service, 'monitors');
-    const editorRows = computed(() => {
-        const layout = draft();
-        return outputs().map((output) => (
-            <DisplayOutputEditor
-                service={service}
-                output={output}
-                layout={layout}
-                updateMonitor={updateMonitor}
-                setDraftIfChanged={setDraftIfChanged}
-            />
-        ));
-    });
+    const outputNames = outputs.as((items) => items.map((output) => output.name));
     return (
         <Adw.PreferencesGroup title="Telas conectadas">
             <Adw.ActionRow
@@ -708,7 +762,17 @@ function ConnectedDisplays({
                 title="Nenhuma tela detectada"
                 subtitle="Conecte uma tela. As saídas disponíveis são atualizadas automaticamente."
             />
-            {editorRows}
+            <For each={outputNames}>
+                {(name: string) => (
+                    <DisplayOutputEditor
+                        service={service}
+                        output={outputs.as((items) => items.find((output) => output.name === name))}
+                        layout={draft}
+                        updateMonitor={updateMonitor}
+                        setDraftIfChanged={setDraftIfChanged}
+                    />
+                )}
+            </For>
             <Adw.ActionRow
                 visible={outputs.as((items) => items.length === 0)}
                 title="Revisar saídas"
@@ -732,8 +796,12 @@ function SavedLayouts({
     const [layoutName, setLayoutName] = createState('');
     return (
         <Adw.PreferencesGroup title="Layouts salvos">
-            <Adw.ActionRow title="Aplicar automaticamente layouts correspondentes" subtitle="Somente layouts compatíveis e validados.">
+            <Adw.ActionRow
+                title="Aplicar automaticamente layouts correspondentes"
+                subtitle="Somente layouts compatíveis e validados."
+            >
                 <Gtk.Switch
+                    valign={Gtk.Align.CENTER}
                     active={bind(service, 'autoApply')}
                     onNotifyActive={(self) => {
                         monitorsSettings().setAutoApply(self.active);
@@ -824,19 +892,22 @@ export default () => {
                     title={bind(service, 'pending').as((deadline) =>
                         deadline === null ? 'Estado confirmado' : 'Prévia em andamento'
                     )}
-                    subtitle={bind(service, 'pending').as((deadline) =>
-                        deadline === null
-                            ? saveEligible()
-                                ? 'Alterações confirmadas. Este layout pode ser salvo.'
-                                : 'O arranjo atual está confirmado.'
-                            : `Confirme as alterações antes do prazo ou restaure o estado anterior.`
-                    )}
+                    subtitle={bind(service, 'pending').as((deadline) => {
+                        if (deadline !== null) {
+                            return 'Confirme as alterações antes do prazo ou restaure o estado anterior.';
+                        }
+                        return saveEligible()
+                            ? 'Alterações confirmadas. Este layout pode ser salvo.'
+                            : 'O arranjo atual está confirmado.';
+                    })}
                 />
                 <Gtk.Box spacing={8}>
                     <Gtk.Button
                         label="Aplicar alterações"
                         hexpand
-                        sensitive={computed(() => service.monitors.length > 0 && service.pending === null)}
+                        sensitive={computed(
+                            () => service.monitors.length > 0 && service.pending === null
+                        )}
                         onClicked={() => void actions.applyDraft()}
                     />
                     <Gtk.Button

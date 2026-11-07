@@ -1,4 +1,5 @@
 import Adw from 'gi://Adw?version=1';
+import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import {timerSettings} from '@shade/services/time/timer.gschema';
@@ -33,22 +34,17 @@ export const TimerSection = () => {
 
     const [selectedMode, setSelectedMode] = createState<'countdown' | 'pomodoro'>('countdown');
 
-    const readCustom = (self: Gtk.Button) => {
-        const box = self.get_parent();
-        if (!(box instanceof Gtk.Box)) return;
-        const spins: Gtk.SpinButton[] = [];
-        let child = box.get_first_child();
-        while (child) {
-            if (child instanceof Gtk.SpinButton) spins.push(child);
-            child = child.get_next_sibling();
-        }
-        if (spins.length >= 3) {
-            const h = spins[0]!.get_value_as_int();
-            const m = spins[1]!.get_value_as_int();
-            const s = spins[2]!.get_value_as_int();
-            const ms = (h * 3600 + m * 60 + s) * 1000;
-            if (ms > 0) bus.emit('timer:cmd:start-countdown', ms);
-        }
+    let hoursInput: Gtk.SpinButton | undefined;
+    let minutesInput: Gtk.SpinButton | undefined;
+    let secondsInput: Gtk.SpinButton | undefined;
+
+    const readCustom = () => {
+        if (!hoursInput || !minutesInput || !secondsInput) return;
+        const h = hoursInput.get_value_as_int();
+        const m = minutesInput.get_value_as_int();
+        const s = secondsInput.get_value_as_int();
+        const ms = (h * 3600 + m * 60 + s) * 1000;
+        if (ms > 0) bus.emit('timer:cmd:start-countdown', ms);
     };
 
     return (
@@ -165,32 +161,68 @@ export const TimerSection = () => {
                     ></Gtk.Grid>
 
                     {/* Custom entry */}
-                    <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
-                        <Gtk.SpinButton
-                            adjustment={Gtk.Adjustment.new(0, 0, 99, 1, 10, 0)}
-                            digits={0}
-                            valign={Gtk.Align.CENTER}
-                            widthRequest={52}
-                        />
-                        <Gtk.Label label="h" cssClasses={['caption', 'dimmed']} />
-                        <Gtk.SpinButton
-                            adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
-                            digits={0}
-                            valign={Gtk.Align.CENTER}
-                            widthRequest={52}
-                        />
-                        <Gtk.Label label="m" cssClasses={['caption', 'dimmed']} />
-                        <Gtk.SpinButton
-                            adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
-                            digits={0}
-                            valign={Gtk.Align.CENTER}
-                            widthRequest={52}
-                        />
-                        <Gtk.Label label="s" cssClasses={['caption', 'dimmed']} />
+                    <Gtk.Box
+                        orientation={Gtk.Orientation.VERTICAL}
+                        spacing={4}
+                        halign={Gtk.Align.CENTER}
+                    >
+                        <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
+                            <Gtk.SpinButton
+                                adjustment={Gtk.Adjustment.new(0, 0, 99, 1, 10, 0)}
+                                digits={0}
+                                valign={Gtk.Align.CENTER}
+                                widthRequest={52}
+                                tooltipText="Hours"
+                                ref={(self) => {
+                                    hoursInput = self;
+                                    self.update_property(
+                                        [Gtk.AccessibleProperty.LABEL],
+                                        [new GObject.Value(GObject.TYPE_STRING, 'Hours')]
+                                    );
+                                }}
+                            />
+                            <Gtk.Label label="h" cssClasses={['caption', 'dimmed']} />
+                            <Gtk.SpinButton
+                                adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
+                                digits={0}
+                                valign={Gtk.Align.CENTER}
+                                widthRequest={52}
+                                tooltipText="Minutes"
+                                ref={(self) => {
+                                    minutesInput = self;
+                                    self.update_property(
+                                        [Gtk.AccessibleProperty.LABEL],
+                                        [new GObject.Value(GObject.TYPE_STRING, 'Minutes')]
+                                    );
+                                }}
+                            />
+                            <Gtk.Label label="m" cssClasses={['caption', 'dimmed']} />
+                            <Gtk.SpinButton
+                                adjustment={Gtk.Adjustment.new(0, 0, 59, 1, 10, 0)}
+                                digits={0}
+                                valign={Gtk.Align.CENTER}
+                                widthRequest={52}
+                                tooltipText="Seconds"
+                                ref={(self) => {
+                                    secondsInput = self;
+                                    self.update_property(
+                                        [Gtk.AccessibleProperty.LABEL],
+                                        [new GObject.Value(GObject.TYPE_STRING, 'Seconds')]
+                                    );
+                                }}
+                            />
+                            <Gtk.Label label="s" cssClasses={['caption', 'dimmed']} />
+                        </Gtk.Box>
                         <Gtk.Button
                             cssClasses={['circular']}
                             iconName="media-playback-start-symbolic"
                             tooltipText="Start custom timer"
+                            ref={(self) =>
+                                self.update_property(
+                                    [Gtk.AccessibleProperty.LABEL],
+                                    [new GObject.Value(GObject.TYPE_STRING, 'Start custom timer')]
+                                )
+                            }
                             onClicked={readCustom}
                         />
                     </Gtk.Box>

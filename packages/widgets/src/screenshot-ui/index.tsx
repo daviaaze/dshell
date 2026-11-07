@@ -208,12 +208,19 @@ function OverlayBackground({ss}: {ss: Screenshot}) {
 }
 
 /** DrawingArea overlay with drag/click gestures for region selection. */
-function SelectionArea({state}: {state: OverlayState}) {
+function SelectionArea({
+    state,
+    onResize,
+}: {
+    state: OverlayState;
+    onResize: (height: number) => void;
+}) {
     return (
         <Gtk.DrawingArea
             slot="overlay"
             focusable
-            onMap={self => {
+            onResize={(_self, _width, height) => onResize(height)}
+            onMap={(self) => {
                 updateCanvasOrigin(state);
                 self.grab_focus();
             }}
@@ -231,9 +238,7 @@ function SelectionArea({state}: {state: OverlayState}) {
                     })
                 );
                 // Controllers must be added imperatively — Gtk.Overlay cannot
-                // mount Gtk.EventController as a buildable child (gnim GTK4
-                // renderer appends them via vfunc_add_child, which GTK4
-                // ignores for controllers, so drag/click never attached).
+                // mount Gtk.EventController as a buildable child.
                 const drag = Gtk.GestureDrag.new();
                 drag.connect('drag-begin', (_g, sx, sy) => {
                     if (state.ss.selectedTarget !== 'area' || state.reviewing()) return;
@@ -331,6 +336,10 @@ export default () => {
         if (selectedTarget === 'monitor') return `Monitor ${monitor?.name ?? ''} · ${rectangle}`;
         return `Area · ${rectangle}`;
     });
+    // Panel margins are 24px top/bottom; track the real overlay height so the
+    // panel stays inside short monitors regardless of scale or reserved areas.
+    const [overlayHeight, setOverlayHeight] = createState(600);
+    const panelMaxHeight = overlayHeight.as((height) => Math.max(200, Math.min(600, height - 48)));
     return (
         <Astal.Window
             ref={(self) => {
@@ -380,13 +389,19 @@ export default () => {
 
                 {/* Overlay layer: selection surface (needs explicit overlay slot or
                     it replaces the main child and the stage never renders). */}
-                <SelectionArea state={state} />
+                <SelectionArea
+                    state={state}
+                    onResize={(height) => {
+                        if (height > 0 && height !== overlayHeight()) setOverlayHeight(height);
+                    }}
+                />
 
                 <ControlPanel
                     quick={bind(ss, 'overlayQuick')}
                     ss={ss}
                     reviewing={reviewing}
                     targetSummary={targetSummary}
+                    maxHeight={panelMaxHeight}
                     onBack={() => setReviewing(false)}
                     onReview={() => reviewCurrentSelection(state)}
                     onCapture={() => executeCapture(state)}

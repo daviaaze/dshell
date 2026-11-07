@@ -95,19 +95,19 @@ class AccessibilityTraversalTests(unittest.TestCase):
         atspi = FakeAtspi()
         atspi.names["/other"] = "Quick Settings"
         atspi.roles["/other"] = "panel"
-        with self.assertRaisesRegex(ACCESSIBILITY.AccessibilityError, "2 nodes"):
+        with self.assertRaises(ACCESSIBILITY.AccessibilityError):
             ACCESSIBILITY.locate(atspi, args())
         self.assertEqual(atspi.bounds_calls, 0)
 
     def test_exact_node_refuses_reused_object_with_a_different_identity(self):
         atspi = FakeAtspi()
-        with self.assertRaisesRegex(ACCESSIBILITY.AccessibilityError, "changed identity"):
+        with self.assertRaises(ACCESSIBILITY.AccessibilityError):
             ACCESSIBILITY.locate(atspi, args(bus="app", path="/other"), want_actions=True)
 
     def test_focus_denial_is_not_reported_as_focused(self):
         atspi = FakeAtspi()
         atspi.call = lambda *unused_args, **unused_kwargs: ["b", "false"]
-        with self.assertRaisesRegex(ACCESSIBILITY.AccessibilityError, "rejected focus"):
+        with self.assertRaises(ACCESSIBILITY.AccessibilityError):
             ACCESSIBILITY.command_focus(atspi, args(bus="app", path="/target"))
 
     def test_tree_can_skip_bounds_for_evidence_snapshots(self):

@@ -58,6 +58,7 @@
 | Element | Token / style class | Notes |
 |---------|--------------------|-------|
 | Window background | Configured wallpaper with native theme fallback | No other user's preferences are copied |
+| Clock | Native `card` with 12px internal GTK insets | Keeps theme foreground paired with a surface rather than drawing it directly over an arbitrary wallpaper; [`clock.tsx`](../../apps/greeter/src/greeter-ui/clock.tsx) |
 | Avatar | `Adw.Avatar(size=64, showInitials)` | Inside the account/authentication panel |
 | Identity and headings | `title-2`, `title-3`, `heading` | Persistent labels, wrapping content |
 | Login form | Native `card`, GTK margins, `Adw.Clamp` and scroller | Adapts to available output space without a fixed minimum form width |

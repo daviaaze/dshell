@@ -200,13 +200,13 @@ export const WeatherWidget = () => {
             <HourlyForecastSection hourlyForecast={hourlyForecast} />
 
             {/* ── Separator ── */}
-            <Gtk.Separator />
+            <Gtk.Separator visible={hourlyForecast.as((items) => items.length > 0)} />
 
             {/* ── Daily Forecast ── */}
             <DailyForecastSection dailyForecast={dailyForecast} />
 
             {/* ── Separator ── */}
-            <Gtk.Separator />
+            <Gtk.Separator visible={dailyForecast.as((items) => items.length > 0)} />
 
             {/* ── Details Line ── */}
             <DetailsLine

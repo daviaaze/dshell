@@ -28,7 +28,9 @@
       astalNetwork = astal.packages.${system}.network.overrideAttrs (old: {
         patches = (old.patches or []) ++ [ ./nix/patches/astal-network-ap-key.patch ];
       });
-      xdpHyprland = hyprlandPackages.xdg-desktop-portal-hyprland;
+      xdpHyprland = hyprlandPackages.xdg-desktop-portal-hyprland.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ./nix/patches/xdph-picker-owner.patch ];
+      });
 
       astalPackages = with astal.packages.${system}; [
         apps

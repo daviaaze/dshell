@@ -1,10 +1,10 @@
 import type Tray from 'gi://AstalTray';
-import Gtk from 'gi://Gtk?version=4.0';
 import GObject from 'gi://GObject?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import TrayService from '@shade/services/desktop/trayService';
 import {barSettings} from '@shade/services/settings/bar.gschema';
-import {bind, For} from 'gnim';
+import {bind, effect, For} from 'gnim';
 import {IconButton, IconMenuButton} from '../common/iconButton';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 import {PowerMenu} from '../common/powerMenu';
@@ -65,33 +65,58 @@ export const TrayBox = () => {
     return (
         <Gtk.Box spacing={4} homogeneous halign={Gtk.Align.CENTER}>
             <For each={bind(tray, 'items')}>
-                {(item: Tray.TrayItem) => (
-                    <Gtk.MenuButton
-                        cssClasses={['circular']}
-                        ref={(self) => {
-                            self.insert_action_group('dbusmenu', item.actionGroup);
-                            const label = item.tooltipMarkup?.replace(/<[^>]*>/g, '').trim();
-                            self.update_property(
-                                [Gtk.AccessibleProperty.LABEL],
-                                [
-                                    new GObject.Value(
-                                        GObject.TYPE_STRING,
-                                        label || 'System tray item'
-                                    ),
-                                ]
-                            );
-                            usePopoverCleanup(self);
-                        }}
-                        tooltipMarkup={bind(item, 'tooltip-markup')}
-                    >
-                        <Gtk.PopoverMenu
-                            slot="popover"
-                            cssClasses={['menu']}
-                            menuModel={item.menuModel}
-                        />
-                        <Gtk.Image visible={!!item.gicon} gicon={item.gicon} />
-                    </Gtk.MenuButton>
-                )}
+                {(item: Tray.TrayItem) => {
+                    const tooltip = bind(item, 'tooltip-markup');
+                    const title = bind(item, 'title');
+                    const icon = bind(item, 'gicon');
+                    const menu = bind(item, 'menu-model');
+                    const actions = bind(item, 'action-group');
+                    return (
+                        <Gtk.MenuButton
+                            cssClasses={['circular']}
+                            ref={(self) => {
+                                effect(() => self.insert_action_group('dbusmenu', actions()));
+                                effect(() => {
+                                    const label = tooltip()
+                                        ?.replace(/<[^>]*>/g, '')
+                                        .trim();
+                                    self.update_property(
+                                        [Gtk.AccessibleProperty.LABEL],
+                                        [
+                                            new GObject.Value(
+                                                GObject.TYPE_STRING,
+                                                label || title() || 'System tray item'
+                                            ),
+                                        ]
+                                    );
+                                });
+                                usePopoverCleanup(self);
+                            }}
+                            tooltipMarkup={tooltip}
+                        >
+                            <Gtk.PopoverMenu
+                                slot="popover"
+                                ref={(self) => {
+                                    self.connect('map', () => {
+                                        const child = self.get_child();
+                                        const surface = self.get_native()?.get_surface();
+                                        const monitor = surface
+                                            ?.get_display()
+                                            .get_monitor_at_surface(surface);
+                                        if (child instanceof Gtk.ScrolledWindow && monitor) {
+                                            child.maxContentHeight = Math.floor(
+                                                monitor.geometry.height / 2
+                                            );
+                                        }
+                                    });
+                                }}
+                                cssClasses={['menu']}
+                                menuModel={menu}
+                            />
+                            <Gtk.Image visible={icon.as((value) => !!value)} gicon={icon} />
+                        </Gtk.MenuButton>
+                    );
+                }}
             </For>
             <SettingsButton />
             <RotateButton />
@@ -100,4 +125,3 @@ export const TrayBox = () => {
         </Gtk.Box>
     );
 };
-

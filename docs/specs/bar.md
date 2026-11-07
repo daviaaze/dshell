@@ -26,6 +26,7 @@
 | Vertical title/recording/Bluetooth content stacks; long values use bounded labels and full-value tooltips; month is abbreviated | Bar leaf components |
 | Vertical usage/indicator buttons remove horizontal native padding; usage labels stay bounded with full-value tooltips at enlarged fonts | [`systemUsage.tsx`](../../packages/widgets/src/bar/systemUsage.tsx), [`systemIndicators.tsx`](../../packages/widgets/src/bar/systemIndicators.tsx) |
 | Focused-client title/class changes update the bounded label and tooltip without requiring a different focused window | [`windowTitle.tsx`](../../packages/widgets/src/bar/windowTitle.tsx) |
+| The bar's long-axis content scrolls inside the compositor-allotted layer; the 48px width/height is the reserved cross-axis size, not a promise that every vertically stacked control fits a short output simultaneously | [`index.tsx`](../../packages/widgets/src/bar/index.tsx) |
 
 
 Component-specific interactions and fallback behavior should be verified in the owning component before adding them here.

@@ -4,13 +4,13 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getApp} from '@shade/services/appHandle';
 import {getHyprland} from '@shade/services/hyprland';
-import {openSettings} from '../settings/settingsOpen';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {bind, computed, onCleanup} from 'gnim';
 import {BAR_EDGE_RESERVE} from '../bar/geometry';
+import {openSettings} from '../settings/settingsOpen';
 import {isHistoryClearDialogOpen, NotificationList} from './list';
 
 const WIDTH = 544;
@@ -61,11 +61,8 @@ export default () => {
             application={getApp()}
             visible={bind(state, 'notificationsOpen')}
             keymode={Astal.Keymode.ON_DEMAND}
-            anchor={position.as(p => TOP | (p === LEFT ? LEFT : RIGHT))}
-            marginTop={MARGIN}
-            marginBottom={MARGIN}
-            marginStart={MARGIN}
-            marginEnd={MARGIN}
+            anchor={position.as((p) => TOP | (p === LEFT ? LEFT : RIGHT))}
+            margin={MARGIN}
             widthRequest={width}
             monitor={monitor.as((m) => monitorIndexFromHyprland(m))}
             cssClasses={[]}
@@ -109,6 +106,7 @@ export default () => {
                 {header}
                 <Gtk.ScrolledWindow
                     propagateNaturalHeight
+                    minContentHeight={0}
                     maxContentWidth={width}
                     maxContentHeight={maxHeight}
                     hscrollbarPolicy={Gtk.PolicyType.NEVER}

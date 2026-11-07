@@ -34,16 +34,10 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
                 <Adw.ButtonContent iconName="weather-clear-symbolic" label="Indefinitely" />
             </Gtk.Button>
             <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 5)}>
-                <Adw.ButtonContent
-                    iconName="preferences-system-time-symbolic"
-                    label="5 minutes"
-                />
+                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="5 minutes" />
             </Gtk.Button>
             <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 15)}>
-                <Adw.ButtonContent
-                    iconName="preferences-system-time-symbolic"
-                    label="15 minutes"
-                />
+                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="15 minutes" />
             </Gtk.Button>
             <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 60)}>
                 <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="1 hour" />
@@ -65,7 +59,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
                 intent="toggle"
                 active={idle}
                 icon={icon}
-                domain="Sleep prevention"
+                domain={'Sleep\nprevention'}
                 value={value}
                 actionLabel={actionLabel}
                 onClick={() => {

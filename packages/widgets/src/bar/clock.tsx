@@ -1,8 +1,7 @@
-import Pango from 'gi://Pango?version=1.0';
-import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import Pango from 'gi://Pango?version=1.0';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {cityName, fmtDuration, fmtOffset} from '@shade/core/time';
 import Clock from '@shade/services/time/clock';
@@ -145,6 +144,7 @@ export default ({
 
     return (
         <Gtk.MenuButton
+            direction={vertical.as((v) => (v ? Gtk.ArrowType.RIGHT : Gtk.ArrowType.UP))}
             cssClasses={vertical.as((v) =>
                 v ? ['flat', 'bar-vertical-content-button'] : ['flat']
             )}

@@ -2,10 +2,11 @@ import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Mpris from 'gi://AstalMpris';
 import Gio from 'gi://Gio?version=2.0';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import MediaController from '@shade/services/session/mediaController';
 import {exactQuery} from '@shade/services/state/apps';
-import {bind, For} from 'gnim';
+import {bind, For, onCleanup} from 'gnim';
 
 function lengthStr(length: number) {
     const min = Math.floor(length / 60);
@@ -60,12 +61,24 @@ const TitleArtist = ({player}: {player: Mpris.Player}) => {
     );
 };
 
+function setPlaybackLabel(button: Gtk.Button, label: string) {
+    button.update_property(
+        [Gtk.AccessibleProperty.LABEL],
+        [new GObject.Value(GObject.TYPE_STRING, label)]
+    );
+}
+
 const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) => {
     const mc = MediaController.get_default();
+    const playbackLabel = bind(player, 'playback-status').as((status) =>
+        status === Mpris.PlaybackStatus.PLAYING ? 'Pause' : 'Play'
+    );
     return (
         <Gtk.Box slot={slot}>
             <Gtk.Button
                 iconName={'media-skip-backward-symbolic'}
+                tooltipText="Previous track"
+                ref={(button) => setPlaybackLabel(button, 'Previous track')}
                 onClicked={() => {
                     mc.setActivePlayer(player);
                     mc.previous();
@@ -79,10 +92,18 @@ const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) 
                         ? 'media-playback-pause-symbolic'
                         : 'media-playback-start-symbolic'
                 )}
+                tooltipText={playbackLabel}
+                ref={(button) => {
+                    const update = () => setPlaybackLabel(button, playbackLabel());
+                    onCleanup(playbackLabel.subscribe(update));
+                    update();
+                }}
                 onClicked={() => mc.playPause()}
             />
             <Gtk.Button
                 iconName={'media-skip-forward-symbolic'}
+                tooltipText="Next track"
+                ref={(button) => setPlaybackLabel(button, 'Next track')}
                 onClicked={() => {
                     mc.setActivePlayer(player);
                     mc.next();

@@ -1,17 +1,22 @@
 import Gtk from 'gi://Gtk?version=4.0';
+import Pango from 'gi://Pango?version=1.0';
 import type {ClipboardEntry} from '@shade/services/clipboard/encryptedStore';
-import {copyClipboardItem, formatClipboardPreview} from '@shade/services/clipboard/index';
+import {copyClipboardItem} from '@shade/services/clipboard/index';
 import WindowManager from '@shade/services/state/windowManager';
 
 export default ({item}: {item: ClipboardEntry}) => {
-    const preview = formatClipboardPreview(item.content);
+    const preview =
+        item.type === 'image'
+            ? `Image ${item.mimeType.replace(/^image\//, '').toUpperCase()}`
+            : item.content;
 
     return (
         <Gtk.Button
             cssClasses={['app-button', 'flat']}
             onClicked={() => {
                 copyClipboardItem(item);
-                WindowManager.get_default().applauncher!.visible = false;
+                const launcher = WindowManager.get_default().applauncher;
+                if (launcher) launcher.visible = false;
             }}
         >
             <Gtk.Box spacing={12} valign={Gtk.Align.CENTER}>
@@ -21,10 +26,20 @@ export default ({item}: {item: ClipboardEntry}) => {
                     }
                     pixelSize={32}
                 />
-                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER}>
-                    <Gtk.Label cssClasses={['title-2']} halign={Gtk.Align.START} label={preview} />
+                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.CENTER} hexpand>
                     <Gtk.Label
-                        halign={Gtk.Align.START}
+                        cssClasses={['title-2']}
+                        xalign={0}
+                        hexpand
+                        maxWidthChars={40}
+                        ellipsize={Pango.EllipsizeMode.END}
+                        label={preview}
+                        tooltipText={item.type === 'text' ? item.content : preview}
+                    />
+                    <Gtk.Label
+                        xalign={0}
+                        maxWidthChars={40}
+                        ellipsize={Pango.EllipsizeMode.END}
                         label={`ID: ${item.id}`}
                         cssClasses={['caption']}
                     />

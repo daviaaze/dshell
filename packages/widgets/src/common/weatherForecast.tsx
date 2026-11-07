@@ -25,6 +25,7 @@ export const HourlyForecastSection = ({
     return (
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
+            visible={hourlyForecast.as((items) => items.length > 0)}
             cssClasses={['card']}
             marginTop={8}
             marginBottom={8}
@@ -60,6 +61,7 @@ export const DailyForecastSection = ({dailyForecast}: {dailyForecast: Accessor<D
     return (
         <Gtk.Box
             orientation={Gtk.Orientation.VERTICAL}
+            visible={dailyForecast.as((items) => items.length > 0)}
             cssClasses={['card']}
             marginTop={8}
             marginBottom={8}
