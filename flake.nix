@@ -60,6 +60,7 @@
         with pkgs;
         [
           accountsservice
+          adwaita-icon-theme
           gsettings-desktop-schemas
           glib
           libadwaita

@@ -4,6 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import NM from 'gi://NM?version=1.0';
+import {IconNames} from '@shade/core/iconNames';
 import logger from '@shade/core/logger';
 import {type Accessor, computed, createState, effect, onCleanup} from 'gnim';
 import {
@@ -433,7 +434,7 @@ function ApRow({snap, strength, wifi, client, connectionRevision, isActive, isCo
                         />
 
                         <Gtk.Image
-                            iconName="emblem-ok-symbolic"
+                            iconName={IconNames.emblemOk}
                             pixelSize={AP_ICON_SIZE}
                             visible={isActive}
                         />

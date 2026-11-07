@@ -3,8 +3,8 @@
  *  IconNames — type‑safe icon name constants for Shade Shell
  * ─────────────────────────────────────────────────────────────
  *
- * Every entry here is validated against Adwaita 50.0.
- * Run `scripts/audit-icons.sh` to verify against the installed theme.
+ * Built-in entries resolve in Adwaita and GTK's bundled icon resources.
+ * `pnpm test` verifies resolution without requiring a display.
  *
  * Usage:
  *   import { IconNames, type IconName } from "../iconNames"
@@ -19,15 +19,14 @@
  *
  * Adding a new icon:
  *   1. Add the entry here (camelCase → adwaita‑name)
- *   2. Run `scripts/audit-icons.sh` to verify it exists
+ *   2. Run `pnpm test` to verify resolution against the installed theme
  *   3. Use `IconNames.yourIcon` in your code — never raw strings
  */
 
 export const IconNames = {
     // ── Actions / UI ─────────────────────────────────────────
     documentEdit: 'document-edit-symbolic',
-    // @unverified
-    emblemOk: 'emblem-ok-symbolic',
+    emblemOk: 'object-select-symbolic',
     documentOpenRecent: 'document-open-recent-symbolic',
     viewRefresh: 'view-refresh-symbolic',
     windowClose: 'window-close-symbolic',
@@ -49,11 +48,13 @@ export const IconNames = {
     systemSearch: 'system-search-symbolic',
     preferencesSystem: 'preferences-system-symbolic',
     preferencesSystemTime: 'preferences-system-time-symbolic',
+    sidebarShow: 'sidebar-show-symbolic',
 
     // ── Notifications / alerts ────────────────────────────────
     dialogError: 'dialog-error-symbolic',
     dialogInformation: 'dialog-information-symbolic',
     notificationDisabled: 'notifications-disabled-symbolic',
+    notifications: 'preferences-system-notifications-symbolic',
     contentLoading: 'content-loading-symbolic',
 
     // ── Face / emoji ──────────────────────────────────────────
@@ -115,8 +116,7 @@ export const IconNames = {
 
     // ── Network ───────────────────────────────────────────────
     networkNoRoute: 'network-no-route-symbolic',
-    // @unverified
-    networkWiredOffline: 'network-wired-offline-symbolic',
+    networkWiredOffline: 'network-wired-disconnected-symbolic',
     networkWireless: 'network-wireless-symbolic',
     networkWirelessAcquiring: 'network-wireless-acquiring-symbolic',
     networkWirelessDisabled: 'network-wireless-disabled-symbolic',
@@ -133,17 +133,15 @@ export const IconNames = {
     systemLogOut: 'system-log-out-symbolic',
     systemReboot: 'system-reboot-symbolic',
     systemShutdown: 'system-shutdown-symbolic',
-    // @unverified
-    systemUnlockScreen: 'system-unlock-screen-symbolic',
+    systemUnlockScreen: 'changes-allow-symbolic',
     powerProfileBalanced: 'power-profile-balanced-symbolic',
     powerProfilePerformance: 'power-profile-performance-symbolic',
     powerProfilePowerSaver: 'power-profile-power-saver-symbolic',
 
     // ── Status / misc ─────────────────────────────────────────
-    // @unverified — not found in Adwaita 48.0 or 50.0, may come from GNOME theme
-    eyeNotLooking: 'eye-not-looking-symbolic',
-    // @unverified
-    eyeOpenNegativeFilled: 'eye-open-negative-filled-symbolic',
+    eyeNotLooking: 'view-conceal-symbolic',
+    eyeOpenNegativeFilled: 'view-reveal-symbolic',
+    authFingerprint: 'auth-fingerprint-symbolic',
     userOffline: 'user-offline-symbolic',
     userTrash: 'user-trash-symbolic',
     xOfficeCalendar: 'x-office-calendar-symbolic',
@@ -151,15 +149,13 @@ export const IconNames = {
     // ── Orientation (display) ─────────────────────────────────
     orientationLandscape: 'orientation-landscape-symbolic',
     orientationLandscapeInverse: 'orientation-landscape-inverse-symbolic',
-    // @unverified
     orientationPortraitInverse: 'orientation-portrait-inverse-symbolic',
     orientationPortraitRight: 'orientation-portrait-right-symbolic',
 
     // ── Weather (Adwaita 50.0) ────────────────────────────────
     //  "weather-cloudy-symbolic" was removed — use overcast instead
     weatherClear: 'weather-clear-symbolic',
-    // @unverified — comes from GWeather, not the icon theme
-    weatherNoneAvailable: 'weather-none-available-symbolic',
+    weatherNoneAvailable: 'dialog-question-symbolic',
     weatherClearNight: 'weather-clear-night-symbolic',
     weatherFewClouds: 'weather-few-clouds-symbolic',
     weatherFewCloudsNight: 'weather-few-clouds-night-symbolic',

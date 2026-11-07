@@ -396,6 +396,14 @@ spacing:
 
 ## Helper Patterns
 
+### Icon Names
+
+Use `IconNames` from `@shade/core/iconNames` for shell controls. New standard names must resolve through Adwaita or GTK's bundled resources; do not assume a name from another icon set exists. `pnpm test` checks the catalog with a standalone `Gtk.IconTheme` without requiring a display.
+
+Adwaita is a runtime dependency of the packaged application, not just a system-module or development-shell dependency. This provides its resources without overriding the user's selected theme. The application adds its own moon-phase assets separately. Weather uses GWeather's symbolic names and a question mark when data is unavailable, not a missing glyph or a false weather condition.
+
+The icon regression was exercised without a display (failing before the name corrections, passing afterwards). A disposable GTK/Hyprland VM also rendered the notification center and a gallery of the corrected symbols, including the custom moon asset.
+
 ### Activatable Cards
 
 Add both `.card` and `.activatable` to get hover/active states:

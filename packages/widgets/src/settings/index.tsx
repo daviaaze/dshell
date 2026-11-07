@@ -3,6 +3,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
+import {IconNames} from '@shade/core/iconNames';
 import {newObject, onCleanup, type GnimNode} from 'gnim';
 import {getApp} from '@shade/services/appHandle';
 import WindowManager from '@shade/services/state/windowManager';
@@ -30,7 +31,7 @@ import Weather from './weather';
 
 export const settingsDestinationMeta = {
     appearance: {title: 'Aparência', icon: 'applications-graphics-symbolic', summary: 'Tema, papéis de cor, wallpaper e luz noturna', group: 'Aparência'},
-    bar: {title: 'Barra e dock', icon: 'view-sidebar-symbolic', summary: 'Posição, itens, aplicativos fixados e recursos', group: 'Barra e dock'},
+    bar: {title: 'Barra e dock', icon: IconNames.sidebarShow, summary: 'Posição, itens, aplicativos fixados e recursos', group: 'Barra e dock'},
     displays: {title: 'Telas', icon: 'video-display-symbolic', summary: 'Arranjo, modos, escala e layouts recuperáveis', group: 'Telas'},
     sound: {title: 'Som', icon: 'audio-volume-high-symbolic', summary: 'Saída, microfone e alertas', group: 'Som'},
     mouse: {title: 'Mouse e touchpad', icon: 'input-mouse-symbolic', summary: 'Ponteiro, clique e rolagem', group: 'Mouse e touchpad'},

@@ -89,8 +89,8 @@ class FakeInfo {
         return 'Test location';
     }
 
-    get_icon_name() {
-        return 'weather-clear';
+    get_symbolic_icon_name() {
+        return 'weather-clear-symbolic';
     }
 
     get_value_wind() {

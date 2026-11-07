@@ -2,6 +2,7 @@ import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import {IconNames} from '@shade/core/iconNames';
 import type FingerprintAuth from '@shade/services/input/fingerprint';
 import type AuthSession from '@shade/services/session/authSession';
 import {type Accessor, bind, computed, onCleanup} from 'gnim';
@@ -82,7 +83,7 @@ export const LockscreenAuthPanel = ({
                 <Gtk.Label label="Sua senha permanece oculta. A sessão continua bloqueada até a autenticação."
                     cssClasses={['caption', 'dimmed']} wrap xalign={0} />
                 <Gtk.Box spacing={8} visible={available}>
-                    <Gtk.Image iconName="fingerprint-symbolic" />
+                    <Gtk.Image iconName={IconNames.authFingerprint} />
                     <Gtk.Label hexpand wrap xalign={0} label={computed(() => {
                         const state = fpStateBinding();
                         if (state === 'initializing') return 'Preparando leitor de impressão digital…';

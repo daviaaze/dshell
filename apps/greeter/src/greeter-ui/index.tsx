@@ -22,6 +22,7 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import {IconNames} from '@shade/core/iconNames';
 import {bind, computed, createState, onCleanup} from 'gnim';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {ColorScheme, DarkModes} from '@shade/services/display/colorScheme';
@@ -273,7 +274,7 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                 <Gtk.Label visible={showPassword} cssClasses={['caption', 'dimmed']}
                     label="Sua senha permanece oculta." wrap xalign={0} />
                 <Gtk.Box spacing={8} visible={isFingerprint}>
-                    <Gtk.Image iconName="fingerprint-symbolic" />
+                    <Gtk.Image iconName={IconNames.authFingerprint} />
                     <Gtk.Label label={infoBinding} wrap hexpand xalign={0} />
                     <Gtk.Button label="Usar senha" onClicked={() => passwordEntry?.grab_focus()} />
                 </Gtk.Box>

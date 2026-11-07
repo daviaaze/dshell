@@ -4,6 +4,7 @@ import type Notifd from 'gi://AstalNotifd';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import {IconNames} from '@shade/core/iconNames';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import {bus} from '@shade/services/bus';
 import DndService from '@shade/services/notifications/dnd';
@@ -182,7 +183,7 @@ const NotificationListContent = ({
                 cssClasses={['compact']}
                 title="No history"
                 description="Notification history is empty"
-                iconName="notification-symbolic"
+                iconName={IconNames.notifications}
             />
         </Gtk.Box>
     );
@@ -340,7 +341,7 @@ const NotificationListContent = ({
                 cssClasses={['compact']}
                 title="Sem notificações"
                 description="Você está em dia."
-                iconName={'notification-symbolic'}
+                iconName={IconNames.notifications}
             />
         </Gtk.Box>
     );

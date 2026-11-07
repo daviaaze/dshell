@@ -4,6 +4,7 @@ import GObject from 'gi://GObject?version=2.0';
 import GWeather from 'gi://GWeather?version=4.0';
 import {defineService} from '@shade/core/define';
 import {toArray} from '@shade/core/gjsUtils';
+import {IconNames} from '@shade/core/iconNames';
 import logger from '@shade/core/logger';
 import type {Accessor} from 'gnim';
 import {Object, property, register} from 'gnim/gobject';
@@ -112,7 +113,7 @@ export default class Weather extends Object {
         return this.#locationName;
     }
 
-    #weatherIcon = 'weather-none-available-symbolic';
+    #weatherIcon: string = IconNames.weatherNoneAvailable;
 
     @property
     get weatherIcon() {
@@ -171,7 +172,9 @@ export default class Weather extends Object {
         this.#feelsLike = valid ? `Feels like ${w.get_apparent()}` : '';
         this.#skyDesc = valid ? w.get_sky() : '';
         this.#locationName = w.get_location_name() || '—';
-        this.#weatherIcon = w.get_icon_name() || 'weather-none-available-symbolic';
+        this.#weatherIcon = valid
+            ? w.get_symbolic_icon_name() || IconNames.weatherNoneAvailable
+            : IconNames.weatherNoneAvailable;
 
         if (valid) {
             const [, speed, dir] = w.get_value_wind(GWeather.SpeedUnit.DEFAULT);
