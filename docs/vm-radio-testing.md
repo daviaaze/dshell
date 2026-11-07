@@ -20,6 +20,34 @@ QEMU_OPTS='-display vnc=127.0.0.1:0 -monitor unix:/tmp/shade-vm-monitor.sock,ser
 
 The VM uses plain virtio VGA so QEMU's VNC backend can expose its screen. VNC listens on host loopback port 5900; guest SSH is forwarded only to host loopback port 2222.
 
+
+### Fast visual iteration
+
+For repeated shell/UI edits, keep one disposable VM alive instead of repeating the
+full workflow boot and AT-SPI setup:
+
+```sh
+scripts/vm-dev.py up
+scripts/vm-dev.py run toggle-quicksettings
+scripts/vm-dev.py shot quicksettings
+scripts/vm-dev.py sync
+scripts/vm-dev.py shot after-sync
+scripts/vm-dev.py down
+```
+
+`up` builds and boots `vm-vnc` once, logs in as the fixture user, and stores its
+PID and loopback SSH/VNC ports in `/tmp/dshell-vm-dev/state.json`. `sync` builds
+only `.#default` (the Shade package), then restarts the guest user service using
+the new shared `/nix/store` path; it refuses to restart if Hyprland reports the
+session locked or the lock state cannot be read. `shot NAME` uses guest `grim`
+over SSH (use `--vnc` for pre-login/locked screens) and prints the PNG path.
+`run` accepts a registered Shade action or any guest command; `key` and
+`click X Y` send VNC input. `down` removes the disposable guest disk and state.
+The VM build/boot still costs the initial minutes; a cold uncached Shade package
+build can also exceed the ~30s sync target. Screenshots do not use AT-SPI.
+
+This helper is separate from `vm-workflow-test.py`; existing test runs retain
+their isolated-VM behavior and cleanup.
 ### Current UI-review evidence mode
 
 Use `--ui-review` to run real guest workflow steps while retaining screenshots and available native/compositor receipts. It is an evidence-capture workflow, **not** a human visual review, WCAG/accessibility certification, or exact padding/conformance measurement.
