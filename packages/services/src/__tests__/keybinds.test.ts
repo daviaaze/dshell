@@ -1,64 +1,49 @@
-import Keybinds, {SHELL_ACTION_DESCRIPTIONS, type HyprBind} from '../input/keybinds';
+import Keybinds, {type HyprBind} from '../input/keybinds';
 import {describe, expect, it, run} from './test-runner';
 
 const keybinds = new Keybinds();
 
 const bind = (values: Partial<HyprBind> = {}): HyprBind => ({
     key: '',
-    mod: '',
-    dispatcher: 'exec',
+    dispatcher: '',
+    modmask: 0,
     arg: '',
     locked: false,
     mouse: false,
     release: false,
     repeat: false,
     nonmodal: false,
-    hasDescription: false,
+    has_description: false,
     ...values,
 });
 
-describe('Keybinds.formatDescription', () => {
-    it('uses recognized Shade action metadata for registered actions', () => {
-        expect(keybinds.formatDescription(bind({description: 'shade-action:toggle-applauncher'}))).toBe(
-            'Toggle app launcher'
-        );
-        expect(keybinds.formatDescription(bind({description: 'shade-action:display-next'}))).toBe(
-            'Cycle display layouts'
-        );
-        expect(
-            keybinds.formatDescription(bind({description: 'shade-action:record-window-address'}))
-        ).toBe('Record selected window');
-    });
+describe('Lua keybind metadata', () => {
+
 
     it('preserves authored descriptions verbatim ahead of dispatcher meaning', () => {
         expect(
             keybinds.formatDescription(
-                bind({dispatcher: 'workspace', arg: '1', description: '<A&B> authored'})
+                bind({
+                    dispatcher: 'HL.Dispatcher(show)',
+                    arg: '6',
+                    description: '<A&B> authored',
+                })
             )
         ).toBe('<A&B> authored');
     });
 
-    it('keeps unknown Shade metadata neutral and does not parse raw commands', () => {
-        expect(
-            keybinds.formatDescription(
-                bind({description: 'shade-action:future-action', arg: 'shade-shell toggle launcher'})
-            )
-        ).toBe('Run command');
-        expect(keybinds.formatDescription(bind({arg: 'shade-shell toggle launcher'}))).toBe(
-            'Run command'
-        );
-        expect(
-            keybinds.formatDescription(
-                bind({dispatcher: 'workspace', arg: 'shade-shell toggle launcher'})
-            )
-        ).toBe('Switch workspace: shade-shell toggle launcher');
+    it('does not expose Lua registry tokens or command arguments as descriptions', () => {
+        const token = 'opaque-registry-token-9876';
+        for (const dispatcher of ['HL.Dispatcher(exec_cmd)', 'HL.Dispatcher(unknown)']) {
+            const description = keybinds.formatDescription(bind({dispatcher, arg: token}));
+            expect(description.includes(token)).toBe(false);
+        }
     });
 
-    it('uses known compositor meaning or a neutral label for unknown dispatchers', () => {
-        expect(keybinds.formatDescription(bind({dispatcher: 'workspace', arg: '2'}))).toBe(
-            'Switch workspace: 2'
-        );
-        expect(keybinds.formatDescription(bind({dispatcher: 'unknown'}))).toBe('Custom shortcut');
+    it('formats the native modifier mask', () => {
+        expect(
+            keybinds.formatKeyCombo(bind({key: 'R', modmask: 64 | 4 | 8 | 1}))
+        ).toBe('Super + Ctrl + Alt + Shift + R');
     });
 });
 

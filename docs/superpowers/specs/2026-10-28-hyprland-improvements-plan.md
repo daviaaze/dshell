@@ -6,6 +6,12 @@
 > `dvision-thinkbook` (Intel, eDP-1 + docking). Toda sintaxe abaixo foi aceita por
 > `Hyprland --verify-config` 0.56.2 em 2026-10-28.
 
+> Atualização 2026-11-07: este documento descreve a implementação histórica
+> 0.56. A configuração atual é `hyprland.lua`; o launcher UWSM seleciona
+> `/etc/xdg/hypr/hyprland.lua`. O overview hyprtasking e suas opções foram
+> removidos, com autorização do usuário, por incompatibilidade com 0.57.
+> Hosts consumidores precisam remover suas atribuições `hyprland.overview`.
+
 ## Status da implementação (2026-10-28)
 
 Fases 1–7 implementadas. A config gerada (VM e homelab) passa em `--verify-config`; os testes passam.

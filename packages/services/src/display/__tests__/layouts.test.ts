@@ -5,7 +5,6 @@
 import GLib from 'gi://GLib?version=2.0';
 import {describe, expect, it, run} from '../../__tests__/test-runner';
 import LayoutService, {
-    renderMonitorSpec,
     type DisplayAdapter,
     type DisplaySnapshot,
     type Layout,
@@ -238,24 +237,6 @@ function service(
     return {instance, timers, storePath};
 }
 
-describe('monitor spec rendering', () => {
-    it('writes optional color fields after VRR and before the mirror', () => {
-        expect(renderMonitorSpec(spec(DP()))).toBe('monitor DP-1,1920x1080@60,1920x0,1,mirror,');
-        expect(
-            renderMonitorSpec({
-                ...spec(DP()),
-                transform: 2,
-                vrr: 1,
-                bitdepth: 10,
-                cm: 'hdr',
-                sdrbrightness: 1.2,
-                sdrsaturation: 0.8,
-            })
-        ).toBe(
-            'monitor DP-1,1920x1080@60,1920x0,1,transform,2,vrr,1,bitdepth,10,cm,hdr,sdrbrightness,1.2,sdrsaturation,0.8,mirror,'
-        );
-    });
-});
 describe('monitor snapshots', () => {
     it('parses monitor modes while retaining attached but inactive outputs', () => {
         const parsed = parseHyprlandSnapshot(
@@ -270,6 +251,7 @@ describe('monitor snapshots', () => {
                     y: 0,
                     scale: 1,
                     transform: 0,
+                    vrr: false,
                     currentFormat: 'XRGB2101010',
                     colorManagementPreset: 'hdr',
                     sdrBrightness: 1.2,
@@ -282,6 +264,7 @@ describe('monitor snapshots', () => {
         );
         expect(parsed.attached.length).toBe(1);
         expect(parsed.attached[0].enabled).toBe(false);
+        expect(parsed.attached[0].vrr).toBe(0);
         expect(parsed.attached[0].resolution).toBe('1920x1200@60.00');
         expect(parsed.attached[0].bitdepth).toBe(10);
         expect(parsed.attached[0].cm).toBe('hdr');

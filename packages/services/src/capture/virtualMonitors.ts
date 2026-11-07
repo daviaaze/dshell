@@ -1,8 +1,13 @@
+
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import type {VirtualMonitor} from './types';
 import {notify} from './utils';
+
+function renderMonitorLua(name: string, resolution: string, fps: number): string {
+    return `hl.monitor({output=${JSON.stringify(name)},mode=${JSON.stringify(`${resolution}@${fps}`)},position="auto",scale="1"})`;
+}
 
 const ICON_ERROR = 'dialog-error-symbolic';
 
@@ -41,9 +46,7 @@ export async function createVirtualMonitor(
             return null;
         }
 
-        await Process.execAsync(
-            `hyprctl keyword monitor ${vmon.name},${resolution}@${fps},auto-right,1`
-        );
+        await Process.execAsyncv(['hyprctl', 'eval', renderMonitorLua(vmon.name, resolution, fps)], true);
         const vm: VirtualMonitor = {name: vmon.name, resolution, fps};
         monitors.push(vm);
         logger.info('screenshot', `created virtual monitor: ${vm.name} (${resolution}@${fps})`);

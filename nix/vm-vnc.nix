@@ -119,7 +119,7 @@ let
     }
   '';
   secondaryDisplayStop = pkgs.writeShellScript "shade-vm-secondary-display-stop" ''
-    ${pkgs.hyprland}/bin/hyprctl output remove Virtual-2 || true
+    ${config.programs.hyprland.package}/bin/hyprctl output remove Virtual-2 || true
   '';
   bluezTesting = pkgs.bluez.overrideAttrs (old: {
     configureFlags = (old.configureFlags or [ ]) ++ [ "--enable-testing" ];
@@ -379,9 +379,9 @@ in
       RemainAfterExit = true;
       ExecStart = pkgs.writeShellScript "shade-vm-secondary-display-start" ''
         set -e
-        ${pkgs.hyprland}/bin/hyprctl output create headless Virtual-2
-        ${pkgs.hyprland}/bin/hyprctl keyword monitor "Virtual-2,1280x800@60,auto,1"
-        ${pkgs.hyprland}/bin/hyprctl dispatch focusmonitor Virtual-1
+        ${config.programs.hyprland.package}/bin/hyprctl output create headless Virtual-2
+        ${config.programs.hyprland.package}/bin/hyprctl eval 'hl.monitor({output = "Virtual-2", mode = "1280x800@60", position = "auto", scale = 1})'
+        ${config.programs.hyprland.package}/bin/hyprctl dispatch 'hl.dsp.focus({monitor = "Virtual-1"})'
       '';
       ExecStopPost = secondaryDisplayStop;
     };

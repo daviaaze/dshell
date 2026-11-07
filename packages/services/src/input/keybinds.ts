@@ -6,7 +6,7 @@ import {Object, property, register} from 'gnim/gobject';
 
 export interface HyprBind {
     key: string;
-    mod: string;
+    modmask: number;
     dispatcher: string;
     arg: string;
     locked: boolean;
@@ -14,7 +14,7 @@ export interface HyprBind {
     release: boolean;
     repeat: boolean;
     nonmodal: boolean;
-    hasDescription: boolean;
+    has_description: boolean;
     description?: string;
 }
 
@@ -24,30 +24,52 @@ export interface CategorizedBinds {
     binds: HyprBind[];
 }
 
-const CATEGORY_MAP: Record<string, string> = {
-    exec: 'Launch Applications',
-    workspace: 'Workspace Navigation',
-    movetoworkspace: 'Workspace Navigation',
-    movetoworkspacesilent: 'Workspace Navigation',
-    togglefloating: 'Window Controls',
+// Dispatcher names are factory names, not qualified Lua paths.
+const CATEGORY_MAP: Readonly<Record<string, string>> = {
+    exec_cmd: 'Launch Applications',
+    exec_raw: 'Launch Applications',
+    show: 'Workspace Navigation',
+    toggle_special: 'Workspace Navigation',
+    swap_monitors: 'Workspace Navigation',
+    change_id: 'Workspace Navigation',
+    rename: 'Workspace Navigation',
+    float: 'Window Controls',
     fullscreen: 'Window Controls',
-    focuswindow: 'Window Controls',
-    movewindow: 'Window Controls',
-    resizewindow: 'Window Controls',
-    killactive: 'Window Controls',
-    togglepseudo: 'Window Controls',
+    fullscreen_state: 'Window Controls',
+    close: 'Window Controls',
+    kill: 'Window Controls',
+    pseudo: 'Window Controls',
     pin: 'Window Controls',
-    cyclenext: 'Window Navigation',
-    changegroupactive: 'Window Navigation',
-    splitratio: 'Layout',
-    togglesplit: 'Layout',
-    layoutopt: 'Layout',
-    swapnext: 'Window Navigation',
-    swapactiveworkspaces: 'Workspace Navigation',
+    resize: 'Window Controls',
+    center: 'Window Controls',
+    drag: 'Window Controls',
+    focus: 'Window Navigation',
+    cycle_next: 'Window Navigation',
+    next: 'Window Navigation',
+    prev: 'Window Navigation',
+    active: 'Window Navigation',
+    layout: 'Layout',
     exit: 'System',
-    forcerendererreload: 'System',
-    execr: 'System',
+    reload_config: 'System',
+    force_renderer_reload: 'System',
+    dpms: 'System',
+    force_idle: 'System',
 };
+
+const MODIFIERS: ReadonlyArray<readonly [number, string]> = [
+    [64, 'Super'],
+    [4, 'Ctrl'],
+    [8, 'Alt'],
+    [1, 'Shift'],
+    [2, 'Caps Lock'],
+    [16, 'Mod2'],
+    [32, 'Mod3'],
+    [128, 'Mod5'],
+];
+
+function dispatcherName(bind: HyprBind): string {
+    return /^HL\.Dispatcher\(([^()]+)\)$/.exec(bind.dispatcher)?.[1] ?? '';
+}
 
 export const SHELL_ACTION_DESCRIPTIONS: Readonly<Record<string, string>> = {
     'toggle-applauncher': 'Toggle app launcher',
@@ -75,26 +97,33 @@ export const SHELL_ACTION_DESCRIPTIONS: Readonly<Record<string, string>> = {
 };
 
 const DISPATCHER_DESCRIPTIONS: Readonly<Record<string, string>> = {
-    workspace: 'Switch workspace',
-    movetoworkspace: 'Move window to workspace',
-    movetoworkspacesilent: 'Move window to workspace without switching',
-    togglefloating: 'Toggle floating mode',
+    show: 'Switch workspace',
+    toggle_special: 'Toggle special workspace',
+    swap_monitors: 'Swap workspace monitors',
+    change_id: 'Change workspace ID',
+    rename: 'Rename workspace',
+    float: 'Toggle floating mode',
     fullscreen: 'Toggle fullscreen',
-    focuswindow: 'Focus window',
-    movewindow: 'Move window',
-    resizewindow: 'Resize window',
-    killactive: 'Close active window',
-    togglepseudo: 'Toggle pseudo-tile mode',
+    fullscreen_state: 'Change fullscreen state',
+    focus: 'Focus window',
+    move: 'Move',
+    resize: 'Resize window',
+    close: 'Close window',
+    kill: 'Kill window',
+    pseudo: 'Toggle pseudo-tile mode',
     pin: 'Pin window',
-    cyclenext: 'Cycle window focus',
-    changegroupactive: 'Change active window in group',
-    splitratio: 'Adjust split ratio',
-    togglesplit: 'Toggle split direction',
-    layoutopt: 'Change layout option',
-    swapnext: 'Swap with next window',
-    swapactiveworkspaces: 'Swap active workspaces',
+    center: 'Center window',
+    drag: 'Drag window',
+    cycle_next: 'Cycle window focus',
+    next: 'Next group window',
+    prev: 'Previous group window',
+    active: 'Change active group window',
+    layout: 'Change layout',
     exit: 'Exit Hyprland',
-    forcerendererreload: 'Reload the renderer',
+    reload_config: 'Reload configuration',
+    force_renderer_reload: 'Reload the renderer',
+    dpms: 'Change display power',
+    force_idle: 'Force idle',
 };
 
 @register
@@ -126,11 +155,8 @@ export default class Keybinds extends Object {
     }
 
     #init(): void {
-        // Determine Hyprland config path
-        const xdgConfig = GLib.getenv('XDG_CONFIG_HOME');
-        const home = GLib.get_home_dir();
-        const configDir = xdgConfig || `${home}/.config`;
-        this.#configPath = `${configDir}/hypr/hyprland.conf`;
+        this.#configPath =
+            GLib.getenv('HYPRLAND_CONFIG') || '/etc/xdg/hypr/hyprland.lua';
 
         this.refresh();
     }
@@ -154,7 +180,7 @@ export default class Keybinds extends Object {
         const grouped = new Map<string, HyprBind[]>();
 
         for (const bind of this.#binds) {
-            const category = CATEGORY_MAP[bind.dispatcher] || 'Other';
+            const category = CATEGORY_MAP[dispatcherName(bind)] || 'Other';
             if (!grouped.has(category)) {
                 grouped.set(category, []);
             }
@@ -169,12 +195,8 @@ export default class Keybinds extends Object {
     /** Format key combo for display. */
     formatKeyCombo(bind: HyprBind): string {
         const parts: string[] = [];
-        if (bind.mod) {
-            const mods = bind.mod
-                .split(',')
-                .map((m) => m.trim())
-                .filter(Boolean);
-            parts.push(...mods.map(this.#formatMod));
+        for (const [mask, label] of MODIFIERS) {
+            if (bind.modmask & mask) parts.push(label);
         }
         if (bind.key) {
             parts.push(this.#formatKey(bind.key));
@@ -184,38 +206,28 @@ export default class Keybinds extends Object {
 
     /** Describe metadata or compositor behavior without interpreting command text. */
     formatDescription(bind: HyprBind): string {
+        const dispatcher = dispatcherName(bind);
         const description = bind.description;
         if (description?.startsWith('shade-action:')) {
             const action = description.slice('shade-action:'.length);
             if (Object.prototype.hasOwnProperty.call(SHELL_ACTION_DESCRIPTIONS, action)) {
                 return SHELL_ACTION_DESCRIPTIONS[action];
             }
-            return bind.dispatcher === 'exec' || bind.dispatcher === 'execr'
+            return dispatcher === 'exec_cmd' || dispatcher === 'exec_raw'
                 ? 'Run command'
                 : 'Custom shortcut';
         }
         if (description) return description;
 
-        if (Object.prototype.hasOwnProperty.call(DISPATCHER_DESCRIPTIONS, bind.dispatcher)) {
-            const meaning = DISPATCHER_DESCRIPTIONS[bind.dispatcher];
-            return bind.arg ? `${meaning}: ${bind.arg}` : meaning;
+        // Lua bind arguments are opaque dispatcher tokens, never command text.
+        if (Object.prototype.hasOwnProperty.call(DISPATCHER_DESCRIPTIONS, dispatcher)) {
+            return DISPATCHER_DESCRIPTIONS[dispatcher];
         }
-        return bind.dispatcher === 'exec' || bind.dispatcher === 'execr'
+        return dispatcher === 'exec_cmd' || dispatcher === 'exec_raw'
             ? 'Run command'
             : 'Custom shortcut';
     }
 
-    #formatMod(mod: string): string {
-        const modMap: Record<string, string> = {
-            SUPER: 'Super',
-            CTRL: 'Ctrl',
-            ALT: 'Alt',
-            SHIFT: 'Shift',
-            MOD4: 'Super',
-            MOD1: 'Alt',
-        };
-        return modMap[mod.toUpperCase()] || mod;
-    }
 
     #formatKey(key: string): string {
         const keyMap: Record<string, string> = {

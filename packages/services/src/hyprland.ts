@@ -67,6 +67,21 @@ export function normalizeHyprlandAddress(address: string): string {
     return address.replace(/^0x/, '');
 }
 
+/** Astal's action methods still emit the removed legacy dispatch syntax. */
+export function focusHyprlandClient(client: AstalHyprland.Client): void {
+    getHyprland()?.dispatch(
+        `hl.dsp.focus({window=${JSON.stringify(`address:0x${normalizeHyprlandAddress(client.address)}`)}})`,
+        ''
+    );
+}
+
+export function closeHyprlandClient(client: AstalHyprland.Client): void {
+    getHyprland()?.dispatch(
+        `hl.dsp.window.close({window=${JSON.stringify(`address:0x${normalizeHyprlandAddress(client.address)}`)}})`,
+        ''
+    );
+}
+
 /** Re-exported types for convenience. */
 export type {AstalHyprland};
 export const Hyprland = AstalHyprland;

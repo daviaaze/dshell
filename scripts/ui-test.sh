@@ -67,7 +67,7 @@ ensure_white() {
     sleep 2
     addr=$(hyprctl clients -j 2>/dev/null | jq -r '.[] | select((.class|type=="string") and (.class=="zen-alpha" or (.class|test("chrome|firefox")))) | .address' | head -1)
   fi
-  [ -n "$addr" ] && hyprctl dispatch focuswindow "address:$addr" >/dev/null 2>&1
+  [ -n "$addr" ] && hyprctl dispatch "hl.dsp.focus({window = \"address:$addr\"})" >/dev/null 2>&1
   sleep 0.6
 }
 

@@ -114,17 +114,20 @@ const EMPTY_STORE: LayoutStore = {version: 1, current: null, layouts: {}};
 /** Ignore Hyprland `configreloaded` events this soon after our own monitor writes. */
 const RELOAD_ECHO_WINDOW_US = 2_000_000;
 
-export function renderMonitorSpec(spec: MonitorSpec): string {
-    if (spec.disabled) return `monitor ${spec.name},disable`;
-    const parts = [`monitor ${spec.name}`, spec.resolution, spec.position, `${spec.scale}`];
-    if (spec.transform !== 0) parts.push('transform', `${spec.transform}`);
-    if (spec.vrr != null && spec.vrr !== 0) parts.push('vrr', `${spec.vrr}`);
-    if (spec.bitdepth != null) parts.push('bitdepth', `${spec.bitdepth}`);
-    if (spec.cm != null) parts.push('cm', spec.cm);
-    if (spec.sdrbrightness != null) parts.push('sdrbrightness', `${spec.sdrbrightness}`);
-    if (spec.sdrsaturation != null) parts.push('sdrsaturation', `${spec.sdrsaturation}`);
-    parts.push('mirror', spec.mirror ?? '');
-    return parts.join(',');
+function renderMonitorLua(spec: MonitorSpec): string {
+    const fields = [
+        `output=${JSON.stringify(spec.name)}`,
+        `disabled=${spec.disabled}`,
+        `mode=${JSON.stringify(spec.resolution)}`,
+        `position=${JSON.stringify(spec.position)}`,
+        `scale=${JSON.stringify(String(spec.scale))}`,
+        `transform=${spec.transform}`,
+        `vrr=${spec.vrr ?? -1}`,
+        `mirror=${JSON.stringify(spec.mirror ?? '')}`,
+    ];
+    for (const key of ['bitdepth', 'cm', 'sdrbrightness', 'sdrsaturation'] as const)
+        if (spec[key] != null) fields.push(`${key}=${JSON.stringify(spec[key])}`);
+    return `hl.monitor({${fields.join(',')}})`;
 }
 
 function defaultStorePath(): string {
@@ -263,6 +266,7 @@ function monitorFromRaw(raw: RawMonitor, enabled: boolean, mirror: string | null
         position: `${x}x${y}`,
         scale: Number.isFinite(scale) && scale > 0 ? scale : 1,
         transform: Number(raw.transform ?? 0),
+        vrr: typeof raw.vrr === 'boolean' ? Number(raw.vrr) : null,
         bitdepth: bitdepthFromFormat(raw.currentFormat),
         cm: typeof raw.colorManagementPreset === 'string' ? raw.colorManagementPreset : undefined,
         sdrbrightness: typeof raw.sdrBrightness === 'number' ? raw.sdrBrightness : undefined,
@@ -328,11 +332,11 @@ const hyprlandAdapter: DisplayAdapter = {
         );
     },
     async keyword(spec) {
-        await Process.execAsyncv(['hyprctl', 'keyword', renderMonitorSpec(spec)], true);
+        await Process.execAsyncv(['hyprctl', 'eval', renderMonitorLua(spec)], true);
     },
     async workspace(id, monitor) {
         await Process.execAsyncv(
-            ['hyprctl', 'keyword', 'workspace', `${id}, monitor:${monitor}`],
+            ['hyprctl', 'eval', `hl.workspace_rule({workspace=${JSON.stringify(String(id))},monitor=${JSON.stringify(monitor)}})`],
             true
         );
     },
@@ -572,8 +576,7 @@ export class LayoutService extends GObject {
             this.#monitorIds = [
                 hyprland.connect('monitor-added', () => this.#scheduleReconcile()),
                 hyprland.connect('monitor-removed', () => this.#scheduleReconcile()),
-                // A config reload (e.g. after a system rebuild rewrites hyprland.conf)
-                // discards every `hyprctl keyword monitor` we issued, so re-apply.
+                // A config reload discards runtime Lua monitor rules, so re-apply.
                 hyprland.connect('config-reloaded', () => {
                     const sinceWrite = GLib.get_monotonic_time() - this.#lastWriteAt;
                     if (sinceWrite < RELOAD_ECHO_WINDOW_US) return;
@@ -1390,7 +1393,7 @@ export class LayoutService extends GObject {
         return this.#enqueue(async () => {
             try {
                 await Process.execAsyncv(
-                    ['hyprctl', 'dispatch', 'dpms', on ? 'on' : 'off', name],
+                    ['hyprctl', 'dispatch', `hl.dsp.dpms({action=${JSON.stringify(on ? 'on' : 'off')},monitor=${JSON.stringify(name)}})`],
                     true
                 );
                 const snapshot = await this.#adapter.snapshot();

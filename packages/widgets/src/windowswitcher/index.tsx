@@ -6,7 +6,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 import {getApp} from '@shade/services/appHandle';
-import {getHyprland} from '@shade/services/hyprland';
+import {closeHyprlandClient, focusHyprlandClient, getHyprland} from '@shade/services/hyprland';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, computed, createState, For, onCleanup, type Setter} from 'gnim';
 import SwitcherItem from './item';
@@ -59,7 +59,7 @@ function doFocus(state: SwitcherState, client: AstalHyprland.Client) {
     // Release the layer grab before Hyprland processes client-focus IPC.
     closeSwitcher(state);
     switcherWindow?.get_display().flush();
-    client.focus();
+    focusHyprlandClient(client);
 }
 
 /** Flat key → action lookup, built from grouped key bindings. */
@@ -99,7 +99,8 @@ function buildKeyActions(state: SwitcherState): Record<number, () => boolean> {
         [
             [Gdk.KEY_q, Gdk.KEY_Q],
             () => {
-                if (clients[state.selectedIndex()]) clients[state.selectedIndex()].kill();
+                if (clients[state.selectedIndex()])
+                    closeHyprlandClient(clients[state.selectedIndex()]);
                 return true;
             },
         ],

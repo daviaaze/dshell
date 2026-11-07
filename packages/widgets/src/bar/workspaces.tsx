@@ -1,7 +1,7 @@
 import type Hyprland from 'gi://AstalHyprland';
 import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
-import {getHyprland} from '@shade/services/hyprland';
+import {focusHyprlandClient, getHyprland} from '@shade/services/hyprland';
 import {getAppIcon} from '@shade/services/state/apps';
 import {type Accessor, bind, computed, For} from 'gnim';
 
@@ -106,7 +106,7 @@ export default ({
                                     return (
                                         <Gtk.ToggleButton
                                             active={computed(() => activeName() === client.address)}
-                                            onClicked={() => client.focus()}
+                                            onClicked={() => focusHyprlandClient(client)}
                                             cssClasses={['flat']}
                                         >
                                             <Gtk.Image iconName={iconName} pixelSize={24} />

@@ -23,10 +23,12 @@
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      hyprlandPackages = inputs.hyprland.packages.${system};
       # If NM omits an AP BSSID, the patched library falls back to its object path.
       astalNetwork = astal.packages.${system}.network.overrideAttrs (old: {
         patches = (old.patches or []) ++ [ ./nix/patches/astal-network-ap-key.patch ];
       });
+      xdpHyprland = hyprlandPackages.xdg-desktop-portal-hyprland;
 
       astalPackages = with astal.packages.${system}; [
         apps
@@ -77,7 +79,7 @@
         ++ astalPackages;
 
       wrapperPackages = with pkgs; [
-        hyprland
+        hyprlandPackages.hyprland
         greetd
         bash
         curl
@@ -110,6 +112,7 @@
           inherit (pkgs) pnpmConfigHook fetchPnpmDeps;
           lib = pkgs.lib;
         };
+        xdg-desktop-portal-hyprland = xdpHyprland;
       };
 
       nixosModules.default = import ./nix/module.nix inputs;

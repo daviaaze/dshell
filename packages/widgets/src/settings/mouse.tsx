@@ -13,7 +13,10 @@ function getOption(key: string, fallback: string): string {
 }
 
 function setOption(key: string, value: string | number | boolean) {
-    Process.execAsync(`hyprctl keyword ${key} ${value}`).catch(() => {});
+    Process.execAsyncv(
+        ['hyprctl', 'eval', `hl.config({[${JSON.stringify(key.replaceAll(':', '.'))}]=${JSON.stringify(value)}})`],
+        true
+    ).catch(() => {});
 }
 
 export default () => (

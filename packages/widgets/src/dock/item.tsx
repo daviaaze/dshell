@@ -2,6 +2,7 @@ import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
+import {closeHyprlandClient, focusHyprlandClient} from '@shade/services/hyprland';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import {exactQuery, getAppList, launchDesktopFile} from '@shade/services/state/apps';
 import {onCleanup} from 'gnim';
@@ -27,7 +28,7 @@ function handleLeftClick(
 ) {
     if (running) {
         logger.debug('dock', `focus: ${desktopFile}`);
-        clients[0].focus();
+        focusHyprlandClient(clients[0]);
     } else if (pinned) {
         logger.debug('dock', `launch: ${desktopFile}`);
         launchDesktopFile(desktopFile);
@@ -37,7 +38,7 @@ function handleLeftClick(
 function handleClose(desktopFile: string, clients: AstalHyprland.Client[]) {
     logger.debug('dock', `close: ${desktopFile} (${clients.length} windows)`);
     for (const client of clients) {
-        client.kill();
+        closeHyprlandClient(client);
     }
 }
 

@@ -109,7 +109,7 @@ export default class BatteryHistory {
                 ]),
                 '(a(udu))'
             );
-            const [entries] = reply.deepUnpack<[Array<[number, number, number]>]>();
+            const [entries] = reply.deepUnpack() as [Array<[number, number, number]>];
             this.#setHistory(resampleHistory(entries, Math.floor(Date.now() / 1000)));
         } catch (e) {
             logger.warn('batteryHistory', 'UPower history unavailable:', e);
@@ -119,7 +119,7 @@ export default class BatteryHistory {
 
     async #findBattery(): Promise<string | null> {
         const reply = await this.#call(UPOWER_PATH, UPOWER_IFACE, 'EnumerateDevices', null, '(ao)');
-        const [paths] = reply.deepUnpack<[string[]]>();
+        const [paths] = reply.deepUnpack() as [string[]];
         for (const path of paths) {
             const props = await this.#call(
                 path,
@@ -128,7 +128,7 @@ export default class BatteryHistory {
                 new GLib.Variant('(s)', [DEVICE_IFACE]),
                 '(a{sv})'
             );
-            const [dict] = props.recursiveUnpack<[Record<string, unknown>]>();
+            const [dict] = props.recursiveUnpack() as [Record<string, unknown>];
             if (dict.Type === DEVICE_TYPE_BATTERY && dict.PowerSupply === true) return path;
         }
         return null;
