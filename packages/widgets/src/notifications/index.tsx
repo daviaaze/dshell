@@ -8,7 +8,6 @@ import {DismissTimers} from '@shade/services/notifications/dismissTimers';
 import DndService from '@shade/services/notifications/dnd';
 import {getExpireMs} from '@shade/services/notifications/expire';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
-import {barSettings} from '@shade/services/settings/bar.gschema';
 import ShellState from '@shade/services/state/shellState';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, computed, createState, effect, For, onCleanup} from 'gnim';
@@ -17,19 +16,6 @@ import PopupWindow from '../common/PopupWindow';
 
 /** Max toasts visible simultaneously; older ones remain in the notification center. */
 const POPUP_CAP = 3;
-
-const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
-
-/**
- * Anchor toasts away from the bar-side corner used by adjacent applets and
- * quick settings, without stretching the layer surface across the screen.
- */
-function cornerAnchor(position: number): number {
-    if (position === BOTTOM) return BOTTOM | RIGHT;
-    if (position === LEFT) return TOP | RIGHT;
-    if (position === RIGHT) return TOP | LEFT;
-    return BOTTOM | RIGHT;
-}
 
 const NotificationContent = ({
     notifd,
@@ -139,7 +125,6 @@ export default () => {
     const shellState = ShellState.get_default();
     const screenlocked = bind(shellState, 'screenlocked');
     const centerOpen = bind(shellState, 'notificationsOpen');
-    const bar = barSettings();
     const hyprland = getHyprland();
     if (!hyprland) return null;
     const monitor = bind(hyprland, 'focused-monitor');
@@ -155,7 +140,7 @@ export default () => {
             margin={4}
             layer={Astal.Layer.OVERLAY}
             keymode={Astal.Keymode.NONE}
-            anchor={bar.position.as(cornerAnchor)}
+            anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.RIGHT}
             monitor={windowMonitor}
             visible={computed(
                 () =>

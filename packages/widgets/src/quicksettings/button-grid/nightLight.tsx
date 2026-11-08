@@ -19,7 +19,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
             spacing={8}
         >
             <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
-                <Gtk.Label label="Temperature" />
+                <Gtk.Label label="Temperatura" />
                 {(() => {
                     const $temperature = bind(nightLight, 'temperature');
                     const adjustment = new Gtk.Adjustment({
@@ -55,7 +55,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
             </Gtk.Box>
             <Gtk.Separator />
             <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
-                <Gtk.Label label="Auto Schedule" hexpand />
+                <Gtk.Label label="Agendamento automático" hexpand />
                 <Gtk.Switch
                     active={bind(nightLight, 'autoSchedule')}
                     onNotifyActive={(self) => {
@@ -76,13 +76,15 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
                 icon={bind(nightLight, 'enabled').as((enabled) =>
                     enabled ? 'night-light-symbolic' : 'night-light-disabled-symbolic'
                 )}
-                domain="Night Light"
-                value={bind(nightLight, 'enabled').as((enabled) => enabled ? 'On' : 'Off')}
+                domain="Luz noturna"
+                value={bind(nightLight, 'enabled').as((enabled) =>
+                    enabled ? 'Ativada' : 'Desativada'
+                )}
                 actionLabel={bind(nightLight, 'enabled').as((enabled) =>
-                    enabled ? 'Turn Night Light off' : 'Turn Night Light on'
+                    enabled ? 'Desativar luz noturna' : 'Ativar luz noturna'
                 )}
                 onClick={() => bus.emit('display:nightlight:enabled', !nightLight.enabled)}
-                detail={{label: 'Night Light options', onOpen}}
+                detail={{label: 'Opções de luz noturna', onOpen}}
             />
         ),
     };

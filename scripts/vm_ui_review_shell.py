@@ -150,7 +150,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         layer("shade-quicksettings")
         named("Controles rápidos", role="window")
         for control, heading in path:
-            click(control, contains=(control in ("Outros controles", "Timer:")))
+            click(control, contains=(control in ("Outros controles", "Temporizador:")))
             named(heading, role="window")
         t.vnc("wait for visible quick-page allocation", "pause", "0.35")
         # Waiting for the actual header avoids capturing the previous stack page.
@@ -283,10 +283,10 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         layer("shade-launcher")
         capture("launcher-apps")
         text("ShadeNoSuchApplication938471")
-        named("No applications found", role="label")
+        named("Nenhum aplicativo encontrado", role="label")
         capture("launcher-search-empty")
         text("Long application search " * 30)
-        named("No applications found", role="label")
+        named("Nenhum aplicativo encontrado", role="label")
         capture("launcher-long-search")
 
     attempt("launcher", launcher)
@@ -303,7 +303,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
             layer("shade-launcher")
             capture("clipboard-initial")
             text("> ShadeNoSuchClipboard938471")
-            named("No results in clipboard history", role="label")
+            named("Nenhum resultado no histórico da área de transferência", role="label")
             capture("clipboard-search-empty")
             t.activate_shell_action("close-all")
             marker = "Shade UI review clipboard " + str(time.time_ns())
@@ -338,7 +338,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         try:
             if not t.clients():
                 t.activate_shell_action("toggle-windowswitcher")
-                named("Press Escape to close the switcher.")
+                named("Pressione Esc para fechar o seletor.")
                 capture("switcher-no-client")
                 t.vnc("cancel empty switcher", "key", "esc")
             else:
@@ -371,12 +371,12 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         "data": (("Data e clima", "Data e clima"),),
     }
     for key, control, title in (
-        ("profile", "Power profile options", "Power profile"),
-        ("appearance", "Theme options", "Appearance"),
-        ("capture", "Capture options", "Screen capture"),
-        ("inhibit", "Sleep prevention options", "Keep awake"),
-        ("timer", "Timer:", "Timer"),
-        ("nightlight", "Night Light options", "Night Light"),
+        ("profile", "Opções do perfil de energia", "Perfil de energia"),
+        ("appearance", "Opções de tema", "Aparência"),
+        ("capture", "Opções de captura", "Captura de tela"),
+        ("inhibit", "Opções para evitar suspensão", "Manter ativo"),
+        ("timer", "Temporizador:", "Temporizador"),
+        ("nightlight", "Opções de luz noturna", "Luz noturna"),
     ):
         routes[key] = (("Outros controles", "Outros controles"), (control, title))
     for name, path in routes.items():
@@ -461,7 +461,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
             def visit(node, ancestry):
                 name = node.get("name", "")
                 current = ancestry + ([node] if node.get("role") == "label" and name == title else [])
-                if node.get("role") == "button" and name == "Close notification toast":
+                if node.get("role") == "button" and name == "Fechar aviso de notificação":
                     matches.append((current, node))
                 for child in node.get("children", []):
                     visit(child, current)
@@ -486,7 +486,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
                 raise RuntimeError(f"Native close action did not remove owned notification toast {title!r}")
             capture("notification-toast-dismissed-" + title.replace("Shade ", "").replace(" ", "-"), {
                 "dismissed_title": title,
-                "interaction": "exact native Close notification toast under matching title/card ancestry",
+                "interaction": "exact native Fechar aviso de notificação under matching title/card ancestry",
                 "removal_confirmed": True,
             })
 
@@ -606,18 +606,18 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
     def clock():
         timer_started = False
         try:
-            button = named("Time ", role="button", contains=True)
+            button = named("Horário ", role="button", contains=True)
             opened = open_native_menu(button, "open native clock popover")
-            named("World Clock", role="label")
+            named("Relógio mundial", role="label")
             capture("clock-popover", {
                 "target": opened["target"], "bar_layer": opened["layer"],
                 "interaction": "measured pointer click on Gtk.MenuButton",
             })
             capture("clock-world-clocks")
-            named("Timer", role="label")
+            named("Temporizador", role="label")
             capture("clock-timer-presets")
             running = any(
-                item.get("name") == "Stop" and item.get("role") == "button"
+                item.get("name") == "Parar" and item.get("role") == "button"
                 for item in t.walk_accessibility(t.accessibility_tree("reading current clock timer"))
             )
             if running:
@@ -626,24 +626,24 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
             else:
                 click("5m")
                 timer_started = True
-                named("Stop", role="button")
+                named("Parar", role="button")
                 capture("clock-timer-running")
                 click("Pomodoro", role="toggle button")
                 capture("clock-pomodoro-presets")
-                click("Timer", role="toggle button")
+                click("Temporizador", role="toggle button")
         finally:
             if timer_started:
-                click("Stop", role="button")
+                click("Parar", role="button")
 
     attempt("clock-popover", clock)
 
     def weather():
         button = named("°", role="button", contains=True)
         opened = open_native_menu(button, "open native weather popover")
-        named("Refresh weather", role="button")
+        named("Atualizar clima", role="button")
         capture("weather-popover", {
             "target": opened["target"], "bar_layer": opened["layer"],
-            "control": "Refresh weather", "interaction": "measured pointer click",
+            "control": "Atualizar clima", "interaction": "measured pointer click",
             "scope": "Popover inspected without activating refresh.",
         })
 

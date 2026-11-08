@@ -16,9 +16,9 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const remaining = bind(inhibit, 'remaining');
 
     const value = computed(() => {
-        if (!idle()) return 'Off';
+        if (!idle()) return 'Desativado';
         const rem = remaining();
-        return rem ? `Remaining ${rem}` : 'Indefinitely';
+        return rem ? `Restante ${rem}` : 'Indefinidamente';
     });
 
     const icon = computed(() =>
@@ -26,28 +26,28 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     );
 
     const actionLabel = computed(() =>
-        idle() ? 'Turn sleep prevention off' : 'Prevent sleep indefinitely'
+        idle() ? 'Desativar prevenção de suspensão' : 'Evitar suspensão indefinidamente'
     );
     const detail = (
         <LinkedBox>
             <Gtk.Button onClicked={() => bus.emit(START_INDEFINITE, [])}>
-                <Adw.ButtonContent iconName="weather-clear-symbolic" label="Indefinitely" />
+                <Adw.ButtonContent iconName="weather-clear-symbolic" label="Indefinidamente" />
             </Gtk.Button>
             <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 5)}>
-                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="5 minutes" />
+                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="5 minutos" />
             </Gtk.Button>
             <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 15)}>
-                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="15 minutes" />
+                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="15 minutos" />
             </Gtk.Button>
             <Gtk.Button onClicked={() => bus.emit(SET_DURATION, 60)}>
-                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="1 hour" />
+                <Adw.ButtonContent iconName="preferences-system-time-symbolic" label="1 hora" />
             </Gtk.Button>
             <Gtk.Separator visible={bind(inhibit, 'idle')} />
             <Gtk.Button
                 visible={bind(inhibit, 'idle')}
                 onClicked={() => bus.emit('power:inhibit:set-idle', false)}
             >
-                <Adw.ButtonContent iconName="window-close-symbolic" label="Off" />
+                <Adw.ButtonContent iconName="window-close-symbolic" label="Desativar" />
             </Gtk.Button>
         </LinkedBox>
     );
@@ -59,14 +59,14 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
                 intent="toggle"
                 active={idle}
                 icon={icon}
-                domain={'Sleep\nprevention'}
+                domain={'Evitar\nsuspensão'}
                 value={value}
                 actionLabel={actionLabel}
                 onClick={() => {
                     if (inhibit.idle) bus.emit('power:inhibit:set-idle', false);
                     else bus.emit(START_INDEFINITE, []);
                 }}
-                detail={{label: 'Sleep prevention options', onOpen}}
+                detail={{label: 'Opções para evitar suspensão', onOpen}}
             />
         ),
     };

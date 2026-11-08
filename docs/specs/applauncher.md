@@ -6,4 +6,6 @@ The focused-monitor `Astal.Window` is opened through shell state, uses on-demand
 
 Clipboard history identifies image entries from their MIME type instead of rendering the stored image base64 as text. Long text/IDs are ellipsized to the launcher width; the full text item remains available as a tooltip and clipboard activation still copies the stored entry.
 
+The app search placeholder is **Pesquisar aplicativos**; clipboard mode uses **Pesquisar no histórico da área de transferência...** and the heading **Histórico da área de transferência — digite > para pesquisar**. The app list headings distinguish **Apps mais usados** from **Resultados da pesquisa (priorizados por uso)**. Empty results show **Nenhum aplicativo encontrado** or **Nenhum resultado no histórico da área de transferência**, with **Tente outro termo de pesquisa** or **Copie algo para vê-lo aqui** as applicable.
+
 Manual: open by configured shell action, type app names and activate a result; try no-match state, Escape/reopen, and clipboard mode using its actual shell route. Repeat with a vertical bar and scaled/narrow monitor. These procedures are not new VM results.

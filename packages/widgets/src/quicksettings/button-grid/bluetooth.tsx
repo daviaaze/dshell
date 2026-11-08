@@ -3,7 +3,16 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 import BluetoothService from '@shade/services/bluetooth/bluetoothService';
-import {type Accessor, bind, computed, createState, For, onCleanup, type GnimNode, With} from 'gnim';
+import {
+    type Accessor,
+    bind,
+    computed,
+    createState,
+    For,
+    type GnimNode,
+    onCleanup,
+    With,
+} from 'gnim';
 import {QuickControlButton} from '../../common/quickControlButton';
 
 /** Pair, connect or disconnect a device, tracking the in-flight address. */
@@ -54,7 +63,11 @@ function DeviceButton({
                 <Gtk.Image iconName={device.icon || 'bluetooth-symbolic'} pixelSize={16} />
                 <Gtk.Label hexpand halign={Gtk.Align.START} label={device.name} />
                 <Gtk.Spinner visible={deviceConnecting} spinning marginEnd={4} />
-                <Gtk.Image visible={bind(device, 'connected')} iconName="selection-mode-symbolic" pixelSize={16} />
+                <Gtk.Image
+                    visible={bind(device, 'connected')}
+                    iconName="selection-mode-symbolic"
+                    pixelSize={16}
+                />
             </Gtk.Box>
         </Gtk.Button>
     );
@@ -74,12 +87,16 @@ function DeviceList({
     setConnectingAddress: (addr: string | null) => void;
     setOperationError: (message: string | null) => void;
 }) {
-    const devices = bind(bluetooth, 'devices').as(items => toArray<AstalBluetooth.Device>(items));
+    const devices = bind(bluetooth, 'devices').as((items) => toArray<AstalBluetooth.Device>(items));
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <Gtk.Label label="Dispositivos" cssClasses={['heading']} xalign={0} />
-            <Gtk.Label label="Nenhum dispositivo encontrado. Busque dispositivos próximos ou abra as configurações para parear."
-                visible={devices.as(items => items.length === 0)} wrap xalign={0} />
+            <Gtk.Label
+                label="Nenhum dispositivo encontrado. Busque dispositivos próximos ou abra as configurações para parear."
+                visible={devices.as((items) => items.length === 0)}
+                wrap
+                xalign={0}
+            />
             <For each={devices}>
                 {(device: AstalBluetooth.Device) => (
                     <DeviceButton
@@ -102,16 +119,18 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
     const [connectingAddress, setConnectingAddress] = createState<string | null>(null);
 
     const isConnecting = connectingAddress.as((addr) => addr !== null);
-    const [adapter, setAdapter] = createState<AstalBluetooth.Adapter | null>(bluetooth.adapter ?? null);
+    const [adapter, setAdapter] = createState<AstalBluetooth.Adapter | null>(
+        bluetooth.adapter ?? null
+    );
     const [isPowered, setIsPowered] = createState(adapter()?.powered ?? false);
     let currentAdapter: AstalBluetooth.Adapter | null = null;
     let adapterPoweredSignalId = 0;
     const updateAdapter = () => {
-        const nextAdapter = bluetooth.adapter
-            ?? toArray<AstalBluetooth.Adapter>(bluetooth.adapters)[0]
-            ?? null;
+        const nextAdapter =
+            bluetooth.adapter ?? toArray<AstalBluetooth.Adapter>(bluetooth.adapters)[0] ?? null;
         if (currentAdapter !== nextAdapter) {
-            if (currentAdapter && adapterPoweredSignalId) currentAdapter.disconnect(adapterPoweredSignalId);
+            if (currentAdapter && adapterPoweredSignalId)
+                currentAdapter.disconnect(adapterPoweredSignalId);
             currentAdapter = nextAdapter;
             adapterPoweredSignalId = 0;
             setAdapter(nextAdapter);
@@ -129,7 +148,8 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
     const selectedAdapterSignalId = bluetooth.connect('notify::adapter', updateAdapter);
     updateAdapter();
     onCleanup(() => {
-        if (currentAdapter && adapterPoweredSignalId) currentAdapter.disconnect(adapterPoweredSignalId);
+        if (currentAdapter && adapterPoweredSignalId)
+            currentAdapter.disconnect(adapterPoweredSignalId);
         bluetooth.disconnect(adapterAddedSignalId);
         bluetooth.disconnect(adapterRemovedSignalId);
         bluetooth.disconnect(adapterListSignalId);
@@ -165,7 +185,7 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
                 domain="Bluetooth"
                 value={value}
                 actionLabel={isPowered.as((powered) =>
-                    powered ? 'Turn Bluetooth off' : 'Turn Bluetooth on'
+                    powered ? 'Desativar Bluetooth' : 'Ativar Bluetooth'
                 )}
                 actionSensitive={adapter.as((current) => current !== null)}
                 onClick={() => {
@@ -179,44 +199,83 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
                         setOperationError(String(error));
                     }
                 }}
-                detail={{label: 'Bluetooth details', onOpen}}
+                detail={{label: 'Detalhes do Bluetooth', onOpen}}
             />
         ),
         detail: (
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                <Gtk.Label label={operationError.as(message => message ?? '')}
-                    visible={operationError.as(message => !!message)} cssClasses={['error']} wrap />
+                <Gtk.Label
+                    label={operationError.as((message) => message ?? '')}
+                    visible={operationError.as((message) => !!message)}
+                    cssClasses={['error']}
+                    wrap
+                />
                 <With value={adapter}>
-                    {current => current ? (
-                        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                            <Gtk.Box spacing={12}>
-                                <Gtk.Label label="Bluetooth" hexpand xalign={0} cssClasses={['heading']} />
-                                <Gtk.Switch active={isPowered} onNotifyActive={self => {
-                                    if (current.powered === self.active) return;
-                                    setOperationError(null);
-                                    try { current.powered = self.active; }
-                                    catch (error) { setOperationError(String(error)); }
-                                    finally { self.active = current.powered; }
-                                }} />
+                    {(current) =>
+                        current ? (
+                            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                                <Gtk.Box spacing={12}>
+                                    <Gtk.Label
+                                        label="Bluetooth"
+                                        hexpand
+                                        xalign={0}
+                                        cssClasses={['heading']}
+                                    />
+                                    <Gtk.Switch
+                                        active={isPowered}
+                                        onNotifyActive={(self) => {
+                                            if (current.powered === self.active) return;
+                                            setOperationError(null);
+                                            try {
+                                                current.powered = self.active;
+                                            } catch (error) {
+                                                setOperationError(String(error));
+                                            } finally {
+                                                self.active = current.powered;
+                                            }
+                                        }}
+                                    />
+                                </Gtk.Box>
+                                <Gtk.Box
+                                    visible={isPowered}
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    spacing={12}
+                                >
+                                    <Gtk.Button
+                                        label={bind(current, 'discovering').as((scanning) =>
+                                            scanning ? 'Parar busca' : 'Buscar dispositivos'
+                                        )}
+                                        onClicked={() => {
+                                            setOperationError(null);
+                                            try {
+                                                if (current.discovering) current.stop_discovery();
+                                                else current.start_discovery();
+                                            } catch (error) {
+                                                setOperationError(String(error));
+                                            }
+                                        }}
+                                    />
+                                    <DeviceList
+                                        bluetooth={bluetooth}
+                                        service={service}
+                                        connectingAddress={connectingAddress}
+                                        setConnectingAddress={setConnectingAddress}
+                                        setOperationError={setOperationError}
+                                    />
+                                </Gtk.Box>
+                                <Gtk.Label
+                                    visible={isPowered.as((powered) => !powered)}
+                                    label="Bluetooth desativado. Ative para conectar um dispositivo."
+                                    wrap
+                                />
                             </Gtk.Box>
-                            <Gtk.Box visible={isPowered} orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                                <Gtk.Button
-                                    label={bind(current, 'discovering').as(scanning => scanning ? 'Parar busca' : 'Buscar dispositivos')}
-                                    onClicked={() => {
-                                        setOperationError(null);
-                                        try {
-                                            if (current.discovering) current.stop_discovery();
-                                            else current.start_discovery();
-                                        } catch (error) { setOperationError(String(error)); }
-                                    }} />
-                                <DeviceList bluetooth={bluetooth} service={service}
-                                    connectingAddress={connectingAddress} setConnectingAddress={setConnectingAddress}
-                                    setOperationError={setOperationError} />
-                            </Gtk.Box>
-                            <Gtk.Label visible={isPowered.as(powered => !powered)}
-                                label="Bluetooth desativado. Ative para conectar um dispositivo." wrap />
-                        </Gtk.Box>
-                    ) : <Gtk.Label label="Bluetooth indisponível: conecte ou habilite um adaptador." wrap />}
+                        ) : (
+                            <Gtk.Label
+                                label="Bluetooth indisponível: conecte ou habilite um adaptador."
+                                wrap
+                            />
+                        )
+                    }
                 </With>
             </Gtk.Box>
         ),

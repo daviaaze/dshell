@@ -234,16 +234,16 @@ function drawHints(
     sWin: WinInfo | null
 ) {
     if (!selActive && target === 'area') {
-        drawCenteredText(cr, width, height, 'Drag to select an area');
+        drawCenteredText(cr, width, height, 'Arraste para selecionar uma área');
     }
     if (!sWin && target === 'window') {
-        drawCenteredText(cr, width, height, 'Click a window to select it');
+        drawCenteredText(cr, width, height, 'Clique em uma janela para selecioná-la');
     }
     // Quick-select hint (matches the old region-selector footer)
     if (target === 'area') {
         drawLabel(
             cr,
-            'Drag to select · Click a window to snap · Enter to review · Esc to cancel',
+            'Arraste para selecionar · Clique em uma janela para ajustar · Enter para revisar · Esc para cancelar',
             width / 2,
             height - 32,
             Cairo.FontWeight.NORMAL,

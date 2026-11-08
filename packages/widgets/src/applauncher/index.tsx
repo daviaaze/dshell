@@ -56,7 +56,9 @@ function SearchEntry({
         <Gtk.Entry
             hexpand
             placeholderText={mode.as((m) =>
-                m === 'clipboard' ? 'Search clipboard history...' : 'Search your apps'
+                m === 'clipboard'
+                    ? 'Pesquisar no histórico da área de transferência...'
+                    : 'Pesquisar aplicativos'
             )}
             ref={(self) => {
                 holder.current = self;
@@ -104,7 +106,7 @@ function HintLabel({
                 halign={Gtk.Align.START}
                 marginStart={4}
                 cssClasses={['caption']}
-                label="Clipboard History — type &gt; to search"
+                label="Histórico da área de transferência — digite &gt; para pesquisar"
             />
             <Gtk.Label
                 visible={mode.as((m) => m === 'apps')}
@@ -114,8 +116,8 @@ function HintLabel({
                 label={list.as((l) => {
                     if (!frecencyHasData() || l.length === 0) return '';
                     return holder.current?.text
-                        ? 'Search results (boosted by usage)'
-                        : 'Most used apps';
+                        ? 'Resultados da pesquisa (priorizados por uso)'
+                        : 'Apps mais usados';
                 })}
             />
         </>
@@ -156,13 +158,13 @@ function ResultsList({
                     )}
                     title={mode.as((m) =>
                         m === 'clipboard'
-                            ? 'No results in clipboard history'
-                            : 'No applications found'
+                            ? 'Nenhum resultado no histórico da área de transferência'
+                            : 'Nenhum aplicativo encontrado'
                     )}
                     description={mode.as((m) =>
                         m === 'clipboard'
-                            ? 'Copy something to see it here'
-                            : 'Try a different search term'
+                            ? 'Copie algo para vê-lo aqui'
+                            : 'Tente outro termo de pesquisa'
                     )}
                 />
             </Gtk.Box>

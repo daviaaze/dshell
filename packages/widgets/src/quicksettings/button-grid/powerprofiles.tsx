@@ -1,7 +1,7 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import {cleanupNode, connectFor} from '@shade/core/connectFor';
 import {bus} from '@shade/services/bus';
-import PowerProfiles, {nextProfile, profileLabel} from '@shade/services/power/powerProfiles';
+import PowerProfiles, {nextProfile} from '@shade/services/power/powerProfiles';
 import {createState, effect, onCleanup} from 'gnim';
 import {LinkedBox} from '../../common/linkedBox';
 import {QuickControlButton} from '../../common/quickControlButton';
@@ -16,11 +16,12 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const pp = PowerProfiles.get_default();
     const group = new Gtk.CheckButton();
     const choices = [
-        {profile: 'power-saver' as const, label: 'Power Saver'},
-        {profile: 'balanced' as const, label: 'Balanced'},
-        {profile: 'performance' as const, label: 'Performance'},
+        {profile: 'power-saver' as const, label: 'Economia de energia'},
+        {profile: 'balanced' as const, label: 'Equilibrado'},
+        {profile: 'performance' as const, label: 'Desempenho'},
     ].map(({profile, label}) => ({
         profile,
+        label,
         button: new Gtk.CheckButton({group, label}),
     }));
     let syncing = false;
@@ -51,7 +52,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
             const p = pp.activeProfile;
             setActiveProfile(p);
             setIconName(pp.iconName);
-            setLabel(profileLabel(p));
+            setLabel(choices.find((choice) => choice.profile === p)?.label ?? p);
         };
         connectFor(_hn, pp, 'notify::activeProfile', update);
         update();
@@ -66,23 +67,19 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
         bus.emit('power:profile:set', p);
     };
 
-    const detail = (
-        <LinkedBox>
-            {choices.map(({button}) => button)}
-        </LinkedBox>
-    );
+    const detail = <LinkedBox>{choices.map(({button}) => button)}</LinkedBox>;
 
     return {
         detail,
         widget: (
             <QuickControlButton
                 intent="action"
-                domain="Power profile"
+                domain={'Perfil de\nenergia'}
                 icon={iconName}
                 value={label}
-                actionLabel="Cycle power profile"
+                actionLabel="Alternar perfil de energia"
                 onClick={() => setProfile(nextProfile(activeProfile()))}
-                detail={{label: 'Power profile options', onOpen}}
+                detail={{label: 'Opções do perfil de energia', onOpen}}
             />
         ),
     };

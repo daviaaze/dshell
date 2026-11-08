@@ -43,7 +43,7 @@ This guide separates **source-defined** paths from **observed in the isolated VM
 
 **Steps and result.** Type in the search field to fuzzy-search apps. Click a result or press Enter to launch the first matching app. With an empty app query, the launcher can show the available app list, ranked by usage when usage data exists. In clipboard mode, type `>` followed by an optional search term; `>` alone searches all clipboard history. Click a result to copy that item and close the launcher. A routed `shade-shell open-clipboard` request opens clipboard mode directly; `shade-shell clipboard` toggles it.
 
-**Cancel and empty states.** Escape closes the launcher. The app list shows **No applications found** when there are no matches; clipboard mode shows **No results in clipboard history**. Pressing Enter in clipboard mode closes the window; selecting a result is the copy action. Closing the launcher resets it to app mode.
+**Cancel and empty states.** Escape closes the launcher. The app list shows **Nenhum aplicativo encontrado** when there are no matches; clipboard mode shows **Nenhum resultado no histórico da área de transferência**. Pressing Enter in clipboard mode closes the window; selecting a result is the copy action. Closing the launcher resets it to app mode.
 
 **Implementation trail.** [Launcher UI](../packages/widgets/src/applauncher/index.tsx) handles search, keyboard activation, and empty states; [search routing](../packages/services/src/search/launcher.ts) interprets the `>` prefix; [clipboard result buttons](../packages/widgets/src/applauncher/clipboardButton.tsx) copy the selected item; [shell state](../packages/services/src/state/shellState.ts) registers the actions.
 
@@ -53,14 +53,14 @@ This guide separates **source-defined** paths from **observed in the isolated VM
 
 **Steps and result.** While holding Super, press Tab or Right to move forward and Shift+Tab or Left to move backward. Release Super to focus the selected window. Enter also focuses the selected window and closes the switcher.
 
-**Cancel and empty state.** Escape closes without changing focus. With no open windows, the switcher shows **No Open Windows** and releasing Super closes it. **Q** kills the selected window; it is not a navigation key.
+**Cancel and empty state.** Escape closes without changing focus. With no open windows, the switcher shows **Nenhuma janela aberta** and releasing Super closes it. **Q** kills the selected window; it is not a navigation key.
 
 **Implementation trail.** [Window switcher](../packages/widgets/src/windowswitcher/index.tsx) implements selection and key handling; [binds.nix](../nix/hyprland/binds.nix) defines `Super+Tab`.
 
 ## Use Quick Settings
 
 **Entry and requirements.** Press **Super+N** or click the bar's system-indicator button. **Controles rápidos** (Home) is a scrollable, focused-monitor panel, not a collection of nested popovers. Its Home groups are **Conexões** and **Tela e som**. Open Wi-Fi, Bluetooth, **Telas**, **Saída de áudio**, or **Microfone** details; audio details lead to **Mixer de aplicativos**. **Voltar** or Escape returns to the originating page/control; Escape on Home closes the panel. Closing resets navigation to Home. Leaving a pending display preview first requests rollback; rollback failure is shown rather than silently navigating away.
-**Other and data routes.** **Outros controles** opens energy/profile, appearance, capture, keep-awake, timer, night-light, and touchpad controls, plus battery, media and tray items. **Data e clima** opens calendar, weather and world clocks. **Notificações** opens the independent Notification Center. The Home header exposes **Configurações** and **Sessão e energia**.
+**Other and data routes.** **Outros controles** opens **Perfil de energia**, **Aparência**, **Captura de tela**, **Manter ativo**, **Temporizador**, **Luz noturna**, and touchpad controls, plus battery, media and tray items. **Data e clima** opens the calendar, **Relógio mundial**, and weather; forecast views are **Por hora** and **Previsão de 5 dias**. **Notificações** opens the independent Notification Center. The Home header exposes **Configurações** and **Sessão e energia**.
 
 ### Wi-Fi and Bluetooth
 
@@ -82,7 +82,7 @@ Open **Outros controles → Temporizador** to choose a countdown preset, enter a
 
 ### Notifications, DND, power, and capture
 
-**Steps and result.** Open **Notificações** from Home to use the independent Notification Center's DND, current/history, dismissal, and deletion controls. Use the Home header for Settings and session/power actions. **Outros controles → Captura** exposes capture entry points; target selection and explicit consent belong to the capture overlay described below.
+**Steps and result.** Open **Notificações** from Home to use the independent Notification Center's DND, current/history, dismissal, and deletion controls. Use the Home header for Settings and session/power actions. **Outros controles → Captura de tela** exposes capture entry points; target selection and explicit consent belong to the capture overlay described below.
 
 **Cancel and empty states.** Empty notification/history states are explicit. DND suppression with a foreign notification daemon is not guaranteed. Capture requires working compositor and capture tools.
 
@@ -124,13 +124,13 @@ The table above describes feature capabilities using English translations. The a
 
 **Entry and requirements.** The running Hyprland shell owns the capture overlay. Press **Print** to open it; separate default bindings and routed capture commands are direct actions, not proof of overlay review/consent. The Quick Settings capture tile provides additional actions. Relevant compositor and capture tools are required.
 
-**Select → review → confirm.** Choose **Image** or **Recording**, then **Fullscreen**, **Area**, **Window**, or **Monitor**. Drag an area or click a window to select it; selection alone never starts capture. **Review target** (or Enter with a valid target) opens review showing target identity/geometry; expand **Full target details** to inspect the complete summary. **Change target** returns to selection; **Cancel** or Escape closes without capture. Only explicitly activating **Capture image** or **Start recording** consents. Enter is intercepted before focused controls: it reviews on the selection page and does nothing on review; it never implicitly confirms capture. Sub-5-pixel selections are discarded.
+**Select → review → confirm.** Choose **Imagem** or **Gravação**, then **Tela cheia**, **Área**, **Janela**, or **Monitor**. Drag an area or click a window to select it; selection alone never starts capture. **Revisar alvo** (or Enter with a valid target) opens review showing target identity/geometry; expand **Detalhes completos do alvo** to inspect the complete summary. **Alterar alvo** returns to selection; **Cancelar** or Escape closes without capture. Only explicitly activating **Capturar imagem** or **Iniciar gravação** consents. Enter is intercepted before focused controls: it reviews on the selection page and does nothing on review; it never implicitly confirms capture. Sub-5-pixel selections are discarded.
 
 **Results and retry.** Capture exposes busy state and a separate result/error surface in the [recording bar](../packages/widgets/src/recording-bar/index.tsx). Image success includes a preview and saved path; completed recordings show their path. **Abrir arquivo**, **Abrir pasta**, and **Fechar** act on a result. Errors show **Falha na captura/gravação** with the backend message and **Fechar**; dismiss the error and reopen capture to retry selection/review/confirmation. There is no automatic retry or implied successful file on error. Active recording shows elapsed time and Stop; stopping must complete before a saved result is available.
 
 **Unavailable states.** Missing compositor/tools or canceled external selection cannot establish success. Overlay widgets require Hyprland. Direct/routed capture entry points are distinct from the overlay's consent steps; a shortcut is not evidence that overlay confirmation occurred.
 
-The Quick Settings capture tile has independent actions: fullscreen and area screenshot commands, fullscreen recording toggle, and area/output/window recording selectors. These are direct service flows, not the overlay's select-review-confirm UI. The tile also exposes recording audio/format controls and a virtual-monitor control.
+The Quick Settings capture tile has independent actions: fullscreen and area screenshot commands, fullscreen recording toggle, and area/**Monitor**/**Janela** recording selectors. These are direct service flows, not the overlay's select-review-confirm UI. The tile also exposes **Gravar áudio** and format controls and a virtual-monitor control.
 
 **Implementation trail.** [Capture overlay](../packages/widgets/src/screenshot-ui/index.tsx) handles target selection and key controls; [control panel](../packages/widgets/src/screenshot-ui/controlPanel.tsx) defines modes, review and explicit confirmation; [capture service](../packages/services/src/capture/screenshot.ts), [capture flow](../packages/services/src/capture/captureFlow.ts), and [registered capture actions](../packages/services/src/capture/commands.ts) route operations; [recording bar](../packages/widgets/src/recording-bar/index.tsx) reports result/error and recording lifecycle.
 

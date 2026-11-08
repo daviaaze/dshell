@@ -9,6 +9,12 @@ import TimerService from '@shade/services/time/timerService';
 import {type Accessor, bind, computed, effect, For} from 'gnim';
 import {TimerSection} from '../quicksettings/timer/TimerSection';
 
+const CITY_NAMES_PT: Record<string, string> = {
+    'Sao Paulo': 'São Paulo',
+    Bogota: 'Bogotá',
+    Asuncion: 'Assunção',
+};
+
 /** One world-clock row: city name, tz id, time, and offset vs local. */
 function WorldClockRow({
     tzId,
@@ -27,7 +33,11 @@ function WorldClockRow({
 
     return (
         <Gtk.Box spacing={8}>
-            <Gtk.Label label={cityName(tzId)} hexpand halign={Gtk.Align.START} />
+            <Gtk.Label
+                label={CITY_NAMES_PT[cityName(tzId)] ?? cityName(tzId)}
+                hexpand
+                halign={Gtk.Align.START}
+            />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand halign={Gtk.Align.END}>
                 <Gtk.Label label={tzId} />
                 <Gtk.Box>
@@ -54,12 +64,12 @@ function ClockPopover() {
         <Gtk.Box spacing={12} orientation={Gtk.Orientation.VERTICAL}>
             <Gtk.Calendar />
             <Gtk.Separator />
-            <Gtk.Label label="World Clock" halign={Gtk.Align.CENTER} />
+            <Gtk.Label label="Relógio mundial" halign={Gtk.Align.CENTER} />
             <For each={general.timezones}>
                 {(tzId: string) => <WorldClockRow tzId={tzId} time={time} localTz={localTz} />}
             </For>
             <Gtk.Separator />
-            <Gtk.Label label="Timer" halign={Gtk.Align.CENTER} />
+            <Gtk.Label label="Temporizador" halign={Gtk.Align.CENTER} />
             <Gtk.Box widthRequest={230} halign={Gtk.Align.FILL}>
                 <TimerSection />
             </Gtk.Box>
@@ -153,15 +163,15 @@ export default ({
             ref={(self) => {
                 effect(() => {
                     const accessibleName = timerActive()
-                        ? `Timer: ${timerDisplay()}`
-                        : `Time ${hour()}:${minute()}, ${fullDate()}`;
+                        ? `Temporizador: ${timerDisplay()}`
+                        : `Horário ${hour()}:${minute()}, ${fullDate()}`;
                     self.update_property(
                         [Gtk.AccessibleProperty.LABEL, Gtk.AccessibleProperty.DESCRIPTION],
                         [
                             new GObject.Value(GObject.TYPE_STRING, accessibleName),
                             new GObject.Value(
                                 GObject.TYPE_STRING,
-                                'Opens the calendar, world clocks, and timer controls.'
+                                'Abre o calendário, os relógios mundiais e os controles do temporizador.'
                             ),
                         ]
                     );

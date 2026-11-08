@@ -76,7 +76,7 @@ export const TimerSection = () => {
                         iconName={running.as((r) =>
                             r ? 'media-playback-pause-symbolic' : 'media-playback-start-symbolic'
                         )}
-                        tooltipText={running.as((r) => (r ? 'Pause' : 'Resume'))}
+                        tooltipText={running.as((r) => (r ? 'Pausar' : 'Retomar'))}
                         onClicked={() => {
                             if (timer.running) bus.emit('timer:cmd:pause');
                             else bus.emit('timer:cmd:resume');
@@ -85,7 +85,7 @@ export const TimerSection = () => {
                     <Gtk.Button
                         cssClasses={['circular']}
                         iconName={'media-playback-stop-symbolic'}
-                        tooltipText="Stop"
+                        tooltipText="Parar"
                         onClicked={() => bus.emit('timer:cmd:cancel')}
                     />
                 </Gtk.Box>
@@ -105,7 +105,7 @@ export const TimerSection = () => {
                         cssClasses={[]}
                         onClicked={() => setSelectedMode('countdown')}
                     >
-                        <Gtk.Label label="Timer" />
+                        <Gtk.Label label="Contagem regressiva" />
                     </Gtk.ToggleButton>
                     <Gtk.ToggleButton
                         active={selectedMode.as((m) => m === 'pomodoro')}
@@ -172,12 +172,12 @@ export const TimerSection = () => {
                                 digits={0}
                                 valign={Gtk.Align.CENTER}
                                 widthRequest={52}
-                                tooltipText="Hours"
+                                tooltipText="Horas"
                                 ref={(self) => {
                                     hoursInput = self;
                                     self.update_property(
                                         [Gtk.AccessibleProperty.LABEL],
-                                        [new GObject.Value(GObject.TYPE_STRING, 'Hours')]
+                                        [new GObject.Value(GObject.TYPE_STRING, 'Horas')]
                                     );
                                 }}
                             />
@@ -187,12 +187,12 @@ export const TimerSection = () => {
                                 digits={0}
                                 valign={Gtk.Align.CENTER}
                                 widthRequest={52}
-                                tooltipText="Minutes"
+                                tooltipText="Minutos"
                                 ref={(self) => {
                                     minutesInput = self;
                                     self.update_property(
                                         [Gtk.AccessibleProperty.LABEL],
-                                        [new GObject.Value(GObject.TYPE_STRING, 'Minutes')]
+                                        [new GObject.Value(GObject.TYPE_STRING, 'Minutos')]
                                     );
                                 }}
                             />
@@ -202,12 +202,12 @@ export const TimerSection = () => {
                                 digits={0}
                                 valign={Gtk.Align.CENTER}
                                 widthRequest={52}
-                                tooltipText="Seconds"
+                                tooltipText="Segundos"
                                 ref={(self) => {
                                     secondsInput = self;
                                     self.update_property(
                                         [Gtk.AccessibleProperty.LABEL],
-                                        [new GObject.Value(GObject.TYPE_STRING, 'Seconds')]
+                                        [new GObject.Value(GObject.TYPE_STRING, 'Segundos')]
                                     );
                                 }}
                             />
@@ -216,11 +216,16 @@ export const TimerSection = () => {
                         <Gtk.Button
                             cssClasses={['circular']}
                             iconName="media-playback-start-symbolic"
-                            tooltipText="Start custom timer"
+                            tooltipText="Iniciar temporizador personalizado"
                             ref={(self) =>
                                 self.update_property(
                                     [Gtk.AccessibleProperty.LABEL],
-                                    [new GObject.Value(GObject.TYPE_STRING, 'Start custom timer')]
+                                    [
+                                        new GObject.Value(
+                                            GObject.TYPE_STRING,
+                                            'Iniciar temporizador personalizado'
+                                        ),
+                                    ]
                                 )
                             }
                             onClicked={readCustom}
@@ -242,13 +247,13 @@ export const TimerSection = () => {
                         cssClasses={['card']}
                     >
                         <Gtk.Label
-                            label="Focus for 25 minutes, then take a 5 minute break."
+                            label="Concentre-se por 25 minutos e depois faça uma pausa de 5 minutos."
                             cssClasses={['body']}
                             wrap
                             halign={Gtk.Align.START}
                         />
                         <Gtk.Label
-                            label="Long break (15m) after every 4 sessions."
+                            label="Pausa longa (15 min) a cada 4 sessões."
                             cssClasses={['caption', 'dimmed']}
                             wrap
                             halign={Gtk.Align.START}
@@ -262,7 +267,7 @@ export const TimerSection = () => {
                     >
                         <Adw.ButtonContent
                             iconName="media-playback-start-symbolic"
-                            label="Start Pomodoro"
+                            label="Iniciar Pomodoro"
                         />
                     </Gtk.Button>
                 </Gtk.Box>

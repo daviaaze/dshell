@@ -1,10 +1,9 @@
+import Adw from 'gi://Adw?version=1';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
-import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Keybinds, {type HyprBind} from '@shade/services/input/keybinds';
 import {computed, createState, For, onCleanup} from 'gnim';
-
 
 export default () => {
     const keybinds = Keybinds.get_default();
@@ -78,13 +77,16 @@ export default () => {
                         <For each={computed(() => group.binds)}>
                             {(bind: HyprBind) => {
                                 const title = GLib.markup_escape_text(
-                                    keybinds.formatDescription(bind),
+                                    keybinds.formatTitle(bind),
                                     -1
                                 );
                                 return (
                                     <Adw.ExpanderRow
                                         title={title}
-                                        subtitle={keybinds.formatKeyCombo(bind) || 'Nenhuma tecla informada'}
+                                        subtitle={
+                                            keybinds.formatKeyCombo(bind) ||
+                                            'Nenhuma tecla informada'
+                                        }
                                     >
                                         <Gtk.Box
                                             orientation={Gtk.Orientation.VERTICAL}
@@ -105,7 +107,10 @@ export default () => {
                                                 label="Copiar comando"
                                                 halign={Gtk.Align.START}
                                                 onClicked={(self) =>
-                                                    self.get_display()?.get_clipboard().set(bind.arg)
+                                                    self
+                                                        .get_display()
+                                                        ?.get_clipboard()
+                                                        .set(bind.arg)
                                                 }
                                                 ref={(self) =>
                                                     self.update_property(

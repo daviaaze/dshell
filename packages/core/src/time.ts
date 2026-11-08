@@ -17,20 +17,20 @@ export function cityName(tzId: string): string {
     return tzId.split('/').pop()?.replaceAll('_', ' ') ?? tzId;
 }
 
-/** Relative age of a unix timestamp (e.g. "now", "42s ago", "5m ago"). */
+/** Relative age of a unix timestamp (e.g. "agora", "há 42 s", "há 5 min"). */
 export function relativeTime(unix: number): string {
     const now = GLib.DateTime.new_now_local()!;
     const then = GLib.DateTime.new_from_unix_local(unix)!;
     const diff = now.difference(then);
     const seconds = Number(diff.valueOf()) / 1_000_000;
 
-    if (seconds < 10) return 'now';
-    if (seconds < 60) return `${Math.floor(seconds)}s ago`;
+    if (seconds < 10) return 'agora';
+    if (seconds < 60) return `há ${Math.floor(seconds)} s`;
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 60) return `há ${minutes} min`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+    if (hours < 24) return `há ${hours} h`;
+    return `há ${Math.floor(hours / 24)} d`;
 }
 
 /** Wall-clock time of a unix timestamp ("%H:%M:%S"). */

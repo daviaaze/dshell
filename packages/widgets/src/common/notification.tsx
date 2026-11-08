@@ -262,7 +262,8 @@ export default ({
 
     const imagePixelSize = variant === 'popup' ? 48 : 64;
     const clampWidth = variant === 'popup' ? 360 : 320;
-    const closeLabel = variant === 'popup' ? 'Close notification toast' : 'Dismiss notification';
+    const closeLabel =
+        variant === 'popup' ? 'Fechar aviso de notificação' : 'Dispensar notificação';
     const handleClose = () => closeAction(notification, card);
 
     return (

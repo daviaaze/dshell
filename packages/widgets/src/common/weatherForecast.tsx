@@ -34,7 +34,7 @@ export const HourlyForecastSection = ({
         >
             <Gtk.Label
                 cssClasses={[CAPTION_HEADING, 'dimmed']}
-                label="Hourly"
+                label="Por hora"
                 halign={Gtk.Align.START}
             />
             <Gtk.ScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
@@ -70,7 +70,7 @@ export const DailyForecastSection = ({dailyForecast}: {dailyForecast: Accessor<D
         >
             <Gtk.Label
                 cssClasses={[CAPTION_HEADING, 'dimmed']}
-                label="5-Day Forecast"
+                label="Previsão de 5 dias"
                 halign={Gtk.Align.START}
             />
             <Gtk.Box spacing={8} hexpand homogeneous>

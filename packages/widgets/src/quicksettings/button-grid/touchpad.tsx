@@ -16,9 +16,11 @@ export default (): QuickButton => {
                     enabled ? 'input-touchpad-symbolic' : 'touchpad-disabled-symbolic'
                 )}
                 domain="Touchpad"
-                value={bind(touchpad, 'enabled').as((enabled) => enabled ? 'On' : 'Off')}
+                value={bind(touchpad, 'enabled').as((enabled) =>
+                    enabled ? 'Ativado' : 'Desativado'
+                )}
                 actionLabel={bind(touchpad, 'enabled').as((enabled) =>
-                    enabled ? 'Turn Touchpad off' : 'Turn Touchpad on'
+                    enabled ? 'Desativar touchpad' : 'Ativar touchpad'
                 )}
                 sensitive={bind(touchpad, 'available')}
                 onClick={() => bus.emit('input:touchpad:toggle')}

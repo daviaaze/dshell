@@ -98,13 +98,13 @@ const NotificationListContent = ({
         if (!(root instanceof Gtk.Window)) return;
         historyClearDialogs.add(root);
         const dialog = new Adw.AlertDialog({
-            heading: 'Clear notification history?',
-            body: 'This permanently removes all saved notifications and does not change Do Not Disturb.',
+            heading: 'Limpar histórico de notificações?',
+            body: 'Isso remove permanentemente todas as notificações salvas e não altera o modo Não perturbe.',
             defaultResponse: 'cancel',
             closeResponse: 'cancel',
         });
-        dialog.add_response('cancel', 'Cancel');
-        dialog.add_response('clear', 'Clear history');
+        dialog.add_response('cancel', 'Cancelar');
+        dialog.add_response('clear', 'Limpar histórico');
         dialog.set_response_appearance('clear', Adw.ResponseAppearance.DESTRUCTIVE);
         const astalRoot = root instanceof Astal.Window ? root : null;
         const previousKeymode = astalRoot?.keymode;
@@ -192,7 +192,7 @@ const NotificationListContent = ({
                 visible={bind(history, 'history').as((h) => h.length > HISTORY_VISIBLE_COUNT)}
                 cssClasses={['caption', 'dimmed']}
                 label={bind(history, 'history').as(
-                    (h) => `Showing ${HISTORY_VISIBLE_COUNT} of ${h.length} notifications`
+                    (h) => `Mostrando ${HISTORY_VISIBLE_COUNT} de ${h.length} notificações`
                 )}
                 halign={Gtk.Align.CENTER}
             />
@@ -200,8 +200,8 @@ const NotificationListContent = ({
                 visible={bind(history, 'history').as((h) => h.length === 0)}
                 vexpand
                 cssClasses={['compact']}
-                title="No history"
-                description="Notification history is empty"
+                title="Sem histórico"
+                description="O histórico de notificações está vazio"
                 iconName={IconNames.notifications}
             />
         </Gtk.Box>
@@ -234,15 +234,15 @@ const NotificationListContent = ({
                         iconName={expanded.as((v) => (v ? 'go-up-symbolic' : 'go-down-symbolic'))}
                         valign={Gtk.Align.CENTER}
                         tooltipText={expanded.as((v) =>
-                            v ? 'Hide full message' : 'Show full message'
+                            v ? 'Ocultar mensagem completa' : 'Mostrar mensagem completa'
                         )}
                         onClicked={() => setExpanded(!expanded())}
                         slot="suffix"
                         ref={(self) =>
                             effect(() => {
                                 const label = expanded()
-                                    ? 'Hide full message'
-                                    : 'Show full message';
+                                    ? 'Ocultar mensagem completa'
+                                    : 'Mostrar mensagem completa';
                                 self.update_property(
                                     [Gtk.AccessibleProperty.LABEL],
                                     [new GObject.Value(GObject.TYPE_STRING, label)]
@@ -254,13 +254,13 @@ const NotificationListContent = ({
                         cssClasses={['flat', 'circular']}
                         iconName="edit-delete-symbolic"
                         valign={Gtk.Align.CENTER}
-                        tooltipText="Delete from history"
+                        tooltipText="Excluir do histórico"
                         onClicked={() => history.remove(entry.id)}
                         slot="suffix"
                         ref={(self) =>
                             self.update_property(
                                 [Gtk.AccessibleProperty.LABEL],
-                                [new GObject.Value(GObject.TYPE_STRING, 'Delete from history')]
+                                [new GObject.Value(GObject.TYPE_STRING, 'Excluir do histórico')]
                             )
                         }
                     />
@@ -314,13 +314,13 @@ const NotificationListContent = ({
                 <Gtk.Button
                     iconName={'edit-clear-all-symbolic'}
                     valign={Gtk.Align.END}
-                    tooltipText={'Dismiss this group'}
+                    tooltipText={'Dispensar este grupo'}
                     cssClasses={['flat']}
                     onClicked={() => dismissAll(notifications())}
                     ref={(self) =>
                         self.update_property(
                             [Gtk.AccessibleProperty.LABEL],
-                            [new GObject.Value(GObject.TYPE_STRING, 'Dismiss this group')]
+                            [new GObject.Value(GObject.TYPE_STRING, 'Dispensar este grupo')]
                         )
                     }
                 />

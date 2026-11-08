@@ -276,8 +276,8 @@ export default () => {
                             visible={clientsList.as((l) => l.length === 0)}
                             vexpand
                             cssClasses={['compact']}
-                            title="No Open Windows"
-                            description="Press Escape to close the switcher."
+                            title="Nenhuma janela aberta"
+                            description="Pressione Esc para fechar o seletor."
                             iconName="window-new-symbolic"
                         />
                     </Gtk.Box>

@@ -18,7 +18,6 @@ export interface HyprBind {
     description?: string;
 }
 
-
 export interface CategorizedBinds {
     category: string;
     binds: HyprBind[];
@@ -26,34 +25,34 @@ export interface CategorizedBinds {
 
 // Dispatcher names are factory names, not qualified Lua paths.
 const CATEGORY_MAP: Readonly<Record<string, string>> = {
-    exec_cmd: 'Launch Applications',
-    exec_raw: 'Launch Applications',
-    show: 'Workspace Navigation',
-    toggle_special: 'Workspace Navigation',
-    swap_monitors: 'Workspace Navigation',
-    change_id: 'Workspace Navigation',
-    rename: 'Workspace Navigation',
-    float: 'Window Controls',
-    fullscreen: 'Window Controls',
-    fullscreen_state: 'Window Controls',
-    close: 'Window Controls',
-    kill: 'Window Controls',
-    pseudo: 'Window Controls',
-    pin: 'Window Controls',
-    resize: 'Window Controls',
-    center: 'Window Controls',
-    drag: 'Window Controls',
-    focus: 'Window Navigation',
-    cycle_next: 'Window Navigation',
-    next: 'Window Navigation',
-    prev: 'Window Navigation',
-    active: 'Window Navigation',
+    exec_cmd: 'Abrir aplicativos',
+    exec_raw: 'Abrir aplicativos',
+    show: 'Navegação entre espaços de trabalho',
+    toggle_special: 'Navegação entre espaços de trabalho',
+    swap_monitors: 'Navegação entre espaços de trabalho',
+    change_id: 'Navegação entre espaços de trabalho',
+    rename: 'Navegação entre espaços de trabalho',
+    float: 'Controles de janela',
+    fullscreen: 'Controles de janela',
+    fullscreen_state: 'Controles de janela',
+    close: 'Controles de janela',
+    kill: 'Controles de janela',
+    pseudo: 'Controles de janela',
+    pin: 'Controles de janela',
+    resize: 'Controles de janela',
+    center: 'Controles de janela',
+    drag: 'Controles de janela',
+    focus: 'Navegação entre janelas',
+    cycle_next: 'Navegação entre janelas',
+    next: 'Navegação entre janelas',
+    prev: 'Navegação entre janelas',
+    active: 'Navegação entre janelas',
     layout: 'Layout',
-    exit: 'System',
-    reload_config: 'System',
-    force_renderer_reload: 'System',
-    dpms: 'System',
-    force_idle: 'System',
+    exit: 'Sistema',
+    reload_config: 'Sistema',
+    force_renderer_reload: 'Sistema',
+    dpms: 'Sistema',
+    force_idle: 'Sistema',
 };
 
 const MODIFIERS: ReadonlyArray<readonly [number, string]> = [
@@ -67,64 +66,137 @@ const MODIFIERS: ReadonlyArray<readonly [number, string]> = [
     [128, 'Mod5'],
 ];
 
+/** Group binds for presentation without modifying compositor-provided data. */
+export function categorizeBinds(binds: readonly HyprBind[]): CategorizedBinds[] {
+    const grouped = new Map<string, HyprBind[]>();
+
+    for (const bind of binds) {
+        const category = presentCategory(CATEGORY_MAP[dispatcherName(bind)] || 'Outros');
+        if (!grouped.has(category)) grouped.set(category, []);
+        grouped.get(category)!.push(bind);
+    }
+
+    return Array.from(grouped.entries())
+        .map(([category, categorizedBinds]) => ({category, binds: categorizedBinds}))
+        .sort((a, b) => a.category.localeCompare(b.category));
+}
+
 function dispatcherName(bind: HyprBind): string {
     return /^HL\.Dispatcher\(([^()]+)\)$/.exec(bind.dispatcher)?.[1] ?? '';
 }
 
 export const SHELL_ACTION_DESCRIPTIONS: Readonly<Record<string, string>> = {
-    'toggle-applauncher': 'Toggle app launcher',
-    'toggle-quicksettings': 'Toggle quick settings',
-    'toggle-bar': 'Show or hide bar',
-    'toggle-windowswitcher': 'Toggle window switcher',
-    'toggle-settings': 'Toggle settings',
-    'toggle-clipboard': 'Toggle clipboard manager',
-    'open-clipboard': 'Open clipboard manager',
-    lockscreen: 'Lock screen',
-    'close-all': 'Close all popups',
-    screenshot: 'Take screenshot',
-    'screenshot-area': 'Screenshot selected area',
-    'screenshot-overlay': 'Toggle screenshot overlay',
-    record: 'Toggle recording',
-    'record-area': 'Record selected area',
-    'record-window': 'Record active window',
-    'record-output': 'Record active output',
-    'record-window-address': 'Record selected window',
-    'display-next': 'Cycle display layouts',
-    'display-mode': 'Preview display mode',
-    'display-mode-chooser': 'Choose display mode',
-    'display-toggle-internal': 'Toggle internal display',
-    'toggle-touchpad': 'Toggle touchpad',
+    'toggle-applauncher': 'Mostrar ou ocultar lançador de aplicativos',
+    'toggle-quicksettings': 'Mostrar ou ocultar configurações rápidas',
+    'toggle-bar': 'Mostrar ou ocultar barra',
+    'toggle-windowswitcher': 'Mostrar ou ocultar alternador de janelas',
+    'toggle-settings': 'Mostrar ou ocultar configurações',
+    'toggle-clipboard': 'Mostrar ou ocultar gerenciador da área de transferência',
+    'open-clipboard': 'Abrir gerenciador da área de transferência',
+    lockscreen: 'Bloquear tela',
+    'close-all': 'Fechar todos os painéis',
+    screenshot: 'Capturar tela',
+    'screenshot-area': 'Capturar área selecionada',
+    'screenshot-overlay': 'Mostrar ou ocultar painel de captura de tela',
+    record: 'Iniciar ou parar gravação',
+    'record-area': 'Gravar área selecionada',
+    'record-window': 'Gravar janela ativa',
+    'record-output': 'Gravar monitor ativo',
+    'record-window-address': 'Gravar janela selecionada',
+    'display-next': 'Alternar layouts de monitores',
+    'display-mode': 'Visualizar modo de exibição',
+    'display-mode-chooser': 'Escolher modo de exibição',
+    'display-toggle-internal': 'Ativar ou desativar monitor interno',
+    'toggle-touchpad': 'Ativar ou desativar touchpad',
 };
 
 const DISPATCHER_DESCRIPTIONS: Readonly<Record<string, string>> = {
-    show: 'Switch workspace',
-    toggle_special: 'Toggle special workspace',
-    swap_monitors: 'Swap workspace monitors',
-    change_id: 'Change workspace ID',
-    rename: 'Rename workspace',
-    float: 'Toggle floating mode',
-    fullscreen: 'Toggle fullscreen',
-    fullscreen_state: 'Change fullscreen state',
-    focus: 'Focus window',
-    move: 'Move',
-    resize: 'Resize window',
-    close: 'Close window',
-    kill: 'Kill window',
-    pseudo: 'Toggle pseudo-tile mode',
-    pin: 'Pin window',
-    center: 'Center window',
-    drag: 'Drag window',
-    cycle_next: 'Cycle window focus',
-    next: 'Next group window',
-    prev: 'Previous group window',
-    active: 'Change active group window',
-    layout: 'Change layout',
-    exit: 'Exit Hyprland',
-    reload_config: 'Reload configuration',
-    force_renderer_reload: 'Reload the renderer',
-    dpms: 'Change display power',
-    force_idle: 'Force idle',
+    show: 'Alternar espaço de trabalho',
+    toggle_special: 'Mostrar ou ocultar espaço de trabalho especial',
+    swap_monitors: 'Trocar monitores dos espaços de trabalho',
+    change_id: 'Alterar ID do espaço de trabalho',
+    rename: 'Renomear espaço de trabalho',
+    float: 'Alternar modo flutuante',
+    fullscreen: 'Alternar tela cheia',
+    fullscreen_state: 'Alterar estado de tela cheia',
+    focus: 'Focar janela',
+    move: 'Mover janela',
+    resize: 'Redimensionar janela',
+    close: 'Fechar janela',
+    kill: 'Forçar fechamento da janela',
+    pseudo: 'Alternar modo pseudo-ladrilho',
+    pin: 'Fixar janela',
+    center: 'Centralizar janela',
+    drag: 'Arrastar janela',
+    cycle_next: 'Alternar foco entre janelas',
+    next: 'Próxima janela do grupo',
+    prev: 'Janela anterior do grupo',
+    active: 'Alterar janela ativa do grupo',
+    layout: 'Alterar layout',
+    exit: 'Sair do Hyprland',
+    reload_config: 'Recarregar configuração',
+    force_renderer_reload: 'Recarregar renderizador',
+    dpms: 'Alterar energia do monitor',
+    force_idle: 'Forçar inatividade',
 };
+
+const CATEGORY_PRESENTATION: Readonly<Record<string, string>> = {
+    'Launch Applications': 'Abrir aplicativos',
+    'Window Controls': 'Controles de janela',
+    'Window Navigation': 'Navegação entre janelas',
+    'Workspace Navigation': 'Navegação entre espaços de trabalho',
+    Layout: 'Layout',
+    System: 'Sistema',
+    Other: 'Outros',
+};
+
+const GENERIC_TITLE_PRESENTATION: Readonly<Record<string, string>> = {
+    'Run command': 'Executar comando',
+    'Custom shortcut': 'Atalho personalizado',
+};
+
+const TITLE_PRESENTATION: Readonly<Record<string, string>> = {
+    ...GENERIC_TITLE_PRESENTATION,
+    'Choose display mode': 'Escolher modo de exibição',
+    'Toggle recording': 'Iniciar ou parar gravação',
+    Move: 'Mover janela',
+    'Move window into group on the left': 'Mover janela para o grupo à esquerda',
+    'Move window into group on the right': 'Mover janela para o grupo à direita',
+    'Move window into group above': 'Mover janela para o grupo acima',
+    'Move window into group below': 'Mover janela para o grupo abaixo',
+    'Move window out of group': 'Tirar janela do grupo',
+    'Lock active group': 'Bloquear grupo ativo',
+    'Zoom in': 'Aumentar zoom',
+    'Zoom out': 'Diminuir zoom',
+    'Reset zoom': 'Restaurar zoom',
+};
+
+const KEY_PRESENTATION: Readonly<Record<string, string>> = {
+    mouse_up: 'Roda do mouse ↑',
+    mouse_down: 'Roda do mouse ↓',
+    'mouse:272': 'Botão esquerdo do mouse',
+    'mouse:273': 'Botão direito do mouse',
+    'mouse:274': 'Botão do meio do mouse',
+};
+
+function lookup(table: Readonly<Record<string, string>>, key: string): string | undefined {
+    return globalThis.Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
+/** Translate a known English category label; unknown labels pass through unchanged. */
+export function presentCategory(category: string): string {
+    return lookup(CATEGORY_PRESENTATION, category) ?? category;
+}
+
+/** Translate raw compositor key names such as `mouse_up`; unknown keys pass through unchanged. */
+export function presentKeyName(key: string): string {
+    return lookup(KEY_PRESENTATION, key) ?? key;
+}
+
+/** Translate known titles; authored titles that are not recognised pass through verbatim. */
+export function presentBindTitle(title: string): string {
+    return lookup(TITLE_PRESENTATION, title) ?? title;
+}
 
 @register
 export default class Keybinds extends Object {
@@ -155,8 +227,7 @@ export default class Keybinds extends Object {
     }
 
     #init(): void {
-        this.#configPath =
-            GLib.getenv('HYPRLAND_CONFIG') || '/etc/xdg/hypr/hyprland.lua';
+        this.#configPath = GLib.getenv('HYPRLAND_CONFIG') || '/etc/xdg/hypr/hyprland.lua';
 
         this.refresh();
     }
@@ -177,22 +248,9 @@ export default class Keybinds extends Object {
 
     /** Get keybinds grouped by category. */
     getCategorizedBinds(): CategorizedBinds[] {
-        const grouped = new Map<string, HyprBind[]>();
-
-        for (const bind of this.#binds) {
-            const category = CATEGORY_MAP[dispatcherName(bind)] || 'Other';
-            if (!grouped.has(category)) {
-                grouped.set(category, []);
-            }
-            grouped.get(category)!.push(bind);
-        }
-
-        return Array.from(grouped.entries())
-            .map(([category, binds]) => ({category, binds}))
-            .sort((a, b) => a.category.localeCompare(b.category));
+        return categorizeBinds(this.#binds);
     }
 
-    /** Format key combo for display. */
     formatKeyCombo(bind: HyprBind): string {
         const parts: string[] = [];
         for (const [mask, label] of MODIFIERS) {
@@ -210,26 +268,34 @@ export default class Keybinds extends Object {
         const description = bind.description;
         if (description?.startsWith('shade-action:')) {
             const action = description.slice('shade-action:'.length);
-            if (Object.prototype.hasOwnProperty.call(SHELL_ACTION_DESCRIPTIONS, action)) {
+            if (
+                globalThis.Object.prototype.hasOwnProperty.call(SHELL_ACTION_DESCRIPTIONS, action)
+            ) {
                 return SHELL_ACTION_DESCRIPTIONS[action];
             }
             return dispatcher === 'exec_cmd' || dispatcher === 'exec_raw'
-                ? 'Run command'
-                : 'Custom shortcut';
+                ? 'Executar comando'
+                : 'Atalho personalizado';
         }
         if (description) return description;
 
-        // Lua bind arguments are opaque dispatcher tokens, never command text.
-        if (Object.prototype.hasOwnProperty.call(DISPATCHER_DESCRIPTIONS, dispatcher)) {
+        // Never interpret or display opaque Lua dispatcher arguments.
+        if (globalThis.Object.prototype.hasOwnProperty.call(DISPATCHER_DESCRIPTIONS, dispatcher)) {
             return DISPATCHER_DESCRIPTIONS[dispatcher];
         }
         return dispatcher === 'exec_cmd' || dispatcher === 'exec_raw'
-            ? 'Run command'
-            : 'Custom shortcut';
+            ? 'Executar comando'
+            : 'Atalho personalizado';
     }
 
+    /** Row title: the description translated to pt-BR when recognised. */
+    formatTitle(bind: HyprBind): string {
+        return presentBindTitle(this.formatDescription(bind));
+    }
 
-    #formatKey(key: string): string {
+    #formatKey(rawKey: string): string {
+        const key = presentKeyName(rawKey);
+        if (key !== rawKey) return key;
         const keyMap: Record<string, string> = {
             RETURN: 'Enter',
             SPACE: 'Space',

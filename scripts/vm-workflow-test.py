@@ -1515,7 +1515,7 @@ print(json.dumps(result))"""
                             raise RuntimeError("Area selection/review started recording before explicit confirmation")
                         confirmation = self.wait_until(
                             "reviewed recording area confirmation",
-                            lambda: self.find_accessible_node("Start recording", role="button"),
+                            lambda: self.find_accessible_node("Iniciar gravação", role="button"),
                             timeout=12,
                         )
                         self.click_accessible_node(confirmation, "confirming the reviewed recording area")
@@ -1970,9 +1970,9 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 lambda: any(layer.get("namespace") == "shade-screenshot" for layer in self.layers()),
                 timeout=12,
             )
-            image_mode = self.find_accessible_node("Image", role="toggle button")
+            image_mode = self.find_accessible_node("Imagem", role="toggle button")
             image_state = self.accessibility(
-                "reading the retained capture mode", "find", "--name", "Image",
+                "reading the retained capture mode", "find", "--name", "Imagem",
                 "--role", "toggle button", "--bus", str(image_mode["bus"]),
                 "--path", str(image_mode["path"]), "--include-state",
             )
@@ -1980,7 +1980,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             # GTK toggle buttons expose PRESSED; CHECKED also covers radio roles.
             if not image_state["state_words"][0] & ((1 << 20) | (1 << 4)):
                 self.click_accessible_node(image_mode, "selecting explicit Image mode")
-            self.click_named("choosing Window screenshot target", "Window", role="toggle button")
+            self.click_named("choosing Window screenshot target", "Janela", role="toggle button")
             self.capture("window-target-before-selection")
             self.vnc(
                 "selecting guest pattern window for screenshot",
@@ -1991,7 +1991,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 raise RuntimeError("Reviewing a screenshot unexpectedly started a recorder")
             confirmation = self.wait_until(
                 "reviewed window image confirmation",
-                lambda: self.find_accessible_node("Capture image", role="button"),
+                lambda: self.find_accessible_node("Capturar imagem", role="button"),
                 timeout=12,
             )
             self.click_accessible_node(confirmation, "confirming the reviewed window image")
@@ -2043,8 +2043,8 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 lambda: any(layer.get("namespace") == "shade-screenshot" for layer in self.layers()),
                 timeout=12,
             )
-            self.click_named("selecting Recording mode", "Recording", role="toggle button")
-            self.click_named("selecting Window recording target", "Window", role="toggle button")
+            self.click_named("selecting Recording mode", "Gravação", role="toggle button")
+            self.click_named("selecting Window recording target", "Janela", role="toggle button")
             self.vnc(
                 "selecting guest pattern window for recording",
                 "move", "340", "260", "click", "1", "pause", "0.3", "key", "enter",
@@ -2053,7 +2053,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 raise RuntimeError("Selecting a window started recording before explicit confirmation")
             confirmation = self.wait_until(
                 "reviewed window recording confirmation",
-                lambda: self.find_accessible_node("Start recording", role="button"),
+                lambda: self.find_accessible_node("Iniciar gravação", role="button"),
                 timeout=12,
             )
             self.click_accessible_node(confirmation, "confirming the reviewed window recording")
@@ -2442,7 +2442,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                     layer.get("namespace") == "shade-switcher" for layer in self.layers()
                 ), timeout=12)
                 if name == "empty":
-                    self.find_accessible_node("Press Escape to close the switcher.")
+                    self.find_accessible_node("Pressione Esc para fechar o seletor.")
                 self.save_accessibility_tree(f"window-switcher-{name}")
                 screenshot = self.capture(f"window-switcher-{name}")
                 self.vnc(f"cancelling {name} switcher", "key", "esc")
@@ -4518,7 +4518,7 @@ print(json.dumps({'sha256': hashlib.sha256(saved).hexdigest(), 'bytes': len(save
                     raise RuntimeError(f"Audit notification {summary!r} is absent from notification center")
                 for ancestor in reversed(branch[:-1]):
                     actions = [node for node in self.walk_accessibility(ancestor)
-                               if node.get("name") == "Dismiss notification"
+                               if node.get("name") == "Dispensar notificação"
                                and node.get("role") == "button"]
                     if len(actions) == 1:
                         self.click_accessible_node(actions[0], "dismissing only audit notification")

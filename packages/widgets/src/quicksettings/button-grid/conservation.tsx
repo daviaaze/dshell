@@ -17,10 +17,12 @@ export default (): QuickButton => {
                 icon={conservationEnabled.as((enabled) =>
                     enabled ? 'battery-caution-symbolic' : 'battery-good-symbolic'
                 )}
-                domain="Battery care"
-                value={conservationEnabled.as((enabled) => enabled ? 'On' : 'Off')}
+                domain="Saúde da bateria"
+                value={conservationEnabled.as((enabled) => (enabled ? 'Ativado' : 'Desativado'))}
                 actionLabel={conservationEnabled.as((enabled) =>
-                    enabled ? 'Turn battery care off' : 'Turn battery care on'
+                    enabled
+                        ? 'Desativar modo de saúde da bateria'
+                        : 'Ativar modo de saúde da bateria'
                 )}
                 onClick={() => bus.emit('power:conservation:toggle')}
             />

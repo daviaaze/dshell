@@ -180,7 +180,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
 
     def select_window_fixture():
         client = fresh_pattern()
-        label = t.find_accessible_node("Capture screen", role="label")
+        label = t.find_accessible_node("Capturar tela", role="label")
         tree = t.accessibility_tree("finding screenshot selector native panel")
         chain = accessible_branch(tree, label["path"])
         layer = next((item for item in t.layers() if item.get("namespace") == "shade-screenshot"), None)
@@ -196,12 +196,12 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
                     and 0 < bounds[3] < int(layer["h"])):
                 candidates.append(node)
         valid_panels = [node for node in candidates
-                        if {"review target", "cancel"} <= {
+                        if {"revisar alvo", "cancelar"} <= {
                             str(child.get("name") or "").casefold()
                             for child in t.walk_accessibility(node)
                         }]
         if not valid_panels:
-            raise RuntimeError(f"No measurable non-window screenshot panel ancestor containing Review target and Cancel: {chain}")
+            raise RuntimeError(f"No measurable non-window screenshot panel ancestor containing Revisar alvo and Cancelar: {chain}")
         # The largest qualifying ancestor retains Clamp/card padding; smaller
         # VBox/Stack descendants do not represent the actual panel surface.
         panel = max(valid_panels, key=lambda node: int(node["bounds"][2]) * int(node["bounds"][3]))
@@ -246,7 +246,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         activate_toggle(target)
 
     def select(target, edge=False):
-        if target == "Area":
+        if target == "Área":
             if edge:
                 monitors = t.monitors()
                 monitor = next((m for m in monitors if m.get("focused")), monitors[0])
@@ -264,7 +264,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
                 box = (x + 20, y + h - 140, x + min(w - 20, 340), y + h - 20)
             t.vnc("dragging real guest capture rectangle", "move", str(box[0]), str(box[1]),
                   "mousedown", "1", "move", str(box[2]), str(box[3]), "mouseup", "1")
-        elif target == "Window":
+        elif target == "Janela":
             select_window_fixture()
 
     def review(mode, target, suffix, edge=False):
@@ -272,7 +272,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         capture(suffix + "-selection", {"target": target, "theme": theme, "viewport": viewport})
         select(target, edge)
         t.vnc("reviewing selected capture without consent", "key", "enter")
-        action = "Capture image" if mode == "Image" else "Start recording"
+        action = "Capturar imagem" if mode == "Imagem" else "Iniciar gravação"
         node = t.wait_until("explicit capture confirmation", lambda: t.find_accessible_node(action, role="button"), timeout=12)
         if t.recording_processes():
             raise RuntimeError("Selection/review started recording before explicit consent")
@@ -334,24 +334,24 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         t.gsetting("recorder-backend", "1")
         t.gsetting("area-selection-engine", "'overlay'")
         pattern = t.start_pattern_window(title="Shade UI review — " + "long guest window title • " * 12)
-        for target in ("Fullscreen", "Area", "Window", "Monitor"):
+        for target in ("Tela cheia", "Área", "Janela", "Monitor"):
             screen = "screenshot-" + target.lower()
-            node = review("Image", target, screen)
-            click("Change target")
+            node = review("Imagem", target, screen)
+            click("Alterar alvo")
             capture(screen + "-back")
             t.vnc("reviewing target again", "key", "enter")
-            click("Cancel")
-            node = review("Image", target, screen + "-confirmed")
+            click("Cancelar")
+            node = review("Imagem", target, screen + "-confirmed")
             since = t.desktop("marking screenshot time", "date +%s.%N").stdout.strip()
             t.click_accessible_node(node, "explicitly confirming guest screenshot")
             t.wait_until("screenshot selector closure", lambda: not overlay_visible(), timeout=15)
             save_result(screen + "-result", since, "image")
 
-        open_capture("Image", "Area")
+        open_capture("Imagem", "Área")
         t.vnc("trying review without area selection", "key", "enter")
         capture("screenshot-area-no-selection")
         try:
-            empty_review = t.find_accessible_node("Review capture", role="label")
+            empty_review = t.find_accessible_node("Revisar captura", role="label")
         except Exception:
             empty_review = None
         if empty_review is not None:
@@ -364,17 +364,17 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
 
         # Functional audio/boundary cross-product remains in the full workflow
         # suite. Each review cell needs representative native states, not 16 videos.
-        for index, target in enumerate(("Fullscreen", "Area", "Window", "Monitor")):
+        for index, target in enumerate(("Tela cheia", "Área", "Janela", "Monitor")):
             audio, boundary = ((False, False), (True, True), (True, False), (False, True))[index]
             t.gsetting("record-audio", str(audio).lower())
             t.gsetting("show-recording-boundary", str(boundary).lower())
             screen = f"record-{target.lower()}-audio-{int(audio)}-boundary-{int(boundary)}"
-            node = review("Recording", target, screen, edge=target == "Area" and boundary)
+            node = review("Gravação", target, screen, edge=target == "Área" and boundary)
             since = t.desktop("marking recording time", "date +%s.%N").stdout.strip()
             t.click_accessible_node(node, "explicitly starting local guest recording")
             recorder = t.wait_until("supported real recorder", lambda: next(iter(t.recording_processes()), None), timeout=20)
             time.sleep(1.5)
-            capture(screen + "-active", {"recorder": recorder, "edge_rectangle": target == "Area" and boundary})
+            capture(screen + "-active", {"recorder": recorder, "edge_rectangle": target == "Área" and boundary})
             t.stop_recording()
             save_result(screen + "-result", since, "video")
 
@@ -385,7 +385,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
                                   f'stat -c %a "{directory}"').stdout.strip()
         try:
             t.desktop("denying new guest screenshot writes", f'chmod a-w "{directory}"')
-            node = review("Image", "Fullscreen", "capture-write-failure")
+            node = review("Imagem", "Tela cheia", "capture-write-failure")
             t.click_accessible_node(node, "confirming real unwritable output capture")
             wait_label("Falha na captura/gravação")
             capture("capture-error", {"prerequisite": "Guest screenshot directory temporarily has no write permission."})

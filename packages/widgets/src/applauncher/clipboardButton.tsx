@@ -7,7 +7,7 @@ import WindowManager from '@shade/services/state/windowManager';
 export default ({item}: {item: ClipboardEntry}) => {
     const preview =
         item.type === 'image'
-            ? `Image ${item.mimeType.replace(/^image\//, '').toUpperCase()}`
+            ? `Imagem ${item.mimeType.replace(/^image\//, '').toUpperCase()}`
             : item.content;
 
     return (

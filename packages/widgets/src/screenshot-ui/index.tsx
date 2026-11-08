@@ -319,22 +319,27 @@ export default () => {
     const focusedMonitor = bind(hyprland, 'focused-monitor');
     const targetSummary = computed(() => {
         const selectedTarget = target();
-        if (selectedTarget === 'fullscreen') return 'Full desktop';
+        if (selectedTarget === 'fullscreen') return 'Área de trabalho inteira';
         const selection = getSelectionState(state);
         const monitor = focusedMonitor();
         const geometry = buildGeometry(selectedTarget, selection);
         if (!geometry) {
-            if (selectedTarget === 'window') return 'No window selected';
-            if (selectedTarget === 'area') return 'No area selected';
-            return 'No monitor selected';
+            if (selectedTarget === 'window') return 'Nenhuma janela selecionada';
+            if (selectedTarget === 'area') return 'Nenhuma área selecionada';
+            return 'Nenhum monitor selecionado';
         }
         const rectangle = `${geometry.x},${geometry.y} · ${geometry.width}×${geometry.height}`;
         if (selectedTarget === 'window') {
             const window = selectedWindow();
-            return `${window?.title || 'Untitled window'} (${window?.address}) · ${rectangle}`;
+            return `${window?.title || 'Janela sem título'} (${window?.address}) · ${rectangle}`;
         }
-        if (selectedTarget === 'monitor') return `Monitor ${monitor?.name ?? ''} · ${rectangle}`;
-        return `Area · ${rectangle}`;
+        if (selectedTarget === 'monitor') {
+            const name = monitor?.name?.replace(/^Monitor\s+/, '') ?? '';
+            const origin =
+                geometry.x === 0 && geometry.y === 0 ? '' : `${geometry.x},${geometry.y} · `;
+            return `${name || 'Monitor'} · ${origin}${geometry.width}×${geometry.height}`;
+        }
+        return `Área · ${rectangle}`;
     });
     // Panel margins are 24px top/bottom; track the real overlay height so the
     // panel stays inside short monitors regardless of scale or reserved areas.

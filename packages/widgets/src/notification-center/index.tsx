@@ -36,12 +36,12 @@ export default () => {
     });
     const settingsButton = new Gtk.Button({
         iconName: 'preferences-system-symbolic',
-        tooltipText: 'Notification settings',
+        tooltipText: 'Configurações de notificações',
     });
     settingsButton.connect('clicked', () => openSettings('notifications'));
     const closeButton = new Gtk.Button({
         iconName: 'window-close-symbolic',
-        tooltipText: 'Close notifications',
+        tooltipText: 'Fechar notificações',
     });
     closeButton.connect('clicked', () => state.closeNotifications());
     header.pack_end(settingsButton);

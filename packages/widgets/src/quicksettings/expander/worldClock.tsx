@@ -5,6 +5,12 @@ import {cityName, fmtOffset} from '@shade/core/time';
 import Clock from '@shade/services/time/clock';
 import {For} from 'gnim';
 
+const CITY_NAMES_PT: Record<string, string> = {
+    'Sao Paulo': 'São Paulo',
+    Bogota: 'Bogotá',
+    Asuncion: 'Assunção',
+};
+
 export const WorldClock = () => {
     const general = generalSettings();
     const time = Clock.get_default().time;
@@ -13,7 +19,7 @@ export const WorldClock = () => {
 
     return (
         <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL} cssClasses={['card']}>
-            <Gtk.Label cssClasses={['title-3']} label="World Clock" halign={Gtk.Align.CENTER} />
+            <Gtk.Label cssClasses={['title-3']} label="Relógio mundial" halign={Gtk.Align.CENTER} />
             <For each={general.timezones}>
                 {(tzId: string) => {
                     const tz = GLib.TimeZone.new(tzId);
@@ -24,7 +30,7 @@ export const WorldClock = () => {
                                 hexpand
                                 halign={Gtk.Align.START}
                                 cssClasses={['heading', 'title-4']}
-                                label={cityName(tzId)}
+                                label={CITY_NAMES_PT[cityName(tzId)] ?? cityName(tzId)}
                             />
                             <Gtk.Label
                                 halign={Gtk.Align.END}

@@ -5,6 +5,56 @@ import {formatTime, windDirectionLabel} from '@shade/services/location/weatherUt
 import {type Accessor, bind, computed} from 'gnim';
 import {DailyForecastSection, HourlyForecastSection} from './weatherForecast';
 
+const MOON_PHASES_PT: Record<string, string> = {
+    'New Moon': 'Lua nova',
+    'Waxing Crescent': 'Lua crescente',
+    'First Quarter': 'Quarto crescente',
+    'Waxing Gibbous': 'Crescente gibosa',
+    'Full Moon': 'Lua cheia',
+    'Waning Gibbous': 'Minguante gibosa',
+    'Last Quarter': 'Quarto minguante',
+    'Waning Crescent': 'Lua minguante',
+};
+
+const WEATHER_ERRORS_PT: Record<string, string> = {
+    'Weather service is disposed': 'O serviço de clima foi encerrado',
+    'No weather location is available': 'Nenhuma localização de clima disponível',
+    'Weather update failed due to a network error': 'Falha ao atualizar o clima por erro de rede',
+    'Weather data is invalid': 'Os dados do clima são inválidos',
+    'Could not find a weather location for these coordinates':
+        'Não foi possível encontrar uma localização de clima para estas coordenadas',
+};
+
+/** Display-only translation of service error messages; unknown messages pass through. */
+const translateWeatherError = (message: string): string => WEATHER_ERRORS_PT[message] ?? message;
+
+/** Display-only translation of the service's "Feels like X" string. */
+const translateFeelsLike = (text: string): string => text.replace(/^Feels like /, 'Sensação ');
+
+const WIND_DIRS_PT: Record<string, string> = {
+    N: 'N',
+    NNE: 'NNE',
+    NE: 'NE',
+    ENE: 'LNE',
+    E: 'L',
+    ESE: 'LSE',
+    SE: 'SE',
+    SSE: 'SSE',
+    S: 'S',
+    SSW: 'SSO',
+    SW: 'SO',
+    WSW: 'OSO',
+    W: 'O',
+    WNW: 'ONO',
+    NW: 'NO',
+    NNW: 'NNO',
+};
+
+/** Compass label in pt-BR (E→L, W→O); other labels are unchanged. */
+const localizedWindDirection = (windEnum: number): string => {
+    const label = windDirectionLabel(windEnum);
+    return WIND_DIRS_PT[label] ?? label;
+};
 /**
  * Weather icon + temp summary, suitable for a compact indicator.
  */
@@ -55,7 +105,9 @@ const SunMoonRow = ({
             <Gtk.Box spacing={4} halign={Gtk.Align.CENTER}>
                 <Gtk.Image iconName={moonPhase.as((m) => m?.iconName ?? '')} pixelSize={14} />
                 <Gtk.Label
-                    label={moonPhase.as((m) => m?.phaseName ?? '')}
+                    label={moonPhase.as((m) =>
+                        m ? (MOON_PHASES_PT[m.phaseName] ?? m.phaseName) : ''
+                    )}
                     cssClasses={['caption']}
                 />
             </Gtk.Box>
@@ -81,7 +133,7 @@ const DetailsLine = ({
         <Gtk.Label
             label={computed(
                 () =>
-                    `🍃 ${windSpeed().toFixed(0)} ${windDirectionLabel(windDirection())} · 💧 ${humidity().toFixed(0)}% · ${pressure().toFixed(0)} hPa`
+                    `🍃 ${windSpeed().toFixed(0)} ${localizedWindDirection(windDirection())} · 💧 ${humidity().toFixed(0)}% · ${pressure().toFixed(0)} hPa`
             )}
             halign={Gtk.Align.CENTER}
             cssClasses={['caption', 'dimmed']}
@@ -97,7 +149,7 @@ export const WeatherWidget = () => {
     const updateBusy = bind(weather, 'updateBusy');
     const updateError = bind(weather, 'updateError');
     const refreshStatus = computed(() =>
-        updateBusy() ? 'Updating weather…' : (updateError() ?? '')
+        updateBusy() ? 'Atualizando o clima…' : translateWeatherError(updateError() ?? '')
     );
     const refreshStatusVisible = computed(() => updateBusy() || updateError() !== null);
     const refreshWeather = async () => {
@@ -135,12 +187,7 @@ export const WeatherWidget = () => {
     });
 
     return (
-        <Gtk.Box
-            marginTop={4}
-            marginBottom={4}
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={0}
-        >
+        <Gtk.Box marginTop={4} marginBottom={4} orientation={Gtk.Orientation.VERTICAL} spacing={0}>
             {/* ── Header: icon + temp/location + refresh ── */}
             <Gtk.Box spacing={12} marginStart={8} marginEnd={8}>
                 <Gtk.Image iconName={iconName} pixelSize={36} />
@@ -157,7 +204,7 @@ export const WeatherWidget = () => {
                     />
                     <Gtk.Label
                         cssClasses={['caption']}
-                        label={computed(() => `${skyDesc()} · ${feelsLike()}`)}
+                        label={computed(() => `${skyDesc()} · ${translateFeelsLike(feelsLike())}`)}
                         halign={Gtk.Align.START}
                         opacity={0.7}
                     />
@@ -171,7 +218,7 @@ export const WeatherWidget = () => {
                         onClicked={refreshWeather}
                         iconName="view-refresh-symbolic"
                         cssClasses={['flat']}
-                        tooltipText="Refresh weather"
+                        tooltipText="Atualizar clima"
                         sensitive={computed(() => !updateBusy())}
                     />
                     <Gtk.Label

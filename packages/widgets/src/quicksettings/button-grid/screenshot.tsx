@@ -18,13 +18,13 @@ const dismissAnd =
 function ScreenshotSection({ss}: {ss: Screenshot}) {
     return (
         <>
-            <Gtk.Label label="Screenshot" halign={Gtk.Align.START} cssClasses={['title-4']} />
+            <Gtk.Label label="Captura de tela" halign={Gtk.Align.START} cssClasses={['title-4']} />
             <LinkedBox>
                 <Gtk.Button onClicked={() => ss.screenshot(true)}>
-                    <Adw.ButtonContent iconName="camera-photo-symbolic" label="Fullscreen" />
+                    <Adw.ButtonContent iconName="camera-photo-symbolic" label="Tela cheia" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={dismissAnd(() => ss.screenshot(false))}>
-                    <Adw.ButtonContent iconName="selection-mode-symbolic" label="Area" />
+                    <Adw.ButtonContent iconName="selection-mode-symbolic" label="Área" />
                 </Gtk.Button>
             </LinkedBox>
         </>
@@ -35,19 +35,19 @@ function ScreenshotSection({ss}: {ss: Screenshot}) {
 function RecordingSection({ss}: {ss: Screenshot}) {
     return (
         <>
-            <Gtk.Label label="Recording" halign={Gtk.Align.START} cssClasses={['title-4']} />
+            <Gtk.Label label="Gravação" halign={Gtk.Align.START} cssClasses={['title-4']} />
             <LinkedBox>
                 <Gtk.Button onClicked={() => ss.toggleRecording()}>
-                    <Adw.ButtonContent iconName="camera-video-symbolic" label="Fullscreen" />
+                    <Adw.ButtonContent iconName="camera-video-symbolic" label="Tela cheia" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={dismissAnd(() => ss.recordArea())}>
-                    <Adw.ButtonContent iconName="selection-mode-symbolic" label="Area" />
+                    <Adw.ButtonContent iconName="selection-mode-symbolic" label="Área" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={dismissAnd(() => ss.recordOutputVisual())}>
-                    <Adw.ButtonContent iconName="video-display-symbolic" label="Output" />
+                    <Adw.ButtonContent iconName="video-display-symbolic" label="Monitor" />
                 </Gtk.Button>
                 <Gtk.Button onClicked={dismissAnd(() => ss.recordWindowVisual())}>
-                    <Adw.ButtonContent iconName="focus-windows-symbolic" label="Window" />
+                    <Adw.ButtonContent iconName="focus-windows-symbolic" label="Janela" />
                 </Gtk.Button>
             </LinkedBox>
         </>
@@ -65,7 +65,7 @@ function PrefsSection({
     return (
         <Gtk.Box spacing={12} orientation={Gtk.Orientation.HORIZONTAL} marginStart={4}>
             <Gtk.CheckButton
-                label="Record Audio"
+                label="Gravar áudio"
                 active={bind(screenshot.prefs, 'audio')}
                 onNotifyActive={({active}) => {
                     if (screenshot.prefs.audio !== active) screenshot.prefs.audio = active;
@@ -112,7 +112,7 @@ function VirtualMonitorButton({
                     active ? 'user-trash-symbolic' : 'video-display-symbolic'
                 )}
                 label={bind(screenshot, 'virtualMonitorActive').as((active) =>
-                    active ? 'Remove VM' : 'Add VM'
+                    active ? 'Remover monitor virtual' : 'Adicionar monitor virtual'
                 )}
             />
         </Gtk.Button>
@@ -148,16 +148,16 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
             <QuickControlButton
                 intent="toggle"
                 active={bind(screenshot, 'recording')}
-                domain="Screen capture"
+                domain="Captura de tela"
                 icon={bind(screenshot, 'recording').as((rec) =>
                     rec ? 'media-playback-stop-symbolic' : 'camera-video-symbolic'
                 )}
                 value={bind(screenshot, 'recording').as((rec) =>
-                    rec ? 'Recording' : 'Not recording'
+                    rec ? 'Gravando' : 'Sem gravação'
                 )}
-                actionLabel="Start or stop full-screen recording"
+                actionLabel="Iniciar ou parar gravação em tela cheia"
                 onClick={() => screenshot.toggleRecording()}
-                detail={{label: 'Capture options', onOpen}}
+                detail={{label: 'Opções de captura', onOpen}}
             />
         ),
     };

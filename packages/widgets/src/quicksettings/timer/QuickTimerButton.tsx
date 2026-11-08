@@ -7,7 +7,7 @@ import type {QuickDetailButton} from '../button-grid/quickButton';
 import {TimerSection} from './TimerSection';
 
 function fmtShort(ms: number): string {
-    if (ms < 0) return 'Not running';
+    if (ms < 0) return 'Parado';
     const totalSec = Math.max(0, Math.ceil(ms / 1000));
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
@@ -40,15 +40,21 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
         widget: (
             <QuickControlButton
                 intent="action"
-                domain="Timer"
+                domain="Temporizador"
                 icon={icon}
                 value={value}
-                actionLabel={remaining.as((ms) => ms >= 0 ? 'Cancel timer' : 'Open timer options')}
+                actionLabel={remaining.as((ms) =>
+                    ms >= 0 ? 'Cancelar temporizador' : 'Abrir opções do temporizador'
+                )}
                 onClick={(self) => {
                     if (timer.remaining >= 0) bus.emit('timer:cmd:cancel');
                     else onOpen(self);
                 }}
-                detail={{label: 'Timer options', onOpen, visible: remaining.as(value => value >= 0)}}
+                detail={{
+                    label: 'Opções do temporizador',
+                    onOpen,
+                    visible: remaining.as((value) => value >= 0),
+                }}
             />
         ),
     };

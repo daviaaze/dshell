@@ -13,9 +13,9 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const requestedScheme = bind(colorScheme, 'colorScheme');
     const group = new Gtk.CheckButton();
     const choices = [
-        {mode: DarkModes.AUTO, label: 'Automatic'},
-        {mode: DarkModes.LIGHT, label: 'Light Mode'},
-        {mode: DarkModes.DARK, label: 'Dark Mode'},
+        {mode: DarkModes.AUTO, label: 'Automático'},
+        {mode: DarkModes.LIGHT, label: 'Modo claro'},
+        {mode: DarkModes.DARK, label: 'Modo escuro'},
     ].map(({mode, label}) => ({
         mode,
         button: new Gtk.CheckButton({group, label}),
@@ -46,25 +46,21 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
         syncChoices();
     });
 
-    const detail = (
-        <LinkedBox>
-            {choices.map(({button}) => button)}
-        </LinkedBox>
-    );
+    const detail = <LinkedBox>{choices.map(({button}) => button)}</LinkedBox>;
 
     return {
         detail,
         widget: (
             <QuickControlButton
                 intent="action"
-                domain="Theme"
+                domain="Tema"
                 icon={bind(colorScheme, 'iconName')}
                 value={requestedScheme.as((c) => {
-                    if (c === DarkModes.AUTO) return 'Auto';
-                    if (c === DarkModes.LIGHT) return 'Light Mode';
-                    return 'Dark Mode';
+                    if (c === DarkModes.AUTO) return 'Automático';
+                    if (c === DarkModes.LIGHT) return 'Modo claro';
+                    return 'Modo escuro';
                 })}
-                actionLabel="Cycle theme"
+                actionLabel="Alternar tema"
                 onClick={() => {
                     if (colorScheme.colorScheme === DarkModes.LIGHT) {
                         bus.emit(SET_SCHEME, DarkModes.DARK);
@@ -76,7 +72,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
                         bus.emit(SET_SCHEME, DarkModes.LIGHT);
                     }
                 }}
-                detail={{label: 'Theme options', onOpen}}
+                detail={{label: 'Opções de tema', onOpen}}
             />
         ),
     };
