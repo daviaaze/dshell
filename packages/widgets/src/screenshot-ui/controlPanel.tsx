@@ -222,12 +222,12 @@ export const ControlPanel = ({
                                 name="select"
                                 slot="named"
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={10}
+                                spacing={12}
                             >
                                 <Gtk.Box
                                     visible={quick.as((isQuick) => !isQuick)}
                                     orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={10}
+                                    spacing={12}
                                 >
                                     <Gtk.Box
                                         orientation={Gtk.Orientation.HORIZONTAL}

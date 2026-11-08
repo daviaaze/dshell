@@ -1,0 +1,634 @@
+{
+ "steps": [
+  {
+   "run": "toggle-settings"
+  },
+  {
+   "sleep": 1.5
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    178
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-01-appearance-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-01-appearance-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-01-appearance-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    230
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-02-bar-dock-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-02-bar-dock-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-02-bar-dock-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    282
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-03-displays-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-03-displays-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-03-displays-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    334
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-04-sound-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-04-sound-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-04-sound-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    386
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-05-mouse-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-05-mouse-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-05-mouse-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    438
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-06-connections-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-06-connections-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-06-connections-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    490
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-07-lock-power-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-07-lock-power-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-07-lock-power-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    542
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-08-notifications-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-08-notifications-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-08-notifications-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    594
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-09-capture-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-09-capture-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-09-capture-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    646
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-10-apps-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-10-apps-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-10-apps-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    698
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-11-time-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-11-time-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-11-time-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    -12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    750
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-12-shortcuts-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-12-shortcuts-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-12-shortcuts-c"
+  },
+  {
+   "scroll": [
+    150,
+    450,
+    12
+   ]
+  },
+  {
+   "sleep": 0.3
+  },
+  {
+   "click": [
+    150,
+    762
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "full-13-system-a"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-13-system-b"
+  },
+  {
+   "scroll": [
+    800,
+    500,
+    8
+   ]
+  },
+  {
+   "sleep": 0.4
+  },
+  {
+   "shot": "full-13-system-c"
+  }
+ ]
+}

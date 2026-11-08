@@ -375,6 +375,7 @@ STEP_KEYS = {
     "run": {"run", "timeout"},
     "key": {"key"},
     "click": {"click"},
+    "scroll": {"scroll"},
     "sleep": {"sleep"},
     "shot": {"shot", "diff"},
 }
@@ -416,6 +417,10 @@ def load_scenes(path: Path) -> list[dict]:
         elif kind == "click":
             _check(isinstance(value, list) and len(value) == 2 and all(isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in value),
                    where, "'click' must be [x, y] with non-negative integers")
+        elif kind == "scroll":
+            _check(isinstance(value, list) and len(value) == 3 and all(isinstance(v, int) and not isinstance(v, bool) for v in value)
+                   and value[0] >= 0 and value[1] >= 0 and 1 <= abs(value[2]) <= 50,
+                   where, "'scroll' must be [x, y, notches] (negative notches scroll up, |notches| 1..50)")
         elif kind == "sleep":
             _check(isinstance(value, (int, float)) and not isinstance(value, bool) and 0 <= value <= 120, where,
                    "'sleep' must be a number of seconds between 0 and 120")
@@ -436,7 +441,8 @@ def run_scenes(dev, steps: list[dict], shots: Path, *, state: dict, magick: str 
     def flush() -> None:
         if not pending:
             return
-        dev.vnc("VNC scene segment", *pending)
+        budget = 25 + 3 * len(pending_shots) + sum(float(pending[i + 1]) for i, w in enumerate(pending) if w == "pause" and i + 1 < len(pending)) + 0.15 * pending.count("click")
+        dev.vnc("VNC scene segment", *pending, timeout=int(budget))
         pending.clear()
         for record, fresh in pending_shots:
             stem = safe_name(record["name"])
@@ -470,6 +476,12 @@ def run_scenes(dev, steps: list[dict], shots: Path, *, state: dict, magick: str 
                 x, y = step["click"]
                 pending.extend(["move", str(x), str(y), "click", "1"])
                 entry["kind"] = "click"
+            elif "scroll" in step:
+                x, y, notches = step["scroll"]
+                wheel = "5" if notches > 0 else "4"
+                pending.extend(["move", str(x), str(y)])
+                pending.extend(["click", wheel] * abs(notches))
+                entry["kind"] = "scroll"
             elif "sleep" in step:
                 pending.extend(["pause", str(step["sleep"])])
                 entry["kind"] = "sleep"

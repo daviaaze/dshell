@@ -266,7 +266,11 @@ export default ({
     const handleClose = () => closeAction(notification, card);
 
     return (
-        <Adw.Clamp widthRequest={clampWidth}>
+        <Adw.Clamp
+            widthRequest={clampWidth}
+            maximumSize={variant === 'list' ? 10000 : 600}
+            tighteningThreshold={variant === 'list' ? 10000 : 400}
+        >
             <For each={snapshot}>
                 {(current: NotificationSnapshot) => {
                     const isCritical = current.urgency === Notifd.Urgency.CRITICAL;

@@ -153,7 +153,10 @@ function BoundaryGroup({settings}: {settings: Settings}) {
 /** Overlay group: freeze screen + preview thumbnails. */
 function OverlayGroup({settings}: {settings: Settings}) {
     return (
-        <Adw.PreferencesGroup title={'Seleção de área'} description={'Comportamento da seleção de captura.'}>
+        <Adw.PreferencesGroup
+            title={'Seleção de área'}
+            description={'Comportamento da seleção de captura.'}
+        >
             <EnumToggleRow
                 title={'Motor de seleção'}
                 value={settings.areaSelectionEngine}
@@ -182,17 +185,29 @@ function OverlayGroup({settings}: {settings: Settings}) {
 
 /** Virtual monitor group: default resolution and refresh rate. */
 function VirtualMonitorGroup({settings}: {settings: Settings}) {
+    let resolutionEntry: Gtk.Entry | null = null;
     return (
         <Adw.PreferencesGroup
             title={'Monitor virtual'}
             description={'Resolução e taxa de atualização padrão.'}
         >
-            <Adw.EntryRow
-                title={'Resolução'}
-                showApplyButton
-                text={settings.virtualMonitorResolution}
-                onApply={(self) => settings.setVirtualMonitorResolution(self.text)}
-            />
+            <Adw.ActionRow title={'Resolução'}>
+                <Gtk.Entry
+                    slot="suffix"
+                    ref={(self) => (resolutionEntry = self)}
+                    text={settings.virtualMonitorResolution}
+                    onActivate={(self) => settings.setVirtualMonitorResolution(self.text)}
+                />
+                <Gtk.Button
+                    slot="suffix"
+                    label="Aplicar"
+                    onClicked={() => {
+                        if (resolutionEntry) {
+                            settings.setVirtualMonitorResolution(resolutionEntry.text);
+                        }
+                    }}
+                />
+            </Adw.ActionRow>
             <Adw.SpinRow
                 ref={(self) => {
                     self.adjustment = new Gtk.Adjustment({

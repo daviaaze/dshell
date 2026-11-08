@@ -1,8 +1,8 @@
 import Adw from 'gi://Adw?version=1';
-import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import { createState, onCleanup } from 'gnim';
-import { bus } from '@shade/services/bus';
+import Gtk from 'gi://Gtk?version=4.0';
+import {bus} from '@shade/services/bus';
+import {createState, onCleanup} from 'gnim';
 
 export default () => {
     const [enabled, setEnabled] = createState(false);
@@ -44,7 +44,10 @@ export default () => {
     }
 
     return (
-        <Adw.PreferencesGroup title="Agenda de não perturbe" description="Agenda local, ativa somente enquanto esta página existir; não é persistida.">
+        <Adw.PreferencesGroup
+            title="Agenda de não perturbe"
+            description="Agenda local, ativa somente enquanto esta página existir; não é persistida."
+        >
             <Adw.SwitchRow
                 title="Ativar agenda"
                 active={enabled()}
@@ -62,32 +65,42 @@ export default () => {
             <Adw.SpinRow
                 title="Começa às"
                 subtitle="Hora local em formato de 24 horas."
-                adjustment={new Gtk.Adjustment({
-                    value: startHour(),
-                    lower: 0,
-                    upper: 23,
-                    stepIncrement: 1,
-                })}
                 onNotifyValue={(self) => {
                     setStartHour(self.get_value());
                     if (enabled()) checkAndSetDND();
                 }}
-            />
+                ref={(self) => {
+                    self.adjustment = new Gtk.Adjustment({
+                        value: startHour(),
+                        lower: 0,
+                        upper: 23,
+                        stepIncrement: 1,
+                    });
+                    self.set_value(startHour());
+                }}
+            >
+                <Gtk.Label slot="suffix" label="h" />
+            </Adw.SpinRow>
 
             <Adw.SpinRow
                 title="Termina às"
                 subtitle="Hora local em formato de 24 horas."
-                adjustment={new Gtk.Adjustment({
-                    value: endHour(),
-                    lower: 0,
-                    upper: 23,
-                    stepIncrement: 1,
-                })}
                 onNotifyValue={(self) => {
                     setEndHour(self.get_value());
                     if (enabled()) checkAndSetDND();
                 }}
-            />
+                ref={(self) => {
+                    self.adjustment = new Gtk.Adjustment({
+                        value: endHour(),
+                        lower: 0,
+                        upper: 23,
+                        stepIncrement: 1,
+                    });
+                    self.set_value(endHour());
+                }}
+            >
+                <Gtk.Label slot="suffix" label="h" />
+            </Adw.SpinRow>
         </Adw.PreferencesGroup>
     );
 };
