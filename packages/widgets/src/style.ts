@@ -39,4 +39,5 @@ button.bar-vertical-content-button,
   box-shadow: none;
 }
 
+
 `);

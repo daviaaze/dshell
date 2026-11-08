@@ -95,7 +95,7 @@ function categoryDetailLines(
 ): string[] {
     const lines: string[] = [];
     if (snapshot.discoveryError) {
-        lines.push(`Could not enumerate registered formats: ${snapshot.discoveryError}`);
+        lines.push(`Não foi possível listar os formatos registrados: ${snapshot.discoveryError}`);
     }
     for (const type of snapshot.model.types) {
         if (type.readError) lines.push(`${type.mimeType}: ${type.readError}`);
@@ -108,14 +108,14 @@ function categoryDetailLines(
             const mimeType = type?.mimeType ?? result.contentType;
             lines.push(
                 result.error === null
-                    ? `${mimeType}: saved as ${appName(result.actual)}`
-                    : `${mimeType}: ${result.error} Actual: ${appName(result.actual)}.`
+                    ? `${mimeType}: salvo como ${appName(result.actual)}`
+                    : `${mimeType}: ${result.error} Atual: ${appName(result.actual)}.`
             );
         }
     }
     for (const type of snapshot.model.types) {
         if (type.readError === null && type.candidates.length === 0 && type.current === null) {
-            lines.push(`${type.mimeType}: no compatible app; unchanged.`);
+            lines.push(`${type.mimeType}: nenhum aplicativo compatível; sem alterações.`);
         }
     }
     return lines;
@@ -162,26 +162,27 @@ function canChangeAnySupportedType(model: DefaultAppFamilyModel): boolean {
 }
 
 function stateDescription(category: AppCategory, model: DefaultAppFamilyModel): string {
+    const formats = (count: number) => `${count} ${count === 1 ? 'formato' : 'formatos'}`;
     let description: string;
     if (model.defaults.kind === 'unread') {
-        description = `Could not read one or more ${model.readErrorCount} format defaults; unread formats will not be changed.`;
+        description = `Não foi possível ler o padrão de ${formats(model.readErrorCount)}; os formatos não lidos não serão alterados.`;
     } else if (model.types.length === 0) {
-        description = 'No registered concrete media types are available for this category.';
+        description = 'Nenhum tipo de mídia concreto registrado para esta categoria.';
     } else if (model.choices.length === 0) {
-        description = 'No compatible applications are available for the registered formats.';
+        description = 'Nenhum aplicativo compatível com os formatos registrados.';
     } else if (model.defaults.kind === 'uniform') {
-        description = `${appName(model.defaults.app)} is the default for all ${model.types.length} registered format${model.types.length === 1 ? '' : 's'}.`;
+        description = `Padrão para todos os ${formats(model.types.length)} registrados.`;
     } else if (model.defaults.kind === 'none') {
-        description = `No app is currently the default for any of these ${model.types.length} registered format${model.types.length === 1 ? '' : 's'}.`;
+        description = `Nenhum aplicativo é o padrão para os ${formats(model.types.length)} registrados.`;
     } else if (model.defaults.kind === 'mixed') {
         description =
-            'Defaults differ across the registered formats; choosing an app changes only formats it supports.';
+            'Os padrões diferem entre os formatos; ao escolher um aplicativo, só mudam os formatos que ele suporta.';
     } else {
-        description = `Choose a default for ${category.label}.`;
+        description = `Escolha um aplicativo padrão para ${category.label}.`;
     }
 
     if (model.unsupportedTypeCount > 0 && model.choices.length > 0) {
-        description += ` ${model.unsupportedTypeCount} format${model.unsupportedTypeCount === 1 ? ' has' : 's have'} no compatible app and will be unchanged.`;
+        description += ` ${formats(model.unsupportedTypeCount)} sem aplicativo compatível ${model.unsupportedTypeCount === 1 ? 'permanecerá' : 'permanecerão'} inalterado${model.unsupportedTypeCount === 1 ? '' : 's'}.`;
     }
     return description;
 }
@@ -189,13 +190,14 @@ function stateDescription(category: AppCategory, model: DefaultAppFamilyModel): 
 function resultDescription(result: DefaultAppWriteResult): string {
     const saved = result.results.filter((entry) => entry.error === null).length;
     const failed = result.results.length - saved;
+    const formats = (count: number) => `${count} ${count === 1 ? 'formato' : 'formatos'}`;
     if (result.status === 'saved') {
-        return `Saved for all ${saved} supported format${saved === 1 ? '' : 's'}.`;
+        return `Salvo para ${saved === 1 ? 'o' : 'todos os'} ${formats(saved)} suportado${saved === 1 ? '' : 's'}.`;
     }
     if (result.status === 'partial') {
-        return `Saved for ${saved} of ${result.results.length} supported formats; ${failed} did not change.`;
+        return `Salvo para ${saved} de ${formats(result.results.length)} suportados; ${failed} não ${failed === 1 ? 'mudou' : 'mudaram'}.`;
     }
-    return `Could not apply the selected app to any of its ${failed} supported format${failed === 1 ? '' : 's'}.`;
+    return `Não foi possível aplicar o aplicativo a nenhum dos ${formats(failed)} suportados.`;
 }
 
 function selectableAppLabel(app: Gio.AppInfo): string {
@@ -207,8 +209,10 @@ function selectableAppLabel(app: Gio.AppInfo): string {
 function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
     const row = new Adw.ComboRow({title: category.label, subtitleLines: 0});
     const details = new Adw.ExpanderRow({
-        title: `${category.label} format details`,
-        subtitle: 'Read and write results by format',
+        title: 'Detalhes dos formatos',
+        subtitle: 'Resultados de leitura e gravação por formato',
+        marginStart: 16,
+        marginEnd: 16,
     });
     const detailBox = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 4});
     details.add_row(detailBox as unknown as Gtk.Widget);
@@ -229,23 +233,12 @@ function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
         renderCategoryDetails(detailBox, details, categoryDetailLines(snapshot, lastWrite));
 
     const describe = () => {
-        const defaults = snapshot.model.defaults;
-        let status: string;
-        if (snapshot.discoveryError) {
-            status = 'Padrões indisponíveis';
-        } else if (defaults.kind === 'uniform') {
-            status = appName(defaults.app);
-        } else if (defaults.kind === 'mixed') {
-            status = 'Padrões diferentes';
-        } else if (defaults.kind === 'unread') {
-            status = 'Padrões indisponíveis';
-        } else {
-            status = 'Nenhum aplicativo padrão';
-        }
         const description = snapshot.discoveryError
-            ? `Could not read registered formats: ${snapshot.discoveryError}`
+            ? `Não foi possível ler os formatos registrados: ${snapshot.discoveryError}`
             : stateDescription(category, snapshot.model);
-        row.subtitle = `${status}. ${lastWrite ? `${resultDescription(lastWrite)} ` : ''}${description}`;
+        // O estado curto fica no valor à direita (placeholder do ComboRow); o
+        // subtítulo traz só o detalhe, para não disputar largura com o valor.
+        row.subtitle = `${lastWrite ? `${resultDescription(lastWrite)} ` : ''}${description}`;
     };
 
     const reconcileSelection = () => {
@@ -262,11 +255,11 @@ function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
             // selection on a populated model. This row never represents an app.
             let placeholder: string;
             if (snapshot.discoveryError || snapshot.model.defaults.kind === 'unread') {
-                placeholder = 'Padrões indisponíveis';
+                placeholder = 'Indisponíveis';
             } else if (snapshot.model.defaults.kind === 'mixed') {
-                placeholder = 'Padrões diferentes';
+                placeholder = 'Variados';
             } else {
-                placeholder = 'Nenhum aplicativo padrão';
+                placeholder = 'Nenhum';
             }
             model.append(placeholder);
         }
@@ -314,8 +307,8 @@ function categoryRow(group: Adw.PreferencesGroup, category: AppCategory) {
 
 export default () => {
     const group = new Adw.PreferencesGroup({
-        title: 'Default Applications',
-        description: 'Choose defaults for registered media formats and common actions',
+        title: 'Aplicativos padrão',
+        description: 'Escolha os padrões para formatos de mídia registrados e ações comuns',
     });
 
     CATEGORIES.forEach((category) => categoryRow(group, category));

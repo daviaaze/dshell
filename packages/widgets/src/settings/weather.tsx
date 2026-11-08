@@ -13,10 +13,21 @@ export default () => {
     const updateBusy = bind(weather, 'updateBusy');
     const updateError = bind(weather, 'updateError');
     const locationStatus = computed(() => (locationBusy() ? 'Detectando localização…' : ''));
-    const updateStatus = computed(() => (updateBusy() ? 'Atualizando dados do clima…' : ''));
+    const updateStatus = computed(() => {
+        if (updateBusy()) return 'Atualizando dados do clima…';
+        const error = updateError();
+        if (!error) return '';
+        if (error === 'Weather data is invalid') {
+            return 'Os dados do clima são inválidos. Toque para tentar novamente.';
+        }
+        return `Não foi possível atualizar o clima: ${error}`;
+    });
 
     return (
-        <Adw.PreferencesGroup title={'Clima e localização'} description={'Origem da localização e atualização da previsão.'}>
+        <Adw.PreferencesGroup
+            title={'Clima e localização'}
+            description={'Origem da localização e atualização da previsão.'}
+        >
             <Adw.SwitchRow
                 title={'Detectar localização automaticamente'}
                 subtitle={'Desative para editar as coordenadas manualmente.'}
@@ -81,16 +92,6 @@ export default () => {
             >
                 <Gtk.Image iconName="view-refresh-symbolic" pixelSize={16} />
             </Adw.ActionRow>
-            <Gtk.Label
-                label={updateError.as((error) => error ?? '')}
-                cssClasses={['error', 'caption']}
-                visible={updateError.as((error) => error !== null)}
-                xalign={0}
-                wrap
-                marginStart={12}
-                marginEnd={12}
-                marginBottom={12}
-            />
         </Adw.PreferencesGroup>
     );
 };
