@@ -100,7 +100,16 @@ greeter/share-picker/auth-worker or generated schemas.
 
 Scenes accept a top-level JSON array or `{ "steps": [...] }`. Each step is one
 of `{"run":"toggle-settings"}`, `{"key":["down","enter"]}`, `{"click":[x,y]}`,
-`{"sleep":0.5}`, or `{"shot":"name","diff":true}`.
+`{"scroll":[x,y,notches]}` (mouse wheel; positive scrolls down, negative up;
+keep the pointer off sliders, which capture the wheel),
+`{"sleep":0.5}`, or `{"shot":"name","diff":true}`. Ready-made scenes live in
+`scripts/vm-scenes/`: `settings-sections`, `settings-full` and
+`settings-subpages` (all Settings pages, scrolled), `shell-states`,
+`overlays` and `capture-modes`. Click coordinates assume 1280x800; bring the
+Settings sidebar to the top first (`scroll` -12) because it keeps its scroll
+position and shifts the rows. The guest locks after a few minutes idle:
+`status` shows `locked=True`; type the test password with `key t e s t enter`
+(no other key first) in the disposable VM.
 Scene actions/captures are sent in one VNC connection per action segment (the
 settings example uses one VNC connection for all 12 clicks and captures), and
 SSH commands reuse the existing ControlMaster. `settings-sections.json` captures

@@ -1,0 +1,103 @@
+{
+ "steps": [
+  {
+   "run": "screenshot-overlay"
+  },
+  {
+   "sleep": 1.5
+  },
+  {
+   "shot": "cap-01-image-fullscreen"
+  },
+  {
+   "click": [
+    640,
+    276
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "cap-02-image-area"
+  },
+  {
+   "click": [
+    640,
+    309
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "cap-03-image-window"
+  },
+  {
+   "click": [
+    640,
+    342
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "cap-04-image-monitor"
+  },
+  {
+   "click": [
+    697,
+    167
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "cap-05-recording-monitor"
+  },
+  {
+   "click": [
+    640,
+    243
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "cap-06-recording-fullscreen"
+  },
+  {
+   "click": [
+    640,
+    276
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "cap-07-recording-area"
+  },
+  {
+   "click": [
+    640,
+    309
+   ]
+  },
+  {
+   "sleep": 0.6
+  },
+  {
+   "shot": "cap-08-recording-window"
+  },
+  {
+   "key": "esc"
+  },
+  {
+   "sleep": 0.6
+  }
+ ]
+}
