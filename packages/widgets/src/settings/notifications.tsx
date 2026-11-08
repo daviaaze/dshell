@@ -36,7 +36,9 @@ function NotificationsGroup({settings}: {settings: Settings}) {
                             : 'Os detalhes ficam ocultos até desbloquear a sessão.'
                     )}
                     active={settings.notificationLockscreenContent}
-                    onNotifyActive={(self) => settings.setNotificationLockscreenContent(self.active)}
+                    onNotifyActive={(self) =>
+                        settings.setNotificationLockscreenContent(self.active)
+                    }
                 />
                 <Adw.SpinRow
                     title={'Limite do histórico'}
@@ -67,12 +69,14 @@ function NotificationsGroup({settings}: {settings: Settings}) {
                     {(app: string) => (
                         <Adw.ActionRow title={app}>
                             <Gtk.Button
-                                cssClasses={['circular', 'destructive-action']}
+                                cssClasses={['circular', 'flat']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
                                     const current = settings.notificationIgnoredApps();
                                     logger.info('settings', `ignore app removed: ${app}`);
-                                    settings.setNotificationIgnoredApps(current.filter((a) => a !== app));
+                                    settings.setNotificationIgnoredApps(
+                                        current.filter((a) => a !== app)
+                                    );
                                 }}
                             />
                         </Adw.ActionRow>

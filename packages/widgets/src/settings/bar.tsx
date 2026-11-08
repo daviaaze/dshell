@@ -26,17 +26,44 @@ function positionLabel(p: Astal.WindowAnchor): string {
 /** Bar group: position toggle plus misc paths. */
 function BarGroup({bar}: {bar: Bar}) {
     return (
-        <Adw.PreferencesGroup title="Borda da barra" description="Escolha em qual borda da tela a barra aparece.">
+        <Adw.PreferencesGroup
+            title="Borda da barra"
+            description="Escolha em qual borda da tela a barra aparece."
+        >
             <Adw.ActionRow title="Posição" subtitle={bar.position.as(positionLabel)}>
                 <Adw.ToggleGroup
                     slot="suffix"
                     cssClasses={['round']}
                     valign={Gtk.Align.CENTER}
                     ref={(self) => {
-                        self.add(new Adw.Toggle({name: TOP.toString(), label: 'Superior', iconName: 'orientation-landscape-symbolic'}));
-                        self.add(new Adw.Toggle({name: LEFT.toString(), label: 'Esquerda', iconName: 'orientation-portrait-inverse-symbolic'}));
-                        self.add(new Adw.Toggle({name: RIGHT.toString(), label: 'Direita', iconName: 'orientation-portrait-right-symbolic'}));
-                        self.add(new Adw.Toggle({name: BOTTOM.toString(), label: 'Inferior', iconName: 'orientation-landscape-inverse-symbolic'}));
+                        self.add(
+                            new Adw.Toggle({
+                                name: TOP.toString(),
+                                label: 'Superior',
+                                iconName: 'orientation-landscape-symbolic',
+                            })
+                        );
+                        self.add(
+                            new Adw.Toggle({
+                                name: LEFT.toString(),
+                                label: 'Esquerda',
+                                iconName: 'orientation-portrait-inverse-symbolic',
+                            })
+                        );
+                        self.add(
+                            new Adw.Toggle({
+                                name: RIGHT.toString(),
+                                label: 'Direita',
+                                iconName: 'orientation-portrait-right-symbolic',
+                            })
+                        );
+                        self.add(
+                            new Adw.Toggle({
+                                name: BOTTOM.toString(),
+                                label: 'Inferior',
+                                iconName: 'orientation-landscape-inverse-symbolic',
+                            })
+                        );
                         self.activeName = String(bar.position.peek());
                         const changed = self.connect('notify::active-name', () => {
                             if (self.activeName === null) return;
@@ -81,7 +108,10 @@ function BarGroup({bar}: {bar: Bar}) {
 /** Dock group: enable, auto-hide, icon size. */
 function DockGroup({bar}: {bar: Bar}) {
     return (
-        <Adw.PreferencesGroup title="Dock" description="Visibilidade, ocultação automática e tamanho dos ícones.">
+        <Adw.PreferencesGroup
+            title="Dock"
+            description="Visibilidade, ocultação automática e tamanho dos ícones."
+        >
             <Adw.SwitchRow
                 title="Mostrar dock"
                 active={bar.dockEnabled}
@@ -111,7 +141,10 @@ function DockGroup({bar}: {bar: Bar}) {
 /** Pinned-apps group: add entry plus removable rows per pinned app. */
 function PinnedAppsGroup({bar}: {bar: Bar}) {
     return (
-        <Adw.PreferencesGroup title="Aplicativos fixados" description="Adicione ou remova IDs de aplicativos desktop; o nome é mostrado quando disponível.">
+        <Adw.PreferencesGroup
+            title="Aplicativos fixados"
+            description="Adicione ou remova IDs de aplicativos desktop; o nome é mostrado quando disponível."
+        >
             <Adw.EntryRow
                 title="Adicionar aplicativo"
                 showApplyButton
@@ -130,7 +163,7 @@ function PinnedAppsGroup({bar}: {bar: Bar}) {
                     <Adw.ActionRow title={appId} subtitle="ID do aplicativo desktop">
                         <Gtk.Button
                             slot="suffix"
-                            cssClasses={['circular', 'destructive-action']}
+                            cssClasses={['circular', 'flat']}
                             iconName="list-remove-symbolic"
                             onClicked={() => {
                                 const current = bar.dockPinnedApps();
@@ -147,7 +180,10 @@ function PinnedAppsGroup({bar}: {bar: Bar}) {
 /** Modules group: visibility toggles for bar components. */
 function ModulesGroup({bar}: {bar: Bar}) {
     return (
-        <Adw.PreferencesGroup title="Visibilidade dos itens" description="Escolha quais acessos, clientes e indicadores aparecem na barra.">
+        <Adw.PreferencesGroup
+            title="Visibilidade dos itens"
+            description="Escolha quais acessos, clientes e indicadores aparecem na barra."
+        >
             <Adw.SwitchRow
                 title="Abrir aplicativos"
                 active={bar.showLauncher}

@@ -152,7 +152,7 @@ export const settingsDestinationMeta = {
     },
     debug: {
         title: 'Diagnóstico',
-        icon: 'utilities-system-monitor-symbolic',
+        icon: 'utilities-terminal-symbolic',
         summary: 'Categorias de log',
         group: 'Sistema e diagnóstico',
     },

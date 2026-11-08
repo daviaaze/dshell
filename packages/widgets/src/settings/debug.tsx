@@ -14,7 +14,9 @@ export default () => {
             >
                 <Adw.SwitchRow
                     title={'Ativar logs de depuração'}
-                    subtitle={'Habilita mensagens DEBUG em journald; pode aumentar o detalhe local.'}
+                    subtitle={
+                        'Habilita mensagens DEBUG em journald; pode aumentar o detalhe local.'
+                    }
                     active={settings.debugEnabled}
                     onNotifyActive={(self) => settings.setDebugEnabled(self.active)}
                 />
@@ -49,7 +51,7 @@ export default () => {
                         <Adw.ActionRow title={cat}>
                             <Gtk.Button
                                 slot="suffix"
-                                cssClasses={['circular', 'destructive-action']}
+                                cssClasses={['circular', 'flat']}
                                 iconName="list-remove-symbolic"
                                 onClicked={() => {
                                     const current = settings.debugCategories();
