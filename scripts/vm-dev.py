@@ -3,7 +3,9 @@
 
     scripts/vm-dev.py up                 boot once, log in, leave running
     scripts/vm-dev.py sync               nix build only shade-shell, swap it into the guest session
-    scripts/vm-dev.py shot NAME          screenshot (guest grim over SSH) -> prints the PNG path
+    scripts/vm-dev.py fast-sync          host bundle shell sources and restart only the shell
+    scripts/vm-dev.py shot NAME --diff   capture and report changed-pixel percentage
+    scripts/vm-dev.py scenes FILE.json   execute run/key/click/sleep/shot steps in one invocation
     scripts/vm-dev.py run ACTION|CMD...  activate a Shade action or run a command in the guest session
     scripts/vm-dev.py key KEY...         VNC key presses (vncdo names: super-n, ctrl-a, esc)
     scripts/vm-dev.py click X Y          VNC pointer click
@@ -11,10 +13,9 @@
     scripts/vm-dev.py down               power off the guest and remove its disk/state
 
 All guest plumbing (QEMU launch, SSH, VNC, session environment, login readiness)
-is inherited from scripts/vm-workflow-test.py's WorkflowTest; this file only adds
-persistence and the quick commands. Only `up` needs `nix develop` (it re-enters
-it by itself); the other commands use the tool paths recorded in the state file,
-so they start in well under a second.
+is inherited from scripts/vm-workflow-test.py's WorkflowTest; this file adds
+persistence and quick commands. Only `up` needs `nix develop`; fast-sync may
+enter once to resolve local gnim dependencies if they are not cached.
 """
 
 from __future__ import annotations
@@ -40,6 +41,9 @@ _spec = importlib.util.spec_from_file_location("vm_workflow_test", SCRIPTS / "vm
 wf = importlib.util.module_from_spec(_spec)
 sys.modules["vm_workflow_test"] = wf
 _spec.loader.exec_module(wf)
+import vm_dev_fast as fast
+
+
 
 DEV_DIR = Path(os.environ.get("DSHELL_VM_DEV_DIR", "/tmp/dshell-vm-dev"))
 STATE_FILE = DEV_DIR / "state.json"
@@ -47,6 +51,7 @@ SHOTS = DEV_DIR / "shots"
 TOOLS = ("sshpass", "ssh", "scp", "vncdo", "magick")
 GUEST_DEV = "$HOME/.local/share/shade-dev"
 ACTION_NAME = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)+$")
+
 
 
 class VmDevError(RuntimeError):
@@ -224,6 +229,14 @@ def shell_ready(dev: Dev) -> bool:
     return result.returncode == 0 and "toggle-quicksettings" in result.stdout
 
 
+def record_fast_baseline(base_path: str) -> None:
+    DEV_DIR.mkdir(parents=True, exist_ok=True)
+    (DEV_DIR / "fast-state.json").write_text(json.dumps({
+        "base_path": base_path,
+        "nix_inputs": fast.nix_fingerprint(),
+    }) + "\n")
+
+
 def cmd_sync(args) -> None:
     dev, state = attach()
     if dev.locked():
@@ -233,6 +246,7 @@ def cmd_sync(args) -> None:
     built = time.monotonic()
     print(f"[vm-dev] nix build {built - t0:.1f}s -> {path}", file=sys.stderr)
     if path == state.get("shade_path") and not args.force:
+        record_fast_baseline(path)
         print("sync: guest already runs this build (use --force to restart anyway)")
         return
     if dev.locked():  # re-check: the build can take a while
@@ -246,15 +260,53 @@ def cmd_sync(args) -> None:
     dev.wait_until("shade-shell to expose its actions", lambda: shell_ready(dev), timeout=60, interval=0.3)
     state["shade_path"] = path
     save_state(state)
+    record_fast_baseline(path)
     print(f"[vm-dev] guest restart {time.monotonic() - built:.1f}s", file=sys.stderr)
     print(f"sync: guest now runs {path}")
+
+
+def cmd_fast_sync(args) -> None:
+    dev, state = attach()
+    result = fast.fast_sync(
+        dev, state, DEV_DIR,
+        locked=dev.locked,
+        shell_ready=lambda: shell_ready(dev),
+        force=args.force,
+        ignore_nix=args.ignore_nix,
+    )
+    for label, seconds in result["timings"].items():
+        print(f"{label}={seconds:.3f}s", file=sys.stderr)
+    print("fast-sync: unchanged" if not result["changed"] else f"fast-sync: guest runs host bundle ({result['sha'][:12]})")
+
+
+def cmd_scenes(args) -> None:
+    steps = fast.load_scenes(args.file)
+    dev, state = attach()
+    results = fast.run_scenes(
+        dev, steps, SHOTS, state=state,
+        magick=state.get("tools", {}).get("magick"), fuzz=args.fuzz,
+    )
+    print(json.dumps({
+        "steps": len(results),
+        "shots": sum(result["kind"] == "shot" for result in results),
+        "elapsed_seconds": round(time.monotonic() - args.started, 3),
+    }, indent=2))
+
+
 
 
 # --- quick commands -------------------------------------------------------
 
 
 def cmd_shot(args) -> None:
-    dev, _ = attach()
+    dev, state = attach()
+    if args.diff:
+        record = fast.capture_shot(
+            dev, SHOTS, args.name, vnc=args.vnc, diff=True,
+            magick=state.get("tools", {}).get("magick"), fuzz=args.fuzz,
+        )
+        print(fast.format_shot(record))
+        return
     SHOTS.mkdir(parents=True, exist_ok=True)
     name = re.sub(r"[^A-Za-z0-9_.-]+", "-", args.name).strip(".-") or "shot"
     path = SHOTS / f"{name}.png"
@@ -360,8 +412,16 @@ def main() -> int:
     sub.add_parser("up", help="boot the VM once and log in")
     p = sub.add_parser("sync", help="build shade-shell and restart it in the guest")
     p.add_argument("--force", action="store_true", help="restart even if the build is unchanged")
+    p = sub.add_parser("fast-sync", help="bundle shell sources locally and restart only the guest shell")
+    p.add_argument("--force", action="store_true", help="restart even if the guest bundle is unchanged")
+    p.add_argument("--ignore-nix", action="store_true", help="ignore changed Nix-only inputs (unsafe)")
+    p = sub.add_parser("scenes", help="execute run/key/click/sleep/shot steps from FILE.json")
+    p.add_argument("file", type=Path)
+    p.add_argument("--fuzz", type=float, default=1.0)
     p = sub.add_parser("shot", help="screenshot to /tmp/dshell-vm-dev/shots/NAME.png")
     p.add_argument("name")
+    p.add_argument("--diff", action="store_true", help="compare with previous capture of the same name")
+    p.add_argument("--fuzz", type=float, default=1.0, help="ImageMagick color tolerance percent")
     p.add_argument("--vnc", action="store_true", help="capture over VNC (works at the greeter/lock screen)")
     p = sub.add_parser("run", help="Shade action name (e.g. toggle-quicksettings) or a guest command")
     p.add_argument("--timeout", type=int, default=30)
@@ -379,9 +439,12 @@ def main() -> int:
             args.command = args.command[1:]
         if not args.command:
             parser.error("run needs an action or command")
+    if args.cmd in ("scenes", "shot") and not 0 <= args.fuzz <= 100:
+        parser.error("--fuzz must be between 0 and 100")
     started = time.monotonic()
+    args.started = started
     try:
-        globals()[f"cmd_{args.cmd}"](args)
+        globals()[f"cmd_{args.cmd.replace('-', '_')}"](args)
     except (VmDevError, RuntimeError) as exc:
         print(f"vm-dev {args.cmd}: {exc}", file=sys.stderr)
         return 1

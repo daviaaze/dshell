@@ -48,6 +48,83 @@ build can also exceed the ~30s sync target. Screenshots do not use AT-SPI.
 
 This helper is separate from `vm-workflow-test.py`; existing test runs retain
 their isolated-VM behavior and cleanup.
+
+#### Fast source iteration and batched captures
+
+`scripts/vm-dev.py` adds a fast host-side gnim bundle path, named image
+diffs, and JSON scenes. It uses the VM selected by `DSHELL_VM_DEV_DIR` (default
+`/tmp/dshell-vm-dev`); a separate VM can be isolated, for example, with
+`DSHELL_VM_DEV_DIR=/tmp/dshell-vm-dev2`.
+
+```sh
+# After one normal `sync`, compile only apps/shell/src/main.ts and its imports
+scripts/vm-dev.py fast-sync
+scripts/vm-dev.py fast-sync --force
+
+# First capture establishes a baseline; later captures retain NAME.prev.png,
+# write NAME.diff.png, and report the percentage of pixels changed.
+scripts/vm-dev.py shot settings --diff
+
+# One VM attachment/command invocation for all actions and screenshots
+scripts/vm-dev.py scenes scripts/vm-scenes/settings-sections.json
+```
+
+`fast-sync` runs the local `node_modules/.bin/gnim`-equivalent bundle command
+with the same app id and defines as `nix/desktop-shell.nix`, then streams the
+result to the guest over the already-open SSH connection. The guest runs a
+patched copy of `bin/.shade-shell-wrapped` with the same gjs runtime environment
+as the packaged wrapper and registers the replacement gresource at
+`resource:///com/caioasmuniz/shade_shell/main.js`. Only
+`shade-shell.service` is restarted; the greeter, compositor, and other shell
+applications are not. The lock check is made both before bundling and again
+before restarting; an unreadable compositor lock state is an error, never an
+implicit unlock assumption.
+
+The gresource is required because the generated executable wrapper hard-codes
+the store gresource path and imports the `resource:///.../main.js` module; a
+plain JS bundle cannot replace it. The fast path rebuilds only that gresource,
+and currently needs `glib-compile-resources` as well as gnim. CSS imported by
+the shell is bundled into the same resource (the widget stylesheet is also a
+TypeScript template string), so there is no live CSS-only reload hook in the
+running process. CSS-only edits use `fast-sync` and restart the shell; adding a
+GTK provider reload mechanism would require a separate shell-code change.
+
+`sync` records a baseline fingerprint for Nix-only inputs. Later changes to
+`flake.nix`/`flake.lock`, `nix/`, `data/`, `assets/`, package manifests, or
+`*.gschema.ts` are refused: run the appropriate `nix build` and full `sync` so
+the package's schemas, assets, and wrappers are rebuilt. A changed VM NixOS
+definition also requires rebuilding and rebooting the disposable VM. `--ignore-nix`
+is available only when the caller has independently established that those
+guest-side files stay compatible. The fast path does not rebuild
+greeter/share-picker/auth-worker or generated schemas.
+
+Scenes accept a top-level JSON array or `{ "steps": [...] }`. Each step is one
+of `{"run":"toggle-settings"}`, `{"key":["down","enter"]}`, `{"click":[x,y]}`,
+`{"sleep":0.5}`, or `{"shot":"name","diff":true}`.
+Scene actions/captures are sent in one VNC connection per action segment (the
+settings example uses one VNC connection for all 12 clicks and captures), and
+SSH commands reuse the existing ControlMaster. `settings-sections.json` captures
+12 ordered Settings navigation states; adjust its sleeps if the guest machine
+is under load.
+
+Measured on the second disposable VM (`DSHELL_VM_DEV_DIR=/tmp/dshell-vm-dev2`,
+already-booted guest, cached Nix build): full `sync --force` took 1.6 s
+(Nix evaluation/build 0.2 s, guest restart 1.3 s); `fast-sync` took 1.9 s
+(fingerprint 0.13 s, gnim bundle 0.28 s, upload 0.06 s, guest restart 1.3 s).
+The host bundle alone took 0.26 s in a direct invocation. Fast-sync therefore
+avoids Nix build work, but on this warm cache its total was not faster than the
+already-cached full sync; it is intended to avoid the ~52 s uncached package
+build. Twelve separate `shot` commands took 1.32 s. Twelve screenshot-only
+steps in one `scenes` invocation took 0.65 s. The 12-section settings scene
+took 20.3 s, including explicit settling sleeps and VNC capture/navigation.
+
+`shot --diff NAME` (spelled `shot NAME --diff`) compares with the previous
+same-name capture using ImageMagick's AE changed-pixel metric and a default 1%
+color fuzz. First capture prints “no previous capture”; later captures preserve
+the old PNG as `NAME.prev.png` and write the difference image as `NAME.diff.png`.
+This percentage is a pixel-change indicator, not a perceptual or UI correctness
+judgment.
+
 ### Current UI-review evidence mode
 
 Use `--ui-review` to run real guest workflow steps while retaining screenshots and available native/compositor receipts. It is an evidence-capture workflow, **not** a human visual review, WCAG/accessibility certification, or exact padding/conformance measurement.
