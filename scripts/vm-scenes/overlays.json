@@ -1,0 +1,22 @@
+{
+  "steps": [
+    {"run": "toggle-clipboard"}, {"sleep": 1.0}, {"shot": "ovl-01-clipboard"},
+    {"key": "esc"}, {"sleep": 0.4},
+    {"run": "toggle-notifications"}, {"sleep": 1.0}, {"shot": "ovl-02-notification-center"},
+    {"run": "toggle-notifications"}, {"sleep": 0.6},
+    {"run": "screenshot-overlay"}, {"sleep": 1.5}, {"shot": "ovl-03-screenshot-overlay"},
+    {"key": "esc"}, {"sleep": 0.6},
+    {"run": "toggle-windowswitcher"}, {"sleep": 1.0}, {"shot": "ovl-04-window-switcher"},
+    {"key": "esc"}, {"sleep": 0.4},
+    {"run": "toggle-settings"}, {"sleep": 1.5},
+    {"click": [150, 594]}, {"sleep": 0.5}, {"shot": "ovl-05-capture-prefs"},
+    {"key": "Page_Down"}, {"sleep": 0.4}, {"shot": "ovl-06-capture-prefs-bottom"},
+    {"click": [150, 646]}, {"sleep": 0.5}, {"shot": "ovl-07-apps"},
+    {"click": [150, 698]}, {"sleep": 0.5}, {"shot": "ovl-08-time-focus"},
+    {"key": "Page_Down"}, {"sleep": 0.4}, {"shot": "ovl-09-time-focus-bottom"},
+    {"click": [150, 490]}, {"sleep": 0.5}, {"shot": "ovl-10-lock-power"},
+    {"key": "Page_Down"}, {"sleep": 0.4}, {"shot": "ovl-11-lock-power-bottom"},
+    {"click": [150, 542]}, {"sleep": 0.5}, {"shot": "ovl-12-notif-prefs"},
+    {"key": "Page_Down"}, {"sleep": 0.4}, {"shot": "ovl-13-notif-prefs-bottom"}
+  ]
+}

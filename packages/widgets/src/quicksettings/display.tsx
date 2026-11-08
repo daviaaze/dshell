@@ -21,7 +21,7 @@ function modeLabel(mode: DisplayMode, outputs: OutputInfo[]) {
     let count = outputs.length;
     if (mode === 'internal-only') count = Number(hasInternal);
     else if (mode === 'external-only') count = externalCount;
-    return `${name} · ${count} ${count === 1 ? 'monitor' : 'monitores'}`;
+    return count > 0 ? `${name} · ${count} ${count === 1 ? 'monitor' : 'monitores'}` : name;
 }
 
 function modeUnavailableReason(mode: DisplayMode, outputs: OutputInfo[]) {
@@ -234,9 +234,18 @@ function ModeChooser({service, focus}: {service: LayoutService; focus: DisplayFo
     const displayMode = bind(service, 'displayMode');
     const outputs = bind(service, 'monitors');
     const emptyVisible = computed(() => modes().length === 0);
+    const emptyLabel = computed(() =>
+        outputs().length === 0
+            ? 'Conecte uma tela para escolher um modo.'
+            : 'Os modos aparecem quando há mais de uma tela conectada.'
+    );
     return (
         <Adw.PreferencesGroup title="Modos rápidos">
-            <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
+            <Gtk.Box
+                spacing={4}
+                orientation={Gtk.Orientation.VERTICAL}
+                visible={modes.as((choices) => choices.length > 0)}
+            >
                 {DISPLAY_MODES.map((mode: DisplayMode) => (
                     <With value={modes.as((choices) => choices.includes(mode))}>
                         {(available) =>
@@ -272,15 +281,15 @@ function ModeChooser({service, focus}: {service: LayoutService; focus: DisplayFo
                         }
                     </With>
                 ))}
-                <Gtk.Label
-                    ref={(self) => focus.attachEmptyLabel(self)}
-                    label="Conecte uma tela para escolher um modo."
-                    xalign={0}
-                    focusable
-                    visible={emptyVisible}
-                    cssClasses={['caption']}
-                />
             </Gtk.Box>
+            <Gtk.Label
+                ref={(self) => focus.attachEmptyLabel(self)}
+                label={emptyLabel}
+                xalign={0}
+                focusable
+                visible={emptyVisible}
+                cssClasses={['caption']}
+            />
         </Adw.PreferencesGroup>
     );
 }

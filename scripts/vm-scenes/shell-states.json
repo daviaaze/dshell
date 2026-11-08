@@ -1,0 +1,25 @@
+{
+  "steps": [
+    {"run": "toggle-quicksettings"}, {"sleep": 1.2}, {"shot": "shell-01-qs-home"},
+    {"click": [242, 127]}, {"sleep": 0.6}, {"shot": "shell-02-qs-wifi"},
+    {"click": [79, 27]}, {"sleep": 0.4},
+    {"click": [242, 127]}, {"sleep": 0.2}, {"click": [79, 27]}, {"sleep": 0.4},
+    {"click": [430, 333]}, {"sleep": 0.6}, {"shot": "shell-03-qs-output"},
+    {"click": [79, 27]}, {"sleep": 0.4},
+    {"click": [430, 409]}, {"sleep": 0.6}, {"shot": "shell-04-qs-input"},
+    {"click": [79, 27]}, {"sleep": 0.4},
+    {"click": [265, 478]}, {"sleep": 0.6}, {"shot": "shell-05-qs-displays"},
+    {"click": [79, 27]}, {"sleep": 0.4},
+    {"click": [265, 539]}, {"sleep": 0.6}, {"shot": "shell-06-qs-other"},
+    {"click": [79, 27]}, {"sleep": 0.4},
+    {"click": [166, 594]}, {"sleep": 0.8}, {"shot": "shell-07-qs-data-weather"},
+    {"click": [79, 27]}, {"sleep": 0.4},
+    {"run": "toggle-quicksettings"}, {"sleep": 0.6},
+    {"run": "toggle-applauncher"}, {"sleep": 1.0}, {"shot": "shell-08-launcher"},
+    {"key": "esc"}, {"sleep": 0.4},
+    {"run": "notify-send -u critical -a Teste 'Notificacao critica' 'Corpo longo da notificacao para verificar quebra de linha e espacamento interno do cartao'"},
+    {"sleep": 1.0}, {"shot": "shell-09-toast-critical"},
+    {"run": "notify-send -a Teste 'Normal' 'Segunda notificacao'"},
+    {"sleep": 1.0}, {"shot": "shell-10-toast-two"}
+  ]
+}
