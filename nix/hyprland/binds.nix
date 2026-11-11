@@ -282,7 +282,10 @@ let
     })
     (bind {
       id = "pseudo-tile";
-      mods = [ "SUPER" ];
+      mods = [
+        "SUPER"
+        "ALT"
+      ];
       key = "P";
       title = "Alternar modo pseudo-ladrilho";
       category = categories.windows;
@@ -506,6 +509,15 @@ let
       key = "XF86Display";
       title = "Escolher modo de exibição";
       command = "shade-shell display-mode-chooser";
+    })
+    # Fn+F7 on the ThinkBook is firmware-mapped to Super+P (libinput: KEY_LEFTMETA + KEY_P).
+    (bind {
+      id = "display-power-toggle";
+      mods = [ "SUPER" ];
+      key = "P";
+      title = "Apagar ou acender a tela (Fn+F7)";
+      category = categories.system;
+      action = run "${hyprctl} eval 'hl.dsp.dpms({action=\"toggle\"})'";
     })
     (shellBind {
       id = "toggle-clipboard";
