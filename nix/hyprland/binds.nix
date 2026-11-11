@@ -5,11 +5,13 @@
   ...
 }:
 let
-  uwsm-app = app: "${pkgs.uwsm}/bin/uwsm-app -t service -- ${app}.desktop";
   cfg = config.programs.shade.desktop;
-  # Use compositor-native dispatchers for interactive bindings. External
-  # commands remain exec_cmd actions so existing shell helpers are preserved.
-  shade-action = action:
+  # Bindings are data (BindSpec) in the compositor seed; the TypeScript model
+  # renders them as compositor-native dispatchers. Shell panels keep the exact
+  # guarded D-Bus command below, and external commands stay plain commands, so
+  # existing shell helpers and failure notifications are preserved.
+  shade-action =
+    action:
     let
       dest = "com.caioasmuniz.shade_shell";
       object = "/com/caioasmuniz/shade_shell";
@@ -22,195 +24,832 @@ let
     step="$1"
     exec ${hyprctl} eval "local c = hl.get_config('cursor:zoom_factor'); local s = $step; hl.config({ cursor = { zoom_factor = s == 0 and 1 or math.min(4, math.max(1, c + s)) } })"
   '';
+  playerctl = "${pkgs.playerctl}/bin/playerctl";
 
-  _bind = [
-    "SUPER,Return,exec,${uwsm-app cfg.defaultTerminal}"
-    "SUPER,B,exec,${uwsm-app cfg.defaultBrowser}"
-    "SUPER,V,exec,pkill pwvucontrol || pwvucontrol"
-    "SUPER,E,exec,${uwsm-app cfg.defaultFileManager}"
-    "SUPER,C,exec,${uwsm-app "code"}"
-    "SUPER,Backspace,exec,${hyprctl} reload;${pkgs.libnotify}/bin/notify-send 'Hyprland reloaded'"
-    "SUPERCTRL,R,exec,systemctl --user restart shade-shell"
-    "SUPERSHIFT,Q,exec,pkill Hyprland"
-    "SUPERSHIFT,F,togglefloating,active"
-    "SUPERSHIFT,G,togglegroup"
-    "SUPER,G,changegroupactive,f"
-    "SUPER,Q,killactive"
-    "SUPER,P,pseudo"
-    "SUPERSHIFT,T,shade-exact-pseudo"
-    "SUPER,F,fullscreen"
-    ",Pause,togglespecialworkspace,scratchpad"
-    ",Insert,togglespecialworkspace,scratchpad"
-    "SUPER,Insert,movetoworkspace,special:scratchpad"
-    "SUPER,Pause,movetoworkspace,special:scratchpad"
-    "SUPER,S,layoutmsg,togglesplit"
-    "SUPER,left,movefocus,l"
-    "SUPER,right,movefocus,r"
-    "SUPER,up,movefocus,u"
-    "SUPER,down,movefocus,d"
-    "SUPERSHIFT,left,movewindow,l"
-    "SUPERSHIFT,right,movewindow,r"
-    "SUPERSHIFT,up,movewindow,u"
-    "SUPERSHIFT,down,movewindow,d"
-    "SUPERALT,up,workspace,previous_per_monitor"
-    "SUPERALT,down,workspace,emptynm"
-    "SUPERSHIFTALT,left,movewindow,mon:-1"
-    "SUPERSHIFTALT,right,movewindow,mon:+1"
-    "SUPERSHIFTALT,up,movetoworkspace,m-1"
-    "SUPERSHIFTALT,down,movetoworkspace,emptynm"
-    "SUPERALT,left,workspace,r-1"
-    "SUPERALT,right,workspace,r+1"
-    "SUPER,j,movefocus,l"
-    "SUPER,l,movefocus,r"
-    "SUPER,i,movefocus,u"
-    "SUPER,k,movefocus,d"
-    "SUPERSHIFT,j,movewindow,l"
-    "SUPERSHIFT,l,movewindow,r"
-    "SUPERSHIFT,i,movewindow,u"
-    "SUPERSHIFT,k,movewindow,d"
-    "SUPERALT,i,workspace,previous_per_monitor"
-    "SUPERALT,k,workspace,emptynm"
-    "SUPERSHIFTALT,i,movetoworkspace,m-1"
-    "SUPERSHIFTALT,k,movetoworkspace,emptynm"
-    "SUPERALT,j,workspace,r-1"
-    "SUPERALT,l,workspace,r+1"
+  categories = {
+    apps = "Abrir aplicativos";
+    windows = "Controles de janela";
+    windowFocus = "Navegação entre janelas";
+    workspaces = "Navegação entre espaços de trabalho";
+    layout = "Layout";
+    system = "Sistema";
+    shade = "Shade";
+    media = "Mídia e brilho";
+    zoom = "Zoom";
+  };
+
+  flagsLocked = {
+    locked = true;
+  };
+  flagsLockedRepeating = {
+    locked = true;
+    repeating = true;
+  };
+  flagsRepeating = {
+    repeating = true;
+  };
+  flagsMouse = {
+    mouse = true;
+  };
+
+  # A chord is authored as modifiers plus key; Hyprland's Lua API takes "SUPER + SHIFT + Q".
+  bind =
+    {
+      id,
+      mods ? [ ],
+      key,
+      title,
+      category,
+      action,
+      flags ? null,
+    }:
+    {
+      inherit
+        id
+        title
+        category
+        action
+        ;
+      keys = lib.concatStringsSep " + " (mods ++ [ key ]);
+    }
+    // lib.optionalAttrs (flags != null) { inherit flags; };
+
+  dispatch =
+    name: args:
+    {
+      type = "hypr-dispatch";
+      inherit name;
+    }
+    // lib.optionalAttrs (args != null) { inherit args; };
+  launch = desktopId: {
+    type = "launch-app";
+    inherit desktopId;
+  };
+  run = command: {
+    type = "command";
+    inherit command;
+  };
+  shell = name: command: {
+    type = "shell-action";
+    inherit name command;
+  };
+
+  # Shell actions keep their typed name; the command is what actually runs.
+  shellBind =
+    {
+      id,
+      name ? id,
+      mods ? [ ],
+      key,
+      title,
+      command,
+    }:
+    bind {
+      inherit
+        id
+        mods
+        key
+        title
+        ;
+      category = categories.shade;
+      action = shell name command;
+    };
+  # Hardware keys fire while the session is locked.
+  lockedBind =
+    {
+      id,
+      key,
+      title,
+      command,
+      flags ? flagsLocked,
+    }:
+    bind {
+      inherit
+        id
+        key
+        title
+        flags
+        ;
+      category = categories.media;
+      action = run command;
+    };
+
+  arrows = [
+    "left"
+    "right"
+    "up"
+    "down"
   ];
-  _bindd = [
-    "SUPER,M,shade-action:display-next,exec,shade-shell display-next"
-    "SUPERALT,M,shade-action:display-mode-chooser,exec,shade-shell display-mode-chooser"
-    "SUPERSHIFT,M,shade-action:display-toggle-internal,exec,shade-shell display-toggle-internal"
-    ",XF86Display,shade-action:display-mode-chooser,exec,shade-shell display-mode-chooser"
-    "SUPERSHIFT,V,shade-action:toggle-clipboard,exec,${shade-action "toggle-clipboard"}"
-    "SUPER,Space,shade-action:toggle-applauncher,exec,${shade-action "toggle-applauncher"}"
-    "SUPER,n,shade-action:toggle-quicksettings,exec,${shade-action "toggle-quicksettings"}"
-    "SUPER,w,shade-action:toggle-bar,exec,${shade-action "toggle-bar"}"
-    "SUPER,TAB,shade-action:toggle-windowswitcher,exec,${shade-action "toggle-windowswitcher"}"
-    "SUPER,comma,shade-action:toggle-settings,exec,${shade-action "toggle-settings"}"
-    ",Print,shade-action:screenshot-overlay,exec,${shade-action "screenshot-overlay"}"
-    "SUPERSHIFT,S,shade-action:screenshot,exec,${shade-action "screenshot"}"
-    "SUPERSHIFT,R,shade-action:record,exec,${shade-action "record"}"
-    "SUPERSHIFT,P,shade-action:record-area,exec,${shade-action "record-area"}"
-    "SUPERCTRLALT,left,Move window into group on the left,moveintogroup,l"
-    "SUPERCTRLALT,right,Move window into group on the right,moveintogroup,r"
-    "SUPERCTRLALT,up,Move window into group above,moveintogroup,u"
-    "SUPERCTRLALT,down,Move window into group below,moveintogroup,d"
-    "SUPERCTRLALT,G,Move window out of group,moveoutofgroup"
-    "SUPERALT,G,Lock active group,lockactivegroup,toggle"
-    "SUPER,mouse_up,Zoom in,exec,${zoom} 0.25"
-    "SUPER,mouse_down,Zoom out,exec,${zoom} -0.25"
-    "SUPER,0,Reset zoom,exec,${zoom} 0"
+  # Directional chords also exist on the IJKL cluster (j = left, l = right, i = up, k = down).
+  ijkl = {
+    left = "j";
+    right = "l";
+    up = "i";
+    down = "k";
+  };
+  where = {
+    left = "à esquerda";
+    right = "à direita";
+    up = "acima";
+    down = "abaixo";
+  };
+  # Arrow chord plus its IJKL twin; `spec` carries everything except the key.
+  withIjkl = dir: spec: [
+    (bind (spec // { key = dir; }))
+    (bind (
+      spec
+      // {
+        id = "${spec.id}-ijkl";
+        key = ijkl.${dir};
+      }
+    ))
   ];
-  _bindl = [
-    ",XF86AudioMedia,exec,${pkgs.playerctl}/bin/playerctl play-pause"
-    ",XF86AudioPlay,exec,${pkgs.playerctl}/bin/playerctl play-pause"
-    ",XF86AudioStop,exec,${pkgs.playerctl}/bin/playerctl stop"
-    ",XF86AudioPrev,exec,${pkgs.playerctl}/bin/playerctl previous"
-    ",XF86AudioNext,exec,${pkgs.playerctl}/bin/playerctl next"
-    ",XF86AudioMute,exec,wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-    ",XF86AudioMicMute,exec,wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"
-    ",XF86MonBrightnessUp,exec,astal-brightness set +5%"
-    ",XF86MonBrightnessDown,exec,astal-brightness set 5%-"
+
+  appBinds = [
+    (bind {
+      id = "terminal";
+      mods = [ "SUPER" ];
+      key = "Return";
+      title = "Abrir terminal";
+      category = categories.apps;
+      action = launch cfg.defaultTerminal;
+    })
+    (bind {
+      id = "browser";
+      mods = [ "SUPER" ];
+      key = "B";
+      title = "Abrir navegador";
+      category = categories.apps;
+      action = launch cfg.defaultBrowser;
+    })
+    (bind {
+      id = "volume-mixer";
+      mods = [ "SUPER" ];
+      key = "V";
+      title = "Mostrar ou ocultar mixer de volume";
+      category = categories.apps;
+      action = run "pkill pwvucontrol || pwvucontrol";
+    })
+    (bind {
+      id = "file-manager";
+      mods = [ "SUPER" ];
+      key = "E";
+      title = "Abrir gerenciador de arquivos";
+      category = categories.apps;
+      action = launch cfg.defaultFileManager;
+    })
+    (bind {
+      id = "code-editor";
+      mods = [ "SUPER" ];
+      key = "C";
+      title = "Abrir editor de código";
+      category = categories.apps;
+      action = launch "code";
+    })
   ];
-  _bindle = [
-    ",XF86AudioRaiseVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+"
-    ",XF86AudioLowerVolume,exec,wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-"
+
+  systemBinds = [
+    (bind {
+      id = "reload-config";
+      mods = [ "SUPER" ];
+      key = "Backspace";
+      title = "Recarregar configuração do Hyprland";
+      category = categories.system;
+      action = run "${hyprctl} reload;${pkgs.libnotify}/bin/notify-send 'Hyprland reloaded'";
+    })
+    (bind {
+      id = "restart-shell";
+      mods = [
+        "SUPER"
+        "CTRL"
+      ];
+      key = "R";
+      title = "Reiniciar o Shade";
+      category = categories.system;
+      action = run "systemctl --user restart shade-shell";
+    })
+    (bind {
+      id = "exit-session";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "Q";
+      title = "Sair do Hyprland";
+      category = categories.system;
+      action = run "pkill Hyprland";
+    })
   ];
-  _bindm = [
-    "SUPER,mouse:272,movewindow"
-    "SUPER,mouse:273,resizewindow"
+
+  windowBinds = [
+    (bind {
+      id = "toggle-floating";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "F";
+      title = "Alternar modo flutuante";
+      category = categories.windows;
+      action = dispatch "toggle-float" null;
+    })
+    (bind {
+      id = "group-toggle";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "G";
+      title = "Agrupar ou desagrupar janela";
+      category = categories.windows;
+      action = dispatch "group-toggle" null;
+    })
+    (bind {
+      id = "group-next";
+      mods = [ "SUPER" ];
+      key = "G";
+      title = "Próxima janela do grupo";
+      category = categories.windowFocus;
+      action = dispatch "group-next" null;
+    })
+    (bind {
+      id = "close-window";
+      mods = [ "SUPER" ];
+      key = "Q";
+      title = "Fechar janela";
+      category = categories.windows;
+      action = dispatch "close" null;
+    })
+    (bind {
+      id = "pseudo-tile";
+      mods = [ "SUPER" ];
+      key = "P";
+      title = "Alternar modo pseudo-ladrilho";
+      category = categories.windows;
+      action = dispatch "pseudo" null;
+    })
+    (bind {
+      id = "exact-pseudo";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "T";
+      title = "Pseudo-ladrilho em 1920x1080";
+      category = categories.windows;
+      action = dispatch "exact-pseudo" null;
+    })
+    (bind {
+      id = "fullscreen";
+      mods = [ "SUPER" ];
+      key = "F";
+      title = "Alternar tela cheia";
+      category = categories.windows;
+      action = dispatch "fullscreen" null;
+    })
   ];
-  _binde = [
-    "SUPERCONTROL,left,resizeactive,-64 0"
-    "SUPERCONTROL,right,resizeactive,64 0"
-    "SUPERCONTROL,up,resizeactive,0 -64"
-    "SUPERCONTROL,down,resizeactive,0 64"
-    "SUPERCONTROL,j,resizeactive,-64 0"
-    "SUPERCONTROL,l,resizeactive,64 0"
-    "SUPERCONTROL,i,resizeactive,0 -64"
-    "SUPERCONTROL,k,resizeactive,0 64"
+
+  scratchpadBinds = [
+    (bind {
+      id = "scratchpad-toggle-pause";
+      key = "Pause";
+      title = "Mostrar ou ocultar scratchpad";
+      category = categories.workspaces;
+      action = dispatch "toggle-special-workspace" "scratchpad";
+    })
+    (bind {
+      id = "scratchpad-toggle-insert";
+      key = "Insert";
+      title = "Mostrar ou ocultar scratchpad";
+      category = categories.workspaces;
+      action = dispatch "toggle-special-workspace" "scratchpad";
+    })
+    (bind {
+      id = "scratchpad-send-insert";
+      mods = [ "SUPER" ];
+      key = "Insert";
+      title = "Enviar janela ao scratchpad";
+      category = categories.workspaces;
+      action = dispatch "move" { workspace = "special:scratchpad"; };
+    })
+    (bind {
+      id = "scratchpad-send-pause";
+      mods = [ "SUPER" ];
+      key = "Pause";
+      title = "Enviar janela ao scratchpad";
+      category = categories.workspaces;
+      action = dispatch "move" { workspace = "special:scratchpad"; };
+    })
   ];
-  _splitBind = s: lib.splitString "," s;
-  _keyOf = bindStr:
-    let parts = _splitBind bindStr;
-    in builtins.elemAt parts 1;
-  _modsOf = bindStr:
-    let parts = _splitBind bindStr;
-    in [ (builtins.head parts) ];
-  _tupleOf = bindStr: { mods = _modsOf bindStr; key = _keyOf bindStr; };
-  _allBindLines = _bind ++ _bindd ++ _bindl ++ _bindle ++ _bindm ++ _binde;
-  _keyDuplicates =
+
+  layoutBinds = [
+    (bind {
+      id = "toggle-split";
+      mods = [ "SUPER" ];
+      key = "S";
+      title = "Alternar divisão do layout";
+      category = categories.layout;
+      action = dispatch "layout" "togglesplit";
+    })
+  ];
+
+  focusBinds = lib.concatMap (
+    dir:
+    withIjkl dir {
+      id = "focus-${dir}";
+      mods = [ "SUPER" ];
+      title = "Focar janela ${where.${dir}}";
+      category = categories.windowFocus;
+      action = dispatch "focus" { direction = dir; };
+    }
+  ) arrows;
+
+  moveBinds = lib.concatMap (
+    dir:
+    withIjkl dir {
+      id = "move-window-${dir}";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      title = "Mover janela ${where.${dir}}";
+      category = categories.windows;
+      action = dispatch "move" { direction = dir; };
+    }
+  ) arrows;
+
+  workspaceTargets = {
+    left = {
+      id = "workspace-previous";
+      target = "r-1";
+      title = "Ir para o espaço de trabalho anterior";
+    };
+    right = {
+      id = "workspace-next";
+      target = "r+1";
+      title = "Ir para o próximo espaço de trabalho";
+    };
+    up = {
+      id = "workspace-back";
+      target = "previous_per_monitor";
+      title = "Voltar ao espaço de trabalho anterior do monitor";
+    };
+    down = {
+      id = "workspace-empty";
+      target = "emptynm";
+      title = "Ir para o próximo espaço de trabalho vazio";
+    };
+  };
+  workspaceBinds = lib.concatMap (
+    dir:
     let
-      entries = map _tupleOf _allBindLines;
-      isDupe = e: builtins.length (builtins.filter (x: x.mods == e.mods && x.key == e.key) entries) > 1;
-      dupes = builtins.filter isDupe entries;
-    in map (e: "${e.mods},${e.key}") dupes;
-  _assertNoDupKeybinds =
-    assert (_keyDuplicates == [ ])
-      || throw "Duplicate Hyprland keybinds: ${builtins.concatStringsSep "; " _keyDuplicates}";
-    [ ];
-  quote = builtins.toJSON;
-  keyMods = mods:
+      target = workspaceTargets.${dir};
+    in
+    withIjkl dir {
+      inherit (target) id title;
+      mods = [
+        "SUPER"
+        "ALT"
+      ];
+      category = categories.workspaces;
+      action = dispatch "focus" { workspace = target.target; };
+    }
+  ) arrows;
+
+  # Sending a window to a monitor or workspace is bound on the arrows, and on
+  # the IJKL cluster only for up and down.
+  sendTargets = {
+    left = {
+      id = "move-window-monitor-previous";
+      args = {
+        monitor = "-1";
+      };
+      title = "Mover janela para o monitor anterior";
+    };
+    right = {
+      id = "move-window-monitor-next";
+      args = {
+        monitor = "+1";
+      };
+      title = "Mover janela para o próximo monitor";
+    };
+    up = {
+      id = "move-window-workspace-previous";
+      args = {
+        workspace = "m-1";
+      };
+      title = "Mover janela para o espaço de trabalho anterior";
+    };
+    down = {
+      id = "move-window-workspace-empty";
+      args = {
+        workspace = "emptynm";
+      };
+      title = "Mover janela para o próximo espaço de trabalho vazio";
+    };
+  };
+  sendBind =
+    dir: key: suffix:
     let
-      names = [ "SUPER" "SHIFT" "CONTROL" "CTRL" "ALT" ];
-      values = [ "SUPER" "SHIFT" "CTRL" "CTRL" "ALT" ];
-      replace = builtins.foldl' (acc: pair:
-        builtins.replaceStrings [ pair.fst ] [ "${pair.snd}+" ] acc) mods
-        (lib.zipLists names values);
-    in lib.filter (x: x != "") (lib.splitString "+" replace);
-  dispatcher = name: arg:
-    let q = quote arg; table = field: value: "{ ${field} = ${quote value} }";
-    in if name == "exec" then "hl.dsp.exec_cmd(${q})"
-       else if name == "togglefloating" then "hl.dsp.window.float()"
-       else if name == "togglegroup" then "hl.dsp.group.toggle()"
-       else if name == "changegroupactive" then "hl.dsp.group.next()"
-       else if name == "killactive" then "hl.dsp.window.close()"
-       else if name == "pseudo" then "hl.dsp.window.pseudo()"
-       else if name == "fullscreen" then "hl.dsp.window.fullscreen()"
-       else if name == "togglespecialworkspace" then "hl.dsp.workspace.toggle_special(${q})"
-       else if name == "movetoworkspace" then "hl.dsp.window.move(${table "workspace" arg})"
-       else if name == "layoutmsg" then "hl.dsp.layout(${q})"
-       else if name == "movefocus" then "hl.dsp.focus(${table "direction" ({l="left";r="right";u="up";d="down";}.${arg})})"
-       else if name == "movewindow" then
-         if lib.hasPrefix "mon:" arg then "hl.dsp.window.move(${table "monitor" (lib.removePrefix "mon:" arg)})"
-         else "hl.dsp.window.move(${table "direction" ({l="left";r="right";u="up";d="down";}.${arg})})"
-       else if name == "workspace" then "hl.dsp.focus(${table "workspace" arg})"
-       else if name == "moveintogroup" then "hl.dsp.window.move(${table "into_group" ({l="left";r="right";u="up";d="down";}.${arg})})"
-       else if name == "moveoutofgroup" then "hl.dsp.window.move({ out_of_group = true })"
-       else if name == "lockactivegroup" then "hl.dsp.group.lock()"
-       else if name == "resizeactive" then
-         let xy = lib.splitString " " arg;
-         in "hl.dsp.window.resize({ x = ${builtins.elemAt xy 0}, y = ${builtins.elemAt xy 1}, relative = true })"
-       else if name == "resizewindow" then "hl.dsp.window.resize()"
-       else if name == "shade-exact-pseudo" then
-         ''function()
-           hl.dsp.window.float({ action = "on" })()
-           hl.dsp.window.resize({ x = 1920, y = 1080 })()
-           hl.dsp.window.float({ action = "off" })()
-           hl.dsp.window.pseudo()()
-         end''
-       else throw "Unmapped Hyprland dispatcher: ${name}";
-  emit = flags: described: line:
+      target = sendTargets.${dir};
+    in
+    bind {
+      id = "${target.id}${suffix}";
+      mods = [
+        "SUPER"
+        "SHIFT"
+        "ALT"
+      ];
+      inherit key;
+      inherit (target) title;
+      category = categories.windows;
+      action = dispatch "move" target.args;
+    };
+  sendBinds =
+    map (dir: sendBind dir dir "") arrows
+    ++ map (dir: sendBind dir ijkl.${dir} "-ijkl") [
+      "up"
+      "down"
+    ];
+
+  shellBinds = [
+    (shellBind {
+      id = "display-next";
+      mods = [ "SUPER" ];
+      key = "M";
+      title = "Alternar layouts de monitores";
+      command = "shade-shell display-next";
+    })
+    (shellBind {
+      id = "display-mode-chooser";
+      mods = [
+        "SUPER"
+        "ALT"
+      ];
+      key = "M";
+      title = "Escolher modo de exibição";
+      command = "shade-shell display-mode-chooser";
+    })
+    (shellBind {
+      id = "display-toggle-internal";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "M";
+      title = "Ativar ou desativar monitor interno";
+      command = "shade-shell display-toggle-internal";
+    })
+    (shellBind {
+      id = "display-mode-chooser-key";
+      name = "display-mode-chooser";
+      key = "XF86Display";
+      title = "Escolher modo de exibição";
+      command = "shade-shell display-mode-chooser";
+    })
+    (shellBind {
+      id = "toggle-clipboard";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "V";
+      title = "Mostrar ou ocultar gerenciador da área de transferência";
+      command = shade-action "toggle-clipboard";
+    })
+    (shellBind {
+      id = "toggle-applauncher";
+      mods = [ "SUPER" ];
+      key = "Space";
+      title = "Mostrar ou ocultar lançador de aplicativos";
+      command = shade-action "toggle-applauncher";
+    })
+    (shellBind {
+      id = "toggle-quicksettings";
+      mods = [ "SUPER" ];
+      key = "n";
+      title = "Mostrar ou ocultar configurações rápidas";
+      command = shade-action "toggle-quicksettings";
+    })
+    (shellBind {
+      id = "toggle-bar";
+      mods = [ "SUPER" ];
+      key = "w";
+      title = "Mostrar ou ocultar barra";
+      command = shade-action "toggle-bar";
+    })
+    (shellBind {
+      id = "toggle-windowswitcher";
+      mods = [ "SUPER" ];
+      key = "TAB";
+      title = "Mostrar ou ocultar alternador de janelas";
+      command = shade-action "toggle-windowswitcher";
+    })
+    (shellBind {
+      id = "toggle-settings";
+      mods = [ "SUPER" ];
+      key = "comma";
+      title = "Mostrar ou ocultar configurações";
+      command = shade-action "toggle-settings";
+    })
+    (shellBind {
+      id = "screenshot-overlay";
+      key = "Print";
+      title = "Mostrar ou ocultar painel de captura de tela";
+      command = shade-action "screenshot-overlay";
+    })
+    (shellBind {
+      id = "screenshot";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "S";
+      title = "Capturar tela";
+      command = shade-action "screenshot";
+    })
+    (shellBind {
+      id = "record";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "R";
+      title = "Iniciar ou parar gravação";
+      command = shade-action "record";
+    })
+    (shellBind {
+      id = "record-area";
+      mods = [
+        "SUPER"
+        "SHIFT"
+      ];
+      key = "P";
+      title = "Gravar área selecionada";
+      command = shade-action "record-area";
+    })
+  ];
+
+  groupBinds =
+    map (
+      dir:
+      bind {
+        id = "group-move-in-${dir}";
+        mods = [
+          "SUPER"
+          "CTRL"
+          "ALT"
+        ];
+        key = dir;
+        title = "Mover janela para o grupo ${where.${dir}}";
+        category = categories.windows;
+        action = dispatch "move" { into_group = dir; };
+      }
+    ) arrows
+    ++ [
+      (bind {
+        id = "group-move-out";
+        mods = [
+          "SUPER"
+          "CTRL"
+          "ALT"
+        ];
+        key = "G";
+        title = "Tirar janela do grupo";
+        category = categories.windows;
+        action = dispatch "move" { out_of_group = true; };
+      })
+      (bind {
+        id = "group-lock";
+        mods = [
+          "SUPER"
+          "ALT"
+        ];
+        key = "G";
+        title = "Bloquear grupo ativo";
+        category = categories.windows;
+        action = dispatch "group-lock" null;
+      })
+    ];
+
+  zoomBinds = [
+    (bind {
+      id = "zoom-in";
+      mods = [ "SUPER" ];
+      key = "mouse_up";
+      title = "Aumentar zoom";
+      category = categories.zoom;
+      action = run "${zoom} 0.25";
+    })
+    (bind {
+      id = "zoom-out";
+      mods = [ "SUPER" ];
+      key = "mouse_down";
+      title = "Diminuir zoom";
+      category = categories.zoom;
+      action = run "${zoom} -0.25";
+    })
+    (bind {
+      id = "zoom-reset";
+      mods = [ "SUPER" ];
+      key = "0";
+      title = "Restaurar zoom";
+      category = categories.zoom;
+      action = run "${zoom} 0";
+    })
+  ];
+
+  mediaBinds = [
+    (lockedBind {
+      id = "media-key-play-pause";
+      key = "XF86AudioMedia";
+      title = "Reproduzir ou pausar mídia";
+      command = "${playerctl} play-pause";
+    })
+    (lockedBind {
+      id = "media-play-pause";
+      key = "XF86AudioPlay";
+      title = "Reproduzir ou pausar mídia";
+      command = "${playerctl} play-pause";
+    })
+    (lockedBind {
+      id = "media-stop";
+      key = "XF86AudioStop";
+      title = "Parar reprodução";
+      command = "${playerctl} stop";
+    })
+    (lockedBind {
+      id = "media-previous";
+      key = "XF86AudioPrev";
+      title = "Faixa anterior";
+      command = "${playerctl} previous";
+    })
+    (lockedBind {
+      id = "media-next";
+      key = "XF86AudioNext";
+      title = "Próxima faixa";
+      command = "${playerctl} next";
+    })
+    (lockedBind {
+      id = "audio-mute";
+      key = "XF86AudioMute";
+      title = "Silenciar ou reativar o áudio";
+      command = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+    })
+    (lockedBind {
+      id = "microphone-mute";
+      key = "XF86AudioMicMute";
+      title = "Silenciar ou reativar o microfone";
+      command = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle";
+    })
+    (lockedBind {
+      id = "brightness-up";
+      key = "XF86MonBrightnessUp";
+      title = "Aumentar brilho";
+      command = "astal-brightness set +5%";
+    })
+    (lockedBind {
+      id = "brightness-down";
+      key = "XF86MonBrightnessDown";
+      title = "Diminuir brilho";
+      command = "astal-brightness set 5%-";
+    })
+    (lockedBind {
+      id = "volume-up";
+      key = "XF86AudioRaiseVolume";
+      title = "Aumentar volume";
+      command = "wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+";
+      flags = flagsLockedRepeating;
+    })
+    (lockedBind {
+      id = "volume-down";
+      key = "XF86AudioLowerVolume";
+      title = "Diminuir volume";
+      command = "wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-";
+      flags = flagsLockedRepeating;
+    })
+  ];
+
+  mouseBinds = [
+    (bind {
+      id = "drag-window";
+      mods = [ "SUPER" ];
+      key = "mouse:272";
+      title = "Arrastar janela";
+      category = categories.windows;
+      action = dispatch "drag" null;
+      flags = flagsMouse;
+    })
+    (bind {
+      id = "resize-window-mouse";
+      mods = [ "SUPER" ];
+      key = "mouse:273";
+      title = "Redimensionar janela com o mouse";
+      category = categories.windows;
+      action = dispatch "resize" null;
+      flags = flagsMouse;
+    })
+  ];
+
+  resizeStep = {
+    left = {
+      x = -64;
+      y = 0;
+    };
+    right = {
+      x = 64;
+      y = 0;
+    };
+    up = {
+      x = 0;
+      y = -64;
+    };
+    down = {
+      x = 0;
+      y = 64;
+    };
+  };
+  resizeBinds = lib.concatMap (
+    dir:
+    withIjkl dir {
+      id = "resize-window-${dir}";
+      mods = [
+        "SUPER"
+        "CTRL"
+      ];
+      title = "Redimensionar janela ${where.${dir}}";
+      category = categories.windows;
+      action = dispatch "resize" (resizeStep.${dir} // { relative = true; });
+      flags = flagsRepeating;
+    }
+  ) arrows;
+
+  specs =
+    appBinds
+    ++ systemBinds
+    ++ windowBinds
+    ++ scratchpadBinds
+    ++ layoutBinds
+    ++ focusBinds
+    ++ moveBinds
+    ++ workspaceBinds
+    ++ sendBinds
+    ++ shellBinds
+    ++ groupBinds
+    ++ zoomBinds
+    ++ mediaBinds
+    ++ mouseBinds
+    ++ resizeBinds;
+
+  # Same ordering as the model's chord validation: modifiers first, case-insensitive.
+  canonicalChord =
+    keys:
     let
-      parts = _splitBind line;
-      mods = builtins.head parts;
-      key = builtins.elemAt parts 1;
-      offset = if described then 3 else 2;
-      name = builtins.elemAt parts offset;
-      arg = lib.concatStringsSep "," (lib.drop (offset + 1) parts);
-      opts = flags ++ lib.optional described "description = ${quote (builtins.elemAt parts 2)}";
-      action = if flags == [ "mouse = true" ] && name == "movewindow"
-        then "hl.dsp.window.drag()" else dispatcher name arg;
-    in "hl.bind(${quote (lib.concatStringsSep " + " (keyMods mods ++ [ key ]))}, ${action}, { ${lib.concatStringsSep ", " opts} })";
+      rank =
+        part:
+        {
+          CTRL = 0;
+          CONTROL = 0;
+          SHIFT = 1;
+          ALT = 2;
+          SUPER = 3;
+        }
+        .${part} or 10;
+    in
+    lib.concatStringsSep "+" (
+      lib.sort (left: right: rank left < rank right) (
+        map (part: lib.toUpper (lib.strings.trim part)) (lib.splitString "+" keys)
+      )
+    );
+  duplicates =
+    values: lib.unique (lib.filter (value: lib.count (other: other == value) values > 1) values);
+  chordDuplicates = duplicates (map (spec: canonicalChord spec.keys) specs);
+  idDuplicates = duplicates (map (spec: spec.id) specs);
 in
-lib.mkIf (cfg.hyprland.enable && cfg.hyprland.binds.enable) {
-  assertions = [{
-    assertion = _assertNoDupKeybinds == [];
-    message = "Hyprland key bindings must be unique.";
-  }];
-  programs.shade.desktop.hyprland.extraLuaConfig = lib.concatStringsSep "\n" (
-    map (emit [] false) _bind ++ map (emit [] true) _bindd
-    ++ map (emit [ "locked = true" ] false) _bindl
-    ++ map (emit [ "locked = true" "repeating = true" ] false) _bindle
-    ++ map (emit [ "mouse = true" ] false) _bindm
-    ++ map (emit [ "repeating = true" ] false) _binde);
+{
+  options.programs.shade.desktop.hyprland.binds.specs = lib.mkOption {
+    type = lib.types.listOf (lib.types.attrsOf lib.types.anything);
+    default = [ ];
+    readOnly = true;
+    internal = true;
+    description = ''
+      Default Hyprland key bindings as compositor seed BindSpec entries. They are
+      serialised into /etc/xdg/shade/compositor-seed.json, from which Shade renders
+      the compositor Lua and lets the user edit them at runtime.
+    '';
+  };
+
+  config = lib.mkIf cfg.hyprland.enable {
+    assertions = lib.optionals cfg.hyprland.binds.enable [
+      {
+        assertion = chordDuplicates == [ ];
+        message = "Hyprland key bindings must be unique: ${lib.concatStringsSep "; " chordDuplicates}";
+      }
+      {
+        assertion = idDuplicates == [ ];
+        message = "Hyprland bind ids must be unique: ${lib.concatStringsSep "; " idDuplicates}";
+      }
+    ];
+    programs.shade.desktop.hyprland.binds.specs = lib.optionals cfg.hyprland.binds.enable specs;
+  };
 }

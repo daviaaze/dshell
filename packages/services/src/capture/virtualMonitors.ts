@@ -1,37 +1,37 @@
-
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
-import {Process} from '@shade/core/process';
+import {CompositorPort} from '../compositor/port';
 import type {VirtualMonitor} from './types';
 import {notify} from './utils';
 
-function renderMonitorLua(name: string, resolution: string, fps: number): string {
-    return `hl.monitor({output=${JSON.stringify(name)},mode=${JSON.stringify(`${resolution}@${fps}`)},position="auto",scale="1"})`;
-}
-
 const ICON_ERROR = 'dialog-error-symbolic';
+const compositor = new CompositorPort();
 
-/**
- * Headless Hyprland outputs used for screen-sharing/virtual-camera workflows.
- * Extracted from the Screenshot service; state stays in Screenshot, these
- * functions do the hyprctl round-trips.
- */
+/** Headless Hyprland outputs used for screen sharing and virtual cameras. */
 export async function createVirtualMonitor(
     monitors: VirtualMonitor[],
     resolution = '1920x1080',
     fps = 60
 ): Promise<VirtualMonitor | null> {
     try {
-        await Process.execAsync('hyprctl output create headless SHADE-VMON');
+        await compositor.createHeadlessOutput('SHADE-VMON');
 
-        let vmon: {name: string} | null = null;
+        let name: string | null = null;
         for (let attempt = 0; attempt < 10; attempt++) {
-            const all = JSON.parse(await Process.execAsync('hyprctl -j monitors all'));
-            vmon =
-                all.find((m: {name: string}) => m.name.startsWith('SHADE-VMON')) ??
-                all.find((m: {name: string}) => m.name.startsWith('HEADLESS')) ??
+            const {all} = await compositor.displaySnapshot();
+            const monitors = all.filter(
+                (monitor): monitor is {name: string} =>
+                    typeof monitor === 'object' &&
+                    monitor !== null &&
+                    !Array.isArray(monitor) &&
+                    'name' in monitor &&
+                    typeof monitor.name === 'string'
+            );
+            name =
+                monitors.find((monitor) => monitor.name.startsWith('SHADE-VMON'))?.name ??
+                monitors.find((monitor) => monitor.name.startsWith('HEADLESS'))?.name ??
                 null;
-            if (vmon) break;
+            if (name) break;
             await new Promise<void>((resolve) =>
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
                     resolve();
@@ -40,40 +40,45 @@ export async function createVirtualMonitor(
             );
         }
 
-        if (!vmon) {
+        if (!name) {
             logger.error('screenshot', 'failed to find created virtual monitor');
             notify('Virtual monitor', 'Hyprland did not register the headless output.', ICON_ERROR);
             return null;
         }
 
-        await Process.execAsyncv(['hyprctl', 'eval', renderMonitorLua(vmon.name, resolution, fps)], true);
-        const vm: VirtualMonitor = {name: vmon.name, resolution, fps};
-        monitors.push(vm);
-        logger.info('screenshot', `created virtual monitor: ${vm.name} (${resolution}@${fps})`);
-        return vm;
-    } catch (e) {
-        logger.error(
+        await compositor.applyMonitor({
+            name,
+            resolution: `${resolution}@${fps}`,
+            position: 'auto',
+            scale: 1,
+            transform: 0,
+            vrr: null,
+            disabled: false,
+        });
+        const virtualMonitor: VirtualMonitor = {name, resolution, fps};
+        monitors.push(virtualMonitor);
+        logger.info(
             'screenshot',
-            `failed to create virtual monitor: ${e instanceof Error ? e.message : String(e)}`
+            `created virtual monitor: ${virtualMonitor.name} (${resolution}@${fps})`
         );
-        notify(
-            'Virtual monitor',
-            `Could not create virtual monitor: ${e instanceof Error ? e.message : String(e)}`,
-            ICON_ERROR
-        );
+        return virtualMonitor;
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('screenshot', `failed to create virtual monitor: ${message}`);
+        notify('Virtual monitor', `Could not create virtual monitor: ${message}`, ICON_ERROR);
         return null;
     }
 }
 
-export function removeVirtualMonitors(monitors: VirtualMonitor[]): void {
-    for (const vm of monitors) {
+export async function removeVirtualMonitors(monitors: VirtualMonitor[]): Promise<void> {
+    for (const monitor of monitors) {
         try {
-            Process.exec(`hyprctl output remove ${vm.name}`);
-            logger.info('screenshot', `removed virtual monitor: ${vm.name}`);
-        } catch (e) {
+            await compositor.removeOutput(monitor.name);
+            logger.info('screenshot', `removed virtual monitor: ${monitor.name}`);
+        } catch (error) {
             logger.warn(
                 'screenshot',
-                `failed to remove ${vm.name}: ${e instanceof Error ? e.message : String(e)}`
+                `failed to remove ${monitor.name}: ${error instanceof Error ? error.message : String(error)}`
             );
         }
     }

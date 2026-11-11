@@ -52,7 +52,14 @@ in
     extraLuaConfig = lib.mkOption {
       type = lib.types.lines;
       default = "";
-      description = "Native Hyprland Lua appended after the declarative settings.";
+      description = ''
+        Native Hyprland Lua appended verbatim after the Shade-rendered
+        configuration. It is a read-only startup escape hatch: Shade neither
+        edits nor introspects it. Everything Nix declares (settings, binds,
+        window rules, layouts) reaches the compositor through the compositor
+        seed instead, so custom Lua is only needed for what the seed cannot
+        express.
+      '';
     };
     workspace = lib.mkOption {
       type = lib.types.listOf lib.types.str;
@@ -160,26 +167,68 @@ in
       dialogTitleRe = "^(${lib.concatStringsSep "|" dialogTitles})(.*)$";
       pip = "match:title ^(Picture-in-Picture)$";
 
-      windowRules =
+      # Built-in window rules carry stable ids: the compositor seed keeps them so
+      # user overrides stay attached to the same rule across rebuilds.
+      defaultWindowRules =
         lib.optionals cfg.windowRules.enable [
-          "float on, match:class ${floatClassRe}"
-          "center on, match:class ${floatClassRe}"
-          "float on, match:title ${dialogTitleRe}"
-          "center on, match:title ${dialogTitleRe}"
-          "float on, ${pip}"
-          "pin on, ${pip}"
-          "keep_aspect_ratio on, ${pip}"
-          "size 480 270, ${pip}"
-          "move (monitor_w-window_w-${toString gapsOut}) (monitor_h-window_h-${toString gapsOut}), ${pip}"
-          "idle_inhibit fullscreen, match:class .*"
+          {
+            id = "float-utility-apps";
+            rule = "float on, match:class ${floatClassRe}";
+          }
+          {
+            id = "center-utility-apps";
+            rule = "center on, match:class ${floatClassRe}";
+          }
+          {
+            id = "float-file-dialogs";
+            rule = "float on, match:title ${dialogTitleRe}";
+          }
+          {
+            id = "center-file-dialogs";
+            rule = "center on, match:title ${dialogTitleRe}";
+          }
+          {
+            id = "pip-float";
+            rule = "float on, ${pip}";
+          }
+          {
+            id = "pip-pin";
+            rule = "pin on, ${pip}";
+          }
+          {
+            id = "pip-keep-aspect-ratio";
+            rule = "keep_aspect_ratio on, ${pip}";
+          }
+          {
+            id = "pip-size";
+            rule = "size 480 270, ${pip}";
+          }
+          {
+            id = "pip-corner";
+            rule = "move (monitor_w-window_w-${toString gapsOut}) (monitor_h-window_h-${toString gapsOut}), ${pip}";
+          }
+          {
+            id = "idle-inhibit-fullscreen";
+            rule = "idle_inhibit fullscreen, match:class .*";
+          }
           # Apps maximizing themselves fight the tiling layout.
-          "suppress_event maximize, match:class .*"
+          {
+            id = "suppress-maximize";
+            rule = "suppress_event maximize, match:class .*";
+          }
         ]
         ++ lib.optionals cfg.smartGaps [
-          "border_size 0, match:float false, match:workspace w[tv1]"
-          "rounding 0, match:float false, match:workspace w[tv1]"
-        ]
-        ++ cfg.extraWindowRules;
+          {
+            id = "smart-gaps-border";
+            rule = "border_size 0, match:float false, match:workspace w[tv1]";
+          }
+          {
+            id = "smart-gaps-rounding";
+            rule = "rounding 0, match:float false, match:workspace w[tv1]";
+          }
+        ];
+
+      windowRules = map (entry: entry.rule) defaultWindowRules ++ cfg.extraWindowRules;
 
       smartGapsWorkspaces = lib.optionals cfg.smartGaps [
         "w[tv1], gapsout:0, gapsin:0"
@@ -340,35 +389,47 @@ in
           preserve_split = true;
         };
 
-        exec = [
-          "hyprctl setcursor Adwaita 24"
+        # Hyprland 0.57 runs top-level Lua exec_cmd calls while the config loads,
+        # before the IPC socket exists, so `hyprctl setcursor` silently failed on
+        # every login. Environment values are read when the pointer is created.
+        env = [
+          "XCURSOR_THEME,Adwaita"
+          "XCURSOR_SIZE,24"
+          "HYPRCURSOR_THEME,Adwaita"
+          "HYPRCURSOR_SIZE,24"
         ];
+      };
+
+      # Everything Nix resolved, as data. Shade renders the Lua from this at login.
+      compositorSeed = import ./seed.nix {
+        inherit lib;
+        settings = config.programs.hyprland.settings;
+        plugins = config.programs.hyprland.plugins;
+        binds = cfg.binds.specs;
+        inherit (cfg) layouts defaultLayout extraLuaConfig;
+        windowRuleIds = defaultWindowRules;
       };
     in
     lib.mkMerge [
       {
-        assertions = lib.optionals (cfg.defaultLayout != null) [
-          {
-            assertion = cfg.layouts ? ${cfg.defaultLayout};
-            message = "programs.shade.desktop.hyprland.defaultLayout '${cfg.defaultLayout}' is not defined in layouts";
-          }
-        ] ++ [
-          {
-            assertion = config.programs.hyprland.extraConfig == "";
-            message = "Hyprland 0.57 requires Lua: move programs.hyprland.extraConfig to programs.shade.desktop.hyprland.extraLuaConfig.";
-          }
-        ];
+        assertions =
+          lib.optionals (cfg.defaultLayout != null) [
+            {
+              assertion = cfg.layouts ? ${cfg.defaultLayout};
+              message = "programs.shade.desktop.hyprland.defaultLayout '${cfg.defaultLayout}' is not defined in layouts";
+            }
+          ]
+          ++ [
+            {
+              assertion = config.programs.hyprland.extraConfig == "";
+              message = "Hyprland 0.57 requires Lua: move programs.hyprland.extraConfig to programs.shade.desktop.hyprland.extraLuaConfig.";
+            }
+          ];
 
         environment.etc."xdg/hypr/hyprland.conf".enable = false;
-        environment.etc."xdg/hypr/hyprland.lua".text =
-          lib.concatMapStrings (plugin:
-            let path = if lib.isDerivation plugin
-              then "${plugin}/lib/lib${plugin.pname}.so" else toString plugin;
-            in "hl.plugin.load(${builtins.toJSON path})\n"
-          ) config.programs.hyprland.plugins
-          + (import ./lua.nix lib config.programs.hyprland.settings)
-          + "\n"
-          + cfg.extraLuaConfig;
+        # Nix only serialises data; the launcher below renders the Lua from this
+        # seed (plus the user's compositor.json) before the compositor starts.
+        environment.etc."xdg/shade/compositor-seed.json".text = builtins.toJSON compositorSeed;
 
         programs.hyprland.settings = lib.recursiveUpdate defaultSettings (
           cfg.settings
@@ -420,15 +481,21 @@ in
         # Hyprland keeps start-hyprland (watchdog) while yielding the right
         # desktop name and UWSM's Hyprland plugin. It still execs the system
         # start-hyprland to avoid version skew with the installed compositor.
+        #
+        # Before exec'ing it the launcher runs `shade-shell compositor render`,
+        # which merges the seed with the user's overrides, writes the effective
+        # Lua under $XDG_RUNTIME_DIR/shade and prints that path.
         programs.uwsm.waylandCompositors.hyprland = {
           prettyName = "Hyprland";
           comment = "Hyprland compositor managed by UWSM";
-          binPath = "${
-            pkgs.writeShellScriptBin "Hyprland" ''
-              export HYPRLAND_CONFIG=/etc/xdg/hypr/hyprland.lua
-              exec ${lib.getExe' config.programs.hyprland.package "start-hyprland"} "$@"
-            ''
-          }/bin/Hyprland";
+          binPath = "${pkgs.writeShellScriptBin "Hyprland" ''
+            set -eu
+            # A failed render aborts the session: starting the compositor without
+            # Shade's configuration would silently drop every binding.
+            HYPRLAND_CONFIG="$(${lib.getExe config.programs.shade.package} compositor render)"
+            export HYPRLAND_CONFIG
+            exec ${lib.getExe' config.programs.hyprland.package "start-hyprland"} "$@"
+          ''}/bin/Hyprland";
         };
 
         programs.hyprland = {

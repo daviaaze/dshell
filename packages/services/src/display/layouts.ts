@@ -4,8 +4,8 @@ import GLib from 'gi://GLib?version=2.0';
 import {defineService} from '@shade/core/define';
 import {readFile, writeFile} from '@shade/core/file';
 import logger from '@shade/core/logger';
-import {Process} from '@shade/core/process';
 import {Object as GObject, property, register, signal} from 'gnim/gobject';
+import {CompositorPort} from '../compositor/port';
 import {notify} from '../capture/utils';
 import {getHyprland} from '../hyprland';
 import {monitorsSettings} from '../settings/monitors.gschema';
@@ -115,27 +115,10 @@ const EMPTY_STORE: LayoutStore = {version: 1, current: null, layouts: {}};
 /** Ignore Hyprland `configreloaded` events this soon after our own monitor writes. */
 const RELOAD_ECHO_WINDOW_US = 2_000_000;
 
-function renderMonitorLua(spec: MonitorSpec): string {
-    const fields = [
-        `output=${JSON.stringify(spec.name)}`,
-        `disabled=${spec.disabled}`,
-        `mode=${JSON.stringify(spec.resolution)}`,
-        `position=${JSON.stringify(spec.position)}`,
-        `scale=${JSON.stringify(String(spec.scale))}`,
-        `transform=${spec.transform}`,
-        `vrr=${spec.vrr ?? -1}`,
-        `mirror=${JSON.stringify(spec.mirror ?? '')}`,
-    ];
-    for (const key of ['bitdepth', 'cm', 'sdrbrightness', 'sdrsaturation'] as const)
-        if (spec[key] != null) fields.push(`${key}=${JSON.stringify(spec[key])}`);
-    return `hl.monitor({${fields.join(',')}})`;
-}
-
 function defaultStorePath(): string {
-    const override = GLib.getenv('SHADE_LAYOUTS_FILE');
+    const override = GLib.getenv('SHADE_COMPOSITOR_CONFIG');
     return (
-        override ??
-        GLib.build_filenamev([GLib.get_user_config_dir(), 'shade', 'monitor-layouts.json'])
+        override ?? GLib.build_filenamev([GLib.get_user_config_dir(), 'shade', 'compositor.json'])
     );
 }
 
@@ -172,6 +155,7 @@ function parseStore(value: unknown): LayoutStore {
     const parsed = value as Partial<LayoutStore>;
     if (
         parsed.version !== 1 ||
+        (parsed.current !== null && typeof parsed.current !== 'string') ||
         typeof parsed.layouts !== 'object' ||
         !parsed.layouts ||
         Array.isArray(parsed.layouts)
@@ -319,31 +303,18 @@ export function parseHyprlandSnapshot(
     };
 }
 
+const compositorPort = new CompositorPort();
+
 const hyprlandAdapter: DisplayAdapter = {
     async snapshot() {
-        const [allText, activeText, workspacesText] = await Promise.all([
-            Process.execAsyncv(['hyprctl', 'monitors', 'all', '-j']),
-            Process.execAsyncv(['hyprctl', 'monitors', '-j']),
-            Process.execAsyncv(['hyprctl', 'workspaces', '-j']),
-        ]);
-        return parseHyprlandSnapshot(
-            JSON.parse(allText),
-            JSON.parse(activeText),
-            JSON.parse(workspacesText)
-        );
+        const snapshot = await compositorPort.displaySnapshot();
+        return parseHyprlandSnapshot(snapshot.all, snapshot.active, snapshot.workspaces);
     },
     async keyword(spec) {
-        await Process.execAsyncv(['hyprctl', 'eval', renderMonitorLua(spec)], true);
+        await compositorPort.applyMonitor(spec);
     },
     async workspace(id, monitor) {
-        await Process.execAsyncv(
-            [
-                'hyprctl',
-                'eval',
-                `hl.workspace_rule({workspace=${JSON.stringify(String(id))},monitor=${JSON.stringify(monitor)}})`,
-            ],
-            true
-        );
+        await compositorPort.applyWorkspaceRule(String(id), monitor);
     },
 };
 
@@ -632,7 +603,27 @@ export class LayoutService extends GObject {
     #load(): LayoutStore {
         if (this.#loaded) return this.#store;
         try {
-            this.#store = parseStore(JSON.parse(readFile(this.#storePath)));
+            const config: unknown = JSON.parse(readFile(this.#storePath));
+            if (typeof config !== 'object' || config === null || Array.isArray(config))
+                throw new Error('Invalid compositor config');
+            if (!('version' in config) || config.version !== 1)
+                throw new Error('Invalid compositor config version');
+            if (!('layouts' in config)) this.#store = {...EMPTY_STORE, layouts: {}};
+            else {
+                const layouts = config.layouts;
+                if (
+                    typeof layouts === 'object' &&
+                    layouts !== null &&
+                    !Array.isArray(layouts) &&
+                    'layouts' in layouts
+                ) {
+                    this.#store = parseStore({
+                        version: 1,
+                        current: 'current' in layouts ? layouts.current : null,
+                        layouts: layouts.layouts,
+                    });
+                } else this.#store = parseStore(config);
+            }
         } catch (error) {
             if (missingFile(error)) this.#seed();
             else {
@@ -646,52 +637,25 @@ export class LayoutService extends GObject {
 
     #seed(): void {
         try {
-            const raw: unknown = JSON.parse(
-                readFile('/etc/xdg/shade/initial-monitor-layouts.json')
-            );
+            const seed: unknown = JSON.parse(readFile('/etc/xdg/shade/compositor-seed.json'));
+            if (typeof seed !== 'object' || seed === null || Array.isArray(seed))
+                throw new Error('Invalid compositor seed');
+            if (!('layouts' in seed)) throw new Error('Missing layouts in compositor seed');
+            const profiles = seed.layouts;
             if (
-                typeof raw !== 'object' ||
-                raw === null ||
-                Array.isArray(raw) ||
-                !('layouts' in raw)
+                typeof profiles !== 'object' ||
+                profiles === null ||
+                Array.isArray(profiles) ||
+                !('layouts' in profiles)
             )
-                throw new Error('Invalid initial monitor layout seed');
-            const seed = raw as {
-                layouts: Record<
-                    string,
-                    Omit<Layout, 'monitors'> & {
-                        monitors: (Partial<MonitorSpec> &
-                            Pick<MonitorSpec, 'name'> & {desc?: string; disable?: boolean})[];
-                    }
-                >;
-                defaultLayout?: string;
-            };
-            if (typeof seed.layouts !== 'object' || !seed.layouts)
-                throw new Error('Invalid initial monitor layout seed');
-            this.#seedDefault = seed.defaultLayout ?? null;
-            const layouts: Record<string, Layout> = {};
-            for (const [name, layout] of Object.entries(seed.layouts)) {
-                layouts[name] = {
-                    auto: layout.auto,
-                    workspaces: layout.workspaces ?? {},
-                    monitors: layout.monitors.map((monitor) => ({
-                        name: monitor.name,
-                        description: monitor.desc ?? monitor.description,
-                        resolution: monitor.resolution ?? 'preferred',
-                        position: monitor.position ?? 'auto',
-                        scale: monitor.scale ?? 1,
-                        transform: monitor.transform ?? 0,
-                        vrr: monitor.vrr ?? null,
-                        bitdepth: monitor.bitdepth ?? null,
-                        cm: monitor.cm ?? null,
-                        sdrbrightness: monitor.sdrbrightness ?? null,
-                        sdrsaturation: monitor.sdrsaturation ?? null,
-                        mirror: normalizedMirror(monitor.mirror),
-                        disabled: monitor.disable ?? monitor.disabled ?? false,
-                    })),
-                };
-            }
-            this.#store.layouts = layouts;
+                throw new Error('Invalid layouts in compositor seed');
+            const initial = parseStore({
+                version: 1,
+                current: 'current' in profiles ? profiles.current : null,
+                layouts: profiles.layouts,
+            });
+            this.#seedDefault = initial.current;
+            this.#store = initial;
             if (!this.#persist()) this.#store = {...EMPTY_STORE, layouts: {}};
         } catch (error) {
             if (!missingFile(error)) this.#setError(error);
@@ -701,7 +665,19 @@ export class LayoutService extends GObject {
     #persist(): boolean {
         if (!this.#storeValid) return false;
         try {
-            writeFile(this.#storePath, JSON.stringify(this.#store, null, 2));
+            let config: Record<string, unknown> = {version: 1};
+            try {
+                const parsed: unknown = JSON.parse(readFile(this.#storePath));
+                if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
+                    throw new Error('Invalid compositor config');
+                if (!('version' in parsed) || parsed.version !== 1)
+                    throw new Error('Invalid compositor config version');
+                config = Object.fromEntries(Object.entries(parsed));
+            } catch (error) {
+                if (!missingFile(error)) throw error;
+            }
+            config.layouts = {current: this.#store.current, layouts: this.#store.layouts};
+            writeFile(this.#storePath, JSON.stringify(config, null, 2));
             return true;
         } catch (error) {
             this.#setError(error);
@@ -1409,14 +1385,7 @@ export class LayoutService extends GObject {
     async setDpms(name: string, on: boolean): Promise<boolean> {
         return this.#enqueue(async () => {
             try {
-                await Process.execAsyncv(
-                    [
-                        'hyprctl',
-                        'dispatch',
-                        `hl.dsp.dpms({action=${JSON.stringify(on ? 'on' : 'off')},monitor=${JSON.stringify(name)}})`,
-                    ],
-                    true
-                );
+                await compositorPort.applyDpms(on, name);
                 const snapshot = await this.#adapter.snapshot();
                 this.#publishOutputs(snapshot.attached);
                 return true;

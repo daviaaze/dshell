@@ -1,10 +1,8 @@
 {
-  config,
   lib,
   ...
 }:
 let
-  cfg = config.programs.shade.desktop.hyprland;
 
   # Type for a single monitor within a layout.
   monitorType = lib.types.submodule {
@@ -52,22 +50,29 @@ let
         description = "Variable refresh rate setting.";
       };
       bitdepth = lib.mkOption {
-        type = lib.types.nullOr (lib.types.enum [ 8 10 ]);
+        type = lib.types.nullOr (
+          lib.types.enum [
+            8
+            10
+          ]
+        );
         default = null;
         description = "Output bit depth; null keeps Hyprland's default (8).";
       };
       cm = lib.mkOption {
-        type = lib.types.nullOr (lib.types.enum [
-          "auto"
-          "srgb"
-          "wide"
-          "edid"
-          "hdr"
-          "hdredid"
-          "dcip3"
-          "dp3"
-          "adobe"
-        ]);
+        type = lib.types.nullOr (
+          lib.types.enum [
+            "auto"
+            "srgb"
+            "wide"
+            "edid"
+            "hdr"
+            "hdredid"
+            "dcip3"
+            "dp3"
+            "adobe"
+          ]
+        );
         default = null;
         description = "Color management preset; null keeps Hyprland's default (srgb).";
       };
@@ -130,10 +135,4 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.enable && cfg.layouts != { }) {
-    environment.etc."xdg/shade/initial-monitor-layouts.json".text = builtins.toJSON {
-      layouts = cfg.layouts;
-      defaultLayout = cfg.defaultLayout;
-    };
-  };
 }

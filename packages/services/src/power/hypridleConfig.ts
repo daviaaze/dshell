@@ -24,7 +24,7 @@ export function buildHypridleConfigLines(cfg: HypridleConfig): string[] {
         'general {',
         '  lock_cmd = shade-shell lockscreen',
         '  before_sleep_cmd = shade-shell lockscreen',
-        "  after_sleep_cmd = hyprctl dispatch 'hl.dsp.dpms({action=\"on\"})'",
+        '  after_sleep_cmd = shade-shell compositor dpms on',
         '  ignore_dbus_inhibit = false',
         '}',
     ];
@@ -56,8 +56,8 @@ export function buildHypridleConfigLines(cfg: HypridleConfig): string[] {
             '',
             LISTENER_OPEN,
             `  timeout = ${cfg.dpmsTimeout}`,
-            "  on-timeout = hyprctl dispatch 'hl.dsp.dpms({action=\"off\"})'",
-            "  on-resume = hyprctl dispatch 'hl.dsp.dpms({action=\"on\"})'",
+            '  on-timeout = shade-shell compositor dpms off',
+            '  on-resume = shade-shell compositor dpms on',
             '}'
         );
     }

@@ -1,5 +1,5 @@
 import logger from '@shade/core/logger';
-import {Process} from '@shade/core/process';
+import {CompositorPort} from '../compositor/port';
 
 export interface WindowGeometry {
     address: string;
@@ -10,41 +10,47 @@ export interface WindowGeometry {
     title: string;
 }
 
-interface HyprctlClient {
-    mapped: boolean;
-    monitor: number;
-    at: [number, number];
-    size: [number, number];
-    address: string;
-    title: string;
-    [key: string]: unknown;
-}
+const compositor = new CompositorPort();
 
-/**
- * Query all mapped Hyprland windows via `hyprctl clients -j`.
- * Returns geometry data for the region selector overlay.
- * Encapsulates the shell command so widgets don't import Process.
- */
+/** Query mapped Hyprland windows for the region-selector overlay. */
 export function getWindowGeometries(): WindowGeometry[] {
     try {
-        const json = Process.exec('hyprctl clients -j');
-        const clients = JSON.parse(json) as HyprctlClient[];
         const windows: WindowGeometry[] = [];
-        for (const c of clients) {
-            if (c.mapped && c.monitor >= 0 && c.at && c.size) {
-                windows.push({
-                    address: c.address,
-                    x: c.at[0],
-                    y: c.at[1],
-                    width: c.size[0],
-                    height: c.size[1],
-                    title: c.title || '(untitled)',
-                });
-            }
+        for (const value of compositor.clientSnapshotSync()) {
+            if (typeof value !== 'object' || value === null || Array.isArray(value)) continue;
+            if (
+                !('mapped' in value) ||
+                value.mapped !== true ||
+                !('monitor' in value) ||
+                typeof value.monitor !== 'number' ||
+                value.monitor < 0 ||
+                !('at' in value) ||
+                !Array.isArray(value.at) ||
+                typeof value.at[0] !== 'number' ||
+                typeof value.at[1] !== 'number' ||
+                !('size' in value) ||
+                !Array.isArray(value.size) ||
+                typeof value.size[0] !== 'number' ||
+                typeof value.size[1] !== 'number' ||
+                !('address' in value) ||
+                typeof value.address !== 'string'
+            )
+                continue;
+            windows.push({
+                address: value.address,
+                x: value.at[0],
+                y: value.at[1],
+                width: value.size[0],
+                height: value.size[1],
+                title:
+                    'title' in value && typeof value.title === 'string'
+                        ? value.title
+                        : '(untitled)',
+            });
         }
         return windows;
-    } catch (e) {
-        logger.warn('windows', 'failed to load windows:', e);
+    } catch (error) {
+        logger.warn('windows', 'failed to load windows:', error);
         return [];
     }
 }

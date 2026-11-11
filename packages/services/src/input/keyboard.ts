@@ -1,18 +1,11 @@
 import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
-import {Process} from '@shade/core/process';
+import {CompositorPort, type HyprlandKeyboard} from '../compositor/port';
 import {getHyprland} from '@shade/services/hyprland';
 import {Object, property, register, signal} from 'gnim/gobject';
 
-interface KeyboardDevice {
-    name: string;
-    active_keymap: string;
-}
-
-interface HyprlandDevices {
-    keyboards: KeyboardDevice[];
-}
+type KeyboardDevice = HyprlandKeyboard;
 
 function parseLayoutName(fullName: string): string {
     const match = fullName.match(/\(([A-Za-z]+)\)/);
@@ -42,6 +35,7 @@ export default class KeyboardLayout extends Object {
     #timer: number | null = null;
     #hyprland: AstalHyprland.Hyprland | null = null;
     #layoutHandlerId = 0;
+    #compositor = new CompositorPort();
 
     @property
     get layout() {
@@ -63,9 +57,8 @@ export default class KeyboardLayout extends Object {
         if (this.#inFlight) return; // skip overlapping polls
         this.#inFlight = true;
         try {
-            const out = await Process.execAsync('hyprctl devices -j');
-            const data: HyprlandDevices = JSON.parse(out);
-            const keyboards = data.keyboards || [];
+            const data = await this.#compositor.deviceSnapshot();
+            const keyboards: KeyboardDevice[] = data.keyboards;
             const mainKb = keyboards.find(
                 (k) =>
                     k.name !== 'wlroots-keyboard-pointer' && k.name !== 'wayland' && k.name !== ''
@@ -123,24 +116,20 @@ export default class KeyboardLayout extends Object {
         });
     }
 
-    cycle() {
-        Process.execAsync('hyprctl devices -j')
-            .then((out) => {
-                const data: HyprlandDevices = JSON.parse(out);
-                const keyboards = data.keyboards || [];
-                const mainKb = keyboards.find(
-                    (k) =>
-                        k.name !== 'wlroots-keyboard-pointer' &&
-                        k.name !== 'wayland' &&
-                        k.name !== ''
-                );
-                if (mainKb) {
-                    return Process.execAsync(`hyprctl switchxkblayout "${mainKb.name}" next`);
-                }
-                return undefined;
-            })
-            .then(() => this.#update())
-            .catch((e) => logger.error('keyboard', 'cycle failed:', e));
+    async cycle(): Promise<void> {
+        try {
+            const data = await this.#compositor.deviceSnapshot();
+            const mainKb = data.keyboards.find(
+                (keyboard) =>
+                    keyboard.name !== 'wlroots-keyboard-pointer' &&
+                    keyboard.name !== 'wayland' &&
+                    keyboard.name !== ''
+            );
+            if (mainKb) await this.#compositor.switchKeyboardLayout(mainKb.name);
+            await this.#update();
+        } catch (error) {
+            logger.error('keyboard', 'cycle failed:', error);
+        }
     }
 
     dispose() {

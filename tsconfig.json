@@ -16,10 +16,11 @@
         "typeRoots": ["./.gnim/types"],
         "baseUrl": ".",
         "paths": {
+            "@shade/compositor-model": ["packages/compositor-model/src/index.ts"],
+            "@shade/compositor-model/*": ["packages/compositor-model/src/*"],
             "@shade/core/*": ["packages/core/src/*"],
             "@shade/services/*": ["packages/services/src/*"],
-            "@shade/widgets/*": ["packages/widgets/src/*"],
-            "@shade/style/*": ["packages/style/src/*"]
+            "@shade/widgets/*": ["packages/widgets/src/*"]
         }
     },
     "include": ["packages/*/src/**/*", "apps/*/src/**/*"]

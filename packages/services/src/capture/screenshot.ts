@@ -92,13 +92,21 @@ export default class Screenshot extends Object {
     #captureObserverCleanup: (() => void) | undefined;
 
     @property
-    get captureBusy() { return this.#captureBusy; }
+    get captureBusy() {
+        return this.#captureBusy;
+    }
     @property
-    get captureResult() { return this.#captureResult; }
+    get captureResult() {
+        return this.#captureResult;
+    }
     @property
-    get captureError() { return this.#captureError; }
+    get captureError() {
+        return this.#captureError;
+    }
     @property
-    get captureKind() { return this.#captureKind; }
+    get captureKind() {
+        return this.#captureKind;
+    }
 
     #setCapture(update: CaptureUpdate) {
         this.#captureBusy = update.state === 'busy';
@@ -367,8 +375,8 @@ export default class Screenshot extends Object {
         return vm;
     }
 
-    removeVirtualMonitors() {
-        removeVirtualMonitors(this.#virtualMonitors);
+    async removeVirtualMonitors(): Promise<void> {
+        await removeVirtualMonitors(this.#virtualMonitors);
         this.notify('virtual-monitors');
         this.notify('virtual-monitor-active');
     }

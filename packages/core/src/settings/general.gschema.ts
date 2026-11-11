@@ -236,6 +236,17 @@ function weatherKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extend
                 'When enabled, replaces Gdk.Monitor tracking with AstalWl.Output for ' +
                 'Wayland-native monitor enumeration. The monitors array and all widget ' +
                 'interfaces remain unchanged. Disable to instantly revert to Gdk tracking.',
+        })
+        .key('launcher-shortcut-badges', 'b', {
+            default: true,
+            summary: 'Show configured compositor shortcuts in the application launcher',
+        })
+        .key('keystroke-overlay', 'b', {
+            default: false,
+            summary: 'Display key presses in an on-screen overlay',
+            description:
+                'When enabled, visible key presses may appear in screen recordings. ' +
+                'The overlay is disabled while the session is locked and stores no history.',
         });
 }
 

@@ -98,9 +98,9 @@ function VirtualMonitorButton({
         <Gtk.Button
             onClicked={() => {
                 if (screenshot.virtualMonitors.length > 0) {
-                    screenshot.removeVirtualMonitors();
+                    void screenshot.removeVirtualMonitors();
                 } else {
-                    screenshot.createVirtualMonitor(
+                    void screenshot.createVirtualMonitor(
                         captureSettings.virtualMonitorResolution(),
                         captureSettings.virtualMonitorFps()
                     );

@@ -28,11 +28,19 @@ upstream source does not build against Hyprland 0.57. Remove any
 `programs.shade.desktop.hyprland.overview` assignments from consuming hosts;
 SUPER+grave no longer opens the plugin overview.
 
-The generated configuration is `/etc/xdg/hypr/hyprland.lua`. The UWSM launcher
-selects it explicitly, so an old user configuration cannot shadow the system
-configuration. Add native extensions with
+Nix writes the versioned seed to `/etc/xdg/shade/compositor-seed.json`. The UWSM
+launcher runs `shade-shell compositor render` before Hyprland and selects the
+rendered Lua from `$XDG_RUNTIME_DIR/shade/hyprland.lua`; user overrides live in
+`$XDG_CONFIG_HOME/shade/compositor.json`. Add native extensions with
 `programs.shade.desktop.hyprland.extraLuaConfig`; legacy `extraConfig` and bind
 strings must be rewritten as Lua (`hl.bind` and `hl.dsp`).
+
+Settings → Atalhos permite remapear/restaurar atalhos do compositor, criar
+atalhos de aplicativos e mostrar os atalhos correspondentes no lançador. O
+overlay global de teclas é opcional e desativado por padrão: ao ativá-lo,
+Hyprland envia eventos XKB efêmeros ao shell; o overlay não intercepta entrada,
+não grava histórico e pausa com a sessão bloqueada. Ele pode expor texto
+digitado em gravações de tela.
 
 Upstream references: [Hyprland 0.57 release notes](https://github.com/hyprwm/Hyprland/releases/tag/v0.57.0)
 and [removal of legacy configuration support](https://github.com/hyprwm/Hyprland/pull/15539).
