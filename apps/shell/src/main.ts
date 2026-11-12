@@ -3,32 +3,8 @@ import GLibUnix from 'gi://GLibUnix?version=2.0';
 import logger, {initLoggerFromSettings, perf} from '@shade/core/logger';
 import Gettext from 'gettext';
 import {exit, programArgs, programInvocationName} from 'system';
-import {CompositorPort} from '@shade/services/compositor/port';
-import {renderCompositorConfig} from '@shade/services/compositor/render';
-// GTK is loaded dynamically only for the shell UI; compositor CLI paths run before Hyprland.
-if (programArgs[0] === 'compositor' && programArgs[1] === 'render') {
-    try {
-        print(renderCompositorConfig());
-        exit(0);
-    } catch (cause) {
-        printerr(`Shade compositor render failed: ${cause}`);
-        exit(1);
-    }
-}
-if (programArgs[0] === 'compositor' && programArgs[1] === 'dpms') {
-    try {
-        const action = programArgs[2];
-        if (action !== 'on' && action !== 'off')
-            throw new Error('Usage: shade-shell compositor dpms <on|off>');
-        await new CompositorPort().applyDpms(action === 'on');
-        exit(0);
-    } catch (cause) {
-        printerr(`Shade compositor DPMS failed: ${cause}`);
-        exit(1);
-    }
-}
+import {app} from './App';
 
-const {app} = await import('./App');
 // ── Graceful shutdown on signals ──
 
 function setupSignalHandlers() {

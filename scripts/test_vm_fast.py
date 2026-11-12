@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import struct
+import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -63,11 +66,51 @@ class FastVmTests(unittest.TestCase):
             with self.assertRaisesRegex(fast.FastError, "run .*sync.* once"):
                 fast.fast_sync(Dev(), {"shade_path": "/nix/store/test"}, Path(temporary), locked=Dev().locked, shell_ready=lambda: True)
 
-    def test_wrapper_env_renderer_quotes_and_prepends(self):
-        ops = [("set", "A", "value with space"), ("prefix", "PATH", ":", "/nix/bin")]
-        script = fast.render_launch(ops)
-        self.assertIn("export A='value with space'", script)
-        self.assertIn('export PATH=/nix/bin"${PATH:+:$PATH}"', script)
+    def test_launcher_preserves_quoted_environment_and_path_prefix(self):
+        value = "value with space ' $HOME"
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            probe = home / ".local/share/shade-dev/shell-wrapped.js"
+            probe.parent.mkdir(parents=True)
+            probe.write_text(
+                f"#!{sys.executable}\n"
+                "import os\n"
+                "print(os.environ['A'])\n"
+                "print(os.environ['PATH'])\n"
+            )
+            probe.chmod(0o755)
+            script = home / "launch.sh"
+            ops = [("set", "HOME", temporary), ("set", "A", value)]
+            outputs = []
+            for additional in ([], [("prefix", "PATH", ":", "/nix/bin")]):
+                script.write_text(fast.render_launch(ops + additional))
+                script.chmod(0o755)
+                result = subprocess.run(
+                    [str(script)],
+                    env=dict(os.environ, HOME=temporary, PATH="/usr/bin:/bin"),
+                    text=True, capture_output=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                outputs.append(result.stdout.splitlines())
+            self.assertEqual(outputs[0][0], value)
+            self.assertEqual(outputs[1], [value, "/nix/bin:" + outputs[0][1]])
+
+    def test_nix_fingerprint_covers_prelogin_renderer_and_model(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            inputs = (
+                root / "apps/shell/src/compositor.ts",
+                root / "packages/services/src/compositor/entry.ts",
+                root / "packages/compositor-model/index.ts",
+            )
+            for path in inputs:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("initial")
+            baseline = fast.nix_fingerprint(root)
+            for path in inputs:
+                path.write_text("changed")
+                self.assertNotEqual(fast.nix_fingerprint(root), baseline, str(path))
+                path.write_text("initial")
 
 
 if __name__ == "__main__":

@@ -19,13 +19,14 @@ OUT_DIR="${OUT_DIR:-$ROOT/docs/deps}"
 mkdir -p "$OUT_DIR"
 
 SHELL_ENTRY="apps/shell/src/main.ts"
+COMPOSITOR_ENTRY="apps/shell/src/compositor.ts"
 GREETER_ENTRY="apps/greeter/src/main.ts"
 SHAREPICKER_ENTRY="apps/share-picker/src/main.ts"
 
 echo "==> Finding files & building graph (madge)"
 npx madge --json \
     --ts-config tsconfig.json \
-    "$SHELL_ENTRY" "$GREETER_ENTRY" "$SHAREPICKER_ENTRY" \
+    "$SHELL_ENTRY" "$COMPOSITOR_ENTRY" "$GREETER_ENTRY" "$SHAREPICKER_ENTRY" \
     > "$OUT_DIR/deps.json"
 
 echo "==> Aggregating to folders & writing deps.dot"
@@ -110,7 +111,7 @@ BASELINE=$(cat "$BASELINE_FILE")
 # Collect cycle lines, strip the trailing summary.
 CYCLE_REPORT="$(npx madge --circular \
     --ts-config tsconfig.json \
-    "$SHELL_ENTRY" "$GREETER_ENTRY" "$SHAREPICKER_ENTRY" 2>&1 || true)"
+    "$SHELL_ENTRY" "$COMPOSITOR_ENTRY" "$GREETER_ENTRY" "$SHAREPICKER_ENTRY" 2>&1 || true)"
 CYCLE_COUNT="$(printf '%s\n' "$CYCLE_REPORT" | grep -cE '^\s*[0-9]+\)' || true)"
 
 echo "    cycles found: $CYCLE_COUNT  (baseline: $BASELINE)"

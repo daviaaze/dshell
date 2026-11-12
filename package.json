@@ -14,7 +14,7 @@
         "test": "nix develop -c bash scripts/test.sh",
         "build": "nix build",
         "dev": "bash scripts/dev.sh",
-        "syntax": "mkdir -p /tmp/esbuild-check && esbuild apps/shell/src/main.ts --bundle --format=esm --external:gi://* --external:resource://* --external:system --external:gettext --external:gnim --external:gnim/* --external:gnim-schemas --outdir=/tmp/esbuild-check && rm -rf /tmp/esbuild-check"
+        "syntax": "mkdir -p /tmp/esbuild-check && esbuild apps/shell/src/main.ts apps/shell/src/compositor.ts --bundle --format=esm --external:gi://* --external:resource://* --external:system --external:gettext --external:gnim --external:gnim/* --external:gnim-schemas --outdir=/tmp/esbuild-check && rm -rf /tmp/esbuild-check"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.6",

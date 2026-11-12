@@ -25,6 +25,13 @@ The schema covers existing Nix defaults and host customizations, including bindi
 
 UWSM launcher invokes `shade-shell compositor render` before `start-hyprland`. It writes the effective Lua to the runtime directory atomically, exports `HYPRLAND_CONFIG` to that file, then execs the pinned `start-hyprland`. If user JSON fails validation, render seed-only config and keep the invalid file for recovery. Essential bindings and settings therefore do not depend on shade-shell being alive.
 
+The package builds the UI and compositor CLI as separate single-resource gnim
+entrypoints. The public `shade-shell` command dispatches compositor commands before
+loading the UI, so pre-login rendering does not initialize GTK or shell services.
+The greeter selects the declared Shade UWSM launcher, never the stock desktop entry.
+Development fast-sync remains UI-only; renderer and model changes require a full
+`sync` because the pre-login launcher uses the installed Nix package.
+
 At runtime, UI calls `CompositorStore.edit(patch)`. Store computes and validates the full candidate, applies the typed diff through the port, then atomically persists it. On apply failure it restores the prior model and does not persist. At compositor restart/reload, the store observes the event and reconciles from the persisted effective model. Every update is idempotent by stable ID.
 
 Use native Lua handles to add/replace/remove binds and named window rules where supported. Runtime changes that are not safely reversible use the existing 15-second preview/confirm/revert transaction. Do not reload the compositor for routine edits. Preserve runtime-only state such as SHADE-VMON; a whole-config reload is a last-resort path and must not be used unless that state is reconciled.
@@ -54,7 +61,7 @@ On first load only, when the unified file is absent, import `monitor-layouts.jso
 ## Verification
 
 - Pure tests for schema validation, stable-ID merge, conflict detection, migrations, escaping, and Lua output semantics.
-- Nix evaluation tests ensure host-resolved settings, workspace rules, binds and cursor environment are represented in the seed.
+- Nix evaluation ensures host-resolved settings, workspace rules, binds and cursor environment are represented in the seed. Generated binds have one read-only definition and resolve to an empty list when binds or the compositor are disabled.
 - Port contract tests exercise typed requests and event parsing without shelling out from consumers.
 - Integration smoke: render seed + user overrides, validate Lua using a disposable Hyprland instance/config verifier, apply/remove a disposable bind via dispatch, and verify `hyprctl binds -j` reflects it.
 - UI smoke: edit and restore a bind, show an app badge, confirm invalid/conflicting edits are rejected, preview/revert risky edits, enable/disable overlay and confirm no input interception.

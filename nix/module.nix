@@ -80,14 +80,14 @@ in
       };
       sessionCommand = lib.mkOption {
         type = lib.types.str;
-        default = "${lib.getExe pkgs.uwsm} start hyprland";
-        defaultText = lib.literalExpression ''"${lib.getExe pkgs.uwsm} start hyprland"'';
+        default = "${lib.getExe pkgs.uwsm} start -e -D Hyprland -- ${config.programs.uwsm.waylandCompositors.hyprland.binPath}";
+        defaultText = lib.literalExpression ''"''${lib.getExe pkgs.uwsm} start -e -D Hyprland -- ''${config.programs.uwsm.waylandCompositors.hyprland.binPath}"'';
         description = ''
           Command greetd runs as the user after successful authentication.
-          Defaults to "uwsm start hyprland" so Hyprland is launched via
-          UWSM, which handles environment setup, XDG autostart, and
-          systemd user services (including shade-shell).
-          Set to just "Hyprland" if not using UWSM.
+          Defaults to UWSM with Shade's declared Hyprland launcher, which renders
+          the compositor seed and user overrides before setting HYPRLAND_CONFIG.
+          The generic hyprland.desktop entry bypasses this rendering step.
+          Set an explicit command when using another compositor or not using UWSM.
         '';
       };
     };

@@ -841,7 +841,7 @@ in
 {
   options.programs.shade.desktop.hyprland.binds.specs = lib.mkOption {
     type = lib.types.listOf (lib.types.attrsOf lib.types.anything);
-    default = [ ];
+    default = lib.optionals (cfg.hyprland.enable && cfg.hyprland.binds.enable) specs;
     readOnly = true;
     internal = true;
     description = ''
@@ -862,6 +862,5 @@ in
         message = "Hyprland bind ids must be unique: ${lib.concatStringsSep "; " idDuplicates}";
       }
     ];
-    programs.shade.desktop.hyprland.binds.specs = lib.optionals cfg.hyprland.binds.enable specs;
   };
 }

@@ -42,6 +42,7 @@ let
 
   entries = {
     "shade-shell" = "apps/shell/src/main.ts";
+    "shade-shell-compositor" = "apps/shell/src/compositor.ts";
     "shade-shell-greet" = "apps/greeter/src/main.ts";
     "shade-shell-share-picker" = "apps/share-picker/src/main.ts";
     "shade-shell-auth-worker" = "apps/shell/src/authWorker.ts";
@@ -168,6 +169,18 @@ pkgs.stdenv.mkDerivation {
       --prefix LD_PRELOAD :
       "${pkgs.gtk4-layer-shell}/lib/libgtk4-layer-shell.so"
     )
+  '';
+  postFixup = ''
+    mv "$out/bin/shade-shell" "$out/bin/.shade-shell-ui"
+    cat > "$out/bin/shade-shell" <<'EOF'
+    #!${pkgs.runtimeShell}
+    if [ "''${1-}" = compositor ]; then
+      exec @out@/bin/shade-shell-compositor "$@"
+    fi
+    exec @out@/bin/.shade-shell-ui "$@"
+    EOF
+    substituteInPlace "$out/bin/shade-shell" --replace-fail @out@ "$out"
+    chmod 755 "$out/bin/shade-shell"
   '';
 
   meta = {

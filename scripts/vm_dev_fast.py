@@ -35,9 +35,14 @@ FAST_MARKER = "# shade-dev-fast"
 ACTION_NAME = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)+$")
 
 # Inputs that only `nix build` can deliver to the guest (store assets, schemas,
-# wrapper env, other entry points). A change here makes fast-sync refuse.
-NIX_INPUT_FILES = ("flake.nix", "flake.lock", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml")
-NIX_INPUT_DIRS = ("nix", "data", "assets")
+# wrapper env, and the pre-login compositor CLI/model). Fast-sync updates only
+# the UI bundle; changes to any input here require a full `sync`.
+NIX_INPUT_FILES = (
+    "flake.nix", "flake.lock", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml",
+    "apps/shell/src/compositor.ts",
+)
+NIX_INPUT_DIRS = ("nix", "data", "assets", "packages/services/src/compositor", "packages/compositor-model")
+
 
 
 class FastError(RuntimeError):
@@ -184,7 +189,7 @@ def render_launch(ops: list[tuple[str, ...]]) -> str:
 
 
 def patch_wrapped_script(script: str, store_gresource: str) -> str:
-    """Point the wrapped gjs entry at the dev gresource in the guest's home."""
+    """Patch the UI wrapper's GJS entry, not the pre-login compositor launcher."""
     needle = f'Gio.Resource.load("{store_gresource}")'
     if script.count(needle) != 1:
         raise FastError(f"{needle} not found exactly once in .shade-shell-wrapped; run `sync` instead")
@@ -192,11 +197,14 @@ def patch_wrapped_script(script: str, store_gresource: str) -> str:
         needle, 'Gio.Resource.load(imports.gi.GLib.get_home_dir() + "/.local/share/shade-dev/fast.gresource")'
     )
 
-
 def guest_payload(base_path: str, gresource: Path, sha: str) -> bytes:
-    wrapper = (Path(base_path) / "bin" / SHELL_NAME).read_bytes()
-    program, ops = wrapper_env_ops(wrapper)
-    script = Path(program).read_text()
+    wrapper_path = Path(base_path) / "bin" / ".shade-shell-ui"
+    try:
+        wrapper = wrapper_path.read_bytes()
+        program, ops = wrapper_env_ops(wrapper)
+        script = Path(program).read_text()
+    except (OSError, FastError) as error:
+        raise FastError(f"UI wrapper {wrapper_path} is unavailable; run `sync` instead") from error
     store_gresource = f"{base_path}/share/{DOMAIN}/{SHELL_NAME}.gresource"
     files = {
         "fast.gresource.new": (gresource.read_bytes(), 0o644),
