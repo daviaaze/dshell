@@ -12,6 +12,7 @@ let
   pname = "shade-shell";
   version = (lib.importJSON ../package.json).version;
   domain = "com.caioasmuniz.shade_shell";
+  gresource = "${lib.getDev pkgs.glib}/bin/gresource";
   src = lib.cleanSourceWith {
     filter = path: type:
       let
@@ -66,6 +67,14 @@ let
         ${mkDefine "import.meta.datadir" "$out/share"} \
         ${mkDefine "import.meta.bindir" "$out/bin"} \
         -o "${name}.gresource"
+      for resource in $(${gresource} list "${name}.gresource"); do
+        case "$resource" in
+          *.js) ;;
+          *) continue ;;
+        esac
+        ${gresource} extract "${name}.gresource" "$resource" > bundle-imports.js
+        node ${./check-bundle-imports.mjs} bundle-imports.js "${name}:$resource"
+      done
       node "$PWD/node_modules/gnim/dist/bin/gnim.js" exe "$out/share/${domain}/${name}.gresource" \
         -o "${name}" \
         --id "${domain}" --prefix "$out" --datadir share --libdir lib
