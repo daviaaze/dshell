@@ -1,5 +1,7 @@
-import {Process} from '@shade/core/process';
 import {
+    type BindSpec,
+    type LuaValue,
+    type MonitorProfile,
     planBindingDiff,
     renderBindLua,
     renderConfigOptionLua,
@@ -7,10 +9,13 @@ import {
     renderKeystrokeOverlaySubscriptionLua,
     renderMonitorLua,
     renderWorkspaceRuleLua,
-    type BindSpec,
-    type LuaValue,
-    type MonitorProfile,
 } from '@shade/compositor-model';
+import {Process} from '@shade/core/process';
+export function parseHyprOption(output: string, fallback: string): string {
+    const match = output.match(/^(?:bool|str|int|float|string):[ \t]*(.*)$/m);
+    return match?.[1] ?? fallback;
+}
+
 export interface CompositorTransport {
     dispatch(source: string): Promise<void>;
     eval?(source: string): Promise<void>;
@@ -127,10 +132,7 @@ export class CompositorPort {
 
     getOptionSync(key: string, fallback: string): string {
         try {
-            const match = Process.exec(`hyprctl getoption ${key}`).match(
-                /(?:int|float|string):\s*(\S+)/
-            );
-            return match?.[1] ?? fallback;
+            return parseHyprOption(Process.exec(`hyprctl getoption ${key}`), fallback);
         } catch {
             return fallback;
         }

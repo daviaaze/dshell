@@ -481,6 +481,13 @@ function ApRow({
                     />
                     <Gtk.Button
                         cssClasses={['suggested-action']}
+                        tooltipText={`Conectar a ${apSsid}`}
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, `Conectar a ${apSsid}`)]
+                            )
+                        }
                         onClicked={() => {
                             const entry = passwordEntry();
                             doConnect(entry?.get_text() || undefined);
@@ -488,7 +495,21 @@ function ApRow({
                     >
                         <Gtk.Image iconName="go-next-symbolic" />
                     </Gtk.Button>
-                    <Gtk.Button onClicked={() => setShowPassword(false)}>
+                    <Gtk.Button
+                        tooltipText={`Ocultar campo de senha de ${apSsid}`}
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [
+                                    new GObject.Value(
+                                        GObject.TYPE_STRING,
+                                        `Ocultar campo de senha de ${apSsid}`
+                                    ),
+                                ]
+                            )
+                        }
+                        onClicked={() => setShowPassword(false)}
+                    >
                         <Gtk.Image iconName="window-close-symbolic" />
                     </Gtk.Button>
                 </Gtk.Box>

@@ -28,6 +28,12 @@ Search is one `Gtk.SearchEntry` outside the split. It searches task metadata and
 
 Feature pages and their service/schema own setting persistence and effects; the navigation shell does not promise every control has the same write semantics. In particular, Displays preview/confirmation/timed rollback belongs to `LayoutService`; startup-app writes preserve unrelated keyfile entries and reconcile failures; media defaults operate only on readable supported formats; sound controls reflect live endpoint membership/state. Consult the owning page/service before making backend claims.
 
+Mouse and touchpad settings read Hyprland `getoption` values in both current
+(`bool`/`str`) and legacy (`int`/`float`/`string`) formats. Writes use Lua
+`hl.config`, translating colon-separated keys and hyphens to the registered Lua
+option names. Asynchronous write failures are logged; the page does not
+currently display a per-control error.
+
 The hidden Wi-Fi dialog keeps its Cancel/Connect footer outside the vertically scrollable form; it has no fixed 250px height. Escape closes without submitting. Form spacing and the dialog's native surface are independent from the shell layer's outer margins.
 
 ## Manual verification

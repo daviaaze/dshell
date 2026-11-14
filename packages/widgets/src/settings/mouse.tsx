@@ -2,14 +2,27 @@ import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {CompositorPort} from '@shade/services/compositor/port';
 
+export function normalizeHyprOptionKey(key: string): string {
+    return key.replaceAll(':', '.').replaceAll('-', '_');
+}
+
 const compositor = new CompositorPort();
+
+function getBooleanOption(key: string, fallback: boolean): boolean {
+    const value = getOption(key, String(fallback));
+    if (value === 'true' || value === '1') return true;
+    if (value === 'false' || value === '0') return false;
+    return fallback;
+}
 
 function getOption(key: string, fallback: string): string {
     return compositor.getOptionSync(key, fallback);
 }
 
 function setOption(key: string, value: string | number | boolean): void {
-    void compositor.setConfigOption(key, value).catch(() => {});
+    void compositor
+        .setConfigOption(normalizeHyprOptionKey(key), value)
+        .catch((error) => console.error(`Failed to set Hyprland option ${key}:`, error));
 }
 
 export default () => (
@@ -41,20 +54,20 @@ export default () => (
                 subtitle="Opções disponibilizadas pelo compositor."
                 model={new Gtk.StringList({strings: ['Linear', 'Adaptável']})}
                 selected={getOption('input:accel_profile', 'flat') === 'adaptive' ? 1 : 0}
-                onNotifySelected={(row) => {
-                    setOption('input:accel_profile', row.selected === 0 ? 'flat' : 'adaptive');
-                }}
+                onNotifySelected={(row) =>
+                    setOption('input:accel_profile', row.selected === 0 ? 'flat' : 'adaptive')
+                }
             />
             <Adw.SwitchRow
                 title="Rolagem natural do mouse"
                 subtitle="A direção da rolagem acompanha o movimento dos dedos."
-                active={getOption('input:natural_scroll', 'false') === 'true'}
+                active={getBooleanOption('input:natural_scroll', false)}
                 onNotifyActive={(row) => setOption('input:natural_scroll', row.active)}
             />
             <Adw.SwitchRow
                 title="Mouse para canhotos"
                 subtitle="Troca as funções dos botões principal e secundário."
-                active={getOption('input:left_handed', 'false') === 'true'}
+                active={getBooleanOption('input:left_handed', false)}
                 onNotifyActive={(row) => setOption('input:left_handed', row.active)}
             />
         </Adw.PreferencesGroup>
@@ -62,19 +75,19 @@ export default () => (
             <Adw.SwitchRow
                 title="Tocar para clicar"
                 subtitle="Toque no touchpad para clicar."
-                active={getOption('input:touchpad:tap-to-click', 'true') === 'true'}
+                active={getBooleanOption('input:touchpad:tap-to-click', true)}
                 onNotifyActive={(row) => setOption('input:touchpad:tap-to-click', row.active)}
             />
             <Adw.SwitchRow
                 title="Tocar e arrastar"
                 subtitle="Toque e mantenha para arrastar."
-                active={getOption('input:touchpad:tap-and-drag', 'true') === 'true'}
+                active={getBooleanOption('input:touchpad:tap-and-drag', true)}
                 onNotifyActive={(row) => setOption('input:touchpad:tap-and-drag', row.active)}
             />
             <Adw.SwitchRow
                 title="Desativar enquanto digita"
                 subtitle="Desativa o touchpad durante a digitação."
-                active={getOption('input:touchpad:disable_while_typing', 'true') === 'true'}
+                active={getBooleanOption('input:touchpad:disable_while_typing', true)}
                 onNotifyActive={(row) =>
                     setOption('input:touchpad:disable_while_typing', row.active)
                 }
@@ -82,7 +95,7 @@ export default () => (
             <Adw.SwitchRow
                 title="Rolagem natural do touchpad"
                 subtitle="A direção da rolagem acompanha o movimento dos dedos."
-                active={getOption('input:touchpad:natural_scroll', 'false') === 'true'}
+                active={getBooleanOption('input:touchpad:natural_scroll', false)}
                 onNotifyActive={(row) => setOption('input:touchpad:natural_scroll', row.active)}
             />
             <Adw.ActionRow
