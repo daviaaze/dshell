@@ -28,6 +28,7 @@ export interface HyprMonitor {
     y: number;
     width: number;
     height: number;
+    transform?: number;
 }
 
 export interface HyprClient {

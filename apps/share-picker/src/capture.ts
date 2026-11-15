@@ -6,6 +6,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
+import {resolvePreviewFrame} from './previewFrame';
 import type {MonitorState, PreviewHandle, WindowState} from './types';
 
 const CAT = 'share-picker';
@@ -92,10 +93,12 @@ function updatePreviews(
     previews: readonly PreviewHandle[],
     texture: Gdk.Texture | null
 ): void {
-    state.texture = texture;
+    const previousTexture = state.texture;
+    const frame = resolvePreviewFrame(previousTexture, texture);
+    state.texture = frame.texture;
     for (const preview of previews) {
-        preview.setTexture(texture);
-        preview.setState(texture ? 'available' : 'unavailable');
+        if (frame.texture !== previousTexture) preview.setTexture(frame.texture);
+        preview.setState(frame.state);
     }
 }
 
@@ -106,7 +109,11 @@ function captureSource(
     cmd: string[]
 ): void {
     state.capturing = true;
-    for (const preview of previews) preview.setState('loading');
+    // Keep the last good frame visible while grim writes the next one. The
+    // loading placeholder is only useful before the first successful frame.
+    if (!state.texture) {
+        for (const preview of previews) preview.setState('loading');
+    }
     runCapture(cmd, (ok) => {
         state.capturing = false;
         let texture: Gdk.Texture | null = null;

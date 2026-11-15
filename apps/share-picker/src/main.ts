@@ -141,8 +141,14 @@ function buildPicker(
         propagateNaturalHeight: false,
         propagateNaturalWidth: false,
     });
-    // This is the preview's content size, not the viewport's minimum height.
-    const picture = new Gtk.Picture({heightRequest: 180, canShrink: true});
+    // Keep portrait and ultrawide sources proportional and fully visible.
+    const picture = new Gtk.Picture({
+        contentFit: Gtk.ContentFit.SCALE_DOWN,
+        widthRequest: 480,
+        heightRequest: 270,
+        canShrink: true,
+        halign: Gtk.Align.CENTER,
+    });
     const summary = new Gtk.Label({
         wrap: true,
         wrapMode: Pango.WrapMode.WORD_CHAR,
@@ -177,7 +183,7 @@ function buildPicker(
             kind === 'screen' ? (monitor?.texture ?? null) : (window?.texture ?? null);
         summary.label =
             kind === 'screen'
-                ? `${monitor?.info.description || id}\nTela inteira; outras janelas visíveis também podem ser expostas.`
+                ? `${monitor?.info.name || id}${monitor?.info.description && monitor.info.description !== id ? ` — ${monitor.info.description}` : ''}\nTela inteira; outras janelas visíveis também podem ser expostas.`
                 : `${window?.info.title || id}\n${window?.info.clazz || ''}`;
         summary.tooltipText = summary.label;
         heading.label = kind === 'screen' ? 'Revise a tela escolhida' : 'Revise a janela escolhida';

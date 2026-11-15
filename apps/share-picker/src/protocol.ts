@@ -98,14 +98,21 @@ export function getHyprMonitors(): HyprMonitor[] {
         }
         type RawJson = Record<string, unknown>;
         const entries = raw as RawJson[];
-        return entries.map((m) => ({
-            name: m.name ?? 'Unknown',
-            description: m.description ?? m.name ?? '',
-            x: m.x ?? 0,
-            y: m.y ?? 0,
-            width: m.width ?? 0,
-            height: m.height ?? 0,
-        })) as HyprMonitor[];
+        return entries.map((m) => {
+            const name = typeof m.name === 'string' ? m.name : 'Unknown';
+            let description = '';
+            if (typeof m.description === 'string') description = m.description;
+            else if (typeof m.name === 'string') description = m.name;
+            return {
+                name,
+                description,
+                x: typeof m.x === 'number' ? m.x : 0,
+                y: typeof m.y === 'number' ? m.y : 0,
+                width: typeof m.width === 'number' ? m.width : 0,
+                height: typeof m.height === 'number' ? m.height : 0,
+                transform: typeof m.transform === 'number' ? m.transform : 0,
+            };
+        });
     } catch (e) {
         logger.error(CAT, `getHyprMonitors: JSON parse failed. out=${out.substring(0, 200)}`, e);
         return [];

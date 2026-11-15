@@ -1,23 +1,26 @@
 /**
  * GTK widget builders for the picker UI.
  */
-import Gtk from 'gi://Gtk?version=4.0';
 import GObject from 'gi://GObject?version=2.0';
+import Gtk from 'gi://Gtk?version=4.0';
+import {monitorResolution} from './monitorGeometry';
 import type {MonitorState, PreviewHandle, PreviewState, SelectFn, WindowState} from './types';
 
 const PICTURE_W = 240;
 const PICTURE_H = 135;
-const MAX_DESC_LEN = 60;
-
-function truncate(s: string, max: number): string {
-    return s.length <= max ? s : `${s.substring(0, max - 1)}…`;
-}
 
 function makePreview(initialState: PreviewState): PreviewHandle {
     const picture = new Gtk.Picture({contentFit: Gtk.ContentFit.SCALE_DOWN, canShrink: true});
     picture.set_size_request(PICTURE_W, PICTURE_H);
     const stack = new Gtk.Stack({halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER});
     stack.set_size_request(PICTURE_W, PICTURE_H);
+    const status = new Gtk.Label({
+        label: 'Preview may be outdated',
+        halign: Gtk.Align.END,
+        valign: Gtk.Align.END,
+        visible: false,
+        cssClasses: ['picker-preview-status'],
+    });
     stack.add_css_class('picker-preview');
     for (const [name, text] of [
         ['idle', 'Preview not loaded'],
@@ -29,7 +32,9 @@ function makePreview(initialState: PreviewState): PreviewHandle {
             name
         );
     }
-    stack.add_named(picture, 'available');
+    const image = new Gtk.Overlay({child: picture});
+    image.add_overlay(status);
+    stack.add_named(image, 'available');
     stack.set_visible_child_name(initialState);
 
     let disposed = false;
@@ -40,6 +45,12 @@ function makePreview(initialState: PreviewState): PreviewHandle {
         widget: stack,
         setState(state) {
             if (disposed) return;
+            if (state === 'unavailable' && picture.paintable) {
+                status.visible = true;
+                stack.set_visible_child_name('available');
+                return;
+            }
+            status.visible = false;
             if (state === 'unavailable') picture.set_paintable(null);
             stack.set_visible_child_name(state);
         },
@@ -155,8 +166,10 @@ function buildCard(
 
     const button = new Gtk.Button({child: inner, cssClasses: ['flat']});
     // Preview loading must not change the identity of the selectable source.
-    button.update_property([Gtk.AccessibleProperty.LABEL],
-        [new GObject.Value(GObject.TYPE_STRING, [labelText, subText].filter(Boolean).join(' — '))]);
+    button.update_property(
+        [Gtk.AccessibleProperty.LABEL],
+        [new GObject.Value(GObject.TYPE_STRING, [labelText, subText].filter(Boolean).join(' — '))]
+    );
     button.connect('clicked', onClick);
 
     flow.append(new Gtk.FlowBoxChild({child: button}));
@@ -173,38 +186,28 @@ function buildSectionLabel(text: string): Gtk.Label {
     return l;
 }
 
-function monitorCard(
-    flow: Gtk.FlowBox,
-    state: MonitorState,
-    select: SelectFn,
-    subRes: boolean
-): PreviewHandle {
+function monitorCard(flow: Gtk.FlowBox, state: MonitorState, select: SelectFn): PreviewHandle {
     const preview = makePreview(
         state.info.width > 0 && state.info.height > 0 ? 'idle' : 'unavailable'
     );
-    const res = `${state.info.width}×${state.info.height}`;
-    buildCard(
-        flow,
-        truncate(state.info.description || state.info.name, MAX_DESC_LEN),
-        subRes ? `${res} — ${state.info.name}` : res,
-        preview,
-        () => select('screen', state.info.name)
+    const {width, height} = monitorResolution(state.info);
+    const res = `${width}×${height}`;
+    const description =
+        state.info.description && state.info.description !== state.info.name
+            ? state.info.description
+            : '';
+    buildCard(flow, state.info.name, [description, res].filter(Boolean).join(' — '), preview, () =>
+        select('screen', state.info.name)
     );
     return preview;
 }
 
-function windowCard(
-    flow: Gtk.FlowBox,
-    state: WindowState,
-    select: SelectFn
-): PreviewHandle {
+function windowCard(flow: Gtk.FlowBox, state: WindowState, select: SelectFn): PreviewHandle {
     const preview = makePreview(state.geometry ? 'idle' : 'unavailable');
     buildCard(
         flow,
         state.info.clazz || state.info.title,
-        state.geometry
-            ? `${state.geometry.width}×${state.geometry.height}`
-            : '',
+        state.geometry ? `${state.geometry.width}×${state.geometry.height}` : '',
         preview,
         () => select('window', state.info.id)
     );
@@ -223,7 +226,7 @@ export interface Tab {
 /** Screens tab — one card per monitor */
 export function buildScreensTab(states: MonitorState[], select: SelectFn): Tab {
     const flow = buildFlowBox();
-    const previews = states.map((state) => monitorCard(flow, state, select, true));
+    const previews = states.map((state) => monitorCard(flow, state, select));
     return {page: scrolled(states.length === 0 ? noScreens() : flow), previews};
 }
 
@@ -259,7 +262,7 @@ export function buildCombinedTab(
 
     box.append(buildSectionLabel('Screens'));
     const monFlow = buildFlowBox();
-    const monitorPreviews = monitors.map((state) => monitorCard(monFlow, state, select, false));
+    const monitorPreviews = monitors.map((state) => monitorCard(monFlow, state, select));
     box.append(monitors.length === 0 ? noScreens() : monFlow);
 
     box.append(buildSectionLabel('Windows'));

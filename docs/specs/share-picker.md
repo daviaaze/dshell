@@ -4,7 +4,11 @@ Sources: standalone application [`main.ts`](../../apps/share-picker/src/main.ts)
 
 XDPH launches a standalone GTK application, not a shell widget or settings page. Screens, Windows and All tabs show sources/previews. Clicking a source enters a review screen; it does not submit a selection. Review explains exposure and portal ownership, offers choose-another/Back, Cancel, and explicit Share. Before submission Share revalidates that the selected monitor/window still exists. Only then does the app write one `[SELECTION][r]/screen:NAME` or `[SELECTION][r]/window:ID` line to stdout and quit. `r` reflects the per-request restore-token checkbox/`--allow-token`; it is not a persistent shell preference. Cancel and window close quit without selection output. Preview absence does not prevent choosing a source and does not authorize transmission; requester/portal manage the session after selection.
 
+Each screen card always identifies the source by its Hyprland output name (the exact value returned to XDPH), including in the All tab and review screen; the monitor description and resolution are secondary text. Resolution labels account for 90°/270° monitor transforms, while preview images keep their captured aspect ratio and scale down inside the card/review viewport (including portrait and ultrawide outputs). A missing preview does not disable selection.
+
 Source cards retain a stable accessible identity while their preview loads or becomes unavailable. The native source grid adapts down to one column; preview status is separate from the source name.
+
+Live monitor refreshes keep the last successfully decoded frame visible while a new capture is in progress. A failed refresh preserves that frame and marks it discreetly as potentially outdated; the next successful capture clears the status and replaces the image. If the first capture fails before any frame exists, the picker shows unavailable rather than an empty image. Refresh failures do not trigger additional retries.
 
 The fixed action row remains outside the review viewport so Back, Cancel and Share stay reachable when a long window title or preview exceeds the available height. The heading and summary are bounded visually; their complete text remains available by tooltip.
 
