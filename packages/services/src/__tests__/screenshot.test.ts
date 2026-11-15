@@ -7,7 +7,13 @@
  * Run: gjs -m src/lib/__tests__/screenshot.test.ts
  */
 
-import {parseGrimGeometry, toGrimGeometry, toMagickGeometry} from '../capture/geometry';
+import {
+    desktopStageBounds,
+    localizeToStagePixels,
+    parseGrimGeometry,
+    toGrimGeometry,
+    toMagickGeometry,
+} from '../capture/geometry';
 import Screenshot from '../capture/screenshot';
 import {describe, expect, it, run} from './test-runner';
 
@@ -110,6 +116,30 @@ describe('Geometry parsing', () => {
         const g = parseGrimGeometry('300,400 1440x900');
         expect(g).toBeTruthy();
         expect(toMagickGeometry(g!)).toBe('1440x900+300+400');
+    });
+});
+describe('Combined stage bounds', () => {
+    it('uses the global desktop bounding box, including negative monitor origins', () => {
+        expect(
+            desktopStageBounds([
+                {x: -1080, y: -240, width: 1920, height: 1080},
+                {x: 840, y: 0, width: 2600, height: 1680},
+            ])
+        ).toEqual({x: -1080, y: -240, width: 4520, height: 1920});
+    });
+    it('localizes crops against the combined desktop origin and stage pixel scale', () => {
+        const bounds = {x: -1080, y: -240, width: 4520, height: 1920};
+        expect(
+            localizeToStagePixels({x: 840, y: 0, width: 2600, height: 1680}, bounds, 9040, 3840)
+        ).toEqual({x: 3840, y: 480, width: 5200, height: 3360});
+    });
+    it('applies rotation and scale to raw monitor dimensions before bounding', () => {
+        expect(
+            desktopStageBounds([
+                {x: -864, y: -100, width: 1920, height: 1080, transform: 3, scale: 1.25},
+                {x: 0, y: 0, width: 1920, height: 1080, transform: 0, scale: 1.5},
+            ])
+        ).toEqual({x: -864, y: -100, width: 2144, height: 1536});
     });
 });
 

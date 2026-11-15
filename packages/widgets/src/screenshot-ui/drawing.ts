@@ -5,6 +5,8 @@ import type Screenshot from '@shade/services/capture/screenshot';
 import type {BoundaryGeometry} from '@shade/services/capture/types';
 import {getHyprland} from '@shade/services/hyprland';
 
+import {type StageTransform, stageToView} from './selection';
+
 // ── Constants ─────────────────────────────────────────────────────
 
 const DIM_COLOR = {r: 0, g: 0, b: 0, a: 0.35};
@@ -37,6 +39,7 @@ interface DrawParams {
     selectedWindow: WinInfo | null;
     windows: WinInfo[];
     monOrigin: Point;
+    stageTransform: StageTransform | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -72,29 +75,25 @@ function dimAround(
 
 /** Dims everything except the active area / window / monitor. */
 function drawDimOverlay(
-    cr: Cairo.Context,
-    width: number,
-    height: number,
-    target: string,
-    sel: Geom | null,
-    sWin: WinInfo | null,
-    winL: WinInfo[],
-    monOrigin: Point
+    cr: Cairo.Context, width: number, height: number, target: string, sel: Geom | null,
+    sWin: WinInfo | null, monOrigin: Point, transform: StageTransform | null
 ): void {
-    const origin = monOrigin;
     if (target === 'area' && sel && sel.width >= MIN_SELECTION) {
         dimAround(cr, width, height, sel.x, sel.y, sel.width, sel.height);
     } else if (target === 'window' && sWin) {
-        dimAround(cr, width, height, sWin.x - origin.x, sWin.y - origin.y, sWin.width, sWin.height);
+        const p = transform ? stageToView({x: sWin.x, y: sWin.y}, transform) : {x: sWin.x - monOrigin.x, y: sWin.y - monOrigin.y};
+        const scaleX = transform?.scaleX ?? 1;
+        const scaleY = transform?.scaleY ?? 1;
+        dimAround(cr, width, height, p.x, p.y, sWin.width * scaleX, sWin.height * scaleY);
     } else if (target === 'monitor') {
-        const hyprland = getHyprland();
-        const m = hyprland?.focusedMonitor;
+        const m = getHyprland()?.focusedMonitor;
         if (m) {
-            dimAround(cr, width, height, m.x - origin.x, m.y - origin.y, m.width, m.height);
+            const p = transform ? stageToView({x: m.x, y: m.y}, transform) : {x: m.x - monOrigin.x, y: m.y - monOrigin.y};
+            const scaleX = transform?.scaleX ?? 1;
+            const scaleY = transform?.scaleY ?? 1;
+            dimAround(cr, width, height, p.x, p.y, m.width * scaleX, m.height * scaleY);
         }
-    } else if (target !== 'fullscreen') {
-        cr.rectangle(0, 0, width, height);
-    }
+    } else if (target !== 'fullscreen') cr.rectangle(0, 0, width, height);
 }
 
 function drawCornerHandles(cr: Cairo.Context, sel: Geom) {
@@ -111,60 +110,65 @@ function drawCornerHandles(cr: Cairo.Context, sel: Geom) {
     }
     cr.fill();
 }
+function drawEdgeHandles(cr: Cairo.Context, sel: Geom) {
+    cr.setSourceRGBA(ACCENT.r, ACCENT.g, ACCENT.b, ACCENT.a);
+    const hs = HANDLE_SIZE;
+    const midX = sel.x + sel.width / 2;
+    const midY = sel.y + sel.height / 2;
+    for (const p of [
+        {x: midX, y: sel.y},
+        {x: midX, y: sel.y + sel.height},
+        {x: sel.x, y: midY},
+        {x: sel.x + sel.width, y: midY},
+    ]) cr.rectangle(p.x - hs / 2, p.y - hs / 2, hs, hs);
+    cr.fill();
+}
 
-function drawWindowHints(cr: Cairo.Context, wins: WinInfo[], origin: Point) {
-    cr.setSourceRGBA(
-        WINDOW_HINT_COLOR.r,
-        WINDOW_HINT_COLOR.g,
-        WINDOW_HINT_COLOR.b,
-        WINDOW_HINT_COLOR.a
-    );
+function drawWindowHints(cr: Cairo.Context, wins: WinInfo[], origin: Point, transform: StageTransform | null) {
+    cr.setSourceRGBA(WINDOW_HINT_COLOR.r, WINDOW_HINT_COLOR.g, WINDOW_HINT_COLOR.b, WINDOW_HINT_COLOR.a);
     cr.setLineWidth(1);
     for (const win of wins) {
-        const lx = win.x - origin.x;
-        const ly = win.y - origin.y;
-        cr.rectangle(lx, ly, win.width, win.height);
+        const p = transform ? stageToView({x: win.x, y: win.y}, transform) : {x: win.x - origin.x, y: win.y - origin.y};
+        const scaleX = transform?.scaleX ?? 1;
+        const scaleY = transform?.scaleY ?? 1;
+        cr.rectangle(p.x, p.y, win.width * scaleX, win.height * scaleY);
         cr.stroke();
     }
 }
 
 /** Draws window outlines and the selected window's highlight + title. */
 function drawWindowOutlines(
-    cr: Cairo.Context,
-    target: string,
-    sWin: WinInfo | null,
-    winL: WinInfo[],
-    monOrigin: Point
+    cr: Cairo.Context, target: string, sWin: WinInfo | null, winL: WinInfo[],
+    monOrigin: Point, transform: StageTransform | null
 ) {
     if (target === 'area') {
-        // Window snap hints in area mode (was region-selector behavior)
-        drawWindowHints(cr, winL, monOrigin);
+        drawWindowHints(cr, winL, monOrigin, transform);
         return;
     }
     if (target !== 'window') return;
-    const origin = monOrigin;
+    const scaleX = transform?.scaleX ?? 1;
+    const scaleY = transform?.scaleY ?? 1;
     cr.setLineWidth(2);
     cr.setSourceRGBA(1, 1, 1, 0.4);
-
     for (const w of winL) {
-        cr.rectangle(w.x - origin.x, w.y - origin.y, w.width, w.height);
+        const p = transform ? stageToView({x: w.x, y: w.y}, transform) : {x: w.x - monOrigin.x, y: w.y - monOrigin.y};
+        cr.rectangle(p.x, p.y, w.width * scaleX, w.height * scaleY);
     }
     cr.stroke();
-
     if (!sWin) return;
-    const lx = sWin.x - origin.x;
-    const ly = sWin.y - origin.y;
+    const p = transform ? stageToView({x: sWin.x, y: sWin.y}, transform) : {x: sWin.x - monOrigin.x, y: sWin.y - monOrigin.y};
+    const w = sWin.width * scaleX;
+    const h = sWin.height * scaleY;
     cr.setLineWidth(4);
     cr.setSourceRGBA(ACCENT.r, ACCENT.g, ACCENT.b, ACCENT.a);
-    cr.rectangle(lx, ly, sWin.width, sWin.height);
+    cr.rectangle(p.x, p.y, w, h);
     cr.stroke();
-
     cr.setSourceRGBA(0, 0, 0, 0.7);
-    cr.rectangle(lx, ly - 24, sWin.width, 24);
+    cr.rectangle(p.x, p.y - 24, w, 24);
     cr.fill();
     cr.setSourceRGBA(1, 1, 1, 1);
     cr.setFontSize(12);
-    cr.moveTo(lx + 4, ly - 6);
+    cr.moveTo(p.x + 4, p.y - 6);
     cr.showText(sWin.title.substring(0, 40));
 }
 
@@ -178,6 +182,7 @@ function drawSelection(cr: Cairo.Context, target: string, sel: Geom | null) {
     cr.stroke();
 
     drawCornerHandles(cr, sel);
+    drawEdgeHandles(cr, sel);
 
     const label = `${sel.width}×${sel.height}`;
     const labelX = sel.x + 4;
@@ -279,19 +284,14 @@ function drawImpl(
     height: number,
     params: DrawParams
 ) {
-    const {ss, selActive, dragStart, dragEnd, selectedWindow, windows, monOrigin} = params;
+    const {ss, selActive, dragStart, dragEnd, selectedWindow, windows, monOrigin, stageTransform} = params;
     const target = ss.selectedTarget;
     const sel = selActive && dragStart && dragEnd ? normalizeRect(dragStart, dragEnd) : null;
-    const hyprland = getHyprland();
-    if (!hyprland) return;
-
-    // ── Dim overlay ──────────────────────────────────────────
+    if (!getHyprland()) return;
     cr.setSourceRGBA(DIM_COLOR.r, DIM_COLOR.g, DIM_COLOR.b, DIM_COLOR.a);
-    drawDimOverlay(cr, width, height, target, sel, selectedWindow, windows, monOrigin);
+    drawDimOverlay(cr, width, height, target, sel, selectedWindow, monOrigin, stageTransform);
     cr.fill();
-
-    // ── Window outlines, selection and hints ─────────────────
-    drawWindowOutlines(cr, target, selectedWindow, windows, monOrigin);
+    drawWindowOutlines(cr, target, selectedWindow, windows, monOrigin, stageTransform);
     drawSelection(cr, target, sel);
     drawHints(cr, width, height, selActive, target, selectedWindow);
 }

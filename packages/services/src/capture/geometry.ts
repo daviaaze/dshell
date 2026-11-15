@@ -56,16 +56,92 @@ export function monitorForGeometry(g: BoundaryGeometry) {
     return monitorForPoint(g.x, g.y);
 }
 
-/**
- * Translate a global-compositor geometry into the coordinate space of the
- * stage image for cropping. The stage is captured with plain `grim` (all
- * outputs composited), so stage coordinates are global minus the origin of
- * the monitor containing the selection.
- */
-export function localizeForStage(g: BoundaryGeometry): BoundaryGeometry {
-    const mon = monitorForGeometry(g);
-    if (!mon) return g;
-    return {x: g.x - mon.x, y: g.y - mon.y, width: g.width, height: g.height};
+export interface MonitorSnapshot {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    scale?: number;
+    transform?: number | string;
+    disabled?: boolean;
+}
+
+/** Bounds of all outputs in global logical coordinates. */
+export function desktopStageBounds(monitors: MonitorSnapshot[]): BoundaryGeometry {
+    const active = monitors.filter((m) => !m.disabled);
+    if (active.length === 0) return {x: 0, y: 0, width: 1, height: 1};
+    const rects = active.map((m) => {
+        const transform = Number(m.transform ?? 0);
+        const rotated = Math.abs(transform) % 2 === 1;
+        const scale = m.scale && m.scale > 0 ? m.scale : 1;
+        const width = (rotated ? m.height : m.width) / scale;
+        const height = (rotated ? m.width : m.height) / scale;
+        return {x: m.x, y: m.y, width, height};
+    });
+    const x = Math.min(...rects.map((m) => m.x));
+    const y = Math.min(...rects.map((m) => m.y));
+    const right = Math.max(...rects.map((m) => m.x + m.width));
+    const bottom = Math.max(...rects.map((m) => m.y + m.height));
+    return {x, y, width: right - x, height: bottom - y};
+}
+
+/** Read the compositor's raw output rectangles and normalize transform/scale once. */
+export function getDesktopStageBounds(): BoundaryGeometry {
+    const hyprland = getHyprland();
+    if (!hyprland) return {x: 0, y: 0, width: 1, height: 1};
+    try {
+        const monitors = JSON.parse(hyprland.message('j/monitors')) as MonitorSnapshot[];
+        if (monitors.length > 0) return desktopStageBounds(monitors);
+        return desktopStageBounds(
+            hyprland.monitors.map((m) => ({
+                x: m.x,
+                y: m.y,
+                width: m.width,
+                height: m.height,
+                scale: m.scale,
+                transform: m.transform,
+            }))
+        );
+    } catch (error) {
+        logger.warn('screenshot', `could not read monitor snapshot for stage bounds: ${error}`);
+        return desktopStageBounds(
+            hyprland.monitors.map((m) => ({
+                x: m.x,
+                y: m.y,
+                width: m.width,
+                height: m.height,
+                scale: m.scale,
+                transform: m.transform,
+            }))
+        );
+    }
+}
+
+/** Convert a global rectangle into combined-stage pixels using desktop bounds. */
+export function localizeToStagePixels(
+    g: BoundaryGeometry,
+    bounds: BoundaryGeometry,
+    imageWidth = bounds.width,
+    imageHeight = bounds.height
+): BoundaryGeometry {
+    const scaleX = imageWidth / bounds.width;
+    const scaleY = imageHeight / bounds.height;
+    return {
+        x: Math.round((g.x - bounds.x) * scaleX),
+        y: Math.round((g.y - bounds.y) * scaleY),
+        width: Math.round(g.width * scaleX),
+        height: Math.round(g.height * scaleY),
+    };
+}
+
+/** Translate global compositor coordinates into the combined grim image. */
+export function localizeForStage(
+    g: BoundaryGeometry,
+    imageWidth?: number,
+    imageHeight?: number
+): BoundaryGeometry {
+    if (!getHyprland()) return g;
+    return localizeToStagePixels(g, getDesktopStageBounds(), imageWidth, imageHeight);
 }
 
 /**

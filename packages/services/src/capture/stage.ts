@@ -81,9 +81,9 @@ export class Stage {
     }
 
     /**
-     * Crop the stage into the screenshot directory. `geometry` is in
-     * global compositor coordinates; it is localized to the stage's
-     * monitor space before cropping. Null copies the full stage.
+     * Crop the combined stage. `geometry` stays in global compositor
+     * coordinates until localized against the desktop bounds and texture
+     * pixel dimensions.
      */
     async captureCrop(geometry: BoundaryGeometry | null): Promise<boolean> {
         if (!this.#pixPath) {
@@ -96,7 +96,13 @@ export class Stage {
 
         try {
             if (geometry) {
-                const crop = toMagickGeometry(localizeForStage(geometry));
+                const crop = toMagickGeometry(
+                    localizeForStage(
+                        geometry,
+                        this.#texture?.get_width(),
+                        this.#texture?.get_height()
+                    )
+                );
                 logger.info('screenshot', `captureCrop: crop ${crop} from stage`);
                 await Process.execAsync(
                     `${MAGICK_BIN} "${this.#pixPath}" -crop ${crop} +repage "${filename}"`
