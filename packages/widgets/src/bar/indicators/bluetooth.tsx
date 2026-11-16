@@ -8,7 +8,7 @@ export default () => {
     return (
         <Gtk.Image
             iconName={bind(bt, 'iconName')}
-            visible={bind(bt, 'isPowered')}
+            visible={bind(bt, 'adapterAvailable').as((available) => available && bt.isPowered)}
             tooltipText={bind(bt, 'connectedDeviceNames').as((names) => names || 'Bluetooth')}
             pixelSize={18}
         />

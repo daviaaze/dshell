@@ -3,6 +3,10 @@
 Source: [`index.tsx`](../../packages/widgets/src/recording-bar/index.tsx), bar entry point [`indicators/recording.tsx`](../../packages/widgets/src/bar/indicators/recording.tsx), service [`screenshot.ts`](../../packages/services/src/capture/screenshot.ts).
 
 The bottom-right focused-monitor overlay is visible while recording, capture preparation is busy, a result path exists, or an error exists. During recording it shows elapsed duration, audio indicator when capture preferences request audio, and Stop (`stopRecording()`). While capture preparation is busy it shows a spinner. On successful result it displays the actual path, a screenshot preview for image captures, and Open file/Open folder/Done actions. Errors display service feedback and can be dismissed. The bar indicator is a separate recording affordance; this surface also handles screenshot results/errors and is not only a recording bar.
+## External screen-sharing feedback
+
+The bar independently watches PipeWire through `Screencast`: `pw-dump --monitor --no-colors` snapshots and deltas are merged by object id, and `info: null` removes an object. Only running `Video/Source` nodes whose `media.name` (falling back to `node.name`) starts with `xdph-streaming-` count as portal screen/window shares; audio and webcam sources are not classified as sharing. The indicator remains visible while any such source is active and opens a popover with the known consumer app and target when PipeWire metadata permits. Missing metadata is presented as unknown or as a generic screen/window share; the UI does not invent an app or target name. Internal recording remains a separate indicator with its elapsed duration and stop action.
+
 
 The `Astal.Window` uses `margin={4}` for its layer-shell edges. Do not substitute inherited GTK `marginStart`/`marginEnd`: those inset widget content rather than setting the right/left layer margin. The busy/recording rows retain their own `8px 12px` content padding, and result/error panels retain `12px`; these are independent of the exterior gap.
 

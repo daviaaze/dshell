@@ -18,13 +18,11 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
     const wifiState = bind(net, 'wifiState');
     const wifiStrength = bind(net, 'wifiStrength');
 
-    const icon = computed(() =>
-        connectingAp()
-            ? 'content-loading-symbolic'
-            : wifiEnabled()
-              ? wifiIconName(wifiStrength(), wifiEnabled(), wifiState())
-              : 'network-wireless-offline-symbolic'
-    );
+    const icon = computed(() => {
+        if (connectingAp()) return 'content-loading-symbolic';
+        if (!wifiEnabled()) return 'network-wireless-offline-symbolic';
+        return wifiIconName(wifiStrength(), true, wifiState());
+    });
 
     const value = computed(() => {
         if (!wifi()) return ready() ? 'Indisponível' : 'Carregando…';
@@ -37,9 +35,23 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
 
     const detail = (
         <With value={wifi}>
-            {(device: AstalNetwork.Wifi | null) => device ? (
-                <WifiDetails wifi={device} connectingAp={connectingAp} setConnectingAp={setConnectingAp} status={value} />
-            ) : <Gtk.Label label={ready.as(value => value ? 'Nenhum adaptador Wi-Fi disponível.' : 'Carregando Wi-Fi…')} wrap />}
+            {(device: AstalNetwork.Wifi | null) =>
+                device ? (
+                    <WifiDetails
+                        wifi={device}
+                        connectingAp={connectingAp}
+                        setConnectingAp={setConnectingAp}
+                        status={value}
+                    />
+                ) : (
+                    <Gtk.Label
+                        label={ready.as((value) =>
+                            value ? 'Nenhum adaptador Wi-Fi disponível.' : 'Carregando Wi-Fi…'
+                        )}
+                        wrap
+                    />
+                )
+            }
         </With>
     );
 
@@ -51,9 +63,12 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
                 icon={icon}
                 value={value}
                 active={wifiEnabled}
-                actionLabel={wifiEnabled.as((enabled) => enabled ? 'Turn Wi-Fi off' : 'Turn Wi-Fi on')}
+                visible={bind(net, 'wifiAvailable')}
+                actionLabel={wifiEnabled.as((enabled) =>
+                    enabled ? 'Turn Wi-Fi off' : 'Turn Wi-Fi on'
+                )}
                 onClick={() => bus.emit('network:wifi:toggle')}
-                actionSensitive={wifi.as(device => device !== null)}
+                actionSensitive={wifi.as((device) => device !== null)}
                 detail={{label: 'Wi-Fi details', onOpen}}
             />
         ),

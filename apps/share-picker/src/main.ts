@@ -30,7 +30,14 @@ import {MonitorPoller} from './poller';
 import {getHyprClients, getHyprMonitors, HYPRCTL_BIN, parseWindowList} from './protocol';
 import {buildSources} from './sources';
 import type {MonitorState, ParsedWindowList, PreviewHandle, SelectFn, WindowState} from './types';
-import {buildCombinedTab, buildScreensTab, buildWindowsTab, type CombinedTab, type Tab} from './ui';
+import {
+    buildCombinedTab,
+    buildScreensTab,
+    buildWindowsTab,
+    type CombinedTab,
+    makeSelectedPreview,
+    type Tab,
+} from './ui';
 
 const CAT = 'share-picker';
 const APP_ID = 'com.caioasmuniz.shade_shell.share_picker';
@@ -46,6 +53,8 @@ interface PickerUi {
     screensTab: Tab;
     windowsTab: Tab;
     combinedTab: CombinedTab;
+    selectedMonitorPreviews: PreviewHandle[];
+    selectedWindowPreviews: PreviewHandle[];
 }
 
 function makeSelectFn(app: Gtk.Application, token: TokenState): SelectFn {
@@ -105,7 +114,6 @@ function buildPicker(
         marginStart: 12,
         marginEnd: 12,
     });
-
     const heading = new Gtk.Label({
         label: 'Escolha o que compartilhar',
         cssClasses: ['title-2'],
@@ -119,36 +127,15 @@ function buildPicker(
     });
     mainBox.append(heading);
     const explanation = new Gtk.Label({
-        label: 'Inspecionar a prévia não autoriza compartilhamento.',
+        label: 'Selecione uma fonte e confira sua identidade e prévia. Compartilhar autoriza o envio; selecionar apenas não inicia a transmissão.',
         wrap: true,
         wrapMode: Pango.WrapMode.WORD_CHAR,
         maxWidthChars: 70,
         xalign: 0,
     });
     mainBox.append(explanation);
-    heading.tooltipText = heading.label;
     const notebook = new Gtk.Notebook({vexpand: true, hexpand: true});
     notebook.set_scrollable(true);
-    let pending: {kind: 'screen' | 'window'; id: string} | null = null;
-    const reviewBody = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 12});
-    const review = new Gtk.ScrolledWindow({
-        child: reviewBody,
-        visible: false,
-        hexpand: true,
-        vexpand: true,
-        hscrollbarPolicy: Gtk.PolicyType.NEVER,
-        vscrollbarPolicy: Gtk.PolicyType.AUTOMATIC,
-        propagateNaturalHeight: false,
-        propagateNaturalWidth: false,
-    });
-    // Keep portrait and ultrawide sources proportional and fully visible.
-    const picture = new Gtk.Picture({
-        contentFit: Gtk.ContentFit.SCALE_DOWN,
-        widthRequest: 480,
-        heightRequest: 270,
-        canShrink: true,
-        halign: Gtk.Align.CENTER,
-    });
     const summary = new Gtk.Label({
         wrap: true,
         wrapMode: Pango.WrapMode.WORD_CHAR,
@@ -164,69 +151,52 @@ function buildPicker(
         cssClasses: ['suggested-action'],
     });
     let submitted = false;
-    const reset = () => {
-        pending = null;
-        picture.paintable = null;
-        review.visible = false;
-        notebook.visible = true;
-        confirm.sensitive = false;
-        heading.label = 'Escolha o que compartilhar';
-        heading.tooltipText = heading.label;
-        explanation.label = 'Inspecionar a prévia não autoriza compartilhamento.';
-    };
+    let pending: {kind: 'screen' | 'window'; id: string} | null = null;
+    const selectedMonitorPreviews = monitors.map((state) => makeSelectedPreview(state.texture));
+    const selectedWindowPreviews = windows.map((state) => makeSelectedPreview(state.texture));
+    const selectionSummary = new Gtk.Box({spacing: 12, visible: false});
+    const previewBox = new Gtk.Box();
+    for (const preview of [...selectedMonitorPreviews, ...selectedWindowPreviews]) {
+        preview.widget.set_visible(false);
+        previewBox.append(preview.widget);
+    }
+    selectionSummary.append(previewBox);
+    selectionSummary.append(summary);
     const choose: SelectFn = (kind, id) => {
-        const monitor = monitors.find((source) => source.info.name === id);
-        const window = windows.find((source) => source.info.id === id);
-        if (kind === 'screen' ? !monitor : !window) return;
+        const monitorIndex = monitors.findIndex((source) => source.info.name === id);
+        const windowIndex = windows.findIndex((source) => source.info.id === id);
+        if (kind === 'screen' ? monitorIndex < 0 : windowIndex < 0) return;
         pending = {kind, id};
-        picture.paintable =
-            kind === 'screen' ? (monitor?.texture ?? null) : (window?.texture ?? null);
+        selectedMonitorPreviews.forEach((preview, index) => {
+            preview.widget.set_visible(kind === 'screen' && index === monitorIndex);
+            preview.setTexture(monitors[index]?.texture ?? null);
+        });
+        selectedWindowPreviews.forEach((preview, index) => {
+            preview.widget.set_visible(kind === 'window' && index === windowIndex);
+            preview.setTexture(windows[index]?.texture ?? null);
+        });
         summary.label =
             kind === 'screen'
-                ? `${monitor?.info.name || id}${monitor?.info.description && monitor.info.description !== id ? ` — ${monitor.info.description}` : ''}\nTela inteira; outras janelas visíveis também podem ser expostas.`
-                : `${window?.info.title || id}\n${window?.info.clazz || ''}`;
+                ? `${monitors[monitorIndex].info.name}${monitors[monitorIndex].info.description && monitors[monitorIndex].info.description !== id ? ` — ${monitors[monitorIndex].info.description}` : ''}\nTela inteira; outras janelas visíveis também podem ser expostas.`
+                : `${windows[windowIndex].info.title || id}\n${windows[windowIndex].info.clazz || ''}`;
         summary.tooltipText = summary.label;
-        heading.label = kind === 'screen' ? 'Revise a tela escolhida' : 'Revise a janela escolhida';
-        heading.tooltipText = `${kind === 'screen' ? 'Revise a tela escolhida' : 'Revise a janela escolhida'}: ${summary.label}`;
+        heading.label = kind === 'screen' ? 'Tela selecionada' : 'Janela selecionada';
+        heading.tooltipText = `${heading.label}: ${summary.label}`;
         explanation.label =
             'A prévia pode estar indisponível; a fonte só será enviada após Compartilhar. O aplicativo solicitante controla o início da transmissão.';
         confirm.sensitive = true;
-        notebook.visible = false;
-        review.visible = true;
+        selectionSummary.visible = true;
     };
-    reviewBody.append(picture);
-    reviewBody.append(summary);
-    const change = new Gtk.Button({label: 'Escolher outra fonte', halign: Gtk.Align.START});
-    change.connect('clicked', reset);
-    reviewBody.append(change);
     const screensTab = buildScreensTab(monitors, choose);
     notebook.append_page(screensTab.page, new Gtk.Label({label: 'Telas'}));
     const windowsTab = buildWindowsTab(windows, choose, windowListProvided);
     notebook.append_page(windowsTab.page, new Gtk.Label({label: 'Janelas'}));
     const combinedTab = buildCombinedTab(monitors, windows, choose, windowListProvided);
     notebook.append_page(combinedTab.page, new Gtk.Label({label: 'Todas as fontes'}));
-    // Each tab owns a real vertical scroll viewport, including empty combined
-    // sections. Keep its content's natural size out of the window minimum.
-    // All chooser pages are true vertical viewports, so empty combined state
-    // messages below a large screen section remain reachable by scrolling.
-    for (const page of [screensTab.page, windowsTab.page, combinedTab.page]) {
-        if (page instanceof Gtk.ScrolledWindow) {
-            page.hexpand = true;
-            page.vexpand = true;
-            page.hscrollbarPolicy = Gtk.PolicyType.NEVER;
-            page.vscrollbarPolicy = Gtk.PolicyType.AUTOMATIC;
-            page.propagateNaturalHeight = false;
-            page.propagateNaturalWidth = false;
-            page.minContentHeight = 0;
-            page.minContentWidth = 0;
-        }
-    }
-
     const body = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8, vexpand: true});
     body.append(notebook);
-    body.append(review);
+    body.append(selectionSummary);
     mainBox.append(body);
-
     // ── Token restore checkbox ──────────────────────────
     const tokenBox = new Gtk.CheckButton({
         label: 'Permitir token de restauração',
@@ -249,11 +219,7 @@ function buildPicker(
         })
     );
     const actions = new Gtk.Box({spacing: 12, halign: Gtk.Align.END});
-    const back = new Gtk.Button({label: 'Voltar'});
-    back.connect('clicked', reset);
-    actions.append(back);
     const cancelBtn = new Gtk.Button({label: 'Cancelar'});
-    cancelBtn.connect('clicked', () => app.quit());
     actions.append(cancelBtn);
     confirm.connect('clicked', () => {
         if (!pending || submitted) return;
@@ -272,7 +238,11 @@ function buildPicker(
                       );
                   });
         if (!exists) {
-            reset();
+            pending = null;
+            selectedMonitorPreviews.forEach((preview) => preview.widget.set_visible(false));
+            selectedWindowPreviews.forEach((preview) => preview.widget.set_visible(false));
+            confirm.sensitive = false;
+            selectionSummary.visible = false;
             explanation.label = 'A fonte não está mais disponível. Escolha outra fonte ou cancele.';
             return;
         }
@@ -290,31 +260,49 @@ function buildPicker(
     actions.append(confirm);
     footer.append(actions);
     mainBox.append(footer);
-
     GObject.signal_connect(win, 'close-request', () => app.quit());
     win.set_child(mainBox);
 
-    return {win, notebook, screensTab, windowsTab, combinedTab};
+    return {
+        win,
+        notebook,
+        screensTab,
+        windowsTab,
+        combinedTab,
+        selectedMonitorPreviews,
+        selectedWindowPreviews,
+    };
 }
 
 function setupCapture(ui: PickerUi, monitors: MonitorState[], windows: WindowState[]): () => void {
-    const {screensTab, windowsTab, combinedTab, notebook} = ui;
+    const {
+        screensTab,
+        windowsTab,
+        combinedTab,
+        notebook,
+        selectedMonitorPreviews,
+        selectedWindowPreviews,
+    } = ui;
     const monitorTargets = monitors.map((_, index) =>
-        [screensTab.previews[index], combinedTab.monitorPreviews[index]].filter(
-            (handle): handle is PreviewHandle => handle !== undefined
-        )
+        [
+            screensTab.previews[index],
+            combinedTab.monitorPreviews[index],
+            selectedMonitorPreviews[index],
+        ].filter((handle): handle is PreviewHandle => handle !== undefined)
     );
     const windowTargets = windows.map((_, index) =>
-        [windowsTab.previews[index], combinedTab.windowPreviews[index]].filter(
-            (handle): handle is PreviewHandle => handle !== undefined
-        )
+        [
+            windowsTab.previews[index],
+            combinedTab.windowPreviews[index],
+            selectedWindowPreviews[index],
+        ].filter((handle): handle is PreviewHandle => handle !== undefined)
     );
     const poller = new MonitorPoller(monitors, monitorTargets);
     const switched = notebook.connect('switch-page', (_notebook, _page, pageNum: number) => {
-        poller.stop();
         if (pageNum === 0) {
             poller.start();
         } else {
+            poller.stop();
             if (pageNum === 2) {
                 monitors.forEach((state, index) => captureMonitor(state, monitorTargets[index]));
             }

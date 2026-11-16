@@ -1,0 +1,38 @@
+--- a/src/portals/Screencopy.cpp
++++ b/src/portals/Screencopy.cpp
+@@ -1,5 +1,6 @@
+ #include "Screencopy.hpp"
+ #include "../core/PortalManager.hpp"
++#include "../shared/ToplevelManager.hpp"
+ #include "../helpers/Log.hpp"
+ #include "../helpers/MiscFunctions.hpp"
+ #include "../shared/ImageCopyCapture.hpp"
+@@ -1280,8 +1281,28 @@
+ 
+     const std::string NAME = getRandName("xdph-streaming-");
+ 
+-    PSTREAM->stream = pw_stream_new(m_pCore, NAME.c_str(), pw_properties_new(PW_KEY_MEDIA_CLASS, "Video/Source", nullptr));
++    const auto& SELECTION = pSession->selection;
++    const char* SOURCE_KIND = SELECTION.type == TYPE_OUTPUT  ? "monitor" :
++                              SELECTION.type == TYPE_WINDOW  ? "window" :
++                              SELECTION.type == TYPE_GEOMETRY ? "region" :
++                                                               "workspace";
++    std::string SOURCE_NAME;
++    if (SELECTION.type == TYPE_OUTPUT || SELECTION.type == TYPE_GEOMETRY)
++        SOURCE_NAME = SELECTION.output;
++    else if (SELECTION.type == TYPE_WINDOW && SELECTION.windowHandle) {
++        const auto TOPLEVEL = g_pPortalManager->m_sHelpers.toplevel->handleFromHandleFull(
++            reinterpret_cast<uintptr_t>(SELECTION.windowHandle->resource()));
++        if (TOPLEVEL)
++            SOURCE_NAME = !TOPLEVEL->windowTitle.empty() ? TOPLEVEL->windowTitle : TOPLEVEL->windowClass;
++    } else if (SELECTION.type == TYPE_WORKSPACE)
++        SOURCE_NAME = SELECTION.workspace;
++
++    auto* PROPERTIES = pw_properties_new(PW_KEY_MEDIA_CLASS, "Video/Source",
++                                         "shade.capture.source-kind", SOURCE_KIND,
++                                         "shade.capture.source-name", SOURCE_NAME.c_str(),
++                                         "shade.capture.app-id", pSession->appid.c_str(), nullptr);
++    PSTREAM->stream = pw_stream_new(m_pCore, NAME.c_str(), PROPERTIES);
+ 
+     Debug::log(TRACE, "[pw] New stream name {}", NAME);
+ 

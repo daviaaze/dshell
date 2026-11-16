@@ -1,8 +1,11 @@
 import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
+import type Tray from 'gi://AstalTray';
 import Gtk from 'gi://Gtk?version=4.0';
+import TrayService from '@shade/services/desktop/trayService';
 import {barSettings} from '@shade/services/settings/bar.gschema';
-import {For, onCleanup} from 'gnim';
+import {bind, computed, For, onCleanup} from 'gnim';
+import {isTrayItemHidden, trayItemKey} from '../common/trayItem';
 
 const {TOP, LEFT, RIGHT, BOTTOM} = Astal.WindowAnchor;
 
@@ -229,6 +232,49 @@ function ModulesGroup({bar}: {bar: Bar}) {
     );
 }
 
+/** Per-app tray placement, keyed by the application's StatusNotifierItem ID. */
+function TrayItemsGroup({bar}: {bar: Bar}) {
+    const tray = TrayService.get_default();
+    return (
+        <Adw.PreferencesGroup
+            title="Ícones da bandeja"
+            description="Ativado: na barra. Desativado: somente no Acesso rápido."
+        >
+            <For each={bind(tray, 'items')}>
+                {(item: Tray.TrayItem) => {
+                    const key = trayItemKey(item);
+                    const title = bind(item, 'title');
+                    const tooltip = bind(item, 'tooltip-text');
+                    return (
+                        <Adw.SwitchRow
+                            sensitive={key !== ''}
+                            title={computed(
+                                () =>
+                                    title() ||
+                                    tooltip()?.split('\n')[0] ||
+                                    key ||
+                                    'Aplicativo da bandeja'
+                            )}
+                            subtitle={bar.hiddenTrayItems.as((ids) =>
+                                isTrayItemHidden(item, ids) ? 'No Acesso rápido' : 'Na barra'
+                            )}
+                            active={bar.hiddenTrayItems.as((ids) => !isTrayItemHidden(item, ids))}
+                            onNotifyActive={(self) => {
+                                const hidden = bar.hiddenTrayItems();
+                                if (self.active) {
+                                    bar.setHiddenTrayItems(hidden.filter((id) => id !== key));
+                                } else if (key && !hidden.includes(key)) {
+                                    bar.setHiddenTrayItems([...hidden, key]);
+                                }
+                            }}
+                        />
+                    );
+                }}
+            </For>
+        </Adw.PreferencesGroup>
+    );
+}
+
 export default () => {
     const bar = barSettings();
 
@@ -238,6 +284,7 @@ export default () => {
             <DockGroup bar={bar} />
             <PinnedAppsGroup bar={bar} />
             <ModulesGroup bar={bar} />
+            <TrayItemsGroup bar={bar} />
         </>
     );
 };

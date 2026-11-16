@@ -7,9 +7,11 @@ import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
 import {getApp} from '@shade/services/appHandle';
+import BluetoothService from '@shade/services/bluetooth/bluetoothService';
 import LayoutService from '@shade/services/display/layouts';
 import {logicalMonitorSize} from '@shade/services/display/modes';
 import {getHyprland} from '@shade/services/hyprland';
+import NetworkService from '@shade/services/network/networkService';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
@@ -23,7 +25,6 @@ import BluetoothQuickButton from './button-grid/bluetooth';
 import {createOtherControls, type OtherRoute} from './button-grid/index';
 import {ReactiveGrid} from './button-grid/reactiveGrid';
 import {DisplaySection} from './display';
-import {Battery} from './expander/battery';
 import {Calendar} from './expander/calendar';
 import {Media} from './expander/media';
 import {Weather} from './expander/weather';
@@ -43,7 +44,6 @@ type QuickRoute =
     | 'microphone'
     | 'mixer'
     | 'displays'
-    | 'other'
     | 'data'
     | OtherRoute;
 const TITLES: Record<QuickRoute, string> = {
@@ -54,7 +54,6 @@ const TITLES: Record<QuickRoute, string> = {
     microphone: 'Microfone',
     mixer: 'Mixer de aplicativos',
     displays: 'Telas',
-    other: 'Outros controles',
     data: 'Data e clima',
     profile: 'Energia',
     appearance: 'Aparência',
@@ -132,7 +131,7 @@ export default () => {
         if (!alive || measureSource) return;
         measureSource = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             measureSource = 0;
-            if (!alive || !header || !card || !card.get_root()) return GLib.SOURCE_REMOVE;
+            if (!alive || !header || !card?.get_root()) return GLib.SOURCE_REMOVE;
             const current = monitor();
             const panelWidth = width();
             const style = card.get_style_context();
@@ -254,6 +253,8 @@ export default () => {
     };
     const wifi = WifiQuickButton((self) => navigate('wifi', self));
     const bluetooth = BluetoothQuickButton((self) => navigate('bluetooth', self));
+    const wifiVisible = bind(NetworkService.get_default(), 'wifiAvailable');
+    const bluetoothVisible = bind(BluetoothService.get_default(), 'adapterAvailable');
     const other = createOtherControls((destination, self) => navigate(destination, self));
     const openDisplays = () => {
         if (route() === 'displays') return;
@@ -436,8 +437,15 @@ export default () => {
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={16}
                             >
-                                <Gtk.Label label="Conexões" cssClasses={['heading']} xalign={0} />
+                                <TrayBox />
+                                <Gtk.Label
+                                    label="Conexões"
+                                    cssClasses={['heading']}
+                                    xalign={0}
+                                    visible={computed(() => wifiVisible() || bluetoothVisible())}
+                                />
                                 <Gtk.FlowBox
+                                    visible={computed(() => wifiVisible() || bluetoothVisible())}
                                     selectionMode={Gtk.SelectionMode.NONE}
                                     minChildrenPerLine={1}
                                     maxChildrenPerLine={2}
@@ -445,8 +453,8 @@ export default () => {
                                     columnSpacing={8}
                                     rowSpacing={8}
                                 >
-                                    {wifi.widget}
-                                    {bluetooth.widget}
+                                    <Gtk.Box visible={wifiVisible}>{wifi.widget}</Gtk.Box>
+                                    <Gtk.Box visible={bluetoothVisible}>{bluetooth.widget}</Gtk.Box>
                                 </Gtk.FlowBox>
                                 <Gtk.Label label="Tela e som" cssClasses={['heading']} xalign={0} />
                                 <Gtk.Box
@@ -487,25 +495,13 @@ export default () => {
                                         <Gtk.Image iconName="go-next-symbolic" />
                                     </Gtk.Box>
                                 </Gtk.Button>
-                                <Gtk.Button onClicked={(self) => navigate('other', self)}>
-                                    <Gtk.Box spacing={12}>
-                                        <Gtk.Image iconName="preferences-system-symbolic" />
-                                        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
-                                            <Gtk.Label
-                                                label="Outros controles"
-                                                xalign={0}
-                                                cssClasses={['heading']}
-                                            />
-                                            <Gtk.Label
-                                                label="Energia, aparência, captura e timer"
-                                                wrap
-                                                xalign={0}
-                                                cssClasses={['caption', 'dimmed']}
-                                            />
-                                        </Gtk.Box>
-                                        <Gtk.Image iconName="go-next-symbolic" />
-                                    </Gtk.Box>
-                                </Gtk.Button>
+                                <Gtk.Label
+                                    label="Controles rápidos"
+                                    cssClasses={['heading']}
+                                    xalign={0}
+                                />
+                                <ReactiveGrid items={other.buttons} cols={2} />
+                                <Media />
                                 <Gtk.Box spacing={8} homogeneous>
                                     <Gtk.Button
                                         label="Data e clima"
@@ -580,17 +576,6 @@ export default () => {
                                 spacing={12}
                             >
                                 <DisplaySection />
-                            </Gtk.Box>
-                            <Gtk.Box
-                                name="other"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={16}
-                            >
-                                <ReactiveGrid items={other.buttons} cols={2} />
-                                <Battery />
-                                <Media />
-                                <TrayBox />
                             </Gtk.Box>
                             <Gtk.Box
                                 name="data"

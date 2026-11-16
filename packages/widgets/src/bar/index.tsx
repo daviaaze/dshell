@@ -1,17 +1,22 @@
 import Astal from 'gi://Astal?version=4.0';
 import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
+import type Tray from 'gi://AstalTray';
 import type Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getApp} from '@shade/services/appHandle';
+import Screencast from '@shade/services/capture/screencast';
 import Screenshot from '@shade/services/capture/screenshot';
+import TrayService from '@shade/services/desktop/trayService';
 import {Gdk2HyprMonitor, monitors} from '@shade/services/monitoring/monitors';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import WindowManager from '@shade/services/state/windowManager';
 import {type Accessor, bind, computed, For, type JSX, onCleanup} from 'gnim';
+import {isTrayItemHidden, TrayItemButton} from '../common/trayItem';
 import Clock from './clock';
 import {BAR_EDGE_RESERVE} from './geometry';
 import BluetoothAudio from './indicators/bluetoothAudio';
 import RecordingIndicator from './indicators/recording';
+import ScreencastIndicator from './indicators/screencast';
 import Launcher from './launcher';
 import SystemIndicators from './systemIndicators';
 import SystemUsage from './systemUsage';
@@ -70,6 +75,7 @@ function BarContent({
     hyprMonitor: AstalHyprland.Monitor | null;
 }) {
     const recording = bind(Screenshot.get_default(), 'recording');
+    const screencast = bind(Screencast.get_default(), 'active');
     const showStart = computed(() => bar.showLauncher() || bar.showSystemResources());
     const showCenter = computed(
         () => hyprMonitor !== null && (bar.showWorkspaces() || bar.showWindowTitle())
@@ -80,7 +86,8 @@ function BarContent({
             bar.showWeather() ||
             bar.showSystemIndicators() ||
             bar.showBluetoothBattery() ||
-            recording()
+            recording() ||
+            screencast()
     );
     const orient = vertical.as((v) => (v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL));
 
@@ -116,6 +123,7 @@ function BarContent({
 
             <BarCluster slot="end" vertical={vertical} visible={showEnd}>
                 <BluetoothAudio vertical={vertical} />
+                <ScreencastIndicator vertical={vertical} />
                 <RecordingIndicator vertical={vertical} />
                 <Clock vertical={vertical} visible={bar.showClock} />
                 <Gtk.Separator
@@ -132,8 +140,36 @@ function BarContent({
                     visible={bar.showWeather.as((v) => v && bar.showSystemIndicators())}
                 />
                 <SystemIndicators vertical={vertical} visible={bar.showSystemIndicators} />
+                <TrayItems bar={bar} vertical={vertical} />
             </BarCluster>
         </Gtk.CenterBox>
+    );
+}
+
+function TrayItems({bar, vertical}: {bar: Bar; vertical: Accessor<boolean>}) {
+    const tray = TrayService.get_default();
+    const hidden = bar.hiddenTrayItems;
+    const orientation = vertical.as((v) =>
+        v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
+    );
+    return (
+        <Gtk.Box
+            slot="end"
+            spacing={4}
+            orientation={orientation}
+            visible={bind(tray, 'items').as((items) =>
+                items.some((item) => !isTrayItemHidden(item, hidden()))
+            )}
+        >
+            <For each={bind(tray, 'items')}>
+                {(item: Tray.TrayItem) => (
+                    <TrayItemButton
+                        item={item}
+                        visible={hidden.as((ids) => !isTrayItemHidden(item, ids))}
+                    />
+                )}
+            </For>
+        </Gtk.Box>
     );
 }
 

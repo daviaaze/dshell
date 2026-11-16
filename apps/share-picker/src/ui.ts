@@ -1,6 +1,7 @@
 /**
  * GTK widget builders for the picker UI.
  */
+import type Gdk from 'gi://Gdk?version=4.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {monitorResolution} from './monitorGeometry';
@@ -214,8 +215,20 @@ function windowCard(flow: Gtk.FlowBox, state: WindowState, select: SelectFn): Pr
     return preview;
 }
 
+/** Preview kept in the selection summary; capture setters update it in place. */
+export function makeSelectedPreview(texture: Gdk.Texture | null): PreviewHandle {
+    const preview = makePreview(texture ? 'available' : 'unavailable');
+    preview.setTexture(texture);
+    return preview;
+}
+
 function scrolled(child: Gtk.Widget): Gtk.ScrolledWindow {
-    return new Gtk.ScrolledWindow({child, hexpand: true, vexpand: true});
+    return new Gtk.ScrolledWindow({
+        child,
+        hexpand: true,
+        vexpand: true,
+        hscrollbarPolicy: Gtk.PolicyType.NEVER,
+    });
 }
 
 export interface Tab {

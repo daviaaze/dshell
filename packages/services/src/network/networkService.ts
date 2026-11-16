@@ -51,6 +51,10 @@ export default class NetworkService extends Object {
     get wifiState(): number {
         return this.#wifi?.state ?? 0;
     }
+    @property
+    get wifiAvailable(): boolean {
+        return this.#wifi !== null;
+    }
 
     @property
     get wifiReady(): boolean {
@@ -107,6 +111,7 @@ export default class NetworkService extends Object {
             this.#cleanupWifiSignals();
             this.#wifi = newWifi;
             this.notify('wifi');
+            this.notify('wifi-available');
 
             const w = this.#wifi;
             if (w) {

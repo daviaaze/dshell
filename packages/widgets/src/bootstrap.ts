@@ -42,6 +42,7 @@ import './style';
 import '@shade/services/audio/autoSwitch';
 import '@shade/services/state/apps';
 import '@shade/services/clipboard/history';
+import '@shade/services/capture/screencast';
 
 // ── Widgets (each pulls in its own services via its import graph) ───────────
 import './wallpaper/widget';

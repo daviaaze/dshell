@@ -57,6 +57,10 @@ export const barSettings = defineSettings('bar', (s) =>
             default: true,
             summary: 'Show connected bluetooth device battery level in the bar',
         })
+        .key('hidden-tray-items', 'as', {
+            default: [],
+            summary: 'Tray item IDs displayed in Quick Settings instead of the bar',
+        })
         .key('dock-enabled', 'b', {
             default: false,
             summary: 'Show the dock/taskbar at the bottom of the screen',

@@ -26,9 +26,7 @@ interface TargetButtonProps {
 interface ControlPanelProps {
     ss: Screenshot;
     quick: Accessor<boolean>;
-    reviewing: Accessor<boolean>;
-    onReview: () => void;
-    onBack: () => void;
+    canCapture: Accessor<boolean>;
     onReset: () => void;
     onCapture: () => void;
     onCancel: () => void;
@@ -36,14 +34,6 @@ interface ControlPanelProps {
     maxHeight: Accessor<number>;
     onTargetChange: (value: string) => void;
 }
-
-const TARGET_DESCRIPTIONS: Readonly<Record<'fullscreen' | 'area' | 'window' | 'monitor', string>> =
-    {
-        fullscreen: 'Toda a área de trabalho será capturada.',
-        area: 'Arraste para definir a região na tela.',
-        window: 'Clique em uma janela visível para selecioná-la.',
-        monitor: 'O monitor em foco será capturado.',
-    };
 
 const ModeTab = ({label, value, icon, ss, onReset}: ModeTabProps) => (
     <Gtk.ToggleButton
@@ -91,11 +81,9 @@ const TargetButton = ({label, value, icon, ss, onReset, onTargetChange}: TargetB
 export const ControlPanel = ({
     ss,
     quick,
-    reviewing,
+    canCapture,
     targetSummary,
     maxHeight,
-    onReview,
-    onBack,
     onCapture,
     onReset,
     onCancel,
@@ -136,74 +124,134 @@ export const ControlPanel = ({
                         marginEnd={16}
                     >
                         <Gtk.Label
-                            label={reviewing.as((review) =>
-                                review ? 'Revisar captura' : 'Capturar tela'
-                            )}
+                            label="Capturar tela"
                             halign={Gtk.Align.START}
                             cssClasses={['title-2']}
                         />
                         <Gtk.Label
-                            label={reviewing.as((review) =>
-                                review
-                                    ? 'Revise o alvo selecionado. A captura só começa quando você confirmar.'
-                                    : 'Escolha o que capturar. Nada é capturado até você confirmar.'
-                            )}
+                            label="Escolha o que capturar e inicie quando estiver pronto."
                             wrap
                             maxWidthChars={48}
                             xalign={0}
                             visible={dense.as((d) => !d)}
                             cssClasses={['dim-label']}
                         />
-                        <Gtk.Stack
-                            visibleChildName={reviewing.as((review) =>
-                                review ? 'review' : 'select'
-                            )}
-                            hhomogeneous={false}
-                            vhomogeneous={false}
+                        <Gtk.Box
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={dense.as((d) => (d ? 8 : 12))}
                         >
                             <Gtk.Box
-                                name="review"
-                                slot="named"
+                                visible={quick.as((isQuick) => !isQuick)}
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={10}
+                                spacing={dense.as((d) => (d ? 8 : 12))}
                             >
+                                <Gtk.Box
+                                    orientation={Gtk.Orientation.HORIZONTAL}
+                                    homogeneous
+                                    cssClasses={['linked', 'horizontal']}
+                                >
+                                    <ModeTab
+                                        label="Imagem"
+                                        value="screenshot"
+                                        icon="camera-photo-symbolic"
+                                        ss={ss}
+                                        onReset={onReset}
+                                    />
+                                    <ModeTab
+                                        label="Gravação"
+                                        value="recording"
+                                        icon="camera-video-symbolic"
+                                        ss={ss}
+                                        onReset={onReset}
+                                    />
+                                </Gtk.Box>
                                 <Gtk.Label
-                                    label={bind(ss, 'selectedMode').as((mode) =>
-                                        mode === 'screenshot' ? 'Imagem' : 'Gravação'
-                                    )}
+                                    label="O que capturar"
                                     halign={Gtk.Align.START}
                                     cssClasses={['heading']}
                                 />
-                                <Gtk.Label
-                                    label={targetSummary}
-                                    tooltipText={targetSummary}
-                                    hexpand
-                                    wrap
-                                    wrapMode={Pango.WrapMode.WORD_CHAR}
-                                    maxWidthChars={48}
-                                    lines={2}
-                                    ellipsize={Pango.EllipsizeMode.END}
-                                    xalign={0}
-                                />
-                                <Gtk.Expander label="Detalhes completos do alvo">
-                                    <Gtk.Label label={targetSummary} wrap selectable xalign={0} />
-                                </Gtk.Expander>
-                                <Gtk.Label
-                                    label={bind(ss, 'selectedTarget').as(
-                                        (target) => TARGET_DESCRIPTIONS[target]
-                                    )}
-                                    wrap
-                                    xalign={0}
-                                    cssClasses={['dim-label']}
-                                />
-                                <Gtk.Box spacing={8}>
-                                    <Gtk.Button label="Alterar alvo" onClicked={onBack} hexpand />
-                                    <Gtk.Button label="Cancelar" onClicked={onCancel} hexpand />
+                                <Gtk.Box
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    cssClasses={['linked', 'vertical']}
+                                >
+                                    <TargetButton
+                                        label="Tela cheia"
+                                        value="fullscreen"
+                                        icon="video-display-symbolic"
+                                        ss={ss}
+                                        onReset={onReset}
+                                        onTargetChange={onTargetChange}
+                                    />
+                                    <TargetButton
+                                        label="Área"
+                                        value="area"
+                                        icon="edit-select-all-symbolic"
+                                        ss={ss}
+                                        onReset={onReset}
+                                        onTargetChange={onTargetChange}
+                                    />
+                                    <TargetButton
+                                        label="Janela"
+                                        value="window"
+                                        icon="focus-windows-symbolic"
+                                        ss={ss}
+                                        onReset={onReset}
+                                        onTargetChange={onTargetChange}
+                                    />
+                                    <TargetButton
+                                        label="Monitor"
+                                        value="monitor"
+                                        icon="video-display-symbolic"
+                                        ss={ss}
+                                        onReset={onReset}
+                                        onTargetChange={onTargetChange}
+                                    />
                                 </Gtk.Box>
+                            </Gtk.Box>
+                            <Gtk.Label
+                                label={targetSummary}
+                                tooltipText={targetSummary}
+                                wrap
+                                wrapMode={Pango.WrapMode.WORD_CHAR}
+                                maxWidthChars={48}
+                                lines={2}
+                                ellipsize={Pango.EllipsizeMode.END}
+                                xalign={0}
+                            />
+                            <Gtk.Expander label="Detalhes completos do alvo">
+                                <Gtk.Label label={targetSummary} wrap selectable xalign={0} />
+                            </Gtk.Expander>
+                            <Gtk.Box
+                                orientation={Gtk.Orientation.HORIZONTAL}
+                                spacing={16}
+                                visible={bind(ss, 'selectedMode').as(
+                                    (mode) => mode === 'recording'
+                                )}
+                            >
+                                <Gtk.CheckButton
+                                    label="Áudio"
+                                    active={bind(ss.prefs, 'audio')}
+                                    onNotifyActive={({active}) => {
+                                        if (ss.prefs.audio !== active) ss.prefs.audio = active;
+                                    }}
+                                />
+                                <Gtk.CheckButton
+                                    label="Borda da gravação"
+                                    active={captureSettings.showRecordingBoundary}
+                                    onNotifyActive={({active}) => {
+                                        if (captureSettings.showRecordingBoundary() !== active) {
+                                            captureSettings.setShowRecordingBoundary(active);
+                                        }
+                                    }}
+                                />
+                            </Gtk.Box>
+                            <Gtk.Box spacing={8}>
+                                <Gtk.Button label="Cancelar" onClicked={onCancel} hexpand />
                                 <Gtk.Button
                                     onClicked={onCapture}
                                     cssClasses={['suggested-action']}
-                                    sensitive={bind(ss, 'captureBusy').as((busy) => !busy)}
+                                    hexpand
+                                    sensitive={canCapture}
                                 >
                                     <Adw.ButtonContent
                                         iconName={bind(ss, 'selectedMode').as((mode) =>
@@ -219,140 +267,13 @@ export const ControlPanel = ({
                                     />
                                 </Gtk.Button>
                             </Gtk.Box>
-                            <Gtk.Box
-                                name="select"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={dense.as((d) => (d ? 8 : 12))}
-                            >
-                                <Gtk.Box
-                                    visible={quick.as((isQuick) => !isQuick)}
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={dense.as((d) => (d ? 8 : 12))}
-                                >
-                                    <Gtk.Box
-                                        orientation={Gtk.Orientation.HORIZONTAL}
-                                        homogeneous
-                                        cssClasses={['linked', 'horizontal']}
-                                    >
-                                        <ModeTab
-                                            label="Imagem"
-                                            value="screenshot"
-                                            icon="camera-photo-symbolic"
-                                            ss={ss}
-                                            onReset={onReset}
-                                        />
-                                        <ModeTab
-                                            label="Gravação"
-                                            value="recording"
-                                            icon="camera-video-symbolic"
-                                            ss={ss}
-                                            onReset={onReset}
-                                        />
-                                    </Gtk.Box>
-                                    <Gtk.Label
-                                        label="O que capturar"
-                                        halign={Gtk.Align.START}
-                                        cssClasses={['heading']}
-                                    />
-                                    <Gtk.Box
-                                        orientation={Gtk.Orientation.VERTICAL}
-                                        cssClasses={['linked', 'vertical']}
-                                    >
-                                        <TargetButton
-                                            label="Tela cheia"
-                                            value="fullscreen"
-                                            icon="video-display-symbolic"
-                                            ss={ss}
-                                            onReset={onReset}
-                                            onTargetChange={onTargetChange}
-                                        />
-                                        <TargetButton
-                                            label="Área"
-                                            value="area"
-                                            icon="edit-select-all-symbolic"
-                                            ss={ss}
-                                            onReset={onReset}
-                                            onTargetChange={onTargetChange}
-                                        />
-                                        <TargetButton
-                                            label="Janela"
-                                            value="window"
-                                            icon="focus-windows-symbolic"
-                                            ss={ss}
-                                            onReset={onReset}
-                                            onTargetChange={onTargetChange}
-                                        />
-                                        <TargetButton
-                                            label="Monitor"
-                                            value="monitor"
-                                            icon="video-display-symbolic"
-                                            ss={ss}
-                                            onReset={onReset}
-                                            onTargetChange={onTargetChange}
-                                        />
-                                    </Gtk.Box>
-                                    <Gtk.Label
-                                        label={targetSummary}
-                                        tooltipText={targetSummary}
-                                        wrap
-                                        wrapMode={Pango.WrapMode.WORD_CHAR}
-                                        maxWidthChars={48}
-                                        lines={2}
-                                        ellipsize={Pango.EllipsizeMode.END}
-                                        xalign={0}
-                                    />
-                                    <Gtk.Label
-                                        label="Selecione um alvo na tela e revise antes de capturar."
-                                        visible={dense.as((d) => !d)}
-                                        wrap
-                                        xalign={0}
-                                        cssClasses={['dim-label']}
-                                    />
-                                </Gtk.Box>
-                                <Gtk.Box
-                                    orientation={Gtk.Orientation.HORIZONTAL}
-                                    spacing={16}
-                                    visible={bind(ss, 'selectedMode').as(
-                                        (mode) => mode === 'recording'
-                                    )}
-                                >
-                                    <Gtk.CheckButton
-                                        label="Áudio"
-                                        active={bind(ss.prefs, 'audio')}
-                                        onNotifyActive={({active}) => {
-                                            if (ss.prefs.audio !== active) ss.prefs.audio = active;
-                                        }}
-                                    />
-                                    <Gtk.CheckButton
-                                        label="Borda da gravação"
-                                        active={captureSettings.showRecordingBoundary}
-                                        onNotifyActive={({active}) => {
-                                            if (
-                                                captureSettings.showRecordingBoundary() !== active
-                                            ) {
-                                                captureSettings.setShowRecordingBoundary(active);
-                                            }
-                                        }}
-                                    />
-                                </Gtk.Box>
-                                <Gtk.Box spacing={8}>
-                                    <Gtk.Button label="Cancelar" onClicked={onCancel} hexpand />
-                                    <Gtk.Button
-                                        label="Revisar alvo"
-                                        onClicked={onReview}
-                                        cssClasses={['suggested-action']}
-                                        hexpand
-                                    />
-                                </Gtk.Box>
-                                <Gtk.Label
-                                    label="Esc para cancelar · Enter para revisar"
-                                    halign={Gtk.Align.CENTER}
-                                    visible={dense.as((d) => !d)}
-                                    cssClasses={['caption', 'dimmed']}
-                                />
-                            </Gtk.Box>
-                        </Gtk.Stack>
+                            <Gtk.Label
+                                label="Esc para cancelar · Enter para capturar"
+                                halign={Gtk.Align.CENTER}
+                                visible={dense.as((d) => !d)}
+                                cssClasses={['caption', 'dimmed']}
+                            />
+                        </Gtk.Box>
                     </Gtk.Box>
                 </Gtk.Box>
             </Gtk.ScrolledWindow>

@@ -64,6 +64,11 @@ export default class BluetoothService extends Object {
     }
 
     @property
+    get adapterAvailable(): boolean {
+        return this.#bt?.adapter !== null && this.#bt?.adapter !== undefined;
+    }
+
+    @property
     get isPowered(): boolean {
         return this.#bt?.isPowered ?? false;
     }
@@ -187,6 +192,11 @@ export default class BluetoothService extends Object {
             return;
         }
 
+        this.#bt.connect('notify::adapter', () => {
+            this.notify('adapter-available');
+        });
+        this.#bt.connect('adapter-added', () => this.notify('adapter-available'));
+        this.#bt.connect('adapter-removed', () => this.notify('adapter-available'));
         this.#bt.connect('notify::is-powered', () => {
             this.notify('is-powered');
             this.notify('icon-name');

@@ -32,6 +32,16 @@ import {
 } from './selection';
 
 const LOG_TAG = 'screenshot-ui';
+const RESIZE_CURSORS: Record<ResizeEdge, string> = {
+    n: 'ns-resize',
+    s: 'ns-resize',
+    e: 'ew-resize',
+    w: 'ew-resize',
+    nw: 'nwse-resize',
+    se: 'nwse-resize',
+    ne: 'nesw-resize',
+    sw: 'nesw-resize',
+};
 
 // ── State ─────────────────────────────────────────────────────────
 
@@ -62,8 +72,6 @@ interface OverlayState {
     transform: Accessor<StageTransform | null>;
     setTransform: (value: StageTransform | null) => void;
     daRef: {current: Gtk.DrawingArea | null};
-    reviewing: Accessor<boolean>;
-    setReviewing: (value: boolean) => void;
 }
 
 function getSelectionState(state: OverlayState): SelectionState {
@@ -81,7 +89,6 @@ function getSelectionState(state: OverlayState): SelectionState {
 }
 
 function resetSelection(state: OverlayState) {
-    state.setReviewing(false);
     state.setDragStart(null);
     state.setDragEnd(null);
     state.setSelActive(false);
@@ -112,14 +119,22 @@ function updateStageTransform(state: OverlayState, width: number, height: number
         return;
     }
     const bounds = getDesktopStageBounds();
-    state.setTransform(stageTransform(
-        bounds.width, bounds.height, width, height, bounds.x, bounds.y,
-        texture.get_width(), texture.get_height()
-    ));
+    state.setTransform(
+        stageTransform(
+            bounds.width,
+            bounds.height,
+            width,
+            height,
+            bounds.x,
+            bounds.y,
+            texture.get_width(),
+            texture.get_height()
+        )
+    );
 }
 
 function onDragBegin(state: OverlayState, sx: number, sy: number) {
-    if (state.reviewing() || state.ss.selectedTarget !== 'area') return;
+    if (state.ss.selectedTarget !== 'area') return;
     const transform = state.transform();
     const start = transform ? clampStagePoint({x: sx, y: sy}, transform) : {x: sx, y: sy};
     const dragStart = state.dragStart();
@@ -168,7 +183,6 @@ function onDragUpdate(state: OverlayState, ox: number, oy: number) {
 }
 
 function onDragEnd(state: OverlayState) {
-    if (state.reviewing()) return;
     state.setResizeEdge(null);
     state.setResizeRect(null);
     const start = state.dragStart();
@@ -181,9 +195,8 @@ function onDragEnd(state: OverlayState) {
     state.daRef.current?.queue_draw();
 }
 
-/** Source clicks only select; capture requires the review action. */
+/** Source clicks select targets; dragging an area never starts capture. */
 function onClickPressed(state: OverlayState, cx: number, cy: number) {
-    if (state.reviewing()) return;
     const transform = state.transform();
     const point = transform ? viewToStage({x: cx, y: cy}, transform) : {x: cx, y: cy};
     const origin = transform ? {x: 0, y: 0} : state.monOrigin();
@@ -192,8 +205,12 @@ function onClickPressed(state: OverlayState, cx: number, cy: number) {
     if (state.ss.selectedTarget === 'window') {
         state.setSelectedWindow(hit);
     } else if (state.ss.selectedTarget === 'area') {
-        const a = transform ? stageToView({x: hit.x, y: hit.y}, transform) : {x: hit.x - origin.x, y: hit.y - origin.y};
-        const b = transform ? stageToView({x: hit.x + hit.width, y: hit.y + hit.height}, transform) : {x: a.x + hit.width, y: a.y + hit.height};
+        const a = transform
+            ? stageToView({x: hit.x, y: hit.y}, transform)
+            : {x: hit.x - origin.x, y: hit.y - origin.y};
+        const b = transform
+            ? stageToView({x: hit.x + hit.width, y: hit.y + hit.height}, transform)
+            : {x: a.x + hit.width, y: a.y + hit.height};
         state.setDragStart(a);
         state.setDragEnd(b);
         state.setSelActive(true);
@@ -202,23 +219,19 @@ function onClickPressed(state: OverlayState, cx: number, cy: number) {
     state.daRef.current?.queue_draw();
 }
 
-function reviewCurrentSelection(state: OverlayState) {
-    if (state.reviewing()) return;
+function isSelectionValid(state: OverlayState): boolean {
     const target = state.ss.selectedTarget;
-    const geometry = buildGeometry(target, getSelectionState(state), state.transform());
-    if (target !== 'fullscreen' && !geometry) return;
-    state.setReviewing(true);
+    return (
+        target === 'fullscreen' ||
+        buildGeometry(target, getSelectionState(state), state.transform()) !== null
+    );
 }
 
-/** Confirm the current selection: crop from stage (screenshot) or record. */
+/** Capture the current valid selection directly, without a review stage. */
 function executeCapture(state: OverlayState) {
-    if (!state.reviewing() || state.ss.captureBusy) return;
+    if (state.ss.captureBusy || !isSelectionValid(state)) return;
     const target = state.ss.selectedTarget;
     const geom = buildGeometry(target, getSelectionState(state), state.transform());
-    if (target !== 'fullscreen' && !geom) {
-        state.setReviewing(false);
-        return;
-    }
     const geomLabel = geom ? `${geom.width}x${geom.height}+${geom.x}+${geom.y}` : 'full';
     logger.info(
         LOG_TAG,
@@ -233,15 +246,13 @@ function handleKey(state: OverlayState, keyval: number): boolean {
         return true;
     }
     if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
-        if (!state.reviewing()) reviewCurrentSelection(state);
+        executeCapture(state);
         return true;
     }
-    // Enter never commits capture: the explicit review/confirm controls own consent.
     return false;
 }
 
 function handleTargetChange(state: OverlayState, value: string) {
-    if (state.reviewing()) return;
     if (value === 'window' || value === 'area') {
         try {
             state.setWindows(loadWindows(getHyprlandClientSnapshot()));
@@ -319,7 +330,7 @@ function SelectionArea({
                 const drag = Gtk.GestureDrag.new();
                 let dragMoved = false;
                 drag.connect('drag-begin', (_g, sx, sy) => {
-                    if (state.ss.selectedTarget !== 'area' || state.reviewing()) return;
+                    if (state.ss.selectedTarget !== 'area') return;
                     if (!updateCanvasOrigin(state)) {
                         drag.set_state(Gtk.EventSequenceState.DENIED);
                         return;
@@ -344,7 +355,12 @@ function SelectionArea({
                     else onClickPressed(state, cx, cy);
                 });
                 click.connect('released', (_g, _n, cx, cy) => {
-                    if (state.ss.selectedTarget !== 'area' || dragMoved || !updateCanvasOrigin(state)) return;
+                    if (
+                        state.ss.selectedTarget !== 'area' ||
+                        dragMoved ||
+                        !updateCanvasOrigin(state)
+                    )
+                        return;
                     onClickPressed(state, cx, cy);
                 });
                 self.add_controller(click);
@@ -363,17 +379,17 @@ function SelectionArea({
                 motion.connect('motion', (_controller, x, y) => {
                     const start = state.dragStart();
                     const end = state.dragEnd();
-                    if (state.ss.selectedTarget !== 'area' || !state.selActive() || !start || !end) {
+                    if (
+                        state.ss.selectedTarget !== 'area' ||
+                        !state.selActive() ||
+                        !start ||
+                        !end
+                    ) {
                         self.set_cursor_from_name(null);
                         return;
                     }
                     const edge = resizeEdgeAt(normalizeRect(start, end), {x, y});
-                    const cursor = edge === 'n' || edge === 's' ? 'ns-resize'
-                        : edge === 'e' || edge === 'w' ? 'ew-resize'
-                        : edge === 'nw' || edge === 'se' ? 'nwse-resize'
-                        : edge === 'ne' || edge === 'sw' ? 'nesw-resize'
-                        : null;
-                    self.set_cursor_from_name(cursor);
+                    self.set_cursor_from_name(edge ? RESIZE_CURSORS[edge] : null);
                 });
                 motion.connect('leave', () => self.set_cursor_from_name(null));
                 self.add_controller(motion);
@@ -400,15 +416,38 @@ export default () => {
     const [windows, setWindows] = createState<WinInfo[]>([]);
     const [monOrigin, setMonOrigin] = createState<Point>({x: 0, y: 0});
     const [resizeEdge, setResizeEdge] = createState<ResizeEdge | null>(null);
-    const [resizeRect, setResizeRect] = createState<{x: number; y: number; width: number; height: number} | null>(null);
+    const [resizeRect, setResizeRect] = createState<{
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    } | null>(null);
     const [resizeStart, setResizeStart] = createState<Point | null>(null);
-    const [reviewing, setReviewing] = createState(false);
     const [transform, setTransform] = createState<StageTransform | null>(null);
     const state: OverlayState = {
-        hyprland, ss, dragStart, setDragStart, dragEnd, setDragEnd, selActive, setSelActive,
-        selectedWindow, setSelectedWindow, windows, setWindows, monOrigin, setMonOrigin,
-        resizeEdge, setResizeEdge, resizeRect, setResizeRect, resizeStart, setResizeStart,
-        transform, setTransform, daRef: {current: null}, reviewing, setReviewing,
+        hyprland,
+        ss,
+        dragStart,
+        setDragStart,
+        dragEnd,
+        setDragEnd,
+        selActive,
+        setSelActive,
+        selectedWindow,
+        setSelectedWindow,
+        windows,
+        setWindows,
+        monOrigin,
+        setMonOrigin,
+        resizeEdge,
+        setResizeEdge,
+        resizeRect,
+        setResizeRect,
+        resizeStart,
+        setResizeStart,
+        transform,
+        setTransform,
+        daRef: {current: null},
     };
     const target = bind(ss, 'selectedTarget');
     const focusedMonitor = bind(hyprland, 'focused-monitor');
@@ -436,6 +475,7 @@ export default () => {
         }
         return `Área · ${rectangle}`;
     });
+    const canCapture = computed(() => !ss.captureBusy && isSelectionValid(state));
     // Panel margins are 24px top/bottom; track the real overlay height so the
     // panel stays inside short monitors regardless of scale or reserved areas.
     const [overlayHeight, setOverlayHeight] = createState(600);
@@ -444,8 +484,7 @@ export default () => {
         <Astal.Window
             ref={(self) => {
                 WindowManager.get_default().setOverlay(self);
-                // Capture keys before focused controls; Enter reviews but never
-                // activates the capture confirmation as an implicit default.
+                // Capture keys before focused controls so Enter triggers only a valid, non-busy selection.
                 const key = Gtk.EventControllerKey.new();
                 key.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
                 key.connect('key-pressed', (_c, keyval) => handleKey(state, keyval));
@@ -466,7 +505,8 @@ export default () => {
                 if (self.visible) {
                     updateCanvasOrigin(state);
                     const canvas = state.daRef.current;
-                    if (canvas) updateStageTransform(state, canvas.get_width(), canvas.get_height());
+                    if (canvas)
+                        updateStageTransform(state, canvas.get_width(), canvas.get_height());
                     try {
                         setWindows(loadWindows(getHyprlandClientSnapshot()));
                     } catch (error) {
@@ -502,11 +542,9 @@ export default () => {
                 <ControlPanel
                     quick={bind(ss, 'overlayQuick')}
                     ss={ss}
-                    reviewing={reviewing}
+                    canCapture={canCapture}
                     targetSummary={targetSummary}
                     maxHeight={panelMaxHeight}
-                    onBack={() => setReviewing(false)}
-                    onReview={() => reviewCurrentSelection(state)}
                     onCapture={() => executeCapture(state)}
                     onCancel={() => ss.hideOverlay()}
                     onReset={() => resetSelection(state)}

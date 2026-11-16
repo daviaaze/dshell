@@ -1,12 +1,14 @@
 import Network from 'gi://AstalNetwork';
 import Gtk from 'gi://Gtk?version=4.0';
-import {IconNames} from '@shade/core/iconNames';
 import {cleanupNode, connectFor} from '@shade/core/connectFor';
+import {IconNames} from '@shade/core/iconNames';
+import NetworkService from '@shade/services/network/networkService';
 import {createState, effect, onCleanup} from 'gnim';
 import {wifiIconName} from '../../quicksettings/network/utils';
 
 export default () => {
     const network = Network.get_default();
+    const networkService = NetworkService.get_default();
     const [iconName, setIconName] = createState('network-no-route-symbolic');
     const [visible, setVisible] = createState(false);
 
@@ -42,7 +44,7 @@ export default () => {
 
         const update = () => {
             const primary = network.primary;
-            setVisible(primary !== Network.Primary.UNKNOWN);
+            setVisible(primary === Network.Primary.WIRED || networkService.wifiAvailable);
 
             if (primary === Network.Primary.WIFI) {
                 const w = network.wifi;
@@ -65,6 +67,9 @@ export default () => {
             update();
         });
         connectFor(_hn, network, 'notify::wired', update);
+        connectFor(_hn, networkService, 'notify::wifi-available', () => {
+            update();
+        });
         connectWifiSignals();
         update();
 
