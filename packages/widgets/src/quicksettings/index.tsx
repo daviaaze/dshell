@@ -19,6 +19,7 @@ import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {bind, computed, createState, effect, onCleanup} from 'gnim';
 import {BAR_EDGE_RESERVE} from '../bar/geometry';
 import {PowerMenu} from '../common/powerMenu';
+import {OPAQUE_SURFACE_CSS, SURFACE_PADDING} from '../common/surface';
 import {openSettings} from '../settings/settingsOpen';
 import AppMixer from './appMixer';
 import BluetoothQuickButton from './button-grid/bluetooth';
@@ -292,8 +293,8 @@ export default () => {
             margin={WINDOW_MARGIN}
             monitor={monitor.as(monitorIndexFromHyprland)}
             widthRequest={width}
-            cssClasses={[]}
-            css="background-color: transparent; padding: 0; border: none; min-height: 0;"
+            cssClasses={['background']}
+            css={OPAQUE_SURFACE_CSS}
             ref={(self) => {
                 scheduleMeasure();
                 manager.setQuicksettings(self);
@@ -341,6 +342,10 @@ export default () => {
                 <Gtk.Box
                     orientation={Gtk.Orientation.VERTICAL}
                     cssClasses={['card', 'vertical']}
+                    marginTop={SURFACE_PADDING}
+                    marginBottom={SURFACE_PADDING}
+                    marginStart={SURFACE_PADDING}
+                    marginEnd={SURFACE_PADDING}
                     ref={(self) => {
                         card = self;
                         scheduleMeasure();

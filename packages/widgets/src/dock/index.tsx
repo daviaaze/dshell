@@ -8,6 +8,7 @@ import {barSettings} from '@shade/services/settings/bar.gschema';
 import {getDesktopFileForClient} from '@shade/services/state/apps';
 import WindowManager from '@shade/services/state/windowManager';
 import {bind, computed, For, onCleanup} from 'gnim';
+import {COMPACT_SURFACE_PADDING, OPAQUE_SURFACE_CSS} from '../common/surface';
 import {openSettings} from '../settings/settingsOpen';
 import DockItem from './item';
 
@@ -76,8 +77,8 @@ export default () => {
             application={getApp()}
             namespace={'shade-dock'}
             name="dock"
-            cssClasses={[]}
-            css={'background-color: transparent; box-shadow: none;'}
+            cssClasses={['background']}
+            css={OPAQUE_SURFACE_CSS}
             exclusivity={Astal.Exclusivity.NORMAL}
             marginBottom={4}
         >
@@ -86,6 +87,7 @@ export default () => {
                 valign={Gtk.Align.END}
                 spacing={8}
                 cssClasses={['horizontal', 'card', 'background']}
+                css={`padding: ${COMPACT_SURFACE_PADDING}px;`}
             >
                 <For each={dockItems}>
                     {(item) => (

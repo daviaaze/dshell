@@ -9,6 +9,7 @@ import Touchpad from '@shade/services/input/touchpad';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {bind, computed, onCleanup, With} from 'gnim';
+import {OPAQUE_SURFACE_CSS} from '../common/surface';
 import Popup from './popup';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
@@ -47,8 +48,8 @@ export default () => {
             anchor={Astal.WindowAnchor.BOTTOM}
             margin={24}
             widthRequest={250}
-            cssClasses={[]}
-            css="background-color: transparent;"
+            cssClasses={['background']}
+            css={OPAQUE_SURFACE_CSS}
             monitor={bind(hyprland, 'focused-monitor').as(monitorIndexFromHyprland)}
             ref={(self) => {
                 const manager = WindowManager.get_default();

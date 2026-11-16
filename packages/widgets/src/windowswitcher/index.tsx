@@ -9,6 +9,7 @@ import {getApp} from '@shade/services/appHandle';
 import {closeHyprlandClient, focusHyprlandClient, getHyprland} from '@shade/services/hyprland';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, computed, createState, For, onCleanup, type Setter} from 'gnim';
+import {getPopoverMaxHeight, OPAQUE_SURFACE_CSS, SURFACE_PADDING} from '../common/surface';
 import SwitcherItem from './item';
 
 let switcherWindow: Astal.Window | null = null;
@@ -159,10 +160,10 @@ export default () => {
             ? Math.max(1, Math.min(500, monitor.width / (monitor.scale || 1) - 32))
             : 500;
     });
-    const panelHeight = computed(() => {
-        const monitor = focusedMonitor();
-        return monitor ? Math.max(1, monitor.height / (monitor.scale || 1) - 64) : 600;
-    });
+    let switcherRoot: Gtk.Widget | null = null;
+    const panelHeight = computed(() =>
+        switcherRoot ? getPopoverMaxHeight(switcherRoot) - SURFACE_PADDING * 2 : 0
+    );
 
     const [selectedIndex, setSelectedIndex] = createState(0);
     const [mru, setMru] = createState<string[]>([]);
@@ -238,11 +239,12 @@ export default () => {
                 Astal.WindowAnchor.RIGHT
             }
             monitor={focusedMonitor.as((m) => monitorIndexFromHyprland(m))}
-            css={'background-color: transparent;'}
+            css="background-color: transparent;"
         >
             <Gtk.Box
                 ref={(self) => {
                     state.boxRef.current = self;
+                    switcherRoot = self;
                 }}
                 focusable
                 halign={Gtk.Align.CENTER}
@@ -251,6 +253,7 @@ export default () => {
                 spacing={8}
                 widthRequest={panelWidth}
                 cssClasses={['card', 'background']}
+                css={`${OPAQUE_SURFACE_CSS} padding: ${SURFACE_PADDING}px;`}
             >
                 <Gtk.ScrolledWindow
                     propagateNaturalHeight

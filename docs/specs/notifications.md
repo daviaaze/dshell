@@ -6,7 +6,7 @@ Sources: toast surface [`notifications/index.tsx`](../../packages/widgets/src/no
 
 Toasts use the notification daemon through `useNotifd`, corner anchoring and passive `Keymode.NONE`; they do not take keyboard focus. They are visible only with an available daemon and toast count, while DND is off and the session is unlocked. At most three newest toasts are shown. Noncritical expiry is timer-managed and pauses/resumes with interaction; critical notifications do not auto-dismiss. Invoking an action or dismissing a toast removes it from the toast stack, not from history.
 
-The toast layer is anchored to the upper-right corner of the focused monitor, regardless of bar position, with a 4px outer margin. Keep the corner anchor: adding both horizontal anchors would create an invisible full-width input surface.
+The toast layer is anchored to the upper-right corner of the focused monitor, regardless of bar position, with a 4px outer margin. Keep the corner anchor: adding both horizontal anchors would create an invisible full-width input surface. The toast-list spacing is an intentional 4px exception to the general 8px list spacing: each independent card owns its 8px inset, and the narrow inter-card gap stays transparent. No extra transparent gutter is added around the stack.
 
 Toast cards use a compact body in the toast surface while the notification center retains the full body. Their scrolled viewport is bounded from the focused monitor's logical height; visibility also yields while the center is open so the toast layer cannot cover its controls.
 

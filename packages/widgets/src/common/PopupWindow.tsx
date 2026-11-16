@@ -24,11 +24,11 @@ import {getHyprland} from '@shade/services/hyprland';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, createState, type JSX} from 'gnim';
+import {SURFACE_EDGE_GAP} from './surface';
 
 // ── Types ──
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
-
 export interface PopupWindowProps {
     /** Unique window name, used as the Astal namespace. */
     name: string;
@@ -52,7 +52,7 @@ export interface PopupWindowProps {
     /** Keyboard ownership; passive toasts use NONE. */
     keymode?: Astal.Keymode;
 
-    /** Margin from the window edges. Defaults to 12. */
+    /** Outer layer margin. Defaults to the shared 4px shell edge gap. */
     margin?: number;
 
     /**
@@ -92,24 +92,11 @@ export interface PopupHandle {
 
 // ── Default anchor from bar position ──
 
-/** Bar height/width offset so popups don't overlap the bar. */
-const BAR_MARGIN_TOP_BOTTOM = 40;
-const BAR_MARGIN_SIDE = 8;
-
+/** Use a corner by default so transparent popups never span the full monitor. */
 function defaultAnchor(position: number): number {
-    if (position === TOP) return TOP | LEFT | RIGHT;
-    if (position === RIGHT) return RIGHT | TOP | BOTTOM;
-    if (position === BOTTOM) return BOTTOM | LEFT | RIGHT;
-    if (position === LEFT) return LEFT | TOP | BOTTOM;
-    return TOP | LEFT | RIGHT;
-}
-
-function anchorMargin(position: number): number {
-    if (position === TOP) return BAR_MARGIN_TOP_BOTTOM;
-    if (position === RIGHT) return BAR_MARGIN_SIDE;
-    if (position === BOTTOM) return BAR_MARGIN_TOP_BOTTOM;
-    if (position === LEFT) return BAR_MARGIN_SIDE;
-    return 12;
+    if (position === BOTTOM) return BOTTOM | RIGHT;
+    if (position === LEFT) return TOP | LEFT;
+    return TOP | RIGHT;
 }
 
 // ── Component ──
@@ -147,7 +134,7 @@ export default (props: PopupWindowProps) => {
     }
 
     // Resolve margin
-    const resolvedMargin = marginProp ?? barCfg.position.as((p) => anchorMargin(p));
+    const resolvedMargin = marginProp ?? SURFACE_EDGE_GAP;
 
     // Resolve monitor
     const resolvedMonitor = monitorProp ?? defaultMon;

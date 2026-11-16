@@ -33,6 +33,27 @@
 
 Component-specific interactions and fallback behavior should be verified in the owning component before adding them here.
 
+## System usage preferences
+
+The Bar settings page exposes resource indicators and system monitoring options. These are persistent `barSettings` keys in [`bar.gschema.ts`](../../packages/services/src/settings/bar.gschema.ts); this describes configuration and source behavior, not runtime verification.
+
+| Setting | Default | Allowed values / limits |
+|---|---:|---|
+| CPU, memory, temperature indicators | enabled | Independent switches |
+| Network and swap indicators | disabled | Independent switches |
+| Disk indicator | disabled | Existing `show-disk-usage` switch |
+| Resource indicator style | `bars` | `bars`, `text`, `compact` |
+| Network rate unit | `bytes` | `bytes` or `bits` |
+| Sampling interval | 1000 ms | 500–5000 ms |
+| Network interface | empty | Empty selects aggregate non-loopback traffic; custom interface value is retained |
+| Filesystem path | `/` | Path monitored for disk usage |
+| Process ordering | `cpu` | `cpu` or `memory` |
+| Process count | 5 | 3–15 |
+| Graphs, process list, per-core CPU | enabled | Independent switches |
+| Temperature sensor path | empty | Empty requests automatic sensor selection |
+
+Existing bar placement, dock, tray, and module-visibility preferences remain available. The usage sampling interval is a configured cadence; graph history length does not imply a fixed 60-second time window.
+
 The portal backend publishes source kind/name and its requesting app ID on the existing PipeWire stream. If an application supplies no ID, the observer uses the linked consumer application's metadata when available; otherwise the UI explicitly leaves it unidentified. Existing streams are discovered at service startup, and stopping/removing a stream clears its indicator. This is separate from the shell's own recording timer and stop action. Updated portal metadata requires deploying the patched XDPH package; older backends still produce an honest generic activity indicator.
 
 

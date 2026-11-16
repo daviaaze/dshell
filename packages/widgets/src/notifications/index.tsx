@@ -84,7 +84,7 @@ const NotificationContent = ({
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         >
             <Gtk.Box
-                spacing={8}
+                spacing={4}
                 orientation={Gtk.Orientation.VERTICAL}
                 ref={(_self) => {
                     const node = {};

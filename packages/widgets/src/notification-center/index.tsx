@@ -10,6 +10,7 @@ import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {bind, computed, onCleanup} from 'gnim';
 import {BAR_EDGE_RESERVE} from '../bar/geometry';
+import {OPAQUE_SURFACE_CSS} from '../common/surface';
 import {openSettings} from '../settings/settingsOpen';
 import {isHistoryClearDialogOpen, NotificationList} from './list';
 
@@ -65,8 +66,8 @@ export default () => {
             margin={MARGIN}
             widthRequest={width}
             monitor={monitor.as((m) => monitorIndexFromHyprland(m))}
-            cssClasses={[]}
-            css="background-color: transparent;"
+            cssClasses={['background']}
+            css={OPAQUE_SURFACE_CSS}
             onNotifyVisible={(self) => {
                 state.notificationsOpen = self.visible;
             }}

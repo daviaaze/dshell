@@ -88,6 +88,28 @@ and [Target Size Minimum](https://www.w3.org/WAI/WCAG22/Understanding/target-siz
 | Spacer in toolbar | `.spacer` class |
 | Boxed list | `.boxed-list` class |
 
+## Shell surface contract
+
+Root-visible shell panels use an opaque native window surface (`background`
+class with `@window_bg_color` / `@window_fg_color`), not a transparent layer
+window wrapped around a card. Native GTK popovers keep their `.background`
+class and arrow; the dock context menu is the intentional `hasArrow={false}`
+exception. Do not globally replace native card colors or flatten their
+shadows.
+
+Edge-attached panels use a 4px layer margin (matching Hyprland `gaps_out=4`),
+12px content inset, 8px ordinary spacing and 12px between major sections.
+Dense native menus use 8px content inset and 4px spacing. OSD, dock, and
+transient feedback surfaces use compact 8px inset/spacing where applicable;
+OSD is centered with an intentional 24px bottom offset, not the edge-panel
+margin. Quick Settings includes its own header bar in its 12px inset budget;
+do not add a second wrapper inset.
+
+Toast stacks stay corner-anchored with no transparent outer padding or
+inter-toast surface. Put compact padding inside each notification card so the
+space between cards remains transparent and click-through. The notification
+center is a separate panel and retains its 12px content inset.
+
 ---
 
 ## CSS Custom Properties (Variables)

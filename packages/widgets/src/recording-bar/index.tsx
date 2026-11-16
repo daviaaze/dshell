@@ -8,6 +8,7 @@ import Screenshot from '@shade/services/capture/screenshot';
 import {getHyprland} from '@shade/services/hyprland';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {bind, computed} from 'gnim';
+import {OPAQUE_SURFACE_CSS} from '../common/surface';
 
 function formatDuration(seconds: number): string {
     const m = Math.floor(seconds / 60);
@@ -49,7 +50,8 @@ export default () => {
             monitor={bind(hyprland, 'focused-monitor').as(monitorIndexFromHyprland)}
             visible={feedbackVisible}
             keymode={Astal.Keymode.ON_DEMAND}
-            css={'background-color: transparent;'}
+            cssClasses={['background']}
+            css={OPAQUE_SURFACE_CSS}
         >
             <Adw.Clamp maximumSize={560} tighteningThreshold={420}>
             <Gtk.Box

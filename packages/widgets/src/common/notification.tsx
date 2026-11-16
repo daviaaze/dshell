@@ -8,6 +8,7 @@ import {tickWhileAttached} from '@shade/core/widgetTimer';
 import {getExpireMs} from '@shade/services/notifications/expire';
 import {getNotifdSafe} from '@shade/services/notifications/guard';
 import {type Accessor, bind, computed, For} from 'gnim';
+import {COMPACT_SURFACE_PADDING} from './surface';
 
 interface NotificationSnapshot {
     summary: string;
@@ -307,10 +308,10 @@ export default ({
                             <Gtk.Box
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={8}
-                                marginTop={variant === 'popup' ? 12 : 0}
-                                marginBottom={variant === 'popup' ? 12 : 0}
-                                marginStart={variant === 'popup' ? 12 : 0}
-                                marginEnd={variant === 'popup' ? 12 : 0}
+                                marginTop={variant === 'popup' ? COMPACT_SURFACE_PADDING : 0}
+                                marginBottom={variant === 'popup' ? COMPACT_SURFACE_PADDING : 0}
+                                marginStart={variant === 'popup' ? COMPACT_SURFACE_PADDING : 0}
+                                marginEnd={variant === 'popup' ? COMPACT_SURFACE_PADDING : 0}
                             >
                                 <CardHeader
                                     snapshot={current}

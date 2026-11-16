@@ -5,6 +5,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import TrayService from '@shade/services/desktop/trayService';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import {bind, computed, For, onCleanup} from 'gnim';
+import SystemUsage from '@shade/services/monitoring/systemUsage';
 import {isTrayItemHidden, trayItemKey} from '../common/trayItem';
 
 const {TOP, LEFT, RIGHT, BOTTOM} = Astal.WindowAnchor;
@@ -85,26 +86,47 @@ function BarGroup({bar}: {bar: Bar}) {
                 />
             </Adw.ActionRow>
 
-            <Adw.SwitchRow
-                title="Mostrar uso do disco"
-                active={bar.showDiskUsage}
-                onNotifyActive={(self) => bar.setShowDiskUsage(self.active)}
-            />
-            <Adw.EntryRow
-                title="Caminho do sensor de temperatura"
-                showApplyButton
-                text={bar.tempPath() ?? ''}
-                onEntryActivated={(self) => bar.setTempPath(self.text)}
-                onApply={(self) => bar.setTempPath(self.text)}
-            />
-            <Adw.EntryRow
-                title="Comando do monitor do sistema"
-                showApplyButton
-                text={bar.systemMonitor() ?? ''}
-                onEntryActivated={(self) => bar.setSystemMonitor(self.text)}
-                onApply={(self) => bar.setSystemMonitor(self.text)}
-            />
+            <Adw.SwitchRow title="Mostrar uso do disco" active={bar.showDiskUsage} onNotifyActive={(self) => bar.setShowDiskUsage(self.active)} />
+            <Adw.EntryRow title="Caminho do sensor de temperatura (vazio: automático)" showApplyButton text={bar.tempPath() ?? ''} onEntryActivated={(self) => bar.setTempPath(self.text)} onApply={(self) => bar.setTempPath(self.text)} />
+            <Adw.EntryRow title="Comando do monitor do sistema" showApplyButton text={bar.systemMonitor() ?? ''} onEntryActivated={(self) => bar.setSystemMonitor(self.text)} onApply={(self) => bar.setSystemMonitor(self.text)} />
         </Adw.PreferencesGroup>
+    );
+}
+
+function ResourceSettingsGroup({bar}: {bar: Bar}) {
+    const interfaces = SystemUsage.get_default().networkInterfaces;
+    const interfaceChoices = computed(() => ['(Agregado)', ...interfaces()]);
+    const styleOptions = ['bars', 'text', 'compact'];
+    const rateOptions = ['bytes', 'bits'];
+    const sortOptions = ['cpu', 'memory'];
+    const styleModel = Gtk.StringList.new(['Barras', 'Texto', 'Compacto']);
+    const rateModel = Gtk.StringList.new(['Bytes/s', 'Bits/s']);
+    const sortModel = Gtk.StringList.new(['CPU', 'Memória']);
+    return (
+        <>
+            <Adw.PreferencesGroup title="Recursos na barra">
+                <Adw.SwitchRow title="CPU" active={bar.showCpuUsage} onNotifyActive={(self) => bar.setShowCpuUsage(self.active)} />
+                <Adw.SwitchRow title="Memória" active={bar.showMemoryUsage} onNotifyActive={(self) => bar.setShowMemoryUsage(self.active)} />
+                <Adw.SwitchRow title="Temperatura" active={bar.showTemperature} onNotifyActive={(self) => bar.setShowTemperature(self.active)} />
+                <Adw.SwitchRow title="Rede" active={bar.showNetworkUsage} onNotifyActive={(self) => bar.setShowNetworkUsage(self.active)} />
+                <Adw.SwitchRow title="Swap" active={bar.showSwapUsage} onNotifyActive={(self) => bar.setShowSwapUsage(self.active)} />
+                <Adw.SwitchRow title="Disco" active={bar.showDiskUsage} onNotifyActive={(self) => bar.setShowDiskUsage(self.active)} />
+                <Adw.ComboRow title="Estilo dos indicadores" model={styleModel} selected={Math.max(0, styleOptions.indexOf(bar.resourceIndicatorStyle()))} onNotifySelected={(row) => { const value = styleOptions[row.selected]; if (value) bar.setResourceIndicatorStyle(value); }} />
+            </Adw.PreferencesGroup>
+            <Adw.PreferencesGroup title="Monitoramento do sistema">
+                <Adw.ComboRow title="Unidade da taxa de rede" model={rateModel} selected={Math.max(0, rateOptions.indexOf(bar.networkRateUnit()))} onNotifySelected={(row) => { const value = rateOptions[row.selected]; if (value) bar.setNetworkRateUnit(value); }} />
+                <Adw.SpinRow title="Intervalo de atualização" subtitle="500–5000 ms" adjustment={new Gtk.Adjustment({lower: 500, upper: 5000, stepIncrement: 100, pageIncrement: 500, value: bar.systemUsageInterval()})} onNotifyValue={(row) => bar.setSystemUsageInterval(Math.round(row.value))} />
+                <Adw.ActionRow title="Interface de rede" subtitle={computed(() => bar.systemUsageNetworkInterface() || `Agregado: ${interfaceChoices().slice(1).join(', ') || 'sem interfaces detectadas'}`)}>
+                    <Gtk.DropDown slot="suffix" valign={Gtk.Align.CENTER} model={Gtk.StringList.new(interfaceChoices())} onNotifySelected={(self) => { if (self.selected === 0) bar.setSystemUsageNetworkInterface(''); else { const selectedInterface = interfaceChoices()[self.selected]; if (selectedInterface) bar.setSystemUsageNetworkInterface(selectedInterface); } }} selected={Math.max(0, interfaceChoices().indexOf(bar.systemUsageNetworkInterface() || '(Agregado)'))} />
+                </Adw.ActionRow>
+                <Adw.EntryRow title="Caminho do filesystem" tooltipText="Padrão: /" showApplyButton text={bar.systemUsageDiskPath()} onEntryActivated={(self) => bar.setSystemUsageDiskPath(self.text)} onApply={(self) => bar.setSystemUsageDiskPath(self.text)} />
+                <Adw.ComboRow title="Ordenar processos por" model={sortModel} selected={Math.max(0, sortOptions.indexOf(bar.systemUsageProcessSort()))} onNotifySelected={(row) => { const value = sortOptions[row.selected]; if (value) bar.setSystemUsageProcessSort(value); }} />
+                <Adw.SpinRow title="Quantidade de processos" adjustment={new Gtk.Adjustment({lower: 3, upper: 15, stepIncrement: 1, pageIncrement: 3, value: bar.systemUsageProcessCount()})} onNotifyValue={(row) => bar.setSystemUsageProcessCount(Math.round(row.value))} />
+                <Adw.SwitchRow title="Gráficos" active={bar.systemUsageShowGraphs} onNotifyActive={(self) => bar.setSystemUsageShowGraphs(self.active)} />
+                <Adw.SwitchRow title="Processos principais" active={bar.systemUsageShowProcesses} onNotifyActive={(self) => bar.setSystemUsageShowProcesses(self.active)} />
+                <Adw.SwitchRow title="Uso por núcleo" active={bar.systemUsageShowPerCore} onNotifyActive={(self) => bar.setSystemUsageShowPerCore(self.active)} />
+            </Adw.PreferencesGroup>
+        </>
     );
 }
 
@@ -283,6 +305,7 @@ export default () => {
             <BarGroup bar={bar} />
             <DockGroup bar={bar} />
             <PinnedAppsGroup bar={bar} />
+            <ResourceSettingsGroup bar={bar} />
             <ModulesGroup bar={bar} />
             <TrayItemsGroup bar={bar} />
         </>

@@ -238,12 +238,10 @@ export default () => {
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}
         >
             <Gtk.Box
-                widthRequest={launcherWidth}
-                cssClasses={['card']}
-                marginTop={8}
-                marginBottom={8}
-                marginStart={8}
-                marginEnd={8}
+                marginTop={12}
+                marginBottom={12}
+                marginStart={12}
+                marginEnd={12}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
             >
