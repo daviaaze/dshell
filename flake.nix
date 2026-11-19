@@ -24,6 +24,9 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
       hyprlandPackages = inputs.hyprland.packages.${system};
+      hyprlandPatched = hyprlandPackages.hyprland.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ./nix/patches/hyprland-share-border.patch ];
+      });
       # If NM omits an AP BSSID, the patched library falls back to its object path.
       astalNetwork = astal.packages.${system}.network.overrideAttrs (old: {
         patches = (old.patches or []) ++ [ ./nix/patches/astal-network-ap-key.patch ];
@@ -70,6 +73,7 @@
           libadwaita
           libgtop
           libgweather
+          libsoup_3
           libglycin-gtk4
           glycin-loaders
           glib-networking
@@ -81,7 +85,7 @@
         ++ astalPackages;
 
       wrapperPackages = with pkgs; [
-        hyprlandPackages.hyprland
+        hyprlandPatched
         greetd
         bash
         curl
@@ -114,6 +118,7 @@
           inherit (pkgs) pnpmConfigHook fetchPnpmDeps;
           lib = pkgs.lib;
         };
+        hyprland = hyprlandPatched;
         xdg-desktop-portal-hyprland = xdpHyprland;
       };
 

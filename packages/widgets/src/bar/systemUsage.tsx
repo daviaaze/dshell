@@ -9,16 +9,18 @@ import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango?version=1.0';
 import SystemUsage, {
     HISTORY_LENGTH,
+    type CpuCoreUsage,
     type StorageUsage,
     type UsageOptions,
 } from '@shade/services/monitoring/systemUsage';
+import RemoteSystemUsage from '@shade/services/monitoring/remoteSystemUsage';
 import BatteryHistory, {
     BATTERY_HISTORY_SLOTS,
     BATTERY_HISTORY_SPAN_S,
 } from '@shade/services/power/batteryHistory';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import type {Accessor} from 'gnim';
-import {bind, computed, onCleanup, effect} from 'gnim';
+import {bind, computed, onCleanup, effect, untrack} from 'gnim';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 import {UsageGraph} from '../common/usageGraph';
 import {openSettings} from '../settings/settingsOpen';
@@ -28,13 +30,15 @@ const storageText = ({used, total}: StorageUsage) =>
     total > 0 ? `${GLib.format_size(used)} / ${GLib.format_size(total)}` : '—';
 const rateText = (bytesPerSecond: number, bits: boolean) => {
     const amount = bits ? bytesPerSecond * 8 : bytesPerSecond;
-    return `${GLib.format_size(Math.round(amount))}${bits ? 'b' : 'B'}/s`;
+    return `${GLib.format_size_full(Math.round(amount), bits ? GLib.FormatSizeFlags.BITS : GLib.FormatSizeFlags.DEFAULT)}/s`;
 };
 const formatUptime = (seconds: number) => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
-    return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+    if (days) return `${days}d ${hours}h`;
+    if (hours) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
 };
 const fmtDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -45,8 +49,8 @@ const fmtDuration = (seconds: number) => {
 function SectionHeader({title, value}: {title: string | Accessor<string>; value: Accessor<string>}) {
     return (
         <Gtk.Box spacing={8}>
-            <Gtk.Label cssClasses={['heading']} label={title} hexpand halign={Gtk.Align.START} />
-            <Gtk.Label cssClasses={['numeric']} label={value} halign={Gtk.Align.END} />
+            <Gtk.Label cssClasses={['heading']} label={title} tooltipText={title} hexpand xalign={0} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={20} />
+            <Gtk.Label cssClasses={['numeric']} label={value} tooltipText={value} xalign={1} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={30} />
         </Gtk.Box>
     );
 }
@@ -65,8 +69,8 @@ function MeterRow({
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} visible={visible}>
             <Gtk.Box spacing={8}>
-                <Gtk.Label label={title} hexpand halign={Gtk.Align.START} />
-                <Gtk.Label cssClasses={['dimmed', 'numeric', 'caption']} label={detail} />
+                <Gtk.Label label={title} tooltipText={title} hexpand xalign={0} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={20} />
+                <Gtk.Label cssClasses={['dimmed', 'numeric', 'caption']} label={detail} tooltipText={detail} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={30} xalign={1} />
             </Gtk.Box>
             <Gtk.LevelBar value={fraction} />
         </Gtk.Box>
@@ -124,212 +128,242 @@ function ProcessesSection() {
                     onNotifySelected={(self) => settings.setSystemUsageProcessCount(self.selected + 3)}
                 />
             </Gtk.Box>
-            <Gtk.Label cssClasses={['caption', 'dimmed']} label="Measuring…" halign={Gtk.Align.START} visible={usage.topProcesses.as((p) => p.length === 0)} />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} ref={(box) => {
-                const rows = new Map<number, {row: Gtk.Box; name: Gtk.Label; rss: Gtk.Label; cpu: Gtk.Label}>();
+                const rows = Array.from({length: 15}, () => {
+                    const name = new Gtk.Label({visible: true, hexpand: true, xalign: 0, widthChars: 12, maxWidthChars: 24, ellipsize: Pango.EllipsizeMode.END});
+                    const rss = new Gtk.Label({visible: true, cssClasses: ['caption', 'numeric', 'dimmed'], widthChars: 9, maxWidthChars: 9, xalign: 1, ellipsize: Pango.EllipsizeMode.END});
+                    const cpu = new Gtk.Label({visible: true, cssClasses: ['caption', 'numeric'], widthChars: 6, maxWidthChars: 6, xalign: 1});
+                    const row = new Gtk.Box({visible: false, spacing: 8, heightRequest: 22});
+                    row.append(name); row.append(rss); row.append(cpu);
+                    box.append(row);
+                    return {row, name, rss, cpu};
+                });
                 const update = () => {
                     const items = usage.topProcesses();
-                    const currentPids = new Set<number>();
-                    for (const item of items) {
-                        currentPids.add(item.pid);
-                        let widgets = rows.get(item.pid);
-                        if (!widgets) {
-                            const name = new Gtk.Label({
-                                visible: true,
-                                hexpand: true,
-                                halign: Gtk.Align.START,
-                                ellipsize: Pango.EllipsizeMode.END,
-                            });
-                            const rss = new Gtk.Label({visible: true, cssClasses: ['caption', 'numeric', 'dimmed']});
-                            const cpu = new Gtk.Label({visible: true, cssClasses: ['caption', 'numeric'], widthChars: 6, xalign: 1});
-                            const row = new Gtk.Box({visible: true, spacing: 8});
-                            row.append(name);
-                            row.append(rss);
-                            row.append(cpu);
-                            box.append(row);
-                            widgets = {row, name, rss, cpu};
-                            rows.set(item.pid, widgets);
-                        }
-                        widgets.name.set_label(item.name);
-                        widgets.name.set_tooltip_text(`PID ${item.pid}`);
-                        widgets.rss.set_label(GLib.format_size(item.rss));
-                        widgets.cpu.set_label(`${(item.cpu * 100).toFixed(1)}%`);
-                    }
-                    for (const [pid, widgets] of rows) {
-                        if (currentPids.has(pid)) continue;
-                        if (widgets.row.get_parent() === box) box.remove(widgets.row);
-                        rows.delete(pid);
-                    }
-                    let previous: Gtk.Widget | null = null;
-                    for (const item of items) {
-                        const row = rows.get(item.pid)?.row;
-                        if (!row) continue;
-                        box.reorder_child_after(row, previous);
-                        previous = row;
-                    }
+                    const count = settings.systemUsageProcessCount();
+                    rows.forEach((widgets, index) => {
+                        const item = index < count ? items[index] : undefined;
+                        widgets.row.visible = index < count;
+                        widgets.name.set_label(item?.name ?? '—');
+                        widgets.name.set_tooltip_text(item ? `PID ${item.pid}` : null);
+                        widgets.rss.set_label(item ? GLib.format_size(item.rss) : '');
+                        widgets.cpu.set_label(item ? `${(item.cpu * 100).toFixed(1)}%` : '');
+                    });
                 };
                 let unsubscribe: (() => void) | null = null;
                 const onMap = () => {
-                    if (!unsubscribe) unsubscribe = usage.topProcesses.subscribe(update);
+                    if (!unsubscribe) {
+                        const stopMetrics = usage.topProcesses.subscribe(update);
+                        const stopCount = settings.systemUsageProcessCount.subscribe(update);
+                        unsubscribe = () => { stopMetrics(); stopCount(); };
+                    }
                     update();
                 };
-                const onUnmap = () => {
-                    unsubscribe?.();
-                    unsubscribe = null;
-                };
+                const onUnmap = () => { unsubscribe?.(); unsubscribe = null; };
                 const mapSignal = box.connect('map', onMap);
                 const unmapSignal = box.connect('unmap', onUnmap);
                 if (box.get_mapped()) onMap();
-                onCleanup(() => {
-                    box.disconnect(mapSignal);
-                    box.disconnect(unmapSignal);
-                    onUnmap();
-                    for (const {row} of rows.values()) {
-                        if (row.get_parent() === box) box.remove(row);
-                    }
-                    rows.clear();
-                });
+                onCleanup(() => { box.disconnect(mapSignal); box.disconnect(unmapSignal); onUnmap(); });
             }} />
         </Gtk.Box>
     );
 }
+
+type CommonMetric = Pick<SystemUsage,
+    'cpu' | 'memory' | 'disk' | 'temp' | 'tempAvailable' | 'cpuHistory' | 'memoryHistory' |
+    'netRxHistory' | 'netTxHistory' | 'net' | 'memoryBytes' | 'swapBytes' | 'diskBytes' |
+    'loadAverage' | 'uptime' | 'cpuCores' | 'cpuModel' | 'cpuFrequencyMHz' | 'memoryDetails' |
+    'networkInterfaces' | 'netAvailable' | 'diskAvailable'
+>;
+
+function projectMetrics(local: CommonMetric, remoteMetrics: CommonMetric, isRemote: Accessor<boolean>): CommonMetric {
+    const select = <T,>(localAccessor: Accessor<T>, remoteAccessor: Accessor<T>) =>
+        computed(() => isRemote() ? remoteAccessor() : localAccessor());
+    return {
+        cpu: select(local.cpu, remoteMetrics.cpu), memory: select(local.memory, remoteMetrics.memory),
+        disk: select(local.disk, remoteMetrics.disk), temp: select(local.temp, remoteMetrics.temp),
+        tempAvailable: select(local.tempAvailable, remoteMetrics.tempAvailable),
+        cpuHistory: select(local.cpuHistory, remoteMetrics.cpuHistory), memoryHistory: select(local.memoryHistory, remoteMetrics.memoryHistory),
+        netRxHistory: select(local.netRxHistory, remoteMetrics.netRxHistory), netTxHistory: select(local.netTxHistory, remoteMetrics.netTxHistory),
+        net: select(local.net, remoteMetrics.net), memoryBytes: select(local.memoryBytes, remoteMetrics.memoryBytes),
+        swapBytes: select(local.swapBytes, remoteMetrics.swapBytes), diskBytes: select(local.diskBytes, remoteMetrics.diskBytes),
+        loadAverage: select(local.loadAverage, remoteMetrics.loadAverage), uptime: select(local.uptime, remoteMetrics.uptime),
+        cpuCores: select(local.cpuCores, remoteMetrics.cpuCores), cpuModel: select(local.cpuModel, remoteMetrics.cpuModel),
+        cpuFrequencyMHz: select(local.cpuFrequencyMHz, remoteMetrics.cpuFrequencyMHz),
+        memoryDetails: select(local.memoryDetails, remoteMetrics.memoryDetails),
+        networkInterfaces: select(local.networkInterfaces, remoteMetrics.networkInterfaces),
+        netAvailable: select(local.netAvailable, remoteMetrics.netAvailable), diskAvailable: select(local.diskAvailable, remoteMetrics.diskAvailable),
+    };
+}
+ 
  
 
-function SystemUsagePopover({onOpenMonitor}: {onOpenMonitor: () => void}) {
+function CpuCores({cores}: {cores: Accessor<CpuCoreUsage[]>}) {
+    return (
+        <Gtk.Grid columnHomogeneous columnSpacing={12} rowSpacing={8} hexpand ref={(grid) => {
+            const cells = new Map<number, {content: Gtk.Box; name: Gtk.Label; value: Gtk.Label; meter: Gtk.LevelBar}>();
+            const update = () => {
+                const items = cores();
+                const ids = new Set(items.map((core) => core.id));
+                for (const [id, cell] of cells) {
+                    if (ids.has(id)) continue;
+                    grid.remove(cell.content);
+                    cells.delete(id);
+                }
+                items.forEach((core, index) => {
+                    let cell = cells.get(core.id);
+                    if (!cell) {
+                        const name = new Gtk.Label({visible: true, cssClasses: ['caption', 'numeric'], hexpand: true, xalign: 0});
+                        const value = new Gtk.Label({visible: true, cssClasses: ['caption', 'numeric'], widthChars: 4, maxWidthChars: 4, xalign: 1});
+                        const meter = new Gtk.LevelBar({visible: true, hexpand: true, mode: Gtk.LevelBarMode.CONTINUOUS});
+                        const top = new Gtk.Box({visible: true, spacing: 4});
+                        top.append(name);
+                        top.append(value);
+                        const content = new Gtk.Box({visible: true, orientation: Gtk.Orientation.VERTICAL, spacing: 3, hexpand: true});
+                        content.append(top);
+                        content.append(meter);
+                        grid.attach(content, index % 4, Math.floor(index / 4), 1, 1);
+                        cell = {content, name, value, meter};
+                        cells.set(core.id, cell);
+                    }
+                    const [column, row] = grid.query_child(cell.content);
+                    if (column !== index % 4 || row !== Math.floor(index / 4)) {
+                        grid.remove(cell.content);
+                        grid.attach(cell.content, index % 4, Math.floor(index / 4), 1, 1);
+                    }
+                    cell.name.set_label(`CPU ${core.id}`);
+                    cell.value.set_label(percent(core.usage));
+                    cell.meter.set_value(core.usage);
+                    cell.content.set_tooltip_text(`CPU ${core.id}: ${percent(core.usage)}`);
+                });
+            };
+            let unsubscribe: (() => void) | null = null;
+            const onMap = () => { unsubscribe ??= cores.subscribe(update); update(); };
+            const onUnmap = () => { unsubscribe?.(); unsubscribe = null; };
+            const mapSignal = grid.connect('map', onMap);
+            const unmapSignal = grid.connect('unmap', onUnmap);
+            if (grid.get_mapped()) onMap();
+            onCleanup(() => {
+                grid.disconnect(mapSignal);
+                grid.disconnect(unmapSignal);
+                onUnmap();
+                cells.clear();
+            });
+        }} />
+    );
+}
+
+function SystemUsagePopover({onOpenMonitor, usage, isRemote}: {
+    onOpenMonitor: () => void; usage: CommonMetric; isRemote: Accessor<boolean>;
+}) {
     const settings = barSettings();
-    const usage = SystemUsage.get_default();
+    const remote = RemoteSystemUsage.get_default();
     const bits = settings.networkRateUnit.as((unit) => unit === 'bits');
-    const load = usage.loadAverage.as((l) => l.map((v) => v.toFixed(2)).join('  '));
-    const swapFraction = usage.swapBytes.as(({used, total}) => (total > 0 ? used / total : 0));
-    const memoryDetails = usage.memoryDetails;
-    const diskTitle = settings.systemUsageDiskPath.as((path) => `Disk (${path || '/'})`);
+    const available = computed(() => !isRemote() || remote.hasSample());
+    const ratesReady = computed(() => !isRemote() || remote.ratesReady());
+    const status = computed(() => {
+        if (!isRemote()) return 'Este computador';
+        if (remote.state() === 'error') return remote.hasSample()
+            ? 'Homelab indisponível · dados desatualizados' : 'Homelab indisponível';
+        if (!remote.hasSample()) return 'Conectando ao homelab…';
+        return `Homelab · ${remote.hostname() || 'Servidor remoto'}`;
+    });
+    const diskTitle = computed(() => `Disk (${(isRemote() ? settings.systemUsageRemoteDiskPath() : settings.systemUsageDiskPath()) || '/'})`);
     const diskDetails = computed(() => {
         if (!usage.diskAvailable()) return 'Unavailable';
         const {used, total} = usage.diskBytes();
-        return total > 0
-            ? `${GLib.format_size(used)} used · ${GLib.format_size(total - used)} free`
-            : 'Unavailable';
+        return `${GLib.format_size(used)} used · ${GLib.format_size(Math.max(0, total - used))} free`;
     });
-    const intervalLabel = settings.systemUsageInterval.as((ms) => `~${Math.round(ms * HISTORY_LENGTH / 1000)}s history`);
+    const intervalLabel = computed(() => `~${Math.round((isRemote() ? settings.systemUsageRemoteInterval() : settings.systemUsageInterval()) * HISTORY_LENGTH / 1000)}s history`);
     const showGraphs = settings.systemUsageShowGraphs;
-    const showCores = settings.systemUsageShowPerCore;
+    const memoryDetails = usage.memoryDetails;
     return (
-        <Gtk.ScrolledWindow maxContentHeight={600} propagateNaturalHeight hscrollbarPolicy={Gtk.PolicyType.NEVER} ref={(self) => {
-            self.connect('map', () => { self.maxContentHeight = getPopoverMaxHeight(self); });
-        }}>
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={SURFACE_SPACING}>
-                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={SURFACE_SPACING}>
+        <Gtk.ScrolledWindow widthRequest={440} heightRequest={600} minContentWidth={440} maxContentWidth={440} minContentHeight={600} maxContentHeight={600}
+            hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+            ref={(self) => {
+                const signal = self.connect('map', () => {
+                    const surface = self.get_native()?.get_surface();
+                    const monitor = surface ? self.get_display().get_monitor_at_surface(surface) : null;
+                    const width = Math.min(440, Math.max(1, (monitor?.get_geometry().width ?? 488) - 48));
+                    const height = Math.min(600, getPopoverMaxHeight(self));
+                    self.widthRequest = width;
+                    self.heightRequest = height;
+                    self.minContentWidth = width;
+                    self.maxContentWidth = width;
+                    self.minContentHeight = height;
+                    self.maxContentHeight = height;
+                });
+                onCleanup(() => self.disconnect(signal));
+            }}>
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={SURFACE_SPACING}
+                marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
+                <Gtk.Box spacing={8}>
+                    <Gtk.DropDown model={Gtk.StringList.new(['Local', 'Homelab'])}
+                        selected={settings.systemUsageSource.as((value) => value === 'homelab' ? 1 : 0)}
+                        onNotifySelected={(self) => settings.setSystemUsageSource(self.selected === 1 ? 'homelab' : 'local')} />
+                    <Gtk.Label label={status} tooltipText={computed(() => isRemote() && remote.error() ? remote.error() : status())}
+                        hexpand xalign={0} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={36} cssClasses={['caption', 'dimmed']} />
+                </Gtk.Box>
+                <Gtk.Box visible={available} orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                     <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                        <SectionHeader title="CPU" value={usage.cpu.as(percent)} />
+                        <SectionHeader title="CPU" value={computed(() => ratesReady() ? percent(usage.cpu()) : '—')} />
                         <Gtk.Label cssClasses={['caption', 'dimmed']} label={computed(() => {
                             const model = usage.cpuModel();
                             const freq = usage.cpuFrequencyMHz();
-                            return `${model || 'Processor'}${freq ? ` · ${(freq / 1000).toFixed(2)} GHz` : ''}`;
-                        })} halign={Gtk.Align.START} wrap />
+                            return `${model || (isRemote() ? 'Processador remoto' : 'Processor')}${freq ? ` · ${(freq / 1000).toFixed(2)} GHz` : ''}`;
+                        })} xalign={0} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={50} />
                         <Gtk.Box visible={showGraphs}><UsageGraph values={usage.cpuHistory} capacity={HISTORY_LENGTH} max={1} /></Gtk.Box>
-                        <Gtk.Box spacing={8}><Gtk.Label cssClasses={['caption', 'dimmed']} label="Load average" hexpand halign={Gtk.Align.START} /><Gtk.Label cssClasses={['caption', 'numeric']} label={load} /></Gtk.Box>
-                        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} visible={computed(() => showCores() && usage.cpuCores().length > 1)}>
-                            <Gtk.Label cssClasses={['caption', 'dimmed']} label="Per-core usage" halign={Gtk.Align.START} />
-                            <Gtk.FlowBox selectionMode={Gtk.SelectionMode.NONE} homogeneous minChildrenPerLine={2} maxChildrenPerLine={8} rowSpacing={4} columnSpacing={8} ref={(flow) => {
-                                const rows = new Map<number, {child: Gtk.FlowBoxChild; usage: Gtk.LevelBar}>();
-                                const update = () => {
-                                    const cores = usage.cpuCores();
-                                    const currentIds = new Set<number>();
-                                    for (const core of cores) {
-                                        currentIds.add(core.id);
-                                        let widgets = rows.get(core.id);
-                                        if (!widgets) {
-                                            const child = new Gtk.FlowBoxChild({visible: true});
-                                            const row = new Gtk.Box({visible: true, spacing: 4});
-                                            const label = new Gtk.Label({visible: true, cssClasses: ['caption', 'numeric']});
-                                            const level = new Gtk.LevelBar({visible: true, hexpand: true});
-                                            row.append(label);
-                                            row.append(level);
-                                            child.set_child(row);
-                                            flow.insert(child, -1);
-                                            widgets = {child, usage: level};
-                                            rows.set(core.id, widgets);
-                                        }
-                                        const label = widgets.child.get_child()?.get_first_child();
-                                        if (label instanceof Gtk.Label) label.set_label(`CPU ${core.id}`);
-                                        widgets.usage.set_value(core.usage);
-                                    }
-                                    for (const [id, widgets] of rows) {
-                                        if (currentIds.has(id)) continue;
-                                        if (widgets.child.get_parent() === flow) flow.remove(widgets.child);
-                                        rows.delete(id);
-                                    }
-                                    cores.forEach((core, position) => {
-                                        const child = rows.get(core.id)?.child;
-                                        if (child && child.get_index() !== position) {
-                                            flow.remove(child);
-                                            flow.insert(child, position);
-                                        }
-                                    });
-                                };
-                                let unsubscribe: (() => void) | null = null;
-                                const onMap = () => {
-                                    if (!unsubscribe) unsubscribe = usage.cpuCores.subscribe(update);
-                                    update();
-                                };
-                                const onUnmap = () => {
-                                    unsubscribe?.();
-                                    unsubscribe = null;
-                                };
-                                const mapSignal = flow.connect('map', onMap);
-                                const unmapSignal = flow.connect('unmap', onUnmap);
-                                if (flow.get_mapped()) onMap();
-                                onCleanup(() => {
-                                    flow.disconnect(mapSignal);
-                                    flow.disconnect(unmapSignal);
-                                    onUnmap();
-                                    for (const {child} of rows.values()) {
-                                        if (child.get_parent() === flow) flow.remove(child);
-                                    }
-                                    rows.clear();
-                                });
-                            }} />
+                        <SectionHeader title="Load average" value={usage.loadAverage.as((load) => load.map((value) => value.toFixed(2)).join('  '))} />
+                        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={6}
+                            visible={computed(() => settings.systemUsageShowPerCore() && usage.cpuCores().length > 1)}>
+                            <Gtk.Label label="Uso por thread" xalign={0} cssClasses={['caption', 'dimmed']} />
+                            <CpuCores cores={usage.cpuCores} />
                         </Gtk.Box>
-                        <Gtk.Box spacing={8} visible={usage.tempAvailable}>
-                            <Gtk.Label cssClasses={['caption', 'dimmed']} label="Temperature" hexpand halign={Gtk.Align.START} />
-                            <Gtk.Label cssClasses={['caption', 'numeric']} label={usage.temp.as((t) => `${Math.round(t * 100)} °C`)} />
+                        <Gtk.Box spacing={8} visible={usage.tempAvailable}
+                            tooltipText={computed(() => isRemote() ? remote.tempDescription() : 'Sensor local de temperatura')}>
+                            <Gtk.Label cssClasses={['caption', 'dimmed']} label={isRemote.as((value) => value ? 'Temperature · max sensor' : 'Temperature')} hexpand xalign={0} />
+                            <Gtk.Label cssClasses={['caption', 'numeric']} widthChars={7} xalign={1} label={usage.temp.as((value) => `${Math.round(value * 100)} °C`)} />
                         </Gtk.Box>
                     </Gtk.Box>
                     <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <SectionHeader title="Memory" value={usage.memoryBytes.as(storageText)} />
                         <Gtk.Box visible={showGraphs}><UsageGraph values={usage.memoryHistory} capacity={HISTORY_LENGTH} max={1} cssClasses={['success']} /></Gtk.Box>
-                        <Gtk.Box spacing={8} visible={memoryDetails.as((d) => d !== null)}>
-                            <Gtk.Label cssClasses={['caption', 'dimmed']} label="Available" hexpand halign={Gtk.Align.START} />
-                            <Gtk.Label cssClasses={['caption', 'numeric']} label={memoryDetails.as((d) => GLib.format_size(d?.available ?? 0))} />
+                        <Gtk.Box spacing={8} visible={memoryDetails.as((value) => value !== null)}>
+                            <Gtk.Label cssClasses={['caption', 'dimmed']} label="Available" hexpand xalign={0} />
+                            <Gtk.Label cssClasses={['caption', 'numeric']} label={memoryDetails.as((value) => GLib.format_size(value?.available ?? 0))} />
                         </Gtk.Box>
-                        <Gtk.Box spacing={8} visible={memoryDetails.as((d) => d !== null)}>
-                            <Gtk.Label cssClasses={['caption', 'dimmed']} label="Free · cache" hexpand halign={Gtk.Align.START} />
-                            <Gtk.Label cssClasses={['caption', 'numeric']} label={memoryDetails.as((d) => `${GLib.format_size(d?.free ?? 0)} · ${GLib.format_size(d?.cached ?? 0)}`)} />
+                        <Gtk.Box spacing={8} visible={memoryDetails.as((value) => value !== null)}>
+                            <Gtk.Label cssClasses={['caption', 'dimmed']} label="Free · cache" hexpand xalign={0} />
+                            <Gtk.Label cssClasses={['caption', 'numeric']} label={memoryDetails.as((value) => `${GLib.format_size(value?.free ?? 0)} · ${GLib.format_size(value?.cached ?? 0)}`)} />
                         </Gtk.Box>
                     </Gtk.Box>
                     <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                        <SectionHeader
-                            title={settings.systemUsageNetworkInterface.as((name) => `Network${name ? ` (${name})` : ' (all)'}`)}
-                            value={computed(() => usage.netAvailable()
-                                ? `↓ ${rateText(usage.net().rx, bits())}  ↑ ${rateText(usage.net().tx, bits())}`
-                                : 'Unavailable')}
-                        />
-                        <Gtk.Box visible={computed(() => usage.netAvailable() && showGraphs())}>
-                            <UsageGraph values={usage.netRxHistory} secondary={usage.netTxHistory} capacity={HISTORY_LENGTH} cssClasses={['warning']} />
-                        </Gtk.Box>
+                        <SectionHeader title={computed(() => {
+                            const name = isRemote() ? settings.systemUsageRemoteNetworkInterface() : settings.systemUsageNetworkInterface();
+                            return `Network (${name || 'all'})`;
+                        })} value={computed(() => usage.netAvailable() && ratesReady()
+                            ? `↓ ${rateText(usage.net().rx, bits())}  ↑ ${rateText(usage.net().tx, bits())}` : 'Unavailable')} />
+                        <Gtk.Box visible={showGraphs}><UsageGraph values={usage.netRxHistory} secondary={usage.netTxHistory} capacity={HISTORY_LENGTH} cssClasses={['warning']} /></Gtk.Box>
                     </Gtk.Box>
                     <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
                         <SectionHeader title="Storage" value={diskDetails} />
                         <MeterRow title={diskTitle} fraction={usage.disk} detail={diskDetails} visible={usage.diskAvailable} />
-                        <MeterRow title="Swap" fraction={swapFraction} detail={usage.swapBytes.as(storageText)} visible={usage.swapBytes.as(({total}) => total > 0)} />
+                        <MeterRow title="Swap" fraction={usage.swapBytes.as(({used, total}) => total > 0 ? used / total : 0)}
+                            detail={usage.swapBytes.as(storageText)} visible={usage.swapBytes.as(({total}) => total > 0)} />
                     </Gtk.Box>
-                </Gtk.Box>
-                <BatterySection />
-                <ProcessesSection />
-                <Gtk.Box spacing={8}>
-                    <Gtk.Label cssClasses={['caption', 'dimmed']} label={usage.uptime.as((s) => `Up ${formatUptime(s)} · ${intervalLabel()}`)} hexpand halign={Gtk.Align.START} />
-                    <Gtk.Button label="Personalizar" onClicked={() => openSettings('bar')} />
-                    <Gtk.Button label="Open System Monitor" visible={settings.systemMonitor.as((cmd) => cmd.trim().length > 0)} onClicked={onOpenMonitor} />
+                    <Gtk.Box visible={isRemote.as((value) => !value)} orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                        <BatterySection />
+                        <ProcessesSection />
+                    </Gtk.Box>
+                    <Gtk.Label visible={isRemote} label="Processos e bateria disponíveis apenas no computador local."
+                        tooltipText="O node_exporter não fornece a lista de processos ou a bateria deste computador."
+                        xalign={0} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={55} cssClasses={['caption', 'dimmed']} />
+                    <Gtk.Box spacing={8}>
+                        <Gtk.Label cssClasses={['caption', 'numeric']} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={22}
+                            label={computed(() => `Up ${formatUptime(usage.uptime())} · ${intervalLabel()}`)} hexpand xalign={0} />
+                        <Gtk.Button label="Personalizar" onClicked={() => openSettings('bar')} />
+                        <Gtk.Button label="Abrir monitor" visible={computed(() => !isRemote() && settings.systemMonitor().trim().length > 0)} onClicked={onOpenMonitor} />
+                    </Gtk.Box>
                 </Gtk.Box>
             </Gtk.Box>
         </Gtk.ScrolledWindow>
@@ -345,7 +379,7 @@ const Indicator = ({value, label, unit, vertical, visible = true, style}: {
         <Gtk.Box visible={visible} spacing={2} orientation={Gtk.Orientation.VERTICAL}>
             <Gtk.Box spacing={vertical.as((v) => (v ? 0 : 4))} orientation={vertical.as((v) => v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)}>
                 <Gtk.Label visible={style.as((s) => s !== 'compact')} label={label} tooltipText={label} maxWidthChars={vertical.as((v) => v ? 4 : -1)} ellipsize={Pango.EllipsizeMode.END} cssClasses={['caption-heading', 'numeric']} />
-                <Gtk.Label cssClasses={['caption', 'numeric']} label={formatted} tooltipText={formatted} maxWidthChars={vertical.as((v) => v ? 4 : -1)} ellipsize={Pango.EllipsizeMode.END} />
+                <Gtk.Label cssClasses={['caption', 'numeric']} label={formatted} tooltipText={formatted} widthChars={4} maxWidthChars={5} xalign={1} ellipsize={Pango.EllipsizeMode.END} />
             </Gtk.Box>
             <Gtk.LevelBar visible={style.as((s) => s === 'bars')} orientation={vertical.as((v) => v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} inverted={vertical} value={value} widthRequest={vertical.as((v) => v ? -1 : 50)} heightRequest={vertical.as((v) => v ? 50 : -1)} />
         </Gtk.Box>
@@ -354,7 +388,10 @@ const Indicator = ({value, label, unit, vertical, visible = true, style}: {
 
 export default ({vertical, visible = true}: {vertical: Accessor<boolean>; visible?: boolean | Accessor<boolean>}) => {
     const settings = barSettings();
-    const usage = SystemUsage.get_default();
+    const local = SystemUsage.get_default();
+    const remote = RemoteSystemUsage.get_default();
+    const isRemote = settings.systemUsageSource.as((source) => source === 'homelab');
+    const usage = projectMetrics(local, remote, isRemote);
     effect(() => {
         const options: UsageOptions = {
             intervalMs: settings.systemUsageInterval(),
@@ -364,81 +401,97 @@ export default ({vertical, visible = true}: {vertical: Accessor<boolean>; visibl
             processCount: settings.systemUsageProcessCount(),
             tempPath: settings.tempPath(),
         };
-        usage.configure(options);
+        untrack(() => local.configure(options));
     });
-    onCleanup(usage.subscribe());
-
+    effect(() => {
+        const options = {
+            url: settings.systemUsageRemoteUrl(),
+            intervalMs: settings.systemUsageRemoteInterval(),
+            networkInterface: settings.systemUsageRemoteNetworkInterface(),
+            diskPath: settings.systemUsageRemoteDiskPath(),
+        };
+        untrack(() => remote.configure(options));
+    });
+    effect(() => {
+        if (!(typeof visible === 'boolean' ? visible : visible())) return;
+        const remoteSelected = isRemote();
+        const release = untrack(() => remoteSelected ? remote.subscribe() : local.subscribe());
+        onCleanup(release);
+    });
     let popover: Gtk.Popover | null = null;
-    let anchor: Gtk.MenuButton | null = null;
-    const openMonitor = () => {
-        popover?.popdown();
-        const monitor = settings.systemMonitor();
-        if (monitor) usage.launchMonitor(monitor);
-    };
-    const cpuOn = settings.showCpuUsage;
-    const memoryOn = settings.showMemoryUsage;
-    const tempOn = computed(() => settings.showTemperature() && usage.tempAvailable());
-    const diskOn = computed(() => settings.showDiskUsage() && usage.diskAvailable());
-    const networkOn = computed(() => settings.showNetworkUsage() && usage.netAvailable());
-    const swapOn = computed(() => settings.showSwapUsage() && usage.swapBytes().total > 0);
-    const anyMetric = computed(() => cpuOn() || memoryOn() || tempOn() || diskOn() || networkOn() || swapOn());
-    const style = settings.resourceIndicatorStyle;
-    const bits = settings.networkRateUnit.as((v) => v === 'bits');
     let popoverShown = false;
     let releaseProcesses: (() => void) | null = null;
-    const syncProcessSubscription = () => {
-        if (!popoverShown || !settings.systemUsageShowProcesses()) {
+    let releaseBattery: (() => void) | null = null;
+    const syncSubscriptions = () => {
+        if (popoverShown && !isRemote()) {
+            if (settings.systemUsageShowProcesses()) releaseProcesses ??= local.subscribeProcesses();
+            else { releaseProcesses?.(); releaseProcesses = null; }
+            releaseBattery ??= BatteryHistory.get_default().subscribe();
+        } else {
             releaseProcesses?.();
             releaseProcesses = null;
-        } else if (!releaseProcesses) {
-            releaseProcesses = usage.subscribeProcesses();
+            releaseBattery?.();
+            releaseBattery = null;
         }
     };
     effect(() => {
+        isRemote();
         settings.systemUsageShowProcesses();
-        syncProcessSubscription();
+        untrack(syncSubscriptions);
+    });
+    const stop = () => { popoverShown = false; syncSubscriptions(); };
+    onCleanup(stop);
+    const openMonitor = () => {
+        if (isRemote()) return;
+        popover?.popdown();
+        const command = settings.systemMonitor();
+        if (command) local.launchMonitor(command);
+    };
+    const available = computed(() => !isRemote() || remote.hasSample() && remote.state() === 'ready');
+    const ratesReady = computed(() => available() && (!isRemote() || remote.ratesReady()));
+    const cpuOn = computed(() => settings.showCpuUsage() && ratesReady());
+    const memoryOn = computed(() => settings.showMemoryUsage() && available());
+    const tempOn = computed(() => settings.showTemperature() && available() && usage.tempAvailable());
+    const diskOn = computed(() => settings.showDiskUsage() && available() && usage.diskAvailable());
+    const networkOn = computed(() => settings.showNetworkUsage() && ratesReady() && usage.netAvailable());
+    const swapOn = computed(() => settings.showSwapUsage() && available() && usage.swapBytes().total > 0);
+    const anyMetric = computed(() => cpuOn() || memoryOn() || tempOn() || diskOn() || networkOn() || swapOn());
+    const style = settings.resourceIndicatorStyle;
+    const bits = settings.networkRateUnit.as((value) => value === 'bits');
+    const tooltip = computed(() => {
+        if (isRemote() && remote.state() === 'error') return `Homelab indisponível: ${remote.error()}`;
+        if (isRemote() && !remote.hasSample()) return 'Conectando ao homelab…';
+        const source = isRemote() ? remote.hostname() || 'Homelab' : 'Local';
+        return `${source} · CPU ${ratesReady() ? percent(usage.cpu()) : '—'} · RAM ${percent(usage.memory())}`;
     });
     return (
-        <Gtk.MenuButton
-            visible={visible}
-            cssClasses={vertical.as((v) => v ? ['flat', 'bar-vertical-content-button'] : ['flat'])}
-            cursor={Gdk.Cursor.new_from_name('pointer', null)}
-            tooltipText={computed(() => `CPU ${percent(usage.cpu())} · RAM ${percent(usage.memory())}`)}
-            ref={usePopoverCleanup}
-        >
+        <Gtk.MenuButton visible={visible}
+            cssClasses={vertical.as((value) => value ? ['flat', 'bar-vertical-content-button'] : ['flat'])}
+            cursor={Gdk.Cursor.new_from_name('pointer', null)} tooltipText={tooltip} ref={usePopoverCleanup}>
             <Gtk.Popover slot="popover" ref={(self) => {
                 popover = self;
-                let releaseBattery: (() => void) | null = null;
-                const stop = () => {
-                    popoverShown = false;
-                    releaseProcesses?.();
-                    releaseProcesses = null;
-                    releaseBattery?.();
-                    releaseBattery = null;
-                };
-                self.connect('show', () => {
-                    popoverShown = true;
-                    syncProcessSubscription();
-                    releaseBattery = BatteryHistory.get_default().subscribe();
-                });
+                self.connect('show', () => { popoverShown = true; syncSubscriptions(); });
                 self.connect('hide', stop);
-                onCleanup(stop);
             }}>
-                <SystemUsagePopover onOpenMonitor={openMonitor} />
+                <SystemUsagePopover onOpenMonitor={openMonitor} usage={usage} isRemote={isRemote} />
             </Gtk.Popover>
-            <Gtk.Box orientation={vertical.as((v) => v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)}>
-                <Gtk.Box visible={anyMetric.as((has) => !has)}><Gtk.Image iconName="computer-symbolic" /></Gtk.Box>
-                <Gtk.Box visible={anyMetric} orientation={vertical.as((v) => v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)} spacing={12}>
-                <Indicator visible={cpuOn} vertical={vertical} value={usage.cpu} label="CPU" unit="%" style={style} />
-                <Indicator visible={memoryOn} vertical={vertical} value={usage.memory} label="RAM" unit="%" style={style} />
-                <Indicator visible={tempOn} vertical={vertical} value={usage.temp} label="TEMP" unit="°C" style={style} />
-                <Indicator visible={diskOn} vertical={vertical} value={usage.disk} label="DISK" unit="%" style={style} />
-                <Indicator visible={swapOn} vertical={vertical} value={usage.swapBytes.as(({used, total}) => total ? used / total : 0)} label="SWAP" unit="%" style={style} />
-                <Gtk.Box visible={networkOn} orientation={vertical.as((v) => v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)} spacing={2}>
-                    <Gtk.Label visible={style.as((s) => s !== 'compact')} cssClasses={['caption-heading', 'numeric']} label="NET" />
-                    <Gtk.Label cssClasses={['caption', 'numeric']} label={usage.net.as(({rx, tx}) => `↓${rateText(rx, bits())} ↑${rateText(tx, bits())}`)} />
+            <Gtk.Box orientation={vertical.as((value) => value ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)} spacing={8}>
+                <Gtk.Image visible={isRemote}
+                    iconName={remote.state.as((state) => state === 'error' ? 'network-offline-symbolic' : 'network-server-symbolic')}
+                    tooltipText={tooltip} />
+                <Gtk.Image visible={computed(() => !isRemote() && !anyMetric())} iconName="computer-symbolic" />
+                <Gtk.Box visible={anyMetric} orientation={vertical.as((value) => value ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)} spacing={12}>
+                    <Indicator visible={cpuOn} vertical={vertical} value={usage.cpu} label="CPU" unit="%" style={style} />
+                    <Indicator visible={memoryOn} vertical={vertical} value={usage.memory} label="RAM" unit="%" style={style} />
+                    <Indicator visible={tempOn} vertical={vertical} value={usage.temp} label="TEMP" unit="°C" style={style} />
+                    <Indicator visible={diskOn} vertical={vertical} value={usage.disk} label="DISK" unit="%" style={style} />
+                    <Indicator visible={swapOn} vertical={vertical} value={usage.swapBytes.as(({used, total}) => total > 0 ? used / total : 0)} label="SWAP" unit="%" style={style} />
+                    <Gtk.Box visible={networkOn} orientation={vertical.as((value) => value ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)} spacing={2}>
+                        <Gtk.Label visible={style.as((value) => value !== 'compact')} cssClasses={['caption-heading', 'numeric']} label="NET" />
+                        <Gtk.Label cssClasses={['caption', 'numeric']} maxWidthChars={26} ellipsize={Pango.EllipsizeMode.END}
+                            label={usage.net.as(({rx, tx}) => `↓${rateText(rx, bits())} ↑${rateText(tx, bits())}`)} />
+                    </Gtk.Box>
                 </Gtk.Box>
-            </Gtk.Box>
             </Gtk.Box>
         </Gtk.MenuButton>
     );

@@ -58,6 +58,40 @@ On first load only, when the unified file is absent, import `monitor-layouts.jso
 - Runtime transport loss leaves stored configuration intact, exposes degraded status, and reconciles when Hyprland returns.
 - Generated Lua is verified with Hyprland's config verifier in an isolated process; verification must not execute runtime actions against the user's live compositor.
 
+## Shared-source outline
+
+The Shade Hyprland package applies `nix/patches/hyprland-share-border.patch`.
+Continuous monitor, window and region captures receive a red, two-logical-pixel
+outline. The compositor owns its geometry and lifetime; the shell does not create
+a layer-shell overlay or derive geometry from PipeWire descriptions.
+
+OpenGL draws the outline directly into the output framebuffer after preparing the
+mirror/screencopy texture and presenting the final scene. It is not inserted into
+the scene render pass, window export, scratch captures or mirror texture. This
+ordering is essential: an ordinary final scene-pass decoration would still leak
+into monitor captures.
+
+Only sessions with at least two successfully copied frames show an outline, so
+one-shot screenshots and picker thumbnail processes do not flash borders. A
+pending damage-driven capture keeps the outline on an unchanged desktop; stopping
+or cancelling capture invalidates the output to erase it. Window outlines follow
+the current geometry and visible workspace, with each edge clipped independently
+on intersected outputs. Region coordinates use the compositor's own scaled capture
+box. Lock and DPMS-black states suppress the decoration.
+
+Deployment requires the patched compositor and a new compositor session, not
+merely a shell reload. Verification must compare an independently observed output
+with captured frames for monitor, window and region sources, including movement,
+scaling/rotation, static content and teardown; a screenshot alone cannot prove
+that a decoration is both visible locally and absent from the stream.
+
+Isolated nested-Wayland smoke: sustained monitor, region and native toplevel
+captures showed the outline in the parent compositor's view while their exported
+frames omitted it. The window case also covered movement, resizing and removal
+of the outline after capture stopped. This smoke used scale 1; rotated/scaled
+multi-output presentation remains a manual verification case.
+
+
 ## Verification
 
 - Pure tests for schema validation, stable-ID merge, conflict detection, migrations, escaping, and Lua output semantics.

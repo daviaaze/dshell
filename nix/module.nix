@@ -96,7 +96,7 @@ in
   config = lib.mkMerge [
     {
       _module.args.xdpHyprland = inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
-      _module.args.shadeHyprland = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+      _module.args.shadeHyprland = inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
     }
     (lib.mkIf cfg.enable (
     lib.mkMerge [

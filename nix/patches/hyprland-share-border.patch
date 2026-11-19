@@ -1,0 +1,156 @@
+--- a/src/managers/screenshare/ScreenshareManager.hpp
++++ b/src/managers/screenshare/ScreenshareManager.hpp
+@@ -93,6 +93,8 @@
+         SP<CEventLoopTimer>         m_shareStopTimer;
+         bool                        m_sharing = false;
+         bool                        m_stale   = false;
++        uint8_t                     m_copiedFrames = 0;
++        bool                        m_borderVisible = false;
+ 
+         struct {
+             CHyprSignalListener monitorDestroyed;
+@@ -247,6 +249,8 @@
+         bool                    outputNeedsCopyFB(PHLMONITOR monitor);
+         SOutputCopyFBState      outputCopyFBState(PHLMONITOR monitor);
+         bool                    needsWorkspaceCaptureSnapshot(PHLWINDOW window) const;
++        void                    renderShareBorders(Render::CRenderContext& ctx);
++        bool                    hasPendingCapture(const CScreenshareSession* session) const;
+ 
+       private:
+         std::vector<WP<CScreenshareSession>> m_sessions;
+--- a/src/managers/screenshare/ScreenshareManager.cpp
++++ b/src/managers/screenshare/ScreenshareManager.cpp
+@@ -7,6 +7,8 @@
+ #include "WorkspaceCaptureSource.hpp"
+ #include "../permissions/DynamicPermissionManager.hpp"
+ #include "hyprland-workspace-image-capture-source-v1.hpp"
++#include "../../render/OpenGL.hpp"
++#include "../SessionLockManager.hpp"
+ 
+ using namespace Screenshare;
+ 
+@@ -14,6 +16,61 @@
+     ;
+ }
+ 
++bool CScreenshareManager::hasPendingCapture(const CScreenshareSession* session) const {
++    return std::ranges::any_of(m_pendingFrames, [session](const auto& frame) {
++        return frame && frame->m_session.get() == session && frame->m_shared && !frame->done();
++    });
++}
++
++void CScreenshareManager::renderShareBorders(Render::CRenderContext& ctx) {
++    const auto MONITOR = ctx.m_data.pMonitor.lock();
++    if (!MONITOR || g_pSessionLockManager->isSessionLocked() || MONITOR->m_dpmsBlackOpacity->value() != 0.F)
++        return;
++
++    const CBox bounds = {{}, MONITOR->m_transformedSize};
++    const CHyprColor color(1.0, 0.12, 0.12, 1.0);
++    const double thickness = 2.0 * MONITOR->m_scale;
++    const auto drawEdge = [&](CBox edge) {
++        edge = edge.intersection(bounds);
++        if (!edge.empty())
++            Render::GL::g_pHyprOpenGL->renderRect(ctx, edge, color, {});
++    };
++
++    for (const auto& session : m_sessions) {
++        if (!session || session->m_stopped || !session->m_borderVisible)
++            continue;
++
++        CBox box;
++        switch (session->m_type) {
++            case SHARE_MONITOR:
++                if (session->monitor() != MONITOR)
++                    continue;
++                box = bounds;
++                break;
++            case SHARE_REGION:
++                if (session->monitor() != MONITOR)
++                    continue;
++                box = session->m_captureBox;
++                break;
++            case SHARE_WINDOW:
++                if (!session->m_window || !g_pHyprRenderer->shouldRenderWindow(session->m_window.lock(), MONITOR))
++                    continue;
++                box = session->m_window->geometricBox(Desktop::View::IGeometric::GEOMETRIC_CURRENT);
++                box.translate(-MONITOR->m_position).scale(MONITOR->m_scale);
++                break;
++            default:
++                continue;
++        }
++        if (box.w <= 0 || box.h <= 0)
++            continue;
++        const double t = std::min(thickness, std::min(box.w, box.h) / 2.0);
++        drawEdge({box.x, box.y, box.w, t});
++        drawEdge({box.x, box.y + box.h - t, box.w, t});
++        drawEdge({box.x, box.y + t, t, box.h - 2 * t});
++        drawEdge({box.x + box.w - t, box.y + t, t, box.h - 2 * t});
++    }
++}
++
+ void CScreenshareManager::onOutputCommit(PHLMONITOR monitor, bool copyFBPrepared) {
+     std::erase_if(m_sessions, [&](const WP<CScreenshareSession>& session) { return session.expired(); });
+ 
+--- a/src/managers/screenshare/ScreenshareSession.cpp
++++ b/src/managers/screenshare/ScreenshareSession.cpp
+@@ -6,6 +6,7 @@
+ #include "../../ipc/s2/S2.hpp"
+ #include "../eventLoop/EventLoopManager.hpp"
+ #include "../../event/EventBus.hpp"
++#include "../../state/MonitorState.hpp"
+ 
+ using namespace Screenshare;
+ 
+@@ -113,7 +114,12 @@
+     m_shareStopTimer = makeShared<CEventLoopTimer>(
+         std::chrono::milliseconds(500),
+         [this](SP<CEventLoopTimer> self, void* data) {
+-            // if this fires, then it's been half a second since the last frame, so we aren't sharing
++            // A damage-driven stream can wait on an unchanged desktop indefinitely.
++            // Keep its indicator until the queued capture is cancelled or completes.
++            if (!m_stopped && Screenshare::mgr()->hasPendingCapture(this)) {
++                self->updateTimeout(std::chrono::milliseconds(500));
++                return;
++            }
+             screenshareEvents(false);
+         },
+         nullptr);
+@@ -190,6 +196,13 @@
+ 
+ void CScreenshareSession::screenshareEvents(bool startSharing) {
+     m_stale = !startSharing;
++    // A single completed frame is a screenshot/preview, not a continuous share.
++    const bool showBorder = startSharing && !m_stopped && m_copiedFrames >= 2;
++    if (showBorder != m_borderVisible) {
++        m_borderVisible = showBorder;
++        for (const auto& mon : State::monitorState()->monitors())
++            g_pHyprRenderer->damageMonitor(mon);
++    }
+     if (startSharing && !m_sharing) {
+         m_sharing = true;
+         IPC::Socket2::sock()->postEvent({.event = "screencast", .data = std::format("1,{}", m_type)});
+--- a/src/managers/screenshare/ScreenshareFrame.cpp
++++ b/src/managers/screenshare/ScreenshareFrame.cpp
+@@ -189,6 +189,8 @@
+         m_failed = !copyDmabuf();
+ 
+     if (!m_failed) {
++        if (m_session->m_copiedFrames < 2)
++            ++m_session->m_copiedFrames;
+         // screensharing has started again
+         m_session->screenshareEvents(true);
+         m_session->m_shareStopTimer->updateTimeout(std::chrono::milliseconds(500)); // check in half second
+--- a/src/render/OpenGL.cpp
++++ b/src/render/OpenGL.cpp
+@@ -913,6 +913,11 @@
+ 
+             blend(true);
+ 
++            // Output-only decoration: the mirror/screencopy texture above is
++            // already complete. Never write the border into a capture target.
++            if (!ctx.m_gl.fakeFrame)
++                Screenshare::mgr()->renderShareBorders(ctx);
++
+             g_pHyprRenderer->setProjectionType(ctx, RPT_MONITOR);
+             ctx.m_data.transformDamage = false;
+         }

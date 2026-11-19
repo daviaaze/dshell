@@ -517,7 +517,6 @@ export default class SystemUsage {
         this.#diskCancellable?.cancel();
         const cancellable = new Gio.Cancellable(); this.#diskCancellable = cancellable;
         const generation = ++this.#diskGeneration;
-        this.#setDiskAvailable(false);
         const file = Gio.File.new_for_path(this.#options.diskPath);
         file.query_filesystem_info_async(
             'filesystem::size,filesystem::free', GLib.PRIORITY_DEFAULT, cancellable,

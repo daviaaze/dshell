@@ -28,7 +28,7 @@
 | Focused-client title/class changes update the bounded label and tooltip without requiring a different focused window | [`windowTitle.tsx`](../../packages/widgets/src/bar/windowTitle.tsx) |
 | The bar's long-axis content scrolls inside the compositor-allotted layer; the 48px width/height is the reserved cross-axis size, not a promise that every vertically stacked control fits a short output simultaneously | [`index.tsx`](../../packages/widgets/src/bar/index.tsx) |
 | Tray applications appear on the bar by default; IDs listed in `hidden-tray-items` appear only in Quick Settings. Per-item placement is controlled in Bar settings | [`index.tsx`](../../packages/widgets/src/bar/index.tsx), [`quicksettings/tray.tsx`](../../packages/widgets/src/quicksettings/tray.tsx), [`bar.tsx`](../../packages/widgets/src/settings/bar.tsx), [`bar.gschema.ts`](../../packages/services/src/settings/bar.gschema.ts) |
-| External screen sharing stays visible while a real XDPH `Video/Source` node is running; its popover identifies the application and source when PipeWire metadata provides them. Audio, webcams, and picker previews do not activate it | [`screencast.ts`](../../packages/services/src/capture/screencast.ts), [`screencastGraph.ts`](../../packages/services/src/capture/screencastGraph.ts), [`indicators/screencast.tsx`](../../packages/widgets/src/bar/indicators/screencast.tsx) |
+| External screen sharing shows only a red display icon while a real XDPH `Video/Source` node is running; its tooltip identifies the application and source when PipeWire metadata provides them. There is no sharing label, count badge or popover. Audio, webcams, and picker previews do not activate it | [`screencast.ts`](../../packages/services/src/capture/screencast.ts), [`screencastGraph.ts`](../../packages/services/src/capture/screencastGraph.ts), [`indicators/screencast.tsx`](../../packages/widgets/src/bar/indicators/screencast.tsx) |
 
 
 Component-specific interactions and fallback behavior should be verified in the owning component before adding them here.
@@ -54,6 +54,28 @@ The Bar settings page exposes resource indicators and system monitoring options.
 
 Existing bar placement, dock, tray, and module-visibility preferences remain available. The usage sampling interval is a configured cadence; graph history length does not imply a fixed 60-second time window.
 
+### Homelab metrics source
+
+System monitoring can use either the local machine (`local`, the default) or a Homelab node_exporter endpoint (`homelab`). The remote settings are independent of the existing local sampling interval, network interface, and filesystem path:
+
+| Setting | Default | Allowed values / limits |
+|---|---|---|
+| Source | `local` | `local` or `homelab` |
+| node_exporter URL | `http://dvision-homelab:9100/metrics` | Metrics endpoint URL |
+| Remote polling interval | 5000 ms | 2000–60000 ms |
+| Remote network interface | `enp14s0` | Interface name; empty aggregates non-loopback interfaces |
+| Remote filesystem path | `/` | Filesystem mount path |
+
+The settings page separates the remote endpoint options from local monitoring settings. node_exporter HTTP is unencrypted and should only be used on a trusted LAN. Do not put credentials in the URL or persist credentials in settings.
+
+The popup's Local/Homelab selector updates the bar and the open popup together without closing it. The remote bar icon identifies the server; initial loading and connection errors never substitute local readings. On a failed scrape the popup marks any retained last-good data as stale, while the bar shows the unavailable host rather than stale numeric indicators. Changing the URL clears the old host's readings and histories.
+
+[`remoteSystemUsage.ts`](../../packages/services/src/monitoring/remoteSystemUsage.ts) uses asynchronous Soup requests with a three-second timeout, cancellation on source/URL changes, and one shared polling loop across bars. Polling stops when no visible bar uses the remote source. CPU and network rates need consecutive counter samples; failures do not add synthetic zero samples. The exporter supplies CPU/thread usage, memory, swap, selected network interface, filesystem mount, load and uptime. Remote temperature is explicitly the maximum exported sensor, not a claimed CPU temperature. Per-process detail, battery history and launching a system monitor remain local-only.
+
+The usage popup uses a bounded, stable scroll viewport and a fixed four-column per-thread grid (24 threads occupy six rows). Numeric values and process slots have bounded widths. Disk capability visibility is retained during refresh rather than toggled off before every asynchronous read. Collector startup/configuration side effects run outside reactive dependency tracking so metric updates cannot repeatedly restart sampling.
+
+Verified with real node_exporter scrapes and an unavailable endpoint: the selected host, 24 threads, RAM, NIC and filesystem were read successfully, and changing to an unavailable URL exposed an error without retaining another host's readings. An isolated GTK smoke measured unchanged popup dimensions across repeated local and homelab updates, confirmed the 4×6 grid, and switched sources through the popup control without closing it. Parser/delta tests and the local disk-refresh regression test also passed; this does not imply every theme, monitor size or bar orientation was exercised.
+
 The portal backend publishes source kind/name and its requesting app ID on the existing PipeWire stream. If an application supplies no ID, the observer uses the linked consumer application's metadata when available; otherwise the UI explicitly leaves it unidentified. Existing streams are discovered at service startup, and stopping/removing a stream clears its indicator. This is separate from the shell's own recording timer and stop action. Updated portal metadata requires deploying the patched XDPH package; older backends still produce an honest generic activity indicator.
 
 
@@ -68,4 +90,4 @@ The shared theme maps its palette onto native Adwaita CSS variables, including `
 ## Test plan
 
 - **Functional/manual**: inspect bar position, enabled modules, workspaces, and monitor add/remove behavior against the current source and runtime.
-- **Visual/manual**: inspect horizontal and vertical layouts in supported color schemes. No current screenshot baseline or runtime verification is asserted here.
+- **Visual/manual**: inspect horizontal and vertical layouts in supported color schemes; the isolated homelab smoke above covers the resource popup, not every bar configuration.

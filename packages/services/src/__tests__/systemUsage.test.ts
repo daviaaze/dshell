@@ -1,4 +1,6 @@
-import {
+import GLib from 'gi://GLib?version=2.0';
+import SystemUsage, {
+    DEFAULT_USAGE_OPTIONS,
     calculateCoreUsage,
     parseCpuCounters,
     parseCpuInfo,
@@ -43,6 +45,42 @@ describe('SystemUsage pure metrics', () => {
         ];
         expect(sortProcesses(rows, 'memory', 2).map((row) => row.pid)).toEqual([2, 3]);
         expect(sortProcesses(rows, 'cpu', 2).map((row) => row.pid)).toEqual([1, 3]);
+    });
+});
+
+describe('SystemUsage filesystem refresh', () => {
+    it.async('keeps the previous disk reading available until its refresh completes', async () => {
+        const usage = new SystemUsage();
+        const options = {...DEFAULT_USAGE_OPTIONS, diskPath: GLib.get_tmp_dir()};
+        usage.configure(options);
+        usage.start();
+        const initial = Promise.withResolvers<void>();
+        const watchInitial = usage.diskAvailable.subscribe(() => {
+            if (usage.diskAvailable()) initial.resolve();
+        });
+        const release = usage.subscribe();
+        let watchRefresh: (() => void) | null = null;
+        let watchAvailability: (() => void) | null = null;
+        try {
+            await initial.promise;
+            const refreshed = Promise.withResolvers<void>();
+            let unavailable = false;
+            watchAvailability = usage.diskAvailable.subscribe(() => {
+                if (!usage.diskAvailable()) unavailable = true;
+            });
+            watchRefresh = usage.diskBytes.subscribe(() => refreshed.resolve());
+            // A changed option requests a new slow sample, without changing filesystem.
+            usage.configure({...options, processCount: options.processCount + 1});
+            expect(usage.diskAvailable()).toBe(true);
+            await refreshed.promise;
+            expect(unavailable).toBe(false);
+            expect(usage.diskAvailable()).toBe(true);
+        } finally {
+            watchInitial();
+            watchRefresh?.();
+            watchAvailability?.();
+            release();
+        }
     });
 });
 

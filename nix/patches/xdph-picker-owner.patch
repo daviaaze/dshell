@@ -1,21 +1,37 @@
 diff --git a/src/shared/ScreencopyShared.hpp b/src/shared/ScreencopyShared.hpp
 --- a/src/shared/ScreencopyShared.hpp
 +++ b/src/shared/ScreencopyShared.hpp
-@@ -46 +46 @@
+@@ -48 +48 @@
 -SSelectionData   promptForScreencopySelection();
 +SSelectionData   promptForScreencopySelection(const std::string& sessionHandle);
 diff --git a/src/portals/Screencopy.cpp b/src/portals/Screencopy.cpp
 --- a/src/portals/Screencopy.cpp
 +++ b/src/portals/Screencopy.cpp
-@@ -228 +228 @@
+@@ -260 +260 @@
 -        SHAREDATA = promptForScreencopySelection();
 +        SHAREDATA = promptForScreencopySelection(sessionHandle);
 diff --git a/src/shared/ScreencopyShared.cpp b/src/shared/ScreencopyShared.cpp
 --- a/src/shared/ScreencopyShared.cpp
 +++ b/src/shared/ScreencopyShared.cpp
-@@ -42 +42 @@
+@@ -241 +241 @@
 -SSelectionData promptForScreencopySelection() {
 +SSelectionData promptForScreencopySelection(const std::string& sessionHandle) {
-@@ -62 +62,2 @@
-     proc.addEnv("XDPH_WINDOW_SHARING_LIST", buildWindowList()); // buildWindowList will sanitize any shell stuff in case the picker (qt) does something funky? It shouldn't.
+@@ -261,6 +261,7 @@
+     proc.addEnv("XCURSOR_SIZE", XCURSOR_SIZE ? XCURSOR_SIZE : "24");
+     proc.addEnv("HYPRLAND_INSTANCE_SIGNATURE", HYPRLAND_INSTANCE_SIGNATURE ? HYPRLAND_INSTANCE_SIGNATURE : "0");
+     proc.addEnv("XDPH_WINDOW_SHARING_LIST", buildWindowList());
 +    proc.addEnv("XDPH_SESSION_HANDLE", sessionHandle);
+     proc.addEnv("XDPH_OUTPUT_SHARING_LIST", buildOutputList());
+     proc.addEnv("XDPH_WORKSPACE_SHARING_LIST_V3", buildWorkspaceList(workspaces, v2Workspaces, legacyWorkspaces));
+     proc.addEnv("XDPH_WORKSPACE_SHARING_LIST_V2", v2Workspaces);
+@@ -270,8 +271,10 @@
+         return {};
+ 
+     const auto RETVAL    = proc.stdOut();
+     const auto RETVALERR = proc.stdErr();
++    if (!RETVALERR.empty())
++        Debug::log(LOG, "[sc] Custom picker stderr: {}", RETVALERR);
+ 
+     if (!RETVAL.contains("[SELECTION]")) {
+         constexpr const char* QPA_ERR = "qt.qpa.plugin: Could not find the Qt platform plugin";
+         constexpr const char* HT_ERR  = "[XDPH_PICKER_ERROR]";

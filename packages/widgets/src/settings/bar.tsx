@@ -126,6 +126,20 @@ function ResourceSettingsGroup({bar}: {bar: Bar}) {
                 <Adw.SwitchRow title="Processos principais" active={bar.systemUsageShowProcesses} onNotifyActive={(self) => bar.setSystemUsageShowProcesses(self.active)} />
                 <Adw.SwitchRow title="Uso por núcleo" active={bar.systemUsageShowPerCore} onNotifyActive={(self) => bar.setSystemUsageShowPerCore(self.active)} />
             </Adw.PreferencesGroup>
+            <Adw.PreferencesGroup title="Fonte de uso do sistema">
+                <Adw.ComboRow
+                    title="Origem"
+                    subtitle={computed(() => bar.systemUsageSource() === 'homelab' ? 'Métricas do servidor homelab' : 'Este computador')}
+                    model={Gtk.StringList.new(['Local', 'Homelab'])}
+                    selected={bar.systemUsageSource.as((source) => source === 'homelab' ? 1 : 0)}
+                    onNotifySelected={(row) => bar.setSystemUsageSource(row.selected === 1 ? 'homelab' : 'local')}
+                />
+                <Adw.EntryRow title="URL node_exporter" showApplyButton text={bar.systemUsageRemoteUrl()} onEntryActivated={(self) => bar.setSystemUsageRemoteUrl(self.text)} onApply={(self) => bar.setSystemUsageRemoteUrl(self.text)} />
+                <Adw.SpinRow title="Intervalo remoto" subtitle="2000–60000 ms" adjustment={new Gtk.Adjustment({lower: 2000, upper: 60000, stepIncrement: 1000, pageIncrement: 5000, value: bar.systemUsageRemoteInterval()})} onNotifyValue={(row) => bar.setSystemUsageRemoteInterval(Math.round(row.value))} />
+                <Adw.EntryRow title="Interface de rede remota" tooltipText="Vazio agrega o tráfego de interfaces que não sejam loopback" showApplyButton text={bar.systemUsageRemoteNetworkInterface()} onEntryActivated={(self) => bar.setSystemUsageRemoteNetworkInterface(self.text)} onApply={(self) => bar.setSystemUsageRemoteNetworkInterface(self.text)} />
+                <Adw.EntryRow title="Caminho do filesystem remoto" showApplyButton text={bar.systemUsageRemoteDiskPath()} onEntryActivated={(self) => bar.setSystemUsageRemoteDiskPath(self.text)} onApply={(self) => bar.setSystemUsageRemoteDiskPath(self.text)} />
+                <Adw.ActionRow title="Segurança da conexão" subtitle="HTTP não cifra o tráfego; use somente em uma rede local confiável. Não salve credenciais nesta URL." />
+            </Adw.PreferencesGroup>
         </>
     );
 }
