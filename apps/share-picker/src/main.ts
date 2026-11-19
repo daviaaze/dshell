@@ -41,6 +41,7 @@ import {
 
 const CAT = 'share-picker';
 const APP_ID = 'com.caioasmuniz.shade_shell.share_picker';
+const PICKER_PID = new Gio.Credentials().get_unix_pid();
 
 /** Mutable holder so the token checkbox and the select fn share state. */
 interface TokenState {
@@ -59,6 +60,9 @@ interface PickerUi {
 
 function makeSelectFn(app: Gtk.Application, token: TokenState): SelectFn {
     return (kind, id) => {
+        printerr(
+            `[share-picker-trace] pid=${PICKER_PID} selected kind=${kind} id=${id} session=${GLib.getenv('XDPH_SESSION_HANDLE') ?? '(none)'}`
+        );
         try {
             printOut(`[SELECTION]${token.value ? 'r' : ''}/${kind}:${id}`);
         } catch (e) {
@@ -390,6 +394,10 @@ function watchPortalRequester(
 }
 
 function main() {
+    const sessionHandle = GLib.getenv('XDPH_SESSION_HANDLE');
+    printerr(
+        `[share-picker-trace] pid=${PICKER_PID} invocation session=${sessionHandle ?? '(none)'}`
+    );
     const allowTokenDefault = programArgs.includes('--allow-token');
     const xdphWindows = parseWindowList(GLib.getenv('XDPH_WINDOW_SHARING_LIST'));
 
@@ -397,7 +405,6 @@ function main() {
     const token: TokenState = {value: allowTokenDefault};
     const select = makeSelectFn(app, token);
 
-    const sessionHandle = GLib.getenv('XDPH_SESSION_HANDLE');
     let ownerAlive = sessionHandle === null;
     let requesterWatch: number | null = null;
     let disposeCapture: (() => void) | null = null;
@@ -423,6 +430,9 @@ function main() {
         disposeCapture = onActivate(app, token, guardedSelect, xdphWindows);
     });
     app.connect('shutdown', () => {
+        printerr(
+            `[share-picker-trace] pid=${PICKER_PID} shutdown session=${sessionHandle ?? '(none)'}`
+        );
         disposeCapture?.();
         disposeCapture = null;
         if (requesterWatch !== null) {
