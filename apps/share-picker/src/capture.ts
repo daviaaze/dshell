@@ -58,6 +58,28 @@ export function cleanTempDir(): void {
 
 // ── Capture helpers ──────────────────────────────────────────────
 
+/**
+ * Opening the Windows tab fires one grim per window at once; with a dozen
+ * windows that is a dozen full-screen captures competing with the picker's own
+ * main loop, which is what made the previews crawl in. Cap the fan-out.
+ */
+const MAX_CONCURRENT_CAPTURES = 3;
+let activeCaptures = 0;
+const waitingCaptures: (() => void)[] = [];
+
+function runQueued(cmd: string[], onDone: (ok: boolean) => void): void {
+    const start = (): void => {
+        activeCaptures++;
+        runCapture(cmd, (ok) => {
+            activeCaptures--;
+            waitingCaptures.shift()?.();
+            onDone(ok);
+        });
+    };
+    if (activeCaptures < MAX_CONCURRENT_CAPTURES) start();
+    else waitingCaptures.push(start);
+}
+
 function runCapture(cmd: string[], onDone: (ok: boolean) => void): void {
     let completed = false;
     const complete = (ok: boolean): void => {
@@ -114,7 +136,7 @@ function captureSource(
     if (!state.texture) {
         for (const preview of previews) preview.setState('loading');
     }
-    runCapture(cmd, (ok) => {
+    runQueued(cmd, (ok) => {
         state.capturing = false;
         let texture: Gdk.Texture | null = null;
         if (ok) {
@@ -132,7 +154,16 @@ export function captureMonitor(state: MonitorState, previews: readonly PreviewHa
     if (state.capturing) return;
     const path = monPath(state.info.name);
     logger.debug(CAT, `captureMonitor ${state.info.name} -> ${path}`);
-    captureSource(state, previews, path, [GRIM_BIN, '-s', '0.25', '-o', state.info.name, path]);
+    captureSource(state, previews, path, [
+        GRIM_BIN,
+        '-l',
+        '0',
+        '-s',
+        '0.25',
+        '-o',
+        state.info.name,
+        path,
+    ]);
 }
 
 export function captureWindow(state: WindowState, previews: readonly PreviewHandle[]): void {
@@ -146,5 +177,5 @@ export function captureWindow(state: WindowState, previews: readonly PreviewHand
     const path = winPath(addr);
     const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
     logger.debug(CAT, `captureWindow addr=${addr} geometry=${geometry} -> ${path}`);
-    captureSource(state, previews, path, [GRIM_BIN, '-s', '0.25', '-g', geometry, path]);
+    captureSource(state, previews, path, [GRIM_BIN, '-l', '0', '-s', '0.25', '-g', geometry, path]);
 }

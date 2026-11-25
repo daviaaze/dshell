@@ -2,14 +2,15 @@
  * XDPH protocol parsing + hyprctl queries.
  *
  * Protocol:
- *   Env: XDPH_WINDOW_SHARING_LIST = "ID[HC>]CLASS[HT>]TITLE[HE>]..."
+ *   Env: XDPH_WINDOW_SHARING_LIST = "HANDLE[HC>]CLASS[HT>]TITLE[HE>]ADDR[HA>]..."
  *   Stdout: [SELECTION][r]/screen:NAME  or  [SELECTION][r]/window:ID
  */
 
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
-import type {HyprClient, HyprMonitor, ParsedWindowList, XDPHWindow} from './types';
+import type {HyprClient, HyprMonitor, ParsedWindowList} from './types';
+import {parseWindowEntries} from './windowList';
 
 const CAT = 'share-picker';
 
@@ -33,52 +34,23 @@ function runSync(cmd: string[]): {ok: boolean; out: string; err: string} {
 }
 
 /**
- * Parse the XDPH_WINDOW_SHARING_LIST environment variable.
- *
- * Actual format: ID[HC>]CLASS[HT>]TITLE[HE>]ID[HC>]CLASS[HT>]TITLE[HE>]...
- *   - [HE>] is the entry delimiter (Handle End)
- *   - [HC>] separates ID from CLASS (Handle Class)
- *   - [HT>] separates CLASS from TITLE (Handle Title)
- *   - [HA>] (optional, newer XDPH) separates TITLE from ADDR (Handle Address)
- *   - The XDPH "id" is a wayland object handle serial, NOT a Hyprland client address
+ * Parse the XDPH_WINDOW_SHARING_LIST environment variable (wire format in
+ * windowList.ts). The XDPH "id" is a toplevel handle, NOT a Hyprland client
+ * address; `address` is the Hyprland address in hyprctl's 0x… form.
  */
 export function parseWindowList(env: string | null): ParsedWindowList {
     if (env === null) {
         logger.info(CAT, 'XDPH_WINDOW_SHARING_LIST not set — no portal windows available');
         return {provided: false, windows: []};
     }
-    const result: XDPHWindow[] = [];
-
-    const entries = env.split('[HE>]').filter((e) => e.trim().length > 0);
-    logger.info(CAT, `parsing XDPH_WINDOW_SHARING_LIST: ${entries.length} entries`);
-
-    for (const entry of entries) {
-        const idSep = entry.indexOf('[HC>]');
-        if (idSep === -1) continue;
-        const id = entry.substring(0, idSep);
-
-        const classSep = entry.indexOf('[HT>]', idSep);
-        if (classSep === -1) continue;
-        const clazz = entry.substring(idSep + 5, classSep);
-
-        // Title goes from [HT>] to end of entry (or [HA>] if present)
-        const addrSep = entry.indexOf('[HA>]', classSep);
-        const titleEnd = addrSep !== -1 ? addrSep : entry.length;
-        const title = entry.substring(classSep + 5, titleEnd);
-
-        let address = '';
-        if (addrSep !== -1) {
-            address = entry.substring(addrSep + 5);
-        }
-
-        result.push({id, clazz, title, address});
+    const result = parseWindowEntries(env);
+    logger.info(CAT, `parsed ${result.length} XDPH windows from XDPH_WINDOW_SHARING_LIST`);
+    for (const w of result) {
         logger.debug(
             CAT,
-            `  parsed XDPH window: id=${id} class=${clazz} title="${title.substring(0, 60)}" addr=${address || 'none'}`
+            `  parsed XDPH window: id=${w.id} class=${w.clazz} title="${w.title.substring(0, 60)}" addr=${w.address || 'none'}`
         );
     }
-
-    logger.info(CAT, `parsed ${result.length} XDPH windows from env`);
     return {provided: true, windows: result};
 }
 
