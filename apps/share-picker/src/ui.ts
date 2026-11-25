@@ -205,13 +205,16 @@ function monitorCard(flow: Gtk.FlowBox, state: MonitorState, select: SelectFn): 
 
 function windowCard(flow: Gtk.FlowBox, state: WindowState, select: SelectFn): PreviewHandle {
     const preview = makePreview(state.geometry ? 'idle' : 'unavailable');
-    buildCard(
-        flow,
-        state.info.clazz || state.info.title,
+    const {clazz, title} = state.info;
+    // The title is what people recognise ("Backspace", a document name); the
+    // class alone cannot tell apart several windows of one app.
+    const subText = [
+        title ? clazz : '',
         state.geometry ? `${state.geometry.width}×${state.geometry.height}` : '',
-        preview,
-        () => select('window', state.info.id)
-    );
+    ]
+        .filter(Boolean)
+        .join(' — ');
+    buildCard(flow, title || clazz, subText, preview, () => select('window', state.info.id));
     return preview;
 }
 

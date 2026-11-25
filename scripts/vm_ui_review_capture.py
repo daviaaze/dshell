@@ -82,7 +82,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
                     if review_kind:
                         if review_kind == "window":
                             t.click_accessible_node(source_node, "restoring the reviewed window source")
-                            wait_label("Revise a janela escolhida")
+                            wait_label("Janela selecionada")
                         else:
                             choose_source("screen")
                     else:
@@ -319,7 +319,7 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         fragment = str(t.monitors()[0]["name"]) if kind == "screen" else "org.shade.WorkflowPattern"
         node = t.find_accessible_node(fragment, role="button", contains=True)
         t.click_accessible_node(node, "reviewing actual portal source")
-        wait_label("Revise a tela escolhida" if kind == "screen" else "Revise a janela escolhida")
+        wait_label("Tela selecionada" if kind == "screen" else "Janela selecionada")
 
     def await_response(marker, success):
         def response():

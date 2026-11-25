@@ -225,6 +225,10 @@ function buildPicker(
     const actions = new Gtk.Box({spacing: 12, halign: Gtk.Align.END});
     const cancelBtn = new Gtk.Button({label: 'Cancelar'});
     actions.append(cancelBtn);
+    // Quitting without printing a [SELECTION] is how XDPH learns the user
+    // cancelled; without this handler the button did nothing, the picker stayed
+    // open and the requesting app waited on it indefinitely.
+    cancelBtn.connect('clicked', () => app.quit());
     confirm.connect('clicked', () => {
         if (!pending || submitted) return;
         const {kind, id} = pending;

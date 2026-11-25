@@ -1198,18 +1198,32 @@ print(str(pid) if str(pid).isdecimal() else '')"""
             raise RuntimeError("Quick Settings layer remained after its shortcut")
         return {"ui": "VNC Super+N opened and closed Quick Settings", "accessibility": wifi, "guest": {"quicksettings_geometry": quicksettings_geometry, "remaining_layer_count": len(remaining)}}
 
-    def start_pattern_window(self, title: str = "Shade Area Recording Pattern", title_control: str | None = None) -> dict[str, object]:
+    def start_pattern_window(
+        self,
+        title: str = "Shade Area Recording Pattern",
+        title_control: str | None = None,
+        *,
+        app_id: str = "org.shade.WorkflowPattern",
+        unit: str = "shade-vm-pattern",
+        size: tuple[int, int] = (480, 320),
+        position: tuple[int, int] = (100, 100),
+        non_unique: bool = False,
+    ) -> dict[str, object]:
         pattern = """import Gtk from 'gi://Gtk?version=4.0';
 import Gio from 'gi://Gio';
-const app = new Gtk.Application({application_id: 'org.shade.WorkflowPattern'});
+import GLib from 'gi://GLib';
+// GApplication ids need a dot; Wayland app ids such as `chiaki-ng` do not, so
+// those come from the program name and the application id stays unset.
+GLib.set_prgname(__APP_ID__);
+const app = new Gtk.Application({application_id: __APP_ID_VALUE__, flags: __FLAGS__});
 app.connect('activate', () => {
   const window = new Gtk.ApplicationWindow({application: app, title: __TITLE__});
   window.set_decorated(false);
   window.set_resizable(false);
-  window.set_default_size(480, 320);
+  window.set_default_size(__WIDTH__, __HEIGHT__);
   const canvas = new Gtk.DrawingArea();
-  canvas.set_content_width(480);
-  canvas.set_content_height(320);
+  canvas.set_content_width(__WIDTH__);
+  canvas.set_content_height(__HEIGHT__);
   canvas.set_draw_func((_area, cr) => {
     const cells = [
       [0, 0, 120, 160, 1, 0, 0], [120, 0, 120, 160, 0, 1, 0],
@@ -1239,8 +1253,11 @@ app.connect('activate', () => {
   }
   window.present();
 });
-app.run([]);""".replace("__TITLE__", json.dumps(title)).replace("__TITLE_CONTROL__", json.dumps(title_control))
-        guest_script = "/tmp/shade-vm-pattern.mjs"
+app.run([]);""".replace("__TITLE__", json.dumps(title)).replace("__TITLE_CONTROL__", json.dumps(title_control)) \
+            .replace("__APP_ID__", json.dumps(app_id)).replace("__APP_ID_VALUE__", json.dumps(app_id if "." in app_id else None)) \
+            .replace("__WIDTH__", str(size[0])).replace("__HEIGHT__", str(size[1])) \
+            .replace("__FLAGS__", "Gio.ApplicationFlags.NON_UNIQUE" if non_unique else "Gio.ApplicationFlags.FLAGS_NONE")
+        guest_script = f"/tmp/{unit}.mjs"
         code = """import json, os, sys
 pid = sys.argv[1]
 allowed = {b'GI_TYPELIB_PATH', b'LD_LIBRARY_PATH', b'XDG_DATA_DIRS',
@@ -1264,7 +1281,7 @@ print(json.dumps({'executable': os.readlink('/proc/' + pid + '/exe'), 'environme
         self.desktop(
             "creating deterministic guest capture pattern",
             f"printf %s {shlex.quote(pattern)} > {guest_script}; "
-            f"systemd-run --user --no-block --collect --unit=shade-vm-pattern "
+            f"systemd-run --user --no-block --collect --unit={unit} "
             f"{command}",
         )
         client = self.wait_until(
@@ -1284,7 +1301,7 @@ print(json.dumps({'executable': os.readlink('/proc/' + pid + '/exe'), 'environme
         self.desktop(
             "placing deterministic capture pattern at non-origin coordinates",
             "hyprctl dispatch "
-            + shlex.quote(f'hl.dsp.window.move({{x = 100, y = 100, window = "address:{address}"}})'),
+            + shlex.quote(f'hl.dsp.window.move({{x = {position[0]}, y = {position[1]}, window = "address:{address}"}})'),
         )
         geometry = self.wait_until(
             "positioned guest capture pattern",
@@ -1292,8 +1309,8 @@ print(json.dumps({'executable': os.readlink('/proc/' + pid + '/exe'), 'environme
                 (
                     item for item in self.clients()
                     if item.get("address") == address
-                    and item.get("at") == [100, 100]
-                    and item.get("size") == [480, 320]
+                    and item.get("at") == list(position)
+                    and item.get("size") == list(size)
                 ),
                 None,
             ),
@@ -1301,11 +1318,11 @@ print(json.dumps({'executable': os.readlink('/proc/' + pid + '/exe'), 'environme
         )
         return geometry
 
-    def stop_pattern_window(self) -> None:
+    def stop_pattern_window(self, unit: str = "shade-vm-pattern") -> None:
         self.desktop(
             "stopping guest capture pattern",
-            "systemctl --user stop shade-vm-pattern.service; "
-            "rm -f /tmp/shade-vm-pattern.mjs",
+            f"systemctl --user stop {unit}.service; "
+            f"rm -f /tmp/{unit}.mjs",
             check=False,
         )
 
@@ -2593,7 +2610,13 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         )
         return result.stdout + result.stderr
 
-    def portal_request(self, kind: str) -> dict[str, object]:
+    def portal_request(
+        self,
+        kind: str,
+        *,
+        window_fragment: str = "org.shade.WorkflowPattern",
+        window_size: tuple[int, int] = (480, 320),
+    ) -> dict[str, object]:
         marker = self.desktop("marking portal request log time", "date +%s.%N").stdout.strip()
         self.desktop(
             f"starting actual ScreenCast portal requester for {kind}",
@@ -2616,7 +2639,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         def choose_source(fragment: str) -> None:
             button = self.find_accessible_node(fragment, role="button", contains=True)
             self.click_accessible_node(button, f"choosing source {fragment}")
-            review_heading = "Revise a tela escolhida" if kind == "screen" else "Revise a janela escolhida"
+            review_heading = "Tela selecionada" if kind == "screen" else "Janela selecionada"
             self.wait_until(
                 f"reviewing selected source {fragment}",
                 lambda: self.find_accessible_node(review_heading, role="label"),
@@ -2631,7 +2654,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             choose_source(str(primary["name"]))
         elif kind == "window":
             self.click_named("show guest window sources", "Janelas", role="tab")
-            choose_source("org.shade.WorkflowPattern")
+            choose_source(window_fragment)
         elif kind == "cancel":
             self.click_named("cancelling the real Shade share picker", "Cancelar", role="button")
         else:
@@ -2666,7 +2689,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 raise RuntimeError(f"Portal did not return the requested native stream type: {logs}")
             if kind == "screen" and "'mapping_id': <'Virtual-1'>" not in responses[0]:
                 raise RuntimeError(f"Portal selected the wrong guest screen: {responses[0]}")
-            if kind == "window" and "'size': <(480, 320)>" not in responses[0]:
+            if kind == "window" and f"'size': <({window_size[0]}, {window_size[1]})>" not in responses[0]:
                 raise RuntimeError(f"Portal selected the wrong guest window geometry: {responses[0]}")
             response = responses[0]
         else:
@@ -2732,6 +2755,183 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             )
             if pattern_started:
                 self.stop_pattern_window()
+
+    def test_share_picker_window_pick(self) -> dict[str, object]:
+        """Pick each of two same-class windows through the real portal.
+
+        Regression: XDPH's window list is `HANDLE[HC>]CLASS[HT>]TITLE[HE>]ADDR[HA>]`.
+        Parsing it as a legacy list corrupted every handle after the first, so XDPH
+        answered `selection -1` for those windows, and class/title matching confused
+        windows sharing a class. Both windows use one app id; each pick must come
+        back as the window that was clicked.
+        """
+        units = ("shade-vm-pattern-a", "shade-vm-pattern-b")
+        try:
+            first = self.start_pattern_window(
+                "Pattern A", unit=units[0], non_unique=True, size=(480, 320), position=(100, 100)
+            )
+            second = self.start_pattern_window(
+                "Pattern B", unit=units[1], non_unique=True, size=(400, 300), position=(560, 140)
+            )
+            # Picking the later entry is the case the legacy parser broke; pick the
+            # earlier one afterwards so a regression cannot hide behind ordering.
+            picked_second = self.portal_request("window", window_fragment="Pattern B", window_size=(400, 300))
+            picked_first = self.portal_request("window", window_fragment="Pattern A", window_size=(480, 320))
+            return {
+                "ui": "Two same-class windows were picked one after the other in the real Shade share picker; each portal Start returned the clicked window's size.",
+                "guest": {
+                    "pattern_a": {"address": first.get("address"), "size": first.get("size")},
+                    "pattern_b": {"address": second.get("address"), "size": second.get("size")},
+                    "picked_b": picked_second,
+                    "picked_a": picked_first,
+                },
+            }
+        finally:
+            for unit in units:
+                self.stop_pattern_window(unit)
+
+    def test_share_picker_window_rules(self) -> dict[str, object]:
+        """The picker is a transient chooser: it must float, stay centered and follow workspace switches.
+
+        Regression: tiled, it sank behind newer windows and stayed on its own
+        workspace, which left the portal request hanging on an invisible dialog.
+        """
+        original_workspace = None
+        try:
+            self.desktop(
+                "starting ScreenCast portal requester for the picker rules check",
+                "systemctl --user stop shade-vm-portal-fixture.target 2>/dev/null || true; "
+                "systemctl --user start shade-vm-portal-fixture.target",
+            )
+            picker = self.wait_until(
+                "actual Shade ScreenCast share picker",
+                lambda: next(
+                    (c for c in self.clients() if c.get("title") == "Escolha o que compartilhar"),
+                    None,
+                ),
+                timeout=20,
+            )
+            monitor = next(
+                (m for m in self.monitors() if m.get("name") == "Virtual-1"), None
+            )
+            if monitor is None:
+                raise RuntimeError("Picker rules check has no Virtual-1 output")
+
+            problems: list[str] = []
+            if picker.get("floating") is not True:
+                problems.append(f"picker is not floating: {picker.get('floating')!r}")
+            if picker.get("pinned") is not True:
+                problems.append(f"picker is not pinned: {picker.get('pinned')!r}")
+            scale = float(monitor.get("scale") or 1)
+            # `center on` centers in the usable area, so bars and docks that reserve
+            # space shift it; compare against that area, not the raw output.
+            reserved = monitor.get("reserved") or [0, 0, 0, 0]
+            at, size = picker.get("at"), picker.get("size")
+            centre_x = float(at[0]) + float(size[0]) / 2
+            usable_left = float(monitor.get("x", 0)) + float(reserved[0])
+            usable_width = float(monitor.get("width", 0)) / scale - float(reserved[0]) - float(reserved[2])
+            monitor_centre_x = usable_left + usable_width / 2
+            if abs(centre_x - monitor_centre_x) > 8:
+                problems.append(f"picker is not horizontally centered: {centre_x} vs {monitor_centre_x}")
+
+            original_workspace = int(picker["workspace"]["id"])
+            target = 2 if original_workspace != 2 else 3
+            self.desktop(
+                f"switching to workspace {target} with the picker open",
+                "hyprctl dispatch " + shlex.quote(f'hl.dsp.focus({{workspace = "{target}"}})'),
+            )
+            followed = self.wait_until(
+                "pinned picker following the workspace switch",
+                lambda: next(
+                    (
+                        c for c in self.clients()
+                        if c.get("address") == picker.get("address")
+                        and int(c["workspace"]["id"]) == target
+                    ),
+                    None,
+                ),
+                timeout=8,
+            )
+            active = json.loads(self.desktop(
+                "reading the active workspace", "hyprctl activeworkspace -j"
+            ).stdout)
+            if int(active.get("id", -1)) != target:
+                problems.append(f"active workspace is {active.get('id')}, expected {target}")
+            if problems:
+                raise RuntimeError("Share picker window rules not applied: " + "; ".join(problems))
+
+            self.click_named("cancelling the real Shade share picker", "Cancelar", role="button")
+            # Cancelar must close the picker. It once had no handler, leaving the
+            # dialog open and the requesting app waiting on it forever.
+            self.wait_until(
+                "share picker closing after Cancelar",
+                lambda: not any(c.get("title") == "Escolha o que compartilhar" for c in self.clients()) or None,
+                timeout=8,
+            )
+            return {
+                "ui": "Opened the real share picker, checked float/pin/center, switched workspace and cancelled it from the new workspace.",
+                "guest": {
+                    "picker_at": at,
+                    "picker_size": size,
+                    "workspace_before": original_workspace,
+                    "workspace_after": followed["workspace"],
+                },
+            }
+        finally:
+            if original_workspace is not None:
+                self.desktop(
+                    "restoring the original workspace",
+                    "hyprctl dispatch " + shlex.quote(f'hl.dsp.focus({{workspace = "{original_workspace}"}})'),
+                    check=False,
+                )
+            self.desktop(
+                "stopping ScreenCast portal requester",
+                "systemctl --user stop shade-vm-portal-fixture.target",
+                check=False,
+            )
+
+    def window_property(self, address: str, name: str) -> str:
+        return self.desktop(
+            f"reading Hyprland window property {name}",
+            f"hyprctl getprop address:{shlex.quote(address)} {shlex.quote(name)}",
+        ).stdout.strip()
+
+    def test_render_unfocused_rule(self) -> dict[str, object]:
+        """The chiaki-ng window keeps rendering while unfocused; other windows do not.
+
+        Regression: without `render_unfocused`, a window share of chiaki-ng froze
+        whenever the window lost focus. The rule must reach the compositor and
+        must stay specific to that class.
+        """
+        units = ("shade-vm-chiaki", "shade-vm-control")
+        try:
+            game = self.start_pattern_window(
+                "chiaki-ng", app_id="chiaki-ng", unit=units[0], position=(100, 100)
+            )
+            control = self.start_pattern_window(
+                "Control window", unit=units[1], non_unique=True, position=(620, 140)
+            )
+            if game.get("class") != "chiaki-ng":
+                raise RuntimeError(f"Fixture window did not get Wayland class chiaki-ng: {game}")
+            values = {
+                "chiaki-ng": self.window_property(str(game["address"]), "render_unfocused"),
+                "control": self.window_property(str(control["address"]), "render_unfocused"),
+            }
+            if values != {"chiaki-ng": "true", "control": "false"}:
+                raise RuntimeError(f"render_unfocused is not applied only to chiaki-ng: {values}")
+            fps = self.desktop(
+                "reading render_unfocused_fps", "hyprctl -j getoption misc:render_unfocused_fps"
+            ).stdout
+            fps_value = json.loads(fps).get("int")
+            if not isinstance(fps_value, int) or fps_value < 30:
+                raise RuntimeError(f"misc.render_unfocused_fps is {fps_value!r}, expected at least 30")
+            return {
+                "ui": "A window with class chiaki-ng carries render_unfocused; an unrelated window does not.",
+                "guest": {"render_unfocused": values, "render_unfocused_fps": fps_value},
+            }
+        finally:
+            for unit in units:
+                self.stop_pattern_window(unit)
 
     def bluetooth_metadata(self) -> dict[str, dict[str, dict[str, object]]]:
         result = self.guest(
@@ -4699,7 +4899,8 @@ def main() -> int:
         print("greeter-login")
         print("launcher quicksettings settings-bar-position wifi capture notifications-dnd settings-search-keyboard")
         print("area-recording wifi-credential-connect window-target-capture settings-page-registry window-switcher")
-        print("settings-displays-preview share-picker-portal bluetooth-pairing guest-brightness")
+        print("settings-displays-preview share-picker-portal share-picker-window-pick share-picker-window-rules")
+        print("render-unfocused-rule bluetooth-pairing guest-brightness")
         print("audio-capture-playback fprintd-private-bus-protocol power-confirmation-cancel lock-unlock notification-history")
         print("visual-audit")
         return 0
@@ -4743,6 +4944,9 @@ def main() -> int:
             ("window-switcher", test.test_window_switcher),
             ("settings-displays-preview", test.test_displays_preview),
             ("share-picker-portal", test.test_share_picker_portal),
+            ("share-picker-window-pick", test.test_share_picker_window_pick),
+            ("share-picker-window-rules", test.test_share_picker_window_rules),
+            ("render-unfocused-rule", test.test_render_unfocused_rule),
             ("bluetooth-pairing", test.test_bluetooth_pairing),
             ("guest-brightness", test.test_guest_brightness),
             ("audio-capture-playback", test.test_guest_audio),

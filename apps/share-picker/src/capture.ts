@@ -6,6 +6,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
+import {createCaptureQueue} from './captureQueue';
 import {resolvePreviewFrame} from './previewFrame';
 import type {MonitorState, PreviewHandle, WindowState} from './types';
 
@@ -63,21 +64,15 @@ export function cleanTempDir(): void {
  * windows that is a dozen full-screen captures competing with the picker's own
  * main loop, which is what made the previews crawl in. Cap the fan-out.
  */
-const MAX_CONCURRENT_CAPTURES = 3;
-let activeCaptures = 0;
-const waitingCaptures: (() => void)[] = [];
+const schedule = createCaptureQueue(3);
 
 function runQueued(cmd: string[], onDone: (ok: boolean) => void): void {
-    const start = (): void => {
-        activeCaptures++;
+    schedule((done) =>
         runCapture(cmd, (ok) => {
-            activeCaptures--;
-            waitingCaptures.shift()?.();
+            done();
             onDone(ok);
-        });
-    };
-    if (activeCaptures < MAX_CONCURRENT_CAPTURES) start();
-    else waitingCaptures.push(start);
+        })
+    );
 }
 
 function runCapture(cmd: string[], onDone: (ok: boolean) => void): void {
