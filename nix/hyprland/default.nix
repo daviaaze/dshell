@@ -165,6 +165,7 @@ in
       ];
       floatClassRe = "^(${lib.concatStringsSep "|" floatClasses})$";
       dialogTitleRe = "^(${lib.concatStringsSep "|" dialogTitles})(.*)$";
+      sharePickerClassRe = "^com\\.caioasmuniz\\.shade_shell\\.share_picker$";
       pip = "match:title ^(Picture-in-Picture)$";
 
       # Built-in window rules carry stable ids: the compositor seed keeps them so
@@ -186,6 +187,28 @@ in
           {
             id = "center-file-dialogs";
             rule = "center on, match:title ${dialogTitleRe}";
+          }
+          # Game-stream window: without this it stops getting frame callbacks when
+          # unfocused or on another workspace, so a window share of it freezes.
+          {
+            id = "render-unfocused-chiaki";
+            rule = "render_unfocused on, match:class ^chiaki-ng$";
+          }
+          # The XDPH share picker is a transient chooser. Tiled, it sank behind
+          # newer windows and stayed stranded on its workspace, which froze the
+          # screen-share request waiting on it. Floating keeps it above tiles,
+          # pin makes it follow workspace switches.
+          {
+            id = "float-share-picker";
+            rule = "float on, match:class ${sharePickerClassRe}";
+          }
+          {
+            id = "center-share-picker";
+            rule = "center on, match:class ${sharePickerClassRe}";
+          }
+          {
+            id = "pin-share-picker";
+            rule = "pin on, match:class ${sharePickerClassRe}";
           }
           {
             id = "pip-float";
@@ -364,6 +387,9 @@ in
         };
 
         misc = {
+          # Window capture of a window that is not focused only advances at this
+          # rate for windows carrying `render_unfocused` (default 15 fps).
+          render_unfocused_fps = 30;
           # A crashed locker leaves the compositor locked; its replacement must be able to recover.
           allow_session_lock_restore = true;
           animate_manual_resizes = true;
