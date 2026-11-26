@@ -252,9 +252,8 @@ function buildPicker(
     mainBox.append(body);
     // ── Token restore checkbox ──────────────────────────
     const tokenBox = new Gtk.CheckButton({
-        label: 'Permitir token de restauração',
+        label: 'Permitir que o aplicativo reabra esta fonte sem perguntar novamente',
         active: token.value,
-        visible: token.value || programArgs.includes('--allow-token'),
     });
     tokenBox.connect('toggled', () => {
         token.value = tokenBox.active;
@@ -263,7 +262,7 @@ function buildPicker(
     footer.append(tokenBox);
     footer.append(
         new Gtk.Label({
-            label: 'O token pertence a este pedido; não salva uma preferência do shell.',
+            label: 'O portal controla por quanto tempo o aplicativo pode reutilizar esta escolha.',
             wrap: true,
             wrapMode: Pango.WrapMode.WORD_CHAR,
             maxWidthChars: 70,
