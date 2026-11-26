@@ -8,7 +8,8 @@ export function initAutoSwitch() {
     // Defer Wireplumber D-Bus proxy to avoid blocking the main loop
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
         const audio = Wireplumber.get_default()!.audio;
-        let knownIds = new Set<number>();
+        // Devices already present at startup are not "new": only later arrivals may take over the default.
+        let knownIds = new Set<number>((audio.speakers ?? []).map((s) => s.id));
 
         const binding = bind(audio, 'speakers');
         binding.subscribe(() => {

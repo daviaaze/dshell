@@ -397,13 +397,17 @@ def cmd_down(args) -> None:
                 time.sleep(2)
                 if not pid_is_vm(state):
                     break
+    if pid and pid_is_vm(state):
+        # Keep the state file and disk: deleting them would orphan a running VM
+        # that `status` and `down` could no longer find.
+        raise VmDevError(f"VM pid {pid} survived SIGKILL; state kept in {DEV_DIR}, retry `scripts/vm-dev.py down`")
     sock = DEV_DIR / "ssh.sock"
     if sock.exists():
         subprocess.run(["ssh", "-O", "exit", "-o", f"ControlPath={sock}", "x"], capture_output=True)
         sock.unlink(missing_ok=True)
     shutil.rmtree(DEV_DIR / "vm", ignore_errors=True)
     STATE_FILE.unlink(missing_ok=True)
-    print("down: VM stopped" if not pid_is_vm(state) else "down: VM STILL RUNNING")
+    print("down: VM stopped")
 
 
 def main() -> int:

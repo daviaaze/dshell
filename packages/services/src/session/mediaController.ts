@@ -63,7 +63,6 @@ export default class MediaController extends Object {
     /** Initialize the MPRIS D-Bus proxy. Call once during boot. */
     init() {
         if (this.#listening) return;
-        this.#listening = true;
 
         try {
             this.#mpris = Mpris.get_default();
@@ -71,6 +70,7 @@ export default class MediaController extends Object {
             logger.warn('mediaController', 'Failed to init Mpris:', e);
             return;
         }
+        this.#listening = true;
 
         this.#hn = {};
         connectFor(this.#hn, this.#mpris!, 'notify::players', () => {
@@ -169,7 +169,9 @@ export default class MediaController extends Object {
         this.#hn = {};
         this.#mpris = null;
         this.#players = [];
-        this.#activePlayer = null;
+        this.#setActivePlayer(null);
+        this.#listening = false;
+        this.notify('players');
     }
 }
 

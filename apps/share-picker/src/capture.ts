@@ -22,10 +22,8 @@ export const POLL_INTERVAL_MS = 200;
 // ── Temp files ───────────────────────────────────────────────────
 
 export function ensureTempDir(): void {
-    try {
-        GLib.mkdir_with_parents(TEMP_DIR, 0o700);
-    } catch {
-        /* ignore */
+    if (GLib.mkdir_with_parents(TEMP_DIR, 0o700) !== 0) {
+        throw new Error('Could not create the private preview directory');
     }
 }
 
@@ -39,30 +37,34 @@ export function winPath(addr: string): string {
 }
 
 export function cleanTempDir(): void {
+    const dir = Gio.File.new_for_path(TEMP_DIR);
+    if (!dir.query_exists(null)) return;
     try {
-        const dir = Gio.File.new_for_path(TEMP_DIR);
         const enumerator = dir.enumerate_children(
             'standard::name',
             Gio.FileQueryInfoFlags.NONE,
             null
         );
-        let info = enumerator.next_file(null);
-        while (info) {
-            const child = dir.get_child(info.get_name());
-            child.delete(null);
-            info = enumerator.next_file(null);
+        try {
+            let info = enumerator.next_file(null);
+            while (info) {
+                dir.get_child(info.get_name()).delete(null);
+                info = enumerator.next_file(null);
+            }
+        } finally {
+            enumerator.close(null);
         }
-    } catch {
-        // ignore cleanup failures
+        dir.delete(null);
+    } catch (error) {
+        logger.warn(CAT, 'could not remove private preview files', error);
     }
 }
 
 // ── Capture helpers ──────────────────────────────────────────────
 
 /**
- * Opening the Windows tab fires one grim per window at once; with a dozen
- * windows that is a dozen full-screen captures competing with the picker's own
- * main loop, which is what made the previews crawl in. Cap the fan-out.
+ * Capture fan-out stays bounded when the combined view refreshes several
+ * monitors at once, so grim children do not overwhelm the picker's main loop.
  */
 const schedule = createCaptureQueue(3);
 
@@ -76,31 +78,20 @@ function runQueued(cmd: string[], onDone: (ok: boolean) => void): void {
 }
 
 function runCapture(cmd: string[], onDone: (ok: boolean) => void): void {
-    let completed = false;
-    const complete = (ok: boolean): void => {
-        if (completed) return;
-        completed = true;
-        onDone(ok);
-    };
-    let startFailed = false;
+    if (stopped) {
+        onDone(false);
+        return;
+    }
+    let proc: Gio.Subprocess;
     try {
-        const proc = Gio.Subprocess.new(
+        proc = Gio.Subprocess.new(
             cmd,
-            Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_PIPE
+            Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE
         );
-        proc.wait_check_async(null, (_proc, result) => {
-            let ok = false;
-            try {
-                ok = proc.wait_check_finish(result);
-            } catch (e) {
-                logger.error(CAT, `runCapture: ${cmd.join(' ')}`, e);
-            }
-            complete(ok);
-        });
     } catch (e) {
-        if (completed) throw e;
         logger.error(CAT, `runCapture new: ${cmd.join(' ')}`, e);
-        startFailed = true;
+        onDone(false);
+        return;
     }
     if (startFailed) complete(false);
 }
@@ -133,6 +124,7 @@ function captureSource(
     }
     runQueued(cmd, (ok) => {
         state.capturing = false;
+        if (stopped) return;
         let texture: Gdk.Texture | null = null;
         if (ok) {
             try {
@@ -146,7 +138,7 @@ function captureSource(
 }
 
 export function captureMonitor(state: MonitorState, previews: readonly PreviewHandle[]): void {
-    if (state.capturing) return;
+    if (stopped || state.capturing) return;
     const path = monPath(state.info.name);
     logger.debug(CAT, `captureMonitor ${state.info.name} -> ${path}`);
     captureSource(state, previews, path, [
@@ -163,14 +155,7 @@ export function captureMonitor(state: MonitorState, previews: readonly PreviewHa
 
 export function captureWindow(state: WindowState, previews: readonly PreviewHandle[]): void {
     if (state.capturing) return;
-    if (!state.geometry) {
         updatePreviews(state, previews, null);
         return;
     }
-    const g = state.geometry;
-    const addr = state.hyprAddress || state.info.address || state.info.id;
-    const path = winPath(addr);
-    const geometry = `${g.x},${g.y} ${g.width}x${g.height}`;
-    logger.debug(CAT, `captureWindow addr=${addr} geometry=${geometry} -> ${path}`);
-    captureSource(state, previews, path, [GRIM_BIN, '-l', '0', '-s', '0.25', '-g', geometry, path]);
 }

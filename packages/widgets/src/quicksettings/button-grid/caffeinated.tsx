@@ -59,7 +59,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
                 intent="toggle"
                 active={idle}
                 icon={icon}
-                domain={'Evitar\nsuspensão'}
+                domain="Manter ativo"
                 value={value}
                 actionLabel={actionLabel}
                 onClick={() => {

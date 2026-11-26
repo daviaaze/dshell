@@ -22,8 +22,9 @@ const SLIDER_SPACING = 4;
 
 /**
  * The binding reflects confirmed service state. value-changed handles both
- * pointer and accessibility input; programmatic binding writes are guarded
- * at the Gtk.Range setter to avoid feedback from GTK's clamping.
+ * pointer and accessibility input; programmatic binding writes set a local
+ * flag in the slider's `ref` closure so value-changed ignores them, avoiding
+ * feedback from GTK's clamping.
  */
 export const Slider = (props: SliderProps) => {
     const safe = (v: number) => (Number.isFinite(v) ? v : 0);

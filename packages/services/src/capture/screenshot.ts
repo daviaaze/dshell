@@ -2,8 +2,8 @@ import type Gdk from 'gi://Gdk?version=4.0';
 import type Gio from 'gi://Gio?version=2.0';
 import {property} from '@shade/core/decorators';
 import {defineService} from '@shade/core/define';
-import logger from '@shade/core/logger';
 import {Object, register} from 'gnim/gobject';
+import {bus} from '../bus';
 import {
     confirmArea as confirmAreaFlow,
     screenshotFullscreen,
@@ -13,7 +13,7 @@ import {
 } from './captureFlow';
 import {registerCommands} from './commands';
 import RecordingPrefs from './prefs';
-import {observeCapture, type CaptureUpdate} from './utils';
+import {captureBlocked, observeCapture, type CaptureUpdate} from './utils';
 import {Recorder} from './recorder';
 import {
     recordArea,
@@ -77,6 +77,8 @@ export default class Screenshot extends Object {
 
     // ── Overlay state ────────────────────────────────────────────
     #overlayOpen = false;
+    #overlayPending = false;
+    #overlayGeneration = 0;
     #overlayQuick = false;
     #selectedMode: CaptureMode = 'screenshot';
     #selectedTarget: CaptureTarget = 'fullscreen';
@@ -151,22 +153,40 @@ export default class Screenshot extends Object {
     }
 
     set overlayOpen(v: boolean) {
-        if (this.#overlayOpen === v) return;
-
         if (v) {
-            this.#stage.captureSync();
-            if (!this.#stage.pixPath) {
-                logger.warn('screenshot', 'stage capture failed, overlay will show live screen');
-            }
+            if (captureBlocked() || this.#overlayOpen || this.#overlayPending) return;
+            this.#overlayPending = true;
+            void this.#openOverlay(++this.#overlayGeneration);
+            return;
         }
-
-        this.#overlayOpen = v;
+        // Closing must also cancel a stage capture that has not opened yet.
+        this.#overlayGeneration++;
+        this.#overlayPending = false;
+        this.#stage.cleanup();
+        this.overlayQuick = false;
+        if (!this.#overlayOpen) return;
+        this.#overlayOpen = false;
         this.notify('overlay-open');
+    }
 
-        if (!v) {
+    async #openOverlay(generation: number): Promise<void> {
+        const captured = await this.#stage.capture();
+        if (generation !== this.#overlayGeneration) return;
+        this.#overlayPending = false;
+        if (captureBlocked()) {
             this.#stage.cleanup();
-            this.overlayQuick = false;
+            return;
         }
+        if (!captured) {
+            this.#setCapture({
+                state: 'error',
+                message: 'Could not capture the screen for selection.',
+            });
+            return;
+        }
+        this.#overlayOpen = true;
+        this.notify('overlay-open');
+        bus.emit('capture:screenshot:overlay');
     }
 
     /** Minimal area selection with explicit review and confirmation controls. */
@@ -253,6 +273,7 @@ export default class Screenshot extends Object {
     /** Fullscreen grim capture (button/CLI path); area delegates to the
      *  configured engine (slurp subprocess or the in-shell overlay). */
     screenshot(fullscreen: boolean) {
+        if (captureBlocked()) return;
         if (!fullscreen) {
             if (useSlurpForSelection()) {
                 this.#setCapture({state: 'busy', kind: 'screenshot'});
@@ -275,6 +296,7 @@ export default class Screenshot extends Object {
      * Screenshots crop the frozen stage; recordings start after close.
      */
     confirmArea(geometry: BoundaryGeometry) {
+        if (captureBlocked()) return;
         confirmAreaFlow(this, geometry);
     }
 
@@ -286,6 +308,7 @@ export default class Screenshot extends Object {
         target: 'fullscreen' | 'area' | 'window' | 'monitor',
         geometry: BoundaryGeometry | null
     ) {
+        if (captureBlocked()) return;
         if (this.#selectedMode === 'screenshot') {
             this.captureFromStage(geometry);
         } else {
@@ -294,6 +317,7 @@ export default class Screenshot extends Object {
     }
 
     async captureFromStage(geometry: BoundaryGeometry | null) {
+        if (captureBlocked()) return;
         this.#setCapture({state: 'busy', kind: 'screenshot'});
         const ok = await this.#stage.captureCrop(geometry);
         if (ok) this.overlayOpen = false;
@@ -309,6 +333,7 @@ export default class Screenshot extends Object {
         options: {geometry?: BoundaryGeometry; output?: string} = {},
         forceBackend?: RecorderBackend
     ) {
+        if (captureBlocked()) return;
         this.#recorder.start(options, forceBackend);
     }
 
@@ -317,33 +342,39 @@ export default class Screenshot extends Object {
     }
 
     recordArea() {
+        if (captureBlocked()) return;
         recordArea(this);
     }
 
     recordOutput(outputName?: string) {
+        if (captureBlocked()) return;
         recordOutput(this, outputName);
     }
 
     recordOutputVisual() {
+        if (captureBlocked()) return;
         recordOutputVisual(this);
     }
 
     recordWindowVisual() {
+        if (captureBlocked()) return;
         recordWindowVisual(this);
     }
 
     recordWindowByAddress(address: string) {
+        if (captureBlocked()) return;
         recordWindowByAddress(this, address);
     }
 
     recordWindow() {
+        if (captureBlocked()) return;
         recordWindow(this);
     }
 
     // ── Overlay ────────────────────────────────────────────────────────
 
     toggleOverlay() {
-        this.overlayOpen = !this.#overlayOpen;
+        this.overlayOpen = !(this.#overlayOpen || this.#overlayPending);
     }
     showOverlay() {
         this.overlayOpen = true;
@@ -367,11 +398,10 @@ export default class Screenshot extends Object {
     // ── Virtual monitors ──────────────────────────────────────────────
 
     async createVirtualMonitor(resolution = '1920x1080', fps = 60): Promise<VirtualMonitor | null> {
+        if (captureBlocked()) return null;
         const vm = await createVirtualMonitor(this.#virtualMonitors, resolution, fps);
-        if (vm) {
-            this.notify('virtual-monitors');
-            this.notify('virtual-monitor-active');
-        }
+        this.notify('virtual-monitors');
+        this.notify('virtual-monitor-active');
         return vm;
     }
 
@@ -387,6 +417,7 @@ export default class Screenshot extends Object {
     }
 
     dispose() {
+        this.hideOverlay();
         this.#captureObserverCleanup?.();
         this.#captureObserverCleanup = undefined;
         this.#recorder.dispose();
@@ -394,4 +425,4 @@ export default class Screenshot extends Object {
     }
 }
 
-defineService({name: 'Screenshot', service: Screenshot.get_default()});
+defineService({name: 'Screenshot', service: Screenshot.get_default(), dependsOn: ['ShellState']});

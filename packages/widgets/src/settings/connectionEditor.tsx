@@ -9,8 +9,26 @@ import {
     deleteConnectionAsync,
     securityLabelFromKeyMgmt,
 } from '../quicksettings/network/utils';
+import {errorMessage} from './errorMessage';
 
 const LOG_TAG = 'settings-network';
+
+/** Asks before forgetting a saved network; `onConfirm` runs only on "Esquecer". */
+export function confirmForgetNetwork(parent: Gtk.Window, ssid: string, onConfirm: () => void) {
+    const dialog = new Adw.AlertDialog({
+        heading: 'Esquecer rede?',
+        body: `A rede ${ssid} será removida das redes conhecidas e a senha salva será apagada.`,
+        defaultResponse: 'cancel',
+        closeResponse: 'cancel',
+    });
+    dialog.add_response('cancel', 'Cancelar');
+    dialog.add_response('forget', 'Esquecer');
+    dialog.set_response_appearance('forget', Adw.ResponseAppearance.DESTRUCTIVE);
+    dialog.connect('response', (_dialog, response) => {
+        if (response === 'forget') onConfirm();
+    });
+    dialog.present(parent);
+}
 
 /** Password entry for the saved network credential. */
 function SecurityGroup({
@@ -116,9 +134,10 @@ function EditorContent({
                 <Adw.PreferencesPage>
                     <Adw.PreferencesGroup
                         title="Conexão"
-                        description={securityLabelFromKeyMgmt(
-                            settingSecurity?.get_key_mgmt() ?? null
-                        ) ?? 'Rede aberta'}
+                        description={
+                            securityLabelFromKeyMgmt(settingSecurity?.get_key_mgmt() ?? null) ??
+                            'Rede aberta'
+                        }
                     >
                         <Adw.SwitchRow
                             title="Conectar automaticamente"
@@ -127,7 +146,9 @@ function EditorContent({
                             onNotifyActive={(self) => setAutoConnect(self.active)}
                         />
                     </Adw.PreferencesGroup>
-                    {isSecureConn && <SecurityGroup password={password} setPassword={setPassword} />}
+                    {isSecureConn && (
+                        <SecurityGroup password={password} setPassword={setPassword} />
+                    )}
                     <ActionsBox
                         saving={saving}
                         errorMsg={errorMsg}
@@ -186,12 +207,12 @@ export function showConnectionEditor(
                 })
                 .catch((e: Error) => {
                     logger.error(LOG_TAG, 'commit failed:', e.message);
-                    setErrorMsg(e.message || 'Failed to save');
+                    setErrorMsg(e.message || 'Falha ao salvar');
                     setSaving(false);
                 });
         } catch (e) {
             logger.error(LOG_TAG, 'save error:', e);
-            setErrorMsg(String(e));
+            setErrorMsg(errorMessage(e));
             setSaving(false);
         }
     };
@@ -200,7 +221,7 @@ export function showConnectionEditor(
         if (saving()) return;
         setSaving(true);
         setErrorMsg(null);
-        deleteConnectionAsync(conn)
+        Promise.all(connections.map((item) => deleteConnectionAsync(item)))
             .then(() => {
                 dialog.close();
                 onForgotten?.();
@@ -225,7 +246,7 @@ export function showConnectionEditor(
                 saving={saving}
                 errorMsg={errorMsg}
                 onSave={saveChanges}
-                onForget={forgetNetwork}
+                onForget={() => confirmForgetNetwork(dialog, ssid, forgetNetwork)}
             />
         ),
         dialog

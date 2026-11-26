@@ -6,17 +6,19 @@ import {defineService} from '@shade/core/define';
 import {toArray} from '@shade/core/gjsUtils';
 import {IconNames} from '@shade/core/iconNames';
 import logger from '@shade/core/logger';
+import {Timeout} from '@shade/core/timeout';
 import type {Accessor} from 'gnim';
 import {Object, property, register} from 'gnim/gobject';
 import type {Coordinates} from './geolocation';
 import Geolocation from './geolocation';
 import {weatherSettings} from './weather.gschema';
-import {formatTemp} from './weatherUtils';
+import {formatTemp, isUsableCoordinates} from './weatherUtils';
 
 type UpdateRequest = {
     kind: 'location' | 'refresh';
     location?: GWeather.Location;
     phase: 'starting' | 'waiting';
+    completion: Promise<void>;
     resolve: () => void;
     reject: (error: Error) => void;
 };
@@ -25,6 +27,12 @@ type WeatherDependencies = {
     info?: GWeather.Info;
     geo?: Geolocation;
 };
+
+/** Upper bound for one GWeather update; without it a lost response blocks every later request. */
+const UPDATE_TIMEOUT_MS = 30_000;
+
+/** Contact info sent to MET Norway with every request (project page, not a personal address). */
+const WEATHER_CONTACT_INFO = 'https://github.com/caioasmuniz/shade';
 
 const toError = (error: unknown): Error =>
     error instanceof Error ? error : new Error(String(error));
@@ -48,6 +56,8 @@ export default class Weather extends Object {
     #drainSourceId: number | null = null;
     #updateQueue: UpdateRequest[];
     #activeUpdate: UpdateRequest | null = null;
+    #updateWatchdog = new Timeout();
+    #ipFallbackEnabled: () => boolean = () => false;
     #detectionPromise: Promise<Coordinates> | null = null;
     #detectionReject: ((error: Error) => void) | null = null;
     #detectionGeneration = 0;
@@ -166,9 +176,8 @@ export default class Weather extends Object {
         const w = this.#weather;
         const valid = w.is_valid();
 
-        this.#tempSummary = valid
-            ? formatTemp(w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE)[1])
-            : '--°';
+        const [tempValid, temp] = w.get_value_temp(GWeather.TemperatureUnit.CENTIGRADE);
+        this.#tempSummary = valid && tempValid ? formatTemp(temp) : '--°';
         this.#feelsLike = valid ? `Feels like ${w.get_apparent()}` : '';
         this.#skyDesc = valid ? w.get_sky() : '';
         this.#locationName = w.get_location_name() || '—';
@@ -220,6 +229,7 @@ export default class Weather extends Object {
             kind,
             location,
             phase: 'starting',
+            completion: completion.promise,
             resolve: () => completion.resolve(),
             reject: (error) => completion.reject(error),
         });
@@ -246,6 +256,14 @@ export default class Weather extends Object {
             this.#weather.set_location(location);
             if (this.#disposed || this.#activeUpdate !== request) return;
             request.phase = 'waiting';
+            this.#updateWatchdog.start(UPDATE_TIMEOUT_MS, () => {
+                this.#finishUpdate(request, new Error('A atualização do clima expirou'));
+                try {
+                    this.#weather.abort();
+                } catch (error) {
+                    logger.warn('weather', 'Could not abort timed-out weather update:', error);
+                }
+            });
             this.#weather.update();
         } catch (error) {
             this.#finishUpdate(request, toError(error));
@@ -255,6 +273,7 @@ export default class Weather extends Object {
     #finishUpdate(request: UpdateRequest, error?: Error) {
         if (this.#activeUpdate !== request) return;
         this.#activeUpdate = null;
+        this.#updateWatchdog.cancel();
         if (error) {
             this.#updateError = error.message;
             this.notify('update-error');
@@ -267,7 +286,8 @@ export default class Weather extends Object {
     }
 
     #scheduleUpdateDrain() {
-        if (this.#disposed || this.#drainSourceId !== null || this.#updateQueue.length === 0) return;
+        if (this.#disposed || this.#drainSourceId !== null || this.#updateQueue.length === 0)
+            return;
         this.#drainSourceId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this.#drainSourceId = null;
             this.#drainUpdates();
@@ -299,7 +319,10 @@ export default class Weather extends Object {
         if (!request || request.phase !== 'waiting') return;
         try {
             if (this.#weather.network_error()) {
-                this.#finishUpdate(request, new Error('Weather update failed due to a network error'));
+                this.#finishUpdate(
+                    request,
+                    new Error('Weather update failed due to a network error')
+                );
             } else if (!this.#weather.is_valid()) {
                 this.#finishUpdate(request, new Error('Weather data is invalid'));
             } else {
@@ -344,7 +367,7 @@ export default class Weather extends Object {
 
         let result: Promise<Coordinates>;
         try {
-            result = this.#geo.detect();
+            result = this.#geo.detect(this.#ipFallbackEnabled());
         } catch (error) {
             result = Promise.reject(error);
         }
@@ -373,13 +396,16 @@ export default class Weather extends Object {
     }
 
     refresh(): Promise<void> {
-        return this.#enqueueUpdate('refresh');
+        // A refresh already waiting in the queue will read the latest location when it starts.
+        const queued = this.#updateQueue.find((request) => request.kind === 'refresh');
+        return queued ? queued.completion : this.#enqueueUpdate('refresh');
     }
 
     init(settings: {
         latitude: Accessor<number>;
         longitude: Accessor<number>;
         autoLocation: Accessor<boolean>;
+        ipLocationFallback: Accessor<boolean>;
         setLatitude(lat: number): void;
         setLongitude(lon: number): void;
     }) {
@@ -389,13 +415,16 @@ export default class Weather extends Object {
             return;
         }
         this.#initialized = true;
+        this.#ipFallbackEnabled = settings.ipLocationFallback;
         this.#generalSettings = new Gio.Settings({
             schemaId: `${import.meta.domain}.general`,
         });
-        this.#location = GWeather.Location.get_world()?.find_nearest_city(
-            settings.latitude(),
-            settings.longitude()
-        );
+        const initialLat = settings.latitude();
+        const initialLon = settings.longitude();
+        // 0,0 is the schema default and means no location has been chosen yet.
+        this.#location = isUsableCoordinates(initialLat, initialLon)
+            ? GWeather.Location.get_world()?.find_nearest_city(initialLat, initialLon)
+            : undefined;
 
         if (this.#location) {
             void this.#enqueueUpdate('location', this.#location).catch((error: unknown) => {
@@ -405,7 +434,7 @@ export default class Weather extends Object {
 
         // Keep the existing 30-minute cadence.
         this.#updateTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0.5 * 3600000, () => {
-            if (!this.#disposed) {
+            if (!this.#disposed && this.#location) {
                 void this.refresh().catch((error: unknown) => {
                     logger.error('weather', 'Scheduled weather update failed:', error);
                 });
@@ -562,8 +591,8 @@ export default class Weather extends Object {
 
             return {
                 date: ts,
-                tempMax: tempMax === -Infinity ? 0 : tempMax,
-                tempMin: tempMin === Infinity ? 0 : tempMin,
+                tempMax: tempMax === -Infinity ? NaN : tempMax,
+                tempMin: tempMin === Infinity ? NaN : tempMin,
                 iconName: midIcon,
                 dayName: dt.format('%a') ?? '---',
             };
@@ -662,7 +691,7 @@ export default class Weather extends Object {
 
         this.#weather.set_application_id(import.meta.domain);
         this.#weather.set_enabled_providers(GWeather.Provider.MET_NO);
-        this.#weather.set_contact_info('caiomuniz888@gmail.com');
+        this.#weather.set_contact_info(WEATHER_CONTACT_INFO);
 
         this.#weatherHandlerId = this.#weather.connect('updated', () => {
             this.#onWeatherUpdated();
@@ -678,6 +707,7 @@ export default class Weather extends Object {
             GLib.source_remove(this.#updateTimer);
             this.#updateTimer = null;
         }
+        this.#updateWatchdog.cancel();
         if (this.#drainSourceId !== null) {
             GLib.source_remove(this.#drainSourceId);
             this.#drainSourceId = null;

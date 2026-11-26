@@ -11,6 +11,12 @@ import Touchpad from '../input/touchpad';
 import OsdTimer from '../utils/osdTimer';
 import {describe, expect, it, run} from './test-runner';
 
+function sleep(ms: number): Promise<void> {
+    const {promise, resolve} = Promise.withResolvers<void>();
+    setTimeout(resolve, ms);
+    return promise;
+}
+
 describe('OsdTimer', () => {
     it('starts hidden', () => {
         const t = new OsdTimer(() => {});
@@ -43,6 +49,26 @@ describe('OsdTimer', () => {
         t.dispose();
         expect(t.visible).toBe(false);
         expect(changes).toEqual([true, false]);
+    });
+
+    it.async('auto-hides after timeoutMs and notifies', async () => {
+        const changes: boolean[] = [];
+        const t = new OsdTimer((v) => changes.push(v), 20);
+        t.trigger();
+        await sleep(80);
+        expect(t.visible).toBe(false);
+        expect(changes).toEqual([true, false]);
+    });
+
+    it.async('retrigger restarts the full timeout', async () => {
+        const t = new OsdTimer(() => {}, 100);
+        t.trigger();
+        await sleep(60);
+        t.trigger();
+        await sleep(60); // past the first deadline, inside the second
+        expect(t.visible).toBe(true);
+        await sleep(100);
+        expect(t.visible).toBe(false);
     });
 });
 

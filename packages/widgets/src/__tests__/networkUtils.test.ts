@@ -22,17 +22,17 @@ describe('securityLabelFromKeyMgmt', () => {
         expect(securityLabelFromKeyMgmt('wpa-psk')).toBe('WPA2');
     });
 
-    it('returns Enterprise for wpa-eap and ieee8021x', () => {
-        expect(securityLabelFromKeyMgmt('wpa-eap')).toBe('Enterprise');
-        expect(securityLabelFromKeyMgmt('ieee8021x')).toBe('Enterprise');
+    it('returns Corporativa for wpa-eap and ieee8021x', () => {
+        expect(securityLabelFromKeyMgmt('wpa-eap')).toBe('Corporativa');
+        expect(securityLabelFromKeyMgmt('ieee8021x')).toBe('Corporativa');
     });
 
     it('returns WEP for none', () => {
         expect(securityLabelFromKeyMgmt('none')).toBe('WEP');
     });
 
-    it('returns Open for null', () => {
-        expect(securityLabelFromKeyMgmt(null)).toBe('Open');
+    it('returns Aberta for null', () => {
+        expect(securityLabelFromKeyMgmt(null)).toBe('Aberta');
     });
 
     it('falls back to the keyMgmt string for unknown values', () => {

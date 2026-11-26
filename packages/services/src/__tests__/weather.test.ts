@@ -7,7 +7,13 @@
  */
 import GLib from 'gi://GLib?version=2.0';
 import type GWeather from 'gi://GWeather?version=4.0';
-import {formatTemp, isDaytime, sunAngle, windDirectionLabel} from '../location/weatherUtils';
+import {
+    formatTemp,
+    isDaytime,
+    isUsableCoordinates,
+    sunAngle,
+    windDirectionLabel,
+} from '../location/weatherUtils';
 import type {Coordinates} from '../location/geolocation';
 import {describe, expect, it, run} from './test-runner';
 
@@ -150,6 +156,20 @@ describe('weatherUtils', () => {
         expect(formatTemp(24.6)).toBe('25°');
     });
 
+    it('formatTemp renders a placeholder for missing values', () => {
+        expect(formatTemp(Number.NaN)).toBe('--°');
+        expect(formatTemp(Number.POSITIVE_INFINITY)).toBe('--°');
+    });
+
+    it('isUsableCoordinates rejects unset, non-finite and out-of-range pairs', () => {
+        expect(isUsableCoordinates(0, 0)).toBe(false);
+        expect(isUsableCoordinates(Number.NaN, 10)).toBe(false);
+        expect(isUsableCoordinates(91, 10)).toBe(false);
+        expect(isUsableCoordinates(10, 181)).toBe(false);
+        expect(isUsableCoordinates(-23.55, -46.63)).toBe(true);
+        expect(isUsableCoordinates(0, 10)).toBe(true);
+    });
+
     it('windDirectionLabel maps the GWeather enum to compass abbreviations', () => {
         expect(windDirectionLabel(-1)).toBe('—'); // INVALID
         expect(windDirectionLabel(0)).toBe('—'); // VARIABLE
@@ -207,70 +227,82 @@ describe('Weather completion queue', () => {
         weather.dispose();
     });
 
-    it.async('serializes requests and refreshes at the location current when it starts', async () => {
-        const info = new FakeInfo();
-        const weather = createWeather(info);
-        const first = weather.updateFromCoords(40.7128, -74.006);
-        const firstLocation = info.startedLocations[0];
-        const refresh = weather.refresh();
-        const changedLocation = weather.updateFromCoords(35.6762, 139.6503);
-        expect(info.startedLocations.length).toBe(1);
-        expect(info.assignedLocations.length).toBe(1);
-        expect(weather.updateBusy).toBe(true);
+    it.async(
+        'serializes requests and refreshes at the location current when it starts',
+        async () => {
+            const info = new FakeInfo();
+            const weather = createWeather(info);
+            const first = weather.updateFromCoords(40.7128, -74.006);
+            const firstLocation = info.startedLocations[0];
+            const refresh = weather.refresh();
+            const changedLocation = weather.updateFromCoords(35.6762, 139.6503);
+            expect(info.startedLocations.length).toBe(1);
+            expect(info.assignedLocations.length).toBe(1);
+            expect(weather.updateBusy).toBe(true);
 
-        info.emitUpdated();
-        info.emitUpdated(); // A duplicate predecessor signal before the deferred drain.
-        await first;
-        expect(info.startedLocations.length).toBe(1);
-        await waitForMainContext();
+            info.emitUpdated();
+            info.emitUpdated(); // A duplicate predecessor signal before the deferred drain.
+            await first;
+            expect(info.startedLocations.length).toBe(1);
+            await waitForMainContext();
 
-        expect(info.startedLocations.length).toBe(2);
-        expect(info.startedLocations[1] === firstLocation).toBe(false);
-        expect(info.assignedLocations.length).toBe(2);
-        expect(info.assignedLocations[1] === info.startedLocations[1]).toBe(true);
-        info.emitUpdated();
-        await refresh;
-        await waitForMainContext();
+            expect(info.startedLocations.length).toBe(2);
+            expect(info.startedLocations[1] === firstLocation).toBe(false);
+            expect(info.assignedLocations.length).toBe(2);
+            expect(info.assignedLocations[1] === info.startedLocations[1]).toBe(true);
+            info.emitUpdated();
+            await refresh;
+            await waitForMainContext();
 
-        expect(info.startedLocations.length).toBe(3);
-        expect(info.startedLocations[2] === info.startedLocations[1]).toBe(true);
-        expect(info.assignedLocations.length).toBe(3);
-        expect(info.assignedLocations[2] === info.startedLocations[2]).toBe(true);
-        info.emitUpdated();
-        await changedLocation;
-        expect(weather.updateBusy).toBe(false);
-        weather.dispose();
-    });
+            expect(info.startedLocations.length).toBe(3);
+            expect(info.startedLocations[2] === info.startedLocations[1]).toBe(true);
+            expect(info.assignedLocations.length).toBe(3);
+            expect(info.assignedLocations[2] === info.startedLocations[2]).toBe(true);
+            info.emitUpdated();
+            await changedLocation;
+            expect(weather.updateBusy).toBe(false);
+            weather.dispose();
+        }
+    );
 
-    it.async('rejects network errors before invalid data and catches native start failures', async () => {
-        const networkInfo = new FakeInfo();
-        networkInfo.valid = false;
-        networkInfo.networkError = true;
-        const networkWeather = createWeather(networkInfo);
-        const networkFailure = expectRejected(networkWeather.updateFromCoords(40.7128, -74.006));
-        networkInfo.emitUpdated();
-        expect((await networkFailure).message).toBe('Weather update failed due to a network error');
-        networkWeather.dispose();
+    it.async(
+        'rejects network errors before invalid data and catches native start failures',
+        async () => {
+            const networkInfo = new FakeInfo();
+            networkInfo.valid = false;
+            networkInfo.networkError = true;
+            const networkWeather = createWeather(networkInfo);
+            const networkFailure = expectRejected(
+                networkWeather.updateFromCoords(40.7128, -74.006)
+            );
+            networkInfo.emitUpdated();
+            expect((await networkFailure).message).toBe(
+                'Weather update failed due to a network error'
+            );
+            networkWeather.dispose();
 
-        const invalidInfo = new FakeInfo();
-        invalidInfo.valid = false;
-        const invalidWeather = createWeather(invalidInfo);
-        const invalidFailure = expectRejected(invalidWeather.updateFromCoords(40.7128, -74.006));
-        invalidInfo.emitUpdated();
-        expect((await invalidFailure).message).toBe('Weather data is invalid');
-        invalidWeather.dispose();
+            const invalidInfo = new FakeInfo();
+            invalidInfo.valid = false;
+            const invalidWeather = createWeather(invalidInfo);
+            const invalidFailure = expectRejected(
+                invalidWeather.updateFromCoords(40.7128, -74.006)
+            );
+            invalidInfo.emitUpdated();
+            expect((await invalidFailure).message).toBe('Weather data is invalid');
+            invalidWeather.dispose();
 
-        const startFailureInfo = new FakeInfo();
-        startFailureInfo.throwOnUpdate = true;
-        const startFailureWeather = createWeather(startFailureInfo);
-        const startFailure = await expectRejected(
-            startFailureWeather.updateFromCoords(40.7128, -74.006)
-        );
-        expect(startFailure.message).toBe('native update could not start');
-        expect(startFailureWeather.updateBusy).toBe(false);
-        expect(startFailureWeather.updateError).toBe('native update could not start');
-        startFailureWeather.dispose();
-    });
+            const startFailureInfo = new FakeInfo();
+            startFailureInfo.throwOnUpdate = true;
+            const startFailureWeather = createWeather(startFailureInfo);
+            const startFailure = await expectRejected(
+                startFailureWeather.updateFromCoords(40.7128, -74.006)
+            );
+            expect(startFailure.message).toBe('native update could not start');
+            expect(startFailureWeather.updateBusy).toBe(false);
+            expect(startFailureWeather.updateError).toBe('native update could not start');
+            startFailureWeather.dispose();
+        }
+    );
 
     it.async('rejects refresh without a location and reports detection failure', async () => {
         const noLocationInfo = new FakeInfo();
@@ -341,6 +373,18 @@ describe('Weather completion queue', () => {
         await waitForMainContext();
         expect(info.startedLocations.length).toBe(1);
         expect(info.abortCount).toBe(1);
+    });
+
+    it.async('coalesces queued refreshes into one request', async () => {
+        const weather = createWeather(new FakeInfo());
+        const active = weather.updateFromCoords(40.7128, -74.006);
+        const first = weather.refresh();
+        const second = weather.refresh();
+        expect(first).toBe(second);
+
+        const outcomes = Promise.allSettled([active, first]);
+        weather.dispose();
+        await outcomes;
     });
 });
 

@@ -19,7 +19,14 @@ import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {bind, computed, createState, effect, onCleanup} from 'gnim';
 import {BAR_EDGE_RESERVE} from '../bar/geometry';
 import {PowerMenu} from '../common/powerMenu';
-import {OPAQUE_SURFACE_CSS, SURFACE_PADDING} from '../common/surface';
+import {
+    OPAQUE_SURFACE_CSS,
+    SURFACE_EDGE_GAP,
+    SURFACE_PADDING,
+    SURFACE_SECTION_SPACING,
+    SURFACE_SPACING,
+} from '../common/surface';
+import {errorMessage} from '../settings/errorMessage';
 import {openSettings} from '../settings/settingsOpen';
 import AppMixer from './appMixer';
 import BluetoothQuickButton from './button-grid/bluetooth';
@@ -35,9 +42,9 @@ import {AudioCompact, AudioConfig, BrightnessSlider, MicCompact, MicConfig} from
 import {TrayBox} from './tray';
 
 const PANEL_WIDTH = 420;
-const WINDOW_MARGIN = 4;
+const SINGLE_COLUMN_WIDTH = 600;
 
-type QuickRoute =
+type CoreRoute =
     | 'home'
     | 'wifi'
     | 'bluetooth'
@@ -45,9 +52,10 @@ type QuickRoute =
     | 'microphone'
     | 'mixer'
     | 'displays'
-    | 'data'
-    | OtherRoute;
-const TITLES: Record<QuickRoute, string> = {
+    | 'data';
+type QuickRoute = CoreRoute | OtherRoute;
+/** Titles of the fixed pages; the `OtherRoute` pages carry their own title. */
+const TITLES: Record<CoreRoute, string> = {
     home: 'Controles rápidos',
     wifi: 'Wi-Fi',
     bluetooth: 'Bluetooth',
@@ -56,12 +64,6 @@ const TITLES: Record<QuickRoute, string> = {
     mixer: 'Mixer de aplicativos',
     displays: 'Telas',
     data: 'Data e clima',
-    profile: 'Energia',
-    appearance: 'Aparência',
-    capture: 'Captura',
-    inhibit: 'Manter ativo',
-    timer: 'Temporizador',
-    nightlight: 'Luz noturna',
 };
 
 export default () => {
@@ -85,7 +87,7 @@ export default () => {
     let watchedMonitor: AstalHyprland.Monitor | null = null;
     let monitorSignals: number[] = [];
     const [monitorVersion, setMonitorVersion] = createState(0);
-    const {TOP, LEFT, RIGHT} = Astal.WindowAnchor;
+    const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
     const sidebar = computed(() => bar.position() === LEFT || bar.position() === RIGHT);
     const monitorSize = computed(() => {
         monitorVersion();
@@ -113,17 +115,21 @@ export default () => {
     });
     const maxContentHeight = computed(() => {
         const available = monitorSize()?.height ?? 720;
-        return Math.max(1, available - WINDOW_MARGIN * 2 - chrome());
+        return Math.max(1, available - SURFACE_EDGE_GAP * 2 - chrome());
     });
     const width = computed(() => {
-        const available = monitorSize()?.width ?? PANEL_WIDTH + WINDOW_MARGIN * 2;
+        const available = monitorSize()?.width ?? PANEL_WIDTH + SURFACE_EDGE_GAP * 2;
         return Math.max(
             1,
             Math.min(
                 PANEL_WIDTH,
-                available - WINDOW_MARGIN * 2 - (sidebar() ? BAR_EDGE_RESERVE : 0)
+                available - SURFACE_EDGE_GAP * 2 - (sidebar() ? BAR_EDGE_RESERVE : 0)
             )
         );
+    });
+    const gridColumns = computed(() => {
+        const logicalWidth = monitorSize()?.width ?? 0;
+        return logicalWidth > 0 && logicalWidth <= SINGLE_COLUMN_WIDTH ? 1 : 2;
     });
     const history: {route: QuickRoute; origin: Gtk.Widget}[] = [];
     let focusSource = 0;
@@ -140,16 +146,26 @@ export default () => {
             const border = style.get_border();
             // Astal swaps vertical reservation names; the IPC values are already logical.
             const barReserved = current ? current.reservedBottom + current.reservedRight : 0;
+            const contentWidth = Math.max(
+                1,
+                Math.floor(
+                    panelWidth -
+                        padding.left -
+                        padding.right -
+                        border.left -
+                        border.right -
+                        SURFACE_PADDING * 2
+                )
+            );
             const errorHeight =
                 navigationError() && errorLabel
-                    ? errorLabel.measure(Gtk.Orientation.VERTICAL, Math.floor(panelWidth))[1]
+                    ? errorLabel.measure(Gtk.Orientation.VERTICAL, contentWidth)[1]
                     : 0;
-            const footerWidth = Math.max(
-                1,
-                Math.floor(panelWidth - padding.left - padding.right - 32)
-            );
+            const footerWidth = contentWidth;
             const footerHeight = advancedButton?.get_visible()
-                ? advancedButton.measure(Gtk.Orientation.VERTICAL, footerWidth)[1] + 20
+                ? advancedButton.measure(Gtk.Orientation.VERTICAL, footerWidth)[1] +
+                  SURFACE_SPACING +
+                  SURFACE_PADDING
                 : 0;
             setChrome(
                 header.measure(Gtk.Orientation.VERTICAL, Math.floor(panelWidth))[1] +
@@ -230,11 +246,16 @@ export default () => {
             return GLib.SOURCE_REMOVE;
         });
     };
+    let leaving = false;
     const leavePage = (next: () => void) => {
         if (route() !== 'displays') {
             next();
             return;
         }
+        // Back, Escape and Close all land here; a second request must not
+        // queue another navigation while the display rollback is pending.
+        if (leaving) return;
+        leaving = true;
         void layouts
             .revert()
             .then(() => {
@@ -243,8 +264,11 @@ export default () => {
             .catch((error) => {
                 if (alive)
                     setNavigationError(
-                        `Não foi possível reverter as alterações de tela: ${String(error)}`
+                        `Não foi possível reverter as alterações de tela: ${errorMessage(error)}`
                     );
+            })
+            .finally(() => {
+                leaving = false;
             });
     };
     const navigate = (destination: QuickRoute, self: Gtk.Button) => {
@@ -266,7 +290,7 @@ export default () => {
     const chooserSignal = layouts.connect('mode-chooser-requested', openDisplays);
     const externalPreviewSignal = layouts.connect('external-preview-requested', openDisplays);
     const title = computed(
-        () => other.pages.find((page) => page.id === route())?.title ?? TITLES[route()]
+        () => other.pages.find((page) => page.id === route())?.title ?? TITLES[route() as CoreRoute]
     );
     onCleanup(() => {
         layouts.disconnect(chooserSignal);
@@ -289,8 +313,11 @@ export default () => {
             resizable={false}
             keymode={Astal.Keymode.ON_DEMAND}
             visible={qsOpen}
-            anchor={bar.position.as((position) => TOP | (position === LEFT ? LEFT : RIGHT))}
-            margin={WINDOW_MARGIN}
+            anchor={bar.position.as(
+                (position) =>
+                    (position === BOTTOM ? BOTTOM : TOP) | (position === LEFT ? LEFT : RIGHT)
+            )}
+            margin={SURFACE_EDGE_GAP}
             monitor={monitor.as(monitorIndexFromHyprland)}
             widthRequest={width}
             cssClasses={['background']}
@@ -305,8 +332,28 @@ export default () => {
                     return true;
                 });
                 self.add_controller(keys);
+                const focusSignal = self.connect('notify::is-active', () => {
+                    // Power confirmations temporarily release the layer's keyboard
+                    // ownership; do not dismiss their parent while they are open.
+                    const modalChildOpen = getApp()
+                        .get_windows()
+                        .some(
+                            (window) =>
+                                window !== self &&
+                                window.get_transient_for() === self &&
+                                window.modal
+                        );
+                    if (
+                        self.visible &&
+                        !self.isActive &&
+                        self.keymode !== Astal.Keymode.NONE &&
+                        !modalChildOpen
+                    )
+                        leavePage(() => state.closeQuickSettings());
+                });
                 onCleanup(() => {
                     self.remove_controller(keys);
+                    self.disconnect(focusSignal);
                     if (manager.quicksettings === self) manager.setQuicksettings(null);
                 });
             }}
@@ -342,10 +389,6 @@ export default () => {
                 <Gtk.Box
                     orientation={Gtk.Orientation.VERTICAL}
                     cssClasses={['card', 'vertical']}
-                    marginTop={SURFACE_PADDING}
-                    marginBottom={SURFACE_PADDING}
-                    marginStart={SURFACE_PADDING}
-                    marginEnd={SURFACE_PADDING}
                     ref={(self) => {
                         card = self;
                         scheduleMeasure();
@@ -404,6 +447,17 @@ export default () => {
                             slot="end"
                             iconName="window-close-symbolic"
                             tooltipText="Fechar controles rápidos"
+                            ref={(self) =>
+                                self.update_property(
+                                    [Gtk.AccessibleProperty.LABEL],
+                                    [
+                                        new GObject.Value(
+                                            GObject.TYPE_STRING,
+                                            'Fechar controles rápidos'
+                                        ),
+                                    ]
+                                )
+                            }
                             onClicked={() => leavePage(() => state.closeQuickSettings())}
                         />
                     </Adw.HeaderBar>
@@ -412,8 +466,8 @@ export default () => {
                         label={navigationError}
                         wrap
                         cssClasses={['error']}
-                        marginStart={16}
-                        marginEnd={16}
+                        marginStart={SURFACE_PADDING}
+                        marginEnd={SURFACE_PADDING}
                         ref={(self) => {
                             errorLabel = self;
                             scheduleMeasure();
@@ -431,16 +485,16 @@ export default () => {
                             hhomogeneous={false}
                             vhomogeneous={false}
                             transitionType={Gtk.StackTransitionType.CROSSFADE}
-                            marginTop={16}
-                            marginBottom={16}
-                            marginStart={16}
-                            marginEnd={16}
+                            marginTop={SURFACE_PADDING}
+                            marginBottom={SURFACE_PADDING}
+                            marginStart={SURFACE_PADDING}
+                            marginEnd={SURFACE_PADDING}
                         >
                             <Gtk.Box
                                 name="home"
                                 slot="named"
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={16}
+                                spacing={SURFACE_SECTION_SPACING}
                             >
                                 <TrayBox />
                                 <Gtk.Label
@@ -468,11 +522,11 @@ export default () => {
                                 >
                                     <Gtk.Box
                                         orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={16}
-                                        marginTop={12}
-                                        marginBottom={12}
-                                        marginStart={12}
-                                        marginEnd={12}
+                                        spacing={SURFACE_SECTION_SPACING}
+                                        marginTop={SURFACE_PADDING}
+                                        marginBottom={SURFACE_PADDING}
+                                        marginStart={SURFACE_PADDING}
+                                        marginEnd={SURFACE_PADDING}
                                     >
                                         <BrightnessSlider />
                                         <AudioCompact onOpen={(self) => navigate('audio', self)} />
@@ -500,12 +554,8 @@ export default () => {
                                         <Gtk.Image iconName="go-next-symbolic" />
                                     </Gtk.Box>
                                 </Gtk.Button>
-                                <Gtk.Label
-                                    label="Controles rápidos"
-                                    cssClasses={['heading']}
-                                    xalign={0}
-                                />
-                                <ReactiveGrid items={other.buttons} cols={2} />
+                                <Gtk.Label label="Atalhos" cssClasses={['heading']} xalign={0} />
+                                <ReactiveGrid items={other.buttons} columns={gridColumns} />
                                 <Media />
                                 <Gtk.Box spacing={8} homogeneous>
                                     <Gtk.Button
@@ -586,7 +636,7 @@ export default () => {
                                 name="data"
                                 slot="named"
                                 orientation={Gtk.Orientation.VERTICAL}
-                                spacing={16}
+                                spacing={SURFACE_SECTION_SPACING}
                             >
                                 <Calendar />
                                 <Weather />
@@ -611,10 +661,10 @@ export default () => {
                     <Gtk.Button
                         label="Configurações de telas"
                         visible={route.as((value) => value === 'displays')}
-                        marginStart={16}
-                        marginEnd={16}
-                        marginTop={8}
-                        marginBottom={12}
+                        marginStart={SURFACE_PADDING}
+                        marginEnd={SURFACE_PADDING}
+                        marginTop={SURFACE_SPACING}
+                        marginBottom={SURFACE_PADDING}
                         onClicked={() => leavePage(() => openSettings('displays'))}
                         ref={(self) => {
                             advancedButton = self;

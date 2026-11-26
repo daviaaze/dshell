@@ -9,9 +9,21 @@ import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 
-function callLogind(method: 'PowerOff' | 'Reboot'): void {
+/** Asynchronous so a stalled logind cannot freeze the login screen. */
+const LOGIND_TIMEOUT_MS = 10000;
+
+function callLogind(
+    method: 'PowerOff' | 'Reboot',
+    failureMessage: string,
+    onError: (message: string) => void
+): void {
+    const fail = (e: unknown): void => {
+        logger.error('greeter', `logind ${method} failed: ${e}`);
+        onError(failureMessage);
+    };
     try {
-        Gio.DBus.system.call_sync(
+        const bus = Gio.DBus.system;
+        bus.call(
             'org.freedesktop.login1',
             '/org/freedesktop/login1',
             'org.freedesktop.login1.Manager',
@@ -19,18 +31,25 @@ function callLogind(method: 'PowerOff' | 'Reboot'): void {
             new GLib.Variant('(b)', [false]),
             null,
             Gio.DBusCallFlags.NONE,
-            -1,
-            null
+            LOGIND_TIMEOUT_MS,
+            null,
+            (_source, result) => {
+                try {
+                    bus.call_finish(result);
+                } catch (e) {
+                    fail(e);
+                }
+            }
         );
     } catch (e) {
-        logger.error('greeter', `logind ${method} failed: ${e}`);
+        fail(e);
     }
 }
 
-export function powerOff(): void {
-    callLogind('PowerOff');
+export function powerOff(onError: (message: string) => void): void {
+    callLogind('PowerOff', 'Não foi possível desligar o computador.', onError);
 }
 
-export function reboot(): void {
-    callLogind('Reboot');
+export function reboot(onError: (message: string) => void): void {
+    callLogind('Reboot', 'Não foi possível reiniciar o computador.', onError);
 }

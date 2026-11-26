@@ -1,10 +1,16 @@
 import Adw from 'gi://Adw?version=1';
+import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import logger from '@shade/core/logger';
 import {CompositorPort} from '@shade/services/compositor/port';
+import {createState} from 'gnim';
+import {errorMessage} from './errorMessage';
 
 export function normalizeHyprOptionKey(key: string): string {
     return key.replaceAll(':', '.').replaceAll('-', '_');
 }
+
+const SLIDER_APPLY_DELAY_MS = 150;
 
 const compositor = new CompositorPort();
 
@@ -19,105 +25,136 @@ function getOption(key: string, fallback: string): string {
     return compositor.getOptionSync(key, fallback);
 }
 
-function setOption(key: string, value: string | number | boolean): void {
-    void compositor
-        .setConfigOption(normalizeHyprOptionKey(key), value)
-        .catch((error) => console.error(`Failed to set Hyprland option ${key}:`, error));
-}
+export default () => {
+    const [error, setError] = createState('');
+    const sliderTimers = new Map<string, number>();
 
-export default () => (
-    <>
-        <Adw.PreferencesGroup
-            title="Ponteiro e mouse"
-            description="Sensibilidade, aceleração, rolagem e mão principal."
-        >
-            <Adw.ActionRow
-                title="Sensibilidade do ponteiro"
-                subtitle="Velocidade do ponteiro (−1 a 1)."
+    const setOption = (key: string, value: string | number | boolean): void => {
+        setError('');
+        compositor.setConfigOption(normalizeHyprOptionKey(key), value).catch((cause) => {
+            logger.error('settings-mouse', `Failed to set Hyprland option ${key}:`, cause);
+            setError(`Não foi possível aplicar ${key}: ${errorMessage(cause)}`);
+        });
+    };
+
+    // A slider emits on every step while dragging; apply only the value it settles on.
+    const setSliderOption = (key: string, value: number): void => {
+        const pending = sliderTimers.get(key);
+        if (pending !== undefined) GLib.source_remove(pending);
+        sliderTimers.set(
+            key,
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, SLIDER_APPLY_DELAY_MS, () => {
+                sliderTimers.delete(key);
+                setOption(key, value);
+                return GLib.SOURCE_REMOVE;
+            })
+        );
+    };
+
+    return (
+        <>
+            <Adw.PreferencesGroup
+                title="Ponteiro e mouse"
+                description="Sensibilidade, aceleração, rolagem e mão principal. As alterações valem para a sessão atual."
             >
-                <Gtk.Scale
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    adjustment={
-                        new Gtk.Adjustment({
-                            value: parseFloat(getOption('input:sensitivity', '0')),
-                            lower: -1,
-                            upper: 1,
-                            stepIncrement: 0.1,
-                        })
-                    }
-                    widthRequest={200}
-                    onValueChanged={(scale) => setOption('input:sensitivity', scale.get_value())}
-                />
-            </Adw.ActionRow>
-            <Adw.ComboRow
-                title="Perfil de aceleração"
-                subtitle="Opções disponibilizadas pelo compositor."
-                model={new Gtk.StringList({strings: ['Linear', 'Adaptável']})}
-                selected={getOption('input:accel_profile', 'flat') === 'adaptive' ? 1 : 0}
-                onNotifySelected={(row) =>
-                    setOption('input:accel_profile', row.selected === 0 ? 'flat' : 'adaptive')
-                }
-            />
-            <Adw.SwitchRow
-                title="Rolagem natural do mouse"
-                subtitle="A direção da rolagem acompanha o movimento dos dedos."
-                active={getBooleanOption('input:natural_scroll', false)}
-                onNotifyActive={(row) => setOption('input:natural_scroll', row.active)}
-            />
-            <Adw.SwitchRow
-                title="Mouse para canhotos"
-                subtitle="Troca as funções dos botões principal e secundário."
-                active={getBooleanOption('input:left_handed', false)}
-                onNotifyActive={(row) => setOption('input:left_handed', row.active)}
-            />
-        </Adw.PreferencesGroup>
-        <Adw.PreferencesGroup title="Touchpad" description="Toque, arraste e rolagem.">
-            <Adw.SwitchRow
-                title="Tocar para clicar"
-                subtitle="Toque no touchpad para clicar."
-                active={getBooleanOption('input:touchpad:tap-to-click', true)}
-                onNotifyActive={(row) => setOption('input:touchpad:tap-to-click', row.active)}
-            />
-            <Adw.SwitchRow
-                title="Tocar e arrastar"
-                subtitle="Toque e mantenha para arrastar."
-                active={getBooleanOption('input:touchpad:tap-and-drag', true)}
-                onNotifyActive={(row) => setOption('input:touchpad:tap-and-drag', row.active)}
-            />
-            <Adw.SwitchRow
-                title="Desativar enquanto digita"
-                subtitle="Desativa o touchpad durante a digitação."
-                active={getBooleanOption('input:touchpad:disable_while_typing', true)}
-                onNotifyActive={(row) =>
-                    setOption('input:touchpad:disable_while_typing', row.active)
-                }
-            />
-            <Adw.SwitchRow
-                title="Rolagem natural do touchpad"
-                subtitle="A direção da rolagem acompanha o movimento dos dedos."
-                active={getBooleanOption('input:touchpad:natural_scroll', false)}
-                onNotifyActive={(row) => setOption('input:touchpad:natural_scroll', row.active)}
-            />
-            <Adw.ActionRow
-                title="Velocidade de rolagem"
-                subtitle="Sensibilidade da rolagem do touchpad."
-            >
-                <Gtk.Scale
-                    orientation={Gtk.Orientation.HORIZONTAL}
-                    adjustment={
-                        new Gtk.Adjustment({
-                            value: parseFloat(getOption('input:touchpad:scroll_factor', '1.0')),
-                            lower: 0.1,
-                            upper: 5,
-                            stepIncrement: 0.1,
-                        })
-                    }
-                    widthRequest={200}
-                    onValueChanged={(scale) =>
-                        setOption('input:touchpad:scroll_factor', scale.get_value())
+                <Adw.ActionRow
+                    title="Sensibilidade do ponteiro"
+                    subtitle="Velocidade do ponteiro (−1 a 1)."
+                >
+                    <Gtk.Scale
+                        orientation={Gtk.Orientation.HORIZONTAL}
+                        adjustment={
+                            new Gtk.Adjustment({
+                                value: parseFloat(getOption('input:sensitivity', '0')),
+                                lower: -1,
+                                upper: 1,
+                                stepIncrement: 0.1,
+                            })
+                        }
+                        widthRequest={200}
+                        onValueChanged={(scale) =>
+                            setSliderOption('input:sensitivity', scale.get_value())
+                        }
+                    />
+                </Adw.ActionRow>
+                <Adw.ComboRow
+                    title="Perfil de aceleração"
+                    subtitle="Opções disponibilizadas pelo compositor."
+                    model={new Gtk.StringList({strings: ['Linear', 'Adaptável']})}
+                    selected={getOption('input:accel_profile', 'flat') === 'adaptive' ? 1 : 0}
+                    onNotifySelected={(row) =>
+                        setOption('input:accel_profile', row.selected === 0 ? 'flat' : 'adaptive')
                     }
                 />
-            </Adw.ActionRow>
-        </Adw.PreferencesGroup>
-    </>
-);
+                <Adw.SwitchRow
+                    title="Rolagem natural do mouse"
+                    subtitle="A direção da rolagem acompanha o movimento dos dedos."
+                    active={getBooleanOption('input:natural_scroll', false)}
+                    onNotifyActive={(row) => setOption('input:natural_scroll', row.active)}
+                />
+                <Adw.SwitchRow
+                    title="Mouse para canhotos"
+                    subtitle="Troca as funções dos botões principal e secundário."
+                    active={getBooleanOption('input:left_handed', false)}
+                    onNotifyActive={(row) => setOption('input:left_handed', row.active)}
+                />
+            </Adw.PreferencesGroup>
+            <Adw.PreferencesGroup title="Touchpad" description="Toque, arraste e rolagem.">
+                <Adw.SwitchRow
+                    title="Tocar para clicar"
+                    subtitle="Toque no touchpad para clicar."
+                    active={getBooleanOption('input:touchpad:tap-to-click', true)}
+                    onNotifyActive={(row) => setOption('input:touchpad:tap-to-click', row.active)}
+                />
+                <Adw.SwitchRow
+                    title="Tocar e arrastar"
+                    subtitle="Toque e mantenha para arrastar."
+                    active={getBooleanOption('input:touchpad:tap-and-drag', true)}
+                    onNotifyActive={(row) => setOption('input:touchpad:tap-and-drag', row.active)}
+                />
+                <Adw.SwitchRow
+                    title="Desativar enquanto digita"
+                    subtitle="Desativa o touchpad durante a digitação."
+                    active={getBooleanOption('input:touchpad:disable_while_typing', true)}
+                    onNotifyActive={(row) =>
+                        setOption('input:touchpad:disable_while_typing', row.active)
+                    }
+                />
+                <Adw.SwitchRow
+                    title="Rolagem natural do touchpad"
+                    subtitle="A direção da rolagem acompanha o movimento dos dedos."
+                    active={getBooleanOption('input:touchpad:natural_scroll', false)}
+                    onNotifyActive={(row) => setOption('input:touchpad:natural_scroll', row.active)}
+                />
+                <Adw.ActionRow
+                    title="Velocidade de rolagem"
+                    subtitle="Sensibilidade da rolagem do touchpad."
+                >
+                    <Gtk.Scale
+                        orientation={Gtk.Orientation.HORIZONTAL}
+                        adjustment={
+                            new Gtk.Adjustment({
+                                value: parseFloat(getOption('input:touchpad:scroll_factor', '1.0')),
+                                lower: 0.1,
+                                upper: 5,
+                                stepIncrement: 0.1,
+                            })
+                        }
+                        widthRequest={200}
+                        onValueChanged={(scale) =>
+                            setSliderOption('input:touchpad:scroll_factor', scale.get_value())
+                        }
+                    />
+                </Adw.ActionRow>
+            </Adw.PreferencesGroup>
+            <Adw.PreferencesGroup>
+                <Adw.ActionRow
+                    visible={error.as((message) => message.length > 0)}
+                    title="Não foi possível aplicar a opção"
+                    subtitle={error}
+                    cssClasses={['error']}
+                />
+            </Adw.PreferencesGroup>
+        </>
+    );
+};

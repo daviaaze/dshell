@@ -26,6 +26,7 @@ export default class PowerProfiles {
     #busSubscriptions: (() => void)[] = [];
     #listeners = new Map<number, () => void>();
     #nextId = 0;
+    #changedId = 0;
 
     get activeProfile(): Profile {
         if (!this.#proxy) return 'balanced';
@@ -80,6 +81,8 @@ export default class PowerProfiles {
     }
 
     dispose() {
+        if (this.#proxy && this.#changedId) this.#proxy.disconnect(this.#changedId);
+        this.#changedId = 0;
         this.#listeners.clear();
         this.#nextId = 0;
         this.#proxy = null;
@@ -97,7 +100,7 @@ export default class PowerProfiles {
                 IFACE,
                 null
             );
-            this.#proxy.connect(
+            this.#changedId = this.#proxy.connect(
                 'g-properties-changed',
                 (_proxy: Gio.DBusProxy, changed: GLib.Variant, _invalidated: string[]) => {
                     if (changed.lookup_value('ActiveProfile', null) !== null) {

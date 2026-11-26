@@ -39,7 +39,10 @@ in
         d-spy
         graphviz # dot, for scripts/deps-graph.sh rendering
         ffmpeg-headless # inspect timestamped VM screen recordings
-        python3
+        (python3.withPackages (p: [
+          p.cryptography
+          p.pycryptodome
+        ]))
         python3Packages.mcp
         openssh # ssh client for VM D-Bus testing
         sshpass # password auth for local VM SSH

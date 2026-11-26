@@ -45,8 +45,11 @@ in
       default = { };
       description = ''
         Extra settings to hyprland. Merged on top of defaults using
-        recursiveUpdate — list values replace the default entirely
-        rather than concatenating.
+        recursiveUpdate. The list-valued keys `windowrule`, `env` and
+        `workspace` are appended to the defaults (Shade's window rules, the
+        cursor environment and the scratchpad workspace rule), so adding an
+        entry never drops a default. Other list values replace the default
+        entirely.
       '';
     };
     extraLuaConfig = lib.mkOption {
@@ -107,6 +110,8 @@ in
           Default window rules: float utility dialogs (audio, network,
           bluetooth, polkit, file choosers), Picture-in-Picture placement,
           idle inhibit on fullscreen and ignoring app maximize requests.
+          The share picker float/center/pin rules are always applied: a
+          tiled picker freezes the screen-share request.
         '';
       };
     };
@@ -132,12 +137,14 @@ in
       type = lib.types.bool;
       default = true;
       description = ''
-        Enable default binds to toggle the widgets in hyprland.
+        Enable Shade's default key bindings: window, workspace and monitor
+        management, application launchers, Shade panel toggles, zoom and the
+        media, volume and brightness keys. Disabling it removes all of them.
       '';
     };
   };
 
-  config = lib.mkIf cfg.enable (
+  config = lib.mkIf (config.programs.shade.enable && cfg.enable) (
     let
       gapsOut = 4;
 
@@ -194,10 +201,13 @@ in
             id = "render-unfocused-chiaki";
             rule = "render_unfocused on, match:class ^chiaki-ng$";
           }
-          # The XDPH share picker is a transient chooser. Tiled, it sank behind
-          # newer windows and stayed stranded on its workspace, which froze the
-          # screen-share request waiting on it. Floating keeps it above tiles,
-          # pin makes it follow workspace switches.
+        ]
+        # The XDPH share picker is a transient chooser. Tiled, it sank behind
+        # newer windows and stayed stranded on its workspace, which froze the
+        # screen-share request waiting on it. Floating keeps it above tiles,
+        # pin makes it follow workspace switches. Kept even when the default
+        # window rules are disabled.
+        ++ [
           {
             id = "float-share-picker";
             rule = "float on, match:class ${sharePickerClassRe}";
@@ -210,6 +220,8 @@ in
             id = "pin-share-picker";
             rule = "pin on, match:class ${sharePickerClassRe}";
           }
+        ]
+        ++ lib.optionals cfg.windowRules.enable [
           {
             id = "pip-float";
             rule = "float on, ${pip}";
@@ -283,8 +295,8 @@ in
       };
 
       # Default settings — kept separate so cfg.settings can override
-      # specific keys via recursiveUpdate (list values replace entirely
-      # rather than concatenating).
+      # specific keys via recursiveUpdate. List values replace entirely,
+      # except windowrule/env/workspace, which are concatenated below.
       defaultSettings = {
         monitor = [
           ", preferred, auto, 1"
@@ -457,17 +469,28 @@ in
         # seed (plus the user's compositor.json) before the compositor starts.
         environment.etc."xdg/shade/compositor-seed.json".text = builtins.toJSON compositorSeed;
 
-        programs.hyprland.settings = lib.recursiveUpdate defaultSettings (
-          cfg.settings
-          // {
-            # Merge workspace rules: cfg.workspace replaces the default
-            # scratchpad rule entirely, or you can include it in your list.
-            workspace = cfg.workspace ++ smartGapsWorkspaces;
-          }
-        );
+        programs.hyprland.settings =
+          let
+            baseSettings = defaultSettings // {
+              workspace = cfg.workspace ++ smartGapsWorkspaces;
+            };
+            concatenatedKeys = [
+              "windowrule"
+              "env"
+              "workspace"
+            ];
+            userLists = lib.getAttrs (builtins.filter (
+              key: cfg.settings ? ${key}
+            ) concatenatedKeys) cfg.settings;
+          in
+          lib.recursiveUpdate baseSettings (removeAttrs cfg.settings concatenatedKeys)
+          // lib.mapAttrs (key: value: baseSettings.${key} ++ lib.toList value) userLists;
       }
       {
         services.power-profiles-daemon.enable = true;
+
+        # The default terminal backs SUPER+Return and the scratchpad rule.
+        environment.systemPackages = [ desktopCfg.terminalPackage ];
 
         # gvfs is required for the default file manager (Nautilus) to show
         # disk sizes, mount volumes, and provide trash/computer/network
@@ -479,7 +502,6 @@ in
           extraPortals = [
             pkgs.xdg-desktop-portal-gtk
             xdpHyprland
-            pkgs.xdg-desktop-portal-wlr
           ];
           config = {
             common = {

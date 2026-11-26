@@ -245,17 +245,17 @@ describe('EncryptedStore', () => {
 });
 
 describe('NativeCrypto', () => {
-    it.async('round-trips plaintext through AES-256-CTR + HMAC-SHA256', async () => {
+    it.async('round-trips plaintext through AES-256-GCM', async () => {
         const key = new Uint8Array(32).fill(0x42);
         const plaintext = new TextEncoder().encode('native crypto roundtrip');
         const sealed = await encryptNative(key, plaintext);
-        expect(sealed.nonce.length).toBe(16);
-        expect(sealed.mac.length).toBe(32);
+        expect(sealed.nonce.length).toBe(12);
+        expect(sealed.mac.length).toBe(16);
         const decrypted = await decryptNative(key, sealed);
         expect(new TextDecoder().decode(decrypted)).toBe('native crypto roundtrip');
     });
 
-    it.async('rejects tampered ciphertext (MAC mismatch)', async () => {
+    it.async('rejects tampered ciphertext', async () => {
         const key = new Uint8Array(32).fill(0x42);
         const plaintext = new TextEncoder().encode('tamper me');
         const sealed = await encryptNative(key, plaintext);

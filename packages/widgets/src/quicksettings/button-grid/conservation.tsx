@@ -3,11 +3,12 @@ import {
     conservationEnabled,
     startConservationMonitor,
 } from '@shade/services/power/batteryConservation';
+import {onCleanup} from 'gnim';
 import {QuickControlButton} from '../../common/quickControlButton';
 import type {QuickButton} from './quickButton';
 
 export default (): QuickButton => {
-    startConservationMonitor();
+    onCleanup(startConservationMonitor());
 
     return {
         widget: (

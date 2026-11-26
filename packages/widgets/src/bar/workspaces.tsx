@@ -3,7 +3,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import {focusHyprlandClient, getHyprland} from '@shade/services/hyprland';
 import {getAppIcon} from '@shade/services/state/apps';
-import {type Accessor, bind, computed, For} from 'gnim';
+import {type Accessor, bind, computed, effect, For} from 'gnim';
+import {setAccessibleName} from '../common/iconButton';
 
 /** Hyprland gives special workspaces negative ids (`special` = -99, named ones -98, -97, …). */
 function specialName(ws: Hyprland.Workspace): string | null {
@@ -77,8 +78,20 @@ export default ({
                     const special = specialName(ws);
                     const label = special ? special.charAt(0).toUpperCase() : String(ws.id);
                     const tooltip = special
-                        ? `${special.charAt(0).toUpperCase()}${special.slice(1)} (special workspace)`
-                        : `Workspace ${ws.id}`;
+                        ? `${special.charAt(0).toUpperCase()}${special.slice(1)} (área de trabalho especial)`
+                        : `Área de trabalho ${ws.id}`;
+                    const shownWorkspace = bind(
+                        monitor,
+                        special ? 'special-workspace' : 'active-workspace'
+                    );
+                    const isShown = computed(() => shownWorkspace() === ws);
+                    const switchWorkspace = () =>
+                        hyprland.dispatch(
+                            special
+                                ? `hl.dsp.workspace.toggle_special(${JSON.stringify(special)})`
+                                : `hl.dsp.focus({workspace=${JSON.stringify(String(ws.id))}})`,
+                            ''
+                        );
 
                     return (
                         <Gtk.Box
@@ -92,22 +105,36 @@ export default ({
                             )}
                             spacing={4}
                         >
-                            <Gtk.Label
-                                label={label}
-                                cssClasses={['caption', 'numeric', ...(special ? ['accent'] : [])]}
-                                marginStart={4}
-                                marginEnd={4}
+                            <Gtk.ToggleButton
+                                active={isShown}
+                                onClicked={(self) => {
+                                    switchWorkspace();
+                                    self.active = isShown();
+                                }}
+                                cssClasses={['flat', 'numeric', ...(special ? ['accent'] : [])]}
                                 tooltipText={tooltip}
-                            />
+                                ref={setAccessibleName(tooltip)}
+                            >
+                                <Gtk.Label label={label} />
+                            </Gtk.ToggleButton>
                             <For each={bind(ws, 'clients')}>
                                 {(client: Hyprland.Client) => {
                                     const iconName = bindWorkspaceClientIcon(client);
+                                    const clientTitle = bind(client, 'title');
+                                    const clientClass = bind(client, 'class');
+                                    const clientLabel = computed(
+                                        () => clientTitle() || clientClass() || 'Janela'
+                                    );
 
                                     return (
                                         <Gtk.ToggleButton
                                             active={computed(() => activeName() === client.address)}
                                             onClicked={() => focusHyprlandClient(client)}
                                             cssClasses={['flat']}
+                                            tooltipText={clientLabel}
+                                            ref={(self) =>
+                                                effect(() => setAccessibleName(clientLabel())(self))
+                                            }
                                         >
                                             <Gtk.Image iconName={iconName} pixelSize={24} />
                                         </Gtk.ToggleButton>

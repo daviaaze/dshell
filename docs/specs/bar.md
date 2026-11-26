@@ -83,7 +83,8 @@ The portal backend publishes source kind/name and its requesting app ID on the e
 
 | Element | Current class / native variable | Source |
 |---------|---------------------------------|--------|
-| Bar window | `card`, `background`; `@window_bg_color` in the window CSS | [`index.tsx`](../../packages/widgets/src/bar/index.tsx) |
+| Bar window | `bar-window`: transparent background, no shadow | [`index.tsx`](../../packages/widgets/src/bar/index.tsx), [`style.ts`](../../packages/widgets/src/style.ts) |
+| Clusters (`BarCluster`) | `card` box with a 4px inner margin around flat controls | [`index.tsx`](../../packages/widgets/src/bar/index.tsx) |
 
 The shared theme maps its palette onto native Adwaita CSS variables, including `--window-bg-color`, `--window-fg-color`, `--accent-bg-color`, `--accent-fg-color`, `--accent-color`, `--card-bg-color`, and `--shade-color`. See [`theme.ts`](../../packages/style/src/theme.ts) and the [GTK4/libadwaita style guide](../STYLEGUIDE.md). This is not a claim that the bar uses every variable directly.
 

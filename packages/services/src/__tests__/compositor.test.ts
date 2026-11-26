@@ -11,7 +11,7 @@ const bind = (id: string, keys: string): BindSpec => ({
 });
 
 describe('CompositorPort binding updates', () => {
-    it('removes the prior chord before applying a remapped binding', async () => {
+    it.async('removes the prior chord before applying a remapped binding', async () => {
         const calls: string[] = [];
         const port = new CompositorPort({
             async dispatch(source) {
@@ -25,7 +25,7 @@ describe('CompositorPort binding updates', () => {
         ]);
     });
 
-    it('does not dispatch when the effective binding is unchanged', async () => {
+    it.async('does not dispatch when the effective binding is unchanged', async () => {
         const calls: string[] = [];
         const port = new CompositorPort({
             async dispatch(source) {
@@ -37,4 +37,4 @@ describe('CompositorPort binding updates', () => {
     });
 });
 
-run();
+await run();

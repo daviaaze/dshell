@@ -8,12 +8,6 @@ import {createSettingsWindow, navigateSettings, type SettingsDestination} from '
 let settingsWindow: Gtk.Window | null = null;
 let settingsDispose: (() => void) | null = null;
 
-/**
- * Open (or toggle-focus) the settings window.
- *
- * Extracted from the widget barrel to eliminate the tray → barrel
- * circular dependency (tray.tsx → widget/index.tsx → quicksettings/ → tray).
- */
 function disposeCurrentSettings() {
     const wm = WindowManager.get_default();
     const current = settingsWindow;
@@ -26,6 +20,12 @@ function disposeCurrentSettings() {
     dispose?.();
 }
 
+/**
+ * Open the settings window, or focus the existing one and navigate to `destination` if given.
+ *
+ * Extracted from the widget barrel to eliminate the tray → barrel
+ * circular dependency (tray.tsx → widget/index.tsx → quicksettings/ → tray).
+ */
 export function openSettings(destination?: SettingsDestination): void {
     const state = ShellState.get_default();
     if (state.screenlocked) return;

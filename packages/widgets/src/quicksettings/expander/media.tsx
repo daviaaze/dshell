@@ -1,4 +1,3 @@
-import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Mpris from 'gi://AstalMpris';
 import Gio from 'gi://Gio?version=2.0';
@@ -6,7 +5,7 @@ import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import MediaController from '@shade/services/session/mediaController';
 import {exactQuery} from '@shade/services/state/apps';
-import {bind, For, onCleanup} from 'gnim';
+import {bind, effect, For, onCleanup} from 'gnim';
 
 function lengthStr(length: number) {
     const min = Math.floor(length / 60);
@@ -33,7 +32,9 @@ const CoverArt = ({player}: {player: Mpris.Player}) => {
     return (
         <Gtk.Picture
             visible={bind(player, 'cover-art').as((c) => !!c)}
-            file={bind(player, 'cover-art').as((path) => Gio.File.new_for_path(path))}
+            file={bind(player, 'cover-art').as((path) =>
+                path ? Gio.File.new_for_path(path) : null
+            )}
             css={'border-radius: calc(var(--window-radius) / 2);'}
             contentFit={Gtk.ContentFit.COVER}
             widthRequest={120}
@@ -61,7 +62,7 @@ const TitleArtist = ({player}: {player: Mpris.Player}) => {
     );
 };
 
-function setPlaybackLabel(button: Gtk.Button, label: string) {
+function setPlaybackLabel(button: Gtk.Accessible, label: string) {
     button.update_property(
         [Gtk.AccessibleProperty.LABEL],
         [new GObject.Value(GObject.TYPE_STRING, label)]
@@ -71,14 +72,14 @@ function setPlaybackLabel(button: Gtk.Button, label: string) {
 const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) => {
     const mc = MediaController.get_default();
     const playbackLabel = bind(player, 'playback-status').as((status) =>
-        status === Mpris.PlaybackStatus.PLAYING ? 'Pause' : 'Play'
+        status === Mpris.PlaybackStatus.PLAYING ? 'Pausar' : 'Reproduzir'
     );
     return (
         <Gtk.Box slot={slot}>
             <Gtk.Button
                 iconName={'media-skip-backward-symbolic'}
-                tooltipText="Previous track"
-                ref={(button) => setPlaybackLabel(button, 'Previous track')}
+                tooltipText="Faixa anterior"
+                ref={(button) => setPlaybackLabel(button, 'Faixa anterior')}
                 onClicked={() => {
                     mc.setActivePlayer(player);
                     mc.previous();
@@ -98,12 +99,15 @@ const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) 
                     onCleanup(playbackLabel.subscribe(update));
                     update();
                 }}
-                onClicked={() => mc.playPause()}
+                onClicked={() => {
+                    mc.setActivePlayer(player);
+                    mc.playPause();
+                }}
             />
             <Gtk.Button
                 iconName={'media-skip-forward-symbolic'}
-                tooltipText="Next track"
-                ref={(button) => setPlaybackLabel(button, 'Next track')}
+                tooltipText="Próxima faixa"
+                ref={(button) => setPlaybackLabel(button, 'Próxima faixa')}
                 onClicked={() => {
                     mc.setActivePlayer(player);
                     mc.next();
@@ -116,41 +120,42 @@ const PlaybackButtons = ({player, slot}: {player: Mpris.Player; slot?: string}) 
 
 const PlaybackStatus = ({player}: {player: Mpris.Player}) => {
     const mc = MediaController.get_default();
+    const position = bind(player, 'position');
+    const length = bind(player, 'length');
+    let applyingPosition = false;
     return (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL}>
             <Astal.Slider
                 marginTop={4}
                 marginBottom={4}
                 drawValue={false}
-                onNotifyValue={({value}) => {
-                    const pos = player.position ?? 0;
-                    if (Math.abs(value - pos) > 1.5) mc.seek(value);
+                onValueChanged={(self) => {
+                    if (applyingPosition) return;
+                    mc.setActivePlayer(player);
+                    mc.seek(self.value);
                 }}
                 min={0}
-                max={bind(player, 'length')}
                 visible={bind(player, 'can-seek')}
-                value={bind(player, 'position')}
+                ref={(slider) => {
+                    setPlaybackLabel(slider, 'Posição da faixa');
+                    effect(() => {
+                        const maximum = Math.max(0, length());
+                        const value = Math.max(0, Math.min(maximum, position()));
+                        applyingPosition = true;
+                        try {
+                            slider.max = maximum;
+                            slider.value = value;
+                        } finally {
+                            applyingPosition = false;
+                        }
+                    });
+                }}
             />
             <Gtk.CenterBox>
                 <Gtk.Label slot="start" label={bind(player, 'position').as(lengthStr)} />
                 <PlaybackButtons slot="center" player={player} />
                 <Gtk.Label slot="end" label={bind(player, 'length').as(lengthStr)} />
             </Gtk.CenterBox>
-        </Gtk.Box>
-    );
-};
-
-export const MediaIcon = () => {
-    const mc = MediaController.get_default();
-    const hasPlayers = bind(mc, 'players').as((p) => p.length > 0);
-
-    return (
-        <Gtk.Box spacing={4} visible={hasPlayers}>
-            <Gtk.Image iconName="media-playback-start-symbolic" pixelSize={20} />
-            <Adw.WindowTitle
-                title={bind(mc, 'activeTitle')}
-                subtitle={bind(mc, 'activePlayer').as((p) => p?.identity ?? '')}
-            />
         </Gtk.Box>
     );
 };

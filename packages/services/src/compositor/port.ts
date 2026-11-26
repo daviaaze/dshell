@@ -6,7 +6,6 @@ import {
     renderBindLua,
     renderConfigOptionLua,
     renderDpmsLua,
-    renderKeystrokeOverlaySubscriptionLua,
     renderMonitorLua,
     renderWorkspaceRuleLua,
 } from '@shade/compositor-model';
@@ -17,22 +16,28 @@ export function parseHyprOption(output: string, fallback: string): string {
 }
 
 export interface CompositorTransport {
-    dispatch(source: string): Promise<void>;
-    eval?(source: string): Promise<void>;
+    /** Void transports must reject on failure; hyprctl transports return its acknowledgement. */
+    dispatch(source: string): Promise<string | void>;
+    eval?(source: string): Promise<string | void>;
     request?(argv: string[]): Promise<string>;
 }
 
 const hyprlandTransport: CompositorTransport = {
     async dispatch(source) {
-        await Process.execAsyncv(['hyprctl', 'dispatch', `function() ${source} end`], true);
+        return Process.execAsyncv(['hyprctl', 'dispatch', `function() ${source} end`]);
     },
     async eval(source) {
-        await Process.execAsyncv(['hyprctl', 'eval', source], true);
+        return Process.execAsyncv(['hyprctl', 'eval', source]);
     },
     async request(argv) {
         return Process.execAsyncv(['hyprctl', ...argv]);
     },
 };
+
+function assertCommandSucceeded(reply: string | void): void {
+    if (reply !== undefined && reply.trim() !== 'ok')
+        throw new Error(`Hyprland rejected command: ${reply || 'empty acknowledgement'}`);
+}
 
 export interface HyprlandDisplaySnapshot {
     all: unknown[];
@@ -59,7 +64,7 @@ export class CompositorPort {
                 operation.type === 'unbind'
                     ? `hl.unbind(${JSON.stringify(operation.keys)})`
                     : renderBindLua(operation.bind);
-            await this.transport.dispatch(source);
+            assertCommandSucceeded(await this.transport.dispatch(source));
         }
     }
 
@@ -72,12 +77,9 @@ export class CompositorPort {
     }
 
     async applyDpms(on: boolean, monitor?: string): Promise<void> {
-        await this.#eval(renderDpmsLua(on, monitor));
+        await this.#eval(`hl.dispatch(${renderDpmsLua(on, monitor)})`);
     }
 
-    async setKeystrokeOverlay(enabled: boolean): Promise<void> {
-        await this.#eval(renderKeystrokeOverlaySubscriptionLua(enabled));
-    }
     displaySnapshot(): Promise<HyprlandDisplaySnapshot> {
         return Promise.all([
             this.#request(['monitors', 'all', '-j']),
@@ -148,7 +150,9 @@ export class CompositorPort {
     }
 
     async #eval(source: string): Promise<void> {
-        if (this.transport.eval) await this.transport.eval(source);
-        else await this.transport.dispatch(source);
+        const reply = this.transport.eval
+            ? await this.transport.eval(source)
+            : await this.transport.dispatch(source);
+        assertCommandSucceeded(reply);
     }
 }

@@ -17,7 +17,7 @@ export function usePopoverCleanup(self: Adw.SplitButton | Gtk.MenuButton | Gtk.W
             try {
                 popover.popdown();
             } catch (e) {
-                logger.warn(`${e}`);
+                logger.warn('popover', 'popdown failed:', e);
             }
             if (popover.parent) popover.unparent();
         }

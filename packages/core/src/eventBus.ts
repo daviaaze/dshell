@@ -9,6 +9,8 @@
  * GObject signal semantics and avoids ordering surprises.
  */
 
+import logger from './logger';
+
 export type Unsubscribe = () => void;
 
 export class EventBus<E> {
@@ -30,7 +32,11 @@ export class EventBus<E> {
         const fns = this.#listeners.get(key);
         if (!fns) return;
         for (const fn of fns) {
-            fn(...(args as unknown[]));
+            try {
+                fn(...(args as unknown[]));
+            } catch (e) {
+                logger.error('bus', `listener for "${key}" threw:`, e);
+            }
         }
     }
 

@@ -2,6 +2,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import NightLight, {TEMP_MAX, TEMP_MIN} from '@shade/services/display/nightLight';
 import {bind, effect} from 'gnim';
+import {setAccessibleName} from '../../common/iconButton';
 import {QuickControlButton} from '../../common/quickControlButton';
 import type {QuickDetailButton} from './quickButton';
 
@@ -9,15 +10,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const nightLight = NightLight.get_default();
 
     const detail = (
-        <Gtk.Box
-            cssClasses={['toolbar', 'linked', 'vertical']}
-            marginTop={8}
-            marginBottom={8}
-            marginStart={8}
-            marginEnd={8}
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={8}
-        >
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
                 <Gtk.Label label="Temperatura" />
                 {(() => {
@@ -37,6 +30,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
                             digits={0}
                             roundDigits={0}
                             adjustment={adjustment}
+                            ref={setAccessibleName('Temperatura da luz noturna')}
                             onValueChanged={(self) =>
                                 bus.emit(
                                     'display:nightlight:temperature',
@@ -58,6 +52,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
                 <Gtk.Label label="Agendamento automático" hexpand />
                 <Gtk.Switch
                     active={bind(nightLight, 'autoSchedule')}
+                    ref={setAccessibleName('Agendamento automático da luz noturna')}
                     onNotifyActive={(self) => {
                         if (self.active !== nightLight.autoSchedule)
                             bus.emit('display:nightlight:schedule', self.active);

@@ -6,10 +6,11 @@ import logger from '@shade/core/logger';
  * Shared wall-clock state.
  *
  * Two time sources:
- *   - `time`: 1Hz tick, used by the active timer/countdown display only.
- *   - `wallTime`: 1-minute tick, used by the wall-clock display (no seconds).
+ *   - `time`: 1Hz tick, used by displays that show seconds (timers, lockscreen, world clock).
+ *   - `wallTime`: updates only when the minute changes, used by the wall-clock display (no seconds).
  *
- * A single GLib.timeout source drives both; widgets bind to whichever
+ * A single GLib.timeout source drives both, so `wallTime` changes within a second of the
+ * minute boundary (also right after resume from suspend); widgets bind to whichever
  * accessor they need instead of each registering their own poll.
  */
 export default class Clock {
@@ -20,59 +21,45 @@ export default class Clock {
         return Clock.instance;
     }
 
-    static readonly WALL_INTERVAL_MS = 60_000;
-
     #time: Accessor<GLib.DateTime>;
     #setTime: (v: GLib.DateTime) => void;
     #wallTime: Accessor<GLib.DateTime>;
     #setWallTime: (v: GLib.DateTime) => void;
     #tickTimer: number | null = null;
-    #wallTimer: number | null = null;
 
     constructor() {
-        const [time, setTime] = createState(GLib.DateTime.new_now_local()!);
+        const now = GLib.DateTime.new_now_local()!;
+        const [time, setTime] = createState(now);
         this.#time = time;
         this.#setTime = setTime;
 
-        const [wallTime, setWallTime] = createState(GLib.DateTime.new_now_local()!);
+        const [wallTime, setWallTime] = createState(now);
         this.#wallTime = wallTime;
         this.#setWallTime = setWallTime;
 
-        // 1Hz tick — powers the active timer countdown.
         this.#tickTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
             try {
-                this.#setTime(GLib.DateTime.new_now_local()!);
+                const tick = GLib.DateTime.new_now_local()!;
+                this.#setTime(tick);
+                if (
+                    Math.floor(tick.to_unix() / 60) !== Math.floor(this.#wallTime().to_unix() / 60)
+                ) {
+                    this.#setWallTime(tick);
+                }
             } catch (e) {
                 logger.error('clock', '1Hz tick failed:', e);
             }
             return GLib.SOURCE_CONTINUE;
         });
-
-        // 1-minute tick — powers the wall clock display. The clock widget
-        // is mounted for the session lifetime, so this runs continuously
-        // but fires 60× less often than the 1Hz tick.
-        this.#startWallTimer();
     }
 
-    /** 1Hz tick — active timer / countdown display. */
+    /** 1Hz tick — timer / countdown / seconds displays. */
     get time(): Accessor<GLib.DateTime> {
         return this.#time;
     }
 
-    /** 1-minute tick — wall clock display (no seconds). */
+    /** Changes when the minute changes — wall clock display (no seconds). */
     get wallTime(): Accessor<GLib.DateTime> {
         return this.#wallTime;
-    }
-
-    #startWallTimer(): void {
-        if (this.#wallTimer !== null) return;
-        this.#wallTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, Clock.WALL_INTERVAL_MS, () => {
-            try {
-                this.#setWallTime(GLib.DateTime.new_now_local()!);
-            } catch (e) {
-                logger.error('clock', 'wall tick failed:', e);
-            }
-            return GLib.SOURCE_CONTINUE;
-        });
     }
 }

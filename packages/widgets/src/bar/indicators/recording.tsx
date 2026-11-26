@@ -11,16 +11,16 @@ function formatDuration(seconds: number): string {
 
 export default ({vertical}: {vertical: Accessor<boolean>}) => {
     const screenshot = Screenshot.get_default();
-    const duration = bind(screenshot, 'recordingElapsed').as((sec) =>
-        formatDuration(sec ?? 0)
-    );
+    const duration = bind(screenshot, 'recordingElapsed').as((sec) => formatDuration(sec ?? 0));
 
     return (
         <Gtk.Button
             visible={bind(screenshot, 'recording')}
             onClicked={() => screenshot.stopRecording()}
-            cssClasses={vertical.as((v) => (v ? ['flat', 'bar-vertical-content-button'] : ['flat']))}
-            tooltipText={duration.as((value) => `Click to stop recording (${value})`)}
+            cssClasses={vertical.as((v) =>
+                v ? ['flat', 'bar-vertical-content-button'] : ['flat']
+            )}
+            tooltipText={duration.as((value) => `Clique para parar a gravação (${value})`)}
         >
             <Gtk.Box
                 spacing={4}
@@ -28,7 +28,7 @@ export default ({vertical}: {vertical: Accessor<boolean>}) => {
                     v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
                 )}
             >
-                <Gtk.Image iconName="media-record-symbolic" />
+                <Gtk.Image iconName="media-record-symbolic" cssClasses={['error']} />
                 <Gtk.Label
                     label={duration}
                     maxWidthChars={vertical.as((v) => (v ? 4 : 10))}

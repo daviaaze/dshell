@@ -10,7 +10,7 @@ import {
 } from '@shade/compositor-model';
 import {CompositorConfigStore} from '@shade/compositor-model/store';
 import {Object as GObject, property, register} from 'gnim/gobject';
-import {configPaths, loadUserConfig, persistUserConfig} from './configFile';
+import {configPaths, loadUserConfig, persistUserSettings, requireUserConfig} from './configFile';
 import {CompositorPort} from './port';
 
 const EMPTY_SEED: CompositorSeed = {
@@ -124,6 +124,7 @@ export default class CompositorSettings extends GObject {
         } catch (cause) {
             this.#setError(String(cause));
             logger.error('compositor', 'failed to load compositor config:', cause);
+            return;
         }
         const initial = resolveUserConfig(seed, user);
         if (initial.errors.length) {
@@ -132,11 +133,12 @@ export default class CompositorSettings extends GObject {
         }
         const port = this.#port;
         this.#controller = new CompositorConfigStore(seed, user, {
+            load: () => requireUserConfig(paths, seed),
             async apply(previous, next) {
                 await port.applyBinds(previous.binds, next.binds);
             },
             async persist(nextUser) {
-                persistUserConfig(paths.user, nextUser);
+                return persistUserSettings(paths, seed, nextUser);
             },
         });
         this.notify('effective-json');

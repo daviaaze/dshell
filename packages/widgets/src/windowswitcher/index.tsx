@@ -3,13 +3,20 @@ import Astal from 'gi://Astal?version=4.0';
 import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import Pango from 'gi://Pango?version=1.0';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
 import {getApp} from '@shade/services/appHandle';
 import {closeHyprlandClient, focusHyprlandClient, getHyprland} from '@shade/services/hyprland';
+import ShellState from '@shade/services/state/shellState';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, computed, createState, For, onCleanup, type Setter} from 'gnim';
-import {getPopoverMaxHeight, OPAQUE_SURFACE_CSS, SURFACE_PADDING} from '../common/surface';
+import {
+    OPAQUE_SURFACE_CSS,
+    SURFACE_EDGE_GAP,
+    SURFACE_PADDING,
+    SURFACE_SPACING,
+} from '../common/surface';
 import SwitcherItem from './item';
 
 let switcherWindow: Astal.Window | null = null;
@@ -18,6 +25,8 @@ let reconcileSwitcherMru: (() => void) | null = null;
 export const toggleWindowSwitcher = () => {
     if (switcherWindow) {
         const nextVisible = !switcherWindow.visible;
+        // The switcher lists window titles; never map it over a locked session.
+        if (nextVisible && ShellState.get_default().screenlocked) return;
         logger.debug('wm', `windowSwitcher ${nextVisible ? 'shown' : 'hidden'}`);
         // Read the latest client before mapping the exclusive layer can take focus.
         if (nextVisible) reconcileSwitcherMru?.();
@@ -72,14 +81,14 @@ function buildKeyActions(state: SwitcherState): Record<number, () => boolean> {
 
     const keyGroups: [number[], () => boolean][] = [
         [
-            [Gdk.KEY_Tab, Gdk.KEY_Right],
+            [Gdk.KEY_Tab, Gdk.KEY_Right, Gdk.KEY_Down],
             () => {
                 if (clients.length > 0) state.setSelectedIndex((i) => (i + 1) % clients.length);
                 return true;
             },
         ],
         [
-            [Gdk.KEY_ISO_Left_Tab, Gdk.KEY_Left],
+            [Gdk.KEY_ISO_Left_Tab, Gdk.KEY_Left, Gdk.KEY_Up],
             () => {
                 if (clients.length > 0)
                     state.setSelectedIndex((i) => (i - 1 + clients.length) % clients.length);
@@ -160,10 +169,21 @@ export default () => {
             ? Math.max(1, Math.min(500, monitor.width / (monitor.scale || 1) - 32))
             : 500;
     });
-    let switcherRoot: Gtk.Widget | null = null;
-    const panelHeight = computed(() =>
-        switcherRoot ? getPopoverMaxHeight(switcherRoot) - SURFACE_PADDING * 2 : 0
-    );
+    const keyHint = new Gtk.Label({
+        label: 'Tab/↑↓ alternar · Enter focar · Q fechar · Esc cancelar',
+        cssClasses: ['caption', 'dimmed'],
+        ellipsize: Pango.EllipsizeMode.END,
+    });
+    const keyHintHeight = keyHint.measure(Gtk.Orientation.VERTICAL, -1)[1];
+    // Output height minus the edge gaps, the card padding and the hint row.
+    const panelHeight = computed(() => {
+        const monitor = focusedMonitor();
+        const logical = monitor ? monitor.height / (monitor.scale || 1) : 600;
+        return Math.max(
+            1,
+            logical - SURFACE_EDGE_GAP * 2 - SURFACE_PADDING * 2 - SURFACE_SPACING - keyHintHeight
+        );
+    });
 
     const [selectedIndex, setSelectedIndex] = createState(0);
     const [mru, setMru] = createState<string[]>([]);
@@ -217,8 +237,16 @@ export default () => {
                     handleKeyReleased(state, keyval)
                 );
                 self.add_controller(keys);
+                // The window covers the whole output: a press outside the card dismisses it.
+                const click = new Gtk.GestureClick();
+                click.connect('pressed', (_gesture, _presses, x, y) => {
+                    const target = self.pick(x, y, Gtk.PickFlags.DEFAULT);
+                    if (!target || target === self) closeSwitcher(state);
+                });
+                self.add_controller(click);
                 onCleanup(() => {
                     self.remove_controller(keys);
+                    self.remove_controller(click);
                     switcherWindow = null;
                     reconcileSwitcherMru = null;
                     focusedClientUnsubscribe();
@@ -244,13 +272,12 @@ export default () => {
             <Gtk.Box
                 ref={(self) => {
                     state.boxRef.current = self;
-                    switcherRoot = self;
                 }}
                 focusable
                 halign={Gtk.Align.CENTER}
                 valign={Gtk.Align.CENTER}
                 orientation={Gtk.Orientation.VERTICAL}
-                spacing={8}
+                spacing={SURFACE_SPACING}
                 widthRequest={panelWidth}
                 cssClasses={['card', 'background']}
                 css={`${OPAQUE_SURFACE_CSS} padding: ${SURFACE_PADDING}px;`}
@@ -265,13 +292,10 @@ export default () => {
                 >
                     <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                         <For each={clientsList}>
-                            {(client: AstalHyprland.Client) => (
+                            {(client: AstalHyprland.Client, index) => (
                                 <SwitcherItem
                                     client={client}
-                                    selected={selectedIndex.as((idx) => {
-                                        const clients = clientsList() ?? [];
-                                        return clients[idx]?.address === client.address;
-                                    })}
+                                    selected={computed(() => index() === selectedIndex())}
                                 />
                             )}
                         </For>
@@ -285,6 +309,7 @@ export default () => {
                         />
                     </Gtk.Box>
                 </Gtk.ScrolledWindow>
+                {keyHint}
             </Gtk.Box>
         </Astal.Window>
     );

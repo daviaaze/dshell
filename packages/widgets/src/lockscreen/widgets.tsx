@@ -92,13 +92,13 @@ const MediaPlayerWidget = () => {
             </Gtk.Box>
             <Gtk.Box spacing={4}>
                 <Gtk.Button
-                    tooltipText="Toggle playback"
+                    tooltipText="Alternar reprodução"
                     cssClasses={['flat', 'circular']}
                     iconName="media-playback-pause-symbolic"
                     onClicked={() => mc.playPause()}
                 />
                 <Gtk.Button
-                    tooltipText="Next track"
+                    tooltipText="Próxima faixa"
                     cssClasses={['flat', 'circular']}
                     iconName="media-skip-forward-symbolic"
                     onClicked={() => mc.next()}

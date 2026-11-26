@@ -42,6 +42,8 @@ NIX_INPUT_FILES = (
     "apps/shell/src/compositor.ts",
 )
 NIX_INPUT_DIRS = ("nix", "data", "assets", "packages/services/src/compositor", "packages/compositor-model")
+# Gitignored output that scripts/dev.sh writes into an input directory.
+NIX_INPUT_GENERATED = ("data/glib-2.0",)
 
 
 
@@ -126,7 +128,10 @@ def nix_fingerprint(root: Path = ROOT) -> str:
     for directory in NIX_INPUT_DIRS:
         base = root / directory
         if base.is_dir():
-            paths += sorted(p for p in base.rglob("*") if p.is_file())
+            paths += sorted(
+                p for p in base.rglob("*")
+                if p.is_file() and not any(p.is_relative_to(root / skip) for skip in NIX_INPUT_GENERATED)
+            )
     paths += sorted(p for p in (root / "packages").rglob("*.gschema.ts") if "node_modules" not in p.parts)
     for path in paths:
         if path.is_file():

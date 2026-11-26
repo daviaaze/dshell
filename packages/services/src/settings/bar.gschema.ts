@@ -21,26 +21,65 @@ export const barSettings = defineSettings('bar', (s) =>
             default: '',
             summary: 'Command for the "Open System Monitor" button in the system usage popup',
         })
-        .key('show-cpu-usage', 'b', { default: true, summary: 'Show CPU usage in the bar' })
-        .key('show-memory-usage', 'b', { default: true, summary: 'Show memory usage in the bar' })
-        .key('show-temperature', 'b', { default: true, summary: 'Show temperature in the bar' })
-        .key('show-network-usage', 'b', { default: false, summary: 'Show network usage in the bar' })
-        .key('show-swap-usage', 'b', { default: false, summary: 'Show swap usage in the bar' })
-        .key('resource-indicator-style', 's', { default: 'bars', summary: 'Resource indicator style: bars, text, or compact' })
-        .key('network-rate-unit', 's', { default: 'bytes', summary: 'Network rate unit: bytes or bits' })
-        .key('system-usage-interval', 'i', { default: 1000, summary: 'System usage sampling interval in milliseconds', range: {min: 500, max: 5000} })
-        .key('system-usage-network-interface', 's', { default: '', summary: 'Network interface to monitor; empty means aggregate non-loopback traffic' })
-        .key('system-usage-disk-path', 's', { default: '/', summary: 'Filesystem path to monitor' })
-        .key('system-usage-source', 's', { default: 'local', summary: 'System usage source: local or homelab' })
-        .key('system-usage-remote-url', 's', { default: 'http://dvision-homelab:9100/metrics', summary: 'Homelab node_exporter metrics URL' })
-        .key('system-usage-remote-interval', 'i', { default: 5000, summary: 'Homelab metrics polling interval in milliseconds', range: {min: 2000, max: 60000} })
-        .key('system-usage-remote-network-interface', 's', { default: 'enp14s0', summary: 'Homelab network interface; empty aggregates non-loopback traffic' })
-        .key('system-usage-remote-disk-path', 's', { default: '/', summary: 'Homelab filesystem path to monitor' })
-        .key('system-usage-process-sort', 's', { default: 'cpu', summary: 'Process sort order: cpu or memory' })
-        .key('system-usage-process-count', 'i', { default: 5, summary: 'Number of top processes', range: {min: 3, max: 15} })
-        .key('system-usage-show-graphs', 'b', { default: true, summary: 'Show system usage graphs' })
-        .key('system-usage-show-processes', 'b', { default: true, summary: 'Show top processes in system usage' })
-        .key('system-usage-show-per-core', 'b', { default: true, summary: 'Show per-core CPU usage' })
+        .key('show-cpu-usage', 'b', {default: true, summary: 'Show CPU usage in the bar'})
+        .key('show-memory-usage', 'b', {default: true, summary: 'Show memory usage in the bar'})
+        .key('show-temperature', 'b', {default: true, summary: 'Show temperature in the bar'})
+        .key('show-network-usage', 'b', {default: false, summary: 'Show network usage in the bar'})
+        .key('show-swap-usage', 'b', {default: false, summary: 'Show swap usage in the bar'})
+        .key('resource-indicator-style', 's', {
+            default: 'bars',
+            summary: 'Resource indicator style: bars, text, or compact',
+        })
+        .key('network-rate-unit', 's', {
+            default: 'bytes',
+            summary: 'Network rate unit: bytes or bits',
+        })
+        .key('system-usage-interval', 'i', {
+            default: 1000,
+            summary: 'System usage sampling interval in milliseconds',
+            range: {min: 500, max: 5000},
+        })
+        .key('system-usage-network-interface', 's', {
+            default: '',
+            summary: 'Network interface to monitor; empty means aggregate non-loopback traffic',
+        })
+        .key('system-usage-disk-path', 's', {default: '/', summary: 'Filesystem path to monitor'})
+        .key('system-usage-source', 's', {
+            default: 'local',
+            summary: 'System usage source: local or homelab',
+        })
+        .key('system-usage-remote-url', 's', {
+            default: '',
+            summary: 'Homelab node_exporter metrics URL (e.g. http://host:9100/metrics)',
+        })
+        .key('system-usage-remote-interval', 'i', {
+            default: 5000,
+            summary: 'Homelab metrics polling interval in milliseconds',
+            range: {min: 2000, max: 60000},
+        })
+        .key('system-usage-remote-network-interface', 's', {
+            default: '',
+            summary: 'Homelab network interface; empty aggregates non-loopback traffic',
+        })
+        .key('system-usage-remote-disk-path', 's', {
+            default: '/',
+            summary: 'Homelab filesystem path to monitor',
+        })
+        .key('system-usage-process-sort', 's', {
+            default: 'cpu',
+            summary: 'Process sort order: cpu or memory',
+        })
+        .key('system-usage-process-count', 'i', {
+            default: 5,
+            summary: 'Number of top processes',
+            range: {min: 3, max: 15},
+        })
+        .key('system-usage-show-graphs', 'b', {default: true, summary: 'Show system usage graphs'})
+        .key('system-usage-show-processes', 'b', {
+            default: true,
+            summary: 'Show top processes in system usage',
+        })
+        .key('system-usage-show-per-core', 'b', {default: true, summary: 'Show per-core CPU usage'})
         .key('show-disk-usage', 'b', {
             default: false,
             summary: 'Wheter to show disk use in systemUsage',

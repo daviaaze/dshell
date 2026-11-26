@@ -1,13 +1,15 @@
 import Gtk from 'gi://Gtk?version=4.0';
 import AudioController from '@shade/services/audio/audioController';
 import AppMixer from '@shade/services/audio/mixer';
-import {bind, computed} from 'gnim';
+import {bind, computed, effect} from 'gnim';
+import {setAccessibleName} from '../../common/iconButton';
 
 const MUTED_SPEAKER_ICON = 'audio-volume-muted-symbolic';
 const MUTED_MIC_ICON = 'microphone-sensitivity-muted-symbolic';
 
-function volumeTooltip(vol: number): string {
-    return `${Math.round(vol * 100)}%`;
+function volumeTooltip(name: string, vol: number | undefined, mute: boolean | undefined): string {
+    if (vol === undefined) return name;
+    return mute ? `${name}: silenciado` : `${name}: ${Math.round(vol * 100)}%`;
 }
 
 /**
@@ -34,14 +36,21 @@ export const SpeakerIndicator = () => {
         return (speakerIcon() as string | undefined) ?? MUTED_SPEAKER_ICON;
     });
 
+    const speakerLabel = computed(() =>
+        volumeTooltip(
+            'Volume',
+            speakerVol() as number | undefined,
+            speakerMute() as boolean | undefined
+        )
+    );
+
     return (
         <Gtk.Image
             visible={bind(audioCtrl, 'speakers').as((s) => s.length > 0)}
             iconName={iconName}
-            tooltipMarkup={computed(() => {
-                const vol = speakerVol() as number | undefined;
-                return vol !== undefined ? volumeTooltip(vol) : '';
-            })}
+            tooltipText={speakerLabel}
+            accessibleRole={Gtk.AccessibleRole.IMG}
+            ref={(self) => effect(() => setAccessibleName(speakerLabel())(self))}
             pixelSize={18}
         />
     );
@@ -65,14 +74,21 @@ export const MicrophoneIndicator = () => {
         return (micIcon() as string | undefined) ?? MUTED_MIC_ICON;
     });
 
+    const micLabel = computed(() =>
+        volumeTooltip(
+            'Microfone em uso',
+            micVol() as number | undefined,
+            micMute() as boolean | undefined
+        )
+    );
+
     return (
         <Gtk.Image
             visible={bind(mixer, 'microphoneInUse')}
             iconName={iconName}
-            tooltipMarkup={computed(() => {
-                const vol = micVol() as number | undefined;
-                return vol !== undefined ? volumeTooltip(vol) : '';
-            })}
+            tooltipText={micLabel}
+            accessibleRole={Gtk.AccessibleRole.IMG}
+            ref={(self) => effect(() => setAccessibleName(micLabel())(self))}
             pixelSize={18}
         />
     );

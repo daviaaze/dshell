@@ -11,3 +11,44 @@ window.picker-popup .picker-preview-status {
     color: @secondary_fg_color;
     font-size: 0.8em;
 }
+
+/* Source cards: a flat button wrapping preview, name and detail. */
+window.picker-popup button.picker-source {
+    padding: 0;
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px alpha(currentColor, 0.12);
+}
+
+window.picker-popup button.picker-source:hover {
+    box-shadow: inset 0 0 0 1px alpha(currentColor, 0.3);
+}
+
+window.picker-popup button.picker-source.selected {
+    background-color: alpha(@accent_bg_color, 0.16);
+    box-shadow: inset 0 0 0 2px @accent_bg_color;
+}
+
+window.picker-popup .picker-card {
+    padding: 8px;
+}
+
+window.picker-popup .picker-preview {
+    border-radius: 8px;
+    background-color: alpha(currentColor, 0.06);
+}
+
+window.picker-popup .picker-label {
+    margin-top: 6px;
+    font-weight: bold;
+}
+
+window.picker-popup .picker-sublabel {
+    font-size: 0.85em;
+    opacity: var(--dim-opacity);
+}
+
+window.picker-popup .picker-section {
+    font-weight: bold;
+    font-size: 0.9em;
+    opacity: var(--dim-opacity);
+}

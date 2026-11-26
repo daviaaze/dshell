@@ -30,12 +30,11 @@ export default () => {
                             .filter(Boolean);
                         if (cats.length === 0) return;
                         const current = settings.debugCategories();
-                        for (const cat of cats) {
-                            if (!current.includes(cat)) {
-                                current.push(cat);
-                            }
-                        }
-                        settings.setDebugCategories(current);
+                        const added = cats.filter((cat, index) => {
+                            return !current.includes(cat) && cats.indexOf(cat) === index;
+                        });
+                        if (added.length === 0) return;
+                        settings.setDebugCategories([...current, ...added]);
                         self.text = '';
                     }}
                 />

@@ -14,7 +14,7 @@
 
 ## Built-in display modes
 
-Open the dedicated **Telas** entry in Quick Settings to reach the available mode chooser, connected monitors and saved layouts. The separate **Configurações de telas** action opens advanced display settings. The mode chooser is keyboard-focusable: moving focus or navigating choices does not change outputs; activating a choice previews it. A preview has a 15-second confirmation window; Keep Changes commits it, and Revert or timeout restores the previous arrangement. Starting another preview replaces the candidate while retaining the original rollback target. Back or Escape attempts to revert a pending preview before leaving; a rollback failure is shown instead of silently navigating away.
+Open the dedicated **Telas** entry in Quick Settings to reach the available mode chooser, connected monitors and saved layouts. The separate **Configurações de telas** action opens advanced display settings. The mode chooser is keyboard-focusable: moving focus or navigating choices does not change outputs; activating a choice previews it. A preview has a 15-second confirmation window; **Manter** (**Manter alterações** in Settings) commits it, and **Reverter** or timeout restores the previous arrangement. Starting another preview replaces the candidate while retaining the original rollback target. Back or Escape attempts to revert a pending preview before leaving; a rollback failure is shown instead of silently navigating away.
 
 | Mode | Result |
 |------|--------|
@@ -68,6 +68,8 @@ Quick Settings individual-output switches and saved-layout selections use the sa
 ## Service API
 
 `LayoutService` (singleton, `@shade/services/display/layouts`) owns profile persistence and all preview/confirm/revert transactions. Built-in modes and output toggles share this transaction; a pending candidate is reverted after 15 seconds unless confirmed. The chooser request opens Quick Settings and signals the widget to focus a mode; it does not mutate monitor state.
+
+If rollback fails, Shade keeps the original arrangement and the recovery controls so the user can retry. Repeated `display-next` commands cycle from the pending named layout rather than restarting at the first match.
 
 ## Hotplug recovery
 

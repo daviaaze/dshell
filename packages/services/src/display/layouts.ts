@@ -4,8 +4,10 @@ import GLib from 'gi://GLib?version=2.0';
 import {defineService} from '@shade/core/define';
 import {readFile, writeFile} from '@shade/core/file';
 import logger from '@shade/core/logger';
+import {migrateLegacyLayoutStore} from '@shade/compositor-model';
 import {Object as GObject, property, register, signal} from 'gnim/gobject';
 import {CompositorPort} from '../compositor/port';
+import {configPaths} from '../compositor/configFile';
 import {notify} from '../capture/utils';
 import {getHyprland} from '../hyprland';
 import {monitorsSettings} from '../settings/monitors.gschema';
@@ -76,6 +78,8 @@ export interface DisplayAdapter {
     snapshot(): Promise<DisplaySnapshot>;
     keyword(spec: MonitorSpec): Promise<void>;
     workspace(id: number, monitor: string): Promise<void>;
+    dpms(name: string, on: boolean): Promise<void>;
+    subscribe?(changed: () => void, reloaded: () => void): (() => void) | null;
 }
 
 export interface LayoutServiceOptions {
@@ -161,9 +165,11 @@ function parseStore(value: unknown): LayoutStore {
         Array.isArray(parsed.layouts)
     )
         throw new Error('Invalid layout store');
-    const layouts: Record<string, Layout> = {};
-    for (const [name, layout] of Object.entries(parsed.layouts))
-        layouts[name] = normalizeLayout(layout);
+    const migration = migrateLegacyLayoutStore(parsed);
+    if (migration.errors.length) throw new Error(migration.errors.join('\n'));
+    const layouts = Object.fromEntries(
+        Object.entries(parsed.layouts).map(([name, layout]) => [name, normalizeLayout(layout)])
+    );
     return {...EMPTY_STORE, ...parsed, layouts};
 }
 
@@ -183,7 +189,7 @@ function parseWorkspaceArray(value: unknown): Record<number, string> {
         if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) continue;
         const workspace = entry as RawWorkspace;
         const id = Number(workspace.id);
-        if (Number.isInteger(id) && typeof workspace.monitor === 'string')
+        if (Number.isInteger(id) && id > 0 && typeof workspace.monitor === 'string')
             workspaces[id] = workspace.monitor;
     }
     return workspaces;
@@ -316,6 +322,19 @@ const hyprlandAdapter: DisplayAdapter = {
     async workspace(id, monitor) {
         await compositorPort.applyWorkspaceRule(String(id), monitor);
     },
+    async dpms(name, on) {
+        await compositorPort.applyDpms(on, name);
+    },
+    subscribe(changed, reloaded) {
+        const hyprland = getHyprland();
+        if (!hyprland) return null;
+        const ids = [
+            hyprland.connect('monitor-added', changed),
+            hyprland.connect('monitor-removed', changed),
+            hyprland.connect('config-reloaded', reloaded),
+        ];
+        return () => ids.forEach((id) => hyprland.disconnect(id));
+    },
 };
 
 function identity(spec: Pick<MonitorSpec, 'name' | 'description'>, attached: OutputInfo[]): string {
@@ -358,7 +377,7 @@ function specFromOutput(output: OutputInfo, disabled = !output.enabled): Monitor
         sdrbrightness: output.sdrbrightness,
         sdrsaturation: output.sdrsaturation,
         disabled,
-        mirror: normalizedMirror(output.mirror),
+        mirror: disabled ? null : normalizedMirror(output.mirror),
     };
 }
 
@@ -430,9 +449,10 @@ export class LayoutService extends GObject {
     #seedDefault: string | null = null;
     #topology = '';
     #lastEnabled = new Map<string, MonitorSpec>();
-    #monitorIds: number[] = [];
+    #disconnectMonitors: (() => void) | null = null;
     #initialized = false;
     #pendingLayout: Layout | null = null;
+    #pendingName: string | null = null;
     #pendingBefore: DisplaySnapshot | null = null;
     #pendingOriginalLayout: Layout | null = null;
     #pendingOriginalName: string | null = null;
@@ -554,28 +574,23 @@ export class LayoutService extends GObject {
     init(): void {
         if (this.#initialized) return;
         this.#initialized = true;
-        const hyprland = getHyprland();
-        if (hyprland)
-            this.#monitorIds = [
-                hyprland.connect('monitor-added', () => this.#scheduleReconcile()),
-                hyprland.connect('monitor-removed', () => this.#scheduleReconcile()),
-                // A config reload discards runtime Lua monitor rules, so re-apply.
-                hyprland.connect('config-reloaded', () => {
-                    const sinceWrite = GLib.get_monotonic_time() - this.#lastWriteAt;
-                    if (sinceWrite < RELOAD_ECHO_WINDOW_US) return;
-                    this.#scheduleReconcile(true);
-                }),
-            ];
         void this.#reconcile(true);
     }
 
-    dispose(): void {
+    async dispose(): Promise<void> {
+        this.#previewGeneration++;
         if (this.#previewTimer !== null) this.#cancel(this.#previewTimer);
+        this.#previewTimer = null;
         if (this.#hotplugTimer !== null) this.#cancel(this.#hotplugTimer);
-        const hyprland = getHyprland();
-        if (hyprland) this.#monitorIds.forEach((id) => hyprland.disconnect(id));
-        this.#monitorIds = [];
+        this.#hotplugTimer = null;
+        this.#disconnectMonitors?.();
+        this.#disconnectMonitors = null;
         this.#initialized = false;
+        await this.#enqueue(async () => {
+            await this.#revertPreview(false);
+            if (this.#previewTimer !== null) this.#cancel(this.#previewTimer);
+            this.#previewTimer = null;
+        });
     }
 
     #enqueue<T>(operation: () => Promise<T>): Promise<T> {
@@ -592,7 +607,19 @@ export class LayoutService extends GObject {
         this.notify('error');
         logger.error('layouts', this.#error);
     }
+    #clearError(): void {
+        if (!this.#storeValid || this.#error === null) return;
+        this.#error = null;
+        this.notify('error');
+    }
     #publishOutputs(outputs: OutputInfo[]): void {
+        for (const [name, cached] of this.#lastEnabled)
+            if (
+                !outputs.some(
+                    (output) => output.name === name && output.description === cached.description
+                )
+            )
+                this.#lastEnabled.delete(name);
         this.#outputs = outputs;
         this.notify('monitors');
         this.notify('display-mode');
@@ -637,7 +664,7 @@ export class LayoutService extends GObject {
 
     #seed(): void {
         try {
-            const seed: unknown = JSON.parse(readFile('/etc/xdg/shade/compositor-seed.json'));
+            const seed: unknown = JSON.parse(readFile(configPaths().seed));
             if (typeof seed !== 'object' || seed === null || Array.isArray(seed))
                 throw new Error('Invalid compositor seed');
             if (!('layouts' in seed)) throw new Error('Missing layouts in compositor seed');
@@ -704,9 +731,23 @@ export class LayoutService extends GObject {
         await this.#enqueue(async () => {
             let snapshot: DisplaySnapshot;
             try {
+                if (this.#initialized && !this.#disconnectMonitors && this.#adapter.subscribe) {
+                    this.#disconnectMonitors = this.#adapter.subscribe(
+                        () => this.#scheduleReconcile(),
+                        () => {
+                            // Config reloads discard runtime Lua monitor rules.
+                            const sinceWrite = GLib.get_monotonic_time() - this.#lastWriteAt;
+                            if (sinceWrite < RELOAD_ECHO_WINDOW_US) return;
+                            this.#scheduleReconcile(true);
+                        }
+                    );
+                    if (!this.#disconnectMonitors) this.#scheduleReconcile();
+                }
                 snapshot = await this.#adapter.snapshot();
             } catch (error) {
                 this.#setError(error);
+                if (this.#initialized && !this.#disconnectMonitors && this.#adapter.subscribe)
+                    this.#scheduleReconcile();
                 return;
             }
             await this.#reconcileSnapshot(startup, snapshot);
@@ -717,20 +758,32 @@ export class LayoutService extends GObject {
         const changed = this.#topology !== topology(snapshot.attached);
         this.#topology = topology(snapshot.attached);
         this.#publishOutputs(snapshot.attached);
+        if (changed) this.#clearError();
         if (this.#pendingBefore && changed) this.#clearPreview();
+        else if (this.#pendingLayout) {
+            if (!startup) return;
+            try {
+                const after = await this.#writeLayout(this.#pendingLayout, snapshot);
+                this.#publishOutputs(after.attached);
+                this.#clearError();
+            } catch (error) {
+                this.#setError(error);
+            }
+            return;
+        }
         if (!snapshot.active.some((monitor) => monitor.enabled && !monitor.mirror)) {
-            const internal = snapshot.attached
-                .filter((monitor) => /^eDP-/.test(monitor.name))
-                .sort((a, b) => a.name.localeCompare(b.name))[0];
-            if (!internal) {
-                this.#setError(
-                    new Error('No active display and no attached internal panel to recover')
-                );
+            const recovery = [...snapshot.attached].sort(
+                (a, b) =>
+                    Number(/^eDP-/.test(b.name)) - Number(/^eDP-/.test(a.name)) ||
+                    a.name.localeCompare(b.name)
+            )[0];
+            if (!recovery) {
+                this.#setError(new Error('No active display and no attached output to recover'));
                 return;
             }
             try {
                 await this.#adapter.keyword({
-                    ...specFromOutput(internal, false),
+                    ...specFromOutput(recovery, false),
                     resolution: 'preferred',
                     position: 'auto',
                     scale: 1,
@@ -743,12 +796,13 @@ export class LayoutService extends GObject {
                 if (
                     !recovered.active.some(
                         (monitor) =>
-                            monitor.name === internal.name &&
+                            monitor.name === recovery.name &&
                             monitor.enabled &&
                             monitor.mirror === null
                     )
                 )
-                    throw new Error('Display recovery did not activate the internal panel');
+                    throw new Error('Display recovery did not activate the selected output');
+                this.#clearError();
             } catch (error) {
                 this.#setError(error);
                 notify('Display recovery failed', String(error), 'dialog-error-symbolic');
@@ -828,6 +882,7 @@ export class LayoutService extends GObject {
         try {
             const after = await this.#writeLayout(layout, before);
             this.#publishOutputs(after.attached);
+            this.#clearError();
         } catch (error) {
             this.#setError(error);
             if (error instanceof LayoutWriteFailure && error.changed)
@@ -842,9 +897,25 @@ export class LayoutService extends GObject {
         this.#deadline = null;
         this.#pendingLayout = null;
         this.#pendingOriginalLayout = null;
+        this.#pendingName = null;
         this.#pendingBefore = null;
         this.#pendingOriginalName = null;
         this.notify('pending');
+    }
+
+    #armPreviewTimeout(): void {
+        if (this.#previewTimer !== null) this.#cancel(this.#previewTimer);
+        const generation = ++this.#previewGeneration;
+        this.#deadline = Date.now() + 15_000;
+        this.notify('pending');
+        this.#previewTimer = this.#schedule(15_000, () => {
+            // The source is already removed, even when its queued work has not started.
+            if (generation === this.#previewGeneration) this.#previewTimer = null;
+            return this.#enqueue(async () => {
+                if (generation !== this.#previewGeneration || !this.#pendingBefore) return;
+                await this.#revertPreview();
+            });
+        });
     }
 
     #resolve(spec: MonitorSpec, outputs: OutputInfo[]): OutputInfo | null {
@@ -867,7 +938,7 @@ export class LayoutService extends GObject {
             ...spec,
             name: output.name,
             description: output.description,
-            mirror: normalizedMirror(spec.mirror),
+            mirror: spec.disabled ? null : normalizedMirror(spec.mirror),
         };
     }
 
@@ -981,7 +1052,8 @@ export class LayoutService extends GObject {
         for (const [workspaceId, monitorName] of Object.entries(layout.workspaces)) {
             const monitor = independent.find((spec) => spec.name === monitorName);
             const id = Number(workspaceId);
-            if (monitor && Number.isInteger(id)) await this.#adapter.workspace(id, monitor.name);
+            if (monitor && Number.isInteger(id) && id > 0)
+                await this.#adapter.workspace(id, monitor.name);
         }
     }
 
@@ -1024,18 +1096,27 @@ export class LayoutService extends GObject {
         }
     }
 
-    async #restoreSnapshot(before: DisplaySnapshot, previous: Layout | null): Promise<void> {
-        const now = await this.#adapter.snapshot().catch(() => null);
-        if (!now || !this.#sameTopology(before.attached, now.attached)) return;
-        const rollback: Layout = {
-            monitors: before.attached.map((monitor) => specFromOutput(monitor, !monitor.enabled)),
-            workspaces: before.workspaces ?? previous?.workspaces ?? {},
-        };
+    async #restoreSnapshot(
+        before: DisplaySnapshot,
+        previous: Layout | null,
+        current?: DisplaySnapshot
+    ): Promise<boolean> {
         try {
+            const now = current ?? (await this.#adapter.snapshot());
+            if (!this.#sameTopology(before.attached, now.attached))
+                throw new Error('Attached displays changed while restoring layout');
+            const rollback: Layout = {
+                monitors: before.attached.map((monitor) =>
+                    specFromOutput(monitor, !monitor.enabled)
+                ),
+                workspaces: before.workspaces ?? previous?.workspaces ?? {},
+            };
             const restored = await this.#writeLayout(rollback, now);
             this.#publishOutputs(restored.attached);
+            return true;
         } catch (error) {
             this.#setError(error);
+            return false;
         }
     }
 
@@ -1044,33 +1125,34 @@ export class LayoutService extends GObject {
         layout: Layout,
         original?: DisplaySnapshot
     ): Promise<boolean> {
-        let before: DisplaySnapshot;
-        try {
-            before = original ?? (await this.#adapter.snapshot());
-        } catch (error) {
-            this.#setError(error);
-            return false;
-        }
+        const before = original ?? (await this.#snapshotOrError());
+        if (!before) return false;
         const currentName = this.#load().current;
-        const previous = currentName ? (this.#store.layouts[currentName] ?? null) : null;
+        const previous = currentName ? (this.get(currentName) ?? null) : null;
         try {
             const after = await this.#writeLayout(layout, before);
             this.#publishOutputs(after.attached);
             this.#store.current = name;
-            this.#persist();
+            if (!this.#persist()) throw new Error(this.#error ?? 'Unable to save display layout');
+            if (this.#pendingBefore) this.#clearPreview();
+            this.#clearError();
             this.notify('current');
             this.applied(name);
             return true;
         } catch (error) {
             this.#setError(error);
-            if (error instanceof LayoutWriteFailure && error.changed)
-                await this.#restoreSnapshot(before, previous);
+            const restored =
+                (error instanceof LayoutWriteFailure && !error.changed) ||
+                (await this.#restoreSnapshot(before, previous));
+            this.#store.current = restored ? currentName : null;
+            this.notify('current');
             return false;
         }
     }
 
     get(name: string): Layout | null {
-        return this.#load().layouts[name] ?? null;
+        const layouts = this.#load().layouts;
+        return Object.hasOwn(layouts, name) ? layouts[name] : null;
     }
 
     save(name: string, layout?: Layout): boolean {
@@ -1080,30 +1162,36 @@ export class LayoutService extends GObject {
         if (!key) return false;
         const next = normalizeLayout(layout ?? this.captureLayout());
         if (!next.monitors.length) return false;
-        const previous = this.#store.layouts[key];
-        this.#store.layouts[key] = next;
+        const previous = this.#store.layouts;
+        this.#store.layouts = {...previous, [key]: next};
         if (!this.#persist()) {
-            if (previous) this.#store.layouts[key] = previous;
-            else delete this.#store.layouts[key];
+            this.#store.layouts = previous;
             return false;
         }
         this.notify('names');
+        this.#clearError();
         this.storeChanged();
         return true;
     }
 
     remove(name: string): boolean {
-        if (!(name in this.#load().layouts)) return false;
+        if (!Object.hasOwn(this.#load().layouts, name)) return false;
         const previous = this.#store.layouts[name];
+        const previousCurrent = this.#store.current;
         delete this.#store.layouts[name];
+        if (previousCurrent === name) this.#store.current = null;
         if (!this.#persist()) {
-            this.#store.layouts[name] = previous;
+            Object.defineProperty(this.#store.layouts, name, {
+                value: previous,
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
+            this.#store.current = previousCurrent;
             return false;
         }
-        if (this.#store.current === name) {
-            this.#store.current = null;
-            this.notify('current');
-        }
+        this.#clearError();
+        if (previousCurrent === name) this.notify('current');
         this.notify('names');
         this.storeChanged();
         return true;
@@ -1133,7 +1221,7 @@ export class LayoutService extends GObject {
         return snapshot.attached.map((output) => {
             if (output.enabled) return output;
             const cached = this.#lastEnabled.get(output.name);
-            if (!cached) return output;
+            if (!cached || cached.description !== output.description) return output;
             return {
                 ...output,
                 ...cached,
@@ -1158,7 +1246,7 @@ export class LayoutService extends GObject {
             const noUsableMode =
                 output.resolution === 'preferred' && !(output.width > 0 && output.height > 0);
             let replacement: MonitorSpec | null = null;
-            if (cached) {
+            if (cached && cached.description === output.description) {
                 replacement = {
                     ...specFromOutput(output, true),
                     ...cached,
@@ -1267,7 +1355,11 @@ export class LayoutService extends GObject {
                 this.#setError(`Display is not attached: ${name}`);
                 return false;
             }
-            if (output.enabled === enabled) return true;
+            if (output.enabled === enabled) {
+                this.#publishOutputs(before.attached);
+                this.#clearError();
+                return true;
+            }
             const layout = this.#toggleLayout(before, name, enabled);
             if (!layout) return false;
             return this.#previewLayout(layout, before);
@@ -1347,7 +1439,11 @@ export class LayoutService extends GObject {
                 this.#setError(this.#unavailableModeError(modeName, before.attached));
                 return {applied: false, previewed: false};
             }
-            if (this.#modeMatches(layout, before)) return {applied: true, previewed: false};
+            if (this.#modeMatches(layout, before)) {
+                this.#publishOutputs(before.attached);
+                this.#clearError();
+                return {applied: true, previewed: false};
+            }
             const applied = await this.#previewLayout(layout, before);
             return {applied, previewed: applied};
         });
@@ -1385,9 +1481,16 @@ export class LayoutService extends GObject {
     async setDpms(name: string, on: boolean): Promise<boolean> {
         return this.#enqueue(async () => {
             try {
-                await compositorPort.applyDpms(on, name);
+                const before = await this.#adapter.snapshot();
+                const target = before.attached.find((monitor) => monitor.name === name);
+                if (!target?.enabled) throw new Error(`Display is not enabled: ${name}`);
+                await this.#adapter.dpms(name, on);
                 const snapshot = await this.#adapter.snapshot();
                 this.#publishOutputs(snapshot.attached);
+                const actual = snapshot.attached.find((monitor) => monitor.name === name);
+                if (!actual?.enabled || actual.dpms !== on)
+                    throw new Error('Display power change was not applied');
+                this.#clearError();
                 return true;
             } catch (error) {
                 this.#setError(error);
@@ -1405,13 +1508,17 @@ export class LayoutService extends GObject {
         });
     }
 
-    async #previewLayout(layout: Layout, before: DisplaySnapshot): Promise<boolean> {
+    async #previewLayout(
+        layout: Layout,
+        before: DisplaySnapshot,
+        name: string | null = null
+    ): Promise<boolean> {
         this.#load();
         const replacing = this.#pendingBefore !== null;
         const previousName = replacing ? this.#pendingOriginalName : this.#store.current;
         let previousLayout: Layout | null = null;
         if (replacing) previousLayout = this.#pendingOriginalLayout;
-        else if (previousName) previousLayout = this.#store.layouts[previousName] ?? null;
+        else if (previousName) previousLayout = this.get(previousName);
         const immediateLayout = replacing ? this.#pendingLayout : previousLayout;
         try {
             const after = await this.#writeLayout(layout, before);
@@ -1421,24 +1528,36 @@ export class LayoutService extends GObject {
                 this.#pendingOriginalLayout = previousLayout;
                 this.#pendingOriginalName = previousName;
             }
+            this.#topology = topology(after.attached);
             this.#pendingLayout = normalizeLayout(layout);
+            this.#pendingName =
+                name ??
+                this.names.find((candidate) =>
+                    sameLayout(this.#store.layouts[candidate], layout)
+                ) ??
+                null;
             this.#store.current = null;
             this.notify('current');
-            if (this.#previewTimer !== null) this.#cancel(this.#previewTimer);
-            const generation = ++this.#previewGeneration;
-            this.#deadline = Date.now() + 15_000;
-            this.notify('pending');
-            this.#previewTimer = this.#schedule(15_000, () =>
-                this.#enqueue(async () => {
-                    if (generation !== this.#previewGeneration || !this.#pendingLayout) return;
-                    this.#previewTimer = null;
-                    await this.#revertPreview();
-                })
-            );
+            this.#armPreviewTimeout();
+            this.#clearError();
             return true;
         } catch (error) {
-            if (error instanceof LayoutWriteFailure && error.changed)
-                await this.#restoreSnapshot(before, immediateLayout);
+            if (
+                error instanceof LayoutWriteFailure &&
+                error.changed &&
+                !(await this.#restoreSnapshot(before, immediateLayout))
+            ) {
+                if (!replacing) {
+                    this.#pendingBefore = before;
+                    this.#pendingOriginalLayout = previousLayout;
+                    this.#pendingOriginalName = previousName;
+                }
+                this.#pendingLayout = this.#layoutFromSnapshot(before);
+                this.#pendingName = null;
+                this.#store.current = null;
+                this.notify('current');
+                this.#armPreviewTimeout();
+            }
             this.#setError(error);
             return false;
         }
@@ -1450,6 +1569,17 @@ export class LayoutService extends GObject {
             this.#load();
             const currentName = this.#store.current;
             try {
+                const snapshot = await this.#snapshotOrError();
+                if (!snapshot) return false;
+                if (
+                    this.#pendingBefore &&
+                    !this.#sameTopology(this.#pendingBefore.attached, snapshot.attached)
+                ) {
+                    this.#clearPreview();
+                    await this.#reconcileSnapshot(false, snapshot);
+                    return false;
+                }
+                this.#publishOutputs(snapshot.attached);
                 const live = this.captureLayout();
                 this.#store.current =
                     this.names.find((name) => sameLayout(this.#store.layouts[name], live)) ?? null;
@@ -1460,6 +1590,7 @@ export class LayoutService extends GObject {
                     return false;
                 }
                 this.#clearPreview();
+                this.#clearError();
                 this.notify('current');
                 return true;
             } catch (error) {
@@ -1471,24 +1602,31 @@ export class LayoutService extends GObject {
         });
     }
 
-    async #revertPreview(): Promise<void> {
+    async #revertPreview(retry = true): Promise<boolean> {
         const before = this.#pendingBefore;
         if (!before) {
             this.#clearPreview();
-            return;
+            return true;
         }
-        const previous = this.#pendingOriginalLayout;
-        const previousName = this.#pendingOriginalName;
         const now = await this.#snapshotOrError();
-        this.#clearPreview();
-        if (!now) return;
-        if (!this.#sameTopology(before.attached, now.attached)) {
-            await this.#reconcileSnapshot(false, now);
-            return;
+        if (!now) {
+            if (retry) this.#armPreviewTimeout();
+            return false;
         }
-        await this.#restoreSnapshot(before, previous);
-        this.#store.current = previousName;
+        if (!this.#sameTopology(before.attached, now.attached)) {
+            this.#clearPreview();
+            await this.#reconcileSnapshot(false, now);
+            return false;
+        }
+        if (!(await this.#restoreSnapshot(before, this.#pendingOriginalLayout, now))) {
+            if (retry) this.#armPreviewTimeout();
+            return false;
+        }
+        this.#store.current = this.#pendingOriginalName;
+        this.#clearPreview();
+        this.#clearError();
         this.notify('current');
+        return true;
     }
 
     async revert(): Promise<void> {
@@ -1496,24 +1634,26 @@ export class LayoutService extends GObject {
     }
 
     async next(): Promise<boolean> {
-        const snapshot = await this.#adapter.snapshot();
-        const candidates = this.names.filter((name) => {
-            const layout = this.#store.layouts[name];
-            return layout.auto !== false && sameIdentitySet(layout.monitors, snapshot.attached);
+        return this.#enqueue(async () => {
+            const snapshot = await this.#snapshotOrError();
+            if (!snapshot) return false;
+            const candidates = this.names.filter((name) => {
+                const layout = this.#store.layouts[name];
+                return layout.auto !== false && sameIdentitySet(layout.monitors, snapshot.attached);
+            });
+            if (candidates.length < 2) {
+                notify(
+                    'No alternative display layout',
+                    'No other saved layout matches the attached displays.'
+                );
+                return false;
+            }
+            const index = candidates.indexOf(this.#pendingName ?? this.current ?? '');
+            const name = candidates[(index + 1) % candidates.length];
+            const ok = await this.#previewLayout(this.#store.layouts[name], snapshot, name);
+            if (ok) ShellState.get_default().qsOpen = true;
+            return ok;
         });
-        if (candidates.length < 2) {
-            notify(
-                'No alternative display layout',
-                'No other saved layout matches the attached displays.'
-            );
-            return false;
-        }
-        const index = candidates.indexOf(this.current ?? '');
-        const ok = await this.preview(
-            this.#store.layouts[candidates[(index + 1) % candidates.length]]
-        );
-        if (ok) ShellState.get_default().qsOpen = true;
-        return ok;
     }
 }
 

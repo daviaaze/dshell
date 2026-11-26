@@ -55,12 +55,22 @@ export const toggleConservation = (): boolean => {
 
     if (isWritable()) {
         try {
-            const current = isConservationEnabled();
-            const value = current ? '0' : '1';
-            GLib.file_set_contents(PATH, new TextEncoder().encode(value));
+            const value = isConservationEnabled() ? '0' : '1';
+            // sysfs attributes cannot be created or renamed over, so write in place
+            // (GLib.file_set_contents would write a temp file and rename it).
+            const stream = Gio.File.new_for_path(PATH).open_readwrite(null);
+            try {
+                stream.get_output_stream().write_all(new TextEncoder().encode(value), null);
+            } finally {
+                stream.close(null);
+            }
             return true;
         } catch (err) {
-            logger.error('battery', 'Failed to toggle conservation:', err);
+            logger.warn(
+                'battery',
+                'Direct conservation write failed, falling back to pkexec:',
+                err
+            );
             return false;
         }
     }
@@ -97,25 +107,40 @@ export const toggleConservationAsync = async (): Promise<boolean> => {
 // lives here in the service; widgets bind to `conservationEnabled`.
 
 const [enabledState, setEnabledState] = createState(isConservationEnabled());
-let monitorStarted = false;
+let monitorSubscribers = 0;
+let monitorSource = 0;
 
-/** Reactive conservation-mode state. Call startConservationMonitor() once. */
+/** Reactive conservation-mode state. Call startConservationMonitor() while a widget shows it. */
 export const conservationEnabled: Accessor<boolean> = enabledState;
 
 /**
- * Start the sysfs poll that keeps `conservationEnabled` fresh. Idempotent.
+ * Start the sysfs poll that keeps `conservationEnabled` fresh. One poll is shared
+ * by every caller; the returned function releases the caller's claim and the poll
+ * stops when the last claim is released.
  *
  * Conservation mode only changes when the user toggles it (rare), and
  * `refreshConservation()` is called immediately after every toggle, so a
  * slow poll is purely a safety net for external changes (e.g. other tools).
  */
-export function startConservationMonitor(): void {
-    if (monitorStarted) return;
-    monitorStarted = true;
-    GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 60, () => {
-        setEnabledState(isConservationEnabled());
-        return GLib.SOURCE_CONTINUE;
-    });
+export function startConservationMonitor(): () => void {
+    monitorSubscribers++;
+    if (!monitorSource) {
+        refreshConservation();
+        monitorSource = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 60, () => {
+            refreshConservation();
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+    let active = true;
+    return () => {
+        if (!active) return;
+        active = false;
+        monitorSubscribers--;
+        if (monitorSubscribers === 0 && monitorSource) {
+            GLib.source_remove(monitorSource);
+            monitorSource = 0;
+        }
+    };
 }
 
 /** Re-read sysfs now (call after a toggle attempt). */

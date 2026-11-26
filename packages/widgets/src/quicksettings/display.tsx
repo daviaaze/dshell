@@ -4,7 +4,9 @@ import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import LayoutService, {type OutputInfo} from '@shade/services/display/layouts';
 import type {DisplayMode} from '@shade/services/display/modes';
-import {bind, computed, For, onCleanup, With} from 'gnim';
+import Clock from '@shade/services/time/clock';
+import {bind, computed, effect, For, onCleanup, With} from 'gnim';
+import {setAccessibleName} from '../common/iconButton';
 import {QuickControlButton} from '../common/quickControlButton';
 
 const SPACING = 12;
@@ -348,6 +350,13 @@ function ConnectedOutputChoices({service}: {service: LayoutService}) {
                                     monitor.enabled ? enabledCount.as((count) => count > 1) : true
                                 }
                                 tooltipText={actionLabel}
+                                ref={(self) =>
+                                    effect(() =>
+                                        setAccessibleName(
+                                            `${monitor.description || monitor.name}: ${actionLabel()}`
+                                        )(self)
+                                    )
+                                }
                                 onNotifyActive={(self) => {
                                     if (self.active === monitor.enabled) return;
                                     void service
@@ -375,18 +384,20 @@ function PreviewControls({
     service: LayoutService;
     focus: DisplayFocusController;
 }) {
+    const pending = bind(service, 'pending');
+    const time = Clock.get_default().time;
+    const countdown = computed(() => {
+        const deadline = pending();
+        if (deadline === null) return '';
+        const now = time();
+        const nowMs = now.to_unix() * 1000 + now.get_microsecond() / 1000;
+        const seconds = Math.max(0, Math.ceil((deadline - nowMs) / 1000));
+        return `As alterações serão revertidas em ${seconds} ${seconds === 1 ? 'segundo' : 'segundos'}`;
+    });
     return (
         <>
-            <Gtk.Box
-                spacing={6}
-                visible={bind(service, 'pending').as((deadline) => deadline !== null)}
-            >
-                <Gtk.Label
-                    label="As alterações serão revertidas em 15 segundos"
-                    cssClasses={['caption']}
-                    hexpand
-                    xalign={0}
-                />
+            <Gtk.Box spacing={6} visible={pending.as((deadline) => deadline !== null)}>
+                <Gtk.Label label={countdown} wrap cssClasses={['caption']} hexpand xalign={0} />
                 <Gtk.Button
                     label="Manter"
                     hexpand

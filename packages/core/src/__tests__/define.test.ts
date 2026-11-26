@@ -46,22 +46,19 @@ describe('defineService', () => {
     it('initServices respects dependsOn order', () => {
         resetDefineRegistry();
         const order: string[] = [];
-        defineService({
-            name: 'second',
-            service: {init: () => order.push('second')},
-        });
-        defineService({
-            name: 'first',
-            service: {init: () => order.push('first')},
-        });
+        // Registered before its dependency, so only dependsOn can put 'first' ahead.
         defineService({
             name: 'dependent',
             service: {init: () => order.push('dependent')},
             dependsOn: ['first'],
         });
+        defineService({
+            name: 'first',
+            service: {init: () => order.push('first')},
+        });
         const registry = new ServiceRegistry();
         initServices(fakeCtx(registry));
-        expect(order.indexOf('first')).toBeLessThan(order.indexOf('dependent'));
+        expect(order).toEqual(['first', 'dependent']);
     });
 
     it('initServices returns false on non-critical failure and continues', () => {
@@ -151,4 +148,4 @@ describe('defineWidget', () => {
     });
 });
 
-run(import.meta.url);
+await run(import.meta.url);

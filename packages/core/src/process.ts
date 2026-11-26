@@ -219,34 +219,55 @@ export class Process extends Object {
      * The first element of the vector is executed with the remaining
      * elements as the argument list.
      *
+     * `limits.timeoutMs` kills the child and rejects once exceeded; cancelling
+     * `limits.cancellable` kills it too (the promise then rejects with the exit status).
+     *
      * @throws stderr
      * @return stdout of the subprocess
      */
-    static execAsyncv(cmd: string[], silenceStderr = false): Promise<string> {
+    static execAsyncv(
+        cmd: string[],
+        silenceStderr = false,
+        limits: {timeoutMs?: number; cancellable?: Gio.Cancellable} = {}
+    ): Promise<string> {
         const process = Gio.Subprocess.new(
             cmd,
             (silenceStderr ? Gio.SubprocessFlags.STDERR_SILENCE : Gio.SubprocessFlags.STDERR_PIPE) |
                 Gio.SubprocessFlags.STDOUT_PIPE
         );
 
-        return new Promise((resolve, reject) => {
-            process.communicate_utf8_async(null, null, (_, res) => {
-                try {
-                    const [, out, err] = process.communicate_utf8_finish(res);
-                    if (process.get_successful()) {
-                        resolve((out ?? '').trim());
-                    } else {
-                        reject(
-                            new Error(
-                                err?.trim() ?? `exited with status ${process.get_exit_status()}`
-                            )
-                        );
-                    }
-                } catch (error) {
-                    reject(error);
-                }
+        let timedOut = false;
+        let timerId = 0;
+        if (limits.timeoutMs !== undefined) {
+            timerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, limits.timeoutMs, () => {
+                timerId = 0;
+                timedOut = true;
+                process.force_exit();
+                return GLib.SOURCE_REMOVE;
             });
+        }
+        const cancelId = limits.cancellable?.connect(() => process.force_exit()) ?? 0;
+
+        const {promise, resolve, reject} = Promise.withResolvers<string>();
+        process.communicate_utf8_async(null, null, (_, res) => {
+            if (timerId !== 0) GLib.source_remove(timerId);
+            if (cancelId !== 0) limits.cancellable?.disconnect(cancelId);
+            try {
+                const [, out, err] = process.communicate_utf8_finish(res);
+                if (process.get_successful()) {
+                    resolve((out ?? '').trim());
+                } else if (timedOut) {
+                    reject(new Error(`timed out after ${limits.timeoutMs}ms`));
+                } else {
+                    reject(
+                        new Error(err?.trim() ?? `exited with status ${process.get_exit_status()}`)
+                    );
+                }
+            } catch (error) {
+                reject(error);
+            }
         });
+        return promise;
     }
 
     /**

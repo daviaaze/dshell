@@ -7,6 +7,11 @@ import {Object, property, register, signal} from 'gnim/gobject';
 import Brightness from '../display/brightness';
 import FingerprintAuth from '../input/fingerprint';
 
+declare global {
+    interface ImportMeta {
+        development?: boolean;
+    }
+}
 const PAM_TIMEOUT_MS = 10000;
 
 const PASSWORD_ENCODER = new TextEncoder();
@@ -29,9 +34,7 @@ interface ActiveAttempt {
 
 function startPamWorker(password: string, complete: (authenticated: boolean) => void): () => void {
     const developmentWorker =
-        import.meta.bindir === '/usr/local/bin'
-            ? GLib.getenv('SHADE_AUTH_WORKER_DEV_PATH')
-            : null;
+        import.meta.development === true ? GLib.getenv('SHADE_AUTH_WORKER_DEV_PATH') : null;
     const workerPath = developmentWorker ?? `${import.meta.bindir}/shade-shell-auth-worker`;
     let process: Gio.Subprocess;
 
@@ -51,15 +54,11 @@ function startPamWorker(password: string, complete: (authenticated: boolean) => 
     let cancelled = false;
     const communication = new Gio.Cancellable();
     try {
-        const input = new GLib.Bytes(
-            PASSWORD_ENCODER.encode(JSON.stringify({password}) + '\n')
-        );
+        const input = new GLib.Bytes(PASSWORD_ENCODER.encode(JSON.stringify({password}) + '\n'));
         process.communicate_async(input, communication, (_, res) => {
             try {
                 const [, stdout] = process.communicate_finish(res);
-                const result = stdout
-                    ? WORKER_OUTPUT_DECODER.decode(stdout.toArray()).trim()
-                    : '';
+                const result = stdout ? WORKER_OUTPUT_DECODER.decode(stdout.toArray()).trim() : '';
                 if (!cancelled) complete(process.get_successful() && result === 'success');
             } catch {
                 if (!cancelled) complete(false);
@@ -283,7 +282,11 @@ export default class AuthSession extends Object {
             })
             .catch((e) => {
                 if (!this.#disposed && !this.#completed) {
-                    logger.warn('auth', 'fingerprint unavailable; password auth remains active:', e);
+                    logger.warn(
+                        'auth',
+                        'fingerprint unavailable; password auth remains active:',
+                        e
+                    );
                 }
             });
     }

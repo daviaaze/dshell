@@ -26,7 +26,7 @@ type FrecencyData = Record<string, FrecencyEntry>;
 
 // ── Constants ──
 
-const SCHEMA_ID = 'com.caioasmuniz.shade_shell.launcher';
+const SCHEMA_ID = `${import.meta.domain}.launcher`;
 const KEY = 'frecency';
 const MAX_ENTRIES = 500;
 const DEBOUNCE_MS = 500;
@@ -115,13 +115,6 @@ export class FrecencyStorage {
             }
         }
 
-        this.#markDirty();
-    }
-
-    /** Remove an entry. */
-    remove(desktopId: string): void {
-        this.load();
-        delete this.#data[desktopId];
         this.#markDirty();
     }
 

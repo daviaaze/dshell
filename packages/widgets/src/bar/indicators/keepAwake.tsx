@@ -9,7 +9,7 @@ export default () => {
 
     const tooltip = computed(() => {
         if (!idle()) return '';
-        return remaining() ? `Keep Awake — ${remaining()} remaining` : 'Keep Awake';
+        return remaining() ? `Manter ativo — ${remaining()} restantes` : 'Manter ativo';
     });
 
     return (

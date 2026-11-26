@@ -32,12 +32,34 @@ button.bar-vertical-content-button,
   box-shadow: none;
 }
 
-/* Shell surfaces stay flat; keep Adwaita's colors and rounded corners. */
+/* Shell cards keep Adwaita's colors and corners but swap the blurred shadow for a
+   flat 1px edge, so card boundaries stay visible on light palettes. */
 .card,
 .boxed-list,
 .boxed-list-separate > row {
-  box-shadow: none;
+  box-shadow: 0 0 0 1px var(--border-color);
 }
 
+/* Dock running/focused indicator under the app icon. */
+.status-running,
+.status-active {
+  min-width: 6px;
+  min-height: 4px;
+  border-radius: 2px;
+  background-color: alpha(@window_fg_color, 0.5);
+}
+.status-active {
+  min-width: 16px;
+  background-color: var(--accent-bg-color);
+}
 
+/* Tray icon that asks for attention. */
+.needs-attention {
+  color: @warning_color;
+}
+
+/* Launcher row that Enter will start. */
+.app-button-primary {
+  background-color: alpha(@accent_bg_color, 0.2);
+}
 `);

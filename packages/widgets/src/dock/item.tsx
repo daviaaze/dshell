@@ -83,7 +83,7 @@ function DockPopover({
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} cssClasses={['card']}>
                 <ActionButton
                     iconName="focus-windows-symbolic"
-                    label="Focus"
+                    label="Focar"
                     visible={running}
                     onClicked={() => {
                         onFocus();
@@ -92,7 +92,7 @@ function DockPopover({
                 />
                 <ActionButton
                     iconName="window-close-symbolic"
-                    label="Close"
+                    label="Fechar"
                     visible={running}
                     onClicked={() => {
                         onClose();
@@ -101,7 +101,7 @@ function DockPopover({
                 />
                 <ActionButton
                     iconName={pinned ? 'edit-delete-symbolic' : 'list-add-symbolic'}
-                    label={pinned ? 'Unpin' : 'Pin'}
+                    label={pinned ? 'Desafixar' : 'Fixar'}
                     onClicked={() => {
                         onPinToggle();
                         holder.current?.popdown();
@@ -138,16 +138,6 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 const popover = holder.current;
                 if (!popover) return;
                 popover.set_parent(self);
-                bar.dockIconSize.subscribe(() => {
-                    const firstChild = self.get_first_child();
-                    if (firstChild instanceof Gtk.Image) {
-                        firstChild.pixelSize = bar.dockIconSize();
-                    }
-                });
-                const firstChild = self.get_first_child();
-                if (firstChild instanceof Gtk.Image) {
-                    firstChild.pixelSize = bar.dockIconSize();
-                }
                 onCleanup(() => {
                     popover.popdown();
                     popover.unparent();
@@ -164,8 +154,12 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
                 halign={Gtk.Align.CENTER}
                 valign={Gtk.Align.CENTER}
             >
-                <Gtk.Image iconName={iconName} pixelSize={bar.dockIconSize()} />
-                <Gtk.Box cssClasses={statusCssClasses} visible={active || running} />
+                <Gtk.Image iconName={iconName} pixelSize={bar.dockIconSize} />
+                <Gtk.Box
+                    cssClasses={statusCssClasses}
+                    halign={Gtk.Align.CENTER}
+                    visible={active || running}
+                />
             </Gtk.Box>
             <DockPopover
                 running={running}

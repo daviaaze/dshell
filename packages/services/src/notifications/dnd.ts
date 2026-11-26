@@ -48,7 +48,6 @@ export default class DndService extends Object {
         this.#syncToNotifd(v);
         logger.info('dnd', `DND ${v ? 'enabled' : 'disabled'}`);
         this.notify('dnd');
-        bus.emit('system:dnd:changed', v);
     }
 
     toggle() {

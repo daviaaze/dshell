@@ -23,7 +23,9 @@ function setupSignalHandlers() {
             logger.log('graceful shutdown timed out, forcing exit');
             exit(1);
         });
-        return GLib.SOURCE_REMOVE;
+        // Keep the source: removing it restores the default disposition, and
+        // the second signal would then never reach the forced-exit branch.
+        return GLib.SOURCE_CONTINUE;
     };
 
     for (const sig of [2 /* SIGINT */, 15 /* SIGTERM */]) {

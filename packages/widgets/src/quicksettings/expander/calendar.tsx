@@ -1,25 +1,32 @@
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
-import {IconInfoRow} from '../../common/iconInfoRow';
+import Clock from '@shade/services/time/clock';
+import {onCleanup} from 'gnim';
 
-function updateCalendar(calendar: Gtk.Calendar) {
-    const now = GLib.DateTime.new_now_local()!;
-    calendar.year = now.get_year();
-    calendar.month = now.get_month() - 1;
-    calendar.day = now.get_day_of_month();
-}
+export const Calendar = () => {
+    const wallTime = Clock.get_default().wallTime;
+    let shownDate = '';
+    const showToday = (calendar: Gtk.Calendar) => {
+        const now = GLib.DateTime.new_now_local();
+        if (!now) return;
+        shownDate = now.format('%F') ?? '';
+        calendar.select_day(now);
+    };
 
-export const Calendar = () => (
-    <Gtk.Calendar cssClasses={['card']} ref={(self) => updateCalendar(self)} />
-);
-
-export const CalendarIcon = () => {
-    const now = GLib.DateTime.new_now_local()!;
     return (
-        <IconInfoRow
-            icon="x-office-calendar-symbolic"
-            primary={now.format('%A') ?? ''}
-            secondary={now.format('%x') ?? ''}
+        <Gtk.Calendar
+            cssClasses={['card']}
+            onMap={showToday}
+            ref={(self) => {
+                showToday(self);
+                // Follow the date across midnight without undoing month navigation
+                // while the page stays open during the day.
+                onCleanup(
+                    wallTime.subscribe(() => {
+                        if (wallTime.peek().format('%F') !== shownDate) showToday(self);
+                    })
+                );
+            }}
         />
     );
 };

@@ -2,7 +2,8 @@ import GObject from 'gi://GObject?version=2.0';
 import Network from 'gi://AstalNetwork';
 import NM from 'gi://NM?version=1.0';
 import Gtk from 'gi://Gtk?version=4.0';
-import {type Accessor, computed, createState, For, onCleanup, setChildren} from 'gnim';
+import {type Accessor, computed, createState, For, onCleanup} from 'gnim';
+import {preserveRowParents} from '../preserveRowParents';
 import ApRow from './apRow';
 import {type ApSnapshot, bssidEquals, bssidOf, snapshotNMAccessPoint} from './utils';
 
@@ -29,32 +30,11 @@ function sortAps(aps: ApSnapshot[], activeBssid: string | null): ApSnapshot[] {
     });
 }
 
-function preserveRowParents(box: Gtk.Box): void {
-    // Gnim's default renderer unparents every row on updates, clearing input focus.
-    Object.assign(box, {
-        [setChildren](children: GObject.Object[], previous: GObject.Object[]): boolean {
-            for (const child of previous) {
-                if (child instanceof Gtk.Widget && !children.includes(child)) box.remove(child);
-            }
-
-            let sibling: Gtk.Widget | null = null;
-            for (const child of children) {
-                if (!(child instanceof Gtk.Widget)) continue;
-                if (child.get_parent() !== box) {
-                    box.insert_child_after(child, sibling);
-                } else if (child.get_prev_sibling() !== sibling) {
-                    box.reorder_child_after(child, sibling);
-                }
-                sibling = child;
-            }
-            return true;
-        },
-    });
-}
-
 export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
     const [aps, setAps] = createState<ApSnapshot[]>([]);
-    const [activeAp, setActiveAp] = createState<{bssid: string | null; objectPath: string} | null>(null);
+    const [activeAp, setActiveAp] = createState<{bssid: string | null; objectPath: string} | null>(
+        null
+    );
     const [connectionRevision, setConnectionRevision] = createState(0);
     const client = Network.get_default().client as NM.Client;
     const apSnapshots = new Map<string, ApSnapshot>();
@@ -194,7 +174,13 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
     const sortedAps = computed(() => sortAps(aps(), activeAp()?.bssid ?? null));
 
     return (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} cssClasses={['card', 'vertical']} spacing={0} hexpand ref={preserveRowParents}>
+        <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            cssClasses={['card', 'vertical']}
+            spacing={0}
+            hexpand
+            ref={preserveRowParents}
+        >
             <For each={sortedAps} id={(snap) => snap.objectPath}>
                 {(snap: ApSnapshot) => {
                     const apBssid = snap.bssid;
@@ -205,11 +191,13 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
 
                     const isActive = computed(() => {
                         const active = activeAp();
-                        return !!active &&
+                        return (
+                            !!active &&
                             (active.objectPath === snap.objectPath ||
                                 (apBssid !== null &&
                                     active.bssid !== null &&
-                                    bssidEquals(apBssid, active.bssid)));
+                                    bssidEquals(apBssid, active.bssid)))
+                        );
                     });
 
                     const isConnecting = connectingAp.as((c) =>
@@ -232,9 +220,16 @@ export default ({wifi, connectingAp, setConnectingAp}: ApListProps) => {
                     );
                 }}
             </For>
-            <Gtk.Label visible={aps.as(items => items.length === 0)}
-                label="Nenhuma rede disponível." wrap marginTop={12} marginBottom={12}
-                marginStart={12} marginEnd={12} cssClasses={['dimmed']} />
+            <Gtk.Label
+                visible={aps.as((items) => items.length === 0)}
+                label="Nenhuma rede disponível."
+                wrap
+                marginTop={12}
+                marginBottom={12}
+                marginStart={12}
+                marginEnd={12}
+                cssClasses={['dimmed']}
+            />
         </Gtk.Box>
     );
 };

@@ -29,7 +29,8 @@ const WEATHER_ERRORS_PT: Record<string, string> = {
 const translateWeatherError = (message: string): string => WEATHER_ERRORS_PT[message] ?? message;
 
 /** Display-only translation of the service's "Feels like X" string. */
-const translateFeelsLike = (text: string): string => text.replace(/^Feels like /, 'Sensação ');
+const translateFeelsLike = (text: string): string =>
+    text.replace(/^Feels like /, 'Sensação térmica ');
 
 const WIND_DIRS_PT: Record<string, string> = {
     N: 'N',
@@ -203,10 +204,9 @@ export const WeatherWidget = () => {
                         halign={Gtk.Align.START}
                     />
                     <Gtk.Label
-                        cssClasses={['caption']}
+                        cssClasses={['caption', 'dimmed']}
                         label={computed(() => `${skyDesc()} · ${translateFeelsLike(feelsLike())}`)}
                         halign={Gtk.Align.START}
-                        opacity={0.7}
                     />
                 </Gtk.Box>
                 <Gtk.Box

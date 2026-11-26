@@ -30,10 +30,6 @@ export const timerSettings = defineSettings('timer', (s) =>
             default: [...DEFAULT_COUNTDOWN_PRESETS],
             summary: 'Countdown preset durations in minutes',
         })
-        .key('timer-alert-sound', 's', {
-            default: 'complete',
-            summary: 'Sound name for timer alerts (freedesktop sound theme)',
-        })
 );
 
 export default defineSchemaList([getRegisteredSchema('timer')]);

@@ -31,6 +31,7 @@ import {GreeterClock} from './clock';
 import {GreetSession} from './GreetSession';
 import {getGreeterKeyboardIndicator} from './keyboard';
 import {powerOff, reboot} from './power';
+import {PromptSubmission} from './promptSubmission';
 import {buildSessionList} from './sessions';
 import {getGreeterUsers, getLastUsername, setLastUsername, type GreeterUser} from './users';
 
@@ -39,6 +40,15 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     const [username, setUsername] = createState('');
     const [showPassword, setShowPassword] = createState(false);
     let passwordEntry: Gtk.PasswordEntry | null = null;
+    let visibleEntry: Gtk.Entry | null = null;
+    // The entry that answers greetd's current question: echoed prompts are not masked.
+    const currentEntry = (): Gtk.Entry | Gtk.PasswordEntry | null =>
+        greeter.promptVisible ? visibleEntry : passwordEntry;
+    const clearEntries = () => {
+        passwordEntry?.set_text('');
+        visibleEntry?.set_text('');
+    };
+    const promptSubmission = new PromptSubmission();
     let sessionDropDown: Gtk.DropDown | null = null;
     let loginFormBox: Gtk.Box | null = null;
 
@@ -62,11 +72,10 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     let initialAutoStartAllowed = true;
     let initialAutoStartId = 0;
     let entryFocusId = 0;
-    let pendingPasswordSubmit = false;
 
     onCleanup(() => {
         initialAutoStartAllowed = false;
-        pendingPasswordSubmit = false;
+        promptSubmission.reset();
         if (initialAutoStartId) GLib.source_remove(initialAutoStartId);
         if (entryFocusId) GLib.source_remove(entryFocusId);
     });
@@ -81,19 +90,22 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     const errorBinding = bind(greeter, 'errorMessage');
     const infoBinding = bind(greeter, 'infoMessage');
     const loginButtonSensitive = computed(
-        () =>
-            !showPassword() ||
-            stateBinding() === 'awaiting-input' ||
-            stateBinding() === 'error'
+        () => !showPassword() || stateBinding() === 'awaiting-input' || stateBinding() === 'error'
     );
 
     // CapsLock and fingerprint state
     const [capsLock, setCapsLock] = createState(false);
     const [isFingerprint, setIsFingerprint] = createState(false);
+    const promptVisible = bind(greeter, 'promptVisible');
+    // A failed power action has no other feedback on the login screen.
+    const reportPowerError = (message: string) => {
+        greeter.errorMessage = message;
+    };
 
     // Keyboard layout
     const keyboardIndicator = getGreeterKeyboardIndicator();
-    const keyboardDescription = 'Layout switching is unavailable here; active layout is not queried.';
+    const keyboardDescription =
+        'A troca de layout não está disponível aqui; o layout ativo não é consultado.';
 
     // Wallpaper: resolve from GSettings (auto day/night by ColorScheme), fallback solid
     let wallpaper: ReturnType<typeof computed<Gio.File | null>> | null = null;
@@ -122,7 +134,8 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
 
     const startLogin = (account: string) => {
         initialAutoStartAllowed = false;
-        pendingPasswordSubmit = false;
+        promptSubmission.reset();
+        clearEntries();
         setShowPassword(true);
         setIsFingerprint(
             greeter.infoMessage.toLowerCase().includes('finger') ||
@@ -141,32 +154,33 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
 
         if (greeter.state === 'authenticated' || greeter.state === 'starting-session') return;
         const account = (selectedUser()?.username ?? username()).trim();
-        const password = passwordEntry?.get_text() ?? '';
+        const password = currentEntry()?.get_text() ?? '';
         if (greeter.state === 'error') {
-            pendingPasswordSubmit = password.length > 0;
+            promptSubmission.reset();
+            if (!greeter.promptVisible) promptSubmission.queuePassword(password);
+            clearEntries();
             if (account) greeter.start(account);
             return;
         }
         if (!password) return;
         if (greeter.state !== 'awaiting-input') {
-            pendingPasswordSubmit = true;
+            if (!greeter.promptVisible) promptSubmission.queuePassword(password);
             return;
         }
 
-        pendingPasswordSubmit = false;
-        greeter.postAuth(password);
-        passwordEntry?.set_text('');
+        clearEntries();
         setIsFingerprint(false);
+        greeter.postAuth(password);
     };
 
     // Return to account selection without automatically restarting PAM.
     const goBack = () => {
         initialAutoStartAllowed = false;
         if (greeter.state === 'authenticated' || greeter.state === 'starting-session') return;
-        pendingPasswordSubmit = false;
+        promptSubmission.reset();
         greeter.reset();
         setShowPassword(false);
-        passwordEntry?.set_text('');
+        clearEntries();
         setIsFingerprint(false);
     };
 
@@ -174,18 +188,25 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     onCleanup(
         stateBinding.subscribe(() => {
             const state = stateBinding();
-            if (state === 'awaiting-input' && pendingPasswordSubmit) {
-                pendingPasswordSubmit = false;
-                handleLogin();
+            if (state === 'awaiting-input') {
+                const queuedPassword = promptSubmission.receivePrompt(greeter.promptVisible);
+                clearEntries();
+                if (queuedPassword !== null) {
+                    setIsFingerprint(false);
+                    greeter.postAuth(queuedPassword);
+                } else if (showPassword()) {
+                    currentEntry()?.grab_focus();
+                }
             } else if (state === 'authenticated') {
-                pendingPasswordSubmit = false;
+                promptSubmission.reset();
                 setLastUsername(username());
                 const selected = sessionDropDown?.selected ?? 0;
                 const entry = sessionList[selected] ?? sessionList[0];
                 greeter.onSessionStarted = () => application.quit();
                 greeter.startSession(entry.command);
             } else if (state === 'error') {
-                pendingPasswordSubmit = false;
+                promptSubmission.reset();
+                clearEntries();
                 loginFormBox?.add_css_class('shake');
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
                     loginFormBox?.remove_css_class('shake');
@@ -203,25 +224,56 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     );
 
     const loginForm = (
-        <Gtk.Box ref={self => { loginFormBox = self; }}
-            orientation={Gtk.Orientation.VERTICAL} cssClasses={['card']}>
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={16}
-                marginTop={24} marginBottom={24} marginStart={24} marginEnd={24}>
-                <Gtk.Label cssClasses={['title-2']} wrap xalign={0}
-                    label={showPassword.as(visible => visible ? 'Entre na sua conta' : 'Escolha uma conta')} />
-                <Adw.Avatar size={64} showInitials
-                    text={computed(() => selectedUser()?.realName ?? username())} />
-                <Gtk.Label cssClasses={['title-3']} wrap
-                    label={computed(() => selectedUser()?.realName ?? username())} />
-                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8} visible={knownUsersVisible}>
-                    {greeterUsers.map(user => (
-                        <Gtk.Button onMap={self => {
-                            if (!showPassword() && selectedUser()?.username === user.username) self.grab_focus();
-                        }} onClicked={() => {
-                            setSelectedUser(user);
-                            setUsername(user.username);
-                            startLogin(user.username);
-                        }}>
+        <Gtk.Box
+            ref={(self) => {
+                loginFormBox = self;
+            }}
+            orientation={Gtk.Orientation.VERTICAL}
+            cssClasses={['card']}
+        >
+            <Gtk.Box
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={16}
+                marginTop={24}
+                marginBottom={24}
+                marginStart={24}
+                marginEnd={24}
+            >
+                <Gtk.Label
+                    cssClasses={['title-2']}
+                    wrap
+                    xalign={0}
+                    label={showPassword.as((visible) =>
+                        visible ? 'Entre na sua conta' : 'Escolha uma conta'
+                    )}
+                />
+                <Adw.Avatar
+                    size={64}
+                    showInitials
+                    text={computed(() => selectedUser()?.realName ?? username())}
+                />
+                <Gtk.Label
+                    cssClasses={['title-3']}
+                    wrap
+                    label={computed(() => selectedUser()?.realName ?? username())}
+                />
+                <Gtk.Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={8}
+                    visible={knownUsersVisible}
+                >
+                    {greeterUsers.map((user) => (
+                        <Gtk.Button
+                            onMap={(self) => {
+                                if (!showPassword() && selectedUser()?.username === user.username)
+                                    self.grab_focus();
+                            }}
+                            onClicked={() => {
+                                setSelectedUser(user);
+                                setUsername(user.username);
+                                startLogin(user.username);
+                            }}
+                        >
                             <Gtk.Box spacing={12}>
                                 <Adw.Avatar size={40} showInitials text={user.realName} />
                                 <Gtk.Label label={user.realName} hexpand xalign={0} wrap />
@@ -229,35 +281,55 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                         </Gtk.Button>
                     ))}
                 </Gtk.Box>
-                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8} visible={manualUsernameVisible}>
+                <Gtk.Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={8}
+                    visible={manualUsernameVisible}
+                >
                     <Gtk.Label label="Nome de usuário" xalign={0} cssClasses={['heading']} />
-                    <Gtk.Entry text={username} placeholderText="Nome de usuário"
-                        onMap={self => { if (manualUsernameVisible()) self.grab_focus(); }}
-                        ref={self => self.update_property([Gtk.AccessibleProperty.LABEL],
-                            [new GObject.Value(GObject.TYPE_STRING, 'Nome de usuário')])}
-                        onNotifyText={self => setUsername(self.text)} onActivate={handleLogin} />
+                    <Gtk.Entry
+                        text={username}
+                        placeholderText="Nome de usuário"
+                        onMap={(self) => {
+                            if (manualUsernameVisible()) self.grab_focus();
+                        }}
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Nome de usuário')]
+                            )
+                        }
+                        onNotifyText={(self) => setUsername(self.text)}
+                        onActivate={handleLogin}
+                    />
                 </Gtk.Box>
-                <Gtk.Button visible={otherAccountVisible} cssClasses={['flat']} label="Outra conta"
+                <Gtk.Button
+                    visible={otherAccountVisible}
+                    cssClasses={['flat']}
+                    label="Outra conta"
                     onClicked={() => {
                         initialAutoStartAllowed = false;
-                        pendingPasswordSubmit = false;
+                        promptSubmission.reset();
                         greeter.reset();
                         setSelectedUser(null);
                         setUsername('');
                         setShowPassword(false);
+                        clearEntries();
                         setIsFingerprint(false);
-                    }} />
-                <Adw.PreferencesGroup visible={showPassword} title="Autenticação">
-                    <Adw.ActionRow title="Método ativo"
-                        subtitle={isFingerprint.as(active => active ? 'Impressão digital · senha disponível' : 'Senha')} />
-                </Adw.PreferencesGroup>
-                <Gtk.Label visible={showPassword} cssClasses={['heading']} label="Senha" xalign={0} />
+                    }}
+                />
                 <Gtk.Box spacing={8} visible={showPassword}>
-                    <Gtk.PasswordEntry hexpand placeholderText="Senha" showPeekIcon
-                        ref={self => {
+                    <Gtk.PasswordEntry
+                        hexpand
+                        placeholderText="Senha"
+                        showPeekIcon
+                        visible={promptVisible.as((echoed) => !echoed)}
+                        ref={(self) => {
                             passwordEntry = self;
-                            self.update_property([Gtk.AccessibleProperty.LABEL],
-                                [new GObject.Value(GObject.TYPE_STRING, 'Senha da conta')]);
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Senha da conta')]
+                            );
                             self.connect('map', () => {
                                 if (!showPassword()) return;
                                 if (entryFocusId) GLib.source_remove(entryFocusId);
@@ -268,37 +340,93 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                                 });
                             });
                         }}
-                        onActivate={handleLogin} />
-                    <Gtk.Image iconName="caps-lock-symbolic" visible={capsLock} tooltipText="Caps Lock ativado" />
+                        onActivate={handleLogin}
+                    />
+                    <Gtk.Entry
+                        hexpand
+                        placeholderText="Resposta"
+                        visible={promptVisible}
+                        ref={(self) => {
+                            visibleEntry = self;
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Resposta solicitada')]
+                            );
+                        }}
+                        onActivate={handleLogin}
+                    />
+                    <Gtk.Image
+                        iconName="caps-lock-symbolic"
+                        visible={capsLock}
+                        tooltipText="Caps Lock ativado"
+                    />
                 </Gtk.Box>
-                <Gtk.Label visible={showPassword} cssClasses={['caption', 'dimmed']}
-                    label="Sua senha permanece oculta." wrap xalign={0} />
                 <Gtk.Box spacing={8} visible={isFingerprint}>
                     <Gtk.Image iconName={IconNames.authFingerprint} />
                     <Gtk.Label label={infoBinding} wrap hexpand xalign={0} />
-                    <Gtk.Button label="Usar senha" onClicked={() => passwordEntry?.grab_focus()} />
+                    <Gtk.Button label="Usar senha" onClicked={() => currentEntry()?.grab_focus()} />
                 </Gtk.Box>
-                <Gtk.Label visible={errorBinding.as(message => !!message)}
-                    cssClasses={['error']} wrap xalign={0} label={errorBinding} />
-                <Gtk.Label visible={computed(() => !!infoBinding() && !isFingerprint())}
-                    cssClasses={['caption']} wrap xalign={0} label={infoBinding} />
+                <Gtk.Label
+                    visible={errorBinding.as((message) => !!message)}
+                    cssClasses={['error']}
+                    wrap
+                    xalign={0}
+                    label={errorBinding}
+                />
+                <Gtk.Label
+                    visible={computed(() => !!infoBinding() && !isFingerprint())}
+                    cssClasses={['caption']}
+                    wrap
+                    xalign={0}
+                    label={infoBinding}
+                />
                 <Gtk.Box spacing={8}>
                     <Gtk.Label label="Sessão" cssClasses={['heading']} valign={Gtk.Align.CENTER} />
-                    <Gtk.DropDown hexpand model={sessionNames} selected={0}
-                        ref={self => { sessionDropDown = self; }} />
+                    <Gtk.DropDown
+                        hexpand
+                        model={sessionNames}
+                        selected={0}
+                        ref={(self) => {
+                            sessionDropDown = self;
+                        }}
+                    />
                 </Gtk.Box>
-                <Gtk.Box spacing={8} visible={stateBinding.as(state =>
-                    ['authenticating', 'creating-session', 'cancelling-session', 'starting-session'].includes(state))}>
+                <Gtk.Box
+                    spacing={8}
+                    visible={stateBinding.as((state) =>
+                        [
+                            'authenticating',
+                            'creating-session',
+                            'cancelling-session',
+                            'starting-session',
+                        ].includes(state)
+                    )}
+                >
                     <Gtk.Spinner spinning />
-                    <Gtk.Label label={stateBinding.as(state =>
-                        state === 'starting-session' ? 'Iniciando a sessão…' : 'Aguardando autenticação…')} wrap />
+                    <Gtk.Label
+                        label={stateBinding.as((state) =>
+                            state === 'starting-session'
+                                ? 'Iniciando a sessão…'
+                                : 'Aguardando autenticação…'
+                        )}
+                        wrap
+                    />
                 </Gtk.Box>
-                <Gtk.Button cssClasses={['suggested-action']} hexpand
-                    label={showPassword.as(visible => visible ? 'Entrar' : 'Continuar')}
-                    sensitive={loginButtonSensitive} onClicked={handleLogin} />
-                <Gtk.Button visible={showPassword}
-                    sensitive={stateBinding.as(state => state !== 'authenticated' && state !== 'starting-session')}
-                    label="Alterar conta" onClicked={goBack} />
+                <Gtk.Button
+                    cssClasses={['suggested-action']}
+                    hexpand
+                    label={showPassword.as((visible) => (visible ? 'Entrar' : 'Continuar'))}
+                    sensitive={loginButtonSensitive}
+                    onClicked={handleLogin}
+                />
+                <Gtk.Button
+                    visible={showPassword}
+                    sensitive={stateBinding.as(
+                        (state) => state !== 'authenticated' && state !== 'starting-session'
+                    )}
+                    label="Alterar conta"
+                    onClicked={goBack}
+                />
             </Gtk.Box>
         </Gtk.Box>
     );
@@ -306,24 +434,53 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
     const content = (
         <Gtk.Box orientation={Gtk.Orientation.VERTICAL} vexpand hexpand>
             <Gtk.Box marginTop={16} marginStart={16} marginEnd={16} spacing={8}>
-                <Gtk.Label label={keyboardIndicator} tooltipText={keyboardDescription}
-                    ref={self => self.update_property([Gtk.AccessibleProperty.DESCRIPTION],
-                        [new GObject.Value(GObject.TYPE_STRING, keyboardDescription)])} />
+                <Gtk.Label
+                    label={keyboardIndicator}
+                    tooltipText={keyboardDescription}
+                    ref={(self) =>
+                        self.update_property(
+                            [Gtk.AccessibleProperty.DESCRIPTION],
+                            [new GObject.Value(GObject.TYPE_STRING, keyboardDescription)]
+                        )
+                    }
+                />
                 <Gtk.Box hexpand />
-                <Gtk.Button iconName="system-reboot-symbolic" tooltipText="Reiniciar"
+                <Gtk.Button
+                    iconName="system-reboot-symbolic"
+                    tooltipText="Reiniciar"
                     cssClasses={['flat', 'circular']}
-                    onClicked={self => presentPowerConfirmation(self, 'reboot', reboot)} />
-                <Gtk.Button iconName="system-shutdown-symbolic" tooltipText="Desligar"
+                    onClicked={(self) =>
+                        presentPowerConfirmation(self, 'reboot', () => reboot(reportPowerError))
+                    }
+                />
+                <Gtk.Button
+                    iconName="system-shutdown-symbolic"
+                    tooltipText="Desligar"
                     cssClasses={['flat', 'circular']}
-                    onClicked={self => presentPowerConfirmation(self, 'poweroff', powerOff)} />
+                    onClicked={(self) =>
+                        presentPowerConfirmation(self, 'poweroff', () => powerOff(reportPowerError))
+                    }
+                />
             </Gtk.Box>
-            <Gtk.ScrolledWindow hexpand vexpand
-                hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-                <Adw.Clamp maximumSize={420} tighteningThreshold={340}
-                    marginTop={24} marginBottom={24} marginStart={16} marginEnd={16}
-                    valign={Gtk.Align.CENTER}>
+            <Gtk.ScrolledWindow
+                hexpand
+                vexpand
+                hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+            >
+                <Adw.Clamp
+                    maximumSize={420}
+                    tighteningThreshold={340}
+                    marginTop={24}
+                    marginBottom={24}
+                    marginStart={16}
+                    marginEnd={16}
+                    valign={Gtk.Align.CENTER}
+                >
                     <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-                        <Gtk.Box halign={Gtk.Align.CENTER}><GreeterClock /></Gtk.Box>
+                        <Gtk.Box halign={Gtk.Align.CENTER}>
+                            <GreeterClock />
+                        </Gtk.Box>
                         {loginForm}
                     </Gtk.Box>
                 </Adw.Clamp>
@@ -438,15 +595,22 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
                 application.add_window(win);
                 // Attach key controller to window (not as child widget)
                 const keyCtrl = new Gtk.EventControllerKey();
+                // The key event's own modifier state predates a Caps Lock toggle, so
+                // read the keyboard's lock state instead (after release it is current).
+                const syncCapsLock = () => {
+                    const keyboard = Gdk.Display.get_default()?.get_default_seat()?.get_keyboard();
+                    setCapsLock(keyboard?.get_caps_lock_state() ?? false);
+                };
+                syncCapsLock();
                 keyCtrl.connect('key-pressed', (_, keyval) => {
                     if (keyval === Gdk.KEY_Escape && showPassword()) {
                         goBack();
                         return true;
                     }
-                    const state = keyCtrl.get_current_event_state();
-                    setCapsLock((state & Gdk.ModifierType.LOCK_MASK) !== 0);
+                    syncCapsLock();
                     return false;
                 });
+                keyCtrl.connect('key-released', syncCapsLock);
                 win.add_controller(keyCtrl);
                 win.present();
                 win.fullscreen();
@@ -467,9 +631,17 @@ export const Greeter = ({application}: {application: Gtk.Application}) => {
             }}
         >
             <Gtk.Overlay>
-                <Gtk.Picture file={wallpaper ?? undefined} contentFit={Gtk.ContentFit.COVER}
-                    visible={wallpaper?.as(file => file !== null) ?? false} canShrink hexpand vexpand />
-                <Gtk.Box slot="overlay" hexpand vexpand>{body}</Gtk.Box>
+                <Gtk.Picture
+                    file={wallpaper ?? undefined}
+                    contentFit={Gtk.ContentFit.COVER}
+                    visible={wallpaper?.as((file) => file !== null) ?? false}
+                    canShrink
+                    hexpand
+                    vexpand
+                />
+                <Gtk.Box slot="overlay" hexpand vexpand>
+                    {body}
+                </Gtk.Box>
             </Gtk.Overlay>
         </Gtk.Window>
     );

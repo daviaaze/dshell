@@ -6,17 +6,28 @@ import {Object, register} from 'gnim/gobject';
 import {bus} from '../bus';
 import {defineService} from '@shade/core/define';
 
-function reportLogoutFailure(message: string) {
+function notifyError(title: string, message: string) {
     Process.execAsyncv([
         'notify-send',
         '-a',
         'shade-shell',
         '-i',
         'dialog-error-symbolic',
-        'Log Out Failed',
+        title,
         message,
-    ]).catch((e) => logger.warn('session', 'logout error notification failed:', e));
+    ]).catch((e) => logger.warn('session', 'error notification failed:', e));
 }
+
+function reportLogoutFailure(message: string) {
+    notifyError('Log Out Failed', message);
+}
+
+/** Verb shown in the failure notification for each logind power call. */
+const POWER_ACTION_LABEL: Record<'PowerOff' | 'Reboot' | 'Suspend', string> = {
+    PowerOff: 'desligar',
+    Reboot: 'reiniciar',
+    Suspend: 'suspender',
+};
 
 /** Terminate only the specified session; dependencies are injectable for tests. */
 export function logoutCurrentSession(
@@ -84,6 +95,10 @@ export default class SessionControl extends Object {
             );
         } catch (e) {
             logger.error('session', `logind ${method} failed:`, e);
+            notifyError(
+                `Falha ao ${POWER_ACTION_LABEL[method]}`,
+                e instanceof Error ? e.message : String(e)
+            );
         }
     }
 

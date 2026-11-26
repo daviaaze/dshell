@@ -6,6 +6,8 @@ import {Process} from '@shade/core/process';
 import {localizeForStage, toMagickGeometry} from './geometry';
 import type {BoundaryGeometry} from './types';
 import {
+    captureBlocked,
+    createPrivateCaptureDirectory,
     finalizeImage,
     freshScreenshotFilename,
     GRIM_BIN,
@@ -24,6 +26,9 @@ import {
  */
 export class Stage {
     #pixPath: string | null = null;
+    #directory: string | null = null;
+    #generation = 0;
+    #pendingCapture: Gio.Cancellable | null = null;
     #texture: Gdk.Texture | null = null;
     #onTextureChange: () => void;
 
@@ -40,43 +45,74 @@ export class Stage {
     }
 
     /**
-     * Synchronously capture the full desktop into the stage.
+     * Capture the full desktop without blocking the shell main loop.
      *
      * Uses grim without -o so the resulting image covers the entire
      * global coordinate space (all monitors composited), matching the
      * mouse-selection coordinate system.
      */
-    captureSync(): void {
+    async capture(): Promise<boolean> {
         this.cleanup();
-
-        const stagePix = `${GLib.get_tmp_dir()}/dshell-stage-${Date.now()}.png`;
+        if (captureBlocked()) return false;
+        const generation = this.#generation;
+        const cancellation = new Gio.Cancellable();
+        this.#pendingCapture = cancellation;
+        let directory: string | null = null;
+        let stagePix: string | null = null;
 
         try {
-            // No -o flag: captures all outputs as one combined image
-            Process.exec(`${GRIM_BIN} "${stagePix}"`);
-        } catch (e) {
-            logger.error('screenshot', `stage capture failed: ${e}`);
-            return;
+            directory = createPrivateCaptureDirectory('stage');
+            stagePix = `${directory}/frame.png`;
+            Gio.File.new_for_path(stagePix).create(Gio.FileCreateFlags.PRIVATE, null).close(null);
+            // No -o flag: capture every output in the global coordinate space.
+            await Process.execAsyncv([GRIM_BIN, stagePix], false, {
+                timeoutMs: 5_000,
+                cancellable: cancellation,
+            });
+            if (generation !== this.#generation || captureBlocked()) return false;
+            const texture = Gdk.Texture.new_from_filename(stagePix);
+            this.#pixPath = stagePix;
+            this.#directory = directory;
+            this.#texture = texture;
+            directory = null;
+            this.#onTextureChange();
+            return true;
+        } catch (error) {
+            if (generation === this.#generation) {
+                this.cleanup();
+                logger.error('screenshot', `stage capture failed: ${error}`);
+            }
+            return false;
+        } finally {
+            if (this.#pendingCapture === cancellation) this.#pendingCapture = null;
+            if (directory) this.#removeFiles(stagePix, directory);
         }
-
-        this.#pixPath = stagePix;
-        this.#texture = Gdk.Texture.new_from_filename(stagePix);
-        this.#onTextureChange();
     }
 
     cleanup(): void {
+        this.#generation++;
+        this.#pendingCapture?.cancel();
+        this.#pendingCapture = null;
+        const path = this.#pixPath;
+        const directory = this.#directory;
+        this.#pixPath = null;
+        this.#directory = null;
+        this.#removeFiles(path, directory);
         if (this.#texture) {
             this.#texture = null;
             this.#onTextureChange();
         }
-        if (this.#pixPath) {
+    }
+
+    #removeFiles(path: string | null, directory: string | null): void {
+        for (const filename of [path, directory]) {
+            if (!filename) continue;
             try {
-                const f = Gio.File.new_for_path(this.#pixPath);
-                f.delete(null);
-            } catch {
-                /* file may already be deleted */
+                const file = Gio.File.new_for_path(filename);
+                if (file.query_exists(null)) file.delete(null);
+            } catch (error) {
+                logger.warn('screenshot', `could not remove private stage ${filename}: ${error}`);
             }
-            this.#pixPath = null;
         }
     }
 
@@ -86,15 +122,15 @@ export class Stage {
      * pixel dimensions.
      */
     async captureCrop(geometry: BoundaryGeometry | null): Promise<boolean> {
+        if (captureBlocked()) return false;
         if (!this.#pixPath) {
             logger.error('screenshot', 'no stage texture for capture');
             notifyCaptureFailed('No frozen frame available');
             return false;
         }
 
-        const filename = freshScreenshotFilename();
-
         try {
+            const filename = freshScreenshotFilename();
             if (geometry) {
                 const crop = toMagickGeometry(
                     localizeForStage(
@@ -104,12 +140,17 @@ export class Stage {
                     )
                 );
                 logger.info('screenshot', `captureCrop: crop ${crop} from stage`);
-                await Process.execAsync(
-                    `${MAGICK_BIN} "${this.#pixPath}" -crop ${crop} +repage "${filename}"`
-                );
+                await Process.execAsyncv([
+                    MAGICK_BIN,
+                    this.#pixPath,
+                    '-crop',
+                    crop,
+                    '+repage',
+                    filename,
+                ]);
             } else {
                 logger.info('screenshot', 'captureCrop: full stage copy');
-                await Process.execAsync(`cp "${this.#pixPath}" "${filename}"`);
+                await Process.execAsyncv(['cp', '--', this.#pixPath, filename]);
             }
 
             await finalizeImage(filename, geometry !== null);

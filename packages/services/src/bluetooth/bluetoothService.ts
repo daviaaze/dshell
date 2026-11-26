@@ -26,15 +26,6 @@ export default class BluetoothService extends Object {
         this.#pairedHandlers = new Map();
     }
 
-    #disconnectPairedHandlers(): void {
-        for (const [device, handler] of this.#pairedHandlers) {
-            if (GObject.signal_handler_is_connected(device, handler)) {
-                device.disconnect(handler);
-            }
-        }
-        this.#pairedHandlers.clear();
-    }
-
     #reconcilePairedHandlers(): void {
         const devices = this.#bt?.devices ? toArray<Bluetooth.Device>(this.#bt.devices) : [];
         const current = new Set(devices);

@@ -17,7 +17,8 @@
 
 | Script | Command | Purpose |
 |--------|---------|---------|
-| `lint` | `biome check --write` | Lint + auto-fix safe issues |
+| `lint` | `biome check` | Check files without modifying them |
+| `lint:fix` | `biome check --write` | Apply safe fixes |
 | `format` | `biome format --write` | Format files in-place |
 | `format:check` | `biome format --check` | CI check without modifying files |
 | `check` | `tsc --noEmit` | Type-checking only |

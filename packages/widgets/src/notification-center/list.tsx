@@ -111,7 +111,7 @@ const NotificationListContent = ({
         if (astalRoot) astalRoot.keymode = Astal.Keymode.NONE;
         dialog.connect('closed', () => {
             historyClearDialogs.delete(root);
-            if (astalRoot?.get_mapped() && previousKeymode !== undefined) {
+            if (astalRoot && previousKeymode !== undefined) {
                 astalRoot.keymode = previousKeymode;
             }
         });

@@ -44,7 +44,9 @@ function NotificationsGroup({settings}: {settings: Settings}) {
                     title={'Limite do histórico'}
                     subtitle={'Quantidade máxima de notificações no histórico.'}
                     adjustment={historyLimitAdjustment}
-                    onNotifyValue={(self) => settings.setNotificationHistoryLimit(self.value)}
+                    onNotifyValue={(self) =>
+                        settings.setNotificationHistoryLimit(Math.round(self.value))
+                    }
                 />
             </Adw.PreferencesGroup>
             <Adw.PreferencesGroup

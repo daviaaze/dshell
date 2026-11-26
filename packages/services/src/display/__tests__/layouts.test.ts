@@ -26,6 +26,8 @@ import {
 type Deferred = {promise: Promise<void>; resolve: () => void};
 
 let storeCounter = 0;
+const storeDirectory = GLib.dir_make_tmp('shade-layouts-test-XXXXXX');
+const storePaths: string[] = [];
 
 function output(
     name: string,
@@ -103,6 +105,9 @@ function deferred(): Deferred {
 }
 
 class FakeAdapter implements DisplayAdapter {
+    snapshotFailures = 0;
+    ignoreDpmsWrites = false;
+    dpmsCalls: Array<{name: string; on: boolean}> = [];
     attached: OutputInfo[];
     writes: MonitorSpec[] = [];
     failNext = false;
@@ -115,6 +120,10 @@ class FakeAdapter implements DisplayAdapter {
         this.attached = outputs.map((outputInfo) => ({...outputInfo}));
     }
     async snapshot(): Promise<DisplaySnapshot> {
+        if (this.snapshotFailures > 0) {
+            this.snapshotFailures--;
+            throw new Error('simulated snapshot failure');
+        }
         const attached = this.attached.map((outputInfo) => ({...outputInfo}));
         return {attached, active: independent({attached, active: []})};
     }
@@ -175,6 +184,12 @@ class FakeAdapter implements DisplayAdapter {
     async workspace(id: number, monitor: string): Promise<void> {
         this.workspaceCalls.push({id, monitor});
     }
+    async dpms(name: string, on: boolean): Promise<void> {
+        this.dpmsCalls.push({name, on});
+        const target = this.attached.find((monitor) => monitor.name === name);
+        if (!target) throw new Error(`not attached: ${name}`);
+        if (!this.ignoreDpmsWrites) target.dpms = on;
+    }
     blockNextWrite(name: string) {
         const barrier = {name, started: deferred(), release: deferred()};
         this.writeBarrier = barrier;
@@ -210,11 +225,9 @@ function service(
     store: Layout = {monitors: [], workspaces: {}},
     autoApply = false
 ) {
-    const storePath = GLib.build_filenamev([
-        GLib.get_tmp_dir(),
-        `shade-layouts-test-${++storeCounter}.json`,
-    ]);
-    GLib.unlink(storePath);
+    const storePath = GLib.build_filenamev([storeDirectory, `${++storeCounter}.json`]);
+    storePaths.push(storePath);
+    GLib.file_set_contents(storePath, new TextEncoder().encode('{"version":1}'));
     const timers: Array<{
         id: number;
         delay: number;
@@ -239,6 +252,395 @@ function service(
     return {instance, timers, storePath};
 }
 
+describe('LayoutService safety regressions', () => {
+    it.async(
+        'subscribes after Hyprland becomes available and disconnects the event owner',
+        async () => {
+            let available = false;
+            let disconnected = 0;
+            const events: {callbacks: {changed: () => void; reloaded: () => void} | null} = {
+                callbacks: null,
+            };
+            const adapter = Object.assign(new FakeAdapter([EDP()]), {
+                subscribe(changed: () => void, reloaded: () => void) {
+                    if (!available) return null;
+                    events.callbacks = {changed, reloaded};
+                    return () => {
+                        disconnected++;
+                        events.callbacks = null;
+                    };
+                },
+            });
+            const {instance, timers} = service(adapter);
+            try {
+                instance.init();
+                await instance.reconcileNow();
+                expect(events.callbacks).toBeNull();
+                const retry = timers
+                    .filter((timer) => !timer.cancelled && timer.delay === 500)
+                    .at(-1);
+                if (!retry) throw new Error('Expected a compositor connection retry');
+                available = true;
+                await retry.callback();
+                await instance.reconcileNow();
+                if (!events.callbacks) throw new Error('Expected compositor event subscription');
+                adapter.attached = [EDP(false)];
+                events.callbacks.changed();
+                const hotplug = timers
+                    .filter((timer) => !timer.cancelled && timer.delay === 500)
+                    .at(-1);
+                if (!hotplug) throw new Error('Expected a monitor reconciliation');
+                await hotplug.callback();
+                await instance.reconcileNow();
+                expect(adapter.attached[0].enabled).toBe(true);
+            } finally {
+                await instance.dispose();
+            }
+            expect(disconnected).toBe(1);
+            expect(events.callbacks).toBeNull();
+        }
+    );
+
+    it('uses the configured compositor seed without touching the default seed file', () => {
+        const {instance, storePath} = service(new FakeAdapter([EDP()]));
+        const seedPath = `${storePath}.seed`;
+        const previousSeed = GLib.getenv('SHADE_COMPOSITOR_SEED');
+        const profile = {monitors: [spec(EDP())], workspaces: {}};
+        try {
+            GLib.file_set_contents(
+                seedPath,
+                new TextEncoder().encode(
+                    JSON.stringify({
+                        version: 1,
+                        layouts: {
+                            current: 'Override',
+                            layouts: {Override: profile},
+                        },
+                    })
+                )
+            );
+            GLib.unlink(storePath);
+            GLib.setenv('SHADE_COMPOSITOR_SEED', seedPath, true);
+            expect(instance.names).toEqual(['Override']);
+            expect(instance.current).toBe('Override');
+        } finally {
+            if (previousSeed === null) GLib.unsetenv('SHADE_COMPOSITOR_SEED');
+            else GLib.setenv('SHADE_COMPOSITOR_SEED', previousSeed, true);
+            GLib.unlink(seedPath);
+        }
+    });
+
+    it.async('does not pin special-workspace numeric ids as regular workspaces', async () => {
+        const adapter = new FakeAdapter([EDP()]);
+        const {instance} = service(adapter);
+        expect(
+            instance.save('Workspaces', {
+                monitors: [spec(EDP())],
+                workspaces: {1: 'eDP-1', [-1]: 'eDP-1'},
+            })
+        ).toBe(true);
+        expect(await instance.apply('Workspaces')).toBe(true);
+        expect(adapter.workspaceCalls).toEqual([{id: 1, monitor: 'eDP-1'}]);
+    });
+
+    it.async(
+        'keeps a rollback when the first preview and its immediate restore both fail',
+        async () => {
+            const adapter = new FakeAdapter([EDP(), DP()]);
+            const {instance} = service(adapter);
+            const snapshot = adapter.snapshot.bind(adapter);
+            let snapshots = 0;
+            adapter.snapshot = async () => {
+                if (++snapshots === 2) throw new Error('rollback snapshot unavailable');
+                return snapshot();
+            };
+            adapter.failNext = true;
+            expect(await instance.previewMode('external-only')).toBe(false);
+            expect(instance.pending !== null).toBe(true);
+            await instance.revert();
+            expect(instance.pending).toBeNull();
+            expect(adapter.attached.every((monitor) => monitor.enabled)).toBe(true);
+        }
+    );
+
+    it.async(
+        'cycles after a named profile was previewed through the generic editor API',
+        async () => {
+            const adapter = new FakeAdapter([EDP()]);
+            const {instance} = service(adapter);
+            for (const [name, x] of [
+                ['A', 0],
+                ['B', 100],
+                ['C', 200],
+            ] as const)
+                expect(
+                    instance.save(name, {
+                        monitors: [spec(EDP(true, {position: `${x}x0`}))],
+                        workspaces: {},
+                    })
+                ).toBe(true);
+            const profile = instance.get('B');
+            if (!profile) throw new Error('Expected saved profile');
+            expect(await instance.preview(profile)).toBe(true);
+            expect(await instance.next()).toBe(true);
+            expect(adapter.attached[0].position).toBe('200x0');
+            await instance.revert();
+        }
+    );
+
+    it.async('cycles from the pending layout and serializes repeated next commands', async () => {
+        const adapter = new FakeAdapter([EDP()]);
+        const {instance} = service(adapter);
+        for (const [name, x] of [
+            ['A', 0],
+            ['B', 100],
+            ['C', 200],
+        ] as const)
+            expect(
+                instance.save(name, {
+                    monitors: [spec(EDP(true, {position: `${x}x0`}))],
+                    workspaces: {},
+                })
+            ).toBe(true);
+        expect(await instance.apply('A')).toBe(true);
+        const barrier = adapter.blockNextWrite('eDP-1');
+        const first = instance.next();
+        await barrier.started.promise;
+        const second = instance.next();
+        barrier.release.resolve();
+        expect(await first).toBe(true);
+        expect(await second).toBe(true);
+        expect(adapter.attached[0].position).toBe('200x0');
+        await instance.revert();
+        expect(adapter.attached[0].position).toBe('0x0');
+        expect(instance.current).toBe('A');
+    });
+
+    it.async('contains next-command snapshot failures and clears a recovered error', async () => {
+        const adapter = new FakeAdapter([EDP()]);
+        const {instance} = service(adapter);
+        adapter.snapshotFailures = 1;
+        expect(await instance.next()).toBe(false);
+        expect(instance.error).toBe('simulated snapshot failure');
+        await instance.reconcileNow();
+        expect(instance.error).toBeNull();
+    });
+
+    it.async('retains the rollback baseline when a revert cannot obtain a snapshot', async () => {
+        const adapter = new FakeAdapter([EDP()]);
+        const {instance, timers} = service(adapter);
+        expect(instance.save('Original', {monitors: [spec(EDP())], workspaces: {}})).toBe(true);
+        expect(await instance.apply('Original')).toBe(true);
+        expect(
+            await instance.preview({
+                monitors: [spec(EDP(true, {position: '80x0'}))],
+                workspaces: {},
+            })
+        ).toBe(true);
+        adapter.snapshotFailures = 1;
+        await instance.revert();
+        expect(instance.current).toBeNull();
+        expect(instance.pending !== null).toBe(true);
+        expect(adapter.attached[0].position).toBe('80x0');
+        expect(timers.filter((timer) => !timer.cancelled).length).toBe(1);
+        await instance.revert();
+        expect(instance.pending).toBeNull();
+        expect(instance.current).toBe('Original');
+        expect(adapter.attached[0].position).toBe('0x0');
+        expect(instance.error).toBeNull();
+    });
+
+    it.async('retains a preview after a failed restore and rearms an expired timer', async () => {
+        const adapter = new FakeAdapter([EDP(), DP()]);
+        const {instance, timers} = service(adapter);
+        expect(await instance.previewMode('external-only')).toBe(true);
+        const expired = timers.at(-1);
+        if (!expired) throw new Error('Expected preview timeout');
+        adapter.failNext = true;
+        await expired.callback();
+        expect(expired.cancelled).toBe(false);
+        expect(instance.pending !== null).toBe(true);
+        expect(instance.error !== null).toBe(true);
+        const retry = timers.at(-1);
+        expect(retry?.id === expired.id).toBe(false);
+        if (!retry) throw new Error('Expected rollback retry');
+        await retry.callback();
+        expect(instance.pending).toBeNull();
+        expect(adapter.attached.every((monitor) => monitor.enabled)).toBe(true);
+        expect(instance.error).toBeNull();
+    });
+
+    it.async(
+        'does not cancel a fired timer while its callback waits for a preview write',
+        async () => {
+            const adapter = new FakeAdapter([EDP(), DP()]);
+            const {instance, timers} = service(adapter);
+            expect(await instance.previewMode('external-only')).toBe(true);
+            const fired = timers.at(-1);
+            if (!fired) throw new Error('Expected preview timeout');
+            const barrier = adapter.blockNextWrite('eDP-1');
+            const replacement = instance.previewMode('duplicate');
+            await barrier.started.promise;
+            const callback = fired.callback();
+            barrier.release.resolve();
+            expect(await replacement).toBe(true);
+            await callback;
+            expect(fired.cancelled).toBe(false);
+            expect(instance.pending !== null).toBe(true);
+            await instance.revert();
+        }
+    );
+
+    it.async('restores the pre-preview snapshot before disposal completes', async () => {
+        const adapter = new FakeAdapter([EDP(), DP()]);
+        const {instance, timers} = service(adapter);
+        expect(await instance.previewMode('external-only')).toBe(true);
+        await instance.dispose();
+        expect(adapter.attached.every((monitor) => monitor.enabled)).toBe(true);
+        expect(instance.pending).toBeNull();
+        expect(timers.every((timer) => timer.cancelled)).toBe(true);
+    });
+
+    it.async(
+        'reapplies a pending preview rather than a committed layout on config reload',
+        async () => {
+            const adapter = new FakeAdapter([EDP()]);
+            const {instance, timers} = service(adapter, {monitors: [], workspaces: {}}, true);
+            await instance.reconcileNow();
+            expect(instance.save('Committed', {monitors: [spec(EDP())], workspaces: {}})).toBe(
+                true
+            );
+            expect(await instance.apply('Committed')).toBe(true);
+            expect(
+                await instance.preview({
+                    monitors: [spec(EDP(true, {position: '90x0'}))],
+                    workspaces: {},
+                })
+            ).toBe(true);
+            const deadline = instance.pending;
+            adapter.attached = [EDP()];
+            await instance.reconcileNow(true);
+            expect(adapter.attached[0].position).toBe('90x0');
+            expect(instance.pending).toBe(deadline);
+            await timers.at(-1)?.callback();
+            expect(adapter.attached[0].position).toBe('0x0');
+            expect(instance.current).toBe('Committed');
+        }
+    );
+
+    it.async(
+        'clears a pending rollback only after a direct apply commits successfully',
+        async () => {
+            const adapter = new FakeAdapter([EDP()]);
+            const {instance} = service(adapter);
+            expect(
+                instance.save('Committed', {
+                    monitors: [spec(EDP(true, {position: '120x0'}))],
+                    workspaces: {},
+                })
+            ).toBe(true);
+            expect(
+                await instance.preview({
+                    monitors: [spec(EDP(true, {position: '50x0'}))],
+                    workspaces: {},
+                })
+            ).toBe(true);
+            expect(await instance.apply('Committed')).toBe(true);
+            expect(instance.pending).toBeNull();
+            await instance.revert();
+            expect(adapter.attached[0].position).toBe('120x0');
+            expect(instance.current).toBe('Committed');
+        }
+    );
+
+    it.async('does not report a committed apply when persistence fails', async () => {
+        const adapter = new FakeAdapter([EDP()]);
+        const {instance, storePath} = service(adapter);
+        expect(
+            instance.save('Moved', {
+                monitors: [spec(EDP(true, {position: '130x0'}))],
+                workspaces: {},
+            })
+        ).toBe(true);
+        const original = '{invalid compositor json';
+        GLib.file_set_contents(storePath, new TextEncoder().encode(original));
+        expect(await instance.apply('Moved')).toBe(false);
+        expect(adapter.attached[0].position).toBe('0x0');
+        expect(instance.current).toBeNull();
+        expect(new TextDecoder().decode(GLib.file_get_contents(storePath)[1])).toBe(original);
+    });
+
+    it.async('recovers an attached external when no panel or active desktop exists', async () => {
+        const adapter = new FakeAdapter([HDMI(false), DP(false)]);
+        const {instance} = service(adapter);
+        await instance.reconcileNow();
+        expect(adapter.writes.map((monitor) => monitor.name)).toEqual(['DP-1']);
+        expect(adapter.attached.find((monitor) => monitor.name === 'DP-1')?.enabled).toBe(true);
+        expect(instance.error).toBeNull();
+    });
+
+    it.async('verifies DPMS results and refuses unattached or disabled outputs', async () => {
+        const adapter = new FakeAdapter([EDP(), DP(false)]);
+        const {instance} = service(adapter);
+        expect(await instance.setDpms('missing', false)).toBe(false);
+        expect(await instance.setDpms('DP-1', true)).toBe(false);
+        expect(adapter.dpmsCalls.length).toBe(0);
+        adapter.ignoreDpmsWrites = true;
+        expect(await instance.setDpms('eDP-1', false)).toBe(false);
+        expect(instance.error !== null).toBe(true);
+        adapter.ignoreDpmsWrites = false;
+        expect(await instance.setDpms('eDP-1', false)).toBe(true);
+        expect(instance.monitors[0].dpms).toBe(false);
+        expect(instance.error).toBeNull();
+    });
+
+    it.async('does not send unresolved mirror targets when disabling an output', async () => {
+        const adapter = new FakeAdapter([EDP(), DP()]);
+        const {instance} = service(adapter);
+        expect(
+            await instance.preview({
+                monitors: [spec(EDP()), spec(DP(), true, 'old-panel')],
+                workspaces: {},
+            })
+        ).toBe(true);
+        expect(adapter.writes.find((monitor) => monitor.name === 'DP-1')?.mirror).toBeNull();
+        await instance.revert();
+    });
+
+    it.async('does not reuse another display settings on a replaced connector', async () => {
+        const adapter = new FakeAdapter([EDP(), DP(true, {scale: 1.5, description: 'Old'})]);
+        const {instance} = service(adapter);
+        expect(await instance.setEnabled('DP-1', false)).toBe(true);
+        expect(await instance.confirm()).toBe(true);
+        adapter.attached = [EDP(), DP(false, {scale: 1, description: 'New'})];
+        expect(await instance.setEnabled('DP-1', true)).toBe(true);
+        expect(adapter.attached[1].scale).toBe(1);
+        await instance.revert();
+    });
+
+    it.async(
+        'persists own-property layout names and clears a removed current selection',
+        async () => {
+            const adapter = new FakeAdapter([EDP()]);
+            const {instance, storePath} = service(adapter);
+            const layout = {monitors: [spec(EDP())], workspaces: {}};
+            expect(instance.get('constructor')).toBeNull();
+            expect(instance.remove('constructor')).toBe(false);
+            expect(instance.save('__proto__', layout)).toBe(true);
+            expect(instance.save('constructor', layout)).toBe(true);
+            const reloaded = new LayoutService({adapter, storePath, autoApply: () => false});
+            expect(reloaded.names.includes('__proto__')).toBe(true);
+            expect(reloaded.get('__proto__')).toEqual({...layout, monitors: [spec(EDP())]});
+            expect(await instance.apply('constructor')).toBe(true);
+            expect(instance.remove('constructor')).toBe(true);
+            const saved = JSON.parse(
+                new TextDecoder().decode(GLib.file_get_contents(storePath)[1])
+            );
+            expect(saved.layouts.current).toBeNull();
+        }
+    );
+});
+
 describe('monitor snapshots', () => {
     it('parses monitor modes while retaining attached but inactive outputs', () => {
         const parsed = parseHyprlandSnapshot(
@@ -262,7 +664,10 @@ describe('monitor snapshots', () => {
                 },
             ],
             [],
-            [{id: 7, monitor: 'eDP-1'}]
+            [
+                {id: 7, monitor: 'eDP-1'},
+                {id: -1, monitor: 'eDP-1'},
+            ]
         );
         expect(parsed.attached.length).toBe(1);
         expect(parsed.attached[0].enabled).toBe(false);
@@ -273,6 +678,7 @@ describe('monitor snapshots', () => {
         expect(parsed.attached[0].sdrbrightness).toBe(1.2);
         expect(parsed.attached[0].sdrsaturation).toBe(0.85);
         expect(parsed.workspaces?.[7]).toBe('eDP-1');
+        expect(Object.hasOwn(parsed.workspaces ?? {}, -1)).toBe(false);
         expect(parsed.attached[0].modes[0]?.refreshRate).toBe(60);
     });
 
@@ -599,7 +1005,7 @@ describe('LayoutService display modes and mirror transactions', () => {
             expect(requests).toBe(1);
         } finally {
             instance.disconnect(signalId);
-            instance.dispose();
+            await instance.dispose();
             shellState.qsOpen = previousQsOpen;
         }
     });
@@ -816,7 +1222,7 @@ describe('LayoutService display modes and mirror transactions', () => {
         expect(
             adapter.attached.find((monitorInfo) => monitorInfo.name === 'HDMI-A-1')?.enabled
         ).toBe(false);
-        expect(instance.pending).toBeDefined();
+        expect(instance.pending !== null).toBe(true);
     });
 
     it.async('promotes only the lexical-first mirror when disabling its source', async () => {
@@ -844,7 +1250,7 @@ describe('LayoutService display modes and mirror transactions', () => {
     });
 
     it.async(
-        'refuses to disable the final independent desktop even when mirror destinations remain',
+        'promotes a mirror to preserve the final desktop and refuses disabling a lone panel',
         async () => {
             const adapter = new FakeAdapter([
                 EDP(),
@@ -1114,7 +1520,7 @@ describe('LayoutService display modes and mirror transactions', () => {
             const saved = JSON.parse(new TextDecoder().decode(savedText[1]));
             expect(saved.version).toBe(1);
             expect(
-                saved.layouts.Docked.monitors.every(
+                saved.layouts.layouts.Docked.monitors.every(
                     (monitorSpec: MonitorSpec) => monitorSpec.mirror === null
                 )
             ).toBe(true);
@@ -1182,4 +1588,10 @@ describe('LayoutService display modes and mirror transactions', () => {
     );
 });
 
-await run(import.meta.url);
+try {
+    await run(import.meta.url);
+} finally {
+    for (const path of storePaths)
+        if (GLib.file_test(path, GLib.FileTest.EXISTS)) Gio.File.new_for_path(path).delete(null);
+    Gio.File.new_for_path(storeDirectory).delete(null);
+}

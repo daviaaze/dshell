@@ -20,7 +20,7 @@ export default () => {
         if (error === 'Weather data is invalid') {
             return 'Os dados do clima são inválidos. Toque para tentar novamente.';
         }
-        return `Não foi possível atualizar o clima: ${error}`;
+        return 'Não foi possível atualizar o clima.';
     });
 
     return (
@@ -34,16 +34,27 @@ export default () => {
                 active={settings.autoLocation}
                 onNotifyActive={(self) => settings.setAutoLocation(self.active)}
             />
+            <Adw.SwitchRow
+                title="Usar localização por IP como alternativa"
+                subtitle="Se o GeoClue falhar, envia seu IP público ao ipapi.co."
+                sensitive={settings.autoLocation}
+                active={settings.ipLocationFallback}
+                onNotifyActive={(self) => settings.setIpLocationFallback(self.active)}
+            />
             <Adw.SpinRow
                 title={'Latitude'}
+                digits={4}
+                sensitive={settings.autoLocation.as((auto) => !auto)}
                 value={settings.latitude}
-                adjustment={Gtk.Adjustment.new(settings.latitude(), -90.0, 90.0, 1.0, 0, 0)}
+                adjustment={Gtk.Adjustment.new(settings.latitude(), -90.0, 90.0, 0.01, 1.0, 0)}
                 onNotifyValue={(self) => settings.setLatitude(self.value)}
             />
             <Adw.SpinRow
                 title={'Longitude'}
+                digits={4}
+                sensitive={settings.autoLocation.as((auto) => !auto)}
                 value={settings.longitude}
-                adjustment={Gtk.Adjustment.new(settings.longitude(), -180.0, 180.0, 1.0, 0, 0)}
+                adjustment={Gtk.Adjustment.new(settings.longitude(), -180.0, 180.0, 0.01, 1.0, 0)}
                 onNotifyValue={(self) => settings.setLongitude(self.value)}
             />
             <Adw.ActionRow
@@ -67,7 +78,9 @@ export default () => {
                 <Gtk.Image iconName="find-location-symbolic" pixelSize={16} />
             </Adw.ActionRow>
             <Gtk.Label
-                label={locationError.as((error) => error ?? '')}
+                label={locationError.as((error) =>
+                    error ? 'Não foi possível detectar a localização.' : ''
+                )}
                 cssClasses={['error', 'caption']}
                 visible={locationError.as((error) => error !== null)}
                 xalign={0}

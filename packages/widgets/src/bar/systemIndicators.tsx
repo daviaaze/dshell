@@ -1,10 +1,10 @@
-import GObject from 'gi://GObject?version=2.0';
 import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {IconNames} from '@shade/core/iconNames';
 import AudioController from '@shade/services/audio/audioController';
 import ShellState from '@shade/services/state/shellState';
 import {type Accessor, bind} from 'gnim';
+import {setAccessibleName} from '../common/iconButton';
 import {MicrophoneIndicator, SpeakerIndicator} from './indicators/audio';
 import BatteryIndicator from './indicators/battery';
 import BluetoothIndicator from './indicators/bluetooth';
@@ -37,7 +37,9 @@ export default ({
                 cursor={Gdk.Cursor.new_from_name('pointer', null)}
                 active={bind(shellState, 'qsOpen')}
                 onClicked={() => shellState.toggleQuickSettings()}
+                tooltipText={'Controles rápidos\nRole para ajustar o volume'}
                 ref={(self) => {
+                    setAccessibleName('Controles rápidos', 'Role para ajustar o volume.')(self);
                     const scrollCtrl = new Gtk.EventControllerScroll({
                         flags: Gtk.EventControllerScrollFlags.VERTICAL,
                     });
@@ -74,13 +76,8 @@ export default ({
                     shellState.toggleNotifications();
                     self.active = shellState.notificationsOpen;
                 }}
-                tooltipText="Notifications"
-                ref={(self) =>
-                    self.update_property(
-                        [Gtk.AccessibleProperty.LABEL],
-                        [new GObject.Value(GObject.TYPE_STRING, 'Open notification center')]
-                    )
-                }
+                tooltipText="Notificações"
+                ref={setAccessibleName('Abrir central de notificações')}
             >
                 <Gtk.Image iconName={IconNames.notifications} />
             </Gtk.ToggleButton>

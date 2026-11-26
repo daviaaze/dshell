@@ -60,6 +60,7 @@ export default class BatteryHistory {
     #setHistory: (v: number[]) => void;
     #devicePath: string | null = null;
     #unavailable = false;
+    #warned = false;
     #subscribers = 0;
     #timer: number | null = null;
 
@@ -81,7 +82,10 @@ export default class BatteryHistory {
                 return GLib.SOURCE_CONTINUE;
             });
         }
+        let active = true;
         return () => {
+            if (!active) return;
+            active = false;
             this.#subscribers--;
             if (this.#subscribers === 0 && this.#timer !== null) {
                 GLib.source_remove(this.#timer);
@@ -112,8 +116,10 @@ export default class BatteryHistory {
             const [entries] = reply.deepUnpack() as [Array<[number, number, number]>];
             this.#setHistory(resampleHistory(entries, Math.floor(Date.now() / 1000)));
         } catch (e) {
-            logger.warn('batteryHistory', 'UPower history unavailable:', e);
-            this.#unavailable = true;
+            // Transient (UPower restarting, bus hiccup): drop the cached path and retry on the next tick.
+            this.#devicePath = null;
+            if (!this.#warned) logger.warn('batteryHistory', 'UPower history unavailable:', e);
+            this.#warned = true;
         }
     }
 

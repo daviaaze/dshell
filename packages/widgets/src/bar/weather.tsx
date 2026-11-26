@@ -3,6 +3,7 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import Weather from '@shade/services/location/weather';
 import {type Accessor, bind} from 'gnim';
+import {setAccessibleName} from '../common/iconButton';
 import {usePopoverCleanup} from '../common/popoverCleanup';
 import {WeatherWidget} from '../common/weatherWidget';
 
@@ -25,7 +26,11 @@ export const WeatherButton = ({
             cssClasses={vertical.as((v) =>
                 v ? ['flat', 'bar-vertical-content-button'] : ['flat']
             )}
-            ref={usePopoverCleanup}
+            tooltipText="Previsão do tempo"
+            ref={(self) => {
+                setAccessibleName('Previsão do tempo', 'Abre a previsão do tempo.')(self);
+                usePopoverCleanup(self);
+            }}
         >
             <Gtk.Popover slot="popover" widthRequest={320}>
                 <WeatherWidget />

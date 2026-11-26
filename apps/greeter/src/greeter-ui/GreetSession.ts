@@ -37,11 +37,7 @@ export interface GreetSessionBackend {
         callback: (next: GreetAuthResponse | null, error: unknown | null) => void
     ): void;
     cancelSession(callback: (error: unknown | null) => void): void;
-    startSession(
-        command: string[],
-        env: string[],
-        callback: (error: unknown | null) => void
-    ): void;
+    startSession(command: string[], env: string[], callback: (error: unknown | null) => void): void;
 }
 
 export interface GreetSessionOptions {
@@ -65,14 +61,17 @@ function responseError(response: Greet.Response, operation: string): Error | nul
     if (response instanceof Greet.Error) {
         return new Error(`${operation}: ${response.description}`);
     }
-    return new Error(`${operation}: greetd returned an unexpected response`);
+    return new Error(`${operation}: o greetd retornou uma resposta inesperada`);
 }
 
 function authenticationResponse(response: Greet.Response): GreetAuthResponse {
     if (response instanceof Greet.Success) return {type: 'success'};
     if (response instanceof Greet.Error) return {type: 'error', message: response.description};
     if (!(response instanceof Greet.AuthMessage)) {
-        return {type: 'error', message: 'greetd returned an unexpected authentication response'};
+        return {
+            type: 'error',
+            message: 'O greetd retornou uma resposta de autenticação inesperada',
+        };
     }
 
     const message = response.message;
@@ -86,7 +85,10 @@ function authenticationResponse(response: Greet.Response): GreetAuthResponse {
         case Greet.AuthMessageType.ERROR:
             return {type: 'pam-error', message};
         default:
-            return {type: 'error', message: 'greetd returned an unknown PAM message type'};
+            return {
+                type: 'error',
+                message: 'O greetd retornou um tipo de mensagem PAM desconhecido',
+            };
     }
 }
 
@@ -116,7 +118,7 @@ const nativeBackend: GreetSessionBackend = {
             callback(
                 response
                     ? authenticationResponse(response)
-                    : {type: 'error', message: 'greetd returned no authentication response'},
+                    : {type: 'error', message: 'O greetd não retornou resposta de autenticação'},
                 null
             );
         });
@@ -130,7 +132,7 @@ const nativeBackend: GreetSessionBackend = {
             callback(
                 response
                     ? authenticationResponse(response)
-                    : {type: 'error', message: 'greetd returned no authentication response'},
+                    : {type: 'error', message: 'O greetd não retornou resposta de autenticação'},
                 null
             );
         });
@@ -143,8 +145,8 @@ const nativeBackend: GreetSessionBackend = {
             }
             callback(
                 response
-                    ? responseError(response, 'Cancelling authentication')
-                    : new Error('greetd returned no cancellation response')
+                    ? responseError(response, 'Cancelamento da autenticação')
+                    : new Error('O greetd não retornou resposta ao cancelamento')
             );
         });
     },
@@ -156,8 +158,8 @@ const nativeBackend: GreetSessionBackend = {
             }
             callback(
                 response
-                    ? responseError(response, 'Starting session')
-                    : new Error('greetd returned no session-start response')
+                    ? responseError(response, 'Início da sessão')
+                    : new Error('O greetd não retornou resposta ao início da sessão')
             );
         });
     },
@@ -184,6 +186,7 @@ export class GreetSession extends Object {
     #activeUsername: string | null = null;
     #cancellation: Cancellation | null = null;
     #pendingAuth: AuthRequest | null = null;
+    #promptVisible = false;
     #onSessionStarted: (() => void) | null = null;
 
     constructor(options: GreetSessionOptions = {}) {
@@ -226,6 +229,18 @@ export class GreetSession extends Object {
         this.notify(NOTIFY_INFO_MSG);
     }
 
+    /** True while greetd's pending question echoes the answer (a visible prompt, not a secret). */
+    @property
+    get promptVisible(): boolean {
+        return this.#promptVisible;
+    }
+
+    set promptVisible(v: boolean) {
+        if (this.#promptVisible === v) return;
+        this.#promptVisible = v;
+        this.notify('prompt-visible');
+    }
+
     @property
     get available(): boolean {
         try {
@@ -261,6 +276,7 @@ export class GreetSession extends Object {
         const request: AuthRequest = {generation};
         this.#activeUsername = username;
         this.#pendingAuth = request;
+        this.promptVisible = false;
         this.errorMessage = '';
         this.infoMessage = '';
         this.state = 'creating-session';
@@ -299,14 +315,15 @@ export class GreetSession extends Object {
         error: unknown | null
     ): void {
         if (!this.#isCurrent(generation)) return;
+        this.promptVisible = response?.type === 'visible';
         if (error !== null) {
-            this.errorMessage = `Authentication error: ${error}`;
+            this.errorMessage = `Erro de autenticação: ${error}`;
             this.infoMessage = '';
             this.state = 'error';
             return;
         }
         if (response === null) {
-            this.errorMessage = 'greetd returned no authentication response';
+            this.errorMessage = 'O greetd não retornou resposta de autenticação';
             this.state = 'error';
             return;
         }
@@ -325,7 +342,7 @@ export class GreetSession extends Object {
             case 'visible':
             case 'secret':
                 this.errorMessage = '';
-                this.infoMessage = response.message || 'Input required';
+                this.infoMessage = response.message || 'Informe a resposta solicitada';
                 this.state = STATE_AWAITING_INPUT;
                 break;
             case 'info':
@@ -389,7 +406,7 @@ export class GreetSession extends Object {
             this.#backend.startSession(command, env, (error) => {
                 if (!this.#isCurrent(generation)) return;
                 if (error !== null) {
-                    this.errorMessage = `Failed to start session: ${error}`;
+                    this.errorMessage = `Falha ao iniciar a sessão: ${error}`;
                     this.state = 'error';
                     return;
                 }
@@ -398,7 +415,7 @@ export class GreetSession extends Object {
             });
         } catch (error) {
             if (!this.#isCurrent(generation)) return;
-            this.errorMessage = `Failed to start session: ${error}`;
+            this.errorMessage = `Falha ao iniciar a sessão: ${error}`;
             this.state = 'error';
         }
     }
@@ -419,7 +436,7 @@ export class GreetSession extends Object {
         if (existing) {
             existing.nextUsername = nextUsername;
             this.errorMessage = '';
-            this.infoMessage = 'Cancelling authentication…';
+            this.infoMessage = 'Cancelando a autenticação…';
             this.state = 'cancelling-session';
             this.#retryCancellation(existing);
             return;
@@ -441,9 +458,10 @@ export class GreetSession extends Object {
             nextUsername,
         };
         this.#cancellation = cancellation;
+        this.promptVisible = false;
         this.#generation++;
         this.errorMessage = '';
-        this.infoMessage = 'Cancelling authentication…';
+        this.infoMessage = 'Cancelando a autenticação…';
         this.state = 'cancelling-session';
         this.#retryCancellation(cancellation);
     }
@@ -462,7 +480,7 @@ export class GreetSession extends Object {
                 if (this.#cancellation !== cancellation) return;
                 cancellation.requestInFlight = false;
                 if (error !== null) {
-                    this.errorMessage = `Failed to cancel authentication: ${error}`;
+                    this.errorMessage = `Falha ao cancelar a autenticação: ${error}`;
                     this.state = 'error';
                     return;
                 }
@@ -472,7 +490,7 @@ export class GreetSession extends Object {
             });
         } catch (error) {
             cancellation.requestInFlight = false;
-            this.errorMessage = `Failed to cancel authentication: ${error}`;
+            this.errorMessage = `Falha ao cancelar a autenticação: ${error}`;
             this.state = 'error';
         }
     }

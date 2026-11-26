@@ -4,9 +4,7 @@ import GLib from 'gi://GLib?version=2.0';
 
 function readPassword(): string | null {
     try {
-        const stream = Gio.DataInputStream.new(
-            Gio.File.new_for_path('/dev/stdin').read(null)
-        );
+        const stream = Gio.DataInputStream.new(Gio.File.new_for_path('/dev/stdin').read(null));
         try {
             const [line] = stream.read_line_utf8(null);
             if (line === null) return null;
@@ -15,7 +13,9 @@ function readPassword(): string | null {
         } finally {
             stream.close(null);
         }
-    } catch {
+    } catch (e) {
+        // stdout carries the result; the error name alone cannot echo the input.
+        printerr(`auth-worker: unreadable request (${e instanceof Error ? e.name : 'error'})`);
         return null;
     }
 }
@@ -46,7 +46,8 @@ if (password === null) {
     try {
         if (!pam.start_authenticate()) finish(false);
         if (!completed) loop.run();
-    } catch {
+    } catch (e) {
+        printerr(`auth-worker: PAM conversation failed: ${e}`);
         finish(false);
     }
 

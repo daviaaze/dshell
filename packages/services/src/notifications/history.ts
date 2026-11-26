@@ -6,7 +6,7 @@ import logger from '@shade/core/logger';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import type {Accessor} from 'gnim';
 import {Object, property, register} from 'gnim/gobject';
-import {getNotifdSafe} from './guard';
+import {getNotifdSafe, onNotifdRecovered} from './guard';
 
 const CACHE_DIR = `${GLib.get_user_cache_dir()}/shade`;
 const HISTORY_FILE = `${CACHE_DIR}/notifications.json`;
@@ -20,10 +20,23 @@ export interface HistoryEntry {
     time: number;
 }
 
+function isHistoryEntry(value: unknown): value is HistoryEntry {
+    if (typeof value !== 'object' || value === null) return false;
+    const e = value as Record<string, unknown>;
+    return (
+        typeof e.id === 'number' &&
+        typeof e.appName === 'string' &&
+        typeof e.appIcon === 'string' &&
+        typeof e.summary === 'string' &&
+        typeof e.body === 'string' &&
+        typeof e.time === 'number'
+    );
+}
+
 function loadHistory(): HistoryEntry[] {
     try {
-        const text = readFile(HISTORY_FILE);
-        return JSON.parse(text);
+        const parsed: unknown = JSON.parse(readFile(HISTORY_FILE));
+        return Array.isArray(parsed) ? parsed.filter(isHistoryEntry) : [];
     } catch {
         return [];
     }
@@ -39,9 +52,8 @@ function writeHistoryFile(history: HistoryEntry[]) {
         }
         const raw = new TextEncoder().encode(JSON.stringify(history));
         const file = Gio.File.new_for_path(HISTORY_FILE);
-        file.replace_contents(raw, null, false, Gio.FileCreateFlags.NONE, null);
-        // Set 0600 perms so notification data isn't world-readable
-        file.set_attribute_uint32('unix::mode', 0o600, Gio.FileQueryInfoFlags.NONE, null);
+        // PRIVATE creates the file 0600 from the start, so notification data is never world-readable.
+        file.replace_contents(raw, null, false, Gio.FileCreateFlags.PRIVATE, null);
     } catch (e) {
         logger.error('history', 'save failed:', e);
     }
@@ -108,11 +120,13 @@ export default class NotificationHistory extends Object {
             this.#initNotifd();
             return GLib.SOURCE_REMOVE;
         });
+        // A foreign daemon seen at startup may leave later; connect once AstalNotifd takes over.
+        onNotifdRecovered(() => this.#initNotifd());
     }
 
     #initNotifd() {
         const notifd = getNotifdSafe();
-        if (!notifd) return;
+        if (!notifd || this.#notifdHandlerId !== 0) return;
         this.#notifdHandlerId = notifd.connect('notified', (_, id) => {
             const n = notifd.get_notification(id);
             if (!n) return;

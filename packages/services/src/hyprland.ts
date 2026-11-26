@@ -9,21 +9,19 @@
 import AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import GLib from 'gi://GLib?version=2.0';
 
-let cached: AstalHyprland.Hyprland | null | undefined;
+let cached: AstalHyprland.Hyprland | null = null;
 
 /** Return the Hyprland singleton, or null if unavailable. Never crashes. */
 export function getHyprland(): AstalHyprland.Hyprland | null {
-    if (cached !== undefined) return cached;
+    if (cached) return cached;
 
     const his = GLib.getenv('HYPRLAND_INSTANCE_SIGNATURE');
     if (!his) {
-        cached = null;
         return null;
     }
 
     const sock = `${GLib.get_user_runtime_dir()}/hypr/${his}/.socket2.sock`;
     if (!GLib.file_test(sock, GLib.FileTest.EXISTS)) {
-        cached = null;
         return null;
     }
 
@@ -52,15 +50,17 @@ export function getHyprlandClientSnapshot(): HyprlandClientSnapshot[] {
         at: [number, number];
         size: [number, number];
     }>;
-    return clients.filter((client) => client.mapped).map((client) => ({
-        address: normalizeHyprlandAddress(client.address),
-        title: client.title,
-        mapped: client.mapped,
-        x: client.at[0],
-        y: client.at[1],
-        width: client.size[0],
-        height: client.size[1],
-    }));
+    return clients
+        .filter((client) => client.mapped)
+        .map((client) => ({
+            address: normalizeHyprlandAddress(client.address),
+            title: client.title,
+            mapped: client.mapped,
+            x: client.at[0],
+            y: client.at[1],
+            width: client.size[0],
+            height: client.size[1],
+        }));
 }
 
 export function normalizeHyprlandAddress(address: string): string {

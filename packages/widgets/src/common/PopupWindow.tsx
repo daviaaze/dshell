@@ -1,16 +1,16 @@
 /**
- * PopupWindow — shared Astal.Window wrapper for all popup-style widgets.
+ * PopupWindow — Astal.Window wrapper for corner-anchored popups.
  *
- * Eliminates duplicated boilerplate across applauncher, quicksettings,
- * notifications, OSD, region-selector, and screenshot-ui.
+ * Currently used by the notification toasts. The caller owns visibility:
+ * the window never hides itself.
  *
  * Usage:
  * ```tsx
  * <PopupWindow
- *   name="quicksettings"
- *   visible={qsBinding}
+ *   name="notifications"
+ *   visible={hasToasts}
  *   anchor={anchors}
- *   onClose={() => {}}
+ *   onClose={() => setOpen(false)}
  * >
  *   {content}
  * </PopupWindow>
@@ -23,7 +23,7 @@ import {getApp} from '@shade/services/appHandle';
 import {getHyprland} from '@shade/services/hyprland';
 import {barSettings} from '@shade/services/settings/bar.gschema';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import {type Accessor, bind, createState, type JSX} from 'gnim';
+import {type Accessor, bind, type JSX} from 'gnim';
 import {SURFACE_EDGE_GAP} from './surface';
 
 // ── Types ──
@@ -33,7 +33,7 @@ export interface PopupWindowProps {
     /** Unique window name, used as the Astal namespace. */
     name: string;
 
-    /** Reactive visibility binding. */
+    /** Visibility, owned by the caller; pass an accessor to make it reactive. */
     visible: Accessor<boolean> | boolean;
 
     /** Widget reference callback. */
@@ -56,8 +56,8 @@ export interface PopupWindowProps {
     margin?: number;
 
     /**
-     * Callback when the popup closes (via ESC, or externally).
-     * Called ONCE after the close animation.
+     * Close request: called when the user presses Escape. The caller must
+     * turn `visible` off. Without it, Escape is left for other handlers.
      */
     onClose?: () => void;
 
@@ -83,11 +83,6 @@ export interface PopupWindowProps {
     $?: (self: Astal.Window) => void;
 
     children: JSX.Element | JSX.Element[];
-}
-
-export interface PopupHandle {
-    /** Element to render (pass as JSX child of PopupWindow). */
-    element: JSX.Element;
 }
 
 // ── Default anchor from bar position ──
@@ -139,15 +134,11 @@ export default (props: PopupWindowProps) => {
     // Resolve monitor
     const resolvedMonitor = monitorProp ?? defaultMon;
 
-    // Resolve visible as accessor for the binding
-    const visibleAccessor: Accessor<boolean> =
-        typeof visible === 'function' ? visible : createState(visible)[0];
-
     return (
         <Astal.Window
             name={name}
             namespace={`shade-${name}`}
-            visible={visibleAccessor}
+            visible={visible}
             application={getApp()}
             layer={layer}
             keymode={keymode ?? Astal.Keymode.ON_DEMAND}
@@ -168,12 +159,9 @@ export default (props: PopupWindowProps) => {
             <Gtk.EventControllerKey
                 ref={(self) => {
                     self.connect('key-pressed', (_ctrl, keyval, _keycode, _state) => {
-                        if (keyval === Gdk.KEY_Escape) {
-                            // Toggle visible off via the accessor mechanism
-                            if (onClose) onClose();
-                            return true;
-                        }
-                        return false;
+                        if (keyval !== Gdk.KEY_Escape || !onClose) return false;
+                        onClose();
+                        return true;
                     });
                 }}
             />

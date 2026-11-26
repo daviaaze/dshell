@@ -99,7 +99,7 @@ export default () => {
                             <Gtk.Box slot="suffix" valign={Gtk.Align.CENTER}>
                                 <IconButton
                                     icon="list-remove-symbolic"
-                                    accessibleLabel={`Remove ${tz} timezone`}
+                                    accessibleLabel={`Remover fuso horário ${tz}`}
                                     onClicked={() => {
                                         general.setTimezones(
                                             general.timezones().filter((value) => value !== tz)

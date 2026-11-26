@@ -6,6 +6,7 @@ import {render} from '@gnim-js/gtk4';
 import logger from '@shade/core/logger';
 import {type Accessor, createState} from 'gnim';
 import {createNMConnection} from '../quicksettings/network/utils';
+import {errorMessage} from './errorMessage';
 
 interface DialogState {
     ssid: Accessor<string>;
@@ -59,12 +60,12 @@ async function connectHidden(state: DialogState, onSuccess: () => void) {
             })
             .catch((e: Error) => {
                 logger.error('settings-network', 'hidden connect failed:', e.message);
-                state.setErrorMsg(e.message || 'Connection failed');
+                state.setErrorMsg(e.message || 'Falha ao conectar');
                 state.setConnecting(false);
             });
     } catch (e) {
         logger.error('settings-network', 'hidden network error:', e);
-        state.setErrorMsg(String(e));
+        state.setErrorMsg(errorMessage(e));
         state.setConnecting(false);
     }
 }

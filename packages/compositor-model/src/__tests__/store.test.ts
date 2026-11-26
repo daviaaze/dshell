@@ -49,6 +49,88 @@ function gapsIn(config: CompositorSeed): number {
 }
 
 describe('CompositorConfigStore transactions', () => {
+    it.async(
+        'retains a custom binding definition when changing or disabling its keys',
+        async () => {
+            const store = new CompositorConfigStore(
+                seed,
+                {version: 1},
+                {
+                    async apply() {},
+                    async persist() {},
+                }
+            );
+            const custom = {
+                id: 'custom',
+                keys: 'SUPER + F8',
+                title: 'Custom app',
+                category: 'Apps',
+                action: {type: 'launch-app' as const, desktopId: 'org.example.App'},
+            };
+            await store.edit({binds: {custom}});
+            await store.edit({binds: {custom: {keys: 'SUPER + F9'}}});
+            expect(store.effective.binds.find((bind) => bind.id === 'custom')).toEqual({
+                ...custom,
+                keys: 'SUPER + F9',
+            });
+            await store.edit({binds: {custom: {disabled: true}}});
+            expect(store.effective.binds.some((bind) => bind.id === 'custom')).toBe(false);
+            expect(store.user.binds?.custom.action).toEqual(custom.action);
+        }
+    );
+
+    it.async('loads current overrides before merging a queued edit', async () => {
+        const latest: UserConfig = {
+            version: 1,
+            input: {kb_layout: 'us'},
+            layouts: {current: null, layouts: {}},
+        };
+        let persisted: UserConfig | null = null;
+        const store = new CompositorConfigStore(
+            seed,
+            {version: 1},
+            {
+                load: () => latest,
+                async apply() {},
+                async persist(user) {
+                    persisted = user;
+                },
+            }
+        );
+        await store.edit({binds: {launcher: {keys: 'SUPER + D'}}});
+        expect(store.user.input).toEqual(latest.input);
+        expect(persisted).toEqual({
+            ...latest,
+            binds: {launcher: {keys: 'SUPER + D'}},
+        });
+    });
+
+    it.async('rejects invalid current data before any live apply or persistence', async () => {
+        let calls = 0;
+        const store = new CompositorConfigStore(
+            seed,
+            {version: 1},
+            {
+                load: () => ({version: 2}) as unknown as UserConfig,
+                async apply() {
+                    calls++;
+                },
+                async persist() {
+                    calls++;
+                },
+            }
+        );
+        let rejected = false;
+        try {
+            await store.edit({binds: {launcher: {keys: 'SUPER + D'}}});
+        } catch {
+            rejected = true;
+        }
+        expect(rejected).toBe(true);
+        expect(calls).toBe(0);
+        expect(store.user).toEqual({version: 1});
+    });
+
     it.async('applies then persists a valid edit before publishing it', async () => {
         const order: string[] = [];
         const store = new CompositorConfigStore(

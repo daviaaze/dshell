@@ -13,31 +13,39 @@ let
   version = (lib.importJSON ../package.json).version;
   domain = "com.caioasmuniz.shade_shell";
   gresource = "${lib.getDev pkgs.glib}/bin/gresource";
+  clipboardPython = pkgs.python3.withPackages (p: [
+    p.cryptography
+    p.pycryptodome
+  ]);
+  # Excluding build/dist/result by name at any depth keeps locally generated
+  # artifacts (cleanSourceWith ignores .gitignore) out of the build; the repo
+  # tracks no source directory with these names.
   src = lib.cleanSourceWith {
-    filter = path: type:
+    filter =
+      path: type:
       let
         base = baseNameOf path;
       in
-        ! (
-          lib.hasSuffix "~" base
-          || lib.hasSuffix ".o" base
-          || lib.hasSuffix ".so" base
-          || lib.hasSuffix ".qcow2" base
-          || base == ".git"
-          || base == "CVS"
-          || base == ".svn"
-          || base == ".hg"
-          || base == ".DS_Store"
-          || base == "__pycache__"
-          || base == "node_modules"
-          || base == "build"
-          || base == "dist"
-          || base == "@girs"
-          || base == ".direnv"
-          || base == "test-output"
-          || base == "result"
-          || lib.hasPrefix "result-" base
-        );
+      !(
+        lib.hasSuffix "~" base
+        || lib.hasSuffix ".o" base
+        || lib.hasSuffix ".so" base
+        || lib.hasSuffix ".qcow2" base
+        || base == ".git"
+        || base == "CVS"
+        || base == ".svn"
+        || base == ".hg"
+        || base == ".DS_Store"
+        || base == "__pycache__"
+        || base == "node_modules"
+        || base == "build"
+        || base == "dist"
+        || base == "@girs"
+        || base == ".direnv"
+        || base == "test-output"
+        || base == "result"
+        || lib.hasPrefix "result-" base
+      );
     src = ../.;
   };
 
@@ -52,40 +60,37 @@ let
   # Build a define-flag pair with a JS-string-literal value for rolldown.
   # Example: mkDefine "import.meta.name" "shade-shell"
   #   produces: -d "import.meta.name=\"shade-shell\""
-  mkDefine = key: value:
-    "-d " + ''"${key}=\"${value}\""'';
+  mkDefine = key: value: "-d " + ''"${key}=\"${value}\""'';
 
   # Each entry gets a name define plus the common defines.
-  mkEntryCommands = name: entry:
-    ''
-      echo "building ${name} from ${entry}"
-      node "$PWD/node_modules/gnim/dist/bin/gnim.js" bundle "${entry}" \
-        --id "${domain}" \
-        ${mkDefine "import.meta.name" name} \
-        ${mkDefine "import.meta.version" version} \
-        ${mkDefine "import.meta.domain" domain} \
-        ${mkDefine "import.meta.datadir" "$out/share"} \
-        ${mkDefine "import.meta.bindir" "$out/bin"} \
-        -o "${name}.gresource"
-      for resource in $(${gresource} list "${name}.gresource"); do
-        case "$resource" in
-          *.js) ;;
-          *) continue ;;
-        esac
-        ${gresource} extract "${name}.gresource" "$resource" > bundle-imports.js
-        node ${./check-bundle-imports.mjs} bundle-imports.js "${name}:$resource"
-      done
-      node "$PWD/node_modules/gnim/dist/bin/gnim.js" exe "$out/share/${domain}/${name}.gresource" \
-        -o "${name}" \
-        --id "${domain}" --prefix "$out" --datadir share --libdir lib
-    '';
+  mkEntryCommands = name: entry: ''
+    echo "building ${name} from ${entry}"
+    node "$PWD/node_modules/gnim/dist/bin/gnim.js" bundle "${entry}" \
+      --id "${domain}" \
+      ${mkDefine "import.meta.name" name} \
+      ${mkDefine "import.meta.version" version} \
+      ${mkDefine "import.meta.domain" domain} \
+      ${mkDefine "import.meta.datadir" "$out/share"} \
+      ${mkDefine "import.meta.bindir" "$out/bin"} \
+      -o "${name}.gresource"
+    for resource in $(${gresource} list "${name}.gresource"); do
+      case "$resource" in
+        *.js) ;;
+        *) continue ;;
+      esac
+      ${gresource} extract "${name}.gresource" "$resource" > bundle-imports.js
+      node ${./check-bundle-imports.mjs} bundle-imports.js "${name}:$resource"
+    done
+    node "$PWD/node_modules/gnim/dist/bin/gnim.js" exe "$out/share/${domain}/${name}.gresource" \
+      -o "${name}" \
+      --id "${domain}" --prefix "$out" --datadir share --libdir lib
+  '';
 
   # Install commands for each entry.
-  mkInstallCommands = name: _:
-    ''
-      install -Dm755 ${name} $out/bin/${name}
-      install -Dm644 ${name}.gresource $out/share/${domain}/${name}.gresource
-    '';
+  mkInstallCommands = name: _: ''
+    install -Dm755 ${name} $out/bin/${name}
+    install -Dm644 ${name}.gresource $out/share/${domain}/${name}.gresource
+  '';
 in
 pkgs.stdenv.mkDerivation {
   inherit
@@ -136,19 +141,24 @@ pkgs.stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    mkdir -p $out/bin $out/share/applications $out/share/systemd/user \
+    mkdir -p $out/bin $out/share/applications \
       $out/share/polkit-1/actions $out/share/glib-2.0/schemas \
       $out/share/shade-shell
 
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList mkInstallCommands entries)}
+
+    install -Dm644 packages/services/src/clipboard/cryptoWorker.py \
+      "$out/libexec/shade-clipboard-crypto.py"
+    makeWrapper "${clipboardPython}/bin/python3" "$out/bin/shade-clipboard-crypto" \
+      --add-flags "$out/libexec/shade-clipboard-crypto.py"
 
     install -Dm644 schema-out/*.gschema.xml \
       -t $out/share/glib-2.0/schemas/
     glib-compile-schemas $out/share/glib-2.0/schemas
 
     substitute data/desktop.in.desktop $out/share/applications/${domain}.desktop \
-      --replace-fail '@name@' '${pname}settings' \
-      --replace-fail '@comment@' 'open shade settings' \
+      --replace-fail '@name@' 'Configurações do Shade' \
+      --replace-fail '@comment@' 'Abrir as configurações do Shade' \
       --replace-fail '@exe@' "$out/bin/${pname} toggle settings"
 
     install -Dm644 data/shade-shell/wp-day.jpg data/shade-shell/wp-night.jpg \
@@ -156,9 +166,6 @@ pkgs.stdenv.mkDerivation {
 
     mkdir -p $out/share/shade-shell/icons
     install -Dm644 assets/icons/*.svg -t $out/share/shade-shell/icons
-
-    substitute data/shade-shell.service.in $out/share/systemd/user/shade-shell.service \
-      --replace-fail '@wrapper_bin@' "$out/bin"
 
     install -Dm755 data/shade-conservation-toggle \
       $out/bin/shade-conservation-toggle

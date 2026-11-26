@@ -4,7 +4,6 @@ import GLib from 'gi://GLib?version=2.0';
 import NM from 'gi://NM?version=1.0';
 import logger from '@shade/core/logger';
 
-
 // ── Icon size constants ──────────────────────────────────────────────
 
 export const AP_ICON_SIZE = 16;
@@ -54,11 +53,16 @@ export function bytesToString(value: unknown): string | null {
     return null;
 }
 
+/** Display text of an access point that does not broadcast its SSID. */
+export const HIDDEN_NETWORK_LABEL = 'Rede oculta';
+/** Security caption of a network without encryption. */
+export const OPEN_NETWORK_LABEL = 'Aberta';
+
 export function ssidOf(ap: NM.AccessPoint): string {
     try {
-        return bytesToString(ap.ssid) ?? 'Hidden Network';
+        return bytesToString(ap.ssid) || HIDDEN_NETWORK_LABEL;
     } catch {
-        return 'Hidden Network';
+        return HIDDEN_NETWORK_LABEL;
     }
 }
 
@@ -123,7 +127,7 @@ export function signalIconName(strength: number): string {
 
 /**
  * Derive a human-readable security label from AP flags.
- * Returns e.g. "WPA3", "WPA2", "WPA1", "WEP", "Enhanced Open", "Open".
+ * Returns e.g. "WPA3", "WPA2", "WPA1", "WEP", "Aberta (OWE)", "Aberta".
  */
 export function securityLabel(ap: NM.AccessPoint): string {
     try {
@@ -143,7 +147,7 @@ export function securityLabel(ap: NM.AccessPoint): string {
 
         // Enhanced Open: OWE (Opportunistic Wireless Encryption)
         if (rsn & NM_AP_SEC_KEY_MGMT_OWE) {
-            return 'Enhanced Open';
+            return 'Aberta (OWE)';
         }
 
         // WPA2: RSN with PSK or 802.1X
@@ -166,9 +170,9 @@ export function securityLabel(ap: NM.AccessPoint): string {
         }
 
         // Open network
-        return 'Open';
+        return OPEN_NETWORK_LABEL;
     } catch {
-        return 'Unknown';
+        return 'Desconhecida';
     }
 }
 
@@ -253,7 +257,7 @@ export function createNMConnection(
 
 /** Convert NM key management string to a human-readable security label. */
 export function securityLabelFromKeyMgmt(keyMgmt: string | null): string {
-    if (!keyMgmt) return 'Open';
+    if (!keyMgmt) return OPEN_NETWORK_LABEL;
     switch (keyMgmt) {
         case 'sae':
             return 'WPA3';
@@ -261,11 +265,11 @@ export function securityLabelFromKeyMgmt(keyMgmt: string | null): string {
             return 'WPA2';
         case 'wpa-eap':
         case 'ieee8021x':
-            return 'Enterprise';
+            return 'Corporativa';
         case 'none':
             return 'WEP';
         default:
-            return keyMgmt || 'Secure';
+            return keyMgmt || 'Protegida';
     }
 }
 

@@ -9,6 +9,7 @@ import Brightness from '@shade/services/display/brightness';
 import {bind, computed, With} from 'gnim';
 import {AudioEndpointControl} from '../common/audioControl';
 import {Slider} from '../common/slider';
+import {SURFACE_SECTION_SPACING} from '../common/surface';
 
 interface EndpointConfig {
     devicesProp: 'speakers' | 'microphones';
@@ -25,7 +26,7 @@ function createEndpointConfig(config: EndpointConfig) {
         const controller = AudioController.get_default();
         const devices = bind(controller, config.devicesProp);
         return (
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={16}>
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={SURFACE_SECTION_SPACING}>
                 <Adw.StatusPage
                     visible={devices.as((items) => items.length === 0)}
                     title={config.emptyTitle}

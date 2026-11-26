@@ -6,6 +6,7 @@ import {getApp} from '@shade/services/appHandle';
 import {getDesktopStageBounds} from '@shade/services/capture/geometry';
 import Screenshot from '@shade/services/capture/screenshot';
 import {getHyprland, getHyprlandClientSnapshot} from '@shade/services/hyprland';
+import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
 import {type Accessor, bind, computed, createState} from 'gnim';
@@ -408,6 +409,7 @@ export default () => {
     const hyprland = getHyprland();
     if (!hyprland) return null;
     const isVisible = bind(ss, 'overlayOpen');
+    const locked = bind(ShellState.get_default(), 'screenlocked');
 
     const [dragStart, setDragStart] = createState<Point | null>(null);
     const [dragEnd, setDragEnd] = createState<Point | null>(null);
@@ -465,7 +467,7 @@ export default () => {
         const rectangle = `${geometry.x},${geometry.y} · ${geometry.width}×${geometry.height}`;
         if (selectedTarget === 'window') {
             const window = selectedWindow();
-            return `${window?.title || 'Janela sem título'} (${window?.address}) · ${rectangle}`;
+            return `${window?.title || 'Janela sem título'} · ${rectangle}`;
         }
         if (selectedTarget === 'monitor') {
             const name = monitor?.name?.replace(/^Monitor\s+/, '') ?? '';
@@ -500,7 +502,7 @@ export default () => {
             // a trapped desktop (every key swallowed, nothing interactive).
             keymode={Astal.Keymode.ON_DEMAND}
             exclusivity={Astal.Exclusivity.IGNORE}
-            visible={isVisible}
+            visible={computed(() => isVisible() && !locked())}
             onNotifyVisible={(self) => {
                 if (self.visible) {
                     updateCanvasOrigin(state);

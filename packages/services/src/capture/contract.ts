@@ -7,7 +7,7 @@
 export interface CaptureEvents {
     'capture:screenshot': boolean; // fullScreen
     'capture:screenshot:area': void;
-    'capture:screenshot:overlay': void;
+    'capture:screenshot:overlay': void; // emitted only after the frozen selection overlay opens
     'capture:record': void;
     'capture:record:area': void;
     'capture:record:window': void;

@@ -36,7 +36,7 @@ export default ({vertical}: {vertical: Accessor<boolean>}) => {
         >
             <Gtk.Image
                 iconName="video-display-symbolic"
-                css="color: @error_color;"
+                cssClasses={['error']}
                 accessibleRole={Gtk.AccessibleRole.IMG}
             />
         </Gtk.Box>

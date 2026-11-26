@@ -7,8 +7,9 @@
 #   deps.svg/.png   - rendered graph (only if `dot` is on PATH)
 #
 # Gate: fails (exit 1) if circular deps exceed the baseline in
-# deps/cycle-baseline. Lower the baseline as cycles are removed in
-# Phases 2-3; adding a new cycle always fails.
+# docs/deps/cycle-baseline (read from there whatever $OUT_DIR is), if madge
+# fails, or if the baseline is missing or not a number. Lower the baseline as
+# cycles are removed in Phases 2-3; adding a new cycle always fails.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -18,13 +19,14 @@ SRC="$ROOT/src"
 OUT_DIR="${OUT_DIR:-$ROOT/docs/deps}"
 mkdir -p "$OUT_DIR"
 
+MADGE=(npx --yes madge@8.0.0)
 SHELL_ENTRY="apps/shell/src/main.ts"
 COMPOSITOR_ENTRY="apps/shell/src/compositor.ts"
 GREETER_ENTRY="apps/greeter/src/main.ts"
 SHAREPICKER_ENTRY="apps/share-picker/src/main.ts"
 
 echo "==> Finding files & building graph (madge)"
-npx madge --json \
+"${MADGE[@]}" --json \
     --ts-config tsconfig.json \
     "$SHELL_ENTRY" "$COMPOSITOR_ENTRY" "$GREETER_ENTRY" "$SHAREPICKER_ENTRY" \
     > "$OUT_DIR/deps.json"
@@ -101,24 +103,46 @@ else
 fi
 
 echo "==> Circular-dependency gate"
-BASELINE_FILE="$OUT_DIR/cycle-baseline"
+BASELINE_FILE="$ROOT/docs/deps/cycle-baseline"
 if [ ! -f "$BASELINE_FILE" ]; then
-    echo "0" > "$BASELINE_FILE"
-    echo "    (created baseline at 0 — set it to the current cycle count)"
+    echo "✖ FAIL: missing cycle baseline $BASELINE_FILE" >&2
+    exit 1
 fi
-BASELINE=$(cat "$BASELINE_FILE")
+BASELINE="$(tr -d '[:space:]' < "$BASELINE_FILE")"
+if [[ ! $BASELINE =~ ^[0-9]+$ ]]; then
+    echo "✖ FAIL: $BASELINE_FILE must hold a non-negative integer, got '$BASELINE'" >&2
+    exit 1
+fi
 
-# Collect cycle lines, strip the trailing summary.
-CYCLE_REPORT="$(npx madge --circular \
+# madge exits 1 both for "cycles found" and for a crash, so its status alone
+# cannot tell them apart: the cycle list is read as JSON, and anything that is
+# not a JSON array of cycles fails the gate. stderr stays on the terminal.
+madge_status=0
+CYCLE_JSON="$("${MADGE[@]}" --circular --json --no-spinner \
     --ts-config tsconfig.json \
-    "$SHELL_ENTRY" "$COMPOSITOR_ENTRY" "$GREETER_ENTRY" "$SHAREPICKER_ENTRY" 2>&1 || true)"
-CYCLE_COUNT="$(printf '%s\n' "$CYCLE_REPORT" | grep -cE '^\s*[0-9]+\)' || true)"
+    "$SHELL_ENTRY" "$COMPOSITOR_ENTRY" "$GREETER_ENTRY" "$SHAREPICKER_ENTRY")" || madge_status=$?
+CYCLE_COUNT="$(printf '%s' "$CYCLE_JSON" | node -e '
+const cycles = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+if (!Array.isArray(cycles) || !cycles.every(Array.isArray)) process.exit(1);
+console.log(cycles.length);
+')" || {
+    echo "✖ FAIL: madge produced no cycle report (exit $madge_status)" >&2
+    printf '%s\n' "$CYCLE_JSON" >&2
+    exit 1
+}
+if [ "$madge_status" -ne 0 ] && [ "$CYCLE_COUNT" -eq 0 ]; then
+    echo "✖ FAIL: madge exited $madge_status without reporting a cycle" >&2
+    exit 1
+fi
 
 echo "    cycles found: $CYCLE_COUNT  (baseline: $BASELINE)"
 
 if [ "$CYCLE_COUNT" -gt "$BASELINE" ]; then
     echo "✖ FAIL: $CYCLE_COUNT cycles exceed baseline $BASELINE"
-    printf '%s\n' "$CYCLE_REPORT"
+    printf '%s' "$CYCLE_JSON" | node -e '
+JSON.parse(require("node:fs").readFileSync(0, "utf8"))
+    .forEach((cycle, index) => console.log(`  ${index + 1}) ${cycle.join(" > ")}`));
+'
     exit 1
 fi
 

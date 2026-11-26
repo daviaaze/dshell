@@ -108,7 +108,7 @@ export default () => {
                     marginEnd={12}
                 >
                     <Gtk.Label label="No applications pinned" />
-                    <Gtk.Button label="Configure dock" onClicked={() => openSettings('bar')} />
+                    <Gtk.Button label="Configurar dock" onClicked={() => openSettings('bar')} />
                 </Gtk.Box>
             </Gtk.Box>
         </Astal.Window>

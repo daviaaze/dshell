@@ -22,9 +22,18 @@ let
   hyprctl = lib.getExe' config.programs.hyprland.package "hyprctl";
   zoom = pkgs.writeShellScript "shade-zoom" ''
     step="$1"
+    case "$step" in
+      "" | *[!0-9.-]*)
+        echo "shade-zoom: step must be a number, got '$step'" >&2
+        exit 2
+        ;;
+    esac
     exec ${hyprctl} eval "local c = hl.get_config('cursor:zoom_factor'); local s = $step; hl.config({ cursor = { zoom_factor = s == 0 and 1 or math.min(4, math.max(1, c + s)) } })"
   '';
   playerctl = "${pkgs.playerctl}/bin/playerctl";
+  # Hyprland runs bind commands with the session PATH, so wpctl is not found
+  # unless the host happens to install wireplumber.
+  wpctl = lib.getExe' pkgs.wireplumber "wpctl";
 
   categories = {
     apps = "Abrir aplicativos";
@@ -706,13 +715,13 @@ let
       id = "audio-mute";
       key = "XF86AudioMute";
       title = "Silenciar ou reativar o áudio";
-      command = "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+      command = "${wpctl} set-mute @DEFAULT_AUDIO_SINK@ toggle";
     })
     (lockedBind {
       id = "microphone-mute";
       key = "XF86AudioMicMute";
       title = "Silenciar ou reativar o microfone";
-      command = "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle";
+      command = "${wpctl} set-mute @DEFAULT_AUDIO_SOURCE@ toggle";
     })
     (lockedBind {
       id = "brightness-up";
@@ -730,14 +739,14 @@ let
       id = "volume-up";
       key = "XF86AudioRaiseVolume";
       title = "Aumentar volume";
-      command = "wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+";
+      command = "${wpctl} set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%+";
       flags = flagsLockedRepeating;
     })
     (lockedBind {
       id = "volume-down";
       key = "XF86AudioLowerVolume";
       title = "Diminuir volume";
-      command = "wpctl set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-";
+      command = "${wpctl} set-volume -l '1.0' @DEFAULT_AUDIO_SINK@ 5%-";
       flags = flagsLockedRepeating;
     })
   ];
@@ -851,7 +860,7 @@ in
     '';
   };
 
-  config = lib.mkIf cfg.hyprland.enable {
+  config = lib.mkIf (config.programs.shade.enable && cfg.hyprland.enable) {
     assertions = lib.optionals cfg.hyprland.binds.enable [
       {
         assertion = chordDuplicates == [ ];

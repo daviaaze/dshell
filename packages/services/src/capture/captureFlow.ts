@@ -5,7 +5,14 @@ import {bus} from '../bus';
 import {getScreenCaptureSettings} from '../settings/screenCapture';
 import {parseGrimGeometry, toGrimGeometry} from './geometry';
 import type {BoundaryGeometry, ScreenshotHandle} from './types';
-import {finalizeImage, freshScreenshotFilename, GRIM_BIN, notify, publishCapture} from './utils';
+import {
+    captureBlocked,
+    finalizeImage,
+    freshScreenshotFilename,
+    GRIM_BIN,
+    notify,
+    publishCapture,
+} from './utils';
 
 /**
  * Capture flows — fullscreen/area screenshot entry points and the overlay
@@ -18,15 +25,17 @@ import {finalizeImage, freshScreenshotFilename, GRIM_BIN, notify, publishCapture
  */
 
 /** Fullscreen live screenshot (grim, no stage). */
-export function screenshotFullscreen() {
-    const filename = freshScreenshotFilename();
-    Process.execAsync(`${GRIM_BIN} "${filename}"`)
-        .then(() => finalizeImage(filename, false))
-        .catch((e) => {
-            const message = e instanceof Error ? e.message : String(e);
-            logger.error('screenshot', 'capture failed:', e);
-            publishCapture({state: 'error', message});
-        });
+export async function screenshotFullscreen() {
+    if (captureBlocked()) return;
+    try {
+        const filename = freshScreenshotFilename();
+        await Process.execAsyncv([GRIM_BIN, filename]);
+        await finalizeImage(filename, false);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error('screenshot', 'capture failed:', error);
+        publishCapture({state: 'error', message});
+    }
 }
 
 /**
@@ -39,6 +48,7 @@ export function screenshotFullscreen() {
  * the same space grim -g expects — no monitor math needed.
  */
 export async function slurpGeometry(): Promise<BoundaryGeometry | null> {
+    if (captureBlocked()) return null;
     const slurp = Process.findBinary('slurp');
     if (!slurp) {
         logger.error('screenshot', 'slurp not found on PATH');
@@ -47,6 +57,7 @@ export async function slurpGeometry(): Promise<BoundaryGeometry | null> {
     }
     try {
         const out = await Process.execAsyncv([slurp, '-f', '%x,%y %wx%h']);
+        if (captureBlocked()) return null;
         const geometry = parseGrimGeometry(out);
         if (!geometry) {
             logger.error('screenshot', `slurp returned unparsable geometry: ${out}`);
@@ -67,6 +78,7 @@ export function useSlurpForSelection(): boolean {
 
 /** Slurp-based area screenshot: select via slurp, then live grim capture. */
 export async function slurpAreaScreenshot() {
+    if (captureBlocked()) return;
     try {
         const geometry = await slurpGeometry();
         if (!geometry) {
@@ -81,6 +93,7 @@ export async function slurpAreaScreenshot() {
 
 /** Slurp-based area recording: select via slurp, then record that geometry. */
 export async function slurpAreaRecording(ss: ScreenshotHandle) {
+    if (captureBlocked()) return;
     try {
         const geometry = await slurpGeometry();
         if (!geometry) {
@@ -96,9 +109,10 @@ export async function slurpAreaRecording(ss: ScreenshotHandle) {
 
 /** Live grim capture of a global-compositor geometry (no stage frame). */
 export async function captureGeometryLive(geometry: BoundaryGeometry) {
-    const filename = freshScreenshotFilename();
+    if (captureBlocked()) return;
     try {
-        await Process.execAsync(`${GRIM_BIN} -g "${toGrimGeometry(geometry)}" "${filename}"`);
+        const filename = freshScreenshotFilename();
+        await Process.execAsyncv([GRIM_BIN, '-g', toGrimGeometry(geometry), filename]);
         await finalizeImage(filename, true);
     } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
@@ -112,6 +126,7 @@ export async function captureGeometryLive(geometry: BoundaryGeometry) {
  * stage for screenshots, or close the overlay and start recording.
  */
 export function confirmArea(ss: ScreenshotHandle, geometry: BoundaryGeometry) {
+    if (captureBlocked()) return;
     if (ss.selectedMode === 'screenshot') {
         if (ss.stageHasFrame) {
             // captureCrop localizes to stage coords and emits the event
@@ -136,7 +151,9 @@ export function startRecordingAfterOverlayClose(
     geometry: BoundaryGeometry | null
 ) {
     ss.overlayOpen = false;
+    if (captureBlocked()) return;
     GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+        if (captureBlocked()) return GLib.SOURCE_REMOVE;
         if (geometry) {
             ss.startRecording({geometry});
             bus.emit('capture:record:area');

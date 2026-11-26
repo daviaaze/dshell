@@ -32,7 +32,9 @@ in
         type = lib.types.bool;
         default = true;
         description = ''
-          Enable layer rules to blur the widget's background in Hyprland.
+          Blur what shows through Shade's translucent layer surfaces (bar,
+          notification toasts, window switcher) in Hyprland. Opaque panels
+          are not matched: they have nothing to blur.
         '';
       };
       animations.enable = lib.mkOption {
@@ -40,33 +42,38 @@ in
         default = true;
         description = ''
           Enable per-surface Hyprland layer animations for Shade popups
-          (quick settings, launcher, notifications, OSD).
+          (quick settings, notification center, launcher, notifications,
+          OSD, dock).
         '';
       };
     };
 
     desktop = {
-      enable = lib.mkEnableOption "Shade desktop environment defaults (Hyprland config, keybinds, default apps)";
+      enable = lib.mkEnableOption "Shade desktop environment defaults (kept for existing configurations; the Hyprland stack is controlled by `programs.shade.desktop.hyprland.enable`)";
       defaultBrowser = lib.mkOption {
         type = lib.types.str;
         default = "firefox";
-        description = "Desktop file name of the default web browser";
+        description = "Desktop file name of the default web browser (SUPER+B). Not installed by this module.";
       };
       defaultFileManager = lib.mkOption {
         type = lib.types.str;
         default = "org.gnome.Nautilus";
-        description = "Desktop file name of the default file manager";
+        description = "Desktop file name of the default file manager (SUPER+E). Not installed by this module.";
       };
       defaultTerminal = lib.mkOption {
         type = lib.types.str;
         default = "com.mitchellh.ghostty";
-        description = "Desktop file name of the default terminal emulator";
+        description = "Desktop file name of the default terminal emulator (SUPER+Return and the scratchpad)";
       };
       terminalPackage = lib.mkOption {
         type = lib.types.package;
         default = pkgs.ghostty;
         defaultText = lib.literalExpression "pkgs.ghostty";
-        description = "Nix package providing the terminal emulator. Must match defaultTerminal.";
+        description = ''
+          Nix package providing the terminal emulator. Installed system-wide
+          when the desktop defaults are enabled; it must ship the desktop
+          entry named by `defaultTerminal`.
+        '';
       };
     };
 
@@ -95,107 +102,119 @@ in
 
   config = lib.mkMerge [
     {
-      _module.args.xdpHyprland = inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
+      _module.args.xdpHyprland =
+        inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
       _module.args.shadeHyprland = inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+
+      # Outside the `cfg.enable` gate below, so a greeter that would silently
+      # not be configured is reported.
+      assertions = [
+        {
+          assertion = cfg.greeter.enable -> cfg.enable;
+          message = "programs.shade.greeter.enable requires programs.shade.enable = true; the greeter is not configured otherwise.";
+        }
+      ];
     }
     (lib.mkIf cfg.enable (
-    lib.mkMerge [
-      (lib.mkIf cfg.shell.enable {
-        services.geoclue2.enable = lib.mkDefault true;
+      lib.mkMerge [
+        (lib.mkIf cfg.shell.enable {
+          services.geoclue2.enable = lib.mkDefault true;
 
-        environment.systemPackages = [
-          cfg.package
-          inputs.astal.packages.${pkgs.stdenv.hostPlatform.system}.brightness
-          pkgs.adwaita-icon-theme
-          pkgs.brightnessctl
-          pkgs.hyprshot
-          pkgs.playerctl
-          pkgs.pwvucontrol
-        ];
-        security.pam.services.astal-auth = {
-          # The lockscreen runs its own FingerprintAuth (fprintd D-Bus claim) in
-          # parallel with PAM. Leaving fprintAuth enabled injects pam_fprintd.so
-          # into this stack, which blocks the password prompt (~30s scan wait,
-          # longer than the shell's 10s PAM timeout) and fights the shell for the
-          # exclusive fprintd device claim — breaking both unlock paths.
-          fprintAuth = false;
-        };
-
-        # Polkit is required for the battery-conservation pkexec action
-        # (shipped in the package's share/polkit-1/actions).
-        security.polkit.enable = true;
-        # Start shade-shell as a systemd user service with auto-restart on failure
-        systemd.user.services.shade-shell = {
-          description = "Shade — Hyprland Adwaita Desktop Environment";
-          after = [ "graphical-session.target" ];
-          partOf = [ "graphical-session.target" ];
-          wantedBy = [ "graphical-session.target" ];
-          serviceConfig = {
-            ExecStart = "${pkgs.writeShellScript "shade-shell-launch" ''
-              if [ -f /etc/set-environment ]; then
-                . /etc/set-environment
-              fi
-              exec ${cfg.package}/bin/shade-shell
-            ''}";
-            Restart = "on-failure";
-            RestartSec = "3";
-            Type = "exec";
+          environment.systemPackages = [
+            cfg.package
+            inputs.astal.packages.${pkgs.stdenv.hostPlatform.system}.brightness
+            pkgs.adwaita-icon-theme
+            pkgs.brightnessctl
+            pkgs.playerctl
+            pkgs.pwvucontrol
+          ];
+          security.pam.services.astal-auth = {
+            # The lockscreen runs its own FingerprintAuth (fprintd D-Bus claim) in
+            # parallel with PAM. Leaving fprintAuth enabled injects pam_fprintd.so
+            # into this stack, which blocks the password prompt (~30s scan wait,
+            # longer than the shell's 10s PAM timeout) and fights the shell for the
+            # exclusive fprintd device claim — breaking both unlock paths.
+            fprintAuth = false;
           };
-        };
-      })
-      (lib.mkIf (cfg.shell.enable && cfg.shell.blur.enable) {
-        # Wallpaper and the full-screen capture overlays are excluded: blurring them
-        # would smear the desktop/screenshot target.
-        programs.hyprland.settings.layerrule = [
-          "blur on, match:namespace ^(shade-(bar|dock|quicksettings|launcher|notifications|osd|switcher|recording))$"
-          "ignore_alpha 0, match:namespace ^(shade-(bar|dock|quicksettings|launcher|notifications|osd|switcher|recording))$"
-        ];
-      })
-      (lib.mkIf (cfg.shell.enable && cfg.shell.animations.enable) {
-        # Per-surface open/close animations, matched on the shade-* namespaces.
-        programs.hyprland.settings.layerrule = [
-          "animation slide, match:namespace ^(shade-quicksettings)$"
-          "animation popin 90%, match:namespace ^(shade-launcher)$"
-          "animation slide, match:namespace ^(shade-notifications)$"
-          "animation fade, match:namespace ^(shade-osd)$"
-          # Selection overlays must appear instantly so they are not captured mid-fade.
-          "no_anim on, match:namespace ^(shade-(screenshot|recording-boundary))$"
-        ];
-      })
-      (lib.mkIf cfg.greeter.enable {
-        security.pam.services.greetd.enableGnomeKeyring = true;
-        services.gnome.gnome-keyring.enable = true;
-        # AccountsService daemon provides user metadata (avatars, real names)
-        # for the greeter user picker. The module wires up D-Bus activation,
-        # the systemd unit, and polkit rules.
-        services.accounts-daemon.enable = true;
-        # Persist last greeter username for pre-selection on next boot.
-        systemd.tmpfiles.rules = [
-          "d /var/cache/shade-greeter 0755 greeter greeter -"
-        ];
-        # Keep cancellation safe while PAM is waiting on a conversation message.
-        # A user-supplied services.greetd.package still takes precedence.
-        services.greetd.package = lib.mkDefault (
-          pkgs.greetd.overrideAttrs (old: {
-            patches = (old.patches or [ ]) ++ [ ./patches/greetd-session-cancel.patch ];
-          })
-        );
-        services.greetd = {
-          enable = true;
-          settings.default_session =
-            let
-              greeterSession = pkgs.writeShellScript "shade-greeter-session" ''
-                export SHADE_SESSION_COMMAND=${lib.escapeShellArg cfg.greeter.sessionCommand}
-                exec ${pkgs.cage}/bin/cage -s -- ${cfg.greeter.package}/bin/shade-shell-greet
-              '';
-            in
-            {
-              command = "${greeterSession}";
-              user = "greeter";
+
+          # Polkit is required for the battery-conservation pkexec action
+          # (shipped in the package's share/polkit-1/actions).
+          security.polkit.enable = true;
+          # Start shade-shell as a systemd user service with auto-restart on failure
+          systemd.user.services.shade-shell = {
+            description = "Shade — Hyprland Adwaita Desktop Environment";
+            after = [ "graphical-session.target" ];
+            partOf = [ "graphical-session.target" ];
+            wantedBy = [ "graphical-session.target" ];
+            serviceConfig = {
+              ExecStart = "${pkgs.writeShellScript "shade-shell-launch" ''
+                if [ -f /etc/set-environment ]; then
+                  . /etc/set-environment
+                fi
+                exec ${cfg.package}/bin/shade-shell
+              ''}";
+              Restart = "on-failure";
+              RestartSec = "3";
+              Type = "exec";
             };
-        };
-      })
-    ]
+          };
+        })
+        (lib.mkIf (cfg.shell.enable && cfg.shell.blur.enable) {
+          # Only the surfaces whose layer window stays transparent around its
+          # panel. The opaque panels (quick settings, notification center, launcher,
+          # OSD, dock, recording bar) have nothing to blur. Wallpaper and the
+          # full-screen capture overlays are excluded too: blurring them would
+          # smear the desktop/screenshot target.
+          programs.hyprland.settings.layerrule = [
+            "blur on, match:namespace ^(shade-(bar|notifications|switcher))$"
+            "ignore_alpha 0, match:namespace ^(shade-(bar|notifications|switcher))$"
+          ];
+        })
+        (lib.mkIf (cfg.shell.enable && cfg.shell.animations.enable) {
+          # Per-surface open/close animations, matched on the shade-* namespaces.
+          programs.hyprland.settings.layerrule = [
+            "animation slide, match:namespace ^(shade-(quicksettings|notification-center|dock))$"
+            "animation popin 90%, match:namespace ^(shade-launcher)$"
+            "animation slide, match:namespace ^(shade-notifications)$"
+            "animation fade, match:namespace ^(shade-osd)$"
+            # Selection overlays must appear instantly so they are not captured mid-fade.
+            "no_anim on, match:namespace ^(shade-(screenshot|recording-boundary))$"
+          ];
+        })
+        (lib.mkIf cfg.greeter.enable {
+          security.pam.services.greetd.enableGnomeKeyring = true;
+          services.gnome.gnome-keyring.enable = true;
+          # AccountsService daemon provides user metadata (avatars, real names)
+          # for the greeter user picker. The module wires up D-Bus activation,
+          # the systemd unit, and polkit rules.
+          services.accounts-daemon.enable = true;
+          # Persist last greeter username for pre-selection on next boot.
+          systemd.tmpfiles.rules = [
+            "d /var/cache/shade-greeter 0755 greeter greeter -"
+          ];
+          # Keep cancellation safe while PAM is waiting on a conversation message.
+          # A user-supplied services.greetd.package still takes precedence.
+          services.greetd.package = lib.mkDefault (
+            pkgs.greetd.overrideAttrs (old: {
+              patches = (old.patches or [ ]) ++ [ ./patches/greetd-session-cancel.patch ];
+            })
+          );
+          services.greetd = {
+            enable = true;
+            settings.default_session =
+              let
+                greeterSession = pkgs.writeShellScript "shade-greeter-session" ''
+                  export SHADE_SESSION_COMMAND=${lib.escapeShellArg cfg.greeter.sessionCommand}
+                  exec ${pkgs.cage}/bin/cage -s -- ${cfg.greeter.package}/bin/shade-shell-greet
+                '';
+              in
+              {
+                command = "${greeterSession}";
+                user = "greeter";
+              };
+          };
+        })
+      ]
     ))
   ];
 }

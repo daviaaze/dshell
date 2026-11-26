@@ -15,9 +15,10 @@ import {fuzzyQuery} from '@shade/services/state/apps';
 import ShellState from '@shade/services/state/shellState';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import {type Accessor, bind, computed, createState, For} from 'gnim';
+import {type Accessor, bind, computed, createState, For, onCleanup} from 'gnim';
 import {BAR_EDGE_RESERVE} from '../bar/geometry';
-import AppButton from './appButton';
+import {OPAQUE_SURFACE_CSS, SURFACE_PADDING} from '../common/surface';
+import AppButton, {launchFromLauncher} from './appButton';
 import ClipboardButton from './clipboardButton';
 
 const {TOP, BOTTOM, LEFT, RIGHT} = Astal.WindowAnchor;
@@ -45,10 +46,12 @@ interface EntryHolder {
 /** Search entry: updates results on type, launches top hit on activate. */
 function SearchEntry({
     mode,
+    list,
     holder,
     updateSearch,
 }: {
     mode: Accessor<LauncherMode>;
+    list: Accessor<ListItem[]>;
     holder: EntryHolder;
     updateSearch: (text: string) => void;
 }) {
@@ -58,32 +61,22 @@ function SearchEntry({
             placeholderText={mode.as((m) =>
                 m === 'clipboard'
                     ? 'Pesquisar no histórico da área de transferência...'
-                    : 'Pesquisar aplicativos'
+                    : 'Pesquisar aplicativos · digite > para a área de transferência'
             )}
             ref={(self) => {
                 holder.current = self;
             }}
             onNotifyText={(self) => updateSearch(self.text)}
             onActivate={(self) => {
-                WindowManager.get_default().applauncher!.visible = false;
-                if (mode() === 'apps') {
-                    const results = fuzzyQuery(self.text);
-                    if (results.length > 0) results?.[0]?.launch();
+                // Launch the highlighted row: the first ranked result of a non-empty search.
+                const first = mode() === 'apps' && self.text.trim() !== '' ? list()[0] : undefined;
+                if (first) {
+                    launchFromLauncher(first as AstalApps.Application);
+                } else {
+                    WindowManager.get_default().applauncher!.visible = false;
                 }
             }}
-        >
-            <Gtk.EventControllerKey
-                ref={(self) => {
-                    self.connect('key-pressed', (_, keyval) => {
-                        if (keyval === Gdk.KEY_Escape) {
-                            WindowManager.get_default().applauncher!.visible = false;
-                            return true;
-                        }
-                        return false;
-                    });
-                }}
-            />
-        </Gtk.Entry>
+        />
     );
 }
 
@@ -128,10 +121,12 @@ function HintLabel({
 function ResultsList({
     mode,
     list,
+    query,
     maxContentWidth,
 }: {
     mode: Accessor<LauncherMode>;
     list: Accessor<ListItem[]>;
+    query: Accessor<string>;
     maxContentWidth: Accessor<number>;
 }) {
     return (
@@ -143,11 +138,14 @@ function ResultsList({
         >
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <For each={list}>
-                    {(item: ListItem) =>
+                    {(item: ListItem, index) =>
                         mode() === 'clipboard' ? (
                             <ClipboardButton item={item as ClipboardEntry} />
                         ) : (
-                            <AppButton application={item as AstalApps.Application} />
+                            <AppButton
+                                application={item as AstalApps.Application}
+                                highlighted={computed(() => index() === 0 && query().trim() !== '')}
+                            />
                         )
                     }
                 </For>
@@ -182,12 +180,14 @@ export default () => {
     );
     const shellState = ShellState.get_default();
     const [list, setList] = createState<ListItem[]>([]);
+    const [query, setQuery] = createState('');
     const [mode, setMode] = createState<LauncherMode>('apps');
     const [frecencyHasData, setFrecencyHasData] = createState(false);
     const holder: EntryHolder = {current: null};
 
     const updateSearch = (text: string) => {
         const result = launcherSearch(text);
+        setQuery(text);
         setMode(result.mode);
         setList(result.items);
         setFrecencyHasData(result.frecencyHasData);
@@ -199,6 +199,17 @@ export default () => {
                 WindowManager.get_default().setApplauncher(self);
                 self.connect('realize', () => logger.log('applauncher realized'));
                 self.connect('map', () => logger.log('applauncher mapped'));
+                // Esc closes the launcher even after focus moved off the entry onto a result.
+                const keys = new Gtk.EventControllerKey({
+                    propagationPhase: Gtk.PropagationPhase.CAPTURE,
+                });
+                keys.connect('key-pressed', (_controller, keyval) => {
+                    if (keyval !== Gdk.KEY_Escape) return false;
+                    self.visible = false;
+                    return true;
+                });
+                self.add_controller(keys);
+                onCleanup(() => self.remove_controller(keys));
             }}
             valign={Gtk.Align.CENTER}
             name={'applauncher'}
@@ -231,28 +242,33 @@ export default () => {
                     bus.emit('shell:launcher:close');
                 }
             }}
-            cssClasses={[]}
-            css={'background-color: transparent;'}
+            cssClasses={['background']}
+            css={OPAQUE_SURFACE_CSS}
             keymode={Astal.Keymode.ON_DEMAND}
             monitor={focusedMonitor.as((m) => monitorIndexFromHyprland(m))}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}
         >
             <Gtk.Box
-                marginTop={12}
-                marginBottom={12}
-                marginStart={12}
-                marginEnd={12}
+                marginTop={SURFACE_PADDING}
+                marginBottom={SURFACE_PADDING}
+                marginStart={SURFACE_PADDING}
+                marginEnd={SURFACE_PADDING}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={8}
             >
-                <SearchEntry mode={mode} holder={holder} updateSearch={updateSearch} />
+                <SearchEntry mode={mode} list={list} holder={holder} updateSearch={updateSearch} />
                 <HintLabel
                     mode={mode}
                     list={list}
                     frecencyHasData={frecencyHasData}
                     holder={holder}
                 />
-                <ResultsList mode={mode} list={list} maxContentWidth={launcherWidth} />
+                <ResultsList
+                    mode={mode}
+                    list={list}
+                    query={query}
+                    maxContentWidth={launcherWidth}
+                />
             </Gtk.Box>
         </Astal.Window>
     );

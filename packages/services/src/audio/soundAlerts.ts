@@ -246,8 +246,12 @@ export default class SoundAlertService extends Object {
         if (category === 'battery' && !this.#batteryEnabled) return;
         if (category === 'system' && !this.#systemEnabled) return;
 
-        // Check DND
-        if (this.#dnd.dnd) return;
+        // Check DND. The registry lookup throws when the service is missing; play() must not.
+        try {
+            if (this.#dnd.dnd) return;
+        } catch (e) {
+            logger.debug('sound', 'DND state unavailable, playing anyway:', e);
+        }
 
         try {
             Process.execAsync(`canberra-gtk-play --id=${soundId}`).catch((e) => {

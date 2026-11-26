@@ -84,8 +84,12 @@ describe('Autostart settings', () => {
             expect(result.entries.length).toBe(2);
             expect(result.issues.length).toBe(3);
             expect(result.entries.find((entry) => entry.filePath === visible)?.enabled).toBe(true);
-            expect(result.entries.find((entry) => entry.filePath.endsWith('hidden.desktop'))?.enabled).toBe(false);
-            expect(result.entries.find((entry) => entry.filePath.endsWith('hidden.desktop'))?.name).toBe('hidden');
+            expect(
+                result.entries.find((entry) => entry.filePath.endsWith('hidden.desktop'))?.enabled
+            ).toBe(false);
+            expect(
+                result.entries.find((entry) => entry.filePath.endsWith('hidden.desktop'))?.name
+            ).toBe('hidden');
             expect(result.issues.every((issue) => issue.kind === 'invalid')).toBe(true);
         } finally {
             removeTempDirectory(directory);
@@ -116,9 +120,11 @@ describe('Autostart settings', () => {
             expect(contents.includes('Name[fr]=Éditeur')).toBe(true);
             expect(contents.includes('Exec=editor')).toBe(true);
             expect(contents.includes('X-Keep=retained')).toBe(true);
+            const [entrySection = '', otherSection = ''] = contents.split('[Other]');
             expect(contents.includes('[Other]')).toBe(true);
-            expect(contents.includes('Hidden=true')).toBe(true);
-            expect(contents.includes('X-Other=untouched')).toBe(true);
+            expect(entrySection.includes('Hidden=true')).toBe(true);
+            expect(otherSection.includes('Hidden=true')).toBe(true);
+            expect(otherSection.includes('X-Other=untouched')).toBe(true);
 
             const enabled = setAutostartEnabled({...initial, enabled: false}, true);
             expect(enabled).toEqual({ok: true, enabled: true});
@@ -147,4 +153,4 @@ describe('Autostart settings', () => {
     });
 });
 
-run(import.meta.url);
+await run(import.meta.url);

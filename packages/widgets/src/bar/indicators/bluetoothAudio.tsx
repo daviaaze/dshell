@@ -34,7 +34,8 @@ interface DeviceInfo {
     battery: number | null;
 }
 
-type BluetoothService = ReturnType<typeof Bluetooth.get_default>;
+type BluetoothService = Bluetooth.Bluetooth;
+type BatterySignals = Map<string, {device: Bluetooth.Device; id: number}>;
 
 function deviceIcon(icon: string): string {
     return ICON_MAP[icon] || 'bluetooth-symbolic';
@@ -72,7 +73,7 @@ function updateIcons(iconBox: Gtk.Box | null, devices: DeviceInfo[]) {
 /** Recompute connected-device info and sync battery signal handlers. */
 function refreshDevices(
     bluetooth: BluetoothService,
-    batterySignals: Map<string, number>,
+    batterySignals: BatterySignals,
     setDeviceInfo: (v: DeviceInfo[]) => void,
     update: (devices: DeviceInfo[]) => void
 ) {
@@ -85,11 +86,11 @@ function refreshDevices(
         setDeviceInfo([]);
         return;
     }
-    // Disconnect battery signals for devices no longer connected
-    for (const [addr, id] of batterySignals) {
+    // Disconnect battery signals for devices no longer connected. The stored
+    // device is used because a removed device is no longer in `list`.
+    for (const [addr, {device, id}] of batterySignals) {
         if (!list.some((d) => d.address === addr && d.connected)) {
-            const dev = list.find((d) => d.address === addr);
-            if (dev) dev.disconnect(id);
+            device.disconnect(id);
             batterySignals.delete(addr);
         }
     }
@@ -100,14 +101,14 @@ function refreshDevices(
             const id = d.connect('notify::battery-percentage', () =>
                 refreshDevices(bluetooth, batterySignals, setDeviceInfo, update)
             );
-            batterySignals.set(d.address, id);
+            batterySignals.set(d.address, {device: d, id});
         }
     }
 
     const devices = list
         .filter((d) => d.connected)
         .map((d) => ({
-            name: d.name || 'Device',
+            name: d.name || 'Dispositivo',
             icon: deviceIcon(d.icon || ''),
             battery: getDeviceBatteryPercentage(d),
         }));
@@ -117,14 +118,10 @@ function refreshDevices(
 }
 
 /** Disconnect all per-device battery-percentage handlers. */
-function disconnectBatterySignals(
-    bluetooth: BluetoothService,
-    batterySignals: Map<string, number>
-) {
-    for (const [addr, id] of batterySignals) {
+function disconnectBatterySignals(batterySignals: BatterySignals) {
+    for (const {device, id} of batterySignals.values()) {
         try {
-            const dev = bluetooth.devices.find((d) => d.address === addr);
-            if (dev) dev.disconnect(id);
+            device.disconnect(id);
         } catch {
             /* ignore */
         }
@@ -150,7 +147,7 @@ export default ({vertical}: {vertical: Accessor<boolean>}) => {
 
     effect(() => {
         const _hn = {};
-        const batterySignals = new Map<string, number>();
+        const batterySignals: BatterySignals = new Map();
         const update = (devices: DeviceInfo[]) => updateIcons(iconBox, devices);
         const refresh = () => refreshDevices(bluetooth, batterySignals, setDeviceInfo, update);
 
@@ -158,7 +155,7 @@ export default ({vertical}: {vertical: Accessor<boolean>}) => {
         connectFor(_hn, bluetooth, 'notify::devices', refresh);
         refresh();
         onCleanup(() => {
-            disconnectBatterySignals(bluetooth, batterySignals);
+            disconnectBatterySignals(batterySignals);
             cleanupNode(_hn);
         });
     });

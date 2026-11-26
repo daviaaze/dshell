@@ -112,6 +112,19 @@ class FastVmTests(unittest.TestCase):
                 self.assertNotEqual(fast.nix_fingerprint(root), baseline, str(path))
                 path.write_text("initial")
 
+    def test_nix_fingerprint_ignores_generated_dev_schemas(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "data").mkdir()
+            (root / "data/shade-shell.service.in").write_text("tracked")
+            baseline = fast.nix_fingerprint(root)
+            generated = root / "data/glib-2.0/schemas/general.gschema.xml"
+            generated.parent.mkdir(parents=True)
+            generated.write_text("written by scripts/dev.sh")
+            self.assertEqual(fast.nix_fingerprint(root), baseline)
+            (root / "data/shade-shell.service.in").write_text("changed")
+            self.assertNotEqual(fast.nix_fingerprint(root), baseline)
+
 
 if __name__ == "__main__":
     unittest.main()

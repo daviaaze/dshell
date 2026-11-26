@@ -14,16 +14,20 @@ interface IconButtonProps {
     cursor?: Gdk.Cursor;
 }
 
-
-const setAccessibleName = (label: string, description?: string) => (self: Gtk.Accessible) => {
-    self.update_property([Gtk.AccessibleProperty.LABEL], [new GObject.Value(GObject.TYPE_STRING, label)]);
-    if (description) {
+/** Ref callback that sets a widget's accessible name and optional description. */
+export const setAccessibleName =
+    (label: string, description?: string) => (self: Gtk.Accessible) => {
         self.update_property(
-            [Gtk.AccessibleProperty.DESCRIPTION],
-            [new GObject.Value(GObject.TYPE_STRING, description)]
+            [Gtk.AccessibleProperty.LABEL],
+            [new GObject.Value(GObject.TYPE_STRING, label)]
         );
-    }
-};
+        if (description) {
+            self.update_property(
+                [Gtk.AccessibleProperty.DESCRIPTION],
+                [new GObject.Value(GObject.TYPE_STRING, description)]
+            );
+        }
+    };
 
 export const IconButton = (props: IconButtonProps) => (
     <Gtk.Button
@@ -54,4 +58,3 @@ export const IconMenuButton = (props: IconMenuButtonProps) => (
         <Gtk.Image iconName={props.icon} />
     </Gtk.MenuButton>
 );
-

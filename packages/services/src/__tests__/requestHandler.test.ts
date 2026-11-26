@@ -1,122 +1,152 @@
 /**
- * Smoke tests for requestHandler — D-Bus command dispatcher.
+ * Tests for the shade-shell CLI routing table used by requestHandler.
  *
- * Tests that CLI args map to correct action names.
+ * Imports the real resolver (cliRoutes.ts), which requestHandler dispatches through.
  *
  * Run: pnpm run test:compile && nix develop -c gjs -m build/test/requestHandler.test.js
  */
 
+import {type CliRoute, resolveRoute, TOGGLE_ACTIONS} from '../state/cliRoutes';
 import {describe, expect, it, run} from './test-runner';
 
-// ── Action resolver (mirrors requestHandler logic) ──────────────────────────
-
-function resolveAction(args: string[]): string | null {
-    if (args[1] === 'lockscreen') return 'lockscreen';
-    else if (args[1] === 'toggle') return `toggle-${args[2]}`;
-    else if (args[1] === 'clipboard') return 'toggle-clipboard';
-    else if (args[1] === 'screenshot') return 'screenshot';
-    else if (args[1] === 'screenshot-area') return 'screenshot-area';
-    else if (args[1] === 'screenshot-overlay') return 'screenshot-overlay';
-    else if (args[1] === 'record') return 'record';
-    else if (args[1] === 'record-area') return 'record-area';
-    else if (args[1] === 'record-window') return 'record-window';
-    else if (args[1] === 'record-window-address') return 'record-window-address';
-    else if (args[1] === 'record-output') return 'record-output';
-    else if (args[1] === 'display-next') return 'display-next';
-    else if (args[1] === 'display-mode' && args[2]) return 'display-mode';
-    else if (args[1] === 'display-mode-chooser') return 'display-mode-chooser';
-    else if (args[1] === 'display-toggle-internal') return 'display-toggle-internal';
-    else if (args[1] === 'touchpad') return 'toggle-touchpad';
-    return null;
+/** Action a subcommand activates, or null when it is unknown or misused. */
+function actionOf(name: string, ...args: string[]): string | null {
+    const route = resolveRoute(name, args);
+    return route?.kind === 'action' ? route.action : null;
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe('requestHandler action resolution', () => {
     it('maps lockscreen', () => {
-        expect(resolveAction(['', 'lockscreen'])).toBe('lockscreen');
+        expect(actionOf('lockscreen')).toBe('lockscreen');
     });
 
     it('maps toggle applauncher', () => {
-        expect(resolveAction(['', 'toggle', 'applauncher'])).toBe('toggle-applauncher');
+        expect(actionOf('toggle', 'applauncher')).toBe('toggle-applauncher');
+    });
+
+    it('maps toggle launcher, the name the help text advertises, to the launcher action', () => {
+        expect(actionOf('toggle', 'launcher')).toBe('toggle-applauncher');
     });
 
     it('maps toggle quicksettings', () => {
-        expect(resolveAction(['', 'toggle', 'quicksettings'])).toBe('toggle-quicksettings');
+        expect(actionOf('toggle', 'quicksettings')).toBe('toggle-quicksettings');
     });
 
     it('maps toggle bar', () => {
-        expect(resolveAction(['', 'toggle', 'bar'])).toBe('toggle-bar');
+        expect(actionOf('toggle', 'bar')).toBe('toggle-bar');
     });
 
     it('maps toggle windowswitcher', () => {
-        expect(resolveAction(['', 'toggle', 'windowswitcher'])).toBe('toggle-windowswitcher');
+        expect(actionOf('toggle', 'windowswitcher')).toBe('toggle-windowswitcher');
     });
 
     it('maps toggle settings', () => {
-        expect(resolveAction(['', 'toggle', 'settings'])).toBe('toggle-settings');
+        expect(actionOf('toggle', 'settings')).toBe('toggle-settings');
     });
 
     it('maps toggle touchpad to toggle-touchpad', () => {
-        expect(resolveAction(['', 'toggle', 'touchpad'])).toBe('toggle-touchpad');
+        expect(actionOf('toggle', 'touchpad')).toBe('toggle-touchpad');
     });
 
     it('maps clipboard to toggle-clipboard', () => {
-        expect(resolveAction(['', 'clipboard'])).toBe('toggle-clipboard');
+        expect(actionOf('clipboard')).toBe('toggle-clipboard');
     });
 
     it('maps screenshot', () => {
-        expect(resolveAction(['', 'screenshot'])).toBe('screenshot');
+        expect(actionOf('screenshot')).toBe('screenshot');
     });
 
     it('maps screenshot-area', () => {
-        expect(resolveAction(['', 'screenshot-area'])).toBe('screenshot-area');
+        expect(actionOf('screenshot-area')).toBe('screenshot-area');
     });
 
     it('maps record', () => {
-        expect(resolveAction(['', 'record'])).toBe('record');
+        expect(actionOf('record')).toBe('record');
     });
 
     it('maps record-area', () => {
-        expect(resolveAction(['', 'record-area'])).toBe('record-area');
+        expect(actionOf('record-area')).toBe('record-area');
     });
 
     it('maps record-window', () => {
-        expect(resolveAction(['', 'record-window'])).toBe('record-window');
+        expect(actionOf('record-window')).toBe('record-window');
     });
 
     it('maps record-output', () => {
-        expect(resolveAction(['', 'record-output'])).toBe('record-output');
+        expect(actionOf('record-output')).toBe('record-output');
     });
 
     it('maps touchpad direct', () => {
-        expect(resolveAction(['', 'touchpad'])).toBe('toggle-touchpad');
+        expect(actionOf('touchpad')).toBe('toggle-touchpad');
     });
 
     it('routes direct display mode values with their parameterized action', () => {
         for (const mode of ['internal-only', 'external-only', 'extend', 'duplicate']) {
-            expect(resolveAction(['', 'display-mode', mode])).toBe('display-mode');
+            expect(resolveRoute('display-mode', [mode])).toEqual({
+                kind: 'action',
+                action: 'display-mode',
+                value: mode,
+            });
         }
     });
 
+    it('routes record-window-address with its address as the string parameter', () => {
+        expect(resolveRoute('record-window-address', ['0x1234'])).toEqual({
+            kind: 'action',
+            action: 'record-window-address',
+            value: '0x1234',
+        });
+    });
+
     it('routes display chooser, internal toggle, and saved-layout cycling', () => {
-        expect(resolveAction(['', 'display-mode-chooser'])).toBe('display-mode-chooser');
-        expect(resolveAction(['', 'display-toggle-internal'])).toBe('display-toggle-internal');
-        expect(resolveAction(['', 'display-next'])).toBe('display-next');
+        expect(actionOf('display-mode-chooser')).toBe('display-mode-chooser');
+        expect(actionOf('display-toggle-internal')).toBe('display-toggle-internal');
+        expect(actionOf('display-next')).toBe('display-next');
+    });
+
+    it('routes toggle-dnd through the event bus', () => {
+        expect(resolveRoute('toggle-dnd', [])).toEqual({kind: 'dnd-toggle'});
     });
 
     it('returns null for unknown command', () => {
-        expect(resolveAction(['', 'nonexistent'])).toBe(null);
+        expect(resolveRoute('nonexistent', [])).toBe(null);
+        expect(resolveRoute(null, [])).toBe(null);
+    });
+});
+
+describe('requestHandler usage errors', () => {
+    const isUsage = (route: CliRoute | null) => route?.kind === 'usage';
+
+    it('reports toggle without a widget', () => {
+        expect(isUsage(resolveRoute('toggle', []))).toBe(true);
+    });
+
+    it('reports toggle with an unknown widget instead of reporting success', () => {
+        expect(isUsage(resolveRoute('toggle', ['nonexistent']))).toBe(true);
+    });
+
+    it('does not resolve widget names that exist on Object.prototype', () => {
+        expect(isUsage(resolveRoute('toggle', ['constructor']))).toBe(true);
+        expect(resolveRoute('constructor', [])).toBe(null);
+    });
+
+    it('reports missing required arguments', () => {
+        expect(isUsage(resolveRoute('display-mode', []))).toBe(true);
+        expect(isUsage(resolveRoute('record-window-address', []))).toBe(true);
     });
 });
 
 // ── Action completeness ─────────────────────────────────────────────────────
 
 describe('requestHandler action completeness', () => {
-    // All actions registered via registerCommands() should have a CLI route
+    // All actions registered via ShellState.registerCommands() and the service
+    // command registries should have a CLI route.
     const registeredActions = [
         'toggle-applauncher',
         'toggle-quicksettings',
+        'toggle-notifications',
         'toggle-bar',
         'toggle-windowswitcher',
         'toggle-settings',
@@ -140,8 +170,7 @@ describe('requestHandler action completeness', () => {
 
     const reachableViaCLI = new Set<string>();
 
-    // Collect all reachable actions via known CLI patterns
-    const commands = [
+    const plainCommands = [
         'lockscreen',
         'clipboard',
         'screenshot',
@@ -150,41 +179,33 @@ describe('requestHandler action completeness', () => {
         'record',
         'record-area',
         'record-window',
-        'record-window-address',
         'record-output',
+        'open-clipboard',
         'touchpad',
         'display-next',
-        'display-mode',
         'display-mode-chooser',
         'display-toggle-internal',
     ];
-    for (const mode of ['internal-only', 'external-only', 'extend', 'duplicate']) {
-        const action = resolveAction(['', 'display-mode', mode]);
+    for (const cmd of plainCommands) {
+        const action = actionOf(cmd);
         if (action) reachableViaCLI.add(action);
     }
 
-    for (const cmd of commands) {
-        const action = resolveAction(['', cmd]);
+    for (const [cmd, arg] of [
+        ['display-mode', 'extend'],
+        ['record-window-address', '0x1'],
+    ]) {
+        const action = actionOf(cmd, arg);
         if (action) reachableViaCLI.add(action);
     }
 
-    // toggle prefix covers: applauncher, quicksettings, bar, windowswitcher, settings
-    const toggleTargets = [
-        'applauncher',
-        'quicksettings',
-        'bar',
-        'windowswitcher',
-        'settings',
-        'touchpad',
-    ];
-    for (const t of toggleTargets) {
-        const action = resolveAction(['', 'toggle', t]);
+    for (const widget of Object.keys(TOGGLE_ACTIONS)) {
+        const action = actionOf('toggle', widget);
         if (action) reachableViaCLI.add(action);
     }
 
-    it('all registered actions have a CLI route except open-clipboard', () => {
+    it('all registered actions have a CLI route', () => {
         for (const action of registeredActions) {
-            if (action === 'open-clipboard') continue; // internal, no CLI route
             expect(reachableViaCLI.has(action)).toBe(true);
         }
     });

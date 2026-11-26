@@ -1,8 +1,9 @@
 import {resolveUserConfig, type CompositorSeed, type LuaValue, type UserConfig} from './index';
 
 export interface CompositorStoreAdapter {
+    load?(): UserConfig;
     apply(previous: CompositorSeed, next: CompositorSeed): Promise<void>;
-    persist(user: UserConfig): Promise<void>;
+    persist(user: UserConfig): Promise<UserConfig | void>;
 }
 
 function mergeValues(
@@ -30,9 +31,36 @@ function mergePatch(current: UserConfig, patch: Partial<UserConfig>): UserConfig
     const next: UserConfig = {...current, ...patch, version: 1};
     if (patch.settings) next.settings = mergeValues(current.settings, patch.settings);
     if (patch.input) next.input = mergeValues(current.input, patch.input);
-    if (patch.binds) next.binds = {...current.binds, ...patch.binds};
-    if (patch.windowRules) next.windowRules = {...current.windowRules, ...patch.windowRules};
-    if (patch.startup) next.startup = {...current.startup, ...patch.startup};
+    if (patch.binds) {
+        next.binds = {...current.binds};
+        for (const [id, override] of Object.entries(patch.binds))
+            Object.defineProperty(next.binds, id, {
+                value: {...current.binds?.[id], ...override},
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
+    }
+    if (patch.windowRules) {
+        next.windowRules = {...current.windowRules};
+        for (const [id, override] of Object.entries(patch.windowRules))
+            Object.defineProperty(next.windowRules, id, {
+                value: {...current.windowRules?.[id], ...override},
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
+    }
+    if (patch.startup) {
+        next.startup = {...current.startup};
+        for (const [id, override] of Object.entries(patch.startup))
+            Object.defineProperty(next.startup, id, {
+                value: {...current.startup?.[id], ...override},
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
+    }
     if (patch.layouts) {
         next.layouts = {
             ...current.layouts,
@@ -78,7 +106,10 @@ export class CompositorConfigStore {
     }
 
     async #edit(patch: Partial<UserConfig>): Promise<CompositorSeed> {
-        const nextUser = mergePatch(this.#user, patch);
+        const current = this.adapter.load?.() ?? this.#user;
+        const loaded = resolveUserConfig(this.seed, current);
+        if (loaded.errors.length) throw new Error(loaded.errors.join('\n'));
+        const nextUser = mergePatch(current, patch);
         const resolved = resolveUserConfig(this.seed, nextUser);
         if (resolved.errors.length) throw new Error(resolved.errors.join('\n'));
         const previous = this.#effective;
@@ -88,14 +119,15 @@ export class CompositorConfigStore {
         } catch (cause) {
             await this.#rollback(next, previous, cause);
         }
+        let committed = nextUser;
         try {
-            await this.adapter.persist(nextUser);
+            committed = (await this.adapter.persist(nextUser)) ?? nextUser;
         } catch (cause) {
             await this.#rollback(next, previous, cause);
         }
-        this.#user = nextUser;
-        this.#effective = next;
-        return next;
+        this.#user = committed;
+        this.#effective = resolveUserConfig(this.seed, committed).effective;
+        return this.#effective;
     }
 
     async #rollback(

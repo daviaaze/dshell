@@ -7,6 +7,7 @@ import NM from 'gi://NM?version=1.0';
 import {IconNames} from '@shade/core/iconNames';
 import logger from '@shade/core/logger';
 import {type Accessor, computed, createState, effect, onCleanup} from 'gnim';
+import {WifiOperationError, wifiErrorMessage} from '../operationError';
 import {
     AP_ICON_SIZE,
     AP_TRASH_ICON_SIZE,
@@ -24,7 +25,10 @@ import {
 let _opInProgress = false;
 
 async function guardedOp(fn: () => Promise<void>): Promise<void> {
-    if (_opInProgress) throw new Error('Another Wi-Fi operation is already in progress');
+    if (_opInProgress)
+        throw new WifiOperationError(
+            'Outra operação Wi-Fi está em andamento. Aguarde e tente novamente.'
+        );
     _opInProgress = true;
     try {
         await fn();
@@ -51,13 +55,14 @@ function currentAccessPoint(
     snap: ApSnapshot
 ): {device: NM.DeviceWifi; ap: NM.AccessPoint} {
     const device = (wifi.device as NM.DeviceWifi | null) ?? null;
-    if (!device) throw new Error('Wi-Fi device is no longer available');
+    if (!device) throw new WifiOperationError('O adaptador Wi-Fi não está mais disponível.');
 
     const ap = device.get_access_point_by_path(snap.objectPath);
-    if (!ap) throw new Error('Network is no longer available');
+    if (!ap)
+        throw new WifiOperationError('A rede não está mais disponível. Busque redes novamente.');
     const currentBssid = bssidOf(ap);
     if (snap.bssid && (!currentBssid || !bssidEquals(snap.bssid, currentBssid))) {
-        throw new Error('Network is no longer available');
+        throw new WifiOperationError('A rede não está mais disponível. Busque redes novamente.');
     }
 
     return {device, ap};
@@ -83,13 +88,27 @@ function savedConnectionsFor(
 }
 
 function activationError(reason: number): Error {
-    const reasonName = Object.entries(NM.ActiveConnectionStateReason).find(
-        ([name, value]) => name === name.toUpperCase() && value === reason
-    )?.[0];
-    const detail = reasonName
-        ? reasonName.toLowerCase().replace(/_/g, ' ')
-        : `state reason ${reason}`;
-    return new Error(`NetworkManager could not activate the connection: ${detail}`);
+    logger.warn('network', 'Connection activation failed, reason:', reason);
+    switch (reason) {
+        case NM.ActiveConnectionStateReason.NO_SECRETS:
+        case NM.ActiveConnectionStateReason.LOGIN_FAILED:
+            return new WifiOperationError('Verifique a senha da rede Wi-Fi e tente novamente.');
+        case NM.ActiveConnectionStateReason.CONNECT_TIMEOUT:
+        case NM.ActiveConnectionStateReason.SERVICE_START_TIMEOUT:
+            return new WifiOperationError('A conexão Wi-Fi demorou demais. Tente novamente.');
+        case NM.ActiveConnectionStateReason.IP_CONFIG_INVALID:
+            return new WifiOperationError(
+                'Não foi possível obter um endereço de rede. Tente novamente.'
+            );
+        case NM.ActiveConnectionStateReason.DEVICE_DISCONNECTED:
+            return new WifiOperationError('O adaptador Wi-Fi foi desconectado.');
+        case NM.ActiveConnectionStateReason.USER_DISCONNECTED:
+            return new WifiOperationError('A conexão Wi-Fi foi cancelada.');
+        default:
+            return new WifiOperationError(
+                'Não foi possível conectar à rede Wi-Fi. Tente novamente.'
+            );
+    }
 }
 
 function waitForActivation(active: NM.ActiveConnection): Promise<void> {
@@ -100,10 +119,13 @@ function waitForActivation(active: NM.ActiveConnection): Promise<void> {
 
     const {promise, resolve, reject} = Promise.withResolvers<void>();
     let handlerId = 0;
+    let timeoutSource = 0;
     let settled = false;
     const finish = (error?: Error) => {
         if (settled) return;
         settled = true;
+        if (timeoutSource) GLib.source_remove(timeoutSource);
+        timeoutSource = 0;
         try {
             active.disconnect(handlerId);
         } catch {
@@ -118,6 +140,11 @@ function waitForActivation(active: NM.ActiveConnection): Promise<void> {
         else if (state === NM.ActiveConnectionState.DEACTIVATED) {
             finish(activationError(reason));
         }
+    });
+    timeoutSource = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 60, () => {
+        timeoutSource = 0;
+        finish(activationError(NM.ActiveConnectionStateReason.CONNECT_TIMEOUT));
+        return GLib.SOURCE_REMOVE;
     });
 
     const state: number = active.state;
@@ -141,7 +168,7 @@ function activateNMConnection(
             active = addConnection
                 ? client.add_and_activate_connection_finish(result)
                 : client.activate_connection_finish(result);
-            if (!active) throw new Error('NetworkManager returned no active connection');
+            if (!active) throw new WifiOperationError('Não foi possível iniciar a conexão Wi-Fi.');
         } catch (error) {
             reject(error);
             return;
@@ -161,7 +188,7 @@ function deactivateNMConnection(client: NM.Client, active: NM.ActiveConnection):
     client.deactivate_connection_async(active, null, (_source, result) => {
         try {
             if (!client.deactivate_connection_finish(result)) {
-                throw new Error('NetworkManager did not deactivate the connection');
+                throw new WifiOperationError('Não foi possível desconectar da rede Wi-Fi.');
             }
             resolve();
         } catch (error) {
@@ -175,25 +202,14 @@ interface ConnectState {
     lastConnectMs: number;
     setConnectingAp: (v: string | null) => void;
     setShowPassword: (v: boolean) => void;
-    showPassword: Accessor<boolean>;
     setOperationError: (v: string | null) => void;
-}
-
-function errorMessage(error: unknown): string {
-    if (error instanceof Error) return error.message;
-    if (error && typeof error === 'object' && 'message' in error) {
-        const {message} = error as {message?: unknown};
-        if (typeof message === 'string') return message;
-    }
-    return String(error);
 }
 
 function runOperation(state: ConnectState, name: string, run: () => Promise<void>): void {
     state.setOperationError(null);
     void guardedOp(run).catch((error: unknown) => {
-        const message = errorMessage(error);
-        logger.warn('network', `${name} failed:`, message);
-        state.setOperationError(message || `${name} failed`);
+        logger.warn('network', `${name} failed:`, error);
+        state.setOperationError(wifiErrorMessage(error));
     });
 }
 
@@ -212,13 +228,14 @@ function createDoConnect(
 
         runOperation(state, 'connect', async () => {
             const {device, ap} = currentAccessPoint(wifi, snap);
-            if (!snap.ssid || snap.ssid === 'Hidden Network') {
-                throw new Error('Network name is hidden; use the Hidden Network action');
+            const ssid = bytesToString(ap.ssid);
+            if (!ssid) {
+                throw new WifiOperationError('Para esta rede, use “Conectar à rede oculta”.');
             }
 
-            const saved = savedConnectionsFor(client, ap, snap.ssid);
+            const saved = savedConnectionsFor(client, ap, ssid);
             if (snap.secure && password === undefined && saved.length === 0) {
-                state.setShowPassword(!state.showPassword());
+                state.setShowPassword(true);
                 return;
             }
 
@@ -229,7 +246,9 @@ function createDoConnect(
                     if (password !== undefined) {
                         const security = connection.get_setting_wireless_security();
                         if (!security) {
-                            throw new Error('Saved connection has no Wi-Fi password setting');
+                            throw new WifiOperationError(
+                                'A conexão salva não tem uma senha Wi-Fi configurada.'
+                            );
                         }
                         security.psk = password;
                         await commitChangesAsync(connection, true);
@@ -250,10 +269,7 @@ function createDoConnect(
                         throw error;
                     }
                 } else {
-                    const connection = createNMConnection(
-                        snap.ssid,
-                        snap.secure ? password : undefined
-                    );
+                    const connection = createNMConnection(ssid, snap.secure ? password : undefined);
                     await activateNMConnection(client, connection, device, snap.objectPath, true);
                 }
                 state.setShowPassword(false);
@@ -275,7 +291,7 @@ function createDoDisconnect(
             const {device} = currentAccessPoint(wifi, snap);
             const active = device.get_active_connection();
             if (!active || active.specificObjectPath !== snap.objectPath) {
-                throw new Error('Network is no longer active');
+                throw new WifiOperationError('A rede não está mais conectada.');
             }
 
             state.setConnectingAp(snap.bssid ?? snap.objectPath);
@@ -306,7 +322,7 @@ function createDoForget(
 }
 function focusPasswordOnOpen(
     showPassword: Accessor<boolean>,
-    passwordEntry: Accessor<Gtk.Entry | null>
+    passwordEntry: Accessor<Gtk.PasswordEntry | null>
 ): void {
     effect(() => {
         const entry = passwordEntry();
@@ -335,19 +351,32 @@ function ApRow({
     setConnectingAp,
 }: ApRowProps) {
     const apSsid = snap.ssid;
-    const apBssid = snap.bssid;
     const secure = snap.secure;
     const secLabel = snap.secLabel;
 
     const [showPassword, setShowPassword] = createState(false);
-    const [passwordEntry, setPasswordEntry] = createState<Gtk.Entry | null>(null);
+    const [passwordEntry, setPasswordEntry] = createState<Gtk.PasswordEntry | null>(null);
     const [operationError, setOperationError] = createState<string | null>(null);
     const [cooldown, setCooldown] = createState(false);
+    const [showForgetConfirm, setShowForgetConfirm] = createState(false);
+    let cooldownSource = 0;
+    const beginCooldown = () => {
+        if (cooldown.peek()) return false;
+        setCooldown(true);
+        cooldownSource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+            cooldownSource = 0;
+            setCooldown(false);
+            return GLib.SOURCE_REMOVE;
+        });
+        return true;
+    };
+    onCleanup(() => {
+        if (cooldownSource) GLib.source_remove(cooldownSource);
+    });
     const connectState: ConnectState = {
         lastConnectMs: 0,
         setConnectingAp,
         setShowPassword,
-        showPassword,
         setOperationError,
     };
 
@@ -356,6 +385,9 @@ function ApRow({
     const doForget = createDoForget(client, wifi, snap, connectState);
 
     focusPasswordOnOpen(showPassword, passwordEntry);
+    effect(() => {
+        if (!showPassword()) passwordEntry()?.set_text('');
+    });
 
     const notActive = computed(() => !isActive());
     const canForget = computed(() => {
@@ -368,6 +400,9 @@ function ApRow({
             return false;
         }
     });
+    effect(() => {
+        if (!canForget()) setShowForgetConfirm(false);
+    });
 
     const strengthIcon = strength.as(signalIconName);
     const strengthTooltip = strength.as((value) => `${value}%`);
@@ -379,13 +414,12 @@ function ApRow({
                 <Gtk.Button
                     hexpand
                     cssClasses={['flat']}
+                    tooltipText={isActive.as((active) =>
+                        active ? `Desconectar de ${apSsid}` : `Conectar a ${apSsid}`
+                    )}
                     onClicked={() => {
-                        if (cooldown()) return;
-                        setCooldown(true);
-                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-                            setCooldown(false);
-                            return GLib.SOURCE_REMOVE;
-                        });
+                        if (!beginCooldown()) return;
+                        setShowForgetConfirm(false);
 
                         if (isActive()) doDisconnect();
                         else doConnect();
@@ -442,15 +476,17 @@ function ApRow({
                     visible={canForget}
                     cssClasses={['flat', 'circular']}
                     onClicked={() => {
-                        if (cooldown()) return;
-                        setCooldown(true);
-                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-                            setCooldown(false);
-                            return GLib.SOURCE_REMOVE;
-                        });
-                        doForget();
+                        if (!beginCooldown()) return;
+                        setShowPassword(false);
+                        setShowForgetConfirm(true);
                     }}
-                    tooltipText="Forget Network"
+                    tooltipText="Esquecer rede"
+                    ref={(self) =>
+                        self.update_property(
+                            [Gtk.AccessibleProperty.LABEL],
+                            [new GObject.Value(GObject.TYPE_STRING, 'Esquecer rede')]
+                        )
+                    }
                     valign={Gtk.Align.CENTER}
                 >
                     <Gtk.Image iconName="user-trash-symbolic" pixelSize={AP_TRASH_ICON_SIZE} />
@@ -462,12 +498,14 @@ function ApRow({
                 transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
             >
                 <Gtk.Box spacing={4} marginStart={28} marginEnd={4} marginTop={4} marginBottom={4}>
-                    <Gtk.Entry
+                    <Gtk.PasswordEntry
                         placeholderText="Senha"
-                        visibility={false}
+                        showPeekIcon
                         hexpand
-                        widthChars={12}
-                        onActivate={(self) => doConnect(self.get_text() || undefined)}
+                        onActivate={(self) => {
+                            const password = self.get_text();
+                            if (password) doConnect(password);
+                        }}
                         onMap={(self) => {
                             if (showPassword()) self.grab_focus();
                         }}
@@ -489,8 +527,8 @@ function ApRow({
                             )
                         }
                         onClicked={() => {
-                            const entry = passwordEntry();
-                            doConnect(entry?.get_text() || undefined);
+                            const password = passwordEntry()?.get_text();
+                            if (password) doConnect(password);
                         }}
                     >
                         <Gtk.Image iconName="go-next-symbolic" />
@@ -512,6 +550,43 @@ function ApRow({
                     >
                         <Gtk.Image iconName="window-close-symbolic" />
                     </Gtk.Button>
+                </Gtk.Box>
+            </Gtk.Revealer>
+
+            <Gtk.Revealer
+                revealChild={showForgetConfirm}
+                transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
+            >
+                <Gtk.Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={8}
+                    marginStart={12}
+                    marginEnd={12}
+                    marginTop={8}
+                    marginBottom={8}
+                >
+                    <Gtk.Label label={`Esquecer a rede ${apSsid}?`} xalign={0} wrap />
+                    <Gtk.Label
+                        label="Todos os perfis salvos desta rede e suas senhas serão apagados."
+                        cssClasses={['caption']}
+                        xalign={0}
+                        wrap
+                    />
+                    <Gtk.Box spacing={8} halign={Gtk.Align.END}>
+                        <Gtk.Button
+                            label="Cancelar"
+                            onClicked={() => setShowForgetConfirm(false)}
+                        />
+                        <Gtk.Button
+                            label="Esquecer"
+                            cssClasses={['destructive-action']}
+                            onClicked={() => {
+                                if (!showForgetConfirm.peek() || !canForget.peek()) return;
+                                setShowForgetConfirm(false);
+                                doForget();
+                            }}
+                        />
+                    </Gtk.Box>
                 </Gtk.Box>
             </Gtk.Revealer>
 

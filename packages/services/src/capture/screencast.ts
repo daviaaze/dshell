@@ -48,9 +48,17 @@ export class Screencast extends GObject {
             const process = Process.subprocessv(['pw-dump', '--monitor', '--no-colors']);
             this.#process = process;
             process.connect('stdout', (_p: Process, line: string) => {
-                for (const document of this.#framer.push(`${line}\n`)) {
-                    this.#graph.apply(document);
-                    this.#publish();
+                try {
+                    for (const document of this.#framer.push(`${line}\n`)) {
+                        this.#graph.apply(document);
+                        this.#publish();
+                    }
+                } catch (error) {
+                    logger.error(
+                        'screencast',
+                        `Invalid pw-dump stream; stopping watcher: ${error}`
+                    );
+                    this.stop();
                 }
             });
             process.connect('exit', () => {

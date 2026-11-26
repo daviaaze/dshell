@@ -1,14 +1,14 @@
 import Adw from 'gi://Adw?version=1';
 import Bluetooth from 'gi://AstalBluetooth';
 import Gdk from 'gi://Gdk?version=4.0';
-import type GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
 import BluetoothService from '@shade/services/bluetooth/bluetoothService';
 import {bind, computed, createState, For, onCleanup} from 'gnim';
+import {errorMessage} from './errorMessage';
 
 const LOG_TAG = 'settings-bluetooth';
-type ScanTimeout = GLib.Source;
+type ScanTimeout = ReturnType<typeof setTimeout>;
 
 /** Toggle device connection, tracking in-flight address. */
 async function toggleDevice(
@@ -24,7 +24,7 @@ async function toggleDevice(
         else await service.connectDevice(device);
     } catch (error) {
         logger.error(LOG_TAG, 'Device connection change failed:', error);
-        setOperationError(String(error));
+        setOperationError(errorMessage(error));
     } finally {
         setConnectingAddress(null);
     }
@@ -63,7 +63,7 @@ function PairedDeviceRow({
             await service.forgetDevice(device);
         } catch (error) {
             logger.error(LOG_TAG, 'Forget failed:', String(error));
-            setOperationError(String(error));
+            setOperationError(errorMessage(error));
         } finally {
             setForgetting(false);
         }
@@ -183,7 +183,7 @@ function AvailableDeviceRow({
             await service.pairDevice(device);
         } catch (error) {
             logger.error(LOG_TAG, 'Pair failed:', error);
-            setOperationError(String(error));
+            setOperationError(errorMessage(error));
         } finally {
             setPairingAddress(null);
         }
@@ -264,22 +264,21 @@ export default () => {
     const adapterAddedSignalId = bt.connect('adapter-added', updateAdapter);
     const adapterRemovedSignalId = bt.connect('adapter-removed', updateAdapter);
     updateAdapter();
-    let restoringPower = false;
     const handleTogglePower = (self: Adw.SwitchRow) => {
         const current = currentAdapter;
-        if (restoringPower || (current && self.active === current.powered)) return;
+        if (!current) {
+            setOperationError('Adaptador Bluetooth indisponível');
+            setIsPowered(false);
+            return;
+        }
+        if (self.active === current.powered) return;
         setOperationError(null);
         try {
-            if (!current) throw new Error('Bluetooth adapter is unavailable');
             current.powered = self.active;
         } catch (error) {
             logger.error(LOG_TAG, 'Toggle power failed:', error);
-            setOperationError(String(error));
-        } finally {
-            restoringPower = true;
-            self.active = current?.powered ?? false;
-            setIsPowered(self.active);
-            restoringPower = false;
+            setOperationError(errorMessage(error));
+            self.active = current.powered;
         }
     };
     const handleScan = () => {
@@ -302,7 +301,7 @@ export default () => {
                         current.stop_discovery();
                     } catch (error) {
                         logger.error(LOG_TAG, 'Auto-stop discovery failed:', error);
-                        setOperationError(String(error));
+                        setOperationError(errorMessage(error));
                     }
                     setScanning(current.discovering);
                 }
@@ -312,7 +311,7 @@ export default () => {
         } catch (error) {
             logger.error(LOG_TAG, 'Bluetooth scan failed:', error);
             setScanning(current.discovering);
-            setOperationError(String(error));
+            setOperationError(errorMessage(error));
         } finally {
             setScanBusy(false);
         }
@@ -349,7 +348,7 @@ export default () => {
                     value ? (
                         <Adw.SwitchRow
                             title={'Bluetooth'}
-                            subtitle={'Enable Bluetooth adapter'}
+                            subtitle={'Liga ou desliga o adaptador Bluetooth'}
                             active={isPowered}
                             onNotifyActive={(self) => handleTogglePower(self)}
                         />
@@ -414,7 +413,7 @@ export default () => {
                                         value ? 'Parar busca' : 'Buscar dispositivos'
                                     )}
                                     cssClasses={scanning.as((value) =>
-                                        value ? ['destructive-action'] : ['suggested-action']
+                                        value ? [] : ['suggested-action']
                                     )}
                                     sensitive={isPowered.as((powered) => powered && !scanBusy())}
                                     onClicked={handleScan}

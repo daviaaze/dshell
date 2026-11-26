@@ -5,6 +5,8 @@ import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {Process} from '@shade/core/process';
 import {bus} from '../bus';
+import SessionLockService from '../session/sessionLockService';
+import ShellState from '../state/shellState';
 import {RecorderBackend, RecordingFormat} from './types';
 
 // ── Constants ─────────────────────────────────────────────────────
@@ -34,30 +36,57 @@ export function publishCapture(update: CaptureUpdate): void {
 
 export function requireCaptureFile(path: string): void {
     const info = Gio.File.new_for_path(path).query_info(
-        'standard::size,standard::type', Gio.FileQueryInfoFlags.NONE, null
+        'standard::size,standard::type',
+        Gio.FileQueryInfoFlags.NONE,
+        null
     );
     if (info.get_file_type() !== Gio.FileType.REGULAR || info.get_size() === 0) {
         throw new Error('O arquivo de captura está vazio ou não foi concluído.');
     }
 }
 
+/** New captures are forbidden during authentication; cleanup remains unrestricted. */
+export function captureBlocked(): boolean {
+    return ShellState.get_default().screenlocked || SessionLockService.get_default().isLocked;
+}
+
+/** Atomically create a fresh 0700 directory, never following an existing path. */
+export function createPrivateCaptureDirectory(purpose: 'stage' | 'screenshots'): string {
+    const directory = GLib.build_filenamev([
+        GLib.get_user_runtime_dir(),
+        `shade-${purpose}-${GLib.uuid_string_random()}`,
+    ]);
+    // g_mkdtemp is not introspectable in GJS. mkdir with an unpredictable name
+    // has the same exclusive-creation property and sets the mode atomically.
+    if (GLib.mkdir(directory, 0o700) !== 0) {
+        throw new Error(`Could not create a private capture directory: ${directory}`);
+    }
+    return directory;
+}
+
+let fallbackScreenshotDir: string | null = null;
+
 /**
- * Ensure SCREENSHOT_DIR exists. If it cannot be created, falls back to /tmp
- * and updates SCREENSHOT_DIR. Logs errors via logger.
+ * Ensure the normal save directory exists, or create a private runtime fallback.
  */
 export function ensureScreenshotDir(): string {
     const dir = Gio.File.new_for_path(SCREENSHOT_DIR);
     try {
-        if (dir.query_exists(null)) return SCREENSHOT_DIR;
+        if (dir.query_exists(null)) {
+            if (dir.query_file_type(Gio.FileQueryInfoFlags.NONE, null) !== Gio.FileType.DIRECTORY)
+                throw new Error('The screenshot path is not a directory');
+            return SCREENSHOT_DIR;
+        }
         dir.make_directory_with_parents(null);
         logger.info('screenshot', `created screenshot directory: ${SCREENSHOT_DIR}`);
         return SCREENSHOT_DIR;
     } catch (e) {
         logger.error(
             'screenshot',
-            `failed to create ${SCREENSHOT_DIR}: ${e instanceof Error ? e.message : String(e)}, falling back to /tmp`
+            `failed to create ${SCREENSHOT_DIR}: ${e instanceof Error ? e.message : String(e)}, using a private runtime directory`
         );
-        return `${GLib.get_tmp_dir()}/shade-screenshots`;
+        fallbackScreenshotDir ??= createPrivateCaptureDirectory('screenshots');
+        return fallbackScreenshotDir;
     }
 }
 
@@ -218,8 +247,17 @@ export function freshScreenshotFilename(ext = 'png'): string {
  */
 export async function finalizeImage(filename: string, area: boolean): Promise<void> {
     requireCaptureFile(filename);
-    await copyImageToClipboard(filename);
-    notify('Screenshot saved', filename, 'camera-photo-symbolic');
+    try {
+        await copyImageToClipboard(filename);
+        notify('Screenshot saved', filename, 'camera-photo-symbolic');
+    } catch (error) {
+        logger.warn('screenshot', 'image saved, but clipboard copy failed:', error);
+        notify(
+            'Screenshot saved',
+            `${filename}\nCould not copy the image to the clipboard.`,
+            'dialog-warning-symbolic'
+        );
+    }
     if (area) {
         bus.emit('capture:screenshot:area');
     } else {

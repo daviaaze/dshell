@@ -41,4 +41,4 @@ describe('resampleHistory', () => {
     });
 });
 
-run();
+await run();

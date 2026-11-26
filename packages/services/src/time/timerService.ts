@@ -4,11 +4,20 @@ import GLib from 'gi://GLib?version=2.0';
 import {defineService} from '@shade/core/define';
 import logger from '@shade/core/logger';
 import {fmtDuration} from '@shade/core/time';
+import type {Accessor} from 'gnim';
 import {Object, property, register} from 'gnim/gobject';
 import {bus} from '../bus';
 import {timerSettings} from './timer.gschema';
 
 export type TimerMode = 'none' | 'countdown' | 'pomodoro';
+
+/** Live pomodoro settings; read when a segment starts so changes apply to the next one. */
+export type PomodoroSettings = {
+    pomodoroWorkDuration: Accessor<number>;
+    pomodoroBreakDuration: Accessor<number>;
+    pomodoroLongBreakDuration: Accessor<number>;
+    pomodoroSessionsBeforeLongBreak: Accessor<number>;
+};
 
 @register
 export default class TimerService extends Object {
@@ -46,6 +55,9 @@ export default class TimerService extends Object {
     #initialized = false;
     #notificationId = 0;
     #busSubscriptions: (() => void)[] = [];
+    /** Wall-clock (µs) at which the running segment ends; unlike a tick count it survives suspend. */
+    #deadline = 0;
+    #settings: PomodoroSettings | null = null;
 
     /** Timer tick interval in milliseconds. */
     static readonly TICK_MS = 1000;
@@ -58,11 +70,29 @@ export default class TimerService extends Object {
 
     static readonly MS_PER_MIN = 60 * 1000;
 
-    // ── Pomodoro settings ──
-    #workDuration = TimerService.DEFAULT_WORK_MIN * TimerService.MS_PER_MIN;
-    #breakDuration = TimerService.DEFAULT_BREAK_MIN * TimerService.MS_PER_MIN;
-    #longBreakDuration = TimerService.DEFAULT_LONG_BREAK_MIN * TimerService.MS_PER_MIN;
-    #sessionsBeforeLongBreak = TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
+    // ── Pomodoro settings (read live) ──
+    get #workDuration() {
+        const min = this.#settings?.pomodoroWorkDuration() ?? TimerService.DEFAULT_WORK_MIN;
+        return min * TimerService.MS_PER_MIN;
+    }
+
+    get #breakDuration() {
+        const min = this.#settings?.pomodoroBreakDuration() ?? TimerService.DEFAULT_BREAK_MIN;
+        return min * TimerService.MS_PER_MIN;
+    }
+
+    get #longBreakDuration() {
+        const min =
+            this.#settings?.pomodoroLongBreakDuration() ?? TimerService.DEFAULT_LONG_BREAK_MIN;
+        return min * TimerService.MS_PER_MIN;
+    }
+
+    get #sessionsBeforeLongBreak() {
+        const sessions =
+            this.#settings?.pomodoroSessionsBeforeLongBreak() ??
+            TimerService.DEFAULT_SESSIONS_BEFORE_LONG;
+        return Math.max(1, sessions);
+    }
 
     @property
     get remaining() {
@@ -125,8 +155,10 @@ export default class TimerService extends Object {
 
     pause() {
         if (!this.#running) return;
+        this.#syncRemaining();
         this.#stopTick();
         this.#running = false;
+        this.notify('remaining');
         this.notify('running');
     }
 
@@ -146,20 +178,11 @@ export default class TimerService extends Object {
         this.#notifyAll();
     }
 
-    init(
-        app: Adw.Application,
-        workMin: number,
-        breakMin: number,
-        longBreakMin: number,
-        sessionsBeforeLongBreak: number
-    ) {
+    init(app: Adw.Application, settings: PomodoroSettings) {
         if (this.#initialized) return;
         this.#initialized = true;
         this.#app = app;
-        this.#workDuration = workMin * TimerService.MS_PER_MIN;
-        this.#breakDuration = breakMin * TimerService.MS_PER_MIN;
-        this.#longBreakDuration = longBreakMin * TimerService.MS_PER_MIN;
-        this.#sessionsBeforeLongBreak = sessionsBeforeLongBreak;
+        this.#settings = settings;
     }
 
     // ── Internal ──
@@ -167,11 +190,11 @@ export default class TimerService extends Object {
     #startTick() {
         this.#stopTick();
         this.#running = true;
+        this.#deadline = GLib.get_real_time() + this.#remaining * 1000;
         this.notify('running');
         this.#tickId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TimerService.TICK_MS, () => {
-            this.#remaining -= TimerService.TICK_MS;
+            this.#syncRemaining();
             if (this.#remaining <= 0) {
-                this.#remaining = 0;
                 this.notify('remaining');
                 this.#stopTick();
                 this.#running = false;
@@ -182,6 +205,12 @@ export default class TimerService extends Object {
             this.notify('remaining');
             return GLib.SOURCE_CONTINUE;
         });
+    }
+
+    /** Recompute the remaining time (whole seconds, in ms) from the deadline. */
+    #syncRemaining() {
+        this.#remaining =
+            Math.max(0, Math.ceil((this.#deadline - GLib.get_real_time()) / 1_000_000)) * 1000;
     }
 
     #stopTick() {
@@ -266,11 +295,5 @@ export default class TimerService extends Object {
 defineService({
     name: 'TimerService',
     service: TimerService.get_default(),
-    initArgs: (ctx) => [
-        ctx.app,
-        timerSettings().pomodoroWorkDuration(),
-        timerSettings().pomodoroBreakDuration(),
-        timerSettings().pomodoroLongBreakDuration(),
-        timerSettings().pomodoroSessionsBeforeLongBreak(),
-    ],
+    initArgs: (ctx) => [ctx.app, timerSettings()],
 });

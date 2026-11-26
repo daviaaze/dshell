@@ -19,11 +19,14 @@ export interface SessionEntry {
 }
 
 const SESSION_DIRS = ['wayland-sessions', 'xsessions'];
-const FIELD_CODES = /%[a-zA-Z%]/g;
+const FIELD_CODES = /%([a-zA-Z%])/g;
 
-/** Parse a desktop-file Exec line into argv, stripping field codes. */
+/** Parse a desktop-file Exec line into argv: `%%` is a literal `%`, other field codes are stripped. */
 export function parseExec(exec: string): string[] {
-    const cleaned = exec.replace(FIELD_CODES, '').replace(/\s+/g, ' ').trim();
+    const cleaned = exec
+        .replace(FIELD_CODES, (_match, code: string) => (code === '%' ? '%' : ''))
+        .replace(/\s+/g, ' ')
+        .trim();
     if (!cleaned) return [];
     try {
         const [ok, argv] = GLib.shell_parse_argv(cleaned);
@@ -112,7 +115,7 @@ export function buildSessionList(): SessionEntry[] {
     if (envCmd?.trim()) {
         entries.push({
             id: 'default',
-            name: 'Default Session',
+            name: 'Sessão padrão',
             command: parseExec(envCmd),
         });
     }

@@ -1,6 +1,11 @@
 import GLib from 'gi://GLib?version=2.0';
 import {readFile, writeFile} from '@shade/core/file';
-import {migrateLegacyLayoutStore, type UserConfig} from '@shade/compositor-model';
+import {
+    migrateLegacyLayoutStore,
+    resolveUserConfig,
+    type CompositorSeed,
+    type UserConfig,
+} from '@shade/compositor-model';
 
 export interface CompositorConfigPaths {
     seed: string;
@@ -41,4 +46,25 @@ export function loadUserConfig(paths: CompositorConfigPaths): {user: UserConfig;
 
 export function persistUserConfig(path: string, user: UserConfig): void {
     writeFile(path, `${JSON.stringify(user, null, 2)}\n`);
+}
+
+/** Refuse edits while the on-disk configuration cannot be read and validated. */
+export function requireUserConfig(paths: CompositorConfigPaths, seed: CompositorSeed): UserConfig {
+    const loaded = loadUserConfig(paths);
+    if (loaded.errors.length) throw new Error(loaded.errors.join('\n'));
+    const resolved = resolveUserConfig(seed, loaded.user);
+    if (resolved.errors.length) throw new Error(resolved.errors.join('\n'));
+    return resolved.user;
+}
+
+/** Display layouts have a separate live owner and may change during a bind apply. */
+export function persistUserSettings(
+    paths: CompositorConfigPaths,
+    seed: CompositorSeed,
+    user: UserConfig
+): UserConfig {
+    const latest = requireUserConfig(paths, seed);
+    const next = {...user, layouts: latest.layouts};
+    persistUserConfig(paths.user, next);
+    return next;
 }

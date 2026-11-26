@@ -18,16 +18,16 @@ function delayMs(ms: number): Promise<void> {
 }
 
 describe('DismissTimers', () => {
-    it('expires after the scheduled delay', async () => {
+    it.async('expires after the scheduled delay', async () => {
         const expired: number[] = [];
         const timers = new DismissTimers((id) => expired.push(id));
         timers.schedule(1, 10);
         await delayMs(30);
-        expect(expired).toBe([1]);
+        expect(expired).toEqual([1]);
         timers.clear();
     });
 
-    it('cancel() prevents expiry', async () => {
+    it.async('cancel() prevents expiry', async () => {
         const expired: number[] = [];
         const timers = new DismissTimers((id) => expired.push(id));
         timers.schedule(1, 10);
@@ -37,7 +37,7 @@ describe('DismissTimers', () => {
         expect(timers.size).toBe(0);
     });
 
-    it('pause() stops the timer; resume() restarts it', async () => {
+    it.async('pause() stops the timer; resume() restarts it', async () => {
         const expired: number[] = [];
         const timers = new DismissTimers((id) => expired.push(id));
         timers.schedule(1, 20);
@@ -47,31 +47,31 @@ describe('DismissTimers', () => {
 
         timers.resume(1, 10);
         await delayMs(30);
-        expect(expired).toBe([1]);
+        expect(expired).toEqual([1]);
         timers.clear();
     });
 
-    it('resume() is a no-op while a timer is pending', async () => {
+    it.async('resume() is a no-op while a timer is pending', async () => {
         const expired: number[] = [];
         const timers = new DismissTimers((id) => expired.push(id));
         timers.schedule(1, 20);
         timers.resume(1, 5000); // must not replace the pending 20ms timer
         await delayMs(40);
-        expect(expired).toBe([1]);
+        expect(expired).toEqual([1]);
     });
 
-    it('tracks timers independently per id', async () => {
+    it.async('tracks timers independently per id', async () => {
         const expired: number[] = [];
         const timers = new DismissTimers((id) => expired.push(id));
         timers.schedule(1, 10);
         timers.schedule(2, 60);
         await delayMs(30);
-        expect(expired).toBe([1]);
+        expect(expired).toEqual([1]);
         expect(timers.has(2)).toBe(true);
         timers.cancel(2);
     });
 
-    it('clear() cancels everything', async () => {
+    it.async('clear() cancels everything', async () => {
         const expired: number[] = [];
         const timers = new DismissTimers((id) => expired.push(id));
         timers.schedule(1, 10);
@@ -83,4 +83,4 @@ describe('DismissTimers', () => {
     });
 });
 
-run(import.meta.url);
+await run(import.meta.url);

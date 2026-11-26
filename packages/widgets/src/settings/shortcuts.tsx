@@ -3,11 +3,11 @@ import Gdk from 'gi://Gdk?version=4.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import CompositorSettings from '@shade/services/compositor/store';
-import KeystrokeOverlay from '@shade/services/input/keystrokeOverlay';
 import {getAppList} from '@shade/services/state/apps';
 import type Apps from 'gi://AstalApps';
 import type {BindSpec} from '@shade/compositor-model';
-import {computed, createState, For, onCleanup} from 'gnim';
+import {type Accessor, computed, createState, For, onCleanup} from 'gnim';
+import {errorMessage} from './errorMessage';
 
 function shortcutFromKey(keyval: number, modifiers: number): string | null {
     const key = Gdk.keyval_name(keyval);
@@ -45,7 +45,7 @@ function appBindId(desktopId: string): string {
 
 type AppShortcutGroupProps = {
     applications: AppShortcutTarget[];
-    recording: () => AppShortcutTarget | null;
+    recording: Accessor<AppShortcutTarget | null>;
     selected: () => number;
     onRecord: (app: AppShortcutTarget | null) => void;
     onSelect: (index: number) => void;
@@ -73,16 +73,16 @@ function AppShortcutGroup({
             />
             <Adw.ActionRow
                 title="Combinação"
-                subtitle={
-                    recording()
-                        ? `Pressione as teclas para ${recording()?.title ?? 'o aplicativo'}…`
+                subtitle={recording.as((app) =>
+                    app
+                        ? `Pressione as teclas para ${app.title}…`
                         : 'Nenhuma gravação em andamento.'
-                }
+                )}
             >
                 <Gtk.Button
                     slot="suffix"
                     valign={Gtk.Align.CENTER}
-                    label={recording() ? 'Cancelar' : 'Gravar'}
+                    label={recording.as((app) => (app ? 'Cancelar' : 'Gravar'))}
                     sensitive={applications.length > 0}
                     onClicked={() => {
                         if (recording()) onRecord(null);
@@ -104,11 +104,14 @@ function DisabledShortcutGroup({
     binds,
     onRestore,
 }: {
-    binds: BindSpec[];
+    binds: Accessor<BindSpec[]>;
     onRestore: (id: string) => void;
 }) {
     return (
-        <Adw.PreferencesGroup title="Atalhos desativados" visible={binds.length > 0}>
+        <Adw.PreferencesGroup
+            title="Atalhos desativados"
+            visible={binds.as((items) => items.length > 0)}
+        >
             <For each={binds}>
                 {(bind: BindSpec) => (
                     <Adw.ActionRow title={bind.title} subtitle={bind.keys}>
@@ -125,31 +128,6 @@ function DisabledShortcutGroup({
     );
 }
 
-function KeystrokePreferences({
-    enabled,
-    error,
-    onToggle,
-}: {
-    enabled: () => boolean;
-    error: () => string;
-    onToggle: (active: boolean) => void;
-}) {
-    return (
-        <>
-            <Adw.SwitchRow
-                title="Exibir teclas pressionadas"
-                subtitle="Pode revelar texto em gravações. Pausa com a sessão bloqueada; não salva histórico."
-                active={enabled()}
-                onNotifyActive={(self) => onToggle(self.active)}
-            />
-            <Adw.ActionRow
-                visible={error().length > 0}
-                title="Não foi possível controlar o overlay"
-                subtitle={error()}
-            />
-        </>
-    );
-}
 function ActiveShortcutGroup({
     group,
     recordingId,
@@ -158,7 +136,7 @@ function ActiveShortcutGroup({
     onRestore,
 }: {
     group: ShortcutGroup;
-    recordingId: () => string | null;
+    recordingId: Accessor<string | null>;
     defaults: BindSpec[];
     onEdit: (id: string) => void;
     onRestore: (id: string) => void;
@@ -198,16 +176,10 @@ function ShortcutPreferences({
     badgeEnabled,
     error,
     onBadgeChange,
-    overlayEnabled,
-    overlayError,
-    onOverlayChange,
 }: {
     badgeEnabled: () => boolean;
-    error: () => string;
-    overlayEnabled: () => boolean;
-    overlayError: () => string;
+    error: Accessor<string>;
     onBadgeChange: (active: boolean) => void;
-    onOverlayChange: (active: boolean) => void;
 }) {
     return (
         <Adw.PreferencesGroup
@@ -220,15 +192,10 @@ function ShortcutPreferences({
                 active={badgeEnabled()}
                 onNotifyActive={(self) => onBadgeChange(self.active)}
             />
-            <KeystrokePreferences
-                enabled={overlayEnabled}
-                error={overlayError}
-                onToggle={onOverlayChange}
-            />
             <Adw.ActionRow
-                visible={error().length > 0}
+                visible={error.as((message) => message.length > 0)}
                 title="Não foi possível aplicar o atalho"
-                subtitle={error()}
+                subtitle={error}
             />
         </Adw.PreferencesGroup>
     );
@@ -237,12 +204,6 @@ function ShortcutPreferences({
 export default () => {
     const compositor = CompositorSettings.get_default();
     const settings = generalSettings();
-    const keyOverlay = KeystrokeOverlay.get_default();
-    const [overlayError, setOverlayError] = createState(keyOverlay.error);
-    const overlayErrorSignal = keyOverlay.connect('notify::error', () =>
-        setOverlayError(keyOverlay.error)
-    );
-    onCleanup(() => keyOverlay.disconnect(overlayErrorSignal));
     const [binds, setBinds] = createState(compositor.effective.binds);
     const [disabledBinds, setDisabledBinds] = createState(compositor.disabledDefaults);
     const [recordingId, setRecordingId] = createState<string | null>(null);
@@ -283,7 +244,7 @@ export default () => {
                 action: {type: 'launch-app', desktopId: app.desktopId},
             });
         } catch (cause) {
-            setError(String(cause));
+            setError(errorMessage(cause));
         }
         return true;
     };
@@ -297,7 +258,7 @@ export default () => {
         try {
             await compositor.setBindKeys(id, keys);
         } catch (cause) {
-            setError(String(cause));
+            setError(errorMessage(cause));
         }
         return true;
     };
@@ -328,13 +289,7 @@ export default () => {
             <ShortcutPreferences
                 badgeEnabled={() => settings.launcherShortcutBadges()}
                 error={error}
-                overlayEnabled={() => settings.keystrokeOverlay()}
-                overlayError={overlayError}
                 onBadgeChange={(active) => settings.setLauncherShortcutBadges(active)}
-                onOverlayChange={(active) => {
-                    settings.setKeystrokeOverlay(active);
-                    void keyOverlay.setEnabled(active);
-                }}
             />
             <For each={binds.as(groupByCategory)}>
                 {(group: ShortcutGroup) => (
@@ -350,7 +305,7 @@ export default () => {
                         onRestore={(id) => {
                             void compositor
                                 .restoreBind(id)
-                                .catch((cause) => setError(String(cause)));
+                                .catch((cause) => setError(errorMessage(cause)));
                         }}
                     />
                 )}
@@ -367,9 +322,9 @@ export default () => {
                 }}
             />
             <DisabledShortcutGroup
-                binds={disabledBinds()}
+                binds={disabledBinds}
                 onRestore={(id) => {
-                    void compositor.restoreBind(id).catch((cause) => setError(String(cause)));
+                    void compositor.restoreBind(id).catch((cause) => setError(errorMessage(cause)));
                 }}
             />
         </Gtk.Box>

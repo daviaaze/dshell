@@ -9,10 +9,11 @@ describe('IconNames', () => {
         theme.set_theme_name('Adwaita');
         theme.add_resource_path('/org/gtk/libgtk/icons/');
         // Moon phases are application assets, not part of the system theme.
-        const missing = [...new Set(Object.values(IconNames))]
-            .filter(name => !name.startsWith('moon-') && !theme.has_icon(name));
+        const missing = [...new Set(Object.values(IconNames))].filter(
+            (name) => !name.startsWith('moon-') && !theme.has_icon(name)
+        );
         expect(missing).toEqual([]);
     });
 });
 
-run();
+await run();

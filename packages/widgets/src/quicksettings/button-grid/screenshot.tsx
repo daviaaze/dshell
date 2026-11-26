@@ -74,7 +74,7 @@ function PrefsSection({
             {/* WebM (VP9). Unchecked = MP4 (H.264), the default. */}
             <Gtk.CheckButton
                 label="WebM"
-                active={captureSettings.recordingFormat() === 1}
+                active={captureSettings.recordingFormat.as((format) => format === 1)}
                 onNotifyActive={({active}) => {
                     const format = active ? 1 : 0;
                     if (captureSettings.recordingFormat() !== format)
@@ -124,14 +124,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
     const captureSettings = getScreenCaptureSettings();
 
     const detail = (
-        <Gtk.Box
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={8}
-            marginTop={8}
-            marginBottom={8}
-            marginStart={8}
-            marginEnd={8}
-        >
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <ScreenshotSection ss={screenshot} />
             <Gtk.Separator />
             <RecordingSection ss={screenshot} />

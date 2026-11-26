@@ -5,6 +5,7 @@
  */
 
 import Gdk from 'gi://Gdk?version=4.0';
+import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import {defineService} from '@shade/core/define';
 import logger from '@shade/core/logger';
@@ -25,11 +26,16 @@ const M3_TO_PALETTE: Record<string, keyof Palette> = {
     shadow: 'shadow',
 };
 
+/** Matugen normally finishes in well under a second; kill it if it hangs. */
+const MATUGEN_TIMEOUT_MS = 30_000;
+
 interface Generation {
     epoch: number;
     wallpaper: string;
     promise: Promise<void>;
     reject: (error: Error) => void;
+    /** Cancelled when the generation is superseded, which also kills the matugen child. */
+    cancellable: Gio.Cancellable;
 }
 
 class PaletteGenerationCancelledError extends Error {
@@ -153,10 +159,14 @@ export default class PaletteGenerator extends GObject {
 
         const executable = GLib.find_program_in_path('matugen');
         if (!executable) {
-            return this.#failGeneration('Matugen is unavailable. Install matugen to generate colors.');
+            return this.#failGeneration(
+                'Matugen is unavailable. Install matugen to generate colors.'
+            );
         }
         if (!wallpaper || !GLib.file_test(wallpaper, GLib.FileTest.IS_REGULAR)) {
-            return this.#failGeneration('The day wallpaper is unavailable. Choose an existing image file.');
+            return this.#failGeneration(
+                'The day wallpaper is unavailable. Choose an existing image file.'
+            );
         }
 
         let resolve!: () => void;
@@ -170,6 +180,7 @@ export default class PaletteGenerator extends GObject {
             wallpaper,
             promise,
             reject,
+            cancellable: new Gio.Cancellable(),
         };
         this.#generation = generation;
         this.#setGenerationState(true, null);
@@ -205,14 +216,17 @@ export default class PaletteGenerator extends GObject {
         this.#generationEpoch++;
         const generation = this.#generation;
         this.#generation = null;
+        generation?.cancellable.cancel();
         generation?.reject(new PaletteGenerationCancelledError());
         this.#setGenerationState(false, null);
     }
 
     #isCurrent(generation: Generation): boolean {
-        return !this.#disposed
-            && this.#generation === generation
-            && this.#generationEpoch === generation.epoch;
+        return (
+            !this.#disposed &&
+            this.#generation === generation &&
+            this.#generationEpoch === generation.epoch
+        );
     }
 
     #assertCurrent(generation: Generation): void {
@@ -244,9 +258,11 @@ export default class PaletteGenerator extends GObject {
         let failure: string | null = null;
         try {
             this.#assertCurrent(generation);
-            const output = await Process.execAsyncv([
-                executable, 'image', generation.wallpaper, '--json', 'hex',
-            ]);
+            const output = await Process.execAsyncv(
+                [executable, 'image', generation.wallpaper, '--json', 'hex'],
+                false,
+                {timeoutMs: MATUGEN_TIMEOUT_MS, cancellable: generation.cancellable}
+            );
             this.#assertCurrent(generation);
             this.#applyPalette(this.#parseMatugenJson(output));
             this.#assertCurrent(generation);
@@ -271,8 +287,12 @@ export default class PaletteGenerator extends GObject {
         } catch {
             throw new Error('Matugen returned invalid JSON.');
         }
-        if (!isRecord(data) || !isRecord(data.colors)
-            || !isRecord(data.colors.dark) || !isRecord(data.colors.light)) {
+        if (
+            !isRecord(data) ||
+            !isRecord(data.colors) ||
+            !isRecord(data.colors.dark) ||
+            !isRecord(data.colors.light)
+        ) {
             throw new Error('Matugen output must contain light and dark color maps.');
         }
         return {

@@ -1,179 +1,158 @@
 /**
- * NativeCrypto — AES-256-CTR + HMAC-SHA256 (encrypt-then-MAC) via openssl.
- *
- * GJS 1.88 has no Web Crypto API and pure-JS AES (cryptoEngine.ts) ran at
- * ~2.8 MB/s, which froze the main loop for 62 s on a large history blob.
- * openssl's `enc` rejects AEAD modes ("AEAD ciphers not supported"), so we
- * use AES-256-CTR for confidentiality plus HMAC-SHA256 over the ciphertext
- * (encrypt-then-MAC) for integrity — both natively supported and fast.
- *
- * All I/O happens through Gio.Subprocess.communicate_async so encryption
- * and decryption never block the GJS main loop.
- *
- * @module nativeCrypto
+ * Maintained native crypto in a packaged, private-stdin worker.
+ * New blobs use AES-256-GCM; legacy readers live exclusively in the worker.
+ * No key is placed in subprocess argv, environment, or a temporary file.
  */
-
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
-import {Process} from '@shade/core/process';
 
-/** Encrypted payload produced by encryptNative / consumed by decryptNative. */
+declare global {
+    interface ImportMeta {
+        readonly clipboardCryptoPath?: string;
+    }
+}
+
 export interface SealedBlob {
-    /** 16-byte CTR IV. */
     nonce: Uint8Array;
     ciphertext: Uint8Array;
-    /** 32-byte HMAC-SHA256 over ciphertext. */
+    /** GCM authentication tag. */
     mac: Uint8Array;
 }
 
-export const CTR_IV_SIZE = 16;
-export const HMAC_SIZE = 32;
+const HEADER = new Uint8Array([0x53, 0x48, 0x45, 0x44, 0, 0, 0, 4]);
+const NONCE_SIZE = 12;
+const TAG_SIZE = 16;
+const WORKER_TIMEOUT_MS = 10000;
 
-// undefined = not probed yet; null = not found (persistence disabled).
-let opensslPath: string | null | undefined;
-
-function getOpenssl(): string | null {
-    if (opensslPath !== undefined) return opensslPath;
-    const found = Process.findBinary('openssl');
-    // findBinary falls back to the bare name when `which` fails.
-    opensslPath = found !== 'openssl' ? found : null;
-    if (!opensslPath) {
-        logger.error(
-            'clipboard',
-            'openssl binary not found — clipboard history persistence disabled (in-memory only)'
-        );
-    }
-    return opensslPath;
-}
-
-/**
- * Run openssl with `args`, feeding `input` on stdin, resolving stdout bytes.
- * Never blocks the main loop.
- */
-function runOpenSSL(args: string[], input: Uint8Array): Promise<Uint8Array> {
-    const bin = getOpenssl();
-    if (!bin) {
-        return Promise.reject(new Error('openssl binary not found'));
-    }
-    const {promise, resolve, reject} = Promise.withResolvers<Uint8Array>();
-    let proc: Gio.Subprocess;
-    try {
-        proc = Gio.Subprocess.new(
-            [bin, ...args],
-            Gio.SubprocessFlags.STDIN_PIPE |
-                Gio.SubprocessFlags.STDOUT_PIPE |
-                Gio.SubprocessFlags.STDERR_PIPE
-        );
-    } catch (e) {
-        reject(e instanceof Error ? e : new Error(String(e)));
-        return promise;
-    }
-    proc.communicate_async(new GLib.Bytes(input), null, (_, res) => {
-        try {
-            const [, stdout, stderr] = proc.communicate_finish(res);
-            if (proc.get_successful()) {
-                resolve(stdout ? stdout.toArray() : new Uint8Array(0));
-            } else {
-                const errText = stderr
-                    ? new TextDecoder().decode(stderr.toArray()).trim()
-                    : '';
-                reject(
-                    new Error(errText || `openssl exited with status ${proc.get_exit_status()}`)
-                );
-            }
-        } catch (e) {
-            reject(e instanceof Error ? e : new Error(String(e)));
-        }
+async function runWorker(
+    operation: 'encrypt' | 'decrypt' | 'write' | 'load',
+    key: Uint8Array,
+    input: Uint8Array = new Uint8Array(0),
+    path?: string
+): Promise<Uint8Array> {
+    if (key.length !== 32) throw new Error('clipboard key must be 32 bytes');
+    const worker =
+        import.meta.clipboardCryptoPath ?? `${import.meta.bindir}/shade-clipboard-crypto`;
+    const process = Gio.Subprocess.new(
+        [worker, operation, ...(path ? [path] : [])],
+        Gio.SubprocessFlags.STDIN_PIPE |
+            Gio.SubprocessFlags.STDOUT_PIPE |
+            Gio.SubprocessFlags.STDERR_PIPE
+    );
+    const request = new Uint8Array(key.length + input.length);
+    request.set(key);
+    request.set(input, key.length);
+    let timedOut = false;
+    const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, WORKER_TIMEOUT_MS, () => {
+        timedOut = true;
+        process.force_exit();
+        return GLib.SOURCE_REMOVE;
     });
-    return promise;
-}
-
-/**
- * Encrypt plaintext: random IV, AES-256-CTR, then HMAC-SHA256 over the
- * ciphertext. Key must be 32 bytes.
- */
-export async function encryptNative(key: Uint8Array, plaintext: Uint8Array): Promise<SealedBlob> {
-    const nonce = getRandomBytes(CTR_IV_SIZE);
-    const keyHex = bytesToHex(key);
-    const ciphertext = await runOpenSSL(
-        ['enc', '-aes-256-ctr', '-K', keyHex, '-iv', bytesToHex(nonce)],
-        plaintext
-    );
-    const mac = await runOpenSSL(
-        ['dgst', '-sha256', '-mac', 'HMAC', '-macopt', `hexkey:${keyHex}`, '-binary'],
-        ciphertext
-    );
-    return {nonce, ciphertext, mac};
-}
-
-/**
- * Decrypt a SealedBlob. Verifies the HMAC first (constant-time) and throws
- * on mismatch, so tampered data never reaches the decrypt step.
- */
-export async function decryptNative(key: Uint8Array, blob: SealedBlob): Promise<Uint8Array> {
-    const keyHex = bytesToHex(key);
-    const expectedMac = await runOpenSSL(
-        ['dgst', '-sha256', '-mac', 'HMAC', '-macopt', `hexkey:${keyHex}`, '-binary'],
-        blob.ciphertext
-    );
-    if (!constantTimeEqual(expectedMac, blob.mac)) {
-        throw new Error('clipboard MAC verification failed');
+    try {
+        const {promise, resolve, reject} = Promise.withResolvers<Uint8Array>();
+        process.communicate_async(new GLib.Bytes(request), null, (_, result) => {
+            try {
+                const [, stdout, stderr] = process.communicate_finish(result);
+                const warning = stderr ? new TextDecoder().decode(stderr.toArray()).trim() : '';
+                if (!process.get_successful()) {
+                    reject(
+                        new Error(
+                            timedOut
+                                ? 'clipboard worker timed out'
+                                : warning || 'clipboard worker failed'
+                        )
+                    );
+                } else {
+                    if (warning) logger.warn('clipboard', warning);
+                    resolve(stdout?.toArray() ?? new Uint8Array(0));
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+        return await promise;
+    } finally {
+        if (!timedOut) GLib.source_remove(timer);
+        request.fill(0);
     }
-    return runOpenSSL(
-        ['enc', '-d', '-aes-256-ctr', '-K', keyHex, '-iv', bytesToHex(blob.nonce)],
-        blob.ciphertext
-    );
 }
 
-/** Generate a random 32-byte AES-256 key from /dev/urandom. */
+export async function encryptNative(key: Uint8Array, plaintext: Uint8Array): Promise<SealedBlob> {
+    const output = await runWorker('encrypt', key, plaintext);
+    if (
+        output.length < HEADER.length + NONCE_SIZE + TAG_SIZE ||
+        !HEADER.every((byte, index) => output[index] === byte)
+    ) {
+        throw new Error('invalid encrypted clipboard worker response');
+    }
+    return {
+        nonce: output.slice(HEADER.length, HEADER.length + NONCE_SIZE),
+        ciphertext: output.slice(HEADER.length + NONCE_SIZE, -TAG_SIZE),
+        mac: output.slice(-TAG_SIZE),
+    };
+}
+
+export async function decryptNative(key: Uint8Array, blob: SealedBlob): Promise<Uint8Array> {
+    if (blob.nonce.length !== NONCE_SIZE || blob.mac.length !== TAG_SIZE) {
+        throw new Error('invalid clipboard GCM framing');
+    }
+    const input = new Uint8Array(HEADER.length + NONCE_SIZE + blob.ciphertext.length + TAG_SIZE);
+    input.set(HEADER);
+    input.set(blob.nonce, HEADER.length);
+    input.set(blob.ciphertext, HEADER.length + NONCE_SIZE);
+    input.set(blob.mac, input.length - TAG_SIZE);
+    return runWorker('decrypt', key, input);
+}
+
+/** The worker owns migration, authentication and all blocking disk reads. */
+export function loadHistoryNative(key: Uint8Array, path: string): Promise<Uint8Array> {
+    return runWorker('load', key, undefined, path);
+}
+
+/** Resolves only after a private atomic write and both file/directory fsyncs. */
+export async function writeHistoryNative(
+    key: Uint8Array,
+    path: string,
+    plaintext: Uint8Array
+): Promise<void> {
+    await runWorker('write', key, plaintext, path);
+}
+
 export function generateKeyNative(): Uint8Array {
-    return getRandomBytes(32);
-}
-
-/** Read `count` cryptographically random bytes from /dev/urandom. */
-function getRandomBytes(count: number): Uint8Array {
-    const out = new Uint8Array(count);
+    const key = new Uint8Array(32);
     const stream = Gio.File.new_for_path('/dev/urandom').read(null);
     try {
-        let off = 0;
-        while (off < count) {
-            const chunk = stream.read_bytes(count - off, null);
-            const data = chunk.toArray();
-            if (data.length === 0) break;
-            out.set(data, off);
-            off += data.length;
+        let offset = 0;
+        while (offset < key.length) {
+            const chunk = stream.read_bytes(key.length - offset, null).toArray();
+            if (chunk.length === 0) throw new Error('could not read clipboard key entropy');
+            key.set(chunk, offset);
+            offset += chunk.length;
         }
+    } catch (error) {
+        key.fill(0);
+        throw error;
     } finally {
         stream.close(null);
     }
-    return out;
+    return key;
 }
 
-/** Convert Uint8Array to a lowercase hex string. */
 export function bytesToHex(bytes: Uint8Array): string {
     let hex = '';
-    for (let i = 0; i < bytes.length; i++) {
-        hex += bytes[i]!.toString(16).padStart(2, '0');
-    }
+    for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
     return hex;
 }
 
-/** Convert a hex string to Uint8Array. */
+/** Reject corrupt keyring values rather than silently truncating/coercing. */
 export function hexToBytes(hex: string): Uint8Array {
-    const out = new Uint8Array(Math.floor(hex.length / 2));
-    for (let i = 0; i < out.length; i++) {
-        out[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+    if (hex.length !== 64 || !/^[0-9a-fA-F]{64}$/.test(hex)) {
+        throw new Error('clipboard keyring value must contain exactly 64 hex digits');
     }
-    return out;
-}
-
-/** Constant-time comparison — never short-circuits on early byte match. */
-function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
-    if (a.length !== b.length) return false;
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) {
-        diff |= a[i]! ^ b[i]!;
+    const key = new Uint8Array(32);
+    for (let index = 0; index < key.length; index++) {
+        key[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16);
     }
-    return diff === 0;
+    return key;
 }

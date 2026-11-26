@@ -9,7 +9,6 @@ import {
     renderHyprlandLua,
     renderMonitorLua,
     renderWorkspaceRuleLua,
-    renderKeystrokeOverlaySubscriptionLua,
     resolveUserConfig,
     validateUserConfig,
 } from '../index';
@@ -130,6 +129,98 @@ describe('compositor configuration model', () => {
             errors.some((error) => error.includes('launcher') && error.includes('terminal'))
         ).toBe(true);
     });
+    it('detects modifier aliases and reordered numbered modifiers as chord conflicts', () => {
+        for (const [left, right] of [
+            ['CTRL + Q', 'Q + CONTROL'],
+            ['ALT + Q', 'Q + MOD1'],
+            ['SUPER + Q', 'Q + MOD4'],
+            ['SUPER + MOD2 + Q', 'Q + MOD2 + SUPER'],
+            ['MOD3 + MOD5 + Q', 'Q + MOD5 + MOD3'],
+        ]) {
+            const errors = validateUserConfig(seed, {
+                version: 1,
+                binds: {launcher: {keys: left}, terminal: {keys: right}},
+            });
+            expect(errors.some((error) => error.includes('Conflito'))).toBe(true);
+        }
+        expect(
+            validateUserConfig(seed, {
+                version: 1,
+                binds: {launcher: {keys: 'MOD1 + MOD4'}},
+            }).some((error) => error.includes('precisa conter uma tecla'))
+        ).toBe(true);
+    });
+
+    it('rejects invalid desktop identifiers in shortcuts and startup entries', () => {
+        for (const desktopId of ['two words', 'org/example', 'line\nbreak']) {
+            expect(
+                validateUserConfig(seed, {
+                    version: 1,
+                    binds: {terminal: {action: {type: 'launch-app', desktopId}}},
+                }).length > 0
+            ).toBe(true);
+            expect(
+                validateUserConfig(seed, {
+                    version: 1,
+                    startup: {app: {desktopId, enabled: true}},
+                }).length > 0
+            ).toBe(true);
+        }
+    });
+
+    it('rejects malformed nested overrides without throwing or accepting them', () => {
+        for (const invalid of [
+            {binds: {custom: null}},
+            {windowRules: {custom: null}},
+            {startup: {custom: null}},
+            {layerRules: [null]},
+            {layouts: {layouts: {broken: {monitors: null, workspaces: {}}}}},
+            {layouts: {current: 7}},
+        ]) {
+            const result = resolveUserConfig(seed, {version: 1, ...invalid});
+            expect(result.errors.length > 0).toBe(true);
+            expect(result.effective).toBe(seed);
+        }
+    });
+
+    it('quotes rule effect names as Lua table keys', () => {
+        const rendered = renderHyprlandLua({
+            ...seed,
+            windowRules: [
+                {
+                    id: 'quoted',
+                    match: {class: 'dialog'},
+                    effects: {'no-blur': true, 'quoted"key': false},
+                },
+            ],
+            layerRules: [{match: {namespace: 'shade'}, effects: {'no-blur': true}}],
+        });
+        expect(rendered.includes('["no-blur"]=true')).toBe(true);
+        expect(rendered.includes('["quoted\\"key"]=false')).toBe(true);
+        expect(rendered.includes('no-blur=true')).toBe(false);
+    });
+
+    it('does not pass stale mirror targets to disabled monitor rules', () => {
+        const rendered = renderMonitorLua({
+            name: 'DP-1',
+            resolution: 'preferred',
+            position: 'auto',
+            scale: 1,
+            transform: 0,
+            vrr: null,
+            disabled: true,
+            mirror: 'old-panel',
+        });
+        expect(rendered.includes('["disabled"] = true')).toBe(true);
+        expect(rendered.includes('["mirror"]')).toBe(false);
+    });
+    it('does not select inherited properties as saved layouts', () => {
+        const rendered = renderHyprlandLua({
+            ...seed,
+            layouts: {current: 'constructor', layouts: {}},
+        });
+        expect(rendered.includes('hl.monitor(')).toBe(false);
+    });
 
     it('renders safe Lua for model values and app launch metadata', () => {
         const lua = renderHyprlandLua(seed);
@@ -226,16 +317,10 @@ describe('compositor configuration model', () => {
         expect(renderDpmsLua(false)).toBe('hl.dsp.dpms({action="off"})');
         expect(renderDpmsLua(true, 'DP-1')).toBe('hl.dsp.dpms({action="on", monitor="DP-1"})');
     });
-    it('registers a removable key hook only on explicit enable', () => {
-        const enabled = renderKeystrokeOverlaySubscriptionLua(true);
-        expect(enabled.includes('hl.on("input.keyboard.key"')).toBe(true);
-        expect(enabled.includes('if state ~= 2 then')).toBe(true);
-        expect(enabled.includes('tostring(state)')).toBe(true);
-        expect(enabled.includes('shade-key:')).toBe(true);
-
-        const disabled = renderKeystrokeOverlaySubscriptionLua(false);
-        expect(disabled.includes(':remove()')).toBe(true);
-        expect(disabled.includes('= nil')).toBe(true);
+    it('does not register a global keyboard hook in generated configuration', () => {
+        const rendered = renderHyprlandLua(seed);
+        expect(rendered.includes('input.keyboard.key')).toBe(false);
+        expect(rendered.includes('shade-key:')).toBe(false);
     });
 });
 

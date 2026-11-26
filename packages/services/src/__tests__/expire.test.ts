@@ -35,4 +35,4 @@ describe('getExpireMs', () => {
     });
 });
 
-run(import.meta.url);
+await run(import.meta.url);

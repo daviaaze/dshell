@@ -103,4 +103,4 @@ describe('SoundAlertService (DI override)', () => {
 
 // ── Run ───────────────────────────────────────────────────────────
 
-run();
+await run();

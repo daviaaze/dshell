@@ -74,7 +74,7 @@ export default (onOpen: (self: Gtk.Button) => void): QuickDetailButton => {
         widget: (
             <QuickControlButton
                 intent="action"
-                domain={'Perfil de\nenergia'}
+                domain="Perfil de energia"
                 icon={iconName}
                 value={label}
                 actionLabel="Alternar perfil de energia"

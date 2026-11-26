@@ -76,6 +76,10 @@ function BarContent({
 }) {
     const recording = bind(Screenshot.get_default(), 'recording');
     const screencast = bind(Screencast.get_default(), 'active');
+    const trayItems = bind(TrayService.get_default(), 'items');
+    const trayVisible = computed(() =>
+        trayItems().some((item) => !isTrayItemHidden(item, bar.hiddenTrayItems()))
+    );
     const showStart = computed(() => bar.showLauncher() || bar.showSystemResources());
     const showCenter = computed(
         () => hyprMonitor !== null && (bar.showWorkspaces() || bar.showWindowTitle())
@@ -87,8 +91,12 @@ function BarContent({
             bar.showSystemIndicators() ||
             bar.showBluetoothBattery() ||
             recording() ||
-            screencast()
+            screencast() ||
+            trayVisible()
     );
+    const showLauncherSeparator = computed(() => bar.showLauncher() && bar.showSystemResources());
+    const showClockSeparator = computed(() => bar.showClock() && bar.showWeather());
+    const showWeatherSeparator = computed(() => bar.showWeather() && bar.showSystemIndicators());
     const orient = vertical.as((v) => (v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL));
 
     return (
@@ -105,13 +113,13 @@ function BarContent({
                     orientation={vertical.as((v) =>
                         v ? Gtk.Orientation.HORIZONTAL : Gtk.Orientation.VERTICAL
                     )}
-                    visible={bar.showLauncher.as((v) => v && bar.showSystemResources())}
+                    visible={showLauncherSeparator}
                 />
                 <SystemUsage vertical={vertical} visible={bar.showSystemResources} />
             </BarCluster>
 
             <BarCluster slot="center" vertical={vertical} visible={showCenter}>
-                {hyprMonitor && bar.showWorkspaces() ? (
+                {hyprMonitor ? (
                     <Workspaces
                         vertical={vertical}
                         monitor={hyprMonitor}
@@ -130,37 +138,38 @@ function BarContent({
                     orientation={vertical.as((v) =>
                         v ? Gtk.Orientation.HORIZONTAL : Gtk.Orientation.VERTICAL
                     )}
-                    visible={bar.showClock.as((v) => v && bar.showWeather())}
+                    visible={showClockSeparator}
                 />
                 <WeatherButton vertical={vertical} visible={bar.showWeather} />
                 <Gtk.Separator
                     orientation={vertical.as((v) =>
                         v ? Gtk.Orientation.HORIZONTAL : Gtk.Orientation.VERTICAL
                     )}
-                    visible={bar.showWeather.as((v) => v && bar.showSystemIndicators())}
+                    visible={showWeatherSeparator}
                 />
                 <SystemIndicators vertical={vertical} visible={bar.showSystemIndicators} />
-                <TrayItems bar={bar} vertical={vertical} />
+                <TrayItems bar={bar} vertical={vertical} visible={trayVisible} />
             </BarCluster>
         </Gtk.CenterBox>
     );
 }
 
-function TrayItems({bar, vertical}: {bar: Bar; vertical: Accessor<boolean>}) {
+function TrayItems({
+    bar,
+    vertical,
+    visible,
+}: {
+    bar: Bar;
+    vertical: Accessor<boolean>;
+    visible: Accessor<boolean>;
+}) {
     const tray = TrayService.get_default();
     const hidden = bar.hiddenTrayItems;
     const orientation = vertical.as((v) =>
         v ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL
     );
     return (
-        <Gtk.Box
-            slot="end"
-            spacing={4}
-            orientation={orientation}
-            visible={bind(tray, 'items').as((items) =>
-                items.some((item) => !isTrayItemHidden(item, hidden()))
-            )}
-        >
+        <Gtk.Box slot="end" spacing={4} orientation={orientation} visible={visible}>
             <For each={bind(tray, 'items')}>
                 {(item: Tray.TrayItem) => (
                     <TrayItemButton

@@ -41,11 +41,7 @@ Remove consuming-host `sessionCommand` overrides that select the stock
 user configuration instead.
 
 Settings → Atalhos permite remapear/restaurar atalhos do compositor, criar
-atalhos de aplicativos e mostrar os atalhos correspondentes no lançador. O
-overlay global de teclas é opcional e desativado por padrão: ao ativá-lo,
-Hyprland envia eventos XKB efêmeros ao shell; o overlay não intercepta entrada,
-não grava histórico e pausa com a sessão bloqueada. Ele pode expor texto
-digitado em gravações de tela.
+atalhos de aplicativos e mostrar os atalhos correspondentes no lançador.
 
 Upstream references: [Hyprland 0.57 release notes](https://github.com/hyprwm/Hyprland/releases/tag/v0.57.0)
 and [removal of legacy configuration support](https://github.com/hyprwm/Hyprland/pull/15539).

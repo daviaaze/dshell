@@ -17,7 +17,7 @@ export default () => {
                 hexpand
                 cssClasses={['heading']}
                 label={bind(touchpad, 'enabled').as((enabled) =>
-                    enabled ? 'Touchpad On' : 'Touchpad Off'
+                    enabled ? 'Touchpad ativado' : 'Touchpad desativado'
                 )}
             />
         </Gtk.Box>

@@ -39,6 +39,7 @@
  * |---------|------|-------------|
  * | `usePopoverCleanup` | `popoverCleanup.ts` | Popover lifecycle hook that cleans up on unmount. |
  * | `getVolumeIcon` | `audioControl.tsx` | Returns icon name for a given volume level. |
+ * | `setAccessibleName` | `iconButton.tsx` | Ref callback that sets a widget's accessible name and description. |
  *
  * ## Usage
  *
@@ -66,7 +67,7 @@
 
 export {ActionButton} from './actionButton';
 export {AudioEndpointControl, getVolumeIcon} from './audioControl';
-export {IconButton, IconMenuButton} from './iconButton';
+export {IconButton, IconMenuButton, setAccessibleName} from './iconButton';
 export {IconInfoRow} from './iconInfoRow';
 export {LinkedBox} from './linkedBox';
 export {default as Notification} from './notification';

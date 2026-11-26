@@ -40,6 +40,8 @@ Use native Lua handles to add/replace/remove binds and named window rules where 
 
 On first load only, when the unified file is absent, import `monitor-layouts.json` and preserve its layouts/current choice. Existing display preview/rollback behavior and layout semantics remain unchanged. The old file remains untouched as a backup. Thereafter the unified store is authoritative; no dual writes.
 
+Shortcut edits load and validate current overrides before applying changes. They preserve independently saved layouts and leave an invalid user file untouched until it is repaired.
+
 ## UI behavior
 
 - Shortcuts: list from the manifest/model, show action and current chord, capture/remap/add/disable/restore with conflict validation; never infer command descriptions from `hyprctl binds -j`.
@@ -98,5 +100,5 @@ multi-output presentation remains a manual verification case.
 - Nix evaluation ensures host-resolved settings, workspace rules, binds and cursor environment are represented in the seed. Generated binds have one read-only definition and resolve to an empty list when binds or the compositor are disabled.
 - Port contract tests exercise typed requests and event parsing without shelling out from consumers.
 - Integration smoke: render seed + user overrides, validate Lua using a disposable Hyprland instance/config verifier, apply/remove a disposable bind via dispatch, and verify `hyprctl binds -j` reflects it.
-- UI smoke: edit and restore a bind, show an app badge, confirm invalid/conflicting edits are rejected, preview/revert risky edits, enable/disable overlay and confirm no input interception.
+- UI smoke: edit and restore a bind, show an app badge, confirm invalid/conflicting edits are rejected, and preview and revert display changes.
 - Full test/type/lint/build suite after all migration slices are integrated.

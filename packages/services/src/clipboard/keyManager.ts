@@ -1,215 +1,157 @@
 /**
- * KeyManager — Manage the AES-256 encryption key via libsecret (Secret Service).
- *
- * On first run, generates a random 256-bit key and stores it in the system
- * keyring (GNOME Keyring / KDE Wallet). On subsequent runs, retrieves the
- * key from the keyring.
- *
- * If the key is missing from the keyring (e.g., keyring was reset, or running
- * on a new machine), a new key is generated. Previous clipboard history
- * becomes unrecoverable — this is by design.
- *
- * Keyring access uses a timeout to avoid blocking when the keyring daemon
- * is not available (e.g., headless sessions, test environments).
- *
- * @module keyManager
+ * Clipboard key lifecycle. Only a validated key from the persistent default
+ * collection, or a successfully stored new key, may unlock on-disk history.
+ * Every Secret Service operation is asynchronous, cancellable and bounded.
+ * An unavailable/locked/session-only keyring leaves history in memory only.
  */
-
+import Gio from 'gi://Gio?version=2.0';
+import GLib from 'gi://GLib?version=2.0';
 import Secret from 'gi://Secret?version=1';
 import logger from '@shade/core/logger';
 import {bytesToHex, generateKeyNative, hexToBytes} from './nativeCrypto';
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const SCHEMA_NAME = 'com.caioasmuniz.shade.ClipboardKey';
-const LABEL = 'Shade Shell Clipboard Encryption Key';
-const ATTRIBUTE_KEY = 'application';
-const ATTRIBUTE_VALUE = 'shade-shell';
-
-// ── Schema definition ────────────────────────────────────────────────────────
-
-/** Schema for identifying our key in the keyring. */
-const schema = Secret.Schema.new(SCHEMA_NAME, Secret.SchemaFlags.NONE, {
-    [ATTRIBUTE_KEY]: Secret.SchemaAttributeType.STRING,
+const schema = Secret.Schema.new('com.caioasmuniz.shade.ClipboardKey', Secret.SchemaFlags.NONE, {
+    application: Secret.SchemaAttributeType.STRING,
 });
-
-// ── State ────────────────────────────────────────────────────────────────────
-
+const attributes = {application: 'shade-shell'};
+const KEYRING_TIMEOUT_MS = 2000;
 let keyResult: Uint8Array | null = null;
-let keyringReady = false;
-let keyringAttempted = false;
+let keyStored = false;
+let initPromise: Promise<void> | null = null;
 
-// ── Key Manager ──────────────────────────────────────────────────────────────
-
-/**
- * Initialize the key manager.
- *
- * Tries to access the keyring synchronously. If the keyring daemon is not
- * available, generates an ephemeral key.
- *
- * Must be called during app startup.
- */
-export function initKeyManager(): void {
-    if (keyringAttempted) return;
-    keyringAttempted = true;
-
-    // Check if the secret service is available by trying to get the shared service
-    // This will trigger D-Bus activation, but we handle the timeout
+function keyringOperation<T>(
+    start: (cancellable: Gio.Cancellable, callback: Gio.AsyncReadyCallback) => void,
+    finish: (result: Gio.AsyncResult) => T
+): Promise<T> {
+    const {promise, resolve, reject} = Promise.withResolvers<T>();
+    const cancellable = new Gio.Cancellable();
+    let settled = false;
+    let timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, KEYRING_TIMEOUT_MS, () => {
+        timer = 0;
+        settled = true;
+        cancellable.cancel();
+        reject(new Error('clipboard keyring operation timed out'));
+        return GLib.SOURCE_REMOVE;
+    });
     try {
-        // Try to look up the key — this will trigger D-Bus activation if needed
-        const keyHex = Secret.password_lookup_sync(
-            schema,
-            {[ATTRIBUTE_KEY]: ATTRIBUTE_VALUE},
-            null
-        );
-
-        keyringReady = true;
-
-        if (keyHex && keyHex.length > 0) {
-            logger.info('clipboard', 'retrieved encryption key from keyring');
-            keyResult = hexToBytes(keyHex);
-        } else {
-            logger.info('clipboard', 'no encryption key found, generating new key');
-            keyResult = generateKeyNative();
-
-            // Only attempt to persist the key if the secret service has a
-            // default collection (i.e. the keyring has been unlocked via PAM).
-            // If the collection path is NULL (keyring daemon started but login
-            // collection not yet registered), password_store_sync triggers a
-            // GLib C assertion that prints a non-fatal warning to stderr and
-            // fails silently — the key is ephemeral for this session instead.
-            if (secretServiceHasCollection()) {
-                storeKey(keyResult);
-            } else {
-                logger.info(
-                    'clipboard',
-                    'keyring collection not available, ' +
-                        'keeping encryption key in memory for this session'
-                );
+        start(cancellable, (_, result) => {
+            try {
+                // Finish even a cancelled operation to release its result.
+                const value = finish(result);
+                if (!settled) resolve(value);
+            } catch (error) {
+                if (!settled) reject(error);
+            } finally {
+                settled = true;
+                if (timer) GLib.source_remove(timer);
+                timer = 0;
             }
-        }
-    } catch (e) {
-        keyringReady = false;
-        logger.warn('clipboard', 'keyring not available, generating ephemeral key:', e);
-        keyResult = generateKeyNative();
+        });
+    } catch (error) {
+        settled = true;
+        if (timer) GLib.source_remove(timer);
+        timer = 0;
+        reject(error);
     }
+    return promise;
 }
 
-/**
- * Store the key in the keyring (best-effort).
- */
-function storeKey(key: Uint8Array): void {
-    if (!keyringReady) return;
-
-    const keyHex = bytesToHex(key);
+async function initializeKey(): Promise<void> {
+    keyStored = false;
     try {
-        const stored = Secret.password_store_sync(
-            schema,
-            {[ATTRIBUTE_KEY]: ATTRIBUTE_VALUE},
-            null,
-            LABEL,
-            keyHex,
-            null
+        const collection = await keyringOperation(
+            (cancellable, callback) =>
+                Secret.Collection.for_alias(
+                    null,
+                    Secret.COLLECTION_DEFAULT,
+                    Secret.CollectionFlags.NONE,
+                    cancellable,
+                    callback
+                ),
+            (result) => Secret.Collection.for_alias_finish(result)
         );
-        if (stored) {
-            logger.info('clipboard', 'encryption key stored in keyring');
-        } else {
-            logger.warn('clipboard', 'failed to store encryption key in keyring');
+        const path = collection?.get_object_path();
+        if (!collection || !path || collection.get_locked()) {
+            throw new Error('no unlocked persistent default keyring collection');
         }
-    } catch (e) {
-        logger.warn('clipboard', 'failed to store key in keyring:', e);
+        const sessionCollection = await keyringOperation(
+            (cancellable, callback) =>
+                Secret.Collection.for_alias(
+                    null,
+                    Secret.COLLECTION_SESSION,
+                    Secret.CollectionFlags.NONE,
+                    cancellable,
+                    callback
+                ),
+            (result) => Secret.Collection.for_alias_finish(result)
+        );
+        if (sessionCollection?.get_object_path() === path) {
+            throw new Error('default keyring collection is session-only');
+        }
+        const items = await keyringOperation(
+            (cancellable, callback) =>
+                collection.search(
+                    schema,
+                    attributes,
+                    Secret.SearchFlags.LOAD_SECRETS,
+                    cancellable,
+                    callback
+                ),
+            (result) => collection.search_finish(result)
+        );
+        if (items.length > 0) {
+            const keyHex = items[0]!.get_secret()?.get_text();
+            if (!keyHex) throw new Error('keyring clipboard key is not readable');
+            keyResult = hexToBytes(keyHex);
+            keyStored = true;
+            return;
+        }
+        keyResult = generateKeyNative();
+        const stored = await keyringOperation(
+            (cancellable, callback) =>
+                Secret.password_store(
+                    schema,
+                    attributes,
+                    path,
+                    'Shade Shell Clipboard Encryption Key',
+                    bytesToHex(keyResult!),
+                    cancellable,
+                    callback
+                ),
+            (result) => Secret.password_store_finish(result)
+        );
+        keyStored = stored;
+        if (!stored)
+            logger.warn('clipboard', 'keyring did not store the key; history is memory-only');
+    } catch (error) {
+        logger.warn(
+            'clipboard',
+            'persistent key unavailable; leaving on-disk history untouched:',
+            error
+        );
     }
+    if (!keyResult) keyResult = generateKeyNative();
 }
 
-/**
- * Retrieve the AES-256 key.
- *
- * Must be called after initKeyManager().
- *
- * @returns 32-byte AES-256 key as Uint8Array
- */
+export function initKeyManager(): Promise<void> {
+    initPromise ??= initializeKey();
+    return initPromise;
+}
+
+/** Call only after awaiting initKeyManager(). */
 export function getKey(): Uint8Array {
-    if (!keyringAttempted) {
-        initKeyManager();
-    }
-    if (!keyResult) {
-        keyResult = generateKeyNative();
-    }
+    if (!keyResult) throw new Error('clipboard key manager is not initialized');
     return keyResult;
 }
 
-/**
- * Delete the encryption key from the keyring.
- *
- * Warning: This makes the current clipboard history unrecoverable.
- */
-export function deleteKey(): void {
-    if (!keyringReady) return;
-    try {
-        Secret.password_clear_sync(schema, {[ATTRIBUTE_KEY]: ATTRIBUTE_VALUE}, null);
-        logger.info('clipboard', 'encryption key deleted from keyring');
-        keyResult = null;
-    } catch (e) {
-        logger.error('clipboard', 'failed to delete encryption key:', e);
-    }
-}
-
-const SecretService = Secret.Service;
-
-/**
- * Check if a persistent (non-session) collection is available in the
- * Secret Service.
- *
- * gnome-keyring exposes a "session" collection immediately on D-Bus
- * activation.  The "login" (default) collection path is %NULL until PAM
- * unlocks the keyring via pam_gnome_keyring.  Calling
- * password_store_sync(NULL) before then hits:
- *
- *   secret_service_create_item_dbus_path: assertion
- *   'collection_path != NULL && g_variant_is_object_path (collection_path)'
- *   failed
- *
- * We filter out the well-known session path and return true only
- * when a real persistent collection is registered.
- */
-function secretServiceHasCollection(): boolean {
-    try {
-        const service = SecretService.get_sync(
-            Secret.ServiceFlags.OPEN_SESSION | Secret.ServiceFlags.LOAD_COLLECTIONS,
-            null
-        );
-        if (!service) return false;
-
-        const collections = service.get_collections();
-        if (!collections) return false;
-
-        // gnome-keyring always exposes a session collection immediately
-        // on D-Bus activation.  That collection does NOT have a valid
-        // default-collection path — password_store_sync(NULL) on it
-        // triggers a GLib C assertion.  Filter it out.
-        const SESSION_PATH = '/org/freedesktop/secrets/collection/session';
-        const realCollections = collections.filter((c) => c.get_object_path() !== SESSION_PATH);
-
-        return realCollections.length > 0;
-    } catch {
-        return false;
-    }
-}
-
 export function isKeyPersistent(): boolean {
-    return keyringReady;
+    return keyStored;
 }
 
-export function hasKey(): boolean {
-    if (!keyringReady) return false;
-    try {
-        const result = Secret.password_lookup_sync(
-            schema,
-            {[ATTRIBUTE_KEY]: ATTRIBUTE_VALUE},
-            null
-        );
-        return result !== null && result.length > 0;
-    } catch {
-        return false;
-    }
+/** Called after the store has drained all in-flight crypto and disk writes. */
+export function releaseKey(): void {
+    keyResult?.fill(0);
+    keyResult = null;
+    keyStored = false;
+    initPromise = null;
 }

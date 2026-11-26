@@ -38,6 +38,10 @@ describe('Theme.generateCSS palette validation', () => {
     it('rejects a translucent window background', () => {
         expect(() => Theme.generateCSS({...validPalette, bg: '#ffffff80'})).toThrow();
     });
+
+    it('raises the dimmed-text opacity to 70%', () => {
+        expect(Theme.generateCSS(validPalette).includes('--dim-opacity: 70%;')).toBe(true);
+    });
 });
 
 describe('semantic accent contrast', () => {
@@ -75,31 +79,19 @@ describe('semantic accent contrast', () => {
                 contrastRatio(roles.foreground, roles.background),
                 ACCENT_TEXT_CONTRAST_MIN
             );
-            expectAtLeast(
-                contrastRatio(roles.standalone, background),
-                ACCENT_TEXT_CONTRAST_MIN
-            );
+            expectAtLeast(contrastRatio(roles.standalone, background), ACCENT_TEXT_CONTRAST_MIN);
         }
 
         const defaultBlue = resolveAccentRoles('#3584e4', '#ffffff');
         expect(defaultBlue.background).toBe('#3584e4');
-        expectAtLeast(
-            contrastRatio(defaultBlue.standalone, '#ffffff'),
-            ACCENT_TEXT_CONTRAST_MIN
-        );
+        expectAtLeast(contrastRatio(defaultBlue.standalone, '#ffffff'), ACCENT_TEXT_CONTRAST_MIN);
     });
 
     it('composites a translucent primary onto the known opaque background', () => {
         const roles = resolveAccentRoles('#ff000080', '#ffffff');
         expect(contrastRatio(roles.background, '#ff8080')).toBeLessThan(1.01);
-        expectAtLeast(
-            contrastRatio(roles.foreground, roles.background),
-            ACCENT_TEXT_CONTRAST_MIN
-        );
-        expectAtLeast(
-            contrastRatio(roles.standalone, '#ffffff'),
-            ACCENT_TEXT_CONTRAST_MIN
-        );
+        expectAtLeast(contrastRatio(roles.foreground, roles.background), ACCENT_TEXT_CONTRAST_MIN);
+        expectAtLeast(contrastRatio(roles.standalone, '#ffffff'), ACCENT_TEXT_CONTRAST_MIN);
     });
 
     it('keeps standalone contrast above threshold after 8-bit rounding', () => {
@@ -108,10 +100,7 @@ describe('semantic accent contrast', () => {
 
         expect(contrastRatio(primary, '#ffffff')).toBeLessThan(ACCENT_TEXT_CONTRAST_MIN);
         expect(roles.standalone === primary).toBe(false);
-        expectAtLeast(
-            contrastRatio(roles.standalone, '#ffffff'),
-            ACCENT_TEXT_CONTRAST_MIN
-        );
+        expectAtLeast(contrastRatio(roles.standalone, '#ffffff'), ACCENT_TEXT_CONTRAST_MIN);
     });
 
     it('rejects invalid colors and translucent window backgrounds', () => {
@@ -122,4 +111,4 @@ describe('semantic accent contrast', () => {
     });
 });
 
-run(import.meta.url);
+await run(import.meta.url);

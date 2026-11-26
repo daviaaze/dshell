@@ -91,11 +91,25 @@ and [Target Size Minimum](https://www.w3.org/WAI/WCAG22/Understanding/target-siz
 ## Shell surface contract
 
 Root-visible shell panels use an opaque native window surface (`background`
-class with `@window_bg_color` / `@window_fg_color`), not a transparent layer
+class plus `OPAQUE_SURFACE_CSS` from
+[`common/surface.ts`](../packages/widgets/src/common/surface.ts), which sets
+`@window_bg_color` / `@window_fg_color`), not a transparent layer
 window wrapped around a card. Native GTK popovers keep their `.background`
 class and arrow; the dock context menu is the intentional `hasArrow={false}`
 exception. Do not globally replace native card colors or flatten their
 shadows.
+
+Some layer windows are intentionally transparent, because the window is
+larger than what it draws or must let the desktop show through. In these the
+visible panel, not the window, carries the surface:
+
+| Surface | Why the window is transparent | Visible panel |
+|---------|-------------------------------|---------------|
+| Window switcher ([`windowswitcher/index.tsx`](../packages/widgets/src/windowswitcher/index.tsx)) | Anchored to all four edges to hold the keyboard grab; the panel is centered | Box with `card`, `background` and `OPAQUE_SURFACE_CSS`; items use `.switcher-item` (`@window_bg_color`) |
+| Screenshot overlay ([`screenshot-ui/index.tsx`](../packages/widgets/src/screenshot-ui/index.tsx)) | Full-monitor stage; recording shows the live desktop behind it | Control panel `Gtk.ScrolledWindow` with `card`, `background` |
+| Toast stack ([`notifications/index.tsx`](../packages/widgets/src/notifications/index.tsx)) | The gaps between toasts stay transparent and click-through | Each popup card sets `background-color: @window_bg_color` inline |
+| Recording boundary ([`recording-boundary/index.tsx`](../packages/widgets/src/recording-boundary/index.tsx)) | Paints only the dashed output edges; accepts no input | None |
+| Bar ([`bar/index.tsx`](../packages/widgets/src/bar/index.tsx)) | `.bar-window` is transparent with no shadow, so only the clusters are drawn | Each `BarCluster` is a `card` box |
 
 Edge-attached panels use a 4px layer margin (matching Hyprland `gaps_out=4`),
 12px content inset, 8px ordinary spacing and 12px between major sections.
@@ -109,6 +123,14 @@ Toast stacks stay corner-anchored with no transparent outer padding or
 inter-toast surface. Put compact padding inside each notification card so the
 space between cards remains transparent and click-through. The notification
 center is a separate panel and retains its 12px content inset.
+
+Named colors: the surface contract, `OPAQUE_SURFACE_CSS`, inline `css` props
+and [`widgets/src/style.ts`](../packages/widgets/src/style.ts) currently write
+libadwaita's named colors (`@window_bg_color`, `@window_fg_color`,
+`@error_color`). They resolve to the same values as the matching variables
+(`--window-bg-color`, ...) listed below. Stylesheet rules in `style.ts` also
+use the `var(--...)` form (`--accent-bg-color`, `--window-radius`). New
+stylesheet rules use `var(--...)`; do not use the GTK3 `@theme_*` names.
 
 ---
 
@@ -262,7 +284,7 @@ Used for `AdwAlertDialog` (since 1.2).
 | Variable | Regular | High Contrast |
 |----------|---------|---------------|
 | `--border-opacity` | `15%` | `50%` |
-| `--dim-opacity` | `55%` | `90%` |
+| `--dim-opacity` | `70%` | `90%` |
 | `--disabled-opacity` | `50%` | `40%` |
 
 ### Radius
@@ -474,4 +496,4 @@ native variables so it adapts to theme changes:
 | `.large-title` | `.title-1` |
 | `.opaque` | `.suggested-action` with accent override |
 | `.dim-label` | `.dimmed` |
-| `@theme_bg_color`, `@accent_bg_color`, etc. | `--window-bg-color`, `--accent-bg-color` |
+| `@theme_bg_color` and other GTK3 `@theme_*` names | `--window-bg-color` and the other variables below (the shell's existing `@window_bg_color` usage is described under "Shell surface contract") |

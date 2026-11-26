@@ -352,7 +352,11 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         capture("screenshot-area-no-selection")
         try:
             empty_review = t.find_accessible_node("Revisar captura", role="label")
-        except Exception:
+        except Exception as error:
+            # Only "no such node" means no review panel; SSH, helper and JSON
+            # failures must not satisfy this negative check.
+            if type(error).__name__ != "Unsupported":
+                raise
             empty_review = None
         if empty_review is not None:
             raise RuntimeError("Empty area unexpectedly entered review")

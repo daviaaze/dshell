@@ -1,16 +1,16 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import {validateCountdownPreset} from '@shade/services/time/countdownPresets';
-import {
-    DEFAULT_COUNTDOWN_PRESETS,
-    timerSettings,
-} from '@shade/services/time/timer.gschema';
+import {DEFAULT_COUNTDOWN_PRESETS, timerSettings} from '@shade/services/time/timer.gschema';
 import {createState, onCleanup} from 'gnim';
 
 /** Pomodoro work/break duration rows. */
 function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>}) {
     return (
-        <Adw.PreferencesGroup title={'Pomodoro'} description={'Ciclo de trabalho e pausas em minutos.'}>
+        <Adw.PreferencesGroup
+            title={'Pomodoro'}
+            description={'Ciclo de trabalho e pausas em minutos.'}
+        >
             <Adw.SpinRow
                 ref={(self) => {
                     self.adjustment = new Gtk.Adjustment({
@@ -22,7 +22,7 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
                 }}
                 title={'Trabalho'}
                 subtitle={'Duração de cada período de trabalho em minutos.'}
-                onNotifyValue={(self) => settings.setPomodoroWorkDuration(self.value)}
+                onNotifyValue={(self) => settings.setPomodoroWorkDuration(Math.round(self.value))}
             />
             <Adw.SpinRow
                 ref={(self) => {
@@ -35,7 +35,7 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
                 }}
                 title={'Pausa curta'}
                 subtitle={'Duração em minutos.'}
-                onNotifyValue={(self) => settings.setPomodoroBreakDuration(self.value)}
+                onNotifyValue={(self) => settings.setPomodoroBreakDuration(Math.round(self.value))}
             />
             <Adw.SpinRow
                 ref={(self) => {
@@ -48,7 +48,9 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
                 }}
                 title={'Pausa longa'}
                 subtitle={'Duração em minutos.'}
-                onNotifyValue={(self) => settings.setPomodoroLongBreakDuration(self.value)}
+                onNotifyValue={(self) =>
+                    settings.setPomodoroLongBreakDuration(Math.round(self.value))
+                }
             />
             <Adw.SpinRow
                 ref={(self) => {
@@ -61,7 +63,9 @@ function PomodoroGroup({settings}: {settings: ReturnType<typeof timerSettings>})
                 }}
                 title={'Sessões antes da pausa longa'}
                 subtitle={'Número de sessões de trabalho entre pausas longas.'}
-                onNotifyValue={(self) => settings.setPomodoroSessionsBeforeLongBreak(self.value)}
+                onNotifyValue={(self) =>
+                    settings.setPomodoroSessionsBeforeLongBreak(Math.round(self.value))
+                }
             />
         </Adw.PreferencesGroup>
     );
@@ -77,7 +81,10 @@ function CountdownGroup({settings}: {settings: ReturnType<typeof timerSettings>}
     onCleanup(() => setUndoSnapshot(null));
 
     return (
-        <Adw.PreferencesGroup title={'Contagem regressiva'} description={'Presets em minutos inteiros.'}>
+        <Adw.PreferencesGroup
+            title={'Contagem regressiva'}
+            description={'Presets em minutos inteiros.'}
+        >
             <Adw.EntryRow
                 title={'Adicionar preset (minutos inteiros)'}
                 showApplyButton

@@ -187,7 +187,6 @@ const tasks: Task[] = [
 
 export type SettingsNavigator = {
     navigate: (destination: SettingsDestination) => void;
-    search: (query?: string) => void;
 };
 
 const navigators = new WeakMap<Gtk.Window, SettingsNavigator>();
@@ -196,11 +195,8 @@ export function navigateSettings(window: Gtk.Window, destination: SettingsDestin
     navigators.get(window)?.navigate(destination);
 }
 
-/** Thirteen task destinations keep all twenty-one modules mounted, including drafts. */
-export const createSettingsWindow = (
-    initialDestination?: SettingsDestination,
-    initialQuery = ''
-): Gtk.Window => {
+/** Builds every page up front: the search index walks each page's widgets, drafts included. */
+export const createSettingsWindow = (initialDestination?: SettingsDestination): Gtk.Window => {
     const meta = (id: SettingsDestination) => settingsDestinationMeta[id];
     const normalize = (text: string) =>
         text
@@ -401,6 +397,7 @@ export const createSettingsWindow = (
     };
     for (const [section, members] of sections) {
         const row = new Adw.ActionRow({title: section, activatable: true, useMarkup: false});
+        row.add_prefix(new Gtk.Image({iconName: meta(members[0]).icon}));
         // Adw's GIR overrides activate(); this is a native Gtk.ListBoxRow boundary.
         const nativeRow = row as unknown as Gtk.ListBoxRow;
         sidebar.append(nativeRow);
@@ -602,11 +599,6 @@ export const createSettingsWindow = (
     navigators.set(window, {
         navigate: (id) =>
             navigate(id, sections.get(meta(id).group)?.length === 1 ? 'sidebar' : 'section'),
-        search: (query = '') => {
-            searchEntry.set_text(query);
-            updateSearch();
-            focus(searchEntry);
-        },
     });
     if (initialDestination)
         navigate(
@@ -614,9 +606,6 @@ export const createSettingsWindow = (
             sections.get(meta(initialDestination).group)?.length === 1 ? 'sidebar' : 'section'
         );
     else showSection(meta('appearance').group);
-    if (initialQuery) {
-        searchEntry.set_text(initialQuery);
-        updateSearch();
-    } else updateSearch(false);
+    updateSearch(false);
     return window;
 };

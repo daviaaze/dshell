@@ -18,7 +18,7 @@ function delayMs(ms: number): Promise<void> {
 }
 
 describe('Timeout', () => {
-    it('fires callback after the specified delay', async () => {
+    it.async('fires callback after the specified delay', async () => {
         const t = new Timeout();
         let fired = false;
         t.start(10, () => {
@@ -29,7 +29,7 @@ describe('Timeout', () => {
         t.cancel();
     });
 
-    it('cancel() prevents callback from firing', async () => {
+    it.async('cancel() prevents callback from firing', async () => {
         const t = new Timeout();
         let fired = false;
         t.start(50, () => {
@@ -49,7 +49,7 @@ describe('Timeout', () => {
         expect(t.pending).toBe(false);
     });
 
-    it('start() cancels any previous pending timeout', async () => {
+    it.async('start() cancels any previous pending timeout', async () => {
         const t = new Timeout();
         const calls: number[] = [];
         t.start(50, () => calls.push(1));
@@ -60,7 +60,7 @@ describe('Timeout', () => {
         t.cancel();
     });
 
-    it('does not fire after cancel + restart race', async () => {
+    it.async('does not fire after cancel + restart race', async () => {
         const t = new Timeout();
         let count = 0;
         t.start(5, () => count++);

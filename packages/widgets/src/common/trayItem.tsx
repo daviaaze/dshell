@@ -44,7 +44,7 @@ export function TrayItemButton({
                         [
                             new GObject.Value(
                                 GObject.TYPE_STRING,
-                                label || title() || 'System tray item'
+                                label || title() || 'Item da bandeja do sistema'
                             ),
                         ]
                     );

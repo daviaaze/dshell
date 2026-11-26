@@ -167,7 +167,7 @@ export class JsonArrayFramer {
     #inString: boolean;
     #escaped: boolean;
 
-    constructor() {
+    constructor(private readonly maxDocumentLength = 8 * 1024 * 1024) {
         this.#buffer = '';
         this.#depth = 0;
         this.#inString = false;
@@ -185,6 +185,10 @@ export class JsonArrayFramer {
 
     #append(char: string): {complete: boolean; value?: unknown} {
         if (!this.#buffer && /\s/.test(char)) return {complete: false};
+        if (this.#buffer.length + char.length > this.maxDocumentLength) {
+            this.reset();
+            throw new Error(`PipeWire JSON document exceeded ${this.maxDocumentLength} characters`);
+        }
         this.#buffer += char;
         if (this.#inString) {
             if (this.#escaped) this.#escaped = false;

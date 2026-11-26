@@ -117,7 +117,7 @@ function buildMirrorChoices(
     const hasCurrentCandidate = candidates.some((choice) => choice.source === currentMirror);
     return [
         ...(currentMirror && !hasCurrentCandidate
-            ? [{source: currentMirror, label: `Unavailable: ${currentMirror}`}]
+            ? [{source: currentMirror, label: `Indisponível: ${currentMirror}`}]
             : []),
         {source: null, label: 'Tela independente'},
         ...candidates,
@@ -683,9 +683,11 @@ function RotationRow({
             onNotifySelected={(row) => {
                 const current = monitor();
                 if (current && row.selected !== current.transform % 4) {
+                    // Keep the flip bit (transforms 4–7) while changing the rotation.
+                    const flipped = current.transform - (current.transform % 4);
                     updateMonitor(current.name, (spec) => ({
                         ...spec,
-                        transform: row.selected,
+                        transform: flipped + row.selected,
                     }));
                 }
             }}
@@ -700,10 +702,15 @@ function DisplayPowerRow({
     service: LayoutService;
     output: Accessor<OutputInfo | undefined>;
 }) {
+    const [failed, setFailed] = createState(false);
     return (
         <Adw.ActionRow
             title="Tela ligada"
-            subtitle="Controle de energia da saída; separado de habilitar no arranjo."
+            subtitle={failed.as((hasFailed) =>
+                hasFailed
+                    ? 'Não foi possível alterar a energia da tela.'
+                    : 'Controle de energia da saída; separado de habilitar no arranjo.'
+            )}
         >
             <Gtk.Switch
                 valign={Gtk.Align.CENTER}
@@ -711,9 +718,13 @@ function DisplayPowerRow({
                 sensitive={output.as((current) => !!current)}
                 onNotifyActive={(self) => {
                     const current = output();
-                    if (current && self.active !== current.dpms) {
-                        void service.setDpms(current.name, self.active).catch(() => undefined);
-                    }
+                    if (!current || self.active === current.dpms) return;
+                    setFailed(false);
+                    void service.setDpms(current.name, self.active).then((ok) => {
+                        if (ok) return;
+                        setFailed(true);
+                        self.active = current.dpms;
+                    });
                 }}
             />
         </Adw.ActionRow>
@@ -869,6 +880,8 @@ function SavedLayouts({
 
 export default () => {
     const service = LayoutService.get_default();
+    const outputs = bind(service, 'monitors');
+    const pendingDeadline = bind(service, 'pending');
     let canvas: Gtk.DrawingArea | null = null;
     let confirmedDraft: Layout | null = null;
     const [saveEligible, setSaveEligible] = createState(false);
@@ -935,7 +948,7 @@ export default () => {
                         label="Aplicar alterações"
                         hexpand
                         sensitive={computed(
-                            () => service.monitors.length > 0 && service.pending === null
+                            () => outputs().length > 0 && pendingDeadline() === null
                         )}
                         onClicked={() => void actions.applyDraft()}
                     />

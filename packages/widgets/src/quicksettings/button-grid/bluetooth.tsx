@@ -1,4 +1,6 @@
+import Adw from 'gi://Adw?version=1';
 import AstalBluetooth from 'gi://AstalBluetooth';
+import GLib from 'gi://GLib?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {toArray} from '@shade/core/gjsUtils';
 import logger from '@shade/core/logger';
@@ -14,6 +16,9 @@ import {
     With,
 } from 'gnim';
 import {QuickControlButton} from '../../common/quickControlButton';
+import {bluetoothErrorMessage} from '../operationError';
+
+const RADIO_SETTLE_MS = 3000;
 
 /** Pair, connect or disconnect a device, tracking the in-flight address. */
 async function toggleDevice(
@@ -30,7 +35,7 @@ async function toggleDevice(
         else await service.connectDevice(device);
     } catch (error) {
         logger.error('bluetooth', 'Device connection change failed:', error);
-        setOperationError(String(error));
+        setOperationError(bluetoothErrorMessage(error));
     } finally {
         setConnectingAddress(null);
     }
@@ -125,6 +130,19 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
     const [isPowered, setIsPowered] = createState(adapter()?.powered ?? false);
     let currentAdapter: AstalBluetooth.Adapter | null = null;
     let adapterPoweredSignalId = 0;
+    const [radioTarget, setRadioTarget] = createState<boolean | null>(null);
+    const radioPending = radioTarget.as((target) => target !== null);
+    const radioActive = computed(() => radioTarget() ?? isPowered());
+    let settleSource = 0;
+    const cancelSettle = () => {
+        if (settleSource) GLib.source_remove(settleSource);
+        settleSource = 0;
+    };
+    const finishRadio = (error?: string) => {
+        cancelSettle();
+        setRadioTarget(null);
+        if (error) setOperationError(error);
+    };
     const updateAdapter = () => {
         const nextAdapter =
             bluetooth.adapter ?? toArray<AstalBluetooth.Adapter>(bluetooth.adapters)[0] ?? null;
@@ -133,14 +151,35 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
                 currentAdapter.disconnect(adapterPoweredSignalId);
             currentAdapter = nextAdapter;
             adapterPoweredSignalId = 0;
+            finishRadio();
             setAdapter(nextAdapter);
             if (nextAdapter) {
-                adapterPoweredSignalId = nextAdapter.connect('notify::powered', () =>
-                    setIsPowered(nextAdapter.powered)
-                );
+                adapterPoweredSignalId = nextAdapter.connect('notify::powered', () => {
+                    setIsPowered(nextAdapter.powered);
+                    if (nextAdapter.powered === radioTarget.peek()) finishRadio();
+                });
             }
         }
         setIsPowered(nextAdapter?.powered ?? false);
+    };
+    const setRadioPowered = (powered: boolean) => {
+        const current = adapter.peek();
+        if (!current || radioPending.peek() || powered === current.powered) return;
+        setOperationError(null);
+        setRadioTarget(powered);
+        settleSource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, RADIO_SETTLE_MS, () => {
+            settleSource = 0;
+            finishRadio('Não foi possível alterar o estado do Bluetooth. Tente novamente.');
+            return GLib.SOURCE_REMOVE;
+        });
+        try {
+            current.powered = powered;
+        } catch (error) {
+            logger.error('bluetooth', 'Toggle power failed:', error);
+            finishRadio(
+                bluetoothErrorMessage(error, 'Não foi possível alterar o estado do Bluetooth.')
+            );
+        }
     };
     const adapterAddedSignalId = bluetooth.connect('adapter-added', updateAdapter);
     const adapterRemovedSignalId = bluetooth.connect('adapter-removed', updateAdapter);
@@ -148,6 +187,7 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
     const selectedAdapterSignalId = bluetooth.connect('notify::adapter', updateAdapter);
     updateAdapter();
     onCleanup(() => {
+        cancelSettle();
         if (currentAdapter && adapterPoweredSignalId)
             currentAdapter.disconnect(adapterPoweredSignalId);
         bluetooth.disconnect(adapterAddedSignalId);
@@ -168,6 +208,7 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
 
     const value = computed(() => {
         if (!adapter()) return 'Indisponível';
+        if (radioPending()) return radioTarget() ? 'Ativando…' : 'Desativando…';
         if (!isPowered()) return 'Desativado';
         const connectedDevices = devices().filter((device) => device.connected());
         if (connectedDevices.length === 0) return 'Ativado, sem dispositivos';
@@ -177,30 +218,29 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
 
     return {
         widget: (
-            <QuickControlButton
-                intent="toggle"
-                active={isPowered}
-                icon={icon}
-                cssClasses={['raised']}
-                domain="Bluetooth"
-                value={value}
-                actionLabel={isPowered.as((powered) =>
-                    powered ? 'Desativar Bluetooth' : 'Ativar Bluetooth'
-                )}
-                actionSensitive={adapter.as((current) => current !== null)}
-                onClick={() => {
-                    const current = adapter();
-                    if (!current) return;
-                    setOperationError(null);
-                    try {
-                        current.powered = !current.powered;
-                    } catch (error) {
-                        logger.error('bluetooth', 'Toggle power failed:', error);
-                        setOperationError(String(error));
-                    }
-                }}
-                detail={{label: 'Detalhes do Bluetooth', onOpen}}
-            />
+            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+                <QuickControlButton
+                    intent="toggle"
+                    active={radioActive}
+                    icon={icon}
+                    cssClasses={['raised']}
+                    domain="Bluetooth"
+                    value={value}
+                    actionLabel={isPowered.as((powered) =>
+                        powered ? 'Desativar Bluetooth' : 'Ativar Bluetooth'
+                    )}
+                    actionSensitive={computed(() => adapter() !== null && !radioPending())}
+                    onClick={() => setRadioPowered(!radioActive.peek())}
+                    detail={{label: 'Detalhes do Bluetooth', onOpen}}
+                />
+                <Gtk.Label
+                    label={operationError.as((message) => message ?? '')}
+                    visible={operationError.as(Boolean)}
+                    cssClasses={['error', 'caption']}
+                    xalign={0}
+                    wrap
+                />
+            </Gtk.Box>
         ),
         detail: (
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
@@ -214,30 +254,22 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
                     {(current) =>
                         current ? (
                             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                                <Gtk.Box spacing={12}>
-                                    <Gtk.Label
-                                        label="Bluetooth"
-                                        hexpand
-                                        xalign={0}
-                                        cssClasses={['heading']}
+                                <Adw.PreferencesGroup title="Conexão">
+                                    <Adw.SwitchRow
+                                        title="Bluetooth"
+                                        active={radioActive}
+                                        sensitive={radioPending.as((pending) => !pending)}
+                                        onNotifyActive={(self) => setRadioPowered(self.active)}
                                     />
-                                    <Gtk.Switch
-                                        active={isPowered}
-                                        onNotifyActive={(self) => {
-                                            if (current.powered === self.active) return;
-                                            setOperationError(null);
-                                            try {
-                                                current.powered = self.active;
-                                            } catch (error) {
-                                                setOperationError(String(error));
-                                            } finally {
-                                                self.active = current.powered;
-                                            }
-                                        }}
+                                    <Adw.ActionRow
+                                        title="Estado"
+                                        subtitle={value}
+                                        useMarkup={false}
                                     />
-                                </Gtk.Box>
+                                </Adw.PreferencesGroup>
                                 <Gtk.Box
                                     visible={isPowered}
+                                    sensitive={radioPending.as((pending) => !pending)}
                                     orientation={Gtk.Orientation.VERTICAL}
                                     spacing={12}
                                 >
@@ -251,7 +283,17 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
                                                 if (current.discovering) current.stop_discovery();
                                                 else current.start_discovery();
                                             } catch (error) {
-                                                setOperationError(String(error));
+                                                logger.warn(
+                                                    'bluetooth',
+                                                    'Discovery change failed:',
+                                                    error
+                                                );
+                                                setOperationError(
+                                                    bluetoothErrorMessage(
+                                                        error,
+                                                        'Não foi possível buscar dispositivos Bluetooth.'
+                                                    )
+                                                );
                                             }
                                         }}
                                     />

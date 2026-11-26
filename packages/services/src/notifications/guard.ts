@@ -84,7 +84,10 @@ function checkNotifdDaemon(): boolean {
 
 const notifdSingleton = new DeferredSingleton<Notifd.Notifd>(
     () => {
-        if (!canInitNotifd()) throw new Error('Foreign notification daemon detected');
+        if (!canInitNotifd()) {
+            watchForeignDaemon();
+            throw new Error('Foreign notification daemon detected');
+        }
         const daemon = Notifd.get_default();
         // Toast expiry is local presentation; unresolved notifications remain
         // available in the notification center until explicitly dismissed.
@@ -112,6 +115,40 @@ export function getNotifdSafe(): Notifd.Notifd | null {
  */
 export function isNotifdResolved(): boolean {
     return notifdSingleton.initialized;
+}
+
+let foreignDaemonWatch = 0;
+const recoveryListeners = new Set<() => void>();
+
+/** Subscribe to AstalNotifd becoming available after startup found a foreign daemon. */
+export function onNotifdRecovered(cb: () => void): () => void {
+    recoveryListeners.add(cb);
+    return () => {
+        recoveryListeners.delete(cb);
+    };
+}
+
+/**
+ * The ownership check is cached, so without this a foreign daemon seen at
+ * startup would block notifications until the shell restarts. Watch its bus
+ * name; when it leaves, run the check again and tell the subscribers.
+ */
+function watchForeignDaemon(): void {
+    if (foreignDaemonWatch) return;
+    foreignDaemonWatch = Gio.bus_watch_name(
+        Gio.BusType.SESSION,
+        NOTIF_BUS_NAME,
+        Gio.BusNameWatcherFlags.NONE,
+        null,
+        () => {
+            if (!notifdSingleton.initialized || notifdSingleton.get() !== null) return;
+            _canInit = null;
+            notifdSingleton.reset();
+            if (!notifdSingleton.get()) return;
+            logger.info('notifd', 'Foreign notification daemon is gone; AstalNotifd initialized');
+            for (const cb of recoveryListeners) cb();
+        }
+    );
 }
 
 /**

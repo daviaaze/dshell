@@ -1,6 +1,7 @@
 import Batery from 'gi://AstalBattery';
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind} from 'gnim';
+import {bind, effect} from 'gnim';
+import {setAccessibleName} from '../../common/iconButton';
 
 export default () => {
     const b = Batery.get_default();
@@ -13,13 +14,17 @@ export default () => {
         return [];
     });
 
+    const label = bind(b, 'percentage').as((p) => `Bateria: ${(p * 100).toFixed(0)}%`);
+
     return (
         <Gtk.Image
             visible={bind(b, 'is-present')}
             iconName={bind(b, 'battery-icon-name')}
-            tooltipMarkup={bind(b, 'percentage').as((p) => `${(p * 100).toFixed(0)}%`)}
+            tooltipText={label}
             cssClasses={warningStyles}
             pixelSize={18}
+            accessibleRole={Gtk.AccessibleRole.IMG}
+            ref={(self) => effect(() => setAccessibleName(label())(self))}
         />
     );
 };

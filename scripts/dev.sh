@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")/.."
 
 export PATH="$PWD/node_modules/.bin:$PATH"
@@ -9,7 +10,8 @@ export GDK_BACKEND="${GDK_BACKEND:-wayland}"
 
 DOMAIN="com.caioasmuniz.shade_shell"
 NAME="shade-shell"
-VERSION="0.2.1"
+VERSION="$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' package.json | head -n 1)"
+[[ -n "$VERSION" ]] || { echo "[dev] cannot read the version from package.json" >&2; exit 1; }
 DATADIR="$PWD/data"
 BINDIR="/usr/local/bin"
 
@@ -17,7 +19,7 @@ if [[ -n "${IN_NIX_SHELL:-}" ]]; then
     echo "[dev] Running gnim dev directly (inside nix shell)"
 else
     echo "[dev] Entering nix develop --impure for deps"
-    exec nix develop --impure -c "$0" "$@"
+    exec nix develop --impure -c "$SELF" "$@"
 fi
 
 # Match the package build: avoid the host /bin/sh shim inheriting GTK's loader environment.
@@ -56,4 +58,6 @@ export SHADE_AUTH_WORKER_DEV_PATH="$AUTH_WORKER_DIR/shade-shell-auth-worker"
   -d "import.meta.name=\"$NAME\"" \
   -d "import.meta.version=\"$VERSION\"" \
   -d "import.meta.datadir=\"$DATADIR\"" \
-  -d "import.meta.bindir=\"$BINDIR\""
+  -d "import.meta.bindir=\"$BINDIR\"" \
+  -d "import.meta.clipboardCryptoPath=\"$PWD/packages/services/src/clipboard/cryptoWorker.py\"" \
+  -d 'import.meta.development=true'

@@ -48,8 +48,19 @@ function notificationSnapshot(notification: Notifd.Notification): Accessor<Notif
     ]);
 }
 
+/** Pango rejects unbalanced or unknown tags; those bodies must render as plain text. */
+function isValidMarkup(text: string): boolean {
+    try {
+        Pango.parse_markup(text, -1, '\0');
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function addDefaultAction(self: Gtk.Widget, onDefaultAction?: () => void) {
     if (!onDefaultAction) return;
+    self.set_cursor_from_name('pointer');
     const click = Gtk.GestureClick.new();
     click.connect('pressed', onDefaultAction);
     self.add_controller(click);
@@ -62,11 +73,13 @@ function CardHeader({
     snapshot,
     isCritical,
     onClose,
+    isLow,
     onDefaultAction,
     closeLabel,
 }: {
     snapshot: NotificationSnapshot;
     isCritical: boolean;
+    isLow: boolean;
     onClose: () => void;
     onDefaultAction?: () => void;
     closeLabel: string;
@@ -84,7 +97,11 @@ function CardHeader({
                     <Gtk.Label
                         wrap
                         hexpand
-                        cssClasses={['title-4']}
+                        cssClasses={[
+                            'title-4',
+                            ...(isCritical ? ['error'] : []),
+                            ...(isLow ? ['dimmed'] : []),
+                        ]}
                         label={snapshot.summary || ''}
                         xalign={0}
                     />
@@ -107,9 +124,7 @@ function CardHeader({
                 valign={Gtk.Align.START}
                 // Libadwaita: circular + flat is the standard toast close
                 // button style.
-                cssClasses={['circular', 'flat', isCritical ? 'destructive-action' : ''].filter(
-                    Boolean
-                )}
+                cssClasses={['circular', 'flat']}
                 onClicked={onClose}
                 iconName={'window-close-symbolic'}
                 tooltipText={closeLabel}
@@ -132,6 +147,7 @@ function CardBody({
     imagePixelSize,
     maxChars,
     useMarkup,
+    dimmed,
     onDefaultAction,
     compact,
 }: {
@@ -139,6 +155,7 @@ function CardBody({
     imagePixelSize: number;
     maxChars: number;
     useMarkup: boolean;
+    dimmed: boolean;
     onDefaultAction?: () => void;
     compact: boolean;
 }) {
@@ -162,7 +179,7 @@ function CardBody({
                 lines={compact ? 3 : -1}
                 ellipsize={compact ? Pango.EllipsizeMode.END : Pango.EllipsizeMode.NONE}
                 // Libadwait .body class: increased line height for legible text.
-                cssClasses={['body']}
+                cssClasses={dimmed ? ['body', 'dimmed'] : ['body']}
                 useMarkup={useMarkup}
                 label={snapshot.body}
                 xalign={0}
@@ -279,20 +296,19 @@ export default ({
                     const isLow = current.urgency === Notifd.Urgency.LOW;
                     const hasImage = !!current.image;
                     const hasActions = showActions && current.actions.length > 0;
-                    const useMarkup = /<[a-zA-Z/]/.test(current.body);
+                    const useMarkup =
+                        /<[a-zA-Z/]/.test(current.body) && isValidMarkup(current.body);
                     const maxChars = hasImage ? 20 : 30;
                     const expireMs = getExpireMs(
                         {expireTimeout: current.expireTimeout},
                         getNotifdSafe()
                     );
-                    let urgencyClass = '';
-                    if (isCritical) urgencyClass = 'error';
-                    else if (isLow) urgencyClass = 'dimmed';
 
                     return (
                         <Gtk.Box
                             name={notification.id.toString()}
-                            cssClasses={['card', urgencyClass].filter(Boolean)}
+                            cssClasses={['card']}
+                            css={variant === 'popup' ? 'background-color: @window_bg_color;' : ''}
                             spacing={8}
                             orientation={Gtk.Orientation.VERTICAL}
                             ref={(self) => {
@@ -316,6 +332,7 @@ export default ({
                                 <CardHeader
                                     snapshot={current}
                                     isCritical={isCritical}
+                                    isLow={isLow}
                                     onClose={handleClose}
                                     onDefaultAction={onDefaultAction}
                                     closeLabel={closeLabel}
@@ -325,6 +342,7 @@ export default ({
                                     imagePixelSize={imagePixelSize}
                                     maxChars={maxChars}
                                     useMarkup={useMarkup}
+                                    dimmed={isLow}
                                     compact={compact}
                                     onDefaultAction={onDefaultAction}
                                 />

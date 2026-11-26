@@ -1,6 +1,7 @@
 import Adw from 'gi://Adw?version=1';
 import Astal from 'gi://Astal?version=4.0';
 import Gdk from 'gi://Gdk?version=4.0';
+import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
 import {getApp} from '@shade/services/appHandle';
 import {getHyprland} from '@shade/services/hyprland';
@@ -40,11 +41,19 @@ export default () => {
         tooltipText: 'Configurações de notificações',
     });
     settingsButton.connect('clicked', () => openSettings('notifications'));
+    settingsButton.update_property(
+        [Gtk.AccessibleProperty.LABEL],
+        [new GObject.Value(GObject.TYPE_STRING, 'Configurações de notificações')]
+    );
     const closeButton = new Gtk.Button({
         iconName: 'window-close-symbolic',
         tooltipText: 'Fechar notificações',
     });
     closeButton.connect('clicked', () => state.closeNotifications());
+    closeButton.update_property(
+        [Gtk.AccessibleProperty.LABEL],
+        [new GObject.Value(GObject.TYPE_STRING, 'Fechar notificações')]
+    );
     header.pack_end(settingsButton);
     header.pack_end(closeButton);
     const headerHeight = header.measure(Gtk.Orientation.VERTICAL, -1)[1];

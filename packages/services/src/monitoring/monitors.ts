@@ -51,10 +51,10 @@ const Gdk2HyprMonitor = (GMonitor: Gdk.Monitor): AstalHyprland.Monitor | null =>
         if (found) return found;
     }
 
-    // Last resort: find the first monitor with matching geometry
+    // Last resort: find the monitor with matching geometry. No match means the
+    // monitor is unknown to Hyprland; never bind it to an unrelated one.
     const geo = GMonitor.geometry;
-    const found = hyprland.get_monitors().find((m) => m.x === geo.x && m.y === geo.y);
-    return found ?? hyprland.get_monitor(0);
+    return hyprland.get_monitors().find((m) => m.x === geo.x && m.y === geo.y) ?? null;
 };
 
 // ── AstalWl monitor tracking ──────────────────────────────────────────────
@@ -253,17 +253,16 @@ class MonitorService extends Object {
     }
 
     #scheduleHyprlandSync(): void {
-        // Defer notification to give Hyprland IPC time to catch up
+        // Defer notification to give Hyprland IPC time to catch up; without
+        // Hyprland IPC there is nothing to wait for.
         const hyprland = getHyprland();
-        if (hyprland) {
-            if (hyprland.get_monitors().length !== this.#monitors.length) {
-                this.#pendingSync = true;
-                logger.debug('monitors', 'Monitor counts differ, deferring notify');
-            } else {
-                this.#pendingSync = false;
-                this.notify('monitors');
-            }
+        if (hyprland && hyprland.get_monitors().length !== this.#monitors.length) {
+            this.#pendingSync = true;
+            logger.debug('monitors', 'Monitor counts differ, deferring notify');
+            return;
         }
+        this.#pendingSync = false;
+        this.notify('monitors');
     }
 
     // ── Cleanup ───────────────────────────────────────────────────────────

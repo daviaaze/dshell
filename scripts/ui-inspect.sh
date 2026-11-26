@@ -17,6 +17,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 ENTRY="${1:-apps/shell/src/main.ts}"
+VERSION="$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' package.json | head -n 1)"
+[ -n "$VERSION" ] || { echo "[ui-inspect] cannot read the version from package.json" >&2; exit 1; }
 SERVICE_WAS_ACTIVE=$(systemctl --user is-active shade-shell.service 2>/dev/null || true)
 
 restore() {
@@ -39,7 +41,7 @@ if [ -n "${IN_NIX_SHELL:-}" ]; then
   GTK_DEBUG=interactive node_modules/.bin/gnim dev "$ENTRY" \
     -d "import.meta.domain=\"com.caioasmuniz.shade_shell\"" \
     -d "import.meta.name=\"shade-shell\"" \
-    -d "import.meta.version=\"0.2.1\"" \
+    -d "import.meta.version=\"$VERSION\"" \
     -d "import.meta.datadir=\"$PWD/data\"" \
     -d "import.meta.bindir=\"/usr/local/bin\""
 else
@@ -49,7 +51,7 @@ else
     gnim dev "'"$ENTRY"'" \
       -d "import.meta.domain=\"com.caioasmuniz.shade_shell\"" \
       -d "import.meta.name=\"shade-shell\"" \
-      -d "import.meta.version=\"0.2.1\"" \
+      -d "import.meta.version=\"'"$VERSION"'\"" \
       -d "import.meta.datadir=\"$PWD/data\"" \
       -d "import.meta.bindir=\"/usr/local/bin\""
   '

@@ -55,6 +55,14 @@ describe('sessions', () => {
         expect(parseExec('/usr/bin/foo --bar %U')).toEqual(['/usr/bin/foo', '--bar']);
     });
 
+    it('parseExec keeps a literal percent from %% and strips other field codes', () => {
+        expect(parseExec('/usr/bin/foo --scale=100%% %U %f')).toEqual([
+            '/usr/bin/foo',
+            '--scale=100%',
+        ]);
+        expect(parseExec('%%U')).toEqual(['%U']);
+    });
+
     it('parseExec respects quoting', () => {
         expect(parseExec('uwsm start -F -- /run/current-system/sw/bin/start-hyprland')).toEqual([
             'uwsm',
@@ -118,6 +126,17 @@ describe('GreetSession', () => {
         expect(backend.posts[1].response).toBe('password');
         backend.posts[1].callback({type: 'success'}, null);
         expect(session.state).toBe('authenticated');
+    });
+
+    it('reports whether the pending prompt echoes the answer', () => {
+        const {session, backend} = createGreetSessionHarness();
+        session.start('alice');
+        backend.creates[0].callback({type: 'visible', message: 'Code:'}, null);
+        expect(session.state).toBe('awaiting-input');
+        expect(session.promptVisible).toBe(true);
+        session.postAuth('123456');
+        backend.posts[0].callback({type: 'secret', message: 'Password:'}, null);
+        expect(session.promptVisible).toBe(false);
     });
 
     it('acknowledges PAM error messages without treating them as input questions', () => {
@@ -282,6 +301,35 @@ describe('GreetSession', () => {
         expect(backend.cancellations.length).toBe(2);
         expect(backend.creates.length).toBe(1);
         backend.cancellations[1](null);
+        backend.cancellations[2](null);
+        expect(backend.creates.length).toBe(2);
+        expect(backend.creates[1].username).toBe('bob');
+    });
+
+    it('clears echoed prompt mode when cancelling and starting a new conversation', () => {
+        const {session, backend} = createGreetSessionHarness();
+        session.start('alice');
+        backend.creates[0].callback({type: 'visible', message: 'Code:'}, null);
+        expect(session.promptVisible).toBe(true);
+        session.reset();
+        expect(session.promptVisible).toBe(false);
+        backend.cancellations[0](null);
+        session.start('bob');
+        expect(session.promptVisible).toBe(false);
+        expect(backend.creates[1].username).toBe('bob');
+    });
+
+    it('never starts concurrent PAM after repeated cancellation failures', () => {
+        const {session, backend} = createGreetSessionHarness();
+        session.start('alice');
+        backend.creates[0].callback({type: 'secret', message: 'Password:'}, null);
+        session.reset();
+        backend.cancellations[0](new Error('temporary failure'));
+        session.start('bob');
+        backend.cancellations[1](new Error('still unavailable'));
+        expect(session.state).toBe('error');
+        expect(backend.creates.length).toBe(1);
+        session.start('bob');
         backend.cancellations[2](null);
         expect(backend.creates.length).toBe(2);
         expect(backend.creates[1].username).toBe('bob');

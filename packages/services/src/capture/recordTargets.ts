@@ -9,7 +9,7 @@ import {
 } from '../hyprland';
 import type {BoundaryGeometry, ScreenshotHandle} from './types';
 import {slurpAreaRecording, useSlurpForSelection} from './captureFlow';
-import {notify} from './utils';
+import {captureBlocked, notify} from './utils';
 
 const ICON_ERROR = 'dialog-error-symbolic';
 const MSG_RECORDING_FAILED = 'Recording failed';
@@ -32,7 +32,7 @@ function clientGeometry(c: {
 }
 
 export function recordArea(ss: ScreenshotHandle) {
-    if (ss.recording) return;
+    if (captureBlocked() || ss.recording) return;
     if (useSlurpForSelection()) {
         publishCapture({state: 'busy', kind: 'recording'});
         slurpAreaRecording(ss);
@@ -45,7 +45,7 @@ export function recordArea(ss: ScreenshotHandle) {
 }
 
 export function recordOutput(ss: ScreenshotHandle, outputName?: string) {
-    if (ss.recording) return;
+    if (captureBlocked() || ss.recording) return;
     if (!outputName) {
         const hyprland = getHyprland();
         if (!hyprland) return;
@@ -62,7 +62,7 @@ export function recordOutput(ss: ScreenshotHandle, outputName?: string) {
 }
 
 export function recordOutputVisual(ss: ScreenshotHandle) {
-    if (ss.recording) return;
+    if (captureBlocked() || ss.recording) return;
     ss.selectedMode = 'recording';
     ss.selectedTarget = 'monitor';
     ss.overlayQuick = false;
@@ -70,7 +70,7 @@ export function recordOutputVisual(ss: ScreenshotHandle) {
 }
 
 export function recordWindowVisual(ss: ScreenshotHandle) {
-    if (ss.recording) return;
+    if (captureBlocked() || ss.recording) return;
     ss.selectedMode = 'recording';
     ss.selectedTarget = 'window';
     ss.overlayQuick = false;
@@ -78,7 +78,7 @@ export function recordWindowVisual(ss: ScreenshotHandle) {
 }
 
 export function recordWindowByAddress(ss: ScreenshotHandle, address: string) {
-    if (ss.recording) return;
+    if (captureBlocked() || ss.recording) return;
     const hyprland = getHyprland();
     if (!hyprland) return;
     let target: HyprlandClientSnapshot | undefined;
@@ -103,7 +103,7 @@ export function recordWindowByAddress(ss: ScreenshotHandle, address: string) {
 }
 
 export function recordWindow(ss: ScreenshotHandle) {
-    if (ss.recording) return;
+    if (captureBlocked() || ss.recording) return;
     const hyprland = getHyprland();
     if (!hyprland) return;
     let target: HyprlandClientSnapshot | undefined;

@@ -12,7 +12,7 @@ export default () => {
             label={bind(keyboard, 'layout')}
             onClicked={() => keyboard.cycle()}
             tooltipMarkup={bind(keyboard, 'layout').as(
-                (l) => `Keyboard layout: ${l}\nClick to cycle`
+                (l) => `Layout do teclado: ${l}\nClique para alternar`
             )}
         />
     );

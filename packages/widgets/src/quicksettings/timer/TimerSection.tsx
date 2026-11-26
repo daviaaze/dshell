@@ -4,7 +4,8 @@ import Gtk from 'gi://Gtk?version=4.0';
 import {bus} from '@shade/services/bus';
 import {timerSettings} from '@shade/services/time/timer.gschema';
 import TimerService from '@shade/services/time/timerService';
-import {bind, computed, createState, onCleanup} from 'gnim';
+import {bind, computed, createState, effect, onCleanup} from 'gnim';
+import {setAccessibleName} from '../../common/iconButton';
 
 function fmtRemaining(ms: number): string {
     if (ms < 0) return '--:--';
@@ -18,6 +19,7 @@ function fmtRemaining(ms: number): string {
 
 export const TimerSection = () => {
     const timer = TimerService.get_default();
+    const settings = timerSettings();
 
     const remaining = bind(timer, 'remaining');
     const total = bind(timer, 'total');
@@ -77,6 +79,9 @@ export const TimerSection = () => {
                             r ? 'media-playback-pause-symbolic' : 'media-playback-start-symbolic'
                         )}
                         tooltipText={running.as((r) => (r ? 'Pausar' : 'Retomar'))}
+                        ref={(self) =>
+                            effect(() => setAccessibleName(running() ? 'Pausar' : 'Retomar')(self))
+                        }
                         onClicked={() => {
                             if (timer.running) bus.emit('timer:cmd:pause');
                             else bus.emit('timer:cmd:resume');
@@ -86,6 +91,7 @@ export const TimerSection = () => {
                         cssClasses={['circular']}
                         iconName={'media-playback-stop-symbolic'}
                         tooltipText="Parar"
+                        ref={setAccessibleName('Parar')}
                         onClicked={() => bus.emit('timer:cmd:cancel')}
                     />
                 </Gtk.Box>
@@ -99,22 +105,21 @@ export const TimerSection = () => {
                 halign={Gtk.Align.FILL}
             >
                 {/* Mode tabs */}
-                <Gtk.Box cssClasses={['linked', 'horizontal']} halign={Gtk.Align.CENTER}>
-                    <Gtk.ToggleButton
-                        active={selectedMode.as((m) => m === 'countdown')}
-                        cssClasses={[]}
-                        onClicked={() => setSelectedMode('countdown')}
-                    >
-                        <Gtk.Label label="Contagem regressiva" />
-                    </Gtk.ToggleButton>
-                    <Gtk.ToggleButton
-                        active={selectedMode.as((m) => m === 'pomodoro')}
-                        cssClasses={[]}
-                        onClicked={() => setSelectedMode('pomodoro')}
-                    >
-                        <Gtk.Label label="Pomodoro" />
-                    </Gtk.ToggleButton>
-                </Gtk.Box>
+                <Adw.ToggleGroup
+                    halign={Gtk.Align.CENTER}
+                    activeName={selectedMode}
+                    ref={(self) => {
+                        self.add(new Adw.Toggle({name: 'countdown', label: 'Contagem regressiva'}));
+                        self.add(new Adw.Toggle({name: 'pomodoro', label: 'Pomodoro'}));
+                        self.activeName = selectedMode.peek();
+                        onCleanup(() => self.remove_all());
+                    }}
+                    onNotifyActiveName={(self) => {
+                        const selected = self.activeName;
+                        if (selected === 'countdown' || selected === 'pomodoro')
+                            setSelectedMode(selected);
+                    }}
+                />
 
                 {/* Countdown — presets + custom */}
                 <Gtk.Box
@@ -130,7 +135,6 @@ export const TimerSection = () => {
                         columnHomogeneous
                         hexpand
                         ref={(self) => {
-                            const settings = timerSettings();
                             const update = () => {
                                 let child = self.get_first_child();
                                 while (child) {
@@ -247,13 +251,19 @@ export const TimerSection = () => {
                         cssClasses={['card']}
                     >
                         <Gtk.Label
-                            label="Concentre-se por 25 minutos e depois faça uma pausa de 5 minutos."
+                            label={computed(
+                                () =>
+                                    `Concentre-se por ${settings.pomodoroWorkDuration()} minutos e depois faça uma pausa de ${settings.pomodoroBreakDuration()} minutos.`
+                            )}
                             cssClasses={['body']}
                             wrap
                             halign={Gtk.Align.START}
                         />
                         <Gtk.Label
-                            label="Pausa longa (15 min) a cada 4 sessões."
+                            label={computed(
+                                () =>
+                                    `Pausa longa (${settings.pomodoroLongBreakDuration()} min) a cada ${settings.pomodoroSessionsBeforeLongBreak()} sessões.`
+                            )}
                             cssClasses={['caption', 'dimmed']}
                             wrap
                             halign={Gtk.Align.START}

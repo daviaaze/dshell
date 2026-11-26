@@ -33,7 +33,10 @@ function EnumToggleRow({
                     self.activeName = String(value.peek() ?? fallback);
                     const changed = self.connect('notify::active-name', () => {
                         const name = String(self.activeName ?? '');
-                        if (name !== String(value.peek())) setter(Number(name) || name);
+                        if (name !== String(value.peek())) {
+                            const numeric = Number(name);
+                            setter(name !== '' && !Number.isNaN(numeric) ? numeric : name);
+                        }
                     });
                     const unsubscribe = value.subscribe(() => {
                         self.activeName = String(value.peek());
@@ -138,8 +141,7 @@ function BoundaryGroup({settings}: {settings: Settings}) {
                     dialog={new Gtk.ColorDialog()}
                     ref={(self) => {
                         const c = new Gdk.RGBA();
-                        c.parse(settings.recordingBoundaryColor());
-                        self.rgba = c;
+                        if (c.parse(settings.recordingBoundaryColor())) self.rgba = c;
                     }}
                     onNotifyRgba={(self) => {
                         settings.setRecordingBoundaryColor(self.rgba.to_string());
@@ -219,7 +221,7 @@ function VirtualMonitorGroup({settings}: {settings: Settings}) {
                 }}
                 title={'Taxa de atualização'}
                 subtitle={'Quadros por segundo (fps).'}
-                onNotifyValue={(self) => settings.setVirtualMonitorFps(self.value)}
+                onNotifyValue={(self) => settings.setVirtualMonitorFps(Math.round(self.value))}
             />
         </Adw.PreferencesGroup>
     );

@@ -10,14 +10,21 @@ import {type Accessor, bind, computed, createState, For, onCleanup, With} from '
 import ApList from '../quicksettings/network/apList';
 import {
     deleteConnectionAsync,
+    OPEN_NETWORK_LABEL,
     securityLabelFromKeyMgmt,
     strengthFraction,
 } from '../quicksettings/network/utils';
-import {showConnectionEditor} from './connectionEditor';
+import {confirmForgetNetwork, showConnectionEditor} from './connectionEditor';
 import {showHiddenNetworkDialog} from './hiddenNetworkDialog';
 
 const NET_ICON_PREFIX = 16;
 const NET_ICON_SUFFIX = 14;
+
+/** Network name from the profile's wireless setting; the profile id is only a fallback. */
+function connectionSsid(conn: NM.RemoteConnection, wireless: NM.SettingWireless): string {
+    const bytes = wireless.get_ssid()?.get_data();
+    return (bytes && NM.utils_ssid_to_utf8(bytes)) || conn.get_id() || 'Rede desconhecida';
+}
 
 /** Get all known (saved) WiFi connections from NM.Client. */
 function getKnownNetworks(client: NM.Client): {
@@ -37,12 +44,12 @@ function getKnownNetworks(client: NM.Client): {
             try {
                 const sWifi = conn.get_setting_wireless();
                 if (!sWifi || sWifi.mode === 'ap') continue;
-                const ssid = conn.get_id() ?? 'Unknown Network';
+                const ssid = connectionSsid(conn, sWifi);
                 const sSec = conn.get_setting_wireless_security();
                 const secLabel = sSec
-                    ? (securityLabelFromKeyMgmt(sSec.get_key_mgmt() ?? null) ?? 'Open')
-                    : 'Open';
-                const secure = secLabel !== 'Open';
+                    ? securityLabelFromKeyMgmt(sSec.get_key_mgmt() ?? null)
+                    : OPEN_NETWORK_LABEL;
+                const secure = secLabel !== OPEN_NETWORK_LABEL;
 
                 const existing = bySsid.get(ssid);
                 if (existing) {
@@ -97,23 +104,32 @@ function hotspotUnavailableReason(
     client: NM.Client,
     wifi: Network.Wifi | null
 ): string | null {
-    if (!wifi) return 'No Wi-Fi adapter';
+    if (!wifi) return 'Nenhum adaptador Wi-Fi';
 
     const device = wifiDevice(wifi);
     if (!device || network.wifi?.device !== device || !deviceIsPresent(client, device)) {
-        return 'Wi-Fi adapter is unavailable';
+        return 'O adaptador Wi-Fi está indisponível';
     }
 
     try {
         if ((device.get_capabilities() & NM.DeviceWifiCapabilities.AP) === 0) {
-            return 'This adapter does not support hotspot mode';
+            return 'Este adaptador não oferece suporte ao modo hotspot';
         }
     } catch (e) {
         logger.error(LOG_TAG, 'unable to check hotspot capability:', e);
-        return 'Unable to check Wi-Fi hotspot support';
+        return 'Não foi possível verificar o suporte a hotspot Wi-Fi';
     }
 
     return null;
+}
+
+/** Removes saved hotspot profiles so each activation creates exactly one with the current name and password. */
+async function removeHotspotProfiles(client: NM.Client): Promise<void> {
+    const stale = toArray<NM.RemoteConnection>(client.get_connections()).filter(
+        (conn) =>
+            conn.get_id() === HOTSPOT_CONNECTION_ID && conn.get_setting_wireless()?.mode === 'ap'
+    );
+    await Promise.all(stale.map((conn) => deleteConnectionAsync(conn)));
 }
 
 function findManagedHotspot(client: NM.Client, device: NM.DeviceWifi): NM.ActiveConnection | null {
@@ -179,7 +195,7 @@ function addAndActivateHotspot(
         (_source: unknown, result: Gio.AsyncResult) => {
             try {
                 const active = client.add_and_activate_connection_finish(result);
-                if (!active) throw new Error('NetworkManager returned no active connection');
+                if (!active) throw new Error('O NetworkManager não retornou uma conexão ativa');
                 resolve(active);
             } catch (e) {
                 reject(e);
@@ -197,7 +213,7 @@ function deactivateHotspot(client: NM.Client, active: NM.ActiveConnection): Prom
         (_source: unknown, result: Gio.AsyncResult) => {
             try {
                 if (!client.deactivate_connection_finish(result)) {
-                    throw new Error('NetworkManager did not deactivate the hotspot');
+                    throw new Error('O NetworkManager não desativou o hotspot');
                 }
                 resolve();
             } catch (e) {
@@ -348,12 +364,16 @@ function KnownNetworkRow({net, onChanged}: {net: KnownNetwork; onChanged: () => 
             />
             <Gtk.Button
                 cssClasses={['flat', 'circular']}
-                onClicked={() => {
-                    const first = net.connections[0];
-                    if (!first) return;
-                    deleteConnectionAsync(first)
-                        .then(onChanged)
-                        .catch((e: Error) => logger.error(LOG_TAG, 'forget failed:', e.message));
+                onClicked={(self) => {
+                    const parent = self.get_root();
+                    if (!(parent instanceof Gtk.Window)) return;
+                    confirmForgetNetwork(parent, net.ssid, () => {
+                        Promise.all(net.connections.map((conn) => deleteConnectionAsync(conn)))
+                            .then(onChanged)
+                            .catch((e: Error) =>
+                                logger.error(LOG_TAG, 'forget failed:', e.message)
+                            );
+                    });
                 }}
                 tooltipText="Esquecer rede"
             >
@@ -419,7 +439,7 @@ function HotspotGroup({
 
         const device = wifiDevice(expectedWifi);
         if (!device || network.wifi?.device !== device || !deviceIsPresent(client, device)) {
-            reportToggleError('Wi-Fi adapter is unavailable');
+            reportToggleError('O adaptador Wi-Fi está indisponível');
             return;
         }
 
@@ -430,14 +450,14 @@ function HotspotGroup({
                 return;
             }
             if (!network.wifi?.enabled) {
-                reportToggleError('Turn on Wi-Fi before starting a hotspot');
+                reportToggleError('Ligue o Wi-Fi antes de iniciar um hotspot');
                 return;
             }
 
             const ssidValue = ssid();
             const ssidBytes = new TextEncoder().encode(ssidValue);
             if (!ssidValue.trim() || ssidBytes.length > 32) {
-                reportToggleError('Enter a network name no longer than 32 UTF-8 bytes');
+                reportToggleError('Informe um nome de rede com no máximo 32 bytes UTF-8');
                 return;
             }
 
@@ -446,7 +466,7 @@ function HotspotGroup({
             const rawPsk = /^[0-9a-fA-F]{64}$/.test(passwordValue);
             if (!rawPsk && (passwordBytes.length < 8 || passwordBytes.length > 63)) {
                 reportToggleError(
-                    'Password must be 8–63 UTF-8 bytes or a 64-digit hexadecimal PSK'
+                    'A senha deve ter de 8 a 63 bytes UTF-8 ou uma chave PSK hexadecimal de 64 dígitos'
                 );
                 return;
             }
@@ -455,27 +475,28 @@ function HotspotGroup({
             setPending(true);
             try {
                 if (network.wifi?.device !== device || !deviceIsPresent(client, device)) {
-                    throw new Error('Wi-Fi adapter was removed before hotspot activation');
+                    throw new Error('O adaptador Wi-Fi foi removido antes de ativar o hotspot');
                 }
 
+                await removeHotspotProfiles(client);
                 const active = await addAndActivateHotspot(
                     client,
                     createHotspotConnection(ssidValue, passwordValue),
                     device
                 );
                 if (network.wifi?.device !== device || !deviceIsPresent(client, device)) {
-                    throw new Error('Wi-Fi adapter was removed during hotspot activation');
+                    throw new Error('O adaptador Wi-Fi foi removido durante a ativação do hotspot');
                 }
                 if (
                     active.get_id() !== HOTSPOT_CONNECTION_ID ||
                     !toArray<NM.Device>(active.get_devices()).includes(device)
                 ) {
-                    throw new Error('NetworkManager activated an unexpected hotspot connection');
+                    throw new Error('O NetworkManager ativou uma conexão de hotspot inesperada');
                 }
             } catch (e) {
                 logger.error(LOG_TAG, 'hotspot activation failed:', e);
                 const message = e instanceof Error ? e.message : String(e);
-                reportToggleError(message || 'Hotspot activation failed');
+                reportToggleError(message || 'Falha ao ativar o hotspot');
             } finally {
                 setPending(false);
             }
@@ -485,7 +506,7 @@ function HotspotGroup({
         const active = findManagedHotspot(client, device);
         if (!active) {
             reportToggleError(
-                'No Settings-managed hotspot connection was found; the active hotspot was left unchanged'
+                'Nenhum hotspot gerenciado pelas Configurações foi encontrado; o hotspot ativo foi mantido'
             );
             return;
         }
@@ -494,13 +515,13 @@ function HotspotGroup({
         setPending(true);
         try {
             if (network.wifi?.device !== device || !deviceIsPresent(client, device)) {
-                throw new Error('Wi-Fi adapter was removed before hotspot deactivation');
+                throw new Error('O adaptador Wi-Fi foi removido antes de desativar o hotspot');
             }
             await deactivateHotspot(client, active);
         } catch (e) {
             logger.error(LOG_TAG, 'hotspot deactivation failed:', e);
             const message = e instanceof Error ? e.message : String(e);
-            reportToggleError(message || 'Hotspot deactivation failed');
+            reportToggleError(message || 'Falha ao desativar o hotspot');
         } finally {
             setPending(false);
         }

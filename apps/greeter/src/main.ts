@@ -23,6 +23,7 @@ import {ColorScheme} from '@shade/services/display/colorScheme';
 import {Theme} from '@shade/style/theme';
 import {exit, programArgs, programInvocationName} from 'system';
 import {Greeter} from './greeter-ui/index';
+import './greeter-ui/greeter.css'; // auto-loaded as CssProvider by gnim dev/bundle
 
 // ── Minimal Gtk application ──
 

@@ -14,9 +14,8 @@ export interface Sources {
     matched: number;
 }
 
-export function buildSources(xdphWindows: XDPHWindow[]): Sources {
-    const hyprMonitors = getHyprMonitors();
-    const hyprClients = getHyprClients();
+export async function buildSources(xdphWindows: XDPHWindow[]): Promise<Sources> {
+    const [hyprMonitors, hyprClients] = await Promise.all([getHyprMonitors(), getHyprClients()]);
     logger.info(
         CAT,
         `${hyprMonitors.length} monitors, ${hyprClients.length} hyprctl clients, ` +
@@ -34,10 +33,7 @@ export function buildSources(xdphWindows: XDPHWindow[]): Sources {
     const windows: WindowState[] = xdphWindows.map((w) => {
         const client = matchXDPHToHyprctl(w, hyprClients);
         if (!client) {
-            logger.debug(
-                CAT,
-                `no match for XDPH window id=${w.id} class=${w.clazz} title=${w.title}`
-            );
+            logger.debug(CAT, `no match for XDPH window id=${w.id} class=${w.clazz}`);
             return {
                 kind: 'window' as const,
                 info: w,

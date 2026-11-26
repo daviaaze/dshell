@@ -1,53 +1,48 @@
 import Gtk from 'gi://Gtk?version=4.0';
-import {bind, computed, For} from 'gnim';
+import {type Accessor, computed, For} from 'gnim';
+import {SURFACE_SPACING} from '../../common/surface';
+import {preserveRowParents} from '../preserveRowParents';
 import type {QuickButton} from './quickButton';
-import {getHyprland} from '@shade/services/hyprland';
 
 export interface ReactiveGridProps {
-    cols?: number;
+    columns: Accessor<number>;
     items: QuickButton[];
 }
 
 /**
- * A reactive grid that reflows visible items tightly into rows.
+ * Lays quick buttons out in rows of `columns`.
  *
  * Uses nested Gtk.Boxes (vertical outer, horizontal per-row) instead of
  * Gtk.Grid, because JSX in gnim v2 returns virtual nodes (not widget
- * instances) and Gtk.Grid.attach() requires real widgets.  The `<For>`
- * component preserves child identity via object reference, so the same
- * QuickButton keeps its widget across reflows.
+ * instances) and Gtk.Grid.attach() requires real widgets. Rows are keyed by
+ * their index and buttons by object identity, so a button is only rebuilt
+ * when a column-count change moves it to another row.
  */
-const SINGLE_COLUMN_WIDTH = 600;
-
-export const ReactiveGrid = ({cols = 2, items}: ReactiveGridProps) => {
-    const visibleItems = computed(() => items.filter((item) => item.visible?.() !== false));
-    const hyprland = getHyprland();
-    const focusedMonitor = hyprland ? bind(hyprland, 'focused-monitor') : null;
-    const columnCount = computed(() => {
-        const monitor = focusedMonitor?.() ?? null;
-        const logicalWidth = monitor ? monitor.width / (monitor.scale || 1) : 0;
-        return logicalWidth > 0 && logicalWidth <= SINGLE_COLUMN_WIDTH ? 1 : cols;
-    });
-    const rows = computed(() => {
-        const vis = visibleItems();
-        const columns = columnCount();
-        const result: QuickButton[][] = [];
-        for (let i = 0; i < vis.length; i += columns) {
-            result.push(vis.slice(i, i + columns));
-        }
-        return result;
-    });
+export const ReactiveGrid = ({columns, items}: ReactiveGridProps) => {
+    const rowIndexes = computed(() =>
+        Array.from({length: Math.ceil(items.length / columns())}, (_, row) => row)
+    );
 
     return (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4} hexpand>
-            <For each={rows}>
-                {(row) => (
-                    <Gtk.Box spacing={4} homogeneous hexpand>
-                        <For each={computed(() => row)}>{(item: QuickButton) => item.widget}</For>
+        <Gtk.Box
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={SURFACE_SPACING}
+            hexpand
+            ref={preserveRowParents}
+        >
+            <For each={rowIndexes}>
+                {(row: number) => (
+                    <Gtk.Box spacing={SURFACE_SPACING} homogeneous hexpand ref={preserveRowParents}>
+                        <For
+                            each={computed(() =>
+                                items.slice(row * columns(), (row + 1) * columns())
+                            )}
+                        >
+                            {(item: QuickButton) => item.widget}
+                        </For>
                     </Gtk.Box>
                 )}
             </For>
         </Gtk.Box>
     );
 };
-

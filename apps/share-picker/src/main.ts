@@ -12,6 +12,7 @@
  */
 
 import Adw from 'gi://Adw?version=1';
+import Gdk from 'gi://Gdk?version=4.0';
 import Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
@@ -27,8 +28,14 @@ import {ColorScheme} from '@shade/services/display/colorScheme';
 import {applyDefaultAdwaitaPalette} from '@shade/services/theme/adwaitaPalette';
 import {captureMonitor, captureWindow, cleanTempDir, ensureTempDir, GRIM_BIN} from './capture';
 import {MonitorPoller} from './poller';
-import {getHyprClients, getHyprMonitors, HYPRCTL_BIN, parseWindowList} from './protocol';
-import {buildSources} from './sources';
+import {
+    getHyprClients,
+    getHyprMonitors,
+    HYPRCTL_BIN,
+    parseWindowList,
+    stopQueries,
+} from './protocol';
+import {buildSources, type Sources} from './sources';
 import type {MonitorState, ParsedWindowList, PreviewHandle, SelectFn, WindowState} from './types';
 import {
     buildCombinedTab,
@@ -36,6 +43,7 @@ import {
     buildWindowsTab,
     type CombinedTab,
     makeSelectedPreview,
+    markSelected,
     type Tab,
 } from './ui';
 
@@ -131,7 +139,7 @@ function buildPicker(
     });
     mainBox.append(heading);
     const explanation = new Gtk.Label({
-        label: 'Selecione uma fonte e confira sua identidade e prévia. Compartilhar autoriza o envio; selecionar apenas não inicia a transmissão.',
+        label: 'Selecione uma fonte, confira a prévia e use Compartilhar para autorizar.',
         wrap: true,
         wrapMode: Pango.WrapMode.WORD_CHAR,
         maxWidthChars: 70,
@@ -148,12 +156,16 @@ function buildPicker(
         maxWidthChars: 60,
         xalign: 0,
         selectable: true,
+        hexpand: true,
     });
     const confirm = new Gtk.Button({
         label: 'Compartilhar',
         sensitive: false,
         cssClasses: ['suggested-action'],
     });
+    const backBtn = new Gtk.Button({label: 'Voltar', visible: false});
+    const changeBtn = new Gtk.Button({label: 'Escolher outra fonte', visible: false});
+    let cancelled = false;
     let submitted = false;
     let pending: {kind: 'screen' | 'window'; id: string} | null = null;
     const selectedMonitorPreviews = monitors.map((state) => makeSelectedPreview(state.texture));
@@ -164,9 +176,34 @@ function buildPicker(
         preview.widget.set_visible(false);
         previewBox.append(preview.widget);
     }
+    const selectionHeading = new Gtk.Label({xalign: 0, cssClasses: ['heading']});
+    const details = new Gtk.Box({
+        orientation: Gtk.Orientation.VERTICAL,
+        spacing: 6,
+        hexpand: true,
+    });
+    details.append(selectionHeading);
+    details.append(summary);
     selectionSummary.append(previewBox);
-    selectionSummary.append(summary);
+    selectionSummary.append(details);
+    const resetSelection = () => {
+        if (submitted) return;
+        pending = null;
+        selectedMonitorPreviews.forEach((preview) => preview.widget.set_visible(false));
+        selectedWindowPreviews.forEach((preview) => preview.widget.set_visible(false));
+        markSelected('screen', null);
+        confirm.sensitive = false;
+        selectionSummary.visible = false;
+        backBtn.visible = false;
+        changeBtn.visible = false;
+        explanation.label =
+            'Selecione uma fonte, confira a prévia e use Compartilhar para autorizar.';
+        notebook.grab_focus();
+    };
+    backBtn.connect('clicked', resetSelection);
+    changeBtn.connect('clicked', resetSelection);
     const choose: SelectFn = (kind, id) => {
+        if (submitted || cancelled) return;
         const monitorIndex = monitors.findIndex((source) => source.info.name === id);
         const windowIndex = windows.findIndex((source) => source.info.id === id);
         if (kind === 'screen' ? monitorIndex < 0 : windowIndex < 0) return;
@@ -184,12 +221,15 @@ function buildPicker(
                 ? `${monitors[monitorIndex].info.name}${monitors[monitorIndex].info.description && monitors[monitorIndex].info.description !== id ? ` — ${monitors[monitorIndex].info.description}` : ''}\nTela inteira; outras janelas visíveis também podem ser expostas.`
                 : `${windows[windowIndex].info.title || id}\n${windows[windowIndex].info.clazz || ''}`;
         summary.tooltipText = summary.label;
-        heading.label = kind === 'screen' ? 'Tela selecionada' : 'Janela selecionada';
-        heading.tooltipText = `${heading.label}: ${summary.label}`;
-        explanation.label =
-            'A prévia pode estar indisponível; a fonte só será enviada após Compartilhar. O aplicativo solicitante controla o início da transmissão.';
+        selectionHeading.label = kind === 'screen' ? 'Tela selecionada' : 'Janela selecionada';
+        explanation.label = 'Confira a fonte antes de autorizar. A prévia pode estar indisponível.';
         confirm.sensitive = true;
         selectionSummary.visible = true;
+        backBtn.visible = true;
+        changeBtn.visible = true;
+        markSelected(kind, id);
+        // Enter now confirms: the focused card would otherwise swallow it.
+        confirm.grab_focus();
     };
     const screensTab = buildScreensTab(monitors, choose);
     notebook.append_page(screensTab.page, new Gtk.Label({label: 'Telas'}));
@@ -219,56 +259,88 @@ function buildPicker(
             wrapMode: Pango.WrapMode.WORD_CHAR,
             maxWidthChars: 70,
             xalign: 0,
-            cssClasses: ['caption', 'dim-label'],
+            cssClasses: ['caption', 'dimmed'],
         })
     );
+    const selectionActions = new Gtk.Box({spacing: 12});
+    selectionActions.append(backBtn);
+    selectionActions.append(changeBtn);
+    footer.append(selectionActions);
     const actions = new Gtk.Box({spacing: 12, halign: Gtk.Align.END});
     const cancelBtn = new Gtk.Button({label: 'Cancelar'});
     actions.append(cancelBtn);
     // Quitting without printing a [SELECTION] is how XDPH learns the user
     // cancelled; without this handler the button did nothing, the picker stayed
     // open and the requesting app waited on it indefinitely.
-    cancelBtn.connect('clicked', () => app.quit());
+    const cancel = () => {
+        cancelled = true;
+        app.quit();
+    };
+    app.connect('shutdown', () => {
+        cancelled = true;
+    });
+    cancelBtn.connect('clicked', cancel);
+    const sourceExists = async (kind: 'screen' | 'window', id: string): Promise<boolean> => {
+        if (kind === 'screen') return (await getHyprMonitors()).some((item) => item.name === id);
+        const source = windows.find((item) => item.info.id === id);
+        if (!source) return false;
+        const clients = await getHyprClients();
+        return source.hyprAddress
+            ? clients.some(
+                  (item) => item.address === source.hyprAddress && item.mapped && !item.hidden
+              )
+            : matchXDPHToHyprctl(source.info, clients) !== null;
+    };
     confirm.connect('clicked', () => {
         if (!pending || submitted) return;
         const {kind, id} = pending;
-        const source = windows.find((item) => item.info.id === id);
-        const exists =
-            kind === 'screen'
-                ? getHyprMonitors().some((item) => item.name === id)
-                : getHyprClients().some((item) => {
-                      if (!item.mapped || item.hidden) return false;
-                      if (source?.hyprAddress) return item.address === source.hyprAddress;
-                      return (
-                          !!source &&
-                          item.class === source.info.clazz &&
-                          item.title === source.info.title
-                      );
-                  });
-        if (!exists) {
-            pending = null;
-            selectedMonitorPreviews.forEach((preview) => preview.widget.set_visible(false));
-            selectedWindowPreviews.forEach((preview) => preview.widget.set_visible(false));
-            confirm.sensitive = false;
-            selectionSummary.visible = false;
-            explanation.label = 'A fonte não está mais disponível. Escolha outra fonte ou cancele.';
-            return;
-        }
+        // Also blocks a second click while hyprctl is being asked.
         submitted = true;
         confirm.sensitive = false;
-        try {
-            select(kind, id);
-        } catch {
-            submitted = false;
-            confirm.sensitive = true;
-            explanation.label =
-                'Não foi possível enviar a escolha ao portal. Tente novamente ou cancele.';
-        }
+        notebook.sensitive = false;
+        backBtn.sensitive = false;
+        changeBtn.sensitive = false;
+        void sourceExists(kind, id).then((exists) => {
+            if (cancelled) return;
+            notebook.sensitive = true;
+            backBtn.sensitive = true;
+            changeBtn.sensitive = true;
+            if (pending?.kind !== kind || pending.id !== id) {
+                // The user picked another source while we were checking.
+                submitted = false;
+                return;
+            }
+            if (!exists) {
+                submitted = false;
+                resetSelection();
+                explanation.label =
+                    'A fonte não está mais disponível. Escolha outra fonte ou cancele.';
+                return;
+            }
+            try {
+                select(kind, id);
+            } catch {
+                submitted = false;
+                confirm.sensitive = true;
+                explanation.label =
+                    'Não foi possível enviar a escolha ao portal. Tente novamente ou cancele.';
+            }
+        });
     });
     actions.append(confirm);
     footer.append(actions);
     mainBox.append(footer);
-    GObject.signal_connect(win, 'close-request', () => app.quit());
+    // Enter confirms through the default widget (inactive until a source is
+    // chosen); Escape cancels exactly like the Cancelar button.
+    win.set_default_widget(confirm);
+    const keys = new Gtk.EventControllerKey();
+    keys.connect('key-pressed', (_controller, keyval: number) => {
+        if (keyval !== Gdk.KEY_Escape) return false;
+        cancel();
+        return true;
+    });
+    win.add_controller(keys);
+    GObject.signal_connect(win, 'close-request', cancel);
     win.set_child(mainBox);
 
     return {
@@ -332,7 +404,8 @@ function onActivate(
     app: Gtk.Application,
     token: TokenState,
     select: SelectFn,
-    windowList: ParsedWindowList
+    windowList: ParsedWindowList,
+    {monitors, windows}: Sources
 ): () => void {
     Adw.init();
     initSettingsRoot();
@@ -342,14 +415,12 @@ function onActivate(
 
     logger.debug(
         CAT,
-        `XDPH_WINDOW_SHARING_LIST=${GLib.getenv('XDPH_WINDOW_SHARING_LIST') || '(null)'}`
     );
     logger.debug(CAT, `GRIM_BIN=${GRIM_BIN}, HYPRCTL_BIN=${HYPRCTL_BIN}`);
     if (!GRIM_BIN.includes('/')) logger.warn(CAT, 'grim not found in PATH, previews unavailable');
     if (!HYPRCTL_BIN.includes('/'))
         logger.warn(CAT, 'hyprctl not found in PATH, monitors/windows will be empty');
 
-    const {monitors, windows} = buildSources(windowList.windows);
     logSources(monitors, windows);
 
     const ui = buildPicker(app, token, select, monitors, windows, windowList.provided);
@@ -405,20 +476,27 @@ function main() {
     const allowTokenDefault = programArgs.includes('--allow-token');
     const xdphWindows = parseWindowList(GLib.getenv('XDPH_WINDOW_SHARING_LIST'));
 
-    const app = new Gtk.Application({applicationId: APP_ID, flags: 0});
+    // Each XDPH request is its own process with its own session handle and
+    // selection; a unique application would forward a second request to the
+    // first window and answer it with the first request's choice.
+    const app = new Gtk.Application({
+        applicationId: APP_ID,
+        flags: Gio.ApplicationFlags.NON_UNIQUE,
+    });
     const token: TokenState = {value: allowTokenDefault};
     const select = makeSelectFn(app, token);
 
     let ownerAlive = sessionHandle === null;
     let requesterWatch: number | null = null;
     let disposeCapture: (() => void) | null = null;
+    let shuttingDown = false;
     if (sessionHandle !== null) {
         const owner = requesterNameFromSessionHandle(sessionHandle);
         if (owner === null) requesterWatch = null;
         else requesterWatch = watchPortalRequester(app, owner, (alive) => (ownerAlive = alive));
     }
     const guardedSelect: SelectFn = (kind, id) => {
-        if (ownerAlive) select(kind, id);
+        if (ownerAlive && !shuttingDown) select(kind, id);
         else app.quit();
     };
 
@@ -427,13 +505,22 @@ function main() {
             if (sessionHandle !== null && requesterWatch === null) app.quit();
             return;
         }
-        if (disposeCapture) {
+        if (activated) {
             app.get_active_window()?.present();
             return;
         }
-        disposeCapture = onActivate(app, token, guardedSelect, xdphWindows);
+        activated = true;
+        app.hold();
+        start()
+            .catch((e) => {
+                // Quitting without a selection is how XDPH learns of a cancel.
+                logger.error(CAT, 'picker start failed', e);
+                app.quit();
+            })
+            .finally(() => app.release());
     });
     app.connect('shutdown', () => {
+        shuttingDown = true;
         printerr(
             `[share-picker-trace] pid=${PICKER_PID} shutdown session=${sessionHandle ?? '(none)'}`
         );

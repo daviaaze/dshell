@@ -316,6 +316,9 @@ in
   };
 
   # === Test user ===
+  # Disposable test guest only: fixed password, password SSH and the narrow
+  # NOPASSWD sudo rules below exist for the VM workflow scripts. Never reuse
+  # this configuration outside a throwaway VM.
   users.users.tester = {
     isNormalUser = true;
     password = "test";
@@ -495,9 +498,10 @@ in
     pulseaudio
   ];
 
-  # === systemd target for graphical-session ===
-  systemd.targets.graphical-session = {
-    enable = true;
+  # === user target for graphical-session ===
+  # User units bind to the user manager's target; a system-level target of this
+  # name never reaches the session.
+  systemd.user.targets.graphical-session = {
     wants = [ "graphical-session-pre.target" ];
   };
 

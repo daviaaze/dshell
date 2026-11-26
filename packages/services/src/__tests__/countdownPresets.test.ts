@@ -1,7 +1,4 @@
-import {
-    MAX_COUNTDOWN_PRESET_MINUTES,
-    validateCountdownPreset,
-} from '../time/countdownPresets';
+import {MAX_COUNTDOWN_PRESET_MINUTES, validateCountdownPreset} from '../time/countdownPresets';
 import {describe, expect, it, run} from './test-runner';
 
 describe('validateCountdownPreset', () => {
@@ -32,4 +29,4 @@ describe('validateCountdownPreset', () => {
     });
 });
 
-run(import.meta.url);
+await run(import.meta.url);

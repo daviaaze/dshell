@@ -116,7 +116,8 @@ export function getAppIcon(client: Hyprland.Client): string {
     if (!cls) return 'image-missing-symbolic';
 
     // Check hardcoded overrides first
-    if (CLASS_OVERRIDES[cls]) return CLASS_OVERRIDES[cls];
+    const override = Object.hasOwn(CLASS_OVERRIDES, cls) ? CLASS_OVERRIDES[cls] : undefined;
+    if (override) return override;
 
     // Try AstalApps database lookup
     const app = getAppForClient(client);

@@ -5,6 +5,7 @@ import Pango from 'gi://Pango?version=1.0';
 import type Screenshot from '@shade/services/capture/screenshot';
 import {getScreenCaptureSettings} from '@shade/services/settings/screenCapture';
 import {type Accessor, bind} from 'gnim';
+import {OPAQUE_SURFACE_CSS} from '../common/surface';
 
 interface ModeTabProps {
     label: string;
@@ -109,6 +110,7 @@ export const ControlPanel = ({
                 natural request, not the width used by wrapping children. */}
             <Gtk.ScrolledWindow
                 cssClasses={['card', 'background']}
+                css={OPAQUE_SURFACE_CSS}
                 propagateNaturalHeight
                 maxContentHeight={maxHeight}
                 hscrollbarPolicy={Gtk.PolicyType.NEVER}
@@ -134,7 +136,7 @@ export const ControlPanel = ({
                             maxWidthChars={48}
                             xalign={0}
                             visible={dense.as((d) => !d)}
-                            cssClasses={['dim-label']}
+                            cssClasses={['dimmed']}
                         />
                         <Gtk.Box
                             orientation={Gtk.Orientation.VERTICAL}
@@ -177,7 +179,7 @@ export const ControlPanel = ({
                                     <TargetButton
                                         label="Tela cheia"
                                         value="fullscreen"
-                                        icon="video-display-symbolic"
+                                        icon="view-fullscreen-symbolic"
                                         ss={ss}
                                         onReset={onReset}
                                         onTargetChange={onTargetChange}

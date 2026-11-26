@@ -47,6 +47,11 @@ function isInputStream(mediaClass: Wireplumber.MediaClass): boolean {
     );
 }
 
+/** How long an unconfirmed optimistic edit keeps overriding PipeWire's reported value. */
+const MODIFY_GRACE_MS = 750;
+/** Trailing delay that merges a slider drag into one wpctl call per stream. */
+const VOLUME_FLUSH_MS = 60;
+
 @register
 export default class AppMixer extends Object {
     private static instance: AppMixer;
@@ -67,8 +72,10 @@ export default class AppMixer extends Object {
     #streams: AudioStream[] = [];
     #captureStreams: AudioStream[] = [];
     #busInitialized = false;
-    static readonly MODIFY_GRACE_MS = 3000;
-    #lastModified = new Map<number, number>();
+    #pending = new Map<number, {patch: Partial<AudioStream>; at: number}>();
+    #graceSource = 0;
+    #pendingVolume = new Map<number, number>();
+    #volumeSource = 0;
 
     // Signal handler IDs for cleanup
     #streamAddedId = 0;
@@ -128,7 +135,7 @@ export default class AppMixer extends Object {
 
         for (const s of allStreams) {
             if (isOutputStream(s.mediaClass)) {
-                outStreams.push(streamFromAstal(s));
+                outStreams.push(this.#withPendingEdit(streamFromAstal(s)));
             } else if (isInputStream(s.mediaClass)) {
                 capStreams.push(streamFromAstal(s));
             }
@@ -191,10 +198,7 @@ export default class AppMixer extends Object {
         const changed = JSON.stringify(newStreams) !== JSON.stringify(this.#captureStreams);
         const hadCapture = this.#captureStreams.length > 0;
 
-        if (changed) {
-            this.#captureStreams = newStreams;
-            this.notify('capture-streams');
-        }
+        if (changed) this.#captureStreams = newStreams;
         if (hadCapture !== newStreams.length > 0) {
             this.notify('microphone-in-use');
         }
@@ -208,16 +212,50 @@ export default class AppMixer extends Object {
             {...this.#streams[idx], ...patch},
             ...this.#streams.slice(idx + 1),
         ];
-        this.#lastModified.set(id, Date.now());
+
+        // Remember the edit so PipeWire notifications that still carry the old value
+        // do not snap the control back, then resync once the grace window is over.
+        const now = Date.now();
+        const previous = this.#pending.get(id);
+        const fresh = previous && now - previous.at < MODIFY_GRACE_MS ? previous.patch : {};
+        this.#pending.set(id, {patch: {...fresh, ...patch}, at: now});
+        if (this.#graceSource) GLib.source_remove(this.#graceSource);
+        this.#graceSource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, MODIFY_GRACE_MS + 50, () => {
+            this.#graceSource = 0;
+            const audio = Wireplumber.get_default()?.audio;
+            if (audio) this.#syncStreams(audio);
+            return GLib.SOURCE_REMOVE;
+        });
         this.notify('streams');
     }
 
+    /** Overlay an edit that PipeWire has not confirmed yet, while its grace window is open. */
+    #withPendingEdit(stream: AudioStream): AudioStream {
+        const edit = this.#pending.get(stream.id);
+        if (!edit) return stream;
+        if (Date.now() - edit.at >= MODIFY_GRACE_MS) {
+            this.#pending.delete(stream.id);
+            return stream;
+        }
+        return {...stream, ...edit.patch};
+    }
+
+    /** A slider drag fires many changes; spawn wpctl once per stream with the latest value. */
     setVolume(id: number, volume: number) {
         const clamped = Math.max(0, Math.min(1, volume));
         this.#optimisticUpdate(id, {volume: clamped});
-        Process.execAsync(`wpctl set-volume ${id} ${clamped.toFixed(2)}`).catch((e) =>
-            logger.error('audio', 'setVolume wpctl failed:', e)
-        );
+        this.#pendingVolume.set(id, clamped);
+        if (this.#volumeSource) return;
+        this.#volumeSource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, VOLUME_FLUSH_MS, () => {
+            this.#volumeSource = 0;
+            for (const [streamId, value] of this.#pendingVolume) {
+                Process.execAsync(`wpctl set-volume ${streamId} ${value.toFixed(2)}`).catch((e) =>
+                    logger.error('audio', 'setVolume wpctl failed:', e)
+                );
+            }
+            this.#pendingVolume.clear();
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     setMute(id: number, muted: boolean) {
@@ -237,6 +275,13 @@ export default class AppMixer extends Object {
     }
 
     dispose() {
+        for (const source of [this.#graceSource, this.#volumeSource]) {
+            if (source) GLib.source_remove(source);
+        }
+        this.#graceSource = 0;
+        this.#volumeSource = 0;
+        this.#pendingVolume.clear();
+        this.#pending.clear();
         try {
             const audio = Wireplumber.get_default()?.audio;
             if (audio) {

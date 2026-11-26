@@ -8,9 +8,19 @@ export function formatTime(unixTs: number): string {
     return dt.format('%H:%M') ?? '--:--';
 }
 
-/** Format temperature with degree symbol, e.g. 24 → "24°" */
+/** Format temperature with degree symbol, e.g. 24 → "24°"; a missing or invalid value renders "--°". */
 export function formatTemp(celsius: number): string {
-    return `${Math.round(celsius)}°`;
+    return Number.isFinite(celsius) ? `${Math.round(celsius)}°` : '--°';
+}
+
+/**
+ * Whether a coordinate pair is a real location. (0, 0) is rejected because a missing
+ * property or an unset setting reads as zero.
+ */
+export function isUsableCoordinates(lat: number, lon: number): boolean {
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
+    return lat !== 0 || lon !== 0;
 }
 
 // ── Wind direction ───────────────────────────────────────────────────────

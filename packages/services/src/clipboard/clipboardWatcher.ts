@@ -1,99 +1,148 @@
 /**
- * ClipboardWatcher — Spawns two wl-paste --watch subprocesses to capture
- * clipboard changes via the ext-data-control / wlr-data-control protocol.
- *
- * This replaces Gdk.Clipboard 'changed' signal, which on Wayland only fires
- * while the client has keyboard focus (wl_data_device protocol limitation).
- *
- * Watchers:
- *   - text:  wl-paste --no-newline --type text --watch sh -c 'base64 -w0; echo'
- *   - image: wl-paste --type image --watch sh -c 'base64 -w0; echo'
- *
- * Each clipboard change is delivered as a single base64-encoded line via
- * GDataInputStream.read_line_async (handled by the Process class).
+ * wl-paste data-control watchers. Sensitive offers are discarded in the watch
+ * child before reading clipboard bytes. Offer MIME hints are checked again
+ * before delivery. Unexpected exits have a bounded restart, never a spin loop.
  */
-
 import GLib from 'gi://GLib?version=2.0';
 import logger from '@shade/core/logger';
 import {type Process, subprocess} from '@shade/core/process';
+import {Timeout} from '@shade/core/timeout';
+import {imageMimeType, SENSITIVE_MIME_TYPES} from './clipboardPolicy';
 
 export type ClipType = 'text' | 'image';
+export type ClipboardChangeCallback = (
+    type: ClipType,
+    rawBytes: Uint8Array,
+    mimeType: string
+) => void;
 
-export type ClipboardChangeCallback = (type: ClipType, rawBytes: Uint8Array) => void;
-
-let textWatcher: Process | null = null;
-let imageWatcher: Process | null = null;
+const watchers: Record<ClipType, Process | null> = {text: null, image: null};
+const retryTimers = {text: new Timeout(), image: new Timeout()};
+const retryAttempts = {text: 0, image: 0};
+const MAX_RESTARTS = 3;
 let activeCallback: ClipboardChangeCallback | null = null;
 
-/**
- * Start wl-paste --watch watchers for both text and image content.
- * Calls `callback` each time the clipboard changes.
- *
- * The callback receives the raw bytes (base64-decoded). Text callers
- * should TextDecoder to string; image callers should store as base64
- * or handle binary directly.
- */
-export function startClipboardWatcher(callback: ClipboardChangeCallback): void {
-    if (textWatcher || imageWatcher) {
-        logger.warn('clipboard', 'watcher already started, ignoring duplicate start');
+const sensitivePatterns = SENSITIVE_MIME_TYPES.map((type) => `*"\n${type}\n"*`).join('|');
+const WATCH_SCRIPT = `
+case "\${CLIPBOARD_STATE-}" in sensitive|nil|clear) exit 0;; esac
+types=$("$1" --list-types) || exit 0
+case "
+$types
+" in ${sensitivePatterns}) exit 0;; esac
+payload=$(base64 -w0) || exit 0
+after=$("$1" --list-types) || exit 0
+[ "$types" = "$after" ] || exit 0
+printf '%s\\t%s\\t%s\\n' "$(printf '%s' "$types" | base64 -w0)" "$(printf '%s' "\${CLIPBOARD_TYPE-}" | base64 -w0)" "$payload"
+`;
+
+function restartWatcher(type: ClipType): void {
+    if (!activeCallback) return;
+    if (retryAttempts[type] >= MAX_RESTARTS) {
+        logger.error('clipboard', `${type} watcher stopped after ${MAX_RESTARTS} retries`);
         return;
     }
+    const delay = 250 * 4 ** retryAttempts[type]++;
+    retryTimers[type].start(delay, () => {
+        if (!activeCallback) return;
+        try {
+            spawnWatcher(type);
+        } catch (error) {
+            logger.warn('clipboard', `could not restart ${type} watcher:`, error);
+            restartWatcher(type);
+        }
+    });
+}
 
+function spawnWatcher(type: ClipType): void {
+    const wlPaste = GLib.find_program_in_path('wl-paste');
+    if (!wlPaste) throw new Error('wl-paste is not installed');
+    const startedAt = GLib.get_monotonic_time();
+    const watcher = subprocess(
+        [
+            wlPaste,
+            '--no-newline',
+            '--type',
+            type,
+            '--watch',
+            'sh',
+            '-c',
+            WATCH_SCRIPT,
+            'clipboard-watch',
+            wlPaste,
+        ],
+        (line: string) => {
+            if (watchers[type] !== watcher) return;
+            try {
+                const [encodedTypes, encodedMime, encoded] = line.split('\t');
+                if (!encodedTypes || encodedMime === undefined || !encoded) return;
+                const decoder = new TextDecoder();
+                const types = decoder.decode(GLib.base64_decode(encodedTypes)).split('\n');
+                const offeredMime = decoder.decode(GLib.base64_decode(encodedMime));
+                if (
+                    types.some((mime) =>
+                        SENSITIVE_MIME_TYPES.some((sensitive) => sensitive === mime)
+                    )
+                )
+                    return;
+                const raw = GLib.base64_decode(encoded);
+                const imageTypes = types.filter((mime) => mime.startsWith('image/'));
+                const mimeType = offeredMime.startsWith(`${type}/`)
+                    ? offeredMime
+                    : type === 'text'
+                      ? 'text/plain'
+                      : (imageMimeType(raw) ?? (imageTypes.length === 1 ? imageTypes[0] : null));
+                if (!mimeType) {
+                    logger.warn(
+                        'clipboard',
+                        'could not determine the copied image MIME type; skipping'
+                    );
+                    return;
+                }
+                activeCallback?.(type, raw, mimeType);
+            } catch (error) {
+                logger.error('clipboard', `failed to handle ${type} clipboard data:`, error);
+            }
+        },
+        (error: string) => logger.warn('clipboard', `${type} watcher stderr:`, error.trim())
+    );
+    watchers[type] = watcher;
+    watcher.connect('exit', (_, code: number, signaled: boolean) => {
+        if (watchers[type] !== watcher) return;
+        watchers[type] = null;
+        if (!activeCallback) return;
+        if (GLib.get_monotonic_time() - startedAt >= 30 * 1000 * 1000) retryAttempts[type] = 0;
+        logger.warn(
+            'clipboard',
+            `${type} watcher exited (${signaled ? 'signal' : 'status'} ${code})`
+        );
+        restartWatcher(type);
+    });
+}
+
+export function startClipboardWatcher(callback: ClipboardChangeCallback): void {
+    if (activeCallback) return;
     activeCallback = callback;
-
-    // Text watcher: base64-encode clipboard text, output one line per change
-    textWatcher = subprocess(
-        ['wl-paste', '--no-newline', '--type', 'text', '--watch', 'sh', '-c', 'base64 -w0; echo'],
-        (line: string) => {
-            try {
-                const trimmed = line.trim();
-                if (!trimmed) return;
-                const raw = GLib.base64_decode(trimmed);
-                activeCallback?.('text', raw);
-            } catch (e) {
-                logger.error('clipboard', 'failed to decode text:', e);
-            }
-        },
-        (err: string) => {
-            logger.warn('clipboard', 'text watcher stderr:', err.trim());
-        }
-    );
-
-    // Image watcher: base64-encode PNG data, output one line per change
-    imageWatcher = subprocess(
-        ['wl-paste', '--type', 'image', '--watch', 'sh', '-c', 'base64 -w0; echo'],
-        (line: string) => {
-            try {
-                const trimmed = line.trim();
-                if (!trimmed) return;
-                const raw = GLib.base64_decode(trimmed);
-                activeCallback?.('image', raw);
-            } catch (e) {
-                logger.error('clipboard', 'failed to decode image:', e);
-            }
-        },
-        (err: string) => {
-            logger.warn('clipboard', 'image watcher stderr:', err.trim());
-        }
-    );
-
+    try {
+        spawnWatcher('text');
+        spawnWatcher('image');
+    } catch (error) {
+        stopClipboardWatcher();
+        throw error;
+    }
     logger.info('clipboard', 'wl-paste watchers started (text + image)');
 }
 
-/**
- * Stop the clipboard watchers and clean up.
- */
 export function stopClipboardWatcher(): void {
-    [textWatcher, imageWatcher].forEach((w) => w?.kill());
-    textWatcher = null;
-    imageWatcher = null;
     activeCallback = null;
-    logger.info('clipboard', 'wl-paste watchers stopped');
+    for (const type of ['text', 'image'] as const) {
+        retryTimers[type].cancel();
+        retryAttempts[type] = 0;
+        const watcher = watchers[type];
+        watchers[type] = null;
+        watcher?.kill();
+    }
 }
 
-/**
- * Check whether the watchers are currently running.
- */
 export function isWatching(): boolean {
-    return textWatcher !== null && imageWatcher !== null;
+    return watchers.text !== null && watchers.image !== null;
 }

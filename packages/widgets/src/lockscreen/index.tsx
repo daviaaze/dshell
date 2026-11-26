@@ -27,6 +27,9 @@ const createLocks = (onUnlock: () => void) => {
     const fingerprint = FingerprintAuth.get_default();
     const authSession = new AuthSession();
     const [lockMonitors, setLockMonitors] = createState<Gdk.Monitor[]>([]);
+    const [lockStalled, setLockStalled] = createState(false);
+    // One password text for every monitor's panel: typing and submitting may happen on different outputs.
+    const [password, setPassword] = createState('');
     const monitorSignals: {monitor: Gdk.Monitor; id: number}[] = [];
     let disposed = false;
     let retrySource = 0;
@@ -51,22 +54,24 @@ const createLocks = (onUnlock: () => void) => {
     });
     onCleanup(() => authSession.disconnect(successId));
 
-    const monitorId = lockService.connect(
-        'monitor',
-        (_service, monitor) => {
-            if (disposed || lockMonitors().includes(monitor)) return;
-            const id = monitor.connect('invalidate', () => {
-                setLockMonitors(lockMonitors().filter((item) => item !== monitor));
-            });
-            monitorSignals.push({monitor, id});
-            setLockMonitors([...lockMonitors(), monitor]);
-        }
-    );
+    const monitorId = lockService.connect('monitor', (_service, monitor) => {
+        if (disposed || lockMonitors().includes(monitor)) return;
+        const id = monitor.connect('invalidate', () => {
+            setLockMonitors(lockMonitors().filter((item) => item !== monitor));
+        });
+        monitorSignals.push({monitor, id});
+        setLockMonitors([...lockMonitors(), monitor]);
+    });
     const lockedId = GObject.signal_connect(lockService, 'locked', () => {
+        setLockStalled(false);
         if (!disposed) void authSession.start();
+    });
+    const stalledId = GObject.signal_connect(lockService, 'stalled', () => {
+        if (!disposed) setLockStalled(true);
     });
     const failedId = GObject.signal_connect(lockService, 'failed', () => {
         if (disposed || retrySource) return;
+        setLockStalled(false);
         setLockMonitors([]);
         retrySource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
             retrySource = 0;
@@ -83,6 +88,7 @@ const createLocks = (onUnlock: () => void) => {
     onCleanup(() => {
         lockService.disconnect(monitorId);
         lockService.disconnect(lockedId);
+        lockService.disconnect(stalledId);
         lockService.disconnect(failedId);
         lockService.disconnect(unlockedId);
     });
@@ -112,24 +118,46 @@ const createLocks = (onUnlock: () => void) => {
                     <Gtk.ScrolledWindow
                         hscrollbarPolicy={Gtk.PolicyType.NEVER}
                         vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                        hexpand vexpand
+                        hexpand
+                        vexpand
                     >
-                        <Adw.Clamp maximumSize={420} tighteningThreshold={340}
-                            marginTop={24} marginBottom={24} marginStart={16} marginEnd={16}
-                            valign={Gtk.Align.CENTER}>
+                        <Adw.Clamp
+                            maximumSize={420}
+                            tighteningThreshold={340}
+                            marginTop={24}
+                            marginBottom={24}
+                            marginStart={16}
+                            marginEnd={16}
+                            valign={Gtk.Align.CENTER}
+                        >
                             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={24}>
-                                <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={8}
-                                    halign={Gtk.Align.CENTER}>
-                                    <Gtk.Label cssClasses={['title-1', 'numeric']}
-                                        label={time.as(t => t.format('%R') ?? '')} />
-                                    <Gtk.Label cssClasses={['title-3']}
-                                        label={time.as(t => t.format('%A, %x') ?? '')} wrap />
+                                <Gtk.Box
+                                    orientation={Gtk.Orientation.VERTICAL}
+                                    spacing={8}
+                                    halign={Gtk.Align.CENTER}
+                                >
+                                    <Gtk.Label
+                                        cssClasses={['title-1', 'numeric']}
+                                        label={time.as((t) => t.format('%R') ?? '')}
+                                    />
+                                    <Gtk.Label
+                                        cssClasses={['title-3']}
+                                        label={time.as((t) => t.format('%A, %x') ?? '')}
+                                        wrap
+                                    />
                                 </Gtk.Box>
+                                <Gtk.Label
+                                    visible={lockStalled}
+                                    label="O compositor ainda não confirmou o bloqueio."
+                                    wrap
+                                />
                                 <LockscreenAuthPanel
                                     authSession={authSession}
                                     fingerprint={fingerprint}
                                     fpStateBinding={fpStateBinding}
                                     fpErrorBinding={fpErrorBinding}
+                                    password={password}
+                                    setPassword={setPassword}
                                 />
                                 <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                                     <LockscreenWidgets position="end" />
@@ -167,8 +195,14 @@ export const LockScreen = () => {
         // Normal same-process GTK toplevels can retain keyboard ownership even
         // when the session-lock entry reports focused. Suspend those windows;
         // layer-shell surfaces and native lock windows have separate lifetimes.
-        hiddenWindows = app.get_windows().filter((window) =>
-            window.visible && !(window instanceof Astal.Window) && !wm.lockscreens.includes(window));
+        hiddenWindows = app
+            .get_windows()
+            .filter(
+                (window) =>
+                    window.visible &&
+                    !(window instanceof Astal.Window) &&
+                    !wm.lockscreens.includes(window)
+            );
         for (const window of hiddenWindows) window.set_visible(false);
         disposeLocks = render(
             () =>

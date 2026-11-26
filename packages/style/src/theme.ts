@@ -85,9 +85,7 @@ function linearize(channel: number): number {
 }
 
 function luminance(color: RGB): number {
-    return 0.2126 * linearize(color.r) +
-        0.7152 * linearize(color.g) +
-        0.0722 * linearize(color.b);
+    return 0.2126 * linearize(color.r) + 0.7152 * linearize(color.g) + 0.0722 * linearize(color.b);
 }
 
 function ratioFromColors(foreground: RGB, background: RGB): number {
@@ -140,8 +138,10 @@ export function resolveAccentRoles(
         return {background: accentBackground, foreground, standalone: accentBackground};
     }
 
-    const toward = ratioFromColors(black, parsedBackground) >=
-        ratioFromColors(white, parsedBackground) ? black : white;
+    const toward =
+        ratioFromColors(black, parsedBackground) >= ratioFromColors(white, parsedBackground)
+            ? black
+            : white;
     for (let step = 1; step <= 255; step++) {
         const amount = step / 255;
         const candidate: RGB = {
@@ -159,7 +159,6 @@ export function resolveAccentRoles(
     // Either black or white always meets the benchmark against an opaque background.
     throw new Error('Unable to resolve a readable standalone accent color');
 }
-
 
 // ── Default Adwaita-inspired palettes ──
 
@@ -335,8 +334,12 @@ export class Theme extends GObject {
 
     #reevaluate(): void {
         const colors = this.#activeStylesheet
-            ? (this.#isDark ? this.#activeStylesheet.config.dark : this.#activeStylesheet.config.light)
-            : (this.#isDark ? ADWAITA_DARK : ADWAITA_LIGHT);
+            ? this.#isDark
+                ? this.#activeStylesheet.config.dark
+                : this.#activeStylesheet.config.light
+            : this.#isDark
+              ? ADWAITA_DARK
+              : ADWAITA_LIGHT;
         this.#applyPalette(colors);
     }
 
@@ -345,7 +348,8 @@ export class Theme extends GObject {
      *
      * Sets `--window-bg-color`, `--window-fg-color`, `--accent-bg-color`,
      * `--accent-fg-color`, `--accent-color`, `--card-bg-color`, and
-     * `--shade-color` on `*`. No custom `--shade-*` properties are emitted.
+     * `--shade-color` on `*`, plus `--dim-opacity` (raised from libadwaita's 55% so `.dimmed`
+     * text keeps readable contrast). No custom `--shade-*` properties are emitted.
      */
     #applyPalette(p: Palette): void {
         // Validate required keys
@@ -386,6 +390,7 @@ export class Theme extends GObject {
   --accent-color: ${roles.standalone};
   --card-bg-color: ${p.surface};
   --shade-color: ${p.shadow};
+  --dim-opacity: 70%;
 }`;
     }
 }

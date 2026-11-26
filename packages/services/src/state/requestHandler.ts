@@ -3,37 +3,21 @@
  * auto-generated help and subcommand validation.
  *
  * Each desktop service registers its own GActions via registerCommands().
- * This file parses CLI args and routes them to those GActions.
+ * This file parses CLI args and routes them to those GActions; the routing
+ * table itself lives in cliRoutes.ts.
  */
 
 import type Gio from 'gi://Gio?version=2.0';
 import GLib from 'gi://GLib?version=2.0';
 import Quarrel from 'gi://Quarrel';
 import logger, {perf} from '@shade/core/logger';
-import printOut from '@shade/core/stdout';
 import {bus} from '../bus';
+import {resolveRoute, TOGGLE_ACTIONS} from './cliRoutes';
 
-// ── Help flag (shared) ──
-
-const help = Quarrel.Flag.new('help', 'h'.charCodeAt(0), 'Print this help');
-
-// ── Action lookup helper ──
-
-function activate(app: Gio.Application, actionName: string): void {
-    if (app.lookup_action(actionName)) {
-        app.activate_action(actionName, null);
-    } else {
-        logger.warn('dbus', `unknown action: ${actionName}`);
-    }
-}
-
-function activateWithString(app: Gio.Application, actionName: string, value: string): void {
-    if (app.lookup_action(actionName)) {
-        app.activate_action(actionName, new GLib.Variant('s', value));
-    } else {
-        logger.warn('dbus', `unknown action: ${actionName}`);
-    }
-}
+/** Exit statuses reported to the calling `shade-shell` process. */
+const EXIT_OK = 0;
+const EXIT_FAILURE = 1;
+const EXIT_USAGE = 2;
 
 // CLI subcommand names (shared by declaration and dispatch)
 const CMD_SCREENSHOT_AREA = 'screenshot-area';
@@ -47,16 +31,20 @@ const CMD_DISPLAY_NEXT = 'display-next';
 const CMD_DISPLAY_MODE = 'display-mode';
 const CMD_DISPLAY_MODE_CHOOSER = 'display-mode-chooser';
 const CMD_DISPLAY_TOGGLE_INTERNAL = 'display-toggle-internal';
+
 // ── Build command tree ──
 
-function buildCLI(_app: Gio.Application): Quarrel.Command {
+/**
+ * The help flag is created per request: Quarrel stores the parsed state on the
+ * flag object, so a shared one would stay enabled after the first `--help`.
+ */
+function buildCLI(): {cli: Quarrel.Command; help: Quarrel.SpecialFlag} {
+    const help = Quarrel.SpecialFlag.new('help', 'h'.charCodeAt(0), 'Print this help');
+
     // Subcommands
     const toggle = new Quarrel.Command({name: 'toggle'})
         .about('Toggle a widget visibility')
-        .arg(
-            'WIDGET',
-            'Widget to toggle: launcher, quicksettings, settings, bar, windowswitcher, touchpad'
-        )
+        .arg('WIDGET', `Widget to toggle: ${Object.keys(TOGGLE_ACTIONS).join(', ')}`)
         .opt(help);
 
     const screenshot = new Quarrel.Command({name: 'screenshot'})
@@ -64,7 +52,7 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .opt(help);
 
     const screenshotArea = new Quarrel.Command({name: CMD_SCREENSHOT_AREA})
-        .about('Take a screensho of a selected area')
+        .about('Take a screenshot of a selected area')
         .opt(help);
 
     const screenshotOverlay = new Quarrel.Command({name: CMD_SCREENSHOT_OVERLAY})
@@ -131,6 +119,7 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
     // Root CLI
     const cli = new Quarrel.Command({name: 'shade-shell'})
         .about('Shade Shell — Hyprland Adwaita Desktop Environment')
+        .opt(help)
         .subcommand(toggle)
         .subcommand(screenshot)
         .subcommand(screenshotArea)
@@ -150,137 +139,95 @@ function buildCLI(_app: Gio.Application): Quarrel.Command {
         .subcommand(displayNext)
         .subcommand(touchpad);
 
-    return cli;
+    return {cli, help};
 }
 
 // ── Dispatch ──
 
-function dispatch(command: Quarrel.Command, app: Gio.Application): boolean {
-    const name = command.get_name();
-
-    switch (name) {
-        case 'toggle':
-            if (help.description || command.get_args().length === 0) {
-                return false; // caller will print help
-            }
-            activate(app, `toggle-${command.get_args()[0]}`);
-            return true;
-
-        case 'screenshot':
-            activate(app, 'screenshot');
-            return true;
-
-        case CMD_SCREENSHOT_AREA:
-            activate(app, CMD_SCREENSHOT_AREA);
-            return true;
-
-        case CMD_SCREENSHOT_OVERLAY:
-            activate(app, CMD_SCREENSHOT_OVERLAY);
-            return true;
-
-        case 'record':
-            activate(app, 'record');
-            return true;
-
-        case CMD_RECORD_AREA:
-            activate(app, CMD_RECORD_AREA);
-            return true;
-
-        case CMD_RECORD_WINDOW:
-            activate(app, CMD_RECORD_WINDOW);
-            return true;
-
-        case CMD_RECORD_WINDOW_ADDRESS: {
-            const addr = command.get_args()[0];
-            if (addr) {
-                activateWithString(app, CMD_RECORD_WINDOW_ADDRESS, addr);
-            }
-            return true;
-        }
-
-        case CMD_RECORD_OUTPUT:
-            activate(app, CMD_RECORD_OUTPUT);
-            return true;
-
-        case 'lockscreen':
-            activate(app, 'lockscreen');
-            return true;
-
-        case 'clipboard':
-            activate(app, 'toggle-clipboard');
-            return true;
-
-        case CMD_OPEN_CLIPBOARD:
-            activate(app, CMD_OPEN_CLIPBOARD);
-            return true;
-
-        case 'toggle-dnd':
-            bus.emit('system:dnd:toggle');
-            return true;
-
-        case CMD_DISPLAY_NEXT:
-            activate(app, CMD_DISPLAY_NEXT);
-            return true;
-
-        case CMD_DISPLAY_MODE: {
-            const mode = command.get_args()[0];
-            if (mode) {
-                activateWithString(app, CMD_DISPLAY_MODE, mode);
-            }
-            return true;
-        }
-
-        case CMD_DISPLAY_MODE_CHOOSER:
-            activate(app, CMD_DISPLAY_MODE_CHOOSER);
-            return true;
-
-        case CMD_DISPLAY_TOGGLE_INTERNAL:
-            activate(app, CMD_DISPLAY_TOGGLE_INTERNAL);
-            return true;
-
-        case 'touchpad':
-            activate(app, 'toggle-touchpad');
-            return true;
-
-        default:
-            return false;
-    }
+/** Write to the stdout/stderr of the process that sent the request. */
+function reply(cmd: Gio.ApplicationCommandLine, text: string, stderr = false): void {
+    const line = text.endsWith('\n') ? text : `${text}\n`;
+    if (stderr) cmd.printerr_literal(line);
+    else cmd.print_literal(line);
 }
 
-// ── Entry point ──
+function dispatch(
+    command: Quarrel.Command,
+    cmd: Gio.ApplicationCommandLine,
+    app: Gio.Application
+): number {
+    const route = resolveRoute(command.get_name(), command.get_args());
 
-export const requestHandler = (cmd: Gio.ApplicationCommandLine, app: Gio.Application) => {
-    const cli = buildCLI(app);
+    if (!route || route.kind === 'usage') {
+        if (route) reply(cmd, `shade-shell ${route.message}`, true);
+        reply(cmd, Quarrel.help(command), true);
+        return EXIT_USAGE;
+    }
+
+    if (route.kind === 'dnd-toggle') {
+        bus.emit('system:dnd:toggle');
+        return EXIT_OK;
+    }
+
+    if (!app.lookup_action(route.action)) {
+        logger.warn('dbus', `unknown action: ${route.action}`);
+        reply(cmd, `shade-shell: action '${route.action}' is not available`, true);
+        return EXIT_FAILURE;
+    }
+    app.activate_action(
+        route.action,
+        route.value === undefined ? null : new GLib.Variant('s', route.value)
+    );
+    return EXIT_OK;
+}
+
+function handle(cmd: Gio.ApplicationCommandLine, app: Gio.Application): number {
+    const {cli, help} = buildCLI();
     const args = cmd.get_arguments();
 
     logger.debug('dbus', `requestHandler args=${args.slice(1).join(' ')}`);
 
-    // Parse using Quarrel
-    const matched = cli.parse(args);
+    let matched: Quarrel.Command;
+    try {
+        matched = cli.parse(args);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn('dbus', `could not parse args=${args.slice(1).join(' ')}: ${message}`);
+        reply(cmd, `shade-shell: ${message}`, true);
+        reply(cmd, Quarrel.help(Quarrel.Command.throwing() ?? cli), true);
+        return EXIT_USAGE;
+    }
 
-    if (matched === cli && help.description) {
-        printOut(Quarrel.help(cli));
+    if (help.enabled || matched === cli) {
+        reply(cmd, Quarrel.help(matched));
+        return EXIT_OK;
+    }
+
+    return perf.measureSync(
+        `dbus-${matched.get_name()}`,
+        () => dispatch(matched, cmd, app),
+        'dbus'
+    );
+}
+
+// ── Entry point ──
+
+/**
+ * Handle a remote `shade-shell …` invocation. Output and the exit status go to
+ * the calling process; the status is also returned so `vfunc_command_line` can
+ * pass it on.
+ */
+export const requestHandler = (cmd: Gio.ApplicationCommandLine, app: Gio.Application): number => {
+    let status = EXIT_FAILURE;
+    try {
+        status = handle(cmd, app);
+    } catch (error) {
+        logger.error('dbus', 'requestHandler failed:', error);
+        reply(cmd, 'shade-shell: internal error, see the shell log', true);
+    } finally {
+        cmd.set_exit_status(status);
         cmd.done();
-        return;
     }
-
-    if (matched) {
-        const cmdName = matched.get_name();
-        perf.measureSync(
-            `dbus-${cmdName}`,
-            () => {
-                const ok = dispatch(matched, app);
-                if (!ok) {
-                    printOut(Quarrel.help(matched));
-                }
-            },
-            'dbus'
-        );
-    } else {
-        logger.warn('dbus', `no command matched, args=${args.slice(1).join(' ')}`);
-        printOut(Quarrel.help(cli));
-    }
-
-    logger.debug('dbus', 'requestHandler done');
-    cmd.done();
+    logger.debug('dbus', `requestHandler done status=${status}`);
+    return status;
 };

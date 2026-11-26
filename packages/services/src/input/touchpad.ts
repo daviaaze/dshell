@@ -10,12 +10,21 @@ logger.info('touchpad', 'module loaded');
 
 const EC_TOUCHPAD_PATH = '/sys/bus/platform/devices/VPC2004:00/touchpad';
 
-// EVIOCGRAB fallback: grab input device at kernel level via Python stdlib ioctl
+// EVIOCGRAB only: no input events are read or collected by this child.
+// Both parent-death signalling and stdin EOF release the grab after a crash.
 const GRAB_SCRIPT = `
-import fcntl, os, signal
-fd = os.open("__DEVICE__", os.O_RDWR)
-fcntl.ioctl(fd, 0x40044590, 1)
-signal.pause()
+import ctypes, fcntl, os, signal, sys
+libc = ctypes.CDLL(None, use_errno=True)
+if libc.prctl(1, signal.SIGTERM, 0, 0, 0) != 0:
+    raise OSError(ctypes.get_errno(), "PR_SET_PDEATHSIG")
+if os.getppid() != int(sys.argv[2]):
+    sys.exit(0)
+fd = os.open(sys.argv[1], os.O_RDONLY | os.O_CLOEXEC)
+try:
+    fcntl.ioctl(fd, 0x40044590, 1)
+    sys.stdin.buffer.read()
+finally:
+    os.close(fd)
 `;
 
 @register
@@ -51,10 +60,17 @@ export default class Touchpad extends Object {
 
     set enabled(v: boolean) {
         if (this.#enabled === v) return;
+        const previous = this.#enabled;
         this.#enabled = v;
-        this.#apply();
+        try {
+            this.#apply();
+        } catch (error) {
+            this.#enabled = previous;
+            logger.error('touchpad', 'apply failed:', error);
+        }
+        if (this.#enabled === previous) return;
         this.notify('enabled');
-        this.toggled(v);
+        this.toggled(this.#enabled);
         this.#osd.trigger();
     }
 
@@ -87,6 +103,11 @@ export default class Touchpad extends Object {
         if (!this.#available) {
             logger.info('touchpad', 'no touchpad detected, skipping init');
             return;
+        }
+        try {
+            this.#apply();
+        } catch (error) {
+            logger.error('touchpad', 'could not apply initial touchpad state:', error);
         }
         const mode = this.#useEc ? 'EC hardware toggle' : 'EVIOCGRAB fallback';
         logger.info('touchpad', `initialized, mode=${mode}, enabled=${this.#enabled}`);
@@ -128,27 +149,19 @@ export default class Touchpad extends Object {
     }
 
     #apply() {
-        try {
-            if (this.#useEc) {
-                this.#applyEc();
-            } else if (this.#eventPath) {
-                this.#applyGrab();
-            }
-        } catch (e) {
-            logger.error('touchpad', 'apply failed:', e);
+        if (this.#useEc) {
+            this.#applyEc();
+        } else if (this.#eventPath) {
+            this.#applyGrab();
         }
     }
 
     #applyEc() {
         const value = this.#enabled ? '1' : '0';
         logger.info('touchpad', `applyEc: writing ${value} to ${EC_TOUCHPAD_PATH}`);
-        try {
-            // Sysfs files need direct write via /bin/sh -c, not GLib atomic file IO
-            Process.exec(`/bin/sh -c 'echo ${value} > ${EC_TOUCHPAD_PATH}'`);
-            logger.info('touchpad', `applyEc: wrote ${value}`);
-        } catch (e) {
-            logger.error('touchpad', 'applyEc failed:', e);
-        }
+        // Sysfs files need direct write via /bin/sh -c, not GLib atomic file IO.
+        Process.exec(`/bin/sh -c 'echo ${value} > ${EC_TOUCHPAD_PATH}'`);
+        logger.info('touchpad', `applyEc: wrote ${value}`);
     }
 
     #applyGrab() {
@@ -156,8 +169,27 @@ export default class Touchpad extends Object {
         if (!this.#enabled) {
             // Disable: spawn grabber subprocess
             this.#stopProcess();
-            const script = GRAB_SCRIPT.replace('__DEVICE__', this.#eventPath);
-            this.#process = Process.subprocessv(['python3', '-c', script]);
+            const process = Process.subprocessv([
+                'python3',
+                '-c',
+                GRAB_SCRIPT,
+                this.#eventPath,
+                String(new Gio.Credentials().get_unix_pid()),
+            ]);
+            this.#process = process;
+            process.connect('exit', (_process, code, signaled) => {
+                if (this.#process !== process) return;
+                this.#process = null;
+                logger.warn(
+                    'touchpad',
+                    `grabber exited (${signaled ? 'signal' : 'status'} ${code}); touchpad enabled`
+                );
+                if (this.#enabled) return;
+                this.#enabled = true;
+                this.notify('enabled');
+                this.toggled(true);
+                this.#osd.trigger();
+            });
         } else {
             // Enable: kill grabber subprocess
             this.#stopProcess();
@@ -165,13 +197,14 @@ export default class Touchpad extends Object {
     }
 
     #stopProcess() {
-        if (this.#process) {
+        const process = this.#process;
+        this.#process = null;
+        if (process) {
             try {
-                this.#process.kill();
+                process.kill();
             } catch {
                 /* already dead */
             }
-            this.#process = null;
         }
     }
 
@@ -183,7 +216,14 @@ export default class Touchpad extends Object {
     }
 
     dispose() {
+        for (const unsubscribe of this.#busSubscriptions) unsubscribe();
+        this.#busSubscriptions = [];
+        this.#initialized = false;
         this.#stopProcess();
+        if (!this.#enabled && !this.#useEc) {
+            this.#enabled = true;
+            this.notify('enabled');
+        }
         this.#osd.dispose();
     }
 }

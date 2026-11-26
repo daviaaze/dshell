@@ -6,7 +6,9 @@ import {generalSettings} from '@shade/core/settings/general.gschema';
 import {cityName, fmtDuration, fmtOffset} from '@shade/core/time';
 import Clock from '@shade/services/time/clock';
 import TimerService from '@shade/services/time/timerService';
-import {type Accessor, bind, computed, effect, For} from 'gnim';
+import {type Accessor, bind, computed, effect, For, onCleanup} from 'gnim';
+import {getPopoverMaxHeight} from '../common/surface';
+import {usePopoverCleanup} from '../common/popoverCleanup';
 import {TimerSection} from '../quicksettings/timer/TimerSection';
 
 const CITY_NAMES_PT: Record<string, string> = {
@@ -39,7 +41,7 @@ function WorldClockRow({
                 halign={Gtk.Align.START}
             />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand halign={Gtk.Align.END}>
-                <Gtk.Label label={tzId} />
+                <Gtk.Label cssClasses={['caption', 'dimmed']} label={tzId} halign={Gtk.Align.END} />
                 <Gtk.Box>
                     <Gtk.Label
                         cssClasses={['numeric', 'title-4']}
@@ -61,19 +63,39 @@ function ClockPopover() {
     const localTz = GLib.TimeZone.new_local();
 
     return (
-        <Gtk.Box spacing={12} orientation={Gtk.Orientation.VERTICAL}>
-            <Gtk.Calendar />
-            <Gtk.Separator />
-            <Gtk.Label label="Relógio mundial" halign={Gtk.Align.CENTER} />
-            <For each={general.timezones}>
-                {(tzId: string) => <WorldClockRow tzId={tzId} time={time} localTz={localTz} />}
-            </For>
-            <Gtk.Separator />
-            <Gtk.Label label="Temporizador" halign={Gtk.Align.CENTER} />
-            <Gtk.Box widthRequest={230} halign={Gtk.Align.FILL}>
-                <TimerSection />
+        <Gtk.ScrolledWindow
+            hscrollbarPolicy={Gtk.PolicyType.NEVER}
+            propagateNaturalHeight
+            propagateNaturalWidth
+            ref={(self) => {
+                const signal = self.connect('map', () => {
+                    self.maxContentHeight = getPopoverMaxHeight(self);
+                });
+                onCleanup(() => self.disconnect(signal));
+            }}
+        >
+            <Gtk.Box spacing={12} orientation={Gtk.Orientation.VERTICAL}>
+                <Gtk.Calendar />
+                <Gtk.Separator />
+                <Gtk.Label
+                    label="Relógio mundial"
+                    cssClasses={['heading']}
+                    halign={Gtk.Align.CENTER}
+                />
+                <For each={general.timezones}>
+                    {(tzId: string) => <WorldClockRow tzId={tzId} time={time} localTz={localTz} />}
+                </For>
+                <Gtk.Separator />
+                <Gtk.Label
+                    label="Temporizador"
+                    cssClasses={['heading']}
+                    halign={Gtk.Align.CENTER}
+                />
+                <Gtk.Box widthRequest={230} halign={Gtk.Align.FILL}>
+                    <TimerSection />
+                </Gtk.Box>
             </Gtk.Box>
-        </Gtk.Box>
+        </Gtk.ScrolledWindow>
     );
 }
 
@@ -105,6 +127,11 @@ function ClockLabel({
                 )}
             >
                 <Gtk.Label label={hour} cssClasses={['title-1', 'numeric']} />
+                <Gtk.Label
+                    label=":"
+                    visible={vertical.as((v) => !v)}
+                    cssClasses={['title-1', 'numeric']}
+                />
                 <Gtk.Label label={minute} cssClasses={['title-1', 'numeric']} />
                 <Gtk.Box
                     orientation={Gtk.Orientation.VERTICAL}
@@ -141,7 +168,7 @@ export default ({
     const minute = wallTime.as((t) => t.format('%M')!);
     const day = wallTime.as((t) => t.format('%d')!);
     const month = wallTime.as((t) => t.format(vertical() ? '%b' : '%B')!);
-    const fullDate = wallTime.as((t) => t.format('%A, %B %e, %Y') ?? '');
+    const fullDate = wallTime.as((t) => t.format('%A, %e de %B de %Y') ?? '');
 
     const timer = TimerService.get_default();
     const timerRemaining = bind(timer, 'remaining');
@@ -161,6 +188,7 @@ export default ({
             visible={visible}
             tooltipText={buttonTooltip}
             ref={(self) => {
+                usePopoverCleanup(self);
                 effect(() => {
                     const accessibleName = timerActive()
                         ? `Temporizador: ${timerDisplay()}`

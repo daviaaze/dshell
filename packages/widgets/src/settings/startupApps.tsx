@@ -1,7 +1,11 @@
 import Adw from 'gi://Adw?version=1';
 import Gtk from 'gi://Gtk?version=4.0';
 import GLib from 'gi://GLib?version=2.0';
-import {type AutostartEntry, readAutostartEntries, setAutostartEnabled} from '@shade/services/settings/autostart';
+import {
+    type AutostartEntry,
+    readAutostartEntries,
+    setAutostartEnabled,
+} from '@shade/services/settings/autostart';
 import {For, createState, onCleanup} from 'gnim';
 
 function StartupAppRow({entry}: {entry: AutostartEntry}) {
@@ -56,9 +60,7 @@ export default () => {
                 });
             }}
         >
-            <For each={entries}>
-                {(entry) => <StartupAppRow entry={entry} />}
-            </For>
+            <For each={entries}>{(entry) => <StartupAppRow entry={entry} />}</For>
             <For each={issues}>
                 {(issue) => (
                     <Adw.ActionRow
@@ -83,7 +85,7 @@ export default () => {
             {snapshot.as((result) =>
                 result.directoryError === null ? null : (
                     <Gtk.Label
-                        label={`The startup directory could not be fully read: ${result.directoryError}`}
+                        label={`Não foi possível ler todo o diretório de inicialização: ${result.directoryError}`}
                         cssClasses={['error', 'caption']}
                         xalign={0}
                         wrap

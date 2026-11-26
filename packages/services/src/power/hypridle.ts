@@ -5,7 +5,14 @@ import {Process} from '@shade/core/process';
 import {generalSettings} from '@shade/core/settings/general.gschema';
 import type {Accessor} from 'gnim';
 import {Object as GObject, property, register} from 'gnim/gobject';
-import {deleteHypridleConfig, type HypridleConfig, writeHypridleConfig} from './hypridleConfig';
+import {
+    deleteHypridleConfig,
+    HYPRIDLE_CONFIG_PATH,
+    type HypridleConfig,
+    normaliseTimeouts,
+    restoreDimmedBrightness,
+    writeHypridleConfig,
+} from './hypridleConfig';
 
 type PropKey = keyof HypridleConfig | 'enabled';
 /** All hypridle props are either boolean toggles or second-based timeouts. */
@@ -18,54 +25,25 @@ interface HypridleRuntime {
     stop?: () => void;
 }
 
-/**
- * Descriptor for a single hypridle property: its GObject notify name,
- * clamp range, settings accessor key, and how changing it may bump
- * dependent values to maintain dim < idle < dpms < suspend ordering.
- */
-interface PropDef {
-    notify: string;
-    settingsKey: string;
-    /** Compute clamped value from raw input + current props. Return raw value if no change needed. */
-    clamp?: (raw: number, current: Record<PropKey, number>) => number;
-    /** Called after the value is set; return overrides for dependent props. */
-    cascade?: (val: number, current: Record<PropKey, number>) => Partial<Record<PropKey, number>>;
-}
-
-const PROPS: Record<string, PropDef> = {
-    enabled: {notify: 'enabled', settingsKey: 'autoLockEnabled'},
-    idleTimeout: {
-        notify: 'idle-timeout',
-        settingsKey: 'idleTimeout',
-        clamp: (v, _cur) => Math.max(60, Math.min(v, 1800)),
-        cascade: (v, cur) => {
-            const r: Partial<Record<PropKey, number>> = {};
-            if (cur.dimTimeout >= v) r.dimTimeout = Math.max(30, v - 10);
-            if (cur.dpmsTimeout <= v) r.dpmsTimeout = v + 10;
-            return r;
-        },
-    },
-    dimTimeout: {
-        notify: 'dim-timeout',
-        settingsKey: 'screenDimTimeout',
-        clamp: (v, cur) => Math.max(30, Math.min(v, cur.idleTimeout - 10)),
-        cascade: (v, cur) => (v >= cur.idleTimeout ? {idleTimeout: v + 10} : {}),
-    },
-    dimEnabled: {notify: 'dim-enabled', settingsKey: 'screenDimEnabled'},
-    dpmsTimeout: {
-        notify: 'dpms-timeout',
-        settingsKey: 'dpmsTimeout',
-        clamp: (v, cur) => Math.max(cur.idleTimeout + 10, Math.min(v, 3600)),
-        cascade: (v, cur) => (cur.suspendTimeout <= v ? {suspendTimeout: v + 10} : {}),
-    },
-    dpmsEnabled: {notify: 'dpms-enabled', settingsKey: 'dpmsEnabled'},
-    suspendTimeout: {
-        notify: 'suspend-timeout',
-        settingsKey: 'suspendTimeout',
-        clamp: (v, cur) => Math.max(cur.dpmsTimeout + 10, Math.min(v, 7200)),
-    },
-    suspendEnabled: {notify: 'suspend-enabled', settingsKey: 'suspendEnabled'},
+/** GObject notify name of each prop. */
+const NOTIFY: Record<PropKey, string> = {
+    enabled: 'enabled',
+    idleTimeout: 'idle-timeout',
+    dimTimeout: 'dim-timeout',
+    dimEnabled: 'dim-enabled',
+    dpmsTimeout: 'dpms-timeout',
+    dpmsEnabled: 'dpms-enabled',
+    suspendTimeout: 'suspend-timeout',
+    suspendEnabled: 'suspend-enabled',
 };
+
+const PROP_KEYS = Object.keys(NOTIFY) as PropKey[];
+
+/** A prop's GSettings key: how to read it and write it back. */
+interface Binding {
+    read: () => PropValue;
+    write: (v: PropValue) => void;
+}
 
 @register
 export default class Hypridle extends GObject {
@@ -86,7 +64,7 @@ export default class Hypridle extends GObject {
         suspendEnabled: false,
     };
 
-    #settings: Record<string, (v: PropValue) => void> | null = null;
+    #bindings: Record<PropKey, Binding> | null = null;
     #process: Process | null = null;
     #runtime: HypridleRuntime = {};
 
@@ -156,101 +134,108 @@ export default class Hypridle extends GObject {
     // ── Centralised property write ────────────────────────────────────
 
     #set(key: PropKey, value: PropValue, apply = true) {
-        const def = PROPS[key];
-        if (!def) return;
-
-        // Clamp (may reference other current values for dynamic bounds)
-        if (def.clamp && typeof value === 'number') {
-            const cur = this.#values as Record<PropKey, number>;
-            value = def.clamp(value, cur);
-        }
-
-        if (this.#values[key] === value) return;
+        const before = {...this.#values};
         this.#values[key] = value;
+        if (this.#reconcile(before) && apply) this.#apply();
+    }
 
-        // Cascade — adjust dependent values to maintain ordering invariants
-        if (def.cascade && typeof value === 'number') {
-            const cur = this.#values as Record<PropKey, number>;
-            const overrides = def.cascade(value, cur);
-            for (const [depKey, depVal] of Object.entries(overrides)) {
-                const k = depKey as PropKey;
-                if (depVal !== undefined && this.#values[k] !== depVal) {
-                    this.#values[k] = depVal;
-                    const depDef = PROPS[k];
-                    if (depDef) this.notify(depDef.notify);
-                }
+    /**
+     * Normalise the timeout chain in one pass, notify every prop that changed
+     * from `before`, and write back to GSettings every prop whose stored value
+     * differs from the effective one (cascaded values, and clamped writes that
+     * left the in-memory value unchanged). Returns whether anything changed.
+     */
+    #reconcile(before: Record<PropKey, PropValue>): boolean {
+        const v = this.#values;
+        Object.assign(
+            v,
+            normaliseTimeouts({
+                idleTimeout: v.idleTimeout as number,
+                dimTimeout: v.dimTimeout as number,
+                dpmsTimeout: v.dpmsTimeout as number,
+                suspendTimeout: v.suspendTimeout as number,
+            })
+        );
+
+        let changed = false;
+        for (const key of PROP_KEYS) {
+            if (v[key] !== before[key]) {
+                changed = true;
+                this.notify(NOTIFY[key]);
             }
+            const binding = this.#bindings?.[key];
+            if (binding && binding.read() !== v[key]) binding.write(v[key]);
         }
-
-        // Sync to GSettings accessor
-        const acc = this.#settings?.[def.settingsKey];
-        if (acc && typeof acc === 'function') acc(value);
-
-        this.notify(def.notify);
-        if (apply) this.#apply();
+        return changed;
     }
 
     // ── Initialisation ────────────────────────────────────────────────
 
-    init(settings: {
-        autoLockEnabled: Accessor<boolean>;
-        idleTimeout: Accessor<number>;
-        screenDimEnabled: Accessor<boolean>;
-        screenDimTimeout: Accessor<number>;
-        dpmsEnabled: Accessor<boolean>;
-        dpmsTimeout: Accessor<number>;
-        suspendEnabled: Accessor<boolean>;
-        suspendTimeout: Accessor<number>;
-        setAutoLockEnabled: (v: boolean) => void;
-        setIdleTimeout: (v: number) => void;
-        setScreenDimEnabled: (v: boolean) => void;
-        setScreenDimTimeout: (v: number) => void;
-        setDpmsEnabled: (v: boolean) => void;
-        setDpmsTimeout: (v: number) => void;
-        setSuspendEnabled: (v: boolean) => void;
-        setSuspendTimeout: (v: number) => void;
-    }, runtime: HypridleRuntime = {}) {
-        if (this.#settings) {
+    init(
+        settings: {
+            autoLockEnabled: Accessor<boolean>;
+            idleTimeout: Accessor<number>;
+            screenDimEnabled: Accessor<boolean>;
+            screenDimTimeout: Accessor<number>;
+            dpmsEnabled: Accessor<boolean>;
+            dpmsTimeout: Accessor<number>;
+            suspendEnabled: Accessor<boolean>;
+            suspendTimeout: Accessor<number>;
+            setAutoLockEnabled: (v: boolean) => void;
+            setIdleTimeout: (v: number) => void;
+            setScreenDimEnabled: (v: boolean) => void;
+            setScreenDimTimeout: (v: number) => void;
+            setDpmsEnabled: (v: boolean) => void;
+            setDpmsTimeout: (v: number) => void;
+            setSuspendEnabled: (v: boolean) => void;
+            setSuspendTimeout: (v: number) => void;
+        },
+        runtime: HypridleRuntime = {}
+    ) {
+        if (this.#bindings) {
             logger.warn('hypridle', 'init() called but already initialized — skipping');
             return;
         }
 
-        this.#settings = {};
         this.#runtime = runtime;
-        const s = this.#settings; // local ref — always non-null after guard above
 
         // Wire each GSettings accessor → this.#set() on change
-        const link = <T extends PropValue>(
+        const bind = <T extends PropValue>(
+            key: PropKey,
             acc: Accessor<T>,
-            setterFn: (v: T) => void,
-            key: PropKey
-        ) => {
-            const def = PROPS[key];
-            s[def.settingsKey] = setterFn as (v: PropValue) => void;
+            write: (v: T) => void
+        ): Binding => {
             acc.subscribe(() => {
                 const v = acc();
                 if (this.#values[key] !== v) this.#set(key, v);
             });
+            return {read: acc, write: write as (v: PropValue) => void};
         };
 
-        link(settings.autoLockEnabled, settings.setAutoLockEnabled, 'enabled');
-        link(settings.idleTimeout, settings.setIdleTimeout, 'idleTimeout');
-        link(settings.screenDimEnabled, settings.setScreenDimEnabled, 'dimEnabled');
-        link(settings.screenDimTimeout, settings.setScreenDimTimeout, 'dimTimeout');
-        link(settings.dpmsEnabled, settings.setDpmsEnabled, 'dpmsEnabled');
-        link(settings.dpmsTimeout, settings.setDpmsTimeout, 'dpmsTimeout');
-        link(settings.suspendEnabled, settings.setSuspendEnabled, 'suspendEnabled');
-        link(settings.suspendTimeout, settings.setSuspendTimeout, 'suspendTimeout');
+        this.#bindings = {
+            enabled: bind('enabled', settings.autoLockEnabled, settings.setAutoLockEnabled),
+            idleTimeout: bind('idleTimeout', settings.idleTimeout, settings.setIdleTimeout),
+            dimEnabled: bind('dimEnabled', settings.screenDimEnabled, settings.setScreenDimEnabled),
+            dimTimeout: bind('dimTimeout', settings.screenDimTimeout, settings.setScreenDimTimeout),
+            dpmsEnabled: bind('dpmsEnabled', settings.dpmsEnabled, settings.setDpmsEnabled),
+            dpmsTimeout: bind('dpmsTimeout', settings.dpmsTimeout, settings.setDpmsTimeout),
+            suspendEnabled: bind(
+                'suspendEnabled',
+                settings.suspendEnabled,
+                settings.setSuspendEnabled
+            ),
+            suspendTimeout: bind(
+                'suspendTimeout',
+                settings.suspendTimeout,
+                settings.setSuspendTimeout
+            ),
+        };
 
-        // Load initial values without applying between each property.
-        this.#set('enabled', settings.autoLockEnabled(), false);
-        this.#set('idleTimeout', settings.idleTimeout(), false);
-        this.#set('dimTimeout', settings.screenDimTimeout(), false);
-        this.#set('dimEnabled', settings.screenDimEnabled(), false);
-        this.#set('dpmsTimeout', settings.dpmsTimeout(), false);
-        this.#set('dpmsEnabled', settings.dpmsEnabled(), false);
-        this.#set('suspendTimeout', settings.suspendTimeout(), false);
-        this.#set('suspendEnabled', settings.suspendEnabled(), false);
+        // Load every stored value first, then normalise once, so a default in
+        // memory can never overwrite a stored value that has not been read yet.
+        const before = {...this.#values};
+        for (const key of PROP_KEYS) this.#values[key] = this.#bindings[key].read();
+        this.#reconcile(before);
         this.#apply();
     }
 
@@ -300,8 +285,10 @@ export default class Hypridle extends GObject {
         } catch (e) {
             logger.debug('hypridle', 'pkill skipped (hypridle not running):', e);
         }
+        // The new instance starts with a clean idle state: undo a dim the old one left.
+        restoreDimmedBrightness();
         try {
-            this.#process = Process.subprocessv(['hypridle']);
+            this.#process = Process.subprocessv(['hypridle', '-c', HYPRIDLE_CONFIG_PATH]);
         } catch (e) {
             logger.error('hypridle', 'failed to start:', e);
         }
@@ -321,6 +308,7 @@ export default class Hypridle extends GObject {
         } catch {
             /* ok */
         }
+        restoreDimmedBrightness();
         deleteHypridleConfig();
     }
 
@@ -328,7 +316,9 @@ export default class Hypridle extends GObject {
         if (this.#runtime.stop) this.#runtime.stop();
         else this.#stop();
     }
-    apply() { this.#apply(); }
+    apply() {
+        this.#apply();
+    }
 
     dispose() {
         if (this.#runtime.stop) this.#runtime.stop();

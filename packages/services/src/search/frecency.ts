@@ -6,9 +6,13 @@
  * an empty search query, and search results are boosted by their frecency.
  *
  * Scoring formula:
- *   recencyScore = exp(-(now - lastLaunched) / halfLifeMs)
- *   frecencyScore = log2(count + 1) * recencyScore
- *   finalSearchScore = fuzzyScore * (1 + boost * frecencyScore)
+ *   recencyScore = 2^(-(now - lastLaunched) / halfLifeMs)
+ *   frecencyScore = log2(count + 1) / log2(MAX_COUNT + 1) * recencyScore
+ *   finalSearchScore = fuzzyRankScore * (1 + SEARCH_BOOST * frecencyScore)
+ *
+ * `fuzzyRankScore` is derived from the position in AstalApps' fuzzy-sorted
+ * result list (1 for the best match, falling linearly), so a launch history
+ * can reorder close matches but cannot lift a weak match above a strong one.
  */
 
 import {defineService} from '@shade/core/define';
@@ -24,6 +28,29 @@ const HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** How much frecency boosts search results. 0.5 = up to 50% boost. */
 const SEARCH_BOOST = 0.5;
+
+/** Launch count that maps to a normalized frequency of 1. */
+const MAX_COUNT = 500;
+
+/** Frecency of one entry in 0..1: normalized log frequency times a true half-life decay. */
+export function computeFrecency(entry: FrecencyEntry, now: number): number {
+    const age = Math.max(0, now - entry.lastLaunched);
+    const recency = 2 ** (-age / HALF_LIFE_MS);
+    const frequency = Math.log2(entry.count + 1) / Math.log2(MAX_COUNT + 1);
+    return recency * frequency;
+}
+
+/**
+ * Re-rank fuzzy results (best first) by `rankScore * boost`, where rankScore falls
+ * linearly from 1 for the first item. Ties keep the fuzzy order.
+ */
+export function rerankByBoost<T>(items: T[], boostOf: (item: T) => number): T[] {
+    const n = items.length;
+    return items
+        .map((item, index) => ({item, score: ((n - index) / n) * boostOf(item)}))
+        .sort((a, b) => b.score - a.score)
+        .map((entry) => entry.item);
+}
 
 // ── Frecency Manager ──
 
@@ -80,24 +107,7 @@ export class FrecencyManager extends GObject {
     getScore(desktopId: string): number {
         const entry = this.#storage.get(desktopId);
         if (!entry) return 0;
-        return this.#computeFrecency(entry);
-    }
-
-    /**
-     * Get the top-N desktop IDs sorted by frecency score descending.
-     */
-    getTopApps(limit: number = 20): string[] {
-        const data = this.#storage.getAll();
-        const scored = Object.entries(data)
-            .map(([id, entry]) => ({
-                id,
-                score: this.#computeFrecency(entry),
-            }))
-            .filter((e) => e.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, limit);
-
-        return scored.map((e) => e.id);
+        return computeFrecency(entry, Date.now());
     }
 
     /**
@@ -105,9 +115,10 @@ export class FrecencyManager extends GObject {
      */
     getAllScores(): Map<string, number> {
         const data = this.#storage.getAll();
+        const now = Date.now();
         const map = new Map<string, number>();
         for (const [id, entry] of Object.entries(data)) {
-            map.set(id, this.#computeFrecency(entry));
+            map.set(id, computeFrecency(entry, now));
         }
         return map;
     }
@@ -166,22 +177,6 @@ export class FrecencyManager extends GObject {
     @property
     get hasData(): boolean {
         return Object.keys(this.#storage.getAll()).length > 0;
-    }
-
-    // ── Scoring ──
-
-    #computeFrecency(entry: FrecencyEntry): number {
-        const now = Date.now();
-        const age = now - entry.lastLaunched;
-        const recency = Math.exp(-age / HALF_LIFE_MS);
-        const frequency = Math.log2(entry.count + 1);
-
-        // Normalize frequency: log2(101) ≈ 6.7 for 100 launches
-        const maxFreq = Math.log2(501); // ~8.97 for 500 launches
-        const normalizedFreq = frequency / maxFreq;
-
-        // Combine: recency (0..1) × frequency (~0..1)
-        return recency * normalizedFreq;
     }
 }
 

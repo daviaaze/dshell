@@ -8,9 +8,9 @@ import {getHyprland} from '@shade/services/hyprland';
 import Touchpad from '@shade/services/input/touchpad';
 import WindowManager from '@shade/services/state/windowManager';
 import {monitorIndexFromHyprland} from '@shade/services/utils/monitors';
-import {bind, computed, onCleanup, With} from 'gnim';
+import {bind, computed, createState, onCleanup, With} from 'gnim';
 import {OPAQUE_SURFACE_CSS} from '../common/surface';
-import Popup from './popup';
+import Popup, {HIDE_DELAY_MS} from './popup';
 import Slider from './slider';
 import TouchpadOsd from './touchpad';
 
@@ -37,12 +37,28 @@ export default () => {
             (keyboardReveal() && keyboard() >= 0) ||
             touchpadReveal()
     );
+    // Keep the window mapped until the revealers finish their slide-out animation.
+    const [windowVisible, setWindowVisible] = createState(visible());
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
+    onCleanup(
+        visible.subscribe(() => {
+            if (hideTimer !== undefined) clearTimeout(hideTimer);
+            if (visible()) {
+                setWindowVisible(true);
+                return;
+            }
+            hideTimer = setTimeout(() => setWindowVisible(false), HIDE_DELAY_MS + 50);
+        })
+    );
+    onCleanup(() => {
+        if (hideTimer !== undefined) clearTimeout(hideTimer);
+    });
     return (
         <Astal.Window
             name="osd"
             namespace="shade-osd"
             application={getApp()}
-            visible={visible}
+            visible={windowVisible}
             keymode={Astal.Keymode.NONE}
             layer={Astal.Layer.OVERLAY}
             anchor={Astal.WindowAnchor.BOTTOM}

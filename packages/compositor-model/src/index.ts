@@ -57,7 +57,13 @@ export function mergeCompositorConfig(seed: CompositorSeed, user: UserConfig): C
     const layouts = {...seed.layouts.layouts};
     for (const [id, profile] of Object.entries(user.layouts?.layouts ?? {})) {
         if (profile === null) delete layouts[id];
-        else layouts[id] = profile;
+        else
+            Object.defineProperty(layouts, id, {
+                value: profile,
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
     }
     const current =
         user.layouts?.current === undefined ? seed.layouts.current : user.layouts.current;
@@ -80,13 +86,62 @@ export function mergeCompositorConfig(seed: CompositorSeed, user: UserConfig): C
     };
 }
 
+const MODIFIER_ALIASES: Record<string, string> = {
+    CONTROL: 'CTRL',
+    MOD1: 'ALT',
+    MOD4: 'SUPER',
+};
+const MODIFIER_RANK: Record<string, number> = {
+    CTRL: 0,
+    SHIFT: 1,
+    ALT: 2,
+    SUPER: 3,
+    MOD2: 4,
+    MOD3: 5,
+    MOD5: 6,
+};
+const DESKTOP_ID = /^[A-Za-z0-9._-]+$/;
+
+function chordParts(chord: string): string[] {
+    return chord.split('+').map((part) => {
+        const value = part.trim().toUpperCase();
+        return MODIFIER_ALIASES[value] ?? value;
+    });
+}
+
 function canonicalChord(chord: string): string {
-    const rank: Record<string, number> = {CTRL: 0, CONTROL: 0, SHIFT: 1, ALT: 2, SUPER: 3};
-    return chord
-        .split('+')
-        .map((part) => part.trim().toUpperCase())
-        .sort((left, right) => (rank[left] ?? 10) - (rank[right] ?? 10))
+    return [...new Set(chordParts(chord))]
+        .sort(
+            (left, right) =>
+                (MODIFIER_RANK[left] ?? 10) - (MODIFIER_RANK[right] ?? 10) ||
+                left.localeCompare(right)
+        )
         .join('+');
+}
+
+function isMonitorProfile(value: unknown): value is MonitorProfile {
+    return (
+        isRecord(value) &&
+        Array.isArray(value.monitors) &&
+        isRecord(value.workspaces) &&
+        Object.values(value.workspaces).every((monitor) => typeof monitor === 'string') &&
+        (value.auto === undefined || typeof value.auto === 'boolean') &&
+        value.monitors.every(
+            (monitor) =>
+                isRecord(monitor) &&
+                typeof monitor.name === 'string' &&
+                !!monitor.name &&
+                typeof monitor.resolution === 'string' &&
+                typeof monitor.position === 'string' &&
+                typeof monitor.scale === 'number' &&
+                Number.isFinite(monitor.scale) &&
+                monitor.scale > 0 &&
+                typeof monitor.transform === 'number' &&
+                Number.isInteger(monitor.transform) &&
+                typeof monitor.disabled === 'boolean' &&
+                (monitor.mirror == null || typeof monitor.mirror === 'string')
+        )
+    );
 }
 function validateAction(action: unknown, path: string, errors: ConfigValidationError[]): void {
     if (!isRecord(action) || typeof action.type !== 'string') {
@@ -96,7 +151,7 @@ function validateAction(action: unknown, path: string, errors: ConfigValidationE
     if (
         action.type === 'launch-app' &&
         typeof action.desktopId === 'string' &&
-        action.desktopId.trim()
+        DESKTOP_ID.test(action.desktopId)
     )
         return;
     if (action.type === 'command' && typeof action.command === 'string' && action.command.trim())
@@ -154,6 +209,35 @@ export function validateUserConfig(seed: CompositorSeed, user: unknown): string[
             errors.push({path: key, message: 'Era esperada uma lista.'});
     if (user.layouts !== undefined && !isRecord(user.layouts))
         errors.push({path: 'layouts', message: 'Era esperado um objeto.'});
+    for (const key of ['binds', 'windowRules', 'startup'] as const) {
+        if (!isRecord(user[key])) continue;
+        for (const [id, override] of Object.entries(user[key]))
+            if (!isRecord(override))
+                errors.push({path: `${key}.${id}`, message: 'Override inválido.'});
+    }
+    if (isRecord(user.layouts)) {
+        if (
+            user.layouts.current !== undefined &&
+            user.layouts.current !== null &&
+            typeof user.layouts.current !== 'string'
+        )
+            errors.push({path: 'layouts.current', message: 'Layout atual inválido.'});
+        if (user.layouts.layouts !== undefined) {
+            if (!isRecord(user.layouts.layouts))
+                errors.push({path: 'layouts.layouts', message: 'Era esperado um objeto.'});
+            else
+                for (const [name, profile] of Object.entries(user.layouts.layouts))
+                    if (profile !== null && !isMonitorProfile(profile))
+                        errors.push({path: `layouts.layouts.${name}`, message: 'Layout inválido.'});
+        }
+    }
+    if (
+        Array.isArray(user.layerRules) &&
+        user.layerRules.some(
+            (rule) => !isRecord(rule) || !isRecord(rule.match) || !isRecord(rule.effects)
+        )
+    )
+        errors.push({path: 'layerRules', message: 'Regra inválida.'});
     if (errors.length) return errors.map(({path, message}) => `${path}: ${message}`);
     const binds = isRecord(user.binds) ? user.binds : {};
     const candidate = mergeCompositorConfig(seed, user as unknown as UserConfig);
@@ -165,20 +249,10 @@ export function validateUserConfig(seed: CompositorSeed, user: unknown): string[
         if (typeof bind.keys !== 'string' || !bind.keys.trim())
             errors.push({path: `${path}.keys`, message: 'Atalho vazio.'});
         else {
-            const parts = bind.keys.split('+').map((part) => part.trim().toUpperCase());
-            const modifiers: Record<string, true> = {
-                SUPER: true,
-                SHIFT: true,
-                CTRL: true,
-                CONTROL: true,
-                ALT: true,
-                MOD2: true,
-                MOD3: true,
-                MOD5: true,
-            };
+            const parts = chordParts(bind.keys);
             if (parts.some((part) => !part || !/^[A-Z0-9_:-]+$/.test(part)))
                 errors.push({path: `${path}.keys`, message: 'Formato de atalho inválido.'});
-            if (!parts.some((part) => !modifiers[part]))
+            if (!parts.some((part) => !Object.hasOwn(MODIFIER_RANK, part)))
                 errors.push({path: `${path}.keys`, message: 'O atalho precisa conter uma tecla.'});
             const normalized = canonicalChord(bind.keys);
             const previous = active.get(normalized);
@@ -191,6 +265,9 @@ export function validateUserConfig(seed: CompositorSeed, user: unknown): string[
         }
         validateAction(bind.action, `${path}.action`, errors);
     }
+    for (const rule of candidate.windowRules)
+        if (!isRecord(rule.match) || !isRecord(rule.effects))
+            errors.push({path: `windowRules.${rule.id}`, message: 'Regra inválida.'});
 
     for (const [id, override] of Object.entries(binds)) {
         if (!isRecord(override)) {
@@ -209,7 +286,8 @@ export function validateUserConfig(seed: CompositorSeed, user: unknown): string[
     for (const [id, entry] of Object.entries(startup)) {
         if (
             !isRecord(entry) ||
-            (entry.desktopId !== undefined && typeof entry.desktopId !== 'string') ||
+            (entry.desktopId !== undefined &&
+                (typeof entry.desktopId !== 'string' || !DESKTOP_ID.test(entry.desktopId))) ||
             (entry.command !== undefined && typeof entry.command !== 'string')
         )
             errors.push({path: `startup.${id}`, message: 'Aplicativo de inicialização inválido.'});
@@ -244,9 +322,14 @@ function lua(value: LuaValue): string {
 export function renderBindLua(bind: BindSpec): string {
     return `hl.bind(${luaString(bind.keys)}, ${dispatcher(bind.action)}, ${bindFlags(bind)})`;
 }
+
+function desktopCommand(desktopId: string): string {
+    if (!DESKTOP_ID.test(desktopId)) throw new Error('Invalid desktop application identifier');
+    return `uwsm-app -t service -- ${desktopId}.desktop`;
+}
 function dispatcher(action: BindAction): string {
     if (action.type === 'launch-app')
-        return `hl.dsp.exec_cmd(${luaString(`uwsm-app -t service -- ${action.desktopId}.desktop`)})`;
+        return `hl.dsp.exec_cmd(${luaString(desktopCommand(action.desktopId))})`;
     if (action.type === 'command') return `hl.dsp.exec_cmd(${luaString(action.command)})`;
     if (action.type === 'shell-action') return `hl.dsp.exec_cmd(${luaString(action.command)})`;
     const args = action.args === undefined ? '' : lua(action.args);
@@ -327,7 +410,7 @@ function renderRule(
     const fields = [
         ...(name ? [`name=${luaString(name)}`] : []),
         `match=${lua(match as LuaValue)}`,
-        ...Object.entries(effects).map(([key, value]) => `${key}=${lua(value)}`),
+        ...Object.entries(effects).map(([key, value]) => `[${luaString(key)}]=${lua(value)}`),
     ];
     return `hl.${api}({${fields.join(', ')}})`;
 }
@@ -342,7 +425,7 @@ export function renderMonitorLua(monitor: MonitorProfile['monitors'][number]): s
         vrr: monitor.vrr ?? -1,
         disabled: monitor.disabled,
     };
-    if (monitor.mirror) fields.mirror = monitor.mirror;
+    if (!monitor.disabled && monitor.mirror) fields.mirror = monitor.mirror;
     if (monitor.bitdepth != null) fields.bitdepth = monitor.bitdepth;
     if (monitor.cm != null) fields.cm = monitor.cm;
     if (monitor.sdrbrightness != null) fields.sdrbrightness = monitor.sdrbrightness;
@@ -388,9 +471,10 @@ export function renderHyprlandLua(config: CompositorSeed): string {
     lines.push(...config.curves.map(renderCurve));
     lines.push(...config.animations.map((animation) => `hl.animation(${lua(animation)})`));
     for (const device of config.devices) lines.push(`hl.device(${lua(device)})`);
-    const layout = config.layouts.current
-        ? config.layouts.layouts[config.layouts.current]
-        : undefined;
+    const layout =
+        config.layouts.current && Object.hasOwn(config.layouts.layouts, config.layouts.current)
+            ? config.layouts.layouts[config.layouts.current]
+            : undefined;
     if (layout) {
         for (const monitor of layout.monitors) lines.push(renderMonitorLua(monitor));
         for (const [workspace, monitor] of Object.entries(layout.workspaces))
@@ -398,9 +482,7 @@ export function renderHyprlandLua(config: CompositorSeed): string {
     }
     for (const startup of config.startup) {
         if (!startup.enabled) continue;
-        const command = startup.desktopId
-            ? `uwsm-app -t service -- ${startup.desktopId}.desktop`
-            : startup.command;
+        const command = startup.desktopId ? desktopCommand(startup.desktopId) : startup.command;
         if (!command) continue;
         if (startup.phase === 'load') lines.push(`hl.exec_cmd(${luaString(command)})`);
         else
@@ -487,23 +569,4 @@ export function renderDpmsLua(on: boolean, monitor?: string): string {
 }
 export function renderConfigOptionLua(path: string, value: LuaValue): string {
     return `hl.config({[${luaString(path.replaceAll(':', '.'))}]=${lua(value)}})`;
-}
-
-export function renderKeystrokeOverlaySubscriptionLua(enabled: boolean): string {
-    if (!enabled)
-        return [
-            'if _G.shadeKeystrokeSubscription then',
-            '    _G.shadeKeystrokeSubscription:remove()',
-            '    _G.shadeKeystrokeSubscription = nil',
-            'end',
-        ].join('\n');
-    return [
-        'if not (_G.shadeKeystrokeSubscription and _G.shadeKeystrokeSubscription:is_active()) then',
-        '    _G.shadeKeystrokeSubscription = hl.on("input.keyboard.key", function(keycode, _, state)',
-        '        if state ~= 2 then',
-        '            hl.dispatch(hl.dsp.event("shade-key:" .. tostring(keycode) .. "," .. tostring(state)))',
-        '        end',
-        '    end)',
-        'end',
-    ].join('\n');
 }

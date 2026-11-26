@@ -5,7 +5,16 @@ import {getHyprland} from '../hyprland';
 import {getScreenCaptureSettings} from '../settings/screenCapture';
 import {toGrimGeometry} from './geometry';
 import {type BoundaryGeometry, RecorderBackend, RecordingFormat} from './types';
-import {buildRecordingArgs, formatDuration, notify, publishCapture, requireCaptureFile, RECORDING_DIR, resolveBackend} from './utils';
+import {
+    buildRecordingArgs,
+    captureBlocked,
+    formatDuration,
+    notify,
+    publishCapture,
+    requireCaptureFile,
+    RECORDING_DIR,
+    resolveBackend,
+} from './utils';
 
 const ICON_ERROR = 'dialog-error-symbolic';
 const MSG_RECORDING_FAILED = 'Recording failed';
@@ -67,7 +76,7 @@ export class Recorder {
         options: {geometry?: BoundaryGeometry; output?: string} = {},
         forceBackend?: RecorderBackend
     ) {
-        if (this.#recording) return;
+        if (this.#recording || captureBlocked()) return;
 
         const settings = getScreenCaptureSettings();
         const pref = forceBackend ?? (settings.recorderBackend() as RecorderBackend);
@@ -221,9 +230,16 @@ export class Recorder {
             try {
                 requireCaptureFile(this.#file);
                 publishCapture({state: 'result', kind: 'recording', path: this.#file});
-                notify('Recording stopped', `Duration: ${durationStr}\nSaved to: ${this.#file}`, 'media-playback-stop-symbolic');
+                notify(
+                    'Recording stopped',
+                    `Duration: ${durationStr}\nSaved to: ${this.#file}`,
+                    'media-playback-stop-symbolic'
+                );
             } catch (e) {
-                publishCapture({state: 'error', message: e instanceof Error ? e.message : String(e)});
+                publishCapture({
+                    state: 'error',
+                    message: e instanceof Error ? e.message : String(e),
+                });
             }
         } else {
             const message = `${name} exited immediately (${durationMs}ms). Check geometry/output and that no other recorder is running.`;

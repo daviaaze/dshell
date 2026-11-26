@@ -2,7 +2,7 @@ import type Apps from 'gi://AstalApps';
 import type {ClipboardEntry} from '../clipboard/history';
 import {searchHistory} from '../clipboard/history';
 import {fuzzyQuery, getAppList} from '../state/apps';
-import {FrecencyManager} from './frecency';
+import {FrecencyManager, rerankByBoost} from './frecency';
 
 export type LauncherMode = 'apps' | 'clipboard';
 export type ListItem = Apps.Application | ClipboardEntry;
@@ -34,15 +34,8 @@ export function launcherSearch(query: string): LauncherResult {
     }
 
     const fm = FrecencyManager.get_default();
-    const fuzzyResults = fuzzyQuery(query);
-    const scored = fuzzyResults.map((app) => ({
-        app,
-        score: fm.getSearchBoost(app.entry ?? app.name ?? ''),
-    }));
-    scored.sort((a, b) => b.score - a.score);
-    return {
-        mode: 'apps',
-        items: scored.map((s) => s.app),
-        frecencyHasData: fm.hasData,
-    };
+    const items = rerankByBoost(fuzzyQuery(query), (app) =>
+        fm.getSearchBoost(app.entry ?? app.name ?? '')
+    );
+    return {mode: 'apps', items, frecencyHasData: fm.hasData};
 }

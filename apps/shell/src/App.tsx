@@ -16,6 +16,7 @@ import {boot} from '@shade/widgets/index';
 import {gettext} from 'gettext';
 import {register} from 'gnim/gobject';
 
+import {dispatchCommandLine} from './commandLine';
 // gnim dev/bundle auto-registers a Gtk.CssProvider for each imported .css
 
 @register
@@ -33,6 +34,9 @@ export class ShadeShell extends Adw.Application {
         Screenshot.get_default().registerCommands(this);
         LayoutService.get_default().registerCommands(this);
         Touchpad.get_default().registerCommands(this);
+        // Connected before boot() can run, so a boot that throws halfway
+        // still gets its services disposed on shutdown.
+        GObject.signal_connect(this, 'shutdown', () => this.#teardown());
     }
 
     private initIcons() {
@@ -50,12 +54,11 @@ export class ShadeShell extends Adw.Application {
 
     vfunc_command_line(cmd: Gio.ApplicationCommandLine) {
         logger.debug('app', `vfunc_command_line isRemote=${cmd.isRemote}`);
-        if (cmd.isRemote) {
-            requestHandler(cmd, this);
-        } else {
-            this.bootstrapUi();
-        }
-        return 0;
+        return dispatchCommandLine(
+            cmd,
+            () => this.bootstrapUi(),
+            () => requestHandler(cmd, this)
+        );
     }
 
     /** Mount all widgets. The composition root (boot) handles settings,
@@ -64,8 +67,6 @@ export class ShadeShell extends Adw.Application {
         this.initIcons();
 
         this.#rootDisposers = boot(this);
-
-        GObject.signal_connect(this, 'shutdown', () => this.#teardown());
     }
 
     #rootDisposers: (() => void)[] = [];
@@ -79,11 +80,6 @@ export class ShadeShell extends Adw.Application {
         this.#rootDisposers.forEach((d) => d());
         this.#rootDisposers = [];
         ServiceRegistry.get_default().disposeAll();
-    }
-
-    shutdown(): void {
-        this.#teardown();
-        this.quit();
     }
 }
 

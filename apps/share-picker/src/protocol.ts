@@ -16,27 +16,77 @@ const CAT = 'share-picker';
 
 export const HYPRCTL_BIN = GLib.find_program_in_path('hyprctl') || 'hyprctl';
 
-function runSync(cmd: string[]): {ok: boolean; out: string; err: string} {
+/** A stalled Hyprland IPC must not freeze the picker or hold a dialog open. */
+const HYPRCTL_TIMEOUT_MS = 3000;
+
+interface CommandResult {
+    ok: boolean;
+    out: string;
+    err: string;
+}
+
+const runningQueries = new Map<Gio.Subprocess, number>();
+let queriesStopped = false;
+
+function runHyprctl(args: string[]): Promise<CommandResult> {
+    if (queriesStopped)
+        return Promise.resolve({ok: false, out: '', err: 'Picker is shutting down'});
+    const {promise, resolve} = Promise.withResolvers<CommandResult>();
+    let proc: Gio.Subprocess;
     try {
-        const proc = Gio.Subprocess.new(
-            cmd,
+        proc = Gio.Subprocess.new(
+            [HYPRCTL_BIN, ...args],
             Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
         );
-        const [, out, err] = proc.communicate_utf8(null, null);
-        return {
-            ok: proc.get_successful(),
-            out: out?.trim() ?? '',
-            err: err?.trim() ?? '',
-        };
     } catch (e) {
-        return {ok: false, out: '', err: String(e)};
+        resolve({ok: false, out: '', err: String(e)});
+        return promise;
     }
+    const watchdog = GLib.timeout_add(GLib.PRIORITY_DEFAULT, HYPRCTL_TIMEOUT_MS, () => {
+        runningQueries.set(proc, 0);
+        logger.warn(CAT, `hyprctl ${args.join(' ')} timed out`);
+        proc.force_exit();
+        return GLib.SOURCE_REMOVE;
+    });
+    runningQueries.set(proc, watchdog);
+    proc.communicate_utf8_async(null, null, (_proc, result) => {
+        const timer = runningQueries.get(proc);
+        if (timer) GLib.source_remove(timer);
+        runningQueries.delete(proc);
+        try {
+            const [, out, err] = proc.communicate_utf8_finish(result);
+            resolve({
+                ok: proc.get_successful(),
+                out: out?.trim() ?? '',
+                err: err?.trim() ?? '',
+            });
+        } catch (e) {
+            resolve({ok: false, out: '', err: String(e)});
+        }
+    });
+    return promise;
+}
+
+/** Stop IPC children before shutdown can dispose the UI they were serving. */
+export function stopQueries(): void {
+    queriesStopped = true;
+    for (const [proc, timer] of runningQueries) {
+        if (timer) GLib.source_remove(timer);
+        proc.force_exit();
+        try {
+            proc.wait(null);
+        } catch (error) {
+            logger.warn(CAT, 'waiting for hyprctl during shutdown failed', error);
+        }
+    }
+    runningQueries.clear();
 }
 
 /**
  * Parse the XDPH_WINDOW_SHARING_LIST environment variable (wire format in
  * windowList.ts). The XDPH "id" is a toplevel handle, NOT a Hyprland client
  * address; `address` is the Hyprland address in hyprctl's 0x… form.
+ * Titles are user content (documents, chats) and are never logged.
  */
 export function parseWindowList(env: string | null): ParsedWindowList {
     if (env === null) {
@@ -48,14 +98,14 @@ export function parseWindowList(env: string | null): ParsedWindowList {
     for (const w of result) {
         logger.debug(
             CAT,
-            `  parsed XDPH window: id=${w.id} class=${w.clazz} title="${w.title.substring(0, 60)}" addr=${w.address || 'none'}`
+            `  parsed XDPH window: id=${w.id} class=${w.clazz} addr=${w.address || 'none'}`
         );
     }
     return {provided: true, windows: result};
 }
 
-export function getHyprMonitors(): HyprMonitor[] {
-    const {ok, out, err} = runSync([HYPRCTL_BIN, '-j', 'monitors']);
+export async function getHyprMonitors(): Promise<HyprMonitor[]> {
+    const {ok, out, err} = await runHyprctl(['-j', 'monitors']);
     logger.info(CAT, `hyprctl -j monitors ok=${ok} outLen=${out.length}`);
     if (err) logger.warn(CAT, `hyprctl monitors stderr: ${err.substring(0, 200)}`);
     if (!ok) {
@@ -86,13 +136,13 @@ export function getHyprMonitors(): HyprMonitor[] {
             };
         });
     } catch (e) {
-        logger.error(CAT, `getHyprMonitors: JSON parse failed. out=${out.substring(0, 200)}`, e);
+        logger.error(CAT, `getHyprMonitors: JSON parse failed. outLen=${out.length}`, e);
         return [];
     }
 }
 
-export function getHyprClients(): HyprClient[] {
-    const {ok, out, err} = runSync([HYPRCTL_BIN, '-j', 'clients']);
+export async function getHyprClients(): Promise<HyprClient[]> {
+    const {ok, out, err} = await runHyprctl(['-j', 'clients']);
     logger.info(CAT, `hyprctl -j clients ok=${ok} outLen=${out.length}`);
     if (err) logger.warn(CAT, `hyprctl clients stderr: ${err.substring(0, 200)}`);
     if (!ok) {
@@ -117,49 +167,7 @@ export function getHyprClients(): HyprClient[] {
             hidden: c.hidden ?? false,
         })) as HyprClient[];
     } catch (e) {
-        logger.error(CAT, `getHyprClients: JSON parse failed. out=${out.substring(0, 200)}`, e);
+        logger.error(CAT, `getHyprClients: JSON parse failed. outLen=${out.length}`, e);
         return [];
     }
-}
-
-/**
- * Match an XDPH window to a hyprctl client.
- * Priority: 1) address match (if XDPH provides [HA>]), 2) class+title fuzzy match.
- */
-export function matchXDPHToHyprctl(xdphWin: XDPHWindow, clients: HyprClient[]): HyprClient | null {
-    // Direct address match (only works if XDPH provides [HA>])
-    if (xdphWin.address) {
-        const byAddr = clients.find((c) => c.address === xdphWin.address);
-        if (byAddr) {
-            logger.debug(CAT, `matched XDPH window ${xdphWin.id} by address ${xdphWin.address}`);
-            return byAddr;
-        }
-    }
-
-    // Fallback: match by class + title
-    if (!xdphWin.clazz) return null;
-
-    const candidates = clients.filter(
-        (c) => c.mapped && !c.hidden && c.class.toLowerCase() === xdphWin.clazz.toLowerCase()
-    );
-
-    const first = candidates[0];
-    if (!first) return null;
-    if (candidates.length === 1) return first;
-
-    // Multiple windows with same class — match by title
-    const xdphTitle = xdphWin.title.toLowerCase();
-    const byTitle = candidates.find((c) => c.title.toLowerCase() === xdphTitle);
-    if (byTitle) return byTitle;
-
-    // Title prefix match
-    const byPrefix = candidates.find(
-        (c) =>
-            c.title.toLowerCase().startsWith(xdphTitle) ||
-            xdphTitle.startsWith(c.title.toLowerCase())
-    );
-    if (byPrefix) return byPrefix;
-
-    // Return first mapped candidate as last resort
-    return first;
 }

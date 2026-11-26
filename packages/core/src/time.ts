@@ -1,5 +1,15 @@
 import GLib from 'gi://GLib?version=2.0';
 
+/** Format a signed offset in hours as "+8h", "-3h" or "+5h30" (half-hour zones keep their minutes). */
+export function formatOffsetHours(diff: number): string {
+    const totalMinutes = Math.round(Math.abs(diff) * 60);
+    if (totalMinutes === 0) return 'same time';
+    const sign = diff > 0 ? '+' : '-';
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${sign}${h}h${m > 0 ? m.toString().padStart(2, '0') : ''}`;
+}
+
 export function fmtOffset(local: GLib.TimeZone, remote: GLib.TimeZone): string {
     const now = GLib.DateTime.new_now(local)!;
     const remoteNow = now.to_timezone(remote);
@@ -7,10 +17,7 @@ export function fmtOffset(local: GLib.TimeZone, remote: GLib.TimeZone): string {
     const remoteOffset = remoteNow
         ? Number(remoteNow.get_utc_offset()) / Number(GLib.TIME_SPAN_HOUR)
         : 0;
-    const diff = remoteOffset - localOffset;
-    if (diff === 0) return 'same time';
-    const sign = diff > 0 ? '+' : '';
-    return `${sign}${diff.toFixed(0)}h`;
+    return formatOffsetHours(remoteOffset - localOffset);
 }
 
 export function cityName(tzId: string): string {

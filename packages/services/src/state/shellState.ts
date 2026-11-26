@@ -5,6 +5,7 @@ import ServiceRegistry from '@shade/core/serviceRegistry';
 import {Object as GObject, property, register} from 'gnim/gobject';
 import {bus} from '../bus';
 import {getHyprland} from '../hyprland';
+import type WindowManager from './windowManager';
 
 @register
 export default class ShellState extends GObject {
@@ -84,7 +85,6 @@ export default class ShellState extends GObject {
     toggleLauncher() {
         this.launcherQuery = '';
         this.launcherOpen = !this.#launcherOpen;
-        bus.emit('shell:launcher:toggle');
     }
 
     openClipboard() {
@@ -127,7 +127,6 @@ export default class ShellState extends GObject {
 
     toggleQuickSettings() {
         this.qsOpen = !this.#qsOpen;
-        bus.emit('shell:qs:toggle');
     }
 
     openNotifications() {
@@ -144,20 +143,18 @@ export default class ShellState extends GObject {
     toggleNotifications() {
         if (this.#notificationsOpen) this.closeNotifications();
         else this.openNotifications();
-        bus.emit('shell:notifications:toggle');
     }
 
     toggleBar() {
-        const wm =
-            ServiceRegistry.get_default().resolve<import('./windowManager').default>(
-                'WindowManager'
-            );
-        wm.bars.forEach((bar) => (bar.visible = !bar.visible));
+        const wm = ServiceRegistry.get_default().resolve<WindowManager>('WindowManager');
+        // One target state for every bar, so bars that disagree converge instead of inverting.
+        const show = !wm.bars.some((bar) => bar.visible);
+        for (const bar of wm.bars) bar.visible = show;
     }
 
     toggleWindowSwitcher() {
+        if (this.#screenlocked) return;
         this.#onToggleWindowSwitcher?.();
-        bus.emit('shell:windowswitcher:toggle');
     }
 
     /** Hide the window switcher (idempotent). */
@@ -184,15 +181,17 @@ export default class ShellState extends GObject {
             if (state.locked) this.screenlocked = true;
         } catch (error) {
             // A missing adapter or reply must not bypass authentication on restart.
-            logger.error('state', 'could not query compositor lock state; requiring authentication:', error);
+            logger.error(
+                'state',
+                'could not query compositor lock state; requiring authentication:',
+                error
+            );
             this.screenlocked = true;
         }
         this.#busSubscriptions.push(bus.on('shell:lock', () => this.lock()));
         this.#busSubscriptions.push(bus.on('shell:unlock', () => this.unlock()));
         this.#busSubscriptions.push(bus.on('shell:qs:close', () => this.closeQuickSettings()));
         this.#busSubscriptions.push(bus.on('shell:launcher:close', () => this.closeLauncher()));
-        this.#busSubscriptions.push(bus.on('shell:notifications:open', () => this.openNotifications()));
-        this.#busSubscriptions.push(bus.on('shell:notifications:close', () => this.closeNotifications()));
     }
 
     #onToggleSettings: (() => void) | null = null;

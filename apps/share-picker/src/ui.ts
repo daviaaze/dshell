@@ -16,7 +16,7 @@ function makePreview(initialState: PreviewState): PreviewHandle {
     const stack = new Gtk.Stack({halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER});
     stack.set_size_request(PICTURE_W, PICTURE_H);
     const status = new Gtk.Label({
-        label: 'Preview may be outdated',
+        label: 'A prévia pode estar desatualizada',
         halign: Gtk.Align.END,
         valign: Gtk.Align.END,
         visible: false,
@@ -24,9 +24,9 @@ function makePreview(initialState: PreviewState): PreviewHandle {
     });
     stack.add_css_class('picker-preview');
     for (const [name, text] of [
-        ['idle', 'Preview not loaded'],
-        ['loading', 'Loading preview'],
-        ['unavailable', 'Preview unavailable'],
+        ['idle', 'Prévia não carregada'],
+        ['loading', 'Carregando prévia'],
+        ['unavailable', 'Prévia indisponível'],
     ]) {
         stack.add_named(
             new Gtk.Label({label: text, wrap: true, justify: Gtk.Justification.CENTER}),
@@ -80,7 +80,7 @@ function emptyState(iconName: string, heading: string, description: string): Gtk
         marginStart: 24,
         marginEnd: 24,
     });
-    box.append(new Gtk.Image({iconName, pixelSize: 48, cssClasses: ['dim-label']}));
+    box.append(new Gtk.Image({iconName, pixelSize: 48, cssClasses: ['dimmed']}));
     box.append(
         new Gtk.Label({
             label: heading,
@@ -95,7 +95,7 @@ function emptyState(iconName: string, heading: string, description: string): Gtk
             wrap: true,
             maxWidthChars: 48,
             justify: Gtk.Justification.CENTER,
-            cssClasses: ['dim-label'],
+            cssClasses: ['dimmed'],
         })
     );
     return box;
@@ -104,18 +104,18 @@ function emptyState(iconName: string, heading: string, description: string): Gtk
 function noScreens(): Gtk.Widget {
     return emptyState(
         'video-display-symbolic',
-        'No screens available',
-        'No connected monitors are available for sharing.'
+        'Nenhuma tela disponível',
+        'Nenhum monitor conectado está disponível para compartilhamento.'
     );
 }
 
 function noWindows(provided: boolean): Gtk.Widget {
     return emptyState(
         'focus-windows-symbolic',
-        provided ? 'No windows available' : 'Window list unavailable',
+        provided ? 'No windows available' : 'Lista de janelas indisponível',
         provided
-            ? 'No windows were provided for this request.'
-            : 'The portal did not provide a list of windows for this request.'
+            ? 'Nenhuma janela foi informada para este pedido.'
+            : 'O portal não informou a lista de janelas para este pedido.'
     );
 }
 
@@ -132,9 +132,33 @@ function buildFlowBox(): Gtk.FlowBox {
     });
 }
 
+/** Source key → every card (one per tab) showing it, for the selected state. */
+const cards = new Map<string, Gtk.Button[]>();
+
+/** Mark the card(s) of the chosen source; null clears the selection. */
+export function markSelected(kind: 'screen' | 'window', id: string | null): void {
+    const selected = id === null ? null : `${kind}:${id}`;
+    for (const [key, widgets] of cards) {
+        for (const widget of widgets) {
+            widget.update_property(
+                [Gtk.AccessibleProperty.DESCRIPTION],
+                [
+                    new GObject.Value(
+                        GObject.TYPE_STRING,
+                        key === selected ? 'Fonte selecionada' : ''
+                    ),
+                ]
+            );
+            if (key === selected) widget.add_css_class('selected');
+            else widget.remove_css_class('selected');
+        }
+    }
+}
+
 /** Build one selectable source card and add it to `flow`. */
 function buildCard(
     flow: Gtk.FlowBox,
+    key: string,
     labelText: string,
     subText: string,
     preview: PreviewHandle,
@@ -165,13 +189,18 @@ function buildCard(
         inner.append(sub);
     }
 
-    const button = new Gtk.Button({child: inner, cssClasses: ['flat']});
+    const button = new Gtk.Button({
+        child: inner,
+        cssClasses: ['flat', 'picker-source'],
+        tooltipText: [labelText, subText].filter(Boolean).join(' — '),
+    });
     // Preview loading must not change the identity of the selectable source.
     button.update_property(
         [Gtk.AccessibleProperty.LABEL],
         [new GObject.Value(GObject.TYPE_STRING, [labelText, subText].filter(Boolean).join(' — '))]
     );
     button.connect('clicked', onClick);
+    cards.set(key, [...(cards.get(key) ?? []), button]);
 
     flow.append(new Gtk.FlowBoxChild({child: button}));
 }
@@ -197,8 +226,13 @@ function monitorCard(flow: Gtk.FlowBox, state: MonitorState, select: SelectFn): 
         state.info.description && state.info.description !== state.info.name
             ? state.info.description
             : '';
-    buildCard(flow, state.info.name, [description, res].filter(Boolean).join(' — '), preview, () =>
-        select('screen', state.info.name)
+    buildCard(
+        flow,
+        `screen:${state.info.name}`,
+        state.info.name,
+        [description, res].filter(Boolean).join(' — '),
+        preview,
+        () => select('screen', state.info.name)
     );
     return preview;
 }
@@ -214,7 +248,9 @@ function windowCard(flow: Gtk.FlowBox, state: WindowState, select: SelectFn): Pr
     ]
         .filter(Boolean)
         .join(' — ');
-    buildCard(flow, title || clazz, subText, preview, () => select('window', state.info.id));
+    buildCard(flow, `window:${state.info.id}`, title || clazz, subText, preview, () =>
+        select('window', state.info.id)
+    );
     return preview;
 }
 
@@ -276,12 +312,12 @@ export function buildCombinedTab(
         hexpand: true,
     });
 
-    box.append(buildSectionLabel('Screens'));
+    box.append(buildSectionLabel('Telas'));
     const monFlow = buildFlowBox();
     const monitorPreviews = monitors.map((state) => monitorCard(monFlow, state, select));
     box.append(monitors.length === 0 ? noScreens() : monFlow);
 
-    box.append(buildSectionLabel('Windows'));
+    box.append(buildSectionLabel('Janelas'));
     const winFlow = buildFlowBox();
     const windowPreviews = windows.map((state) => windowCard(winFlow, state, select));
     box.append(windows.length === 0 ? noWindows(windowListProvided) : winFlow);

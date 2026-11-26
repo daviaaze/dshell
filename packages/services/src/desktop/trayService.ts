@@ -19,6 +19,7 @@ export default class TrayService extends Object {
 
     #tray: Tray.Tray | null = null;
     #initialized = false;
+    #itemsHandlerId = 0;
 
     @property
     get items(): Tray.TrayItem[] {
@@ -36,12 +37,16 @@ export default class TrayService extends Object {
             return;
         }
 
-        this.#tray.connect('notify::items', () => {
+        this.#itemsHandlerId = this.#tray.connect('notify::items', () => {
             this.notify('items');
         });
     }
 
     dispose() {
+        if (this.#tray && this.#itemsHandlerId !== 0) {
+            this.#tray.disconnect(this.#itemsHandlerId);
+        }
+        this.#itemsHandlerId = 0;
         this.#tray = null;
         this.#initialized = false;
     }

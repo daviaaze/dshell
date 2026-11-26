@@ -1,5 +1,5 @@
 /**
- * Tests for Clock — shared 1Hz wall-clock tick.
+ * Tests for Clock — shared 1Hz tick and minute-granularity wall time.
  *
  * Run: gjs -m src/lib/__tests__/clock.test.ts
  */
@@ -21,7 +21,7 @@ describe('Clock singleton', () => {
         expect(t instanceof GLib.DateTime).toBe(true);
     });
 
-    it('time value updates over time', async () => {
+    it.async('time value updates over time', async () => {
         const c = Clock.get_default();
         const t1 = c.time().to_unix();
 
@@ -34,7 +34,12 @@ describe('Clock singleton', () => {
         });
 
         const t2 = c.time().to_unix();
-        expect(t2 >= t1).toBe(true);
+        expect(t2).toBeGreaterThan(t1);
+    });
+
+    it('wallTime is on the same minute as the 1Hz time', () => {
+        const c = Clock.get_default();
+        expect(Math.floor(c.wallTime().to_unix() / 60)).toBe(Math.floor(c.time().to_unix() / 60));
     });
 });
 

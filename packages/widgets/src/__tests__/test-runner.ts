@@ -122,27 +122,28 @@ export const expect = (actual: unknown) => ({
 
 const ASYNC_TIMEOUT_MS = 5000;
 
+async function runBody(fn: TestFn): Promise<void> {
+    const {promise: timedOut, reject} = Promise.withResolvers<never>();
+    const timer = setTimeout(
+        () => reject(new Error(`Timeout after ${ASYNC_TIMEOUT_MS}ms`)),
+        ASYNC_TIMEOUT_MS
+    );
+    try {
+        await Promise.race([Promise.resolve(fn()), timedOut]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 export async function run(_importMetaUrl?: string) {
     let passed = 0;
     let failed = 0;
 
     for (const {suite, tests} of suites) {
-        for (const {name, fn, isAsync} of tests) {
+        for (const {name, fn} of tests) {
             const label = `${suite} → ${name}`;
             try {
-                if (isAsync) {
-                    await Promise.race([
-                        fn() as Promise<void>,
-                        new Promise<never>((_, reject) =>
-                            setTimeout(
-                                () => reject(new Error(`Timeout after ${ASYNC_TIMEOUT_MS}ms`)),
-                                ASYNC_TIMEOUT_MS
-                            )
-                        ),
-                    ]);
-                } else {
-                    fn();
-                }
+                await runBody(fn);
                 passed++;
                 print(`  ✓ ${label}`);
             } catch (e) {

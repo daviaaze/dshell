@@ -38,9 +38,17 @@ function formatTime(): string {
     return GLib.DateTime.new_now_local()!.format('%H:%M:%S.%f') || '?';
 }
 
-function shouldLog(level: LogLevel, category?: string): boolean {
+export function shouldLog(level: LogLevel, category?: string): boolean {
     if (level < globalLevel) return false;
-    if (category && debugCategories.size > 0 && !debugCategories.has(category)) return false;
+    // The category allow-list narrows debug output only; warnings and errors always pass.
+    if (
+        level === LogLevel.DEBUG &&
+        category &&
+        debugCategories.size > 0 &&
+        !debugCategories.has(category)
+    ) {
+        return false;
+    }
     return true;
 }
 

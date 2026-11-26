@@ -1,8 +1,11 @@
 import type AstalHyprland from 'gi://AstalHyprland?version=0.1';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango?version=1.0';
-import {computed, type Accessor} from 'gnim';
+import {computed, onCleanup, type Accessor} from 'gnim';
 import {getAppIcon} from '@shade/services/state/apps';
+
+const UNTITLED = 'Janela sem título';
+
 export default ({
     client,
     selected,
@@ -11,8 +14,21 @@ export default ({
     selected: Accessor<boolean>;
 }) => (
     <Gtk.Box
+        ref={(self) => {
+            // Keep the selected row inside the scroller's viewport.
+            onCleanup(
+                selected.subscribe(() => {
+                    if (!selected()) return;
+                    const viewport = self.get_ancestor(Gtk.Viewport.$gtype);
+                    if (viewport instanceof Gtk.Viewport) viewport.scroll_to(self, null);
+                })
+            );
+        }}
         spacing={12}
-        cssClasses={computed(() => ['card', selected() ? 'switcher-item-selected' : 'switcher-item'])}
+        cssClasses={computed(() => [
+            'card',
+            selected() ? 'switcher-item-selected' : 'switcher-item',
+        ])}
         marginTop={5}
         marginBottom={5}
         marginStart={14}
@@ -27,20 +43,22 @@ export default ({
             hexpand
         >
             <Gtk.Label
-                label={client.title || client.class || 'Unknown'}
+                label={client.title || client.class || UNTITLED}
                 maxWidthChars={35}
                 wrap
                 wrapMode={Pango.WrapMode.WORD_CHAR}
                 lines={2}
-                tooltipText={client.title || client.class || 'Unknown'}
+                tooltipText={client.title || client.class || UNTITLED}
                 onQueryTooltip={(_self, _x, _y, _keyboard, tooltip) => {
-                    tooltip.set_custom(new Gtk.Label({
-                        label: client.title || client.class || 'Unknown',
-                        wrap: true,
-                        wrapMode: Pango.WrapMode.WORD_CHAR,
-                        maxWidthChars: 60,
-                        xalign: 0,
-                    }));
+                    tooltip.set_custom(
+                        new Gtk.Label({
+                            label: client.title || client.class || UNTITLED,
+                            wrap: true,
+                            wrapMode: Pango.WrapMode.WORD_CHAR,
+                            maxWidthChars: 60,
+                            xalign: 0,
+                        })
+                    );
                     return true;
                 }}
                 ellipsize={Pango.EllipsizeMode.END}

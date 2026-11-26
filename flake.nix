@@ -29,10 +29,13 @@
       });
       # If NM omits an AP BSSID, the patched library falls back to its object path.
       astalNetwork = astal.packages.${system}.network.overrideAttrs (old: {
-        patches = (old.patches or []) ++ [ ./nix/patches/astal-network-ap-key.patch ];
+        patches = (old.patches or [ ]) ++ [ ./nix/patches/astal-network-ap-key.patch ];
       });
       xdpHyprland = hyprlandPackages.xdg-desktop-portal-hyprland.overrideAttrs (old: {
-        patches = (old.patches or [ ]) ++ [ ./nix/patches/xdph-picker-owner.patch ./nix/patches/xdph-capture-metadata.patch ];
+        patches = (old.patches or [ ]) ++ [
+          ./nix/patches/xdph-picker-owner.patch
+          ./nix/patches/xdph-capture-metadata.patch
+        ];
       });
 
       astalPackages = with astal.packages.${system}; [
@@ -103,6 +106,7 @@
         glib.bin
         uwsm
         pipewire
+        wireplumber # wpctl, called by the shell's mixer
         openssl
       ];
     in
