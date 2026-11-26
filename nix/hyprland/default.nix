@@ -195,11 +195,13 @@ in
             id = "center-file-dialogs";
             rule = "center on, match:title ${dialogTitleRe}";
           }
-          # Game-stream window: without this it stops getting frame callbacks when
-          # unfocused or on another workspace, so a window share of it freezes.
+          # Without this a window stops getting frame callbacks when unfocused or
+          # on another workspace, so a window share of it freezes (audio goes on).
+          # Applied to every window so any shared window keeps updating; throttled
+          # by misc.render_unfocused_fps.
           {
-            id = "render-unfocused-chiaki";
-            rule = "render_unfocused on, match:class ^chiaki-ng$";
+            id = "render-unfocused-all";
+            rule = "render_unfocused on, match:class .*";
           }
         ]
         # The XDPH share picker is a transient chooser. Tiled, it sank behind

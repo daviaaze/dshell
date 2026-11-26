@@ -2951,11 +2951,11 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
         ).stdout.strip()
 
     def test_render_unfocused_rule(self) -> dict[str, object]:
-        """The chiaki-ng window keeps rendering while unfocused; other windows do not.
+        """Every window keeps rendering while unfocused.
 
-        Regression: without `render_unfocused`, a window share of chiaki-ng froze
-        whenever the window lost focus. The rule must reach the compositor and
-        must stay specific to that class.
+        Regression: without `render_unfocused`, a window share froze whenever the
+        shared window lost focus (video stops, audio continues). The rule must
+        reach the compositor and cover windows of any class.
         """
         units = ("shade-vm-chiaki", "shade-vm-control")
         try:
@@ -2971,8 +2971,8 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                 "chiaki-ng": self.window_property(str(game["address"]), "render_unfocused"),
                 "control": self.window_property(str(control["address"]), "render_unfocused"),
             }
-            if values != {"chiaki-ng": "true", "control": "false"}:
-                raise RuntimeError(f"render_unfocused is not applied only to chiaki-ng: {values}")
+            if values != {"chiaki-ng": "true", "control": "true"}:
+                raise RuntimeError(f"render_unfocused is not applied to every window: {values}")
             fps = self.desktop(
                 "reading render_unfocused_fps", "hyprctl -j getoption misc:render_unfocused_fps"
             ).stdout
@@ -2980,7 +2980,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             if not isinstance(fps_value, int) or fps_value < 30:
                 raise RuntimeError(f"misc.render_unfocused_fps is {fps_value!r}, expected at least 30")
             return {
-                "ui": "A window with class chiaki-ng carries render_unfocused; an unrelated window does not.",
+                "ui": "Windows of any class carry render_unfocused.",
                 "guest": {"render_unfocused": values, "render_unfocused_fps": fps_value},
             }
         finally:
