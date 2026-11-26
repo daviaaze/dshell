@@ -33,6 +33,8 @@ export interface HyprMonitor {
 
 export interface HyprClient {
     address: string;
+    /** Opaque ext-foreign-toplevel identifier as published by Hyprland. */
+    stableId: string | null;
     class: string;
     title: string;
     at: [number, number];
@@ -47,7 +49,7 @@ export interface SourceState<S, T> {
     kind: T;
     /** Primary texture (shared by all Picture widgets for this source) */
     texture: Gdk.Texture | null;
-    /** Whether a grim capture is currently in-flight */
+    /** Whether this source currently has a capture in flight. */
     capturing: boolean;
 }
 
@@ -60,6 +62,8 @@ export interface WindowState extends SourceState<XDPHWindow, 'window'> {
     geometry: {x: number; y: number; width: number; height: number} | null;
     /** Matched hyprctl client address (hex), null if unmatched */
     hyprAddress: string | null;
+    /** Exact-address stable ID for native pixels; metadata fallback never sets it. */
+    hyprStableId: string | null;
 }
 
 /** Callback invoked when the user picks a source — prints the XDPH selection */

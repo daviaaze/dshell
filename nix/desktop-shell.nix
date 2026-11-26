@@ -17,6 +17,61 @@ let
     p.cryptography
     p.pycryptodome
   ]);
+  windowThumbnail = pkgs.stdenv.mkDerivation {
+    pname = "shade-window-thumbnail";
+    inherit version;
+    src = ../apps/share-picker/native;
+    strictDeps = true;
+    dontConfigure = true;
+    nativeBuildInputs = [
+      pkgs.pkg-config
+      pkgs.wayland-scanner
+    ];
+    buildInputs = [
+      pkgs.wayland
+      pkgs.libpng
+    ];
+
+    buildPhase = ''
+      runHook preBuild
+      for protocol in ext-foreign-toplevel-list ext-image-capture-source ext-image-copy-capture; do
+        xml="${pkgs.wayland-protocols}/share/wayland-protocols/staging/$protocol/$protocol-v1.xml"
+        wayland-scanner client-header "$xml" "$protocol-v1-client-protocol.h"
+        wayland-scanner private-code "$xml" "$protocol-v1-protocol.c"
+      done
+      $CC -std=c11 -O2 -Wall -Wextra -Werror \
+        $(pkg-config --cflags wayland-client libpng) \
+        shade-window-thumbnail.c ./*-v1-protocol.c \
+        -o shade-window-thumbnail \
+        $(pkg-config --libs wayland-client libpng)
+      runHook postBuild
+    '';
+
+    doCheck = true;
+    checkPhase = ''
+      runHook preCheck
+      $CC -std=c11 -O2 -Wall -Wextra -Werror -UNDEBUG \
+        $(pkg-config --cflags wayland-client libpng) \
+        shade-window-thumbnail-test.c ./*-v1-protocol.c \
+        -o shade-window-thumbnail-test \
+        $(pkg-config --libs wayland-client libpng)
+      ./shade-window-thumbnail-test
+      runHook postCheck
+    '';
+
+    installPhase = ''
+      runHook preInstall
+      install -Dm755 shade-window-thumbnail "$out/bin/shade-window-thumbnail"
+      runHook postInstall
+    '';
+
+    meta = {
+      description = "Bounded native Wayland window thumbnails for the Shade share picker";
+      license = lib.licenses.gpl3Only;
+      platforms = lib.platforms.linux;
+      mainProgram = "shade-window-thumbnail";
+    };
+  };
   # Excluding build/dist/result by name at any depth keeps locally generated
   # artifacts (cleanSourceWith ignores .gitignore) out of the build; the repo
   # tracks no source directory with these names.
@@ -181,7 +236,7 @@ pkgs.stdenv.mkDerivation {
     gappsWrapperArgs+=(
       --prefix XDG_DATA_DIRS : "${pkgs.glycin-loaders}/share"
       --prefix XDG_DATA_DIRS : "${pkgs.adwaita-icon-theme}/share"
-      --prefix PATH : ${pkgs.lib.makeBinPath wrapperPackages}
+      --prefix PATH : ${lib.makeBinPath (wrapperPackages ++ [ windowThumbnail ])}
       --prefix LD_PRELOAD :
       "${pkgs.gtk4-layer-shell}/lib/libgtk4-layer-shell.so"
     )
@@ -197,7 +252,11 @@ pkgs.stdenv.mkDerivation {
     EOF
     substituteInPlace "$out/bin/shade-shell" --replace-fail @out@ "$out"
     chmod 755 "$out/bin/shade-shell"
+    # Keep the non-GTK worker outside wrapGAppsHook's preload/wrapper pass.
+    ln -s "${windowThumbnail}/bin/shade-window-thumbnail" "$out/bin/shade-window-thumbnail"
   '';
+
+  passthru.windowThumbnail = windowThumbnail;
 
   meta = {
     mainProgram = pname;

@@ -3,7 +3,7 @@
  *
  * Live-ish screen preview picker for xdg-desktop-portal-hyprland.
  * Polls grim every ~200ms per monitor for live thumbnails.
- * Captures window snapshots via grim -g on tab switch.
+ * Captures exactly identified portal windows once through the native helper.
  *
  *   Env: XDPH_SESSION_HANDLE = ".../session/1_502/token" (XDPH portal launches only)
  *   Env: XDPH_WINDOW_SHARING_LIST = "ID[HC>]CLASS[HT>]TITLE[HE>]..."
@@ -26,7 +26,16 @@ import {initSettingsRoot} from '@shade/core/settingsRegistry';
 import printOut from '@shade/core/stdout';
 import {ColorScheme} from '@shade/services/display/colorScheme';
 import {applyDefaultAdwaitaPalette} from '@shade/services/theme/adwaitaPalette';
-import {captureMonitor, captureWindow, cleanTempDir, ensureTempDir, GRIM_BIN} from './capture';
+import {
+    captureMonitor,
+    captureWindows,
+    cleanTempDir,
+    ensureTempDir,
+    GRIM_BIN,
+    stopCaptures,
+    WINDOW_THUMBNAIL_BIN,
+} from './capture';
+import {matchXDPHToHyprctl} from './clientMatch';
 import {MonitorPoller} from './poller';
 import {
     getHyprClients,
@@ -386,9 +395,9 @@ function setupCapture(ui: PickerUi, monitors: MonitorState[], windows: WindowSta
             if (pageNum === 2) {
                 monitors.forEach((state, index) => captureMonitor(state, monitorTargets[index]));
             }
-            windows.forEach((state, index) => captureWindow(state, windowTargets[index]));
         }
     });
+    captureWindows(windows, windowTargets);
     monitors.forEach((state, index) => captureMonitor(state, monitorTargets[index]));
     poller.start();
     return () => {
@@ -415,9 +424,12 @@ function onActivate(
 
     logger.debug(
         CAT,
+        `GRIM_BIN=${GRIM_BIN}, WINDOW_THUMBNAIL_BIN=${WINDOW_THUMBNAIL_BIN}, HYPRCTL_BIN=${HYPRCTL_BIN}`
     );
-    logger.debug(CAT, `GRIM_BIN=${GRIM_BIN}, HYPRCTL_BIN=${HYPRCTL_BIN}`);
-    if (!GRIM_BIN.includes('/')) logger.warn(CAT, 'grim not found in PATH, previews unavailable');
+    if (!GRIM_BIN.includes('/'))
+        logger.warn(CAT, 'grim not found in PATH, monitor previews unavailable');
+    if (!WINDOW_THUMBNAIL_BIN.includes('/'))
+        logger.warn(CAT, 'shade-window-thumbnail not found in PATH, window previews unavailable');
     if (!HYPRCTL_BIN.includes('/'))
         logger.warn(CAT, 'hyprctl not found in PATH, monitors/windows will be empty');
 
@@ -484,6 +496,7 @@ function main() {
         flags: Gio.ApplicationFlags.NON_UNIQUE,
     });
     const token: TokenState = {value: allowTokenDefault};
+    const requester = requesterNameFromSessionHandle(sessionHandle);
     const select = makeSelectFn(app, token);
 
     let ownerAlive = sessionHandle === null;
@@ -491,13 +504,20 @@ function main() {
     let disposeCapture: (() => void) | null = null;
     let shuttingDown = false;
     if (sessionHandle !== null) {
-        const owner = requesterNameFromSessionHandle(sessionHandle);
-        if (owner === null) requesterWatch = null;
-        else requesterWatch = watchPortalRequester(app, owner, (alive) => (ownerAlive = alive));
+        if (requester === null) requesterWatch = null;
+        else requesterWatch = watchPortalRequester(app, requester, (alive) => (ownerAlive = alive));
     }
     const guardedSelect: SelectFn = (kind, id) => {
         if (ownerAlive && !shuttingDown) select(kind, id);
         else app.quit();
+    };
+
+    let activated = false;
+    // hyprctl runs off the main loop, so the app is held until the window exists.
+    const start = async (): Promise<void> => {
+        const sources = await buildSources(xdphWindows.windows);
+        if (shuttingDown) return;
+        disposeCapture = onActivate(app, token, guardedSelect, xdphWindows, sources);
     };
 
     app.connect('activate', () => {
@@ -531,6 +551,9 @@ function main() {
             requesterWatch = null;
         }
         ColorScheme.get_default().dispose();
+        stopQueries();
+        // Capture children must be gone before the wipe, or their last PNG survives it.
+        stopCaptures();
         cleanTempDir();
     });
     app.run([]);

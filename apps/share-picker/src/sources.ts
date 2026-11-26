@@ -1,9 +1,10 @@
 /**
  * Builds the share-source states by querying Hyprland and matching
- * XDPH windows to hyprctl client geometries.
+ * XDPH windows to client metadata and exact native capture identities.
  */
 import logger from '@shade/core/logger';
-import {getHyprClients, getHyprMonitors, matchXDPHToHyprctl} from './protocol';
+import {getWindowCaptureId, matchXDPHToHyprctl} from './clientMatch';
+import {getHyprClients, getHyprMonitors} from './protocol';
 import type {MonitorState, WindowState, XDPHWindow} from './types';
 
 const CAT = 'share-picker';
@@ -39,6 +40,7 @@ export async function buildSources(xdphWindows: XDPHWindow[]): Promise<Sources> 
                 info: w,
                 geometry: null,
                 hyprAddress: null,
+                hyprStableId: null,
                 texture: null,
                 capturing: false,
             };
@@ -54,6 +56,7 @@ export async function buildSources(xdphWindows: XDPHWindow[]): Promise<Sources> 
                 height: client.size[1],
             },
             hyprAddress: client.address,
+            hyprStableId: getWindowCaptureId(w, hyprClients),
             texture: null,
             capturing: false,
         };

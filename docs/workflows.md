@@ -148,6 +148,8 @@ The Quick Settings capture tile has independent actions: fullscreen and area scr
 
 **Cancel and empty states.** **Cancel** or closing the picker exits without selecting or starting a stream. Absent, empty, or malformed source data produces an explicit unavailable/empty state. Cards distinguish loading from unavailable previews. The headless portal workflow exercises real screen/window selection, cancellation, and session teardown; this does not certify every consuming application's capture pipeline.
 
+Window thumbnails capture the selected card’s exact Wayland window, not its rectangle on the desktop. If the compositor cannot provide that window, the picker shows an unavailable preview while leaving the source selectable. `native-window-thumbnail` checks capture pixels with a known-color target and an overlapping window; it does not measure Backspace stream FPS.
+
 **Implementation trail.** [Picker entry](../apps/share-picker/src/main.ts) builds the selection response and quits on selection/cancel; [picker UI](../apps/share-picker/src/ui.ts) defines tabs, cards, preview labels, and empty states. The separate Settings **Screen Share** page is implemented by [screenShare.tsx](../packages/widgets/src/settings/screenShare.tsx); its source list is queried asynchronously, and its current selection is component-local. Its **Remember Choice** switch has no change handler, so no persistent default-source behavior is claimed.
 
 ## Notifications, lock/unlock, and power actions

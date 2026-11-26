@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import importlib
 import json
 import os
@@ -2790,6 +2791,59 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
             for unit in units:
                 self.stop_pattern_window(unit)
 
+    def test_native_window_thumbnail(self) -> dict[str, object]:
+        """Read the target's red tile even where a foreground window draws green."""
+        target_unit, cover_unit = "shade-vm-thumb-target", "shade-vm-thumb-cover"
+        files = ("/tmp/shade-native-clear.png", "/tmp/shade-native-covered.png")
+        missing = "/tmp/shade-native-missing.png"
+        try:
+            target = self.start_pattern_window(
+                "Thumbnail target", unit=target_unit, position=(220, 100), non_unique=True
+            )
+            identifier = str(target.get("stableId") or "")
+            if not identifier:
+                raise RuntimeError("Hyprland did not return the target's stableId")
+
+            def snapshot(remote: str) -> tuple[str, float]:
+                started = time.monotonic()
+                self.desktop(
+                    "capturing an exact window through native Wayland",
+                    "shade-window-thumbnail " + shlex.join(["ffffffffffffffff", missing, identifier, remote])
+                    + " && test ! -e " + shlex.quote(missing),
+                )
+                elapsed_ms = round((time.monotonic() - started) * 1000, 1)
+                local = self.artifacts / Path(remote).name
+                local.write_bytes(
+                    base64.b64decode(
+                        self.desktop("reading native thumbnail", "base64 -w0 " + shlex.quote(remote)).stdout,
+                        validate=True,
+                    )
+                )
+                red, green, blue = map(float, self.local(
+                    "sampling the red tile in the target thumbnail",
+                    ["magick", str(local), "-format",
+                     "%[fx:p{w/8,h/4}.r] %[fx:p{w/8,h/4}.g] %[fx:p{w/8,h/4}.b]", "info:"],
+                ).stdout.split())
+                if red < 0.85 or green > 0.15 or blue > 0.15:
+                    raise RuntimeError(f"Thumbnail did not show the target's red tile: {(red, green, blue)}")
+                return str(local), elapsed_ms
+
+            clear = snapshot(files[0])
+            cover = self.start_pattern_window(
+                "Thumbnail cover", unit=cover_unit, position=(100, 100), non_unique=True
+            )
+            self.wait_until(
+                "foreground window overlapping the target",
+                lambda: self.active_window().get("address") == cover["address"],
+                timeout=5,
+            )
+            covered = snapshot(files[1])
+            return {"clear": clear, "covered": covered, "timing": "milliseconds including SSH"}
+        finally:
+            self.stop_pattern_window(cover_unit)
+            self.stop_pattern_window(target_unit)
+            self.desktop("removing guest thumbnail fixtures", "rm -f " + shlex.join([*files, missing]), check=False)
+
     def test_share_picker_window_rules(self) -> dict[str, object]:
         """The picker is a transient chooser: it must float, stay centered and follow workspace switches.
 
@@ -4900,6 +4954,7 @@ def main() -> int:
         print("launcher quicksettings settings-bar-position wifi capture notifications-dnd settings-search-keyboard")
         print("area-recording wifi-credential-connect window-target-capture settings-page-registry window-switcher")
         print("settings-displays-preview share-picker-portal share-picker-window-pick share-picker-window-rules")
+        print("native-window-thumbnail")
         print("render-unfocused-rule bluetooth-pairing guest-brightness")
         print("audio-capture-playback fprintd-private-bus-protocol power-confirmation-cancel lock-unlock notification-history")
         print("visual-audit")
@@ -4945,6 +5000,7 @@ def main() -> int:
             ("settings-displays-preview", test.test_displays_preview),
             ("share-picker-portal", test.test_share_picker_portal),
             ("share-picker-window-pick", test.test_share_picker_window_pick),
+            ("native-window-thumbnail", test.test_native_window_thumbnail),
             ("share-picker-window-rules", test.test_share_picker_window_rules),
             ("render-unfocused-rule", test.test_render_unfocused_rule),
             ("bluetooth-pairing", test.test_bluetooth_pairing),

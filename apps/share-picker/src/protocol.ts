@@ -159,6 +159,7 @@ export async function getHyprClients(): Promise<HyprClient[]> {
         const clients = raw as RawJson[];
         return clients.map((c) => ({
             address: c.address ?? '',
+            stableId: typeof c.stableId === 'string' ? c.stableId : null,
             class: c.class ?? c.initialClass ?? '',
             title: c.title ?? '',
             at: c.at ?? [0, 0],
