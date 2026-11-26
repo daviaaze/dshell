@@ -1,0 +1,14 @@
+{
+  "namespace": "shade-launcher",
+  "known_limitation": "On this headless backend the launcher can map and accept input yet contribute no captured pixels. The real-session launcher is reported working; pixel assertions remain strict.",
+  "steps": [
+    {"run": "toggle-applauncher"},
+    {"wait_layer": "shade-launcher"},
+    {"click": [90, 35]},
+    {"type": "shade-headless-no-match"},
+    {"expect_text": "shade-headless-no-match"},
+    {"shot": "launcher-query"},
+    {"key": "Escape"},
+    {"wait_closed": "shade-launcher"}
+  ]
+}

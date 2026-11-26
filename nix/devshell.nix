@@ -39,6 +39,9 @@ in
         d-spy
         graphviz # dot, for scripts/deps-graph.sh rendering
         ffmpeg-headless # inspect timestamped VM screen recordings
+        wtype # isolated Wayland virtual-keyboard input
+        wlrctl # isolated Wayland virtual-pointer input
+        at-spi2-core # private accessibility bus and registry for UI tests
         (python3.withPackages (p: [
           p.cryptography
           p.pycryptodome

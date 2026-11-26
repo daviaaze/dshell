@@ -1,0 +1,10 @@
+{
+  "namespace": "shade-quicksettings",
+  "steps": [
+    {"run": "toggle-quicksettings"},
+    {"wait_layer": "shade-quicksettings"},
+    {"shot": "quicksettings"},
+    {"run": "toggle-quicksettings"},
+    {"wait_closed": "shade-quicksettings"}
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "namespace": "shade-notification-center",
+  "steps": [
+    {"run": "toggle-notifications"},
+    {"wait_layer": "shade-notification-center"},
+    {"shot": "notifications"},
+    {"run": "toggle-notifications"},
+    {"wait_closed": "shade-notification-center"}
+  ]
+}
