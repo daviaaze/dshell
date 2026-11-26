@@ -119,6 +119,11 @@ in
       lib.mkMerge [
         (lib.mkIf cfg.shell.enable {
           services.geoclue2.enable = lib.mkDefault true;
+          # Keep local privacy surfaces visible; omit their whole layer from captures.
+          # The launcher also owns clipboard history, including mode transitions.
+          programs.hyprland.settings.layerrule = [
+            "no_screen_share on, match:namespace ^(shade-(recording-boundary|launcher))$"
+          ];
 
           environment.systemPackages = [
             cfg.package

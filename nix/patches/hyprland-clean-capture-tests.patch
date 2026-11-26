@@ -1,0 +1,134 @@
+--- a/tests/render/CapturePrivacy.cpp
++++ b/tests/render/CapturePrivacy.cpp
+@@ -3,2 +3,3 @@
+ #include <render/Framebuffer.hpp>
++#include <render/CapturePrivacy.hpp>
+ 
+@@ -43,1 +44,21 @@
+ }
++
++TEST(CapturePrivacy, BitwardenIdentifiersAreExactAndCaseInsensitive) {
++    for (const auto id : {"bitwarden", "Bitwarden", "BITWARDEN", "com.bitwarden.desktop", "COM.BITWARDEN.DESKTOP"})
++        EXPECT_TRUE(isPrivateCaptureAppID(id)) << id;
++    for (const auto id : {"", "org.example.bitwarden", "bitwarden-browser", "not-bitwarden", "comXbitwardenXdesktop"})
++        EXPECT_FALSE(isPrivateCaptureAppID(id)) << id;
++}
++
++TEST(CapturePrivacy, PrivateShellNamespacesDoNotDependOnDynamicRules) {
++    EXPECT_TRUE(isPrivateCaptureNamespace("shade-recording-boundary"));
++    EXPECT_TRUE(isPrivateCaptureNamespace("shade-launcher"));
++    EXPECT_FALSE(isPrivateCaptureNamespace("shade-recording-bar"));
++    EXPECT_FALSE(isPrivateCaptureNamespace("shade-launcher-preview"));
++    EXPECT_FALSE(isPrivateCaptureNamespace("other-shade-launcher"));
++}
++
++TEST(CapturePrivacy, MissingOwnersAreNotCaptureSources) {
++    EXPECT_TRUE(isWindowCapturePrivate(nullptr));
++    EXPECT_TRUE(isLayerCapturePrivate(nullptr));
++}
+--- a/tests/render/WindowRenderPresentation.cpp
++++ b/tests/render/WindowRenderPresentation.cpp
+@@ -11,1 +11,22 @@
+ using Hyprutils::Math::Vector2D;
++
++TEST(WindowRenderPresentation, OmittedFullscreenRestoresOnlyItsOcclusionChannel) {
++    for (const auto mode : {eSceneMode::MONITOR, eSceneMode::WORKSPACE_WINDOWS, eSceneMode::WORKSPACE_WITH_SHELL}) {
++        const SWindowPresentationState state{
++            .workspaceOffset          = {37, 23},
++            .floatingOffset           = {7, 11},
++            .workspaceAlpha           = 0.25F,
++            .fade                     = 0.8F,
++            .active                   = 0.75F,
++            .fullscreen               = 0.F,
++            .layout                   = 0.5F,
++            .hasWorkspacePresentation = true,
++        };
++        EXPECT_FALSE(resolveWindowPresentation(state, mode).alphaVisible);
++        auto publicState = state;
++        publicState.fullscreen = 1.F;
++        EXPECT_EQ(resolveWindowPresentation(state, mode, true), resolveWindowPresentation(publicState, mode));
++        EXPECT_TRUE(resolveWindowPresentation(state, mode, true).alphaVisible);
++        EXPECT_FALSE(resolveWindowPresentation(state, mode).alphaVisible);
++    }
++}
+--- a/tests/protocols/WorkspaceCaptureSession.cpp
++++ b/tests/protocols/WorkspaceCaptureSession.cpp
+@@ -51,1 +51,2 @@
+-    explicit CSessionTestWorkspace(PHLMONITOR monitor) : CHLWorkspace(Workspace::SWorkspaceNumberedID{73}, monitor, "Capture workspace", "73", Workspace::eWorkspaceType::NORMAL) {
++    explicit CSessionTestWorkspace(PHLMONITOR monitor, Workspace::eWorkspaceType type = Workspace::eWorkspaceType::NORMAL) :
++        CHLWorkspace(Workspace::SWorkspaceNumberedID{73}, monitor, "Capture workspace", "73", type) {
+@@ -670,2 +671,1 @@
+-    EXPECT_FALSE(state.needsCopyFB());
+-    EXPECT_FALSE(Screenshare::mgr()->outputNeedsCopyFB(m_monitor));
++    EXPECT_FALSE(m_monitor->needsACopyFB());
+@@ -776,1 +776,1 @@
+-        EXPECT_FALSE(Screenshare::mgr()->outputNeedsCopyFB(session.monitor()));
++        EXPECT_FALSE(session.monitor()->needsACopyFB());
+@@ -824,1 +824,1 @@
+-            EXPECT_FALSE(Screenshare::mgr()->outputNeedsCopyFB(m_monitor));
++            EXPECT_FALSE(m_monitor->needsACopyFB());
+@@ -908,1 +908,1 @@
+-    EXPECT_FALSE(Screenshare::mgr()->outputNeedsCopyFB(m_monitor));
++    EXPECT_FALSE(m_monitor->needsACopyFB());
+@@ -927,1 +927,1 @@
+-    EXPECT_FALSE(Screenshare::mgr()->outputNeedsCopyFB(m_monitor));
++    EXPECT_FALSE(m_monitor->needsACopyFB());
+@@ -1151,2 +1151,3 @@
+-        ASSERT_EQ(renderer().m_elements->m_textures.size(), 2U);
+-        EXPECT_EQ(renderer().m_elements->m_textures.back().texture, snapshot->getTexture());
++        // Live public layers remain visible, but legacy fadeout caches are never replayed.
++        ASSERT_EQ(renderer().m_elements->m_textures.size(), 1U);
++        EXPECT_EQ(renderer().m_elements->m_textures.front().surface, owner->resource());
+@@ -1176,2 +1177,1 @@
+-    ASSERT_EQ(renderer().m_elements->m_textures.size(), 1U);
+-    EXPECT_EQ(renderer().m_elements->m_textures.front().texture, snapshot->getTexture());
++    EXPECT_TRUE(renderer().m_elements->m_textures.empty());
+@@ -1466,1 +1466,40 @@
++TEST_F(CWorkspaceCaptureFrameTest, DirectPrivateWindowSourcesAreRejectedWithoutSubstitution) {
++    auto window = makeSnapshotTestWindow(m_workspace);
++    window->sizeAnimation()->setValueAndWarp({80, 60});
++    window->m_ruleApplicator->noScreenShare().set(true, Desktop::Types::PRIORITY_SET_PROP);
++    EXPECT_FALSE(Screenshare::mgr()->newSession(m_client, window));
++    EXPECT_FALSE(Screenshare::mgr()->getManagedSession(m_client, window));
++    window->m_ruleApplicator->noScreenShare().unset(Desktop::Types::PRIORITY_SET_PROP);
++    auto session = Screenshare::mgr()->newSession(m_client, window);
++    ASSERT_TRUE(session);
++    auto frame = session->nextFrame(false);
++    window->m_ruleApplicator->noScreenShare().set(true, Desktop::Types::PRIORITY_SET_PROP);
++    EXPECT_EQ(frame->share(buffer(session->bufferSize()), {}, [](auto) { ; }), Screenshare::ERROR_STOPPED);
++    EXPECT_TRUE(frame->done());
++}
++
++TEST_F(CWorkspaceCaptureFrameTest, DirectSpecialWorkspaceSourcesAreRejectedWithoutSubstitution) {
++    auto workspace = makeShared<CSessionTestWorkspace>(m_monitor, Workspace::eWorkspaceType::SPECIAL);
++    workspace->m_self = workspace;
++    auto special = makeShared<Screenshare::CWorkspaceCaptureSource>(workspace, HYPRLAND_WORKSPACE_IMAGE_CAPTURE_SOURCE_MANAGER_V1_CAPTURE_MODE_EVERYTHING);
++    EXPECT_FALSE(Screenshare::mgr()->newSession(m_client, special));
++    EXPECT_FALSE(Screenshare::mgr()->getManagedSession(m_client, special));
++}
++
++TEST_F(CWorkspaceCaptureSceneTest, LauncherAndRecordingBoundaryStayPrivateWithoutRules) {
++    auto publicLayer = layer(ZWLR_LAYER_SHELL_V1_LAYER_TOP);
++    auto launcher = layer(ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY);
++    auto boundary = layer(ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY);
++    launcher->m_namespace = "shade-launcher";
++    boundary->m_namespace = "shade-recording-boundary";
++    auto session = Screenshare::mgr()->newSession(m_client, source(HYPRLAND_WORKSPACE_IMAGE_CAPTURE_SOURCE_MANAGER_V1_CAPTURE_MODE_EVERYTHING));
++    ASSERT_TRUE(session);
++    for (const bool dma : {false, true}) {
++        capture(*session, dma);
++        EXPECT_EQ(drawnSurfaces(), (std::vector<WP<CWLSurfaceResource>>{publicLayer->resource()}));
++        expectUnpaced(launcher->resource());
++        expectUnpaced(boundary->resource());
++    }
++}
++
+ TEST_F(CWorkspaceCaptureSceneTest, WindowPopupFadeoutsKeepOriginAndInitialPrivacyWithWeakOwners) {
+@@ -1493,2 +1532,1 @@
+-    ASSERT_EQ(renderer().m_elements->m_textures.size(), 1U);
+-    EXPECT_EQ(renderer().m_elements->m_textures.front().texture, permittedSnapshot->getTexture());
++    EXPECT_TRUE(renderer().m_elements->m_textures.empty());
+@@ -1509,2 +1547,1 @@
+-    ASSERT_EQ(renderer().m_elements->m_textures.size(), 1U);
+-    EXPECT_EQ(renderer().m_elements->m_textures.front().texture, permittedSnapshot->getTexture());
++    EXPECT_TRUE(renderer().m_elements->m_textures.empty());

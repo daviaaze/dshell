@@ -25,7 +25,10 @@
       pkgs = nixpkgs.legacyPackages.${system};
       hyprlandPackages = inputs.hyprland.packages.${system};
       hyprlandPatched = hyprlandPackages.hyprland.overrideAttrs (old: {
-        patches = (old.patches or [ ]) ++ [ ./nix/patches/hyprland-share-border.patch ];
+        patches = (old.patches or [ ]) ++ [
+          ./nix/patches/hyprland-share-border.patch
+          ./nix/patches/hyprland-clean-capture.patch
+        ];
       });
       # If NM omits an AP BSSID, the patched library falls back to its object path.
       astalNetwork = astal.packages.${system}.network.overrideAttrs (old: {

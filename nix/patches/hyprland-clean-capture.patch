@@ -1,0 +1,750 @@
+--- /dev/null
++++ b/src/render/CapturePrivacy.hpp
+@@ -0,0 +1,13 @@
++#pragma once
++
++#include "../desktop/DesktopTypes.hpp"
++#include <string_view>
++
++namespace Render {
++    bool isPrivateCaptureAppID(std::string_view appID);
++    bool isPrivateCaptureNamespace(std::string_view name);
++    bool isWindowCapturePrivate(PHLWINDOW window);
++    bool isLayerCapturePrivate(PHLLS layer);
++    bool captureOmitsFullscreen(PHLWORKSPACE workspace);
++    bool isCursorCaptureSafe();
++}
+--- /dev/null
++++ b/src/render/CapturePrivacy.cpp
+@@ -0,0 +1,81 @@
++#include "CapturePrivacy.hpp"
++#include "../desktop/state/WindowState.hpp"
++#include "../desktop/view/window/Window.hpp"
++#include "../desktop/view/window/WindowMetadata.hpp"
++#include "../desktop/view/LayerSurface.hpp"
++#include "../managers/fullscreen/FullscreenController.hpp"
++#include "../managers/SeatManager.hpp"
++#include "../managers/SessionLockManager.hpp"
++#include "../pointer/PointerManager.hpp"
++#include "../protocols/core/Compositor.hpp"
++
++using namespace Desktop::View;
++
++bool Render::isPrivateCaptureAppID(std::string_view appID) {
++    const auto equals = [appID](std::string_view expected) {
++        if (appID.size() != expected.size())
++            return false;
++        for (size_t i = 0; i < appID.size(); ++i) {
++            const char c = appID[i] >= 'A' && appID[i] <= 'Z' ? appID[i] + ('a' - 'A') : appID[i];
++            if (c != expected[i])
++                return false;
++        }
++        return true;
++    };
++    return equals("bitwarden") || equals("com.bitwarden.desktop");
++}
++
++bool Render::isPrivateCaptureNamespace(std::string_view name) {
++    // The launcher owns clipboard history in every mode, including transitions.
++    return name == "shade-recording-boundary" || name == "shade-launcher";
++}
++
++bool Render::isWindowCapturePrivate(PHLWINDOW window) {
++    if (!window)
++        return true;
++
++    // Ancestry is client-controlled. Bound traversal without allocating a visited set.
++    size_t remaining = Desktop::windowState()->windows().size() + 1;
++    while (window && remaining-- > 0) {
++        if (!window->m_workspace || !window->m_ruleApplicator || window->onSpecialWorkspace() || window->m_ruleApplicator->noScreenShare().valueOrDefault() ||
++            isPrivateCaptureAppID(window->metadata().appID()) || isPrivateCaptureAppID(window->metadata().initialAppID()))
++            return true;
++
++        const auto PARENT = window->backend().parent();
++        // Orphaned transients and unowned X11 override-redirect surfaces cannot be proven public.
++        if (!PARENT)
++            return window->backend().traits().transient || window->backend().traits().overrideRedirect;
++        window = PARENT;
++    }
++    return true;
++}
++
++bool Render::isLayerCapturePrivate(PHLLS layer) {
++    return !layer || !layer->m_ruleApplicator || isPrivateCaptureNamespace(layer->m_namespace) || layer->m_ruleApplicator->noScreenShare().valueOrDefault();
++}
++
++bool Render::captureOmitsFullscreen(PHLWORKSPACE workspace) {
++    const auto FULLSCREEN = workspace ? Fullscreen::controller()->getFullscreenWindow(workspace) : nullptr;
++    return FULLSCREEN && isWindowCapturePrivate(FULLSCREEN);
++}
++
++bool Render::isCursorCaptureSafe() {
++    if (!g_pSessionLockManager || g_pSessionLockManager->isSessionLocked() || Pointer::mgr()->hasTransformers())
++        return false;
++
++    const auto& IMAGE = Pointer::mgr()->currentCursorImage();
++    if (!IMAGE.surface)
++        return true; // Compositor-owned theme buffers contain no client surface pixels.
++
++    const auto FOCUS = CWLSurface::fromResource(g_pSeatManager->m_state.pointerFocus.lock());
++    if (!FOCUS || !FOCUS->resource() || !IMAGE.surface->resource() || FOCUS->resource()->client() != IMAGE.surface->resource()->client())
++        return false;
++
++    // Require both the owner recorded at set_cursor and the current owner. Unknown
++    // popup/subsurface ownership fails closed instead of trusting the current focus alone.
++    if (const auto WINDOW = IMAGE.captureWindowOwner.lock(); WINDOW)
++        return WINDOW == CWindow::fromView(FOCUS->view()) && !isWindowCapturePrivate(WINDOW);
++    if (const auto LAYER = IMAGE.captureLayerOwner.lock(); LAYER)
++        return LAYER == CLayerSurface::fromView(FOCUS->view()) && !isLayerCapturePrivate(LAYER);
++    return false;
++}
+--- a/src/render/WindowRenderPresentation.hpp
++++ b/src/render/WindowRenderPresentation.hpp
+@@ -41,1 +41,1 @@
+-    SWindowRenderPresentation resolveWindowPresentation(const SWindowPresentationState& state, eSceneMode mode);
++    SWindowRenderPresentation resolveWindowPresentation(const SWindowPresentationState& state, eSceneMode mode, bool ignoreFullscreenOcclusion = false);
+--- a/src/render/WindowRenderPresentation.cpp
++++ b/src/render/WindowRenderPresentation.cpp
+@@ -8,3 +8,4 @@
+-Render::SWindowRenderPresentation Render::resolveWindowPresentation(const SWindowPresentationState& state, eSceneMode mode) {
++Render::SWindowRenderPresentation Render::resolveWindowPresentation(const SWindowPresentationState& state, eSceneMode mode, bool ignoreFullscreenOcclusion) {
++    const float FULLSCREEN = ignoreFullscreenOcclusion ? 1.F : state.fullscreen;
+     if (mode != eSceneMode::MONITOR) {
+-        const auto FADE = state.fade * state.fullscreen * state.layout;
++        const auto FADE = state.fade * FULLSCREEN * state.layout;
+@@ -15,1 +16,1 @@
+-            .alphaVisible   = state.fade * state.active * state.fullscreen * state.layout != 0.F || state.alphaAnimating,
++            .alphaVisible   = state.fade * state.active * FULLSCREEN * state.layout != 0.F || state.alphaAnimating,
+@@ -21,1 +22,1 @@
+-    const auto TOTAL_ALPHA  = state.fade * state.active * state.fullscreen * state.layout * state.moveToWorkspace * state.moveFromWorkspace;
++    const auto TOTAL_ALPHA  = state.fade * state.active * FULLSCREEN * state.layout * state.moveToWorkspace * state.moveFromWorkspace;
+@@ -28,1 +29,1 @@
+-        .fadeAlpha       = state.fade * state.fullscreen * state.layout * (!state.hasWorkspacePresentation || state.pinned || TRANSFERRING ? 1.F : state.workspaceAlpha) *
++        .fadeAlpha       = state.fade * FULLSCREEN * state.layout * (!state.hasWorkspacePresentation || state.pinned || TRANSFERRING ? 1.F : state.workspaceAlpha) *
+--- a/src/desktop/view/window/WindowPresentation.hpp
++++ b/src/desktop/view/window/WindowPresentation.hpp
+@@ -64,1 +64,1 @@
+-        Render::SWindowRenderPresentation                 renderPresentation(Render::eSceneMode mode) const;
++        Render::SWindowRenderPresentation                 renderPresentation(Render::eSceneMode mode, bool ignoreFullscreenOcclusion = false) const;
+--- a/src/desktop/view/window/WindowPresentation.cpp
++++ b/src/desktop/view/window/WindowPresentation.cpp
+@@ -253,3 +253,3 @@
+-Render::SWindowRenderPresentation CWindowPresentation::renderPresentation(Render::eSceneMode mode) const {
+-    return Render::resolveWindowPresentation(renderPresentationState(dynamicPointerCast<Workspace::CWorkspacePresentable>(m_window.m_workspace)), mode);
++Render::SWindowRenderPresentation CWindowPresentation::renderPresentation(Render::eSceneMode mode, bool ignoreFullscreenOcclusion) const {
++    return Render::resolveWindowPresentation(renderPresentationState(dynamicPointerCast<Workspace::CWorkspacePresentable>(m_window.m_workspace)), mode, ignoreFullscreenOcclusion);
+ }
+--- a/src/managers/screenshare/ScreenshareManager.hpp
++++ b/src/managers/screenshare/ScreenshareManager.hpp
+@@ -90,2 +90,1 @@
+-        SP<Render::IFramebuffer>    m_tempFB;
+         SP<Render::CSceneResources> m_sceneResources;
+@@ -112,2 +111,3 @@
+         void calculateConstraints();
+         void init();
++        bool sourcePrivate() const;
+@@ -204,2 +204,0 @@
+-        void storeTempFB();
+-
+@@ -226,4 +224,0 @@
+-
+-            bool     needsCopyFB() const {
+-                return pendingFrames > 0;
+-            }
+@@ -247,2 +241,1 @@
+-        bool                    outputNeedsCopyFB(PHLMONITOR monitor);
+         SOutputCopyFBState      outputCopyFBState(PHLMONITOR monitor);
+--- a/src/managers/screenshare/ScreenshareSession.cpp
++++ b/src/managers/screenshare/ScreenshareSession.cpp
+@@ -8,1 +8,2 @@
++#include "../../render/CapturePrivacy.hpp"
+ #include "../../event/EventBus.hpp"
+@@ -104,2 +105,6 @@
+ void CScreenshareSession::init() {
++    if (sourcePrivate()) {
++        stop();
++        return;
++    }
+     const auto PMONITOR = monitor();
+@@ -141,1 +146,13 @@
++bool CScreenshareSession::sourcePrivate() const {
++    if (m_type == SHARE_WINDOW)
++        return Render::isWindowCapturePrivate(m_window.lock());
++    if (m_type == SHARE_WORKSPACE) {
++        const auto WORKSPACE = m_workspace ? m_workspace->workspace() : nullptr;
++        return WORKSPACE && WORKSPACE->type() == Workspace::eWorkspaceType::SPECIAL;
++    }
++    const auto MONITOR = monitor();
++    // Mirrored outputs do not have their own independently filterable scene.
++    return MONITOR && MONITOR->isMirror();
++}
++
+ void CScreenshareSession::calculateConstraints() {
+--- a/src/managers/screenshare/ScreenshareManager.cpp
++++ b/src/managers/screenshare/ScreenshareManager.cpp
+@@ -2,1 +2,2 @@
++#include "../../render/CapturePrivacy.hpp"
+ #include "../../render/Renderer.hpp"
+@@ -17,1 +18,1 @@
+-void CScreenshareManager::onOutputCommit(PHLMONITOR monitor, bool copyFBPrepared) {
++void CScreenshareManager::onOutputCommit(PHLMONITOR monitor, bool /*copyFBPrepared*/) {
+@@ -37,3 +38,0 @@
+-        if (!copyFBPrepared && frame->m_session->m_type != SHARE_WORKSPACE)
+-            return;
+-
+@@ -83,1 +81,1 @@
+-    if UNLIKELY (!window || !window->mapped()) {
++    if UNLIKELY (!window || !window->mapped() || Render::isWindowCapturePrivate(window)) {
+@@ -98,1 +96,1 @@
+-    if UNLIKELY (!workspace) {
++    if UNLIKELY (!workspace || (workspace->workspace() && workspace->workspace()->type() == Workspace::eWorkspaceType::SPECIAL)) {
+@@ -140,2 +138,6 @@
+     if (type == SHARE_NONE)
+         return {};
++    if ((type == SHARE_WINDOW && Render::isWindowCapturePrivate(window)) ||
++        (type == SHARE_WORKSPACE && (!ws || (ws->workspace() && ws->workspace()->type() == Workspace::eWorkspaceType::SPECIAL))) ||
++        ((type == SHARE_MONITOR || type == SHARE_REGION) && (!monitor || monitor->isMirror())))
++        return {};
+@@ -195,1 +197,1 @@
+-            return frame && !frame->done() && frame->m_shared && frame->m_session->m_type == SHARE_WORKSPACE && frame->m_session->monitor() == monitor;
++            return frame && !frame->done() && frame->m_shared && frame->m_session->monitor() == monitor;
+@@ -208,4 +210,0 @@
+-bool CScreenshareManager::outputNeedsCopyFB(PHLMONITOR monitor) {
+-    return outputCopyFBState(monitor).needsCopyFB();
+-}
+-
+--- a/src/output/Monitor.cpp
++++ b/src/output/Monitor.cpp
+@@ -2660,3 +2660,3 @@
+ bool CMonitor::needsACopyFB() {
+-    return !m_mirrors.empty() || Screenshare::mgr()->outputNeedsCopyFB(m_self.lock());
++    return !m_mirrors.empty();
+ }
+--- a/src/managers/screenshare/ScreenshareFrame.cpp
++++ b/src/managers/screenshare/ScreenshareFrame.cpp
+@@ -7,1 +7,0 @@
+-#include "../../protocols/ColorManagement.hpp"
+@@ -10,1 +9,2 @@
+ #include "../../render/SceneResources.hpp"
++#include "../../render/CapturePrivacy.hpp"
+@@ -20,1 +20,0 @@
+-#include "../../render/pass/RectPassElement.hpp"
+@@ -22,1 +21,0 @@
+-#include "../../managers/fullscreen/FullscreenController.hpp"
+@@ -87,1 +85,1 @@
+-    if UNLIKELY (m_session->m_type == SHARE_WINDOW && !validMapped(m_session->m_window)) {
++    if UNLIKELY (m_session->sourcePrivate() || (m_session->m_type == SHARE_WINDOW && !validMapped(m_session->m_window))) {
+@@ -126,8 +124,2 @@
+-    if (m_session->m_type == SHARE_MONITOR || m_session->m_type == SHARE_REGION) {
+-        const auto PMONITOR = m_session->monitor();
+-        if (PMONITOR)
+-            PMONITOR->addDamage(PMONITOR->resources()->pendingMirrorFBDamage());
+-    }
+-
+     // schedule a frame so that when a screenshare starts it isn't black until the output is updated
+-    if (m_isFirst || m_session->m_type == SHARE_WORKSPACE) {
++    {
+@@ -159,2 +151,7 @@
+     if (g_pHyprRenderer->context().active() || done() || m_copyInFlight)
+         return;
++    if (m_session->sourcePrivate()) {
++        m_failed = true;
++        m_callback(RESULT_NOT_COPIED);
++        return;
++    }
+@@ -169,8 +166,7 @@
+-    // store a snapshot before the permission popup so we don't break screenshots
++    // Never retain pre-consent pixels: rules, special-workspace membership and
++    // lock state can change while the permission prompt is open. Render fresh
++    // with the current privacy policy only after consent is granted.
+     const auto PERM = g_pDynamicPermissionManager->clientPermissionMode(m_session->m_client, PERMISSION_TYPE_SCREENCOPY);
+     if (PERM == PERMISSION_RULE_ALLOW_MODE_PENDING) {
+-        if (m_session->m_type != SHARE_WORKSPACE && (!m_session->m_tempFB || !m_session->m_tempFB->isAllocated()))
+-            storeTempFB();
+-
+         // don't copy a frame while allow is pending because screenshot tools will only take the first frame we give, which is empty
+         return;
+@@ -198,147 +194,62 @@
+         m_callback(RESULT_NOT_COPIED);
+ }
+ 
+ void CScreenshareFrame::renderMonitor(Render::CRenderContext& ctx) {
+     if ((m_session->m_type != SHARE_MONITOR && m_session->m_type != SHARE_REGION) || done())
+         return;
+ 
+     const auto PMONITOR = m_session->monitor();
+-
+-    auto       TEXTURE = ctx.m_data.pMonitor->resources()->getMirrorTexture();
+-    if (!TEXTURE) {
+-        LOG(Log::ERR, "Invalid source texture");
++    // Build the complete normal monitor scene before cropping. Rendering a
++    // monitor mirror and masking it cannot recover content behind private views.
++    const auto SCENE = g_pHyprRenderer->getWorkBuffer(ctx, PMONITOR->m_transformedSize);
++    if (!SCENE || !SCENE->getTexture()) {
++        m_failed = true;
+         return;
+     }
+-
+-    if (!TEXTURE->m_imageDescription)
+-        LOG(Log::ERR, "CM: FIXME no source image description for screenshare");
+-
+-    if (!ctx.m_data.currentFB->imageDescription())
+-        LOG(Log::ERR, "CM: FIXME no target image description for screenshare");
+-
+-    if (TEXTURE->m_imageDescription && ctx.m_data.currentFB->imageDescription())
+-        LOG(Log::TRACE, "CM: screenshot renderMonitor {} -> {}", TEXTURE->m_imageDescription->value(), ctx.m_data.currentFB->imageDescription()->value());
+-
+-    const bool IS_CM_AWARE = PROTO::colorManagement && PROTO::colorManagement->isClientCMAware(m_session->m_client);
+-    ctx.m_data.fbSize      = m_bufferSize;
++    {
++        auto state = ctx.saveDrawState();
++        auto target = g_pHyprRenderer->bindTempFB(ctx, SCENE);
++        ctx.m_data.mainFB = SCENE;
++        ctx.m_data.fbSize = PMONITOR->m_transformedSize;
++        ctx.m_data.damage = ctx.m_data.finalDamage = CRegion{CBox{{}, PMONITOR->m_transformedSize}};
++        ctx.m_data.noSimplify = true;
++        ctx.m_data.transformDamage = false;
++        g_pHyprRenderer->setProjectionType(ctx, Render::RPT_MONITOR);
++        g_pHyprRenderer->setViewport(0, 0, PMONITOR->m_transformedSize.x, PMONITOR->m_transformedSize.y);
++        g_pHyprRenderer->draw(ctx, CClearPassElement::SClearData{{0, 0, 0, 0}}, ctx.m_data.damage);
++        g_pHyprRenderer->startRenderPass(ctx);
++        g_pHyprRenderer->renderWorkspace(ctx, PMONITOR, PMONITOR->m_activeWorkspace, Time::steadyNow(), CBox{{}, PMONITOR->m_transformedSize});
++        ctx.m_pass.render(ctx, ctx.m_data.damage);
++        ctx.m_pass.clear();
++    }
++
++    ctx.m_data.fbSize = m_bufferSize;
+     g_pHyprRenderer->setProjectionType(ctx, Render::RPT_EXPORT);
+     ctx.m_data.transformDamage = false;
+     ctx.m_data.noSimplify      = true;
+     g_pHyprRenderer->setViewport(0, 0, m_bufferSize.x, m_bufferSize.y);
+ 
+-    // render monitor texture
+-    CBox       monbox = CBox{{}, PMONITOR->m_transformedSize}.translate(-m_session->m_captureBox.pos());
+-
++    CBox monbox = CBox{{}, PMONITOR->m_transformedSize}.translate(-m_session->m_captureBox.pos());
+     const auto OLD                 = ctx.m_data.renderModif.enabled;
+     ctx.m_data.renderModif.enabled = false;
+     g_pHyprRenderer->startRenderPass(ctx);
+     g_pHyprRenderer->draw(ctx,
+                           CTexPassElement::SRenderData{
+-                              .tex          = TEXTURE,
+-                              .box          = monbox,
+-                              .cmBackToSRGB = !IS_CM_AWARE,
++                              .tex = SCENE->getTexture(),
++                              .box = monbox,
+                           },
+                           {0, 0, m_bufferSize.x, m_bufferSize.y});
+     ctx.m_data.renderModif.enabled = OLD;
+ 
+-    // render black boxes for noscreenshare
+-    auto hidePopups = [&](Vector2D popupBaseOffset) {
+-        return [&, popupBaseOffset](WP<Desktop::View::CPopup> popup, void*) {
+-            if (!popup->wlSurface() || !popup->wlSurface()->resource() || !popup->mapped() || !popup->acceptsInput() || !popup->alphaNonZero())
+-                return;
+-
+-            const auto popRel = popup->coordsRelativeToParent();
+-            popup->wlSurface()->resource()->breadthfirst(
+-                [&](SP<CWLSurfaceResource> surf, const Vector2D& localOff, void*) {
+-                    const auto size = surf->m_current.size;
+-                    const auto surfBox =
+-                        CBox{popupBaseOffset + popRel + localOff, size}.translate(PMONITOR->m_position).scale(PMONITOR->m_scale).translate(-m_session->m_captureBox.pos());
+-
+-                    if LIKELY (surfBox.w > 0 && surfBox.h > 0)
+-                        g_pHyprRenderer->draw(ctx, CRectPassElement::SRectData{.box = surfBox, .color = Colors::BLACK}, surfBox);
+-                },
+-                nullptr);
+-        };
+-    };
+-
+-    for (auto const& l : Desktop::layerState()->layers()) {
+-        if (!l->m_ruleApplicator->noScreenShare().valueOrDefault())
+-            continue;
+-
+-        if UNLIKELY (!l->mapped() || !l->acceptsInput() || !l->alphaNonZero())
+-            continue;
+-
+-        const auto REALPOS  = l->position(Desktop::View::IGeometric::GEOMETRIC_CURRENT);
+-        const auto REALSIZE = l->size(Desktop::View::IGeometric::GEOMETRIC_CURRENT);
+-
+-        const auto noScreenShareBox = CBox{REALPOS.x, REALPOS.y, std::max(REALSIZE.x, 5.0), std::max(REALSIZE.y, 5.0)}
+-                                          .translate(-PMONITOR->m_position)
+-                                          .scale(PMONITOR->m_scale)
+-                                          .translate(-m_session->m_captureBox.pos());
+-
+-        g_pHyprRenderer->draw(ctx, CRectPassElement::SRectData{.box = noScreenShareBox, .color = Colors::BLACK}, noScreenShareBox);
+-
+-        const auto     geom            = l->m_geometry;
+-        const Vector2D popupBaseOffset = REALPOS - Vector2D{geom.pos().x, geom.pos().y};
+-        if (l->popupHead())
+-            l->popupHead()->breadthfirst(hidePopups(popupBaseOffset), nullptr);
+-    }
+-
+-    for (auto const& w : Desktop::windowState()->windows()) {
+-        if (!w->m_ruleApplicator->noScreenShare().valueOrDefault())
+-            continue;
+-
+-        if (!g_pHyprRenderer->shouldRenderWindow(w, PMONITOR))
+-            continue;
+-
+-        if (w->isHidden())
+-            continue;
+-
+-        const auto PWORKSPACE = w->m_workspace;
+-
+-        if UNLIKELY (!PWORKSPACE && w->presentation().alphaValue(WINDOW_ALPHA_FADE) * w->presentation().alphaValue(WINDOW_ALPHA_FULLSCREEN) != 0.f)
+-            continue;
+-
+-        const auto renderOffset     = PWORKSPACE && !(w->m_state & WINDOW_STATE_PINNED) ? PWORKSPACE->m_renderOffset->value() : Vector2D{};
+-        const auto REALSIZE         = w->size(Desktop::View::IGeometric::GEOMETRIC_CURRENT);
+-        const auto REALPOS          = w->position(Desktop::View::IGeometric::GEOMETRIC_CURRENT) + renderOffset;
+-        const auto noScreenShareBox = CBox{REALPOS.x, REALPOS.y, std::max(REALSIZE.x, 5.0), std::max(REALSIZE.y, 5.0)}
+-                                          .translate(-PMONITOR->m_position)
+-                                          .scale(PMONITOR->m_scale)
+-                                          .translate(-m_session->m_captureBox.pos());
+-
+-        // seems like rounding doesn't play well with how we manipulate the box position to render regions causing the window to leak through
+-        const auto dontRound     = m_session->m_captureBox.pos() != Vector2D() || Fullscreen::controller()->isFullscreen(w, Fullscreen::FSMODE_FULLSCREEN);
+-        const auto rounding      = dontRound ? 0 : w->presentation().rounding() * PMONITOR->m_scale;
+-        const auto roundingPower = dontRound ? 2.0f : w->presentation().roundingPower();
+-
+-        g_pHyprRenderer->draw(ctx,
+-                              CRectPassElement::SRectData{
+-                                  .box           = noScreenShareBox,
+-                                  .color         = Colors::BLACK,
+-                                  .round         = rounding,
+-                                  .roundingPower = roundingPower,
+-                              },
+-                              noScreenShareBox);
+-
+-        if (w->backend().isX11() || !w->popupHead())
+-            continue;
+-
+-        const auto     GEOM            = w->backend().geometry().box;
+-        const Vector2D popupBaseOffset = REALPOS - GEOM.pos();
+-
+-        w->popupHead()->breadthfirst(hidePopups(popupBaseOffset), nullptr);
+-    }
+-
+     if (m_overlayCursor) {
+         CRegion  fakeDamage = {0, 0, m_bufferSize.x, m_bufferSize.y};
+         Vector2D cursorPos  = Pointer::mgr()->untransformedPosition() - PMONITOR->m_position - m_session->m_captureBox.pos() / PMONITOR->m_scale;
+-        Pointer::mgr()->renderSoftwareCursorsFor(ctx, PMONITOR, Time::steadyNow(), fakeDamage, cursorPos, true);
++        Pointer::mgr()->renderSoftwareCursorsFor(ctx, PMONITOR, Time::steadyNow(), fakeDamage, cursorPos, true, true);
+     }
+ }
+ 
+ void CScreenshareFrame::renderWindow(Render::CRenderContext& ctx) {
+     if (m_session->m_type != SHARE_WINDOW || done())
+         return;
+ 
+     const auto PWINDOW  = m_session->m_window.lock();
+@@ -353,3 +264,2 @@
+-    ctx.m_blockSurfaceFeedback = g_pHyprRenderer->shouldRenderWindow(PWINDOW); // block the feedback to avoid spamming the surface if it's visible
++    // Capture never mutates output feedback or effects, including hidden sources.
+     g_pHyprRenderer->renderWindow(ctx, PWINDOW, PMONITOR, PWINDOW->presentation().renderPresentation(nullptr), NOW, false, Render::RENDER_PASS_ALL, true, true);
+-    ctx.m_blockSurfaceFeedback = false;
+@@ -398,1 +308,1 @@
+-    const auto CLEAR_SIZE  = m_session->m_type == SHARE_WORKSPACE ? ctx.m_data.currentFB->m_size : m_bufferSize;
++    const auto CLEAR_SIZE  = ctx.m_data.currentFB->m_size;
+@@ -402,1 +312,4 @@
+     g_pHyprRenderer->draw(ctx, CClearPassElement::SClearData{{0, 0, 0, 0}}, frameRegion);
++    const auto MONITOR = m_session->monitor();
++    if (!MONITOR || g_pSessionLockManager->isSessionLocked() || (MONITOR->m_dpmsBlackOpacity && MONITOR->m_dpmsBlackOpacity->value() != 0.F))
++        return;
+@@ -418,3 +331,2 @@
+-    bool windowShareDenied = m_session->m_type == SHARE_WINDOW && m_session->m_window->m_ruleApplicator && m_session->m_window->m_ruleApplicator->noScreenShare().valueOrDefault();
+     g_pHyprRenderer->startRenderPass(ctx);
+-    if (PERM == PERMISSION_RULE_ALLOW_MODE_DENY || windowShareDenied) {
++    if (PERM == PERMISSION_RULE_ALLOW_MODE_DENY) {
+@@ -427,7 +339,0 @@
+-    if (m_session->m_tempFB && m_session->m_tempFB->isAllocated()) {
+-        CBox texbox = {{}, m_bufferSize};
+-        g_pHyprRenderer->draw(ctx, CTexPassElement::SRenderData{.tex = m_session->m_tempFB->getTexture(), .box = texbox}, texbox);
+-        m_session->m_tempFB->release();
+-        return;
+-    }
+-
+@@ -445,3 +350,3 @@
+-    if (WORKSPACE) {
++    {
+         if (!m_session->m_sceneResources)
+-            m_session->m_sceneResources = makeShared<Render::CSceneResources>(g_pHyprRenderer->createFB("workspace capture blur"),
++            m_session->m_sceneResources = makeShared<Render::CSceneResources>(g_pHyprRenderer->createFB("clean capture blur"),
+@@ -463,2 +368,2 @@
+-    ctx.m_renderingCapture       = WORKSPACE;
+-    ctx.m_blockSurfaceFeedback   = WORKSPACE;
++    ctx.m_renderingCapture       = true;
++    ctx.m_blockSurfaceFeedback   = true;
+@@ -485,3 +390,5 @@
+     render(ctx);
++    if (m_failed)
++        return false;
+ 
+     m_copyInFlight = true;
+@@ -534,3 +441,5 @@
+     render(ctx);
++    if (m_failed)
++        return false;
+ 
+     finishing = true;
+@@ -563,34 +472,0 @@
+-void CScreenshareFrame::storeTempFB() {
+-    if (g_pHyprRenderer->context().active())
+-        return;
+-
+-    if (!m_session->m_tempFB)
+-        m_session->m_tempFB = g_pHyprRenderer->createFB();
+-    m_session->m_tempFB->alloc(m_bufferSize.x, m_bufferSize.y);
+-    m_session->m_tempFB->setImageDescription(NColorManagement::DEFAULT_SRGB_IMAGE_DESCRIPTION);
+-
+-    CRegion fakeDamage = {0, 0, m_bufferSize.x, m_bufferSize.y};
+-
+-    if (!g_pHyprRenderer->beginFullFakeRender(m_session->monitor(), fakeDamage, m_session->m_tempFB)) {
+-        LOG(Log::ERR, "Can't copy: failed to begin rendering to temp fb");
+-        return;
+-    }
+-    bool                      finishing = false;
+-    const Render::CScopeGuard cleanup([&] {
+-        if (!finishing)
+-            g_pHyprRenderer->abortRender();
+-    });
+-
+-    auto&                     ctx = g_pHyprRenderer->context();
+-    switch (m_session->m_type) {
+-        case SHARE_REGION: // TODO: could this be better? this is how screencopy works
+-        case SHARE_MONITOR: renderMonitor(ctx); break;
+-        case SHARE_WINDOW: renderWindow(ctx); break;
+-        case SHARE_NONE:
+-        default: return;
+-    }
+-
+-    finishing = true;
+-    g_pHyprRenderer->endRender();
+-}
+-
+--- a/src/render/Renderer.hpp
++++ b/src/render/Renderer.hpp
+@@ -104,1 +104,1 @@
+-        bool                            shouldRenderWindow(PHLWINDOW, PHLMONITOR);
++        bool                            shouldRenderWindow(PHLWINDOW, PHLMONITOR, bool ignoreFullscreenOcclusion = false);
+@@ -364,1 +364,1 @@
+-        bool shouldRenderWindowInScene(PHLWINDOW window, PHLMONITOR monitor, PHLWORKSPACE workspace, eSceneMode mode);
++        bool shouldRenderWindowInScene(CRenderContext& ctx, PHLWINDOW window, PHLMONITOR monitor, PHLWORKSPACE workspace, eSceneMode mode);
+--- a/src/render/Renderer.cpp
++++ b/src/render/Renderer.cpp
+@@ -56,1 +56,2 @@
+ #include "SceneResources.hpp"
++#include "CapturePrivacy.hpp"
+@@ -234,1 +235,1 @@
+-bool IHyprRenderer::shouldRenderWindow(PHLWINDOW pWindow, PHLMONITOR pMonitor) {
++bool IHyprRenderer::shouldRenderWindow(PHLWINDOW pWindow, PHLMONITOR pMonitor, bool ignoreFullscreenOcclusion) {
+@@ -253,1 +254,1 @@
+-        if (Fullscreen::controller()->hasFullscreen(PWINDOWWORKSPACE) && !pWindow->isAllowedOverFullscreen() &&
++        if (!ignoreFullscreenOcclusion && Fullscreen::controller()->hasFullscreen(PWINDOWWORKSPACE) && !pWindow->isAllowedOverFullscreen() &&
+@@ -333,3 +334,3 @@
+-bool IHyprRenderer::shouldRenderWindowInScene(PHLWINDOW window, PHLMONITOR monitor, PHLWORKSPACE workspace, eSceneMode mode) {
++bool IHyprRenderer::shouldRenderWindowInScene(CRenderContext& ctx, PHLWINDOW window, PHLMONITOR monitor, PHLWORKSPACE workspace, eSceneMode mode) {
+     if (mode == eSceneMode::MONITOR)
+-        return sceneSelectsWindow(mode, {.monitorVisible = shouldRenderWindow(window, monitor)});
++        return sceneSelectsWindow(mode, {.monitorVisible = shouldRenderWindow(window, monitor, ctx.m_renderingCapture && captureOmitsFullscreen(window->m_workspace))});
+@@ -358,1 +359,2 @@
+-    Event::bus()->m_events.render.stage.emit({RENDER_PRE_WINDOWS, pMonitor, ctx});
++    if (!ctx.m_renderingCapture)
++        Event::bus()->m_events.render.stage.emit({RENDER_PRE_WINDOWS, pMonitor, ctx});
+@@ -364,1 +366,1 @@
+-        if (!shouldRenderWindowInScene(w, pMonitor, pWorkspace, mode))
++        if (!shouldRenderWindowInScene(ctx, w, pMonitor, pWorkspace, mode))
+@@ -371,1 +373,2 @@
+-        if (w->presentation().alphaValue(WINDOW_ALPHA_FADE) * w->presentation().alphaValue(WINDOW_ALPHA_FULLSCREEN) == 0.f)
++        if (w->presentation().alphaValue(WINDOW_ALPHA_FADE) * w->presentation().alphaValue(WINDOW_ALPHA_FULLSCREEN) == 0.f &&
++            !(ctx.m_renderingCapture && captureOmitsFullscreen(w->m_workspace)))
+@@ -403,1 +406,1 @@
+-        if (w->isFadingOutUnderFullscreen())
++        if (w->isFadingOutUnderFullscreen() && !(ctx.m_renderingCapture && captureOmitsFullscreen(w->m_workspace)))
+@@ -412,2 +415,4 @@
+     // TODO: this pass sucks
+     for (auto const& w : Desktop::windowState()->windows()) {
++        if (ctx.m_renderingCapture && isWindowCapturePrivate(w))
++            continue;
+@@ -434,1 +439,1 @@
+-        if (shouldRenderWindowInScene(w, pMonitor, pWorkspace, mode))
++        if (shouldRenderWindowInScene(ctx, w, pMonitor, pWorkspace, mode))
+@@ -459,1 +464,1 @@
+-        if (mode != eSceneMode::MONITOR && !shouldRenderWindowInScene(w, pMonitor, pWorkspace, mode))
++        if (mode != eSceneMode::MONITOR && !shouldRenderWindowInScene(ctx, w, pMonitor, pWorkspace, mode))
+@@ -484,1 +489,2 @@
+-    Event::bus()->m_events.render.stage.emit({RENDER_PRE_WINDOWS, pMonitor, ctx});
++    if (!ctx.m_renderingCapture)
++        Event::bus()->m_events.render.stage.emit({RENDER_PRE_WINDOWS, pMonitor, ctx});
+@@ -495,1 +501,1 @@
+-        if (!shouldRenderWindowInScene(w, pMonitor, pWorkspace, mode))
++        if (!shouldRenderWindowInScene(ctx, w, pMonitor, pWorkspace, mode))
+@@ -614,4 +620,9 @@
+-void IHyprRenderer::renderWindow(CRenderContext& ctx, PHLWINDOW pWindow, PHLMONITOR pMonitor, const SWindowRenderPresentation& presentation, const Time::steady_tp& time,
++void IHyprRenderer::renderWindow(CRenderContext& ctx, PHLWINDOW pWindow, PHLMONITOR pMonitor, const SWindowRenderPresentation& originalPresentation, const Time::steady_tp& time,
+                                  bool decorate, eRenderPassMode mode, bool ignorePosition, bool standalone) {
+-    if (!ctx.shouldRenderContent(pWindow->m_ruleApplicator->noScreenShare().valueOrDefault()))
++    if (ctx.m_renderingCapture && isWindowCapturePrivate(pWindow))
+         return;
++
++    SWindowRenderPresentation capturePresentation;
++    const auto& presentation = ctx.m_renderingCapture && captureOmitsFullscreen(pWindow->m_workspace) ?
++        (capturePresentation = pWindow->presentation().renderPresentation(originalPresentation.workspaceScene ? eSceneMode::WORKSPACE_WITH_SHELL : eSceneMode::MONITOR, true)) :
++        originalPresentation;
+@@ -680,1 +691,2 @@
+-    Event::bus()->m_events.render.stage.emit({RENDER_PRE_WINDOW, pMonitor, ctx});
++    if (!ctx.m_renderingCapture)
++        Event::bus()->m_events.render.stage.emit({RENDER_PRE_WINDOW, pMonitor, ctx});
+@@ -704,1 +716,1 @@
+-        const bool      TRANSFORMEDWINDOW = pWindow->effects().hasActiveTransformers();
++        const bool      TRANSFORMEDWINDOW = !ctx.m_renderingCapture && pWindow->effects().hasActiveTransformers();
+@@ -724,2 +736,5 @@
+             for (auto const& wd : pWindow->presentation().decorations()) {
++                if (ctx.m_renderingCapture && wd->getDecorationType() != DECORATION_BORDER && wd->getDecorationType() != DECORATION_SHADOW &&
++                    wd->getDecorationType() != DECORATION_INNER_GLOW)
++                    continue;
+                 if (wd->getDecorationLayer() != DECORATION_LAYER_BOTTOM)
+@@ -731,2 +746,5 @@
+             for (auto const& wd : pWindow->presentation().decorations()) {
++                if (ctx.m_renderingCapture && wd->getDecorationType() != DECORATION_BORDER && wd->getDecorationType() != DECORATION_SHADOW &&
++                    wd->getDecorationType() != DECORATION_INNER_GLOW)
++                    continue;
+                 if (wd->getDecorationLayer() != DECORATION_LAYER_UNDER)
+@@ -783,2 +801,5 @@
+             for (auto const& wd : pWindow->presentation().decorations()) {
++                if (ctx.m_renderingCapture && wd->getDecorationType() != DECORATION_BORDER && wd->getDecorationType() != DECORATION_SHADOW &&
++                    wd->getDecorationType() != DECORATION_INNER_GLOW)
++                    continue;
+                 if (wd->getDecorationLayer() != DECORATION_LAYER_OVER)
+@@ -889,2 +910,5 @@
+             for (auto const& wd : pWindow->presentation().decorations()) {
++                if (ctx.m_renderingCapture && wd->getDecorationType() != DECORATION_BORDER && wd->getDecorationType() != DECORATION_SHADOW &&
++                    wd->getDecorationType() != DECORATION_INNER_GLOW)
++                    continue;
+                 if (wd->getDecorationLayer() != DECORATION_LAYER_OVERLAY)
+@@ -898,1 +922,2 @@
+-    Event::bus()->m_events.render.stage.emit({RENDER_POST_WINDOW, pMonitor, ctx});
++    if (!ctx.m_renderingCapture)
++        Event::bus()->m_events.render.stage.emit({RENDER_POST_WINDOW, pMonitor, ctx});
+@@ -1020,2 +1045,2 @@
+-    if (!ctx.shouldRenderContent(pLayer->m_ruleApplicator->noScreenShare().valueOrDefault()))
++    if (ctx.m_renderingCapture && isLayerCapturePrivate(pLayer))
+         return;
+@@ -1116,1 +1141,4 @@
+ void IHyprRenderer::renderIMEPopup(CRenderContext& ctx, CInputPopup* pPopup, PHLMONITOR pMonitor, const Time::steady_tp& time) {
++    // The IME popup has no retained source-owner privacy provenance.
++    if (ctx.m_renderingCapture)
++        return;
+@@ -1238,1 +1266,2 @@
+-        Event::bus()->m_events.render.stage.emit({RENDER_POST_WALLPAPER, pMonitor, ctx});
++        if (!ctx.m_renderingCapture)
++            Event::bus()->m_events.render.stage.emit({RENDER_POST_WALLPAPER, pMonitor, ctx});
+@@ -1262,1 +1291,2 @@
+-        Event::bus()->m_events.render.stage.emit({RENDER_POST_WALLPAPER, pMonitor, ctx});
++        if (!ctx.m_renderingCapture)
++            Event::bus()->m_events.render.stage.emit({RENDER_POST_WALLPAPER, pMonitor, ctx});
+@@ -1280,1 +1310,1 @@
+-    if UNLIKELY (mode == eSceneMode::MONITOR && pMonitor->m_specialDim->value() != 0.F) {
++    if UNLIKELY (!ctx.m_renderingCapture && mode == eSceneMode::MONITOR && pMonitor->m_specialDim->value() != 0.F) {
+@@ -1289,1 +1319,1 @@
+-    if UNLIKELY (mode == eSceneMode::MONITOR && pMonitor->m_specialBlur->value() != 0.F) {
++    if UNLIKELY (!ctx.m_renderingCapture && mode == eSceneMode::MONITOR && pMonitor->m_specialBlur->value() != 0.F) {
+@@ -1301,2 +1331,2 @@
+     // special
+-    if (mode == eSceneMode::MONITOR) {
++    if (!ctx.m_renderingCapture && mode == eSceneMode::MONITOR) {
+@@ -1319,1 +1349,1 @@
+-        if (!shouldRenderWindowInScene(w, pMonitor, pWorkspace, mode))
++        if (!shouldRenderWindowInScene(ctx, w, pMonitor, pWorkspace, mode))
+@@ -1329,1 +1359,2 @@
+-    Event::bus()->m_events.render.stage.emit({RENDER_POST_WINDOWS, pMonitor, ctx});
++    if (!ctx.m_renderingCapture)
++        Event::bus()->m_events.render.stage.emit({RENDER_POST_WINDOWS, pMonitor, ctx});
+@@ -3122,2 +3153,4 @@
+ void IHyprRenderer::renderDragIcon(CRenderContext& ctx, PHLMONITOR pMonitor, const Time::steady_tp& time) {
++    if (ctx.m_renderingCapture)
++        return;
+     PROTO::data->renderDND(ctx, pMonitor, time);
+@@ -3583,2 +3616,7 @@
+ void IHyprRenderer::renderFadeouts(CRenderContext& ctx, PHLMONITOR monitor, Desktop::eFadeoutPlane plane, PHLWORKSPACE workspace, eSceneMode mode) {
++    // Legacy snapshots can outlive policy/owner changes and contain output-time
++    // plugin effects. Omit them rather than replay pixels we cannot re-filter.
++    // Live public windows/layers and the entire local animation path are unchanged.
++    if (ctx.m_renderingCapture)
++        return;
+     if (!monitor)
+--- a/src/desktop/state/WindowFadeout.cpp
++++ b/src/desktop/state/WindowFadeout.cpp
+@@ -13,1 +13,2 @@
++#include "../../render/CapturePrivacy.hpp"
+ 
+@@ -74,1 +75,1 @@
+-        .noScreenShare = window->m_ruleApplicator->noScreenShare().valueOrDefault(),
++        .noScreenShare = Render::isWindowCapturePrivate(window),
+--- a/src/desktop/state/PopupFadeout.cpp
++++ b/src/desktop/state/PopupFadeout.cpp
+@@ -11,1 +11,2 @@
++#include "../../render/CapturePrivacy.hpp"
+ 
+@@ -55,1 +56,1 @@
+-            .noScreenShare = WINDOW->m_ruleApplicator->noScreenShare().valueOrDefault(),
++            .noScreenShare = Render::isWindowCapturePrivate(WINDOW),
+@@ -61,1 +62,1 @@
+-            .noScreenShare = LAYER->m_ruleApplicator->noScreenShare().valueOrDefault(),
++            .noScreenShare = Render::isLayerCapturePrivate(LAYER),
+@@ -125,4 +126,4 @@
+     if (const auto WINDOW = m_windowOwner.lock(); WINDOW)
+-        source.noScreenShare |= WINDOW->m_ruleApplicator->noScreenShare().valueOrDefault();
++        source.noScreenShare |= Render::isWindowCapturePrivate(WINDOW);
+     if (const auto LAYER = m_layerOwner.lock(); LAYER)
+-        source.noScreenShare |= LAYER->m_ruleApplicator->noScreenShare().valueOrDefault();
++        source.noScreenShare |= Render::isLayerCapturePrivate(LAYER);
+--- a/src/desktop/state/LayerFadeout.cpp
++++ b/src/desktop/state/LayerFadeout.cpp
+@@ -10,1 +10,2 @@
+ #include "../../render/Renderer.hpp"
++#include "../../render/CapturePrivacy.hpp"
+@@ -59,1 +60,1 @@
+-        .noScreenShare = layer->m_ruleApplicator->noScreenShare().valueOrDefault(),
++        .noScreenShare = Render::isLayerCapturePrivate(layer),
+--- a/src/pointer/PointerManager.hpp
++++ b/src/pointer/PointerManager.hpp
+@@ -108,1 +108,3 @@
+             WP<Desktop::View::CWLSurface> surface;
++            PHLWINDOWREF                  captureWindowOwner;
++            PHLLSREF                      captureLayerOwner;
+--- a/src/pointer/PointerManager.cpp
++++ b/src/pointer/PointerManager.cpp
+@@ -19,1 +19,4 @@
+ #include "../render/OpenGL.hpp"
++#include "../render/CapturePrivacy.hpp"
++#include "../desktop/view/window/Window.hpp"
++#include "../desktop/view/LayerSurface.hpp"
+@@ -277,1 +280,6 @@
+         m_currentCursorImage.surface = surf;
++        const auto FOCUS = Desktop::View::CWLSurface::fromResource(g_pSeatManager->m_state.pointerFocus.lock());
++        if (FOCUS && FOCUS->resource() && FOCUS->resource()->client() == surf->resource()->client()) {
++            m_currentCursorImage.captureWindowOwner = Desktop::View::CWindow::fromView(FOCUS->view());
++            m_currentCursorImage.captureLayerOwner = Desktop::View::CLayerSurface::fromView(FOCUS->view());
++        }
+@@ -361,2 +369,4 @@
+     if (m_currentCursorImage.bufferTex)
+         m_currentCursorImage.bufferTex = nullptr;
++    m_currentCursorImage.captureWindowOwner.reset();
++    m_currentCursorImage.captureLayerOwner.reset();
+@@ -738,1 +748,3 @@
++    if (screencopy && !Render::isCursorCaptureSafe())
++        return;
+     if (!hasCursor())
+--- a/src/managers/screenshare/CursorshareSession.cpp
++++ b/src/managers/screenshare/CursorshareSession.cpp
+@@ -7,1 +7,2 @@
+ #include "../../render/pass/TexPassElement.hpp"
++#include "../../render/CapturePrivacy.hpp"
+@@ -139,3 +140,2 @@
+-    if (PERM != PERMISSION_RULE_ALLOW_MODE_ALLOW || !overlaps) {
+-        // render black when not allowed
+-        g_pHyprRenderer->draw(ctx, CClearPassElement::SClearData{Colors::BLACK});
++    if (PERM != PERMISSION_RULE_ALLOW_MODE_ALLOW || !overlaps || !Render::isCursorCaptureSafe()) {
++        g_pHyprRenderer->draw(ctx, CClearPassElement::SClearData{{0, 0, 0, 0}});

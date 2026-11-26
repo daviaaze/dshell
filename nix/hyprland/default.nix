@@ -209,6 +209,10 @@ in
         # window rules are disabled.
         ++ [
           {
+            id = "capture-private-bitwarden";
+            rule = "no_screen_share on, match:class (?i)^(bitwarden|com\\.bitwarden\\.desktop)$";
+          }
+          {
             id = "float-share-picker";
             rule = "float on, match:class ${sharePickerClassRe}";
           }
