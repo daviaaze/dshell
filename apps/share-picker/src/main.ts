@@ -480,7 +480,7 @@ function watchPortalRequester(
     );
 }
 
-function main() {
+async function main(): Promise<void> {
     const sessionHandle = GLib.getenv('XDPH_SESSION_HANDLE');
     printerr(
         `[share-picker-trace] pid=${PICKER_PID} invocation session=${sessionHandle ?? '(none)'}`
@@ -556,7 +556,7 @@ function main() {
         stopCaptures();
         cleanTempDir();
     });
-    app.run([]);
+    await app.runAsync([]);
 }
 
-main();
+await main();
