@@ -32,6 +32,7 @@ import '@shade/services/input/touchpad';
 import '@shade/style/palette';
 import '@shade/services/notifications/dnd';
 import '@shade/services/desktop/trayService';
+import '@shade/services/notifications/systemAlerts';
 import '@shade/services/audio/soundAlerts';
 import '@shade/services/notifications/history';
 import '@shade/services/time/timerService';

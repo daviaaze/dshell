@@ -361,8 +361,8 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
     attempt("switcher", switcher)
     routes = {
         "home": (),
-        "wifi": (("Wi-Fi details", "Wi-Fi"),),
-        "bluetooth": (("Bluetooth details", "Bluetooth"),),
+        "wifi": (("Detalhes do Wi-Fi", "Wi-Fi"),),
+        "bluetooth": (("Detalhes do Bluetooth", "Bluetooth"),),
         "output": (("Saída de áudio: opções de dispositivos", "Saída de áudio"),),
         "input": (("Microfone: opções de dispositivos", "Microfone"),),
         "mixer": (("Saída de áudio: opções de dispositivos", "Saída de áudio"), ("Mixer de aplicativos", "Mixer de aplicativos")),

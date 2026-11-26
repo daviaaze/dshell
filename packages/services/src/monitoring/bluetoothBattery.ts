@@ -1,49 +1,80 @@
 import Gio from 'gi://Gio?version=2.0';
 
-const BLUEZ_BUS = 'org.bluez';
-const DEFAULT_ADAPTER_PATH = '/org/bluez/hci0';
-
-/**
- * Battery1 proxies by device path. A proxy keeps its cached properties current
- * from PropertiesChanged, so the render path does not create one per call.
- */
-const proxies = new Map<string, Gio.DBusProxy>();
-
-function bluezPath(address: string, adapterPath: string): string {
-    return `${adapterPath}/dev_${address.replace(/:/g, '_')}`;
+interface BatteryDevice {
+    batteryPercentage?: number;
+    battery_percentage?: number;
+    address?: string;
+    adapter?: string;
 }
 
-export function getBlueZBatteryPercentage(
-    address: string,
-    adapterPath = DEFAULT_ADAPTER_PATH
-): number | null {
-    try {
-        const path = bluezPath(address, adapterPath);
-        let proxy = proxies.get(path);
-        if (!proxy) {
-            proxy = Gio.DBusProxy.new_for_bus_sync(
-                Gio.BusType.SYSTEM,
-                Gio.DBusProxyFlags.NONE,
-                null,
-                BLUEZ_BUS,
-                path,
-                'org.bluez.Battery1',
-                null
-            );
-            proxies.set(path, proxy);
+interface BatteryProxy {
+    percentage(): number | null;
+}
+
+/** One cached Battery1 proxy per adapter/device, owned only while the device exists. */
+export class BluetoothBatteryReader {
+    #proxies = new Map<string, BatteryProxy>();
+
+    constructor(private readonly createProxy: (path: string) => BatteryProxy) {}
+
+    read(device: unknown): number | null {
+        if (!device || typeof device !== 'object') return null;
+        const d = device as BatteryDevice;
+        const native = d.batteryPercentage ?? d.battery_percentage;
+        if (typeof native === 'number' && Number.isFinite(native) && native >= 0 && native <= 1) {
+            return native * 100;
         }
-        const pct = proxy.get_cached_property('Percentage');
-        if (pct) return pct.get_byte();
-        return null;
-    } catch {
-        return null;
+        const path = this.#path(d);
+        if (!path) return null;
+        try {
+            let proxy = this.#proxies.get(path);
+            if (!proxy) {
+                proxy = this.createProxy(path);
+                this.#proxies.set(path, proxy);
+            }
+            const percentage = proxy.percentage();
+            return percentage !== null && Number.isFinite(percentage)
+                && percentage >= 0 && percentage <= 100 ? percentage : null;
+        } catch {
+            return null;
+        }
+    }
+
+    retain(devices: readonly unknown[]): void {
+        const current = new Set(devices.map((device) =>
+            device && typeof device === 'object' ? this.#path(device as BatteryDevice) : null
+        ));
+        for (const path of this.#proxies.keys()) {
+            if (!current.has(path)) this.#proxies.delete(path);
+        }
+    }
+
+    #path(device: BatteryDevice): string | null {
+        if (!device.adapter || !/^\/org\/bluez\/hci\d+$/.test(device.adapter)
+            || !device.address || !/^(?:[0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(device.address)) {
+            return null;
+        }
+        return `${device.adapter}/dev_${device.address.replaceAll(':', '_')}`;
     }
 }
+
+const reader = new BluetoothBatteryReader((path) => {
+    const proxy = Gio.DBusProxy.new_for_bus_sync(
+        Gio.BusType.SYSTEM,
+        Gio.DBusProxyFlags.NONE,
+        null,
+        'org.bluez',
+        path,
+        'org.bluez.Battery1',
+        null
+    );
+    return {percentage: () => proxy.get_cached_property('Percentage')?.get_byte() ?? null};
+});
 
 export function getDeviceBatteryPercentage(device: unknown): number | null {
-    const d = device as {battery_percentage?: number; address?: string; adapter?: string};
-    if (typeof d.battery_percentage === 'number' && d.battery_percentage >= 0) {
-        return d.battery_percentage * 100;
-    }
-    return d.address ? getBlueZBatteryPercentage(d.address, d.adapter) : null;
+    return reader.read(device);
+}
+
+export function retainBluetoothBatteryDevices(devices: readonly unknown[]): void {
+    reader.retain(devices);
 }

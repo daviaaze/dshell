@@ -243,7 +243,7 @@ export default () => {
                 }
             }}
             cssClasses={['background']}
-            css={OPAQUE_SURFACE_CSS}
+            css={`${OPAQUE_SURFACE_CSS} border-radius: var(--window-radius);`}
             keymode={Astal.Keymode.ON_DEMAND}
             monitor={focusedMonitor.as((m) => monitorIndexFromHyprland(m))}
             anchor={barCfg.position.as((p) => TOP | (p === RIGHT ? RIGHT : LEFT) | BOTTOM)}

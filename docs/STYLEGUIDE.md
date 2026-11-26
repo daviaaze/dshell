@@ -120,9 +120,17 @@ margin. Quick Settings includes its own header bar in its 12px inset budget;
 do not add a second wrapper inset.
 
 Toast stacks stay corner-anchored with no transparent outer padding or
-inter-toast surface. Put compact padding inside each notification card so the
-space between cards remains transparent and click-through. The notification
-center is a separate panel and retains its 12px content inset.
+inter-toast surface. Every shared notification card variant owns an 8px
+inner inset and 8px content gaps; the separated action section begins after
+12px. The 4px toast-stack gap remains transparent and click-through.
+Bound tall toast content with a scroller inside the card inset, not around
+the stack, so the card's native edge is not clipped. The notification center
+is a separate opaque panel with a 12px content inset, not an enclosing card.
+Its title, inline DND switch and flat settings/close controls share one header;
+close stays at the trailing edge. Notification summaries use `heading`,
+metadata uses `caption dimmed`, and body text uses `body`. Low urgency must
+not dim both summary and body. Critical cards combine a warning symbol with
+an `error`-colored leading strip; urgency must not rely on color alone.
 
 Named colors: the surface contract, `OPAQUE_SURFACE_CSS`, inline `css` props
 and [`widgets/src/style.ts`](../packages/widgets/src/style.ts) currently write

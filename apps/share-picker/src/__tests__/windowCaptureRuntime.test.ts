@@ -59,14 +59,16 @@ describe('native window capture lifecycle', () => {
             if (!gjs) throw new Error('GJS is required to run the capture lifecycle test');
             GLib.file_set_contents(
                 helper,
-                `#!${gjs} -m\n` +
-                    "import Gio from 'gi://Gio?version=2.0';\n" +
-                    "import GLib from 'gi://GLib?version=2.0';\n" +
-                    `GLib.file_set_contents(${JSON.stringify(record)}, JSON.stringify({\n` +
-                    '    pid: new Gio.Credentials().get_unix_pid(), args: ARGV,\n' +
-                    '}));\n' +
-                    // Stay alive until stopCaptures kills this process; no child processes.
-                    'GLib.usleep(10000000);\n'
+                new TextEncoder().encode(
+                    `#!${gjs} -m\n` +
+                        "import Gio from 'gi://Gio?version=2.0';\n" +
+                        "import GLib from 'gi://GLib?version=2.0';\n" +
+                        `GLib.file_set_contents(${JSON.stringify(record)}, new TextEncoder().encode(JSON.stringify({\n` +
+                        '    pid: new Gio.Credentials().get_unix_pid(), args: ARGV,\n' +
+                        '})));\n' +
+                        // Stay alive until stopCaptures reaps this process.
+                        'GLib.usleep(10000000);\n'
+                )
             );
             Gio.File.new_for_path(helper).set_attribute_uint32(
                 'unix::mode',

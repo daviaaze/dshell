@@ -4,94 +4,94 @@ import type Notifd from 'gi://AstalNotifd';
 import GLib from 'gi://GLib?version=2.0';
 import GObject from 'gi://GObject?version=2.0';
 import Gtk from 'gi://Gtk?version=4.0';
+import Pango from 'gi://Pango?version=1.0';
 import {IconNames} from '@shade/core/iconNames';
-import {generalSettings} from '@shade/core/settings/general.gschema';
 import {bus} from '@shade/services/bus';
 import DndService from '@shade/services/notifications/dnd';
 import type {HistoryEntry} from '@shade/services/notifications/history';
 import NotificationHistory from '@shade/services/notifications/history';
 import {useNotifd} from '@shade/services/notifications/useNotifd';
-import {bind, createState, effect, For} from 'gnim';
+import {type Accessor, bind, computed, createState, effect, For, type Setter} from 'gnim';
 import Notification from '../common/notification';
-import {openSettings} from '../settings/settingsOpen';
+import {escapeNotificationMarkup} from '../common/notificationModel';
 
-const HISTORY_VISIBLE_COUNT = 20;
-
+const HISTORY_PAGE_SIZE = 20;
 const historyClearDialogs = new WeakSet<Gtk.Window>();
 
 export const isHistoryClearDialogOpen = (window: Gtk.Window) => historyClearDialogs.has(window);
 
-/** Notifications sorted newest-first. Does not mutate the input array. */
+function accessibleLabel(widget: Gtk.Widget, label: string) {
+    widget.update_property(
+        [Gtk.AccessibleProperty.LABEL],
+        [new GObject.Value(GObject.TYPE_STRING, label)]
+    );
+}
+
+/** Native switch semantics and the stable name are consumed by VM accessibility scripts. */
+export const NotificationDndControl = () => {
+    const dnd = DndService.get_default();
+    return (
+        <Gtk.Box spacing={8} valign={Gtk.Align.CENTER}>
+            <Gtk.Label label="Não perturbe" cssClasses={['caption']} />
+            <Gtk.Switch
+                valign={Gtk.Align.CENTER}
+                active={bind(dnd, 'dnd')}
+                onNotifyActive={(self) => {
+                    if (self.active === dnd.dnd) return;
+                    try {
+                        bus.emit('system:dnd:set', self.active);
+                    } finally {
+                        self.active = dnd.dnd;
+                    }
+                }}
+                ref={(self) => accessibleLabel(self, 'Não perturbe')}
+            />
+        </Gtk.Box>
+    );
+};
+
+/** Stable app-name keys avoid rebuilding unaffected groups during dismissal. */
 function newestFirst(notifications: Notifd.Notification[]): Notifd.Notification[] {
     return [...notifications].sort((a, b) => b.time - a.time);
 }
 
-/**
- * App names ordered by each app's most recent notification. Strings are
- * stable keys for `For`, so a dismissal only updates the affected group
- * instead of rebuilding every group (which froze the shell on "dismiss all").
- */
 function appOrder(notifications: Notifd.Notification[]): string[] {
-    return [...new Set(newestFirst(notifications).map((n) => n.appName))];
+    return [...new Set(newestFirst(notifications).map((notification) => notification.appName))];
 }
 
-/** Dismiss notifications from an idle callback (avoids mutating during signal emission). */
+/** Dismiss outside the daemon's signal emission. */
 function dismissAll(notifications: Notifd.Notification[]): void {
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-        for (const n of notifications) n.dismiss();
+        for (const notification of notifications) notification.dismiss();
         return GLib.SOURCE_REMOVE;
     });
 }
 
-/**
- * Short timestamp for history rows:
- *   today         -> "14:30"
- *   this week     -> "Mon 14:30"
- *   otherwise     -> "12 Mar"
- */
+/** Absolute history timestamps retain the clock time even for older entries. */
 function historyTime(unix: number): string {
-    const dt = GLib.DateTime.new_from_unix_local(unix)!;
+    const date = GLib.DateTime.new_from_unix_local(unix)!;
     const now = GLib.DateTime.new_now_local()!;
-    const startOfDay = GLib.DateTime.new_local(
-        now.get_year(),
-        now.get_month(),
-        now.get_day_of_month(),
-        0,
-        0,
-        0
-    )!;
-    // Compare via unix timestamps to avoid add_days nullability noise.
-    const startOfDayUnix = startOfDay.to_unix();
-    const weekStartUnix = startOfDayUnix - (startOfDay.get_day_of_week() - 1) * 86400;
-    const dtUnix = dt.to_unix();
-    if (dtUnix >= startOfDayUnix) {
-        return dt.format('%H:%M') || '';
-    }
-    if (dtUnix >= weekStartUnix) {
-        return dt.format('%a %H:%M') || '';
-    }
-    return dt.format('%d %b') || '';
+    const sameDay = date.get_year() === now.get_year() &&
+        date.get_day_of_year() === now.get_day_of_year();
+    if (sameDay) return date.format('%H:%M') || '';
+    return date.format(date.get_year() === now.get_year() ? '%d %b %H:%M' : '%d %b %Y %H:%M') || '';
 }
 
-/**
- * Inner content component — only mounted once Notifd is initialized.
- * Avoids the 25s D-Bus proxy timeout when another notification daemon
- * (dunst, mako, etc.) is already registered on the session bus.
- */
+/** Mounted only once Notifd is available, avoiding foreign-daemon proxy timeouts. */
 const NotificationListContent = ({
     notifd,
     history,
     showHistory,
     setShowHistory,
-    showProgress,
 }: {
     notifd: Notifd.Notifd;
     history: NotificationHistory;
-    showHistory: ReturnType<typeof createState<boolean>>[0];
-    setShowHistory: ReturnType<typeof createState<boolean>>[1];
-    showProgress: boolean;
+    showHistory: Accessor<boolean>;
+    setShowHistory: Setter<boolean>;
 }) => {
-    const dnd = DndService.get_default();
+    const entries = bind(history, 'history');
+    const active = bind(notifd, 'notifications');
+    const [historyCount, setHistoryCount] = createState(HISTORY_PAGE_SIZE);
 
     const clearHistory = (parent: Gtk.Widget) => {
         const root = parent.get_root();
@@ -111,9 +111,7 @@ const NotificationListContent = ({
         if (astalRoot) astalRoot.keymode = Astal.Keymode.NONE;
         dialog.connect('closed', () => {
             historyClearDialogs.delete(root);
-            if (astalRoot && previousKeymode !== undefined) {
-                astalRoot.keymode = previousKeymode;
-            }
+            if (astalRoot && previousKeymode !== undefined) astalRoot.keymode = previousKeymode;
         });
         dialog.connect('response', (_dialog, response) => {
             if (response === 'clear') history.clear();
@@ -122,83 +120,154 @@ const NotificationListContent = ({
         dialog.present(root);
     };
 
-    const Header = () => (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-            <Adw.PreferencesGroup title="Interrupções" visible={showHistory.as((value) => !value)}>
-                <Adw.SwitchRow
-                    title="Não perturbe"
-                    active={bind(dnd, 'dnd')}
-                    onNotifyActive={(self) => {
-                        if (self.active === dnd.dnd) return;
-                        try {
-                            bus.emit('system:dnd:set', self.active);
-                        } finally {
-                            self.active = dnd.dnd;
-                        }
-                    }}
+    const Actions = () => (
+        <Gtk.Box spacing={8}>
+            <Gtk.Button onClicked={() => setShowHistory(!showHistory())}>
+                <Adw.ButtonContent
+                    iconName={showHistory.as((value) =>
+                        value ? IconNames.goPrevious : IconNames.documentOpenRecent
+                    )}
+                    label={showHistory.as((value) =>
+                        value ? 'Voltar às notificações' : 'Histórico'
+                    )}
                 />
-                <Adw.ActionRow
-                    title="Configurar não perturbe"
-                    activatable
-                    onActivated={() => openSettings('scheduled-dnd')}
-                >
-                    <Gtk.Image slot="suffix" iconName="go-next-symbolic" />
-                </Adw.ActionRow>
-            </Adw.PreferencesGroup>
-            <Gtk.Box spacing={8}>
-                <Gtk.Button onClicked={() => setShowHistory(!showHistory())}>
-                    <Adw.ButtonContent
-                        iconName={showHistory.as((value) =>
-                            value ? 'go-previous-symbolic' : 'document-open-recent-symbolic'
-                        )}
-                        label={showHistory.as((value) =>
-                            value ? 'Voltar às notificações' : 'Histórico'
-                        )}
-                    />
-                </Gtk.Button>
-                <Gtk.Box hexpand />
-                <Gtk.Button
-                    visible={showHistory}
-                    label="Limpar histórico"
-                    sensitive={bind(history, 'history').as((entries) => entries.length > 0)}
-                    onClicked={(self) => clearHistory(self)}
-                />
-                <Gtk.Button
-                    visible={showHistory.as((value) => !value)}
-                    label="Dispensar todas"
-                    sensitive={bind(notifd, 'notifications').as((entries) => entries.length > 0)}
-                    onClicked={() => dismissAll(notifd.get_notifications())}
-                />
-            </Gtk.Box>
+            </Gtk.Button>
+            <Gtk.Box hexpand />
+            <Gtk.Button
+                visible={showHistory}
+                label="Limpar histórico"
+                cssClasses={['destructive-action']}
+                sensitive={entries.as((items) => items.length > 0)}
+                onClicked={(self) => clearHistory(self)}
+            />
+            <Gtk.Button
+                visible={showHistory.as((value) => !value)}
+                label="Dispensar todas"
+                cssClasses={['destructive-action']}
+                sensitive={active.as((items) => items.length > 0)}
+                onClicked={() => dismissAll(notifd.get_notifications())}
+            />
         </Gtk.Box>
     );
 
+    const HistoryItem = ({entry}: {entry: HistoryEntry}) => {
+        const [expanded, setExpanded] = createState(false);
+        return (
+            <Gtk.ListBoxRow activatable={false}>
+                <Gtk.Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    spacing={8}
+                    marginTop={8}
+                    marginBottom={8}
+                    marginStart={8}
+                    marginEnd={8}
+                >
+                    <Gtk.Box spacing={8}>
+                        <Gtk.Image
+                            pixelSize={16}
+                            iconName={entry.appIcon || IconNames.dialogInformation}
+                        />
+                        <Gtk.Label
+                            cssClasses={['caption', 'dimmed']}
+                            useMarkup
+                            label={escapeNotificationMarkup(entry.appName || 'Notificação')}
+                            ellipsize={Pango.EllipsizeMode.END}
+                            widthChars={1}
+                            maxWidthChars={24}
+                            hexpand
+                            xalign={0}
+                        />
+                        <Gtk.Label
+                            cssClasses={['caption', 'dimmed', 'numeric']}
+                            label={historyTime(entry.time)}
+                        />
+                        <Gtk.Button
+                            visible={!!entry.body}
+                            cssClasses={['flat', 'circular']}
+                            iconName={expanded.as((value) => value ? IconNames.goUp : IconNames.goDown)}
+                            tooltipText={expanded.as((value) =>
+                                value ? 'Ocultar mensagem completa' : 'Mostrar mensagem completa'
+                            )}
+                            onClicked={() => setExpanded(!expanded())}
+                            ref={(self) =>
+                                effect(() => accessibleLabel(
+                                    self,
+                                    expanded() ? 'Ocultar mensagem completa' : 'Mostrar mensagem completa'
+                                ))
+                            }
+                        />
+                        <Gtk.Button
+                            cssClasses={['flat', 'circular', 'destructive-action']}
+                            iconName={IconNames.editDelete}
+                            tooltipText="Excluir do histórico"
+                            onClicked={() => history.remove(entry.id)}
+                            ref={(self) => accessibleLabel(self, 'Excluir do histórico')}
+                        />
+                    </Gtk.Box>
+                    <Gtk.Label
+                        cssClasses={['heading']}
+                        useMarkup
+                        label={escapeNotificationMarkup(entry.summary || 'Notificação')}
+                        tooltipText={entry.summary}
+                        wrap
+                        wrapMode={Pango.WrapMode.WORD_CHAR}
+                        lines={2}
+                        ellipsize={Pango.EllipsizeMode.END}
+                        widthChars={1}
+                        maxWidthChars={40}
+                        hexpand
+                        xalign={0}
+                    />
+                    <Gtk.Label
+                        visible={!!entry.body}
+                        cssClasses={['body']}
+                        useMarkup
+                        label={escapeNotificationMarkup(entry.body || '')}
+                        wrap
+                        wrapMode={Pango.WrapMode.WORD_CHAR}
+                        lines={expanded.as((value) => value ? -1 : 3)}
+                        ellipsize={expanded.as((value) =>
+                            value ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END
+                        )}
+                        selectable
+                        widthChars={1}
+                        maxWidthChars={40}
+                        hexpand
+                        xalign={0}
+                    />
+                </Gtk.Box>
+            </Gtk.ListBoxRow>
+        );
+    };
+
     const HistoryView = () => (
-        <Gtk.Box visible={showHistory} orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+        <Gtk.Box visible={showHistory} orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+            <Gtk.Label label="Histórico" cssClasses={['heading']} xalign={0} />
             <Gtk.ListBox
                 cssClasses={['boxed-list']}
-                visible={bind(history, 'history').as((h) => h.length > 0)}
+                visible={entries.as((items) => items.length > 0)}
                 selectionMode={Gtk.SelectionMode.NONE}
             >
-                <For each={bind(history, 'history').as((h) => h.slice(0, HISTORY_VISIBLE_COUNT))}>
-                    {(entry: HistoryEntry) => (
-                        <Gtk.ListBoxRow activatable={false}>
-                            <HistoryItem entry={entry} />
-                        </Gtk.ListBoxRow>
-                    )}
+                <For each={computed(() => entries().slice(0, historyCount()))}>
+                    {(entry: HistoryEntry) => <HistoryItem entry={entry} />}
                 </For>
             </Gtk.ListBox>
+            <Gtk.Button
+                visible={computed(() => entries().length > historyCount())}
+                label="Mostrar mais"
+                halign={Gtk.Align.CENTER}
+                onClicked={() => setHistoryCount((count) => count + HISTORY_PAGE_SIZE)}
+            />
             <Gtk.Label
-                visible={bind(history, 'history').as((h) => h.length > HISTORY_VISIBLE_COUNT)}
+                visible={computed(() => entries().length > historyCount())}
                 cssClasses={['caption', 'dimmed']}
-                label={bind(history, 'history').as(
-                    (h) => `Mostrando ${HISTORY_VISIBLE_COUNT} de ${h.length} notificações`
+                label={computed(() =>
+                    `Mostrando ${historyCount()} de ${entries().length} notificações`
                 )}
                 halign={Gtk.Align.CENTER}
             />
             <Adw.StatusPage
-                visible={bind(history, 'history').as((h) => h.length === 0)}
-                vexpand
+                visible={entries.as((items) => items.length === 0)}
                 cssClasses={['compact']}
                 title="Sem histórico"
                 description="O histórico de notificações está vazio"
@@ -207,143 +276,85 @@ const NotificationListContent = ({
         </Gtk.Box>
     );
 
-    const HistoryItem = ({entry}: {entry: HistoryEntry}) => {
+    const NotificationGroup = ({appName}: {appName: string}) => {
         const [expanded, setExpanded] = createState(false);
+        const notifications = active.as((items) =>
+            newestFirst(items.filter((notification) => notification.appName === appName))
+        );
+        const first = notifications.as((items) => items.slice(0, 1).map((notification) => notification.id));
+        const rest = notifications.as((items) => items.slice(1).map((notification) => notification.id));
+        const Item = ({id}: {id: number}) => {
+            const initial = notifications().find((notification) => notification.id === id)!;
+            const notification = computed(
+                () => notifications().find((item) => item.id === id) ?? initial
+            );
+            return (
+                <Notification
+                    notification={notification}
+                    variant="list"
+                    closeAction={(current) => dismissAll([current])}
+                    onDefaultAction={() => {
+                        notification().invoke('default');
+                        dismissAll([notification()]);
+                    }}
+                    onActionInvoked={() => dismissAll([notification()])}
+                />
+            );
+        };
         return (
-            <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                <Adw.ActionRow
-                    title={entry.summary}
-                    subtitle={`${entry.appName} — ${entry.body || ''}`}
-                    subtitleLines={3}
-                    marginBottom={4}
-                >
-                    <Gtk.Label
-                        cssClasses={['caption', 'numeric']}
-                        label={historyTime(entry.time)}
-                        valign={Gtk.Align.CENTER}
-                        slot="prefix"
-                    />
+            <Gtk.Box spacing={8} orientation={Gtk.Orientation.VERTICAL}>
+                <Gtk.Box spacing={8}>
                     <Gtk.Image
-                        pixelSize={24}
-                        iconName={entry.appIcon || 'dialog-information-symbolic'}
-                        valign={Gtk.Align.CENTER}
-                        slot="prefix"
+                        pixelSize={16}
+                        iconName={notifications.as((items) =>
+                            items[0]?.appIcon || IconNames.dialogInformation
+                        )}
                     />
-                    <Gtk.Button
+                    <Gtk.Label
+                        label={appName || 'Notificação'}
+                        cssClasses={['caption-heading']}
+                        ellipsize={Pango.EllipsizeMode.END}
+                        widthChars={1}
+                        maxWidthChars={32}
+                        hexpand
+                        xalign={0}
+                    />
+                    <Gtk.Label
+                        label={notifications.as((items) => `${items.length}`)}
+                        cssClasses={['caption', 'dimmed', 'numeric']}
+                    />
+                    <Gtk.ToggleButton
+                        visible={notifications.as((items) => items.length > 1)}
+                        active={expanded}
                         cssClasses={['flat', 'circular']}
-                        iconName={expanded.as((v) => (v ? 'go-up-symbolic' : 'go-down-symbolic'))}
-                        valign={Gtk.Align.CENTER}
-                        tooltipText={expanded.as((v) =>
-                            v ? 'Ocultar mensagem completa' : 'Mostrar mensagem completa'
+                        iconName={expanded.as((value) => value ? IconNames.goUp : IconNames.goDown)}
+                        tooltipText={expanded.as((value) =>
+                            value ? 'Recolher notificações' : 'Mostrar mais notificações'
                         )}
                         onClicked={() => setExpanded(!expanded())}
-                        slot="suffix"
                         ref={(self) =>
-                            effect(() => {
-                                const label = expanded()
-                                    ? 'Ocultar mensagem completa'
-                                    : 'Mostrar mensagem completa';
-                                self.update_property(
-                                    [Gtk.AccessibleProperty.LABEL],
-                                    [new GObject.Value(GObject.TYPE_STRING, label)]
-                                );
-                            })
+                            effect(() => accessibleLabel(
+                                self,
+                                `${expanded() ? 'Recolher' : 'Mostrar'} notificações de ${appName || 'aplicativo'}`
+                            ))
                         }
                     />
                     <Gtk.Button
-                        cssClasses={['flat', 'circular']}
-                        iconName="edit-delete-symbolic"
+                        iconName={IconNames.editClearAll}
                         valign={Gtk.Align.CENTER}
-                        tooltipText="Excluir do histórico"
-                        onClicked={() => history.remove(entry.id)}
-                        slot="suffix"
-                        ref={(self) =>
-                            self.update_property(
-                                [Gtk.AccessibleProperty.LABEL],
-                                [new GObject.Value(GObject.TYPE_STRING, 'Excluir do histórico')]
-                            )
-                        }
+                        tooltipText="Dispensar este grupo"
+                        cssClasses={['flat', 'circular', 'destructive-action']}
+                        onClicked={() => dismissAll(notifications())}
+                        ref={(self) => accessibleLabel(self, 'Dispensar este grupo')}
                     />
-                </Adw.ActionRow>
+                </Gtk.Box>
+                <For each={first}>
+                    {(id: number) => <Item id={id} />}
+                </For>
                 <Gtk.Revealer revealChild={expanded}>
-                    <Gtk.Label
-                        label={entry.body || ''}
-                        wrap
-                        selectable
-                        xalign={0}
-                        marginStart={48}
-                        marginEnd={8}
-                        marginBottom={8}
-                    />
-                </Gtk.Revealer>
-            </Gtk.Box>
-        );
-    };
-
-    const NotificationGroup = ({appName}: {appName: string}) => {
-        const [visible, setVisible] = createState(false);
-        const notifications = bind(notifd, 'notifications').as((ns) =>
-            newestFirst(ns.filter((n) => n.appName === appName))
-        );
-        const first = notifications.as((ns) => ns.slice(0, 1));
-        const rest = notifications.as((ns) => ns.slice(1));
-
-        const Heading = () => (
-            <Gtk.Box cssClasses={['toolbar']} visible={notifications.as((ns) => ns.length > 1)}>
-                <Gtk.ToggleButton
-                    onClicked={() => setVisible(!visible())}
-                    active={visible}
-                    cssClasses={['flat']}
-                >
-                    <Gtk.Box hexpand>
-                        <Gtk.Image iconName={notifications.as((ns) => ns[0]?.appIcon ?? '')} />
-                        <Gtk.Label
-                            label={appName}
-                            hexpand
-                            halign={Gtk.Align.START}
-                            xalign={0}
-                            cssClasses={['caption-heading']}
-                        />
-                        <Gtk.Image
-                            iconName={visible.as((v) =>
-                                v ? 'go-up-symbolic' : 'go-down-symbolic'
-                            )}
-                        />
-                    </Gtk.Box>
-                </Gtk.ToggleButton>
-                <Gtk.Button
-                    iconName={'edit-clear-all-symbolic'}
-                    valign={Gtk.Align.END}
-                    tooltipText={'Dispensar este grupo'}
-                    cssClasses={['flat']}
-                    onClicked={() => dismissAll(notifications())}
-                    ref={(self) =>
-                        self.update_property(
-                            [Gtk.AccessibleProperty.LABEL],
-                            [new GObject.Value(GObject.TYPE_STRING, 'Dispensar este grupo')]
-                        )
-                    }
-                />
-            </Gtk.Box>
-        );
-
-        const Item = ({notif}: {notif: Notifd.Notification}) => (
-            <Notification
-                notification={notif}
-                variant="list"
-                showProgress={showProgress}
-                closeAction={(n) => dismissAll([n])}
-            />
-        );
-
-        return (
-            <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
-                <Heading />
-                <For each={first}>{(notif: Notifd.Notification) => <Item notif={notif} />}</For>
-                <Gtk.Revealer revealChild={visible}>
-                    <Gtk.Box spacing={4} orientation={Gtk.Orientation.VERTICAL}>
+                    <Gtk.Box spacing={8} orientation={Gtk.Orientation.VERTICAL}>
                         <For each={rest}>
-                            {(notif: Notifd.Notification) => <Item notif={notif} />}
+                            {(id: number) => <Item id={id} />}
                         </For>
                     </Gtk.Box>
                 </Gtk.Revealer>
@@ -353,22 +364,16 @@ const NotificationListContent = ({
 
     const ActiveView = () => (
         <Gtk.Box
-            visible={showHistory.as((v) => !v)}
+            visible={showHistory.as((value) => !value)}
             orientation={Gtk.Orientation.VERTICAL}
-            spacing={6}
+            spacing={12}
         >
-            <Gtk.Label
-                label="Ativas"
-                cssClasses={['heading']}
-                xalign={0}
-                visible={bind(notifd, 'notifications').as((entries) => entries.length > 0)}
-            />
-            <For each={bind(notifd, 'notifications').as(appOrder)}>
+            <Gtk.Label label="Ativas" cssClasses={['heading']} xalign={0} />
+            <For each={active.as(appOrder)}>
                 {(appName: string) => <NotificationGroup appName={appName} />}
             </For>
             <Adw.StatusPage
-                visible={bind(notifd, 'notifications').as((n) => n.length < 1)}
-                vexpand
+                visible={active.as((items) => items.length === 0)}
                 cssClasses={['compact']}
                 title="Sem notificações"
                 description="Você está em dia."
@@ -378,8 +383,8 @@ const NotificationListContent = ({
     );
 
     return (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={16}>
-            <Header />
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+            <Actions />
             <HistoryView />
             <ActiveView />
         </Gtk.Box>
@@ -390,14 +395,10 @@ export const NotificationList = () => {
     const {value: notifd, resolved} = useNotifd();
     const history = NotificationHistory.get_default();
     const [showHistory, setShowHistory] = createState(false);
-    const settings = generalSettings();
-    const showProgress = settings.notificationShowProgress();
-
     return (
-        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-            {/* Loading and unavailable are distinct resource states. */}
+        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} spacing={12}>
             <Gtk.Box
-                visible={notifd.as((n) => n === null)}
+                visible={notifd.as((daemon) => daemon === null)}
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={12}
                 valign={Gtk.Align.CENTER}
@@ -408,6 +409,8 @@ export const NotificationList = () => {
                 <Gtk.Label
                     cssClasses={['heading']}
                     wrap
+                    wrapMode={Pango.WrapMode.WORD_CHAR}
+                    xalign={0.5}
                     label={resolved.as((value) =>
                         value ? 'Serviço de notificações indisponível' : 'Carregando notificações…'
                     )}
@@ -415,21 +418,20 @@ export const NotificationList = () => {
                 <Gtk.Label
                     visible={resolved}
                     wrap
-                    xalign={0}
+                    wrapMode={Pango.WrapMode.WORD_CHAR}
+                    xalign={0.5}
+                    maxWidthChars={40}
                     cssClasses={['dimmed']}
                     label="Verifique o serviço de notificações da sessão. Outro aplicativo pode estar gerenciando os avisos."
                 />
             </Gtk.Box>
-            {/* Singleton-array For defers child evaluation until notifd is
-                non-null (gnim does not support nested For inside With). */}
-            <For each={notifd.as((n) => (n ? [n] : []))}>
-                {(n: Notifd.Notifd) => (
+            <For each={notifd.as((daemon) => daemon ? [daemon] : [])}>
+                {(daemon: Notifd.Notifd) => (
                     <NotificationListContent
-                        notifd={n}
+                        notifd={daemon}
                         history={history}
                         showHistory={showHistory}
                         setShowHistory={setShowHistory}
-                        showProgress={showProgress}
                     />
                 )}
             </For>

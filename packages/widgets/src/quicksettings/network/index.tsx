@@ -133,7 +133,7 @@ export default (onOpen: (self: Gtk.Button) => void): {widget: GnimNode; detail: 
                     onClick={() => setRadioEnabled(!radioActive.peek())}
                     actionSensitive={computed(() => wifi() !== null && !radioPending())}
                     // This accessible name is an exact VM workflow selector.
-                    detail={{label: 'Wi-Fi details', onOpen}}
+                    detail={{label: 'Detalhes do Wi-Fi', onOpen}}
                 />
                 <Gtk.Label
                     label={operationError.as((message) => message ?? '')}

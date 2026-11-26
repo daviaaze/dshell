@@ -39,7 +39,15 @@ for dir in packages/core/src/settings packages/services/src/settings \
 done
 glib-compile-schemas "$schema_dir" || die "glib-compile-schemas failed"
 [ -s "$schema_dir/gschemas.compiled" ] || die "glib-compile-schemas produced no gschemas.compiled"
-export GSETTINGS_SCHEMA_DIR="$schema_dir" GSETTINGS_BACKEND=memory
+export GSETTINGS_SCHEMA_DIR="$schema_dir" GSETTINGS_BACKEND=memory SHADE_TEST_SCHEMA_DIR="$schema_dir"
+# gnim run prepends the checkout's cached .gnim/schemas. Restore fresh-first
+# lookup inside GJS before importing a suite, without touching that shared cache.
+cat > "$schema_dir/test-environment.ts" <<'EOF' || die "cannot write the schema test bootstrap"
+import GLib from 'gi://GLib?version=2.0';
+const fresh = GLib.getenv('SHADE_TEST_SCHEMA_DIR')!;
+const inherited = GLib.getenv('GSETTINGS_SCHEMA_DIR')!;
+GLib.setenv('GSETTINGS_SCHEMA_DIR', `${fresh}:${inherited}`, true);
+EOF
 
 # Explicit paths run only the requested regression suites.
 if [ "$#" -gt 0 ]; then
@@ -53,7 +61,11 @@ fi
 failed=()
 for t in "${tests[@]}"; do
     echo "=== $(basename "$t") ==="
-    gnim run "$t" "${defines[@]}" | tee "$output_log"
+    test_entry=$(node -p 'JSON.stringify(require("node:path").resolve(process.argv[1]))' "$t") \
+        || die "cannot resolve test entry $t"
+    printf 'import "./test-environment.ts";\nimport %s;\n' "$test_entry" \
+        > "$schema_dir/test-entry.ts" || die "cannot write test entry $t"
+    gnim run "$schema_dir/test-entry.ts" "${defines[@]}" | tee "$output_log"
     status=${PIPESTATUS[0]}
     # The runner's last line is "N/M passed" (packages/core/src/__tests__/test-runner.ts).
     summary=$(grep -E '^[0-9]+/[0-9]+ passed' "$output_log" | tail -n 1)

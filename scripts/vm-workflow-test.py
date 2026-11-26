@@ -1783,7 +1783,7 @@ print(json.dumps(result))"""
             if "Shade-Test" not in scan.stdout:
                 raise Unsupported("Wi-Fi control toggled successfully, but the guest-local Shade-Test AP was not visible in NetworkManager scan output")
             state = self.guest("reading Wi-Fi connection state", "nmcli -t -f DEVICE,STATE,CONNECTION device status").stdout.strip()
-            self.click_named("opening Wi-Fi details after radio controls", "Wi-Fi details", role="button")
+            self.click_named("opening Wi-Fi details after radio controls", "Detalhes do Wi-Fi", role="button")
             self.wait_until(
                 "Wi-Fi detail route", lambda: self.find_accessible_node("Wi-Fi", role="window"), timeout=12
             )
@@ -1868,7 +1868,7 @@ print(json.dumps({'device': device, 'status': status, 'selected_ssids': selected
                     lambda: self.guest("waiting for guest Wi-Fi radio", "nmcli radio wifi").stdout.strip() == "enabled",
                     timeout=20,
                 )
-            self.click_named("opening Wi-Fi details", "Wi-Fi details", role="button")
+            self.click_named("opening Wi-Fi details", "Detalhes do Wi-Fi", role="button")
             self.click_named("scanning guest Wi-Fi access points", "Buscar redes", role="button")
             self.wait_until(
                 "guest-local Shade-Test AP in NetworkManager",

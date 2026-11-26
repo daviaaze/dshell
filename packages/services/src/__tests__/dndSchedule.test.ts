@@ -1,5 +1,5 @@
-import {describe, expect, it, run} from '../../__tests__/test-runner';
-import {isHourInDndWindow} from '../dndSchedule';
+import {isHourInDndWindow} from '../notifications/dndSchedule';
+import {describe, expect, it, run} from './test-runner';
 
 describe('isHourInDndWindow', () => {
     it('covers only the hours of a same-day window', () => {

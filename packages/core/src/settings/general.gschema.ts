@@ -104,6 +104,74 @@ function soundAlertKeys<
         });
 }
 
+/** System notification thresholds and interaction-sound preferences. */
+function alertKeys<T extends TypedKeyLike[], E extends EnumKeyLike[], F extends FlagsKeyLike[]>(
+    s: Schema<T, E, F>
+) {
+    return s
+        .key('alert-battery-enabled', 'b', {
+            default: true,
+            summary: 'Notify about low and critical battery while discharging',
+        })
+        .key('alert-battery-low-threshold', 'i', {
+            default: 20,
+            summary: 'Low battery threshold in percent',
+            range: {min: 10, max: 50},
+        })
+        .key('alert-battery-critical-threshold', 'i', {
+            default: 10,
+            summary: 'Critical battery threshold in percent (below the low threshold)',
+            range: {min: 1, max: 20},
+        })
+        .key('alert-power-enabled', 'b', {
+            default: true,
+            summary: 'Notify when the charger is connected or disconnected',
+        })
+        .key('alert-temperature-enabled', 'b', {
+            default: true,
+            summary: 'Notify about high local sensor temperature',
+        })
+        .key('alert-temperature-warning-threshold', 'i', {
+            default: 80,
+            summary: 'Local temperature warning threshold in degrees Celsius',
+            range: {min: 50, max: 110},
+        })
+        .key('alert-temperature-critical-threshold', 'i', {
+            default: 90,
+            summary: 'Local critical temperature threshold in degrees Celsius (above warning)',
+            range: {min: 60, max: 120},
+        })
+        .key('alert-bluetooth-enabled', 'b', {
+            default: true,
+            summary: 'Notify about stable Bluetooth device connections and disconnections',
+        })
+        .key('alert-bluetooth-battery-enabled', 'b', {
+            default: true,
+            summary: 'Notify about low battery on connected Bluetooth devices',
+        })
+        .key('alert-bluetooth-battery-threshold', 'i', {
+            default: 20,
+            summary: 'Bluetooth device low battery threshold in percent',
+            range: {min: 5, max: 50},
+        })
+        .key('sound-alert-power', 'b', {
+            default: true,
+            summary: 'Play charger connection and disconnection sounds',
+        })
+        .key('sound-alert-bluetooth', 'b', {
+            default: true,
+            summary: 'Play debounced Bluetooth connection and disconnection sounds',
+        })
+        .key('sound-alert-temperature', 'b', {
+            default: true,
+            summary: 'Play local temperature warning and critical sounds',
+        })
+        .key('sound-alert-volume', 'b', {
+            default: false,
+            summary: 'Play feedback when the default speaker volume changes',
+        });
+}
+
 /**
  * Idle management (Hypridle). Consumed by Hypridle which generates a
  * hypridle.conf. The timeout chain must satisfy: dim < idle < dpms < suspend.
@@ -186,6 +254,20 @@ function notificationKeys<
         .key('notification-ignored-apps', 'as', {
             default: [],
             summary: 'List of app names to ignore for notifications',
+        })
+        .key('dnd-schedule-enabled', 'b', {
+            default: false,
+            summary: 'Enable the daily Do Not Disturb schedule',
+        })
+        .key('dnd-schedule-start-hour', 'i', {
+            default: 22,
+            summary: 'Local hour when scheduled Do Not Disturb starts',
+            range: {min: 0, max: 23},
+        })
+        .key('dnd-schedule-end-hour', 'i', {
+            default: 7,
+            summary: 'Local hour when scheduled Do Not Disturb ends (equal hours disable the window)',
+            range: {min: 0, max: 23},
         });
 }
 
@@ -252,7 +334,7 @@ export const generalSettings = defineSettings('general', (s) => {
     const s5 = idleKeys(s4);
     const s6 = notificationKeys(s5);
     const s7 = themingKeys(s6);
-    return weatherKeys(s7);
+    return weatherKeys(alertKeys(s7));
 });
 
 export default defineSchemaList([getRegisteredSchema('general')]);

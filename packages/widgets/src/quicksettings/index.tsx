@@ -37,6 +37,7 @@ import {Calendar} from './expander/calendar';
 import {Media} from './expander/media';
 import {Weather} from './expander/weather';
 import {WorldClock} from './expander/worldClock';
+import {quickSettingsContentHeight} from './heightBudget';
 import WifiQuickButton from './network';
 import {AudioCompact, AudioConfig, BrightnessSlider, MicCompact, MicConfig} from './sliders';
 import {TrayBox} from './tray';
@@ -74,11 +75,16 @@ export default () => {
     const layouts = LayoutService.get_default();
     const manager = WindowManager.get_default();
     const bars = bind(manager, 'bars');
-    const [chrome, setChrome] = createState(0);
+    const [chrome, setChrome] = createState({
+        headerHeight: 0,
+        errorHeight: 0,
+        footerHeight: 0,
+        surfaceInsets: 0,
+    });
     let header: Adw.HeaderBar | undefined;
     let card: Gtk.Box | undefined;
     let errorLabel: Gtk.Label | undefined;
-    let advancedButton: Gtk.Button | undefined;
+    let footer: Gtk.Box | undefined;
     let measureSource = 0;
     const bar = barSettings();
     const [route, setRoute] = createState<QuickRoute>('home');
@@ -113,10 +119,16 @@ export default () => {
         };
         return logicalMonitorSize(output, output);
     });
-    const maxContentHeight = computed(() => {
-        const available = monitorSize()?.height ?? 720;
-        return Math.max(1, available - SURFACE_EDGE_GAP * 2 - chrome());
-    });
+    const maxContentHeight = computed(() =>
+        quickSettingsContentHeight({
+            monitorHeight: monitorSize()?.height ?? 720,
+            // Pinned Astal exposes IPC reserved[1] (top) and reserved[3] (bottom)
+            // under these names. They are logical pixels, independent of bar side.
+            reservedTop: monitor()?.reservedBottom ?? 0,
+            reservedBottom: monitor()?.reservedRight ?? 0,
+            ...chrome(),
+        })
+    );
     const width = computed(() => {
         const available = monitorSize()?.width ?? PANEL_WIDTH + SURFACE_EDGE_GAP * 2;
         return Math.max(
@@ -139,44 +151,27 @@ export default () => {
         measureSource = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             measureSource = 0;
             if (!alive || !header || !card?.get_root()) return GLib.SOURCE_REMOVE;
-            const current = monitor();
             const panelWidth = width();
             const style = card.get_style_context();
             const padding = style.get_padding();
             const border = style.get_border();
-            // Astal swaps vertical reservation names; the IPC values are already logical.
-            const barReserved = current ? current.reservedBottom + current.reservedRight : 0;
-            const contentWidth = Math.max(
+            const innerWidth = Math.max(
                 1,
-                Math.floor(
-                    panelWidth -
-                        padding.left -
-                        padding.right -
-                        border.left -
-                        border.right -
-                        SURFACE_PADDING * 2
-                )
+                Math.floor(panelWidth - padding.left - padding.right - border.left - border.right)
             );
+            // Widget.measure() includes the widget's margins. Pass the parent's
+            // width and count each measured height once, including the footer inset.
             const errorHeight =
                 navigationError() && errorLabel
-                    ? errorLabel.measure(Gtk.Orientation.VERTICAL, contentWidth)[1]
+                    ? errorLabel.measure(Gtk.Orientation.VERTICAL, innerWidth)[1]
                     : 0;
-            const footerWidth = contentWidth;
-            const footerHeight = advancedButton?.get_visible()
-                ? advancedButton.measure(Gtk.Orientation.VERTICAL, footerWidth)[1] +
-                  SURFACE_SPACING +
-                  SURFACE_PADDING
-                : 0;
-            setChrome(
-                header.measure(Gtk.Orientation.VERTICAL, Math.floor(panelWidth))[1] +
-                    errorHeight +
-                    padding.top +
-                    padding.bottom +
-                    border.top +
-                    border.bottom +
-                    barReserved +
-                    footerHeight
-            );
+            const footerHeight = footer?.measure(Gtk.Orientation.VERTICAL, innerWidth)[1] ?? 0;
+            setChrome({
+                headerHeight: header.measure(Gtk.Orientation.VERTICAL, innerWidth)[1],
+                errorHeight,
+                footerHeight,
+                surfaceInsets: padding.top + padding.bottom + border.top + border.bottom,
+            });
             // Gtk.Window retains its previous allocation as the default size.
             // Re-request natural sizing after updating the real content cap.
             manager.quicksettings?.set_default_size(-1, -1);
@@ -321,7 +316,7 @@ export default () => {
             monitor={monitor.as(monitorIndexFromHyprland)}
             widthRequest={width}
             cssClasses={['background']}
-            css={OPAQUE_SURFACE_CSS}
+            css={`${OPAQUE_SURFACE_CSS} border-radius: var(--window-radius);`}
             ref={(self) => {
                 scheduleMeasure();
                 manager.setQuicksettings(self);
@@ -377,287 +372,285 @@ export default () => {
                 }
             }}
         >
-            <Gtk.ScrolledWindow
-                propagateNaturalWidth={false}
-                propagateNaturalHeight
-                minContentHeight={0}
-                maxContentHeight={maxContentHeight}
-                overlayScrolling
-                hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                vscrollbarPolicy={Gtk.PolicyType.NEVER}
+            <Gtk.Box
+                orientation={Gtk.Orientation.VERTICAL}
+                overflow={Gtk.Overflow.HIDDEN}
+                ref={(self) => {
+                    card = self;
+                    scheduleMeasure();
+                }}
             >
-                <Gtk.Box
-                    orientation={Gtk.Orientation.VERTICAL}
-                    cssClasses={['card', 'vertical']}
+                <Adw.HeaderBar
+                    showStartTitleButtons={false}
+                    showEndTitleButtons={false}
                     ref={(self) => {
-                        card = self;
+                        header = self;
                         scheduleMeasure();
                     }}
                 >
-                    <Adw.HeaderBar
-                        showStartTitleButtons={false}
-                        showEndTitleButtons={false}
-                        ref={(self) => {
-                            header = self;
-                            scheduleMeasure();
-                        }}
+                    <Gtk.Button
+                        slot="start"
+                        visible={route.as((value) => value !== 'home')}
+                        iconName="go-previous-symbolic"
+                        tooltipText="Voltar"
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Voltar')]
+                            )
+                        }
+                        onClicked={() => leavePage(goBack)}
+                    />
+                    <Gtk.Button
+                        slot="start"
+                        visible={route.as((value) => value === 'home')}
+                        iconName="preferences-system-symbolic"
+                        tooltipText="Configurações"
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Configurações')]
+                            )
+                        }
+                        onClicked={() => openSettings()}
+                    />
+                    <Adw.WindowTitle slot="title" title={title} />
+                    <Gtk.MenuButton
+                        slot="end"
+                        visible={route.as((value) => value === 'home')}
+                        iconName="system-shutdown-symbolic"
+                        tooltipText="Sessão e energia"
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Sessão e energia')]
+                            )
+                        }
                     >
-                        <Gtk.Button
-                            slot="start"
-                            visible={route.as((value) => value !== 'home')}
-                            iconName="go-previous-symbolic"
-                            tooltipText="Voltar"
-                            ref={(self) =>
-                                self.update_property(
-                                    [Gtk.AccessibleProperty.LABEL],
-                                    [new GObject.Value(GObject.TYPE_STRING, 'Voltar')]
-                                )
-                            }
-                            onClicked={() => leavePage(goBack)}
-                        />
-                        <Gtk.Button
-                            slot="start"
-                            visible={route.as((value) => value === 'home')}
-                            iconName="preferences-system-symbolic"
-                            tooltipText="Configurações"
-                            ref={(self) =>
-                                self.update_property(
-                                    [Gtk.AccessibleProperty.LABEL],
-                                    [new GObject.Value(GObject.TYPE_STRING, 'Configurações')]
-                                )
-                            }
-                            onClicked={() => openSettings()}
-                        />
-                        <Adw.WindowTitle slot="title" title={title} />
-                        <Gtk.MenuButton
-                            slot="end"
-                            visible={route.as((value) => value === 'home')}
-                            iconName="system-shutdown-symbolic"
-                            tooltipText="Sessão e energia"
-                            ref={(self) =>
-                                self.update_property(
-                                    [Gtk.AccessibleProperty.LABEL],
-                                    [new GObject.Value(GObject.TYPE_STRING, 'Sessão e energia')]
-                                )
-                            }
-                        >
-                            <PowerMenu />
-                        </Gtk.MenuButton>
-                        <Gtk.Button
-                            slot="end"
-                            iconName="window-close-symbolic"
-                            tooltipText="Fechar controles rápidos"
-                            ref={(self) =>
-                                self.update_property(
-                                    [Gtk.AccessibleProperty.LABEL],
-                                    [
-                                        new GObject.Value(
-                                            GObject.TYPE_STRING,
-                                            'Fechar controles rápidos'
-                                        ),
-                                    ]
-                                )
-                            }
-                            onClicked={() => leavePage(() => state.closeQuickSettings())}
-                        />
-                    </Adw.HeaderBar>
-                    <Gtk.Label
-                        visible={navigationError.as(Boolean)}
-                        label={navigationError}
-                        wrap
-                        cssClasses={['error']}
+                        <PowerMenu />
+                    </Gtk.MenuButton>
+                    <Gtk.Button
+                        slot="end"
+                        iconName="window-close-symbolic"
+                        tooltipText="Fechar controles rápidos"
+                        ref={(self) =>
+                            self.update_property(
+                                [Gtk.AccessibleProperty.LABEL],
+                                [new GObject.Value(GObject.TYPE_STRING, 'Fechar controles rápidos')]
+                            )
+                        }
+                        onClicked={() => leavePage(() => state.closeQuickSettings())}
+                    />
+                </Adw.HeaderBar>
+                <Gtk.Label
+                    visible={navigationError.as(Boolean)}
+                    label={navigationError}
+                    wrap
+                    cssClasses={['error']}
+                    marginStart={SURFACE_PADDING}
+                    marginEnd={SURFACE_PADDING}
+                    ref={(self) => {
+                        errorLabel = self;
+                        scheduleMeasure();
+                    }}
+                />
+                <Gtk.ScrolledWindow
+                    propagateNaturalHeight
+                    minContentHeight={0}
+                    maxContentHeight={maxContentHeight}
+                    hscrollbarPolicy={Gtk.PolicyType.NEVER}
+                    vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+                >
+                    <Gtk.Stack
+                        visibleChildName={route}
+                        hhomogeneous={false}
+                        vhomogeneous={false}
+                        transitionType={Gtk.StackTransitionType.CROSSFADE}
+                        marginTop={SURFACE_PADDING}
+                        marginBottom={SURFACE_PADDING}
                         marginStart={SURFACE_PADDING}
                         marginEnd={SURFACE_PADDING}
-                        ref={(self) => {
-                            errorLabel = self;
-                            scheduleMeasure();
-                        }}
-                    />
-                    <Gtk.ScrolledWindow
-                        propagateNaturalHeight
-                        minContentHeight={0}
-                        maxContentHeight={maxContentHeight}
-                        hscrollbarPolicy={Gtk.PolicyType.NEVER}
-                        vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
                     >
-                        <Gtk.Stack
-                            visibleChildName={route}
-                            hhomogeneous={false}
-                            vhomogeneous={false}
-                            transitionType={Gtk.StackTransitionType.CROSSFADE}
-                            marginTop={SURFACE_PADDING}
-                            marginBottom={SURFACE_PADDING}
-                            marginStart={SURFACE_PADDING}
-                            marginEnd={SURFACE_PADDING}
+                        <Gtk.Box
+                            name="home"
+                            slot="named"
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={SURFACE_SECTION_SPACING}
                         >
-                            <Gtk.Box
-                                name="home"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={SURFACE_SECTION_SPACING}
+                            <TrayBox />
+                            <Gtk.Label
+                                label="Conexões"
+                                cssClasses={['heading']}
+                                xalign={0}
+                                visible={computed(() => wifiVisible() || bluetoothVisible())}
+                            />
+                            <Gtk.FlowBox
+                                visible={computed(() => wifiVisible() || bluetoothVisible())}
+                                selectionMode={Gtk.SelectionMode.NONE}
+                                minChildrenPerLine={1}
+                                maxChildrenPerLine={2}
+                                homogeneous
+                                columnSpacing={8}
+                                rowSpacing={8}
                             >
-                                <TrayBox />
-                                <Gtk.Label
-                                    label="Conexões"
-                                    cssClasses={['heading']}
-                                    xalign={0}
-                                    visible={computed(() => wifiVisible() || bluetoothVisible())}
-                                />
-                                <Gtk.FlowBox
-                                    visible={computed(() => wifiVisible() || bluetoothVisible())}
-                                    selectionMode={Gtk.SelectionMode.NONE}
-                                    minChildrenPerLine={1}
-                                    maxChildrenPerLine={2}
-                                    homogeneous
-                                    columnSpacing={8}
-                                    rowSpacing={8}
-                                >
-                                    <Gtk.Box visible={wifiVisible}>{wifi.widget}</Gtk.Box>
-                                    <Gtk.Box visible={bluetoothVisible}>{bluetooth.widget}</Gtk.Box>
-                                </Gtk.FlowBox>
-                                <Gtk.Label label="Tela e som" cssClasses={['heading']} xalign={0} />
+                                <Gtk.Box visible={wifiVisible}>{wifi.widget}</Gtk.Box>
+                                <Gtk.Box visible={bluetoothVisible}>{bluetooth.widget}</Gtk.Box>
+                            </Gtk.FlowBox>
+                            <Gtk.Label label="Tela e som" cssClasses={['heading']} xalign={0} />
+                            <Gtk.Box
+                                orientation={Gtk.Orientation.VERTICAL}
+                                cssClasses={['card', 'frame', 'vertical']}
+                            >
                                 <Gtk.Box
                                     orientation={Gtk.Orientation.VERTICAL}
-                                    cssClasses={['card', 'frame', 'vertical']}
+                                    spacing={SURFACE_SECTION_SPACING}
+                                    marginTop={SURFACE_PADDING}
+                                    marginBottom={SURFACE_PADDING}
+                                    marginStart={SURFACE_PADDING}
+                                    marginEnd={SURFACE_PADDING}
                                 >
-                                    <Gtk.Box
-                                        orientation={Gtk.Orientation.VERTICAL}
-                                        spacing={SURFACE_SECTION_SPACING}
-                                        marginTop={SURFACE_PADDING}
-                                        marginBottom={SURFACE_PADDING}
-                                        marginStart={SURFACE_PADDING}
-                                        marginEnd={SURFACE_PADDING}
-                                    >
-                                        <BrightnessSlider />
-                                        <AudioCompact onOpen={(self) => navigate('audio', self)} />
-                                        <MicCompact
-                                            onOpen={(self) => navigate('microphone', self)}
+                                    <BrightnessSlider />
+                                    <AudioCompact onOpen={(self) => navigate('audio', self)} />
+                                    <MicCompact onOpen={(self) => navigate('microphone', self)} />
+                                </Gtk.Box>
+                            </Gtk.Box>
+                            <Gtk.Button onClicked={(self) => navigate('displays', self)}>
+                                <Gtk.Box spacing={12}>
+                                    <Gtk.Image iconName="video-display-symbolic" />
+                                    <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
+                                        <Gtk.Label
+                                            label="Telas"
+                                            xalign={0}
+                                            cssClasses={['heading']}
+                                        />
+                                        <Gtk.Label
+                                            label="Modos, monitores e layouts salvos"
+                                            wrap
+                                            xalign={0}
+                                            cssClasses={['caption', 'dimmed']}
                                         />
                                     </Gtk.Box>
+                                    <Gtk.Image iconName="go-next-symbolic" />
                                 </Gtk.Box>
-                                <Gtk.Button onClicked={(self) => navigate('displays', self)}>
-                                    <Gtk.Box spacing={12}>
-                                        <Gtk.Image iconName="video-display-symbolic" />
-                                        <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
-                                            <Gtk.Label
-                                                label="Telas"
-                                                xalign={0}
-                                                cssClasses={['heading']}
-                                            />
-                                            <Gtk.Label
-                                                label="Modos, monitores e layouts salvos"
-                                                wrap
-                                                xalign={0}
-                                                cssClasses={['caption', 'dimmed']}
-                                            />
-                                        </Gtk.Box>
-                                        <Gtk.Image iconName="go-next-symbolic" />
-                                    </Gtk.Box>
-                                </Gtk.Button>
-                                <Gtk.Label label="Atalhos" cssClasses={['heading']} xalign={0} />
-                                <ReactiveGrid items={other.buttons} columns={gridColumns} />
-                                <Media />
-                                <Gtk.Box spacing={8} homogeneous>
-                                    <Gtk.Button
-                                        label="Data e clima"
-                                        onClicked={(self) => navigate('data', self)}
-                                    />
-                                    <Gtk.Button
-                                        label="Notificações"
-                                        onClicked={() => state.openNotifications()}
-                                    />
-                                </Gtk.Box>
-                            </Gtk.Box>
+                            </Gtk.Button>
+                            <Gtk.Label label="Atalhos" cssClasses={['heading']} xalign={0} />
+                            <ReactiveGrid items={other.buttons} columns={gridColumns} />
+                            <Media />
+                        </Gtk.Box>
+                        <Gtk.Box
+                            name="wifi"
+                            slot="named"
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={12}
+                        >
+                            {wifi.detail}
+                            <Gtk.Button
+                                label="Configurações de rede"
+                                onClicked={() => openSettings('network')}
+                            />
+                        </Gtk.Box>
+                        <Gtk.Box
+                            name="bluetooth"
+                            slot="named"
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={12}
+                        >
+                            {bluetooth.detail}
+                            <Gtk.Button
+                                label="Configurações de Bluetooth"
+                                onClicked={() => openSettings('bluetooth')}
+                            />
+                        </Gtk.Box>
+                        <Gtk.Box
+                            name="audio"
+                            slot="named"
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={12}
+                        >
+                            <AudioConfig onOpenMixer={(self) => navigate('mixer', self)} />
+                            <Gtk.Button
+                                label="Configurações de som"
+                                onClicked={() => openSettings('sound')}
+                            />
+                        </Gtk.Box>
+                        <Gtk.Box
+                            name="microphone"
+                            slot="named"
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={12}
+                        >
+                            <MicConfig />
+                            <Gtk.Button
+                                label="Configurações de som"
+                                onClicked={() => openSettings('sound')}
+                            />
+                        </Gtk.Box>
+                        <Gtk.Box
+                            name="mixer"
+                            slot="named"
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={12}
+                        >
+                            <AppMixer />
+                        </Gtk.Box>
+                        <Gtk.Box
+                            name="displays"
+                            slot="named"
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={12}
+                        >
+                            <DisplaySection />
+                        </Gtk.Box>
+                        <Gtk.Box
+                            name="data"
+                            slot="named"
+                            orientation={Gtk.Orientation.VERTICAL}
+                            spacing={SURFACE_SECTION_SPACING}
+                        >
+                            <Calendar />
+                            <Weather />
+                            <WorldClock />
+                            <Gtk.Button
+                                label="Configurações de clima"
+                                onClicked={() => openSettings('weather')}
+                            />
+                        </Gtk.Box>
+                        {other.pages.map((page) => (
                             <Gtk.Box
-                                name="wifi"
+                                name={page.id}
                                 slot="named"
                                 orientation={Gtk.Orientation.VERTICAL}
                                 spacing={12}
                             >
-                                {wifi.detail}
-                                <Gtk.Button
-                                    label="Configurações de rede"
-                                    onClicked={() => openSettings('network')}
-                                />
+                                {page.body}
                             </Gtk.Box>
-                            <Gtk.Box
-                                name="bluetooth"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={12}
-                            >
-                                {bluetooth.detail}
-                                <Gtk.Button
-                                    label="Configurações de Bluetooth"
-                                    onClicked={() => openSettings('bluetooth')}
-                                />
-                            </Gtk.Box>
-                            <Gtk.Box
-                                name="audio"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={12}
-                            >
-                                <AudioConfig onOpenMixer={(self) => navigate('mixer', self)} />
-                                <Gtk.Button
-                                    label="Configurações de som"
-                                    onClicked={() => openSettings('sound')}
-                                />
-                            </Gtk.Box>
-                            <Gtk.Box
-                                name="microphone"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={12}
-                            >
-                                <MicConfig />
-                                <Gtk.Button
-                                    label="Configurações de som"
-                                    onClicked={() => openSettings('sound')}
-                                />
-                            </Gtk.Box>
-                            <Gtk.Box
-                                name="mixer"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={12}
-                            >
-                                <AppMixer />
-                            </Gtk.Box>
-                            <Gtk.Box
-                                name="displays"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={12}
-                            >
-                                <DisplaySection />
-                            </Gtk.Box>
-                            <Gtk.Box
-                                name="data"
-                                slot="named"
-                                orientation={Gtk.Orientation.VERTICAL}
-                                spacing={SURFACE_SECTION_SPACING}
-                            >
-                                <Calendar />
-                                <Weather />
-                                <WorldClock />
-                                <Gtk.Button
-                                    label="Configurações de clima"
-                                    onClicked={() => openSettings('weather')}
-                                />
-                            </Gtk.Box>
-                            {other.pages.map((page) => (
-                                <Gtk.Box
-                                    name={page.id}
-                                    slot="named"
-                                    orientation={Gtk.Orientation.VERTICAL}
-                                    spacing={12}
-                                >
-                                    {page.body}
-                                </Gtk.Box>
-                            ))}
-                        </Gtk.Stack>
-                    </Gtk.ScrolledWindow>
+                        ))}
+                    </Gtk.Stack>
+                </Gtk.ScrolledWindow>
+                <Gtk.Box
+                    orientation={Gtk.Orientation.VERTICAL}
+                    ref={(self) => {
+                        footer = self;
+                        scheduleMeasure();
+                    }}
+                >
+                    <Gtk.Box
+                        visible={route.as((value) => value === 'home')}
+                        spacing={8}
+                        homogeneous
+                        marginStart={SURFACE_PADDING}
+                        marginEnd={SURFACE_PADDING}
+                        marginBottom={SURFACE_PADDING}
+                    >
+                        <Gtk.Button
+                            label="Data e clima"
+                            onClicked={(self) => navigate('data', self)}
+                        />
+                        <Gtk.Button
+                            label="Notificações"
+                            onClicked={() => state.openNotifications()}
+                        />
+                    </Gtk.Box>
                     <Gtk.Button
                         label="Configurações de telas"
                         visible={route.as((value) => value === 'displays')}
@@ -666,13 +659,9 @@ export default () => {
                         marginTop={SURFACE_SPACING}
                         marginBottom={SURFACE_PADDING}
                         onClicked={() => leavePage(() => openSettings('displays'))}
-                        ref={(self) => {
-                            advancedButton = self;
-                            scheduleMeasure();
-                        }}
                     />
                 </Gtk.Box>
-            </Gtk.ScrolledWindow>
+            </Gtk.Box>
         </Astal.Window>
     );
 };

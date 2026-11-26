@@ -89,12 +89,111 @@ function NotificationsGroup({settings}: {settings: Settings}) {
     );
 }
 
+/** Native preference rows keep alert thresholds in percent and actual degrees Celsius. */
+function SystemAlertsGroup({settings}: {settings: Settings}) {
+    return (
+        <Adw.PreferencesGroup
+            title={'Alertas do sistema'}
+            description={'Avisos visuais de bateria, energia, temperatura local e Bluetooth.'}
+        >
+            <Adw.SwitchRow
+                title={'Bateria do computador'}
+                subtitle={'Avisar apenas durante a descarga, sem alerta ao iniciar a sessão.'}
+                active={settings.alertBatteryEnabled}
+                onNotifyActive={(self) => settings.setAlertBatteryEnabled(self.active)}
+            />
+            <Adw.SpinRow
+                title={'Bateria baixa (%)'}
+                subtitle={'Novo aviso somente após recuperar pelo menos 5 pontos percentuais.'}
+                sensitive={settings.alertBatteryEnabled}
+                adjustment={new Gtk.Adjustment({lower: 10, upper: 50, stepIncrement: 1, pageIncrement: 5})}
+                value={settings.alertBatteryLowThreshold}
+                onNotifyValue={(self) => {
+                    const value = Math.round(self.value);
+                    if (settings.alertBatteryCriticalThreshold() >= value) {
+                        settings.setAlertBatteryCriticalThreshold(value - 1);
+                    }
+                    settings.setAlertBatteryLowThreshold(value);
+                }}
+            />
+            <Adw.SpinRow
+                title={'Bateria crítica (%)'}
+                subtitle={'Deve ser menor que o nível de bateria baixa.'}
+                sensitive={settings.alertBatteryEnabled}
+                adjustment={new Gtk.Adjustment({lower: 1, upper: 20, stepIncrement: 1, pageIncrement: 5})}
+                value={settings.alertBatteryCriticalThreshold}
+                onNotifyValue={(self) => {
+                    const value = Math.min(Math.round(self.value), settings.alertBatteryLowThreshold() - 1);
+                    if (self.value !== value) self.value = value;
+                    settings.setAlertBatteryCriticalThreshold(value);
+                }}
+            />
+            <Adw.SwitchRow
+                title={'Conexão do carregador'}
+                subtitle={'Avisar ao conectar ou desconectar a energia.'}
+                active={settings.alertPowerEnabled}
+                onNotifyActive={(self) => settings.setAlertPowerEnabled(self.active)}
+            />
+            <Adw.SwitchRow
+                title={'Temperatura elevada'}
+                subtitle={'Usa apenas o sensor local. Reativa após esfriar 5 °C; intervalo mínimo de 5 minutos.'}
+                active={settings.alertTemperatureEnabled}
+                onNotifyActive={(self) => settings.setAlertTemperatureEnabled(self.active)}
+            />
+            <Adw.SpinRow
+                title={'Aviso de temperatura (°C)'}
+                sensitive={settings.alertTemperatureEnabled}
+                adjustment={new Gtk.Adjustment({lower: 50, upper: 110, stepIncrement: 1, pageIncrement: 5})}
+                value={settings.alertTemperatureWarningThreshold}
+                onNotifyValue={(self) => {
+                    const value = Math.round(self.value);
+                    if (settings.alertTemperatureCriticalThreshold() <= value) {
+                        settings.setAlertTemperatureCriticalThreshold(value + 1);
+                    }
+                    settings.setAlertTemperatureWarningThreshold(value);
+                }}
+            />
+            <Adw.SpinRow
+                title={'Temperatura crítica (°C)'}
+                subtitle={'Deve ser maior que o nível de aviso.'}
+                sensitive={settings.alertTemperatureEnabled}
+                adjustment={new Gtk.Adjustment({lower: 60, upper: 120, stepIncrement: 1, pageIncrement: 5})}
+                value={settings.alertTemperatureCriticalThreshold}
+                onNotifyValue={(self) => {
+                    const value = Math.max(Math.round(self.value), settings.alertTemperatureWarningThreshold() + 1);
+                    if (self.value !== value) self.value = value;
+                    settings.setAlertTemperatureCriticalThreshold(value);
+                }}
+            />
+            <Adw.SwitchRow
+                title={'Conexões Bluetooth'}
+                subtitle={'Avisar após a conexão ou desconexão ficar estável por 1 segundo.'}
+                active={settings.alertBluetoothEnabled}
+                onNotifyActive={(self) => settings.setAlertBluetoothEnabled(self.active)}
+            />
+            <Adw.SwitchRow
+                title={'Bateria de dispositivos Bluetooth'}
+                subtitle={'Um aviso por dispositivo conectado, sem repetir em reconexões rápidas.'}
+                active={settings.alertBluetoothBatteryEnabled}
+                onNotifyActive={(self) => settings.setAlertBluetoothBatteryEnabled(self.active)}
+            />
+            <Adw.SpinRow
+                title={'Bateria baixa de dispositivos (%)'}
+                sensitive={settings.alertBluetoothBatteryEnabled}
+                adjustment={new Gtk.Adjustment({lower: 5, upper: 50, stepIncrement: 1, pageIncrement: 5})}
+                value={settings.alertBluetoothBatteryThreshold}
+                onNotifyValue={(self) => settings.setAlertBluetoothBatteryThreshold(Math.round(self.value))}
+            />
+        </Adw.PreferencesGroup>
+    );
+}
+
 /** Freedesktop sound-theme alert toggles. */
 function SoundAlertsGroup({settings}: {settings: Settings}) {
     return (
         <Adw.PreferencesGroup
-            title={'Alertas sonoros'}
-            description={'Sons do sistema usando o tema de sons freedesktop.'}
+            title={'Sons'}
+            description={'Tema freedesktop. Todos os sons respeitam Não perturbe; os avisos visuais são independentes.'}
         >
             <Adw.SwitchRow
                 title={'Ativar alertas sonoros'}
@@ -118,17 +217,44 @@ function SoundAlertsGroup({settings}: {settings: Settings}) {
             />
             <Adw.SwitchRow
                 title={'Aviso sonoro de bateria'}
-                subtitle={'Reproduzir quando a bateria estiver baixa.'}
+                subtitle={'Reproduzir nos avisos de bateria baixa e crítica, incluindo dispositivos.'}
                 active={settings.soundAlertBattery}
                 sensitive={settings.soundAlertsEnabled}
                 onNotifyActive={(self) => settings.setSoundAlertBattery(self.active)}
             />
             <Adw.SwitchRow
                 title={'Sons do sistema'}
-                subtitle={'Bloqueio, desbloqueio, energia e conexão de dispositivos.'}
+                subtitle={'Bloqueio e desbloqueio da sessão.'}
                 active={settings.soundAlertSystem}
                 sensitive={settings.soundAlertsEnabled}
                 onNotifyActive={(self) => settings.setSoundAlertSystem(self.active)}
+            />
+            <Adw.SwitchRow
+                title={'Som do carregador'}
+                subtitle={'Reproduzir ao conectar ou desconectar a energia.'}
+                active={settings.soundAlertPower}
+                sensitive={settings.soundAlertsEnabled}
+                onNotifyActive={(self) => settings.setSoundAlertPower(self.active)}
+            />
+            <Adw.SwitchRow
+                title={'Sons do Bluetooth'}
+                subtitle={'Conexão e desconexão, sem rajadas em reconexões rápidas.'}
+                active={settings.soundAlertBluetooth}
+                sensitive={settings.soundAlertsEnabled}
+                onNotifyActive={(self) => settings.setSoundAlertBluetooth(self.active)}
+            />
+            <Adw.SwitchRow
+                title={'Aviso sonoro de temperatura'}
+                active={settings.soundAlertTemperature}
+                sensitive={settings.soundAlertsEnabled}
+                onNotifyActive={(self) => settings.setSoundAlertTemperature(self.active)}
+            />
+            <Adw.SwitchRow
+                title={'Som ao ajustar o volume'}
+                subtitle={'Retorno sonoro da saída padrão, desativado por padrão.'}
+                active={settings.soundAlertVolume}
+                sensitive={settings.soundAlertsEnabled}
+                onNotifyActive={(self) => settings.setSoundAlertVolume(self.active)}
             />
         </Adw.PreferencesGroup>
     );
@@ -140,6 +266,7 @@ export default () => {
     return (
         <>
             <NotificationsGroup settings={settings} />
+            <SystemAlertsGroup settings={settings} />
             <SoundAlertsGroup settings={settings} />
         </>
     );

@@ -52,6 +52,7 @@ export const IconNames = {
 
     // ── Notifications / alerts ────────────────────────────────
     dialogError: 'dialog-error-symbolic',
+    dialogWarning: 'dialog-warning-symbolic',
     dialogInformation: 'dialog-information-symbolic',
     notificationDisabled: 'notifications-disabled-symbolic',
     notifications: 'preferences-system-notifications-symbolic',
