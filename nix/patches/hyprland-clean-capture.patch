@@ -139,10 +139,14 @@
 @@ -90,2 +90,1 @@
 -        SP<Render::IFramebuffer>    m_tempFB;
          SP<Render::CSceneResources> m_sceneResources;
-@@ -112,2 +111,3 @@
+@@ -106,6 +105,7 @@
+         void screenshareEvents(bool started);
          void calculateConstraints();
          void init();
 +        bool sourcePrivate() const;
+ 
+         friend class CScreenshareFrame;
+         friend class CScreenshareManager;
 @@ -204,2 +204,0 @@
 -        void storeTempFB();
 -
@@ -439,11 +443,21 @@
          return;
  
      const auto PWINDOW  = m_session->m_window.lock();
-@@ -353,3 +264,2 @@
+@@ -353,3 +264,12 @@
 -    ctx.m_blockSurfaceFeedback = g_pHyprRenderer->shouldRenderWindow(PWINDOW); // block the feedback to avoid spamming the surface if it's visible
-+    // Capture never mutates output feedback or effects, including hidden sources.
++    // Capture never mutates output presentation feedback or effects.
      g_pHyprRenderer->renderWindow(ctx, PWINDOW, PMONITOR, PWINDOW->presentation().renderPresentation(nullptr), NOW, false, Render::RENDER_PASS_ALL, true, true);
 -    ctx.m_blockSurfaceFeedback = false;
++
++    // An off-workspace client still needs wl_surface.frame to produce its next
++    // buffer. Do not report capture as an output presentation or pace visible clients twice.
++    if (!g_pHyprRenderer->shouldRenderWindow(PWINDOW)) {
++        PWINDOW->wlSurface()->resource()->breadthfirst(
++            [&NOW](SP<CWLSurfaceResource> surface, const Vector2D&, void*) {
++                surface->frame(NOW);
++            },
++            nullptr);
++    }
 @@ -398,1 +308,1 @@
 -    const auto CLEAR_SIZE  = m_session->m_type == SHARE_WORKSPACE ? ctx.m_data.currentFB->m_size : m_bufferSize;
 +    const auto CLEAR_SIZE  = ctx.m_data.currentFB->m_size;
