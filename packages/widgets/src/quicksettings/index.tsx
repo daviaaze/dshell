@@ -327,28 +327,8 @@ export default () => {
                     return true;
                 });
                 self.add_controller(keys);
-                const focusSignal = self.connect('notify::is-active', () => {
-                    // Power confirmations temporarily release the layer's keyboard
-                    // ownership; do not dismiss their parent while they are open.
-                    const modalChildOpen = getApp()
-                        .get_windows()
-                        .some(
-                            (window) =>
-                                window !== self &&
-                                window.get_transient_for() === self &&
-                                window.modal
-                        );
-                    if (
-                        self.visible &&
-                        !self.isActive &&
-                        self.keymode !== Astal.Keymode.NONE &&
-                        !modalChildOpen
-                    )
-                        leavePage(() => state.closeQuickSettings());
-                });
                 onCleanup(() => {
                     self.remove_controller(keys);
-                    self.disconnect(focusSignal);
                     if (manager.quicksettings === self) manager.setQuicksettings(null);
                 });
             }}

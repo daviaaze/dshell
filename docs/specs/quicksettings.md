@@ -6,7 +6,7 @@ Source-linked behavior: [`index.tsx`](../../packages/widgets/src/quicksettings/i
 
 The panel is an on-demand-keyboard `Astal.Window`, controlled by `ShellState.qsOpen`, attached to the focused monitor and positioned beside the bar. Its 420 logical-pixel width is a maximum, clamped to available monitor width after 4-pixel outer margins and vertical-bar reserve; content scrolls within available height. Escape navigates Back on detail pages and closes Home. Hiding resets route and history. Back restores the previous route and focus origin. Leaving Displays first requests layout rollback; failure keeps the user on the page with an error.
 
-The fixed header stays outside the scrollable content. The opaque window has a 4px outer gap and a single 12px page inset; controls and grid tiles use 8px spacing, with 12px between sections. With a bottom bar, the panel anchors bottom-right.
+The rounded opaque window has a 4px outer gap and a single 12px page inset; controls and grid tiles use 8px spacing, with 12px between sections. Only the page body scrolls when it exceeds the available height; the header and display settings footer remain outside the scroller. A vertical bar does not reduce the height budget. With a bottom bar, the panel anchors bottom-right.
 
 The layer window is not user-resizable: it follows the active page's natural content height, so the empty mixer does not retain the taller device-page viewport.
 

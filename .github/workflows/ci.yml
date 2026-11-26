@@ -26,3 +26,5 @@ jobs:
         run: nix develop -c pnpm run deps:check
       - name: Tests
         run: nix develop -c pnpm run test
+      - name: Python tooling tests
+        run: nix develop -c pnpm run test:py

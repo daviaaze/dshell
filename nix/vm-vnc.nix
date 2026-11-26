@@ -385,7 +385,7 @@ in
       hyprland.settings = {
         # VM-friendly Hyprland settings
         monitor = [
-          "Virtual-1, preferred, auto, 1"
+          "Virtual-1, 1920x1080@60, auto, 1"
         ];
         decoration = {
           blur.enabled = false;
