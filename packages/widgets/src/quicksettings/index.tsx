@@ -614,6 +614,10 @@ export default () => {
                         scheduleMeasure();
                     }}
                 >
+                    <Gtk.Separator
+                        marginBottom={SURFACE_SPACING}
+                        visible={route.as((value) => value === 'home' || value === 'displays')}
+                    />
                     <Gtk.Box
                         visible={route.as((value) => value === 'home')}
                         spacing={8}
