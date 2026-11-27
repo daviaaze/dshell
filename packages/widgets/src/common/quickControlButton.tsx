@@ -16,65 +16,114 @@ interface QuickControlBaseProps {
     visible?: Reactive<boolean>;
     sensitive?: Reactive<boolean>;
 }
-type QuickControlButtonProps = QuickControlBaseProps & (
-    | {intent: 'toggle'; active: Reactive<boolean>; onClick: (self: Gtk.Button) => void}
-    | {intent: 'action'; active?: never; onClick: (self: Gtk.Button) => void}
-);
+type QuickControlButtonProps = QuickControlBaseProps &
+    (
+        | {intent: 'toggle'; active: Reactive<boolean>; onClick: (self: Gtk.Button) => void}
+        | {intent: 'action'; active?: never; onClick: (self: Gtk.Button) => void}
+    );
 
 export const QuickControlButton = (props: QuickControlButtonProps): GnimNode => {
-    const value = computed(() => isAccessor(props.value) ? props.value() : props.value);
-    const action = computed(() => isAccessor(props.actionLabel) ? props.actionLabel() : props.actionLabel);
+    const value = computed(() => (isAccessor(props.value) ? props.value() : props.value));
+    const action = computed(() =>
+        isAccessor(props.actionLabel) ? props.actionLabel() : props.actionLabel
+    );
     const detail = props.detail;
     const detailVisible = detail?.visible ?? !!detail;
     const initialize = (self: Gtk.Button) => {
         effect(() => {
             self.update_property(
                 [Gtk.AccessibleProperty.LABEL, Gtk.AccessibleProperty.DESCRIPTION],
-                [new GObject.Value(GObject.TYPE_STRING, `${props.domain}: ${value()}`),
-                    new GObject.Value(GObject.TYPE_STRING, action())]
+                [
+                    new GObject.Value(GObject.TYPE_STRING, `${props.domain}: ${value()}`),
+                    new GObject.Value(GObject.TYPE_STRING, action()),
+                ]
             );
         });
         if (props.intent === 'toggle' && self instanceof Gtk.ToggleButton) {
-            effect(() => { self.active = isAccessor(props.active) ? props.active() : props.active; });
+            effect(() => {
+                self.active = isAccessor(props.active) ? props.active() : props.active;
+            });
         }
     };
     const content = (
         <Gtk.Box spacing={8} orientation={Gtk.Orientation.HORIZONTAL}>
             <Gtk.Image iconName={props.icon} />
             <Gtk.Box orientation={Gtk.Orientation.VERTICAL} hexpand>
-                <Gtk.Label label={props.domain} xalign={0} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={16} />
-                <Gtk.Label label={value} xalign={0} ellipsize={Pango.EllipsizeMode.END} maxWidthChars={16} cssClasses={['dimmed', 'caption']} />
+                <Gtk.Label
+                    label={props.domain}
+                    xalign={0}
+                    wrap
+                    wrapMode={Pango.WrapMode.WORD_CHAR}
+                    lines={2}
+                    ellipsize={Pango.EllipsizeMode.END}
+                />
+                <Gtk.Label
+                    label={value}
+                    xalign={0}
+                    ellipsize={Pango.EllipsizeMode.END}
+                    cssClasses={['dimmed', 'caption']}
+                />
             </Gtk.Box>
         </Gtk.Box>
     );
-    const primary = props.intent === 'toggle' ? (
-        <Gtk.ToggleButton hexpand sensitive={props.actionSensitive ?? true} tooltipText={action} ref={initialize}
-            onClicked={(self) => {
-                try { props.onClick(self); }
-                finally { self.active = isAccessor(props.active) ? props.active() : props.active; }
-            }}>
-            {content}
-        </Gtk.ToggleButton>
-    ) : (
-        <Gtk.Button hexpand sensitive={props.actionSensitive ?? true} tooltipText={action} ref={initialize} onClicked={props.onClick}>
-            {content}
-        </Gtk.Button>
-    );
+    const primary =
+        props.intent === 'toggle' ? (
+            <Gtk.ToggleButton
+                hexpand
+                sensitive={props.actionSensitive ?? true}
+                tooltipText={action}
+                ref={initialize}
+                onClicked={(self) => {
+                    try {
+                        props.onClick(self);
+                    } finally {
+                        self.active = isAccessor(props.active) ? props.active() : props.active;
+                    }
+                }}
+            >
+                {content}
+            </Gtk.ToggleButton>
+        ) : (
+            <Gtk.Button
+                hexpand
+                sensitive={props.actionSensitive ?? true}
+                tooltipText={action}
+                ref={initialize}
+                onClicked={props.onClick}
+            >
+                {content}
+            </Gtk.Button>
+        );
     return (
-        <Gtk.Box orientation={Gtk.Orientation.HORIZONTAL} spacing={0} cssClasses={computed(() => {
-            const classes = ['horizontal'];
-            const visible = isAccessor(detailVisible) ? detailVisible() : detailVisible;
-            if (visible) classes.push('linked');
-            const extra = isAccessor(props.cssClasses) ? props.cssClasses() : props.cssClasses;
-            if (extra) classes.push(...extra);
-            return classes;
-        })} hexpand={props.hexpand ?? true} visible={props.visible ?? true} sensitive={props.sensitive ?? true}>
+        <Gtk.Box
+            orientation={Gtk.Orientation.HORIZONTAL}
+            spacing={0}
+            cssClasses={computed(() => {
+                const classes = ['horizontal', 'quick-tile'];
+                const visible = isAccessor(detailVisible) ? detailVisible() : detailVisible;
+                if (visible) classes.push('linked');
+                const extra = isAccessor(props.cssClasses) ? props.cssClasses() : props.cssClasses;
+                if (extra) classes.push(...extra);
+                return classes;
+            })}
+            hexpand={props.hexpand ?? true}
+            visible={props.visible ?? true}
+            sensitive={props.sensitive ?? true}
+        >
             {primary}
             {detail && (
-                <Gtk.Button iconName="go-next-symbolic" tooltipText={detail.label} visible={detailVisible}
-                    ref={self => self.update_property([Gtk.AccessibleProperty.LABEL],
-                        [new GObject.Value(GObject.TYPE_STRING, detail.label)])}
-                    onClicked={detail.onOpen} />
+                <Gtk.Button
+                    iconName="go-next-symbolic"
+                    tooltipText={detail.label}
+                    visible={detailVisible}
+                    ref={(self) =>
+                        self.update_property(
+                            [Gtk.AccessibleProperty.LABEL],
+                            [new GObject.Value(GObject.TYPE_STRING, detail.label)]
+                        )
+                    }
+                    onClicked={detail.onOpen}
+                />
             )}
         </Gtk.Box>
     );

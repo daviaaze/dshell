@@ -62,4 +62,16 @@ button.bar-vertical-content-button,
 .app-button-primary {
   background-color: alpha(@accent_bg_color, 0.2);
 }
+
+/* Quick-settings tiles: an active toggle uses the accent color so on/off reads at a glance. */
+.quick-tile button.toggle:checked {
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+}
+.quick-tile button.toggle:checked:hover {
+  background-color: color-mix(in srgb, var(--accent-bg-color) 90%, white);
+}
+.quick-tile button.toggle:checked .dimmed {
+  opacity: 0.85;
+}
 `);
