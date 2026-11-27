@@ -4,7 +4,7 @@ import Gtk from 'gi://Gtk?version=4.0';
 import logger from '@shade/core/logger';
 import {closeHyprlandClient, focusHyprlandClient} from '@shade/services/hyprland';
 import {barSettings} from '@shade/services/settings/bar.gschema';
-import {exactQuery, getAppList, launchDesktopFile} from '@shade/services/state/apps';
+import {exactQuery, getAppList, getEntryInfo, launchDesktopFile} from '@shade/services/state/apps';
 import {onCleanup} from 'gnim';
 import {ActionButton} from '../common/actionButton';
 
@@ -119,7 +119,8 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
         getAppList().find((a) => a.entry === desktopFile) ||
         exactQuery(desktopFile.replace('.desktop', ''))?.[0];
 
-    const iconName = app?.iconName || 'application-x-executable-symbolic';
+    const storeEntry = app ? null : getEntryInfo(desktopFile);
+    const iconName = app?.iconName || storeEntry?.iconName || 'application-x-executable-symbolic';
     const running = clients.length > 0;
 
     const onFocus = () => handleLeftClick(desktopFile, clients, pinned, running);
@@ -146,7 +147,7 @@ export default ({desktopFile, clients, active, pinned}: DockItemProps) => {
             cssClasses={['flat', 'circular']}
             cursor={Gdk.Cursor.new_from_name('pointer', null)}
             onClicked={onFocus}
-            tooltipText={app?.name || desktopFile.replace('.desktop', '')}
+            tooltipText={app?.name || storeEntry?.name || desktopFile.replace('.desktop', '')}
         >
             <Gtk.Box
                 orientation={Gtk.Orientation.VERTICAL}
