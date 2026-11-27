@@ -173,9 +173,9 @@ describe('notification center height budget', () => {
 });
 
 describe('toast live geometry and natural sizing', () => {
-    it('updates each card cap across a mapped 800px to 900px to 800px resize', () => {
-        expect([800, 900, 800].map((height) => notificationToastCardHeight(height, 3)))
-            .toEqual([261, 294, 261]);
+    it('lets each card request natural height while the aggregate output budget changes', () => {
+        expect([800, 900, 800].map((height) => notificationToastCardHeight(height)))
+            .toEqual([792, 892, 792]);
     });
 
     it('requests the full actionable stack instead of retaining the previous 355px window', () => {
@@ -188,6 +188,15 @@ describe('toast live geometry and natural sizing', () => {
             .toEqual([485, 485, 485]);
     });
 
+    it('fits the wrapped-action update into spare height from the shorter cards', () => {
+        const heights = [225, 225, 257 + 16]
+            .map((natural) => Math.min(natural, notificationToastCardHeight(800)));
+        expect(heights).toEqual([225, 225, 273]);
+        const stack = heights.reduce((sum, height) => sum + height, 0) + 4 * 2;
+        expect(stack).toBe(731);
+        expect(notificationToastWindowHeight(800, stack)).toBe(731);
+    });
+
     it('limits genuinely overflowing stacks to the current logical monitor minus edge gaps', () => {
         expect([800, 900, 800].map((height) => notificationToastWindowHeight(height, 1200)))
             .toEqual([792, 892, 792]);
@@ -195,7 +204,8 @@ describe('toast live geometry and natural sizing', () => {
 
     it('keeps the capped three-card stack within fractional logical monitor bounds', () => {
         expect(notificationToastWindowHeight(800.75, 1200)).toBe(792);
-        expect(notificationToastCardHeight(800.75, 3) * 3 + 4 * 2).toBe(791);
+        const oversized = notificationToastCardHeight(800.75) * 3 + 4 * 2;
+        expect(notificationToastWindowHeight(800.75, oversized)).toBe(792);
     });
 });
 

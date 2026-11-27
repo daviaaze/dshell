@@ -36,13 +36,9 @@ export function notificationCenterContentHeight(metrics: NotificationCenterHeigh
     return quickSettingsContentHeight({...metrics, errorHeight: 0, footerHeight: 0});
 }
 
-/** Per-card outer height, leaving real click-through gaps inside the monitor budget. */
-export function notificationToastCardHeight(monitorHeight: number, count: number): number {
-    const available = Math.max(1, Math.floor(monitorHeight - SURFACE_EDGE_GAP * 2));
-    const cards = Math.max(1, count);
-    return Math.max(1, Math.floor(
-        (available - NOTIFICATION_TOAST_SPACING * (cards - 1)) / cards
-    ));
+/** Safety ceiling only: GTK shares the bounded stack by natural size, not equal thirds. */
+export function notificationToastCardHeight(monitorHeight: number): number {
+    return Math.max(1, Math.floor(monitorHeight - SURFACE_EDGE_GAP * 2));
 }
 
 /** Always request the current content's natural size, never the window's previous allocation. */

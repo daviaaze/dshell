@@ -45,7 +45,7 @@ const NotificationContent = ({
     const countdowns = new Map<number, ToastCountdown>();
     const hovered = new Set<number>();
     const cardMaxHeight = computed(() =>
-        notificationToastCardHeight(monitorHeight(), notifications().length)
+        notificationToastCardHeight(monitorHeight())
     );
 
     effect(() => {
