@@ -33,10 +33,7 @@ import BluetoothQuickButton from './button-grid/bluetooth';
 import {createOtherControls, type OtherRoute} from './button-grid/index';
 import {ReactiveGrid} from './button-grid/reactiveGrid';
 import {DisplaySection} from './display';
-import {Calendar} from './expander/calendar';
 import {Media} from './expander/media';
-import {Weather} from './expander/weather';
-import {WorldClock} from './expander/worldClock';
 import {quickSettingsContentHeight} from './heightBudget';
 import WifiQuickButton from './network';
 import {AudioCompact, AudioConfig, BrightnessSlider, MicCompact, MicConfig} from './sliders';
@@ -45,15 +42,7 @@ import {TrayBox} from './tray';
 const PANEL_WIDTH = 420;
 const SINGLE_COLUMN_WIDTH = 600;
 
-type CoreRoute =
-    | 'home'
-    | 'wifi'
-    | 'bluetooth'
-    | 'audio'
-    | 'microphone'
-    | 'mixer'
-    | 'displays'
-    | 'data';
+type CoreRoute = 'home' | 'wifi' | 'bluetooth' | 'audio' | 'microphone' | 'mixer' | 'displays';
 type QuickRoute = CoreRoute | OtherRoute;
 /** Titles of the fixed pages; the `OtherRoute` pages carry their own title. */
 const TITLES: Record<CoreRoute, string> = {
@@ -64,7 +53,6 @@ const TITLES: Record<CoreRoute, string> = {
     microphone: 'Microfone',
     mixer: 'Mixer de aplicativos',
     displays: 'Telas',
-    data: 'Data e clima',
 };
 
 export default () => {
@@ -581,20 +569,6 @@ export default () => {
                         >
                             <DisplaySection />
                         </Gtk.Box>
-                        <Gtk.Box
-                            name="data"
-                            slot="named"
-                            orientation={Gtk.Orientation.VERTICAL}
-                            spacing={SURFACE_SECTION_SPACING}
-                        >
-                            <Calendar />
-                            <Weather />
-                            <WorldClock />
-                            <Gtk.Button
-                                label="Configurações de clima"
-                                onClicked={() => openSettings('weather')}
-                            />
-                        </Gtk.Box>
                         {other.pages.map((page) => (
                             <Gtk.Box
                                 name={page.id}
@@ -616,25 +590,8 @@ export default () => {
                 >
                     <Gtk.Separator
                         marginBottom={SURFACE_SPACING}
-                        visible={route.as((value) => value === 'home' || value === 'displays')}
+                        visible={route.as((value) => value === 'displays')}
                     />
-                    <Gtk.Box
-                        visible={route.as((value) => value === 'home')}
-                        spacing={8}
-                        homogeneous
-                        marginStart={SURFACE_PADDING}
-                        marginEnd={SURFACE_PADDING}
-                        marginBottom={SURFACE_PADDING}
-                    >
-                        <Gtk.Button
-                            label="Data e clima"
-                            onClicked={(self) => navigate('data', self)}
-                        />
-                        <Gtk.Button
-                            label="Notificações"
-                            onClicked={() => state.openNotifications()}
-                        />
-                    </Gtk.Box>
                     <Gtk.Button
                         label="Configurações de telas"
                         visible={route.as((value) => value === 'displays')}

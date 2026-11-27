@@ -60,7 +60,7 @@ This guide separates **source-defined** paths from **observed in the isolated VM
 ## Use Quick Settings
 
 **Entry and requirements.** Press **Super+N** or click the bar's system-indicator button. **Controles rápidos** (Home) is a scrollable, focused-monitor panel, not a collection of nested popovers. Its Home groups are **Conexões** and **Tela e som**. Open Wi-Fi, Bluetooth, **Telas**, **Saída de áudio**, or **Microfone** details; audio details lead to **Mixer de aplicativos**. **Voltar** or Escape returns to the originating page/control; Escape on Home closes the panel. Closing resets navigation to Home. Leaving a pending display preview first requests rollback; rollback failure is shown rather than silently navigating away.
-**Other and data routes.** **Outros controles** opens **Perfil de energia**, **Aparência**, **Captura de tela**, **Manter ativo**, **Temporizador**, **Luz noturna**, and touchpad controls, plus battery, media and tray items. **Data e clima** opens the calendar, **Relógio mundial**, and weather; forecast views are **Por hora** and **Previsão de 5 dias**. **Notificações** opens the independent Notification Center. The Home header exposes **Configurações** and **Sessão e energia**.
+**Other routes.** **Outros controles** opens **Perfil de energia**, **Aparência**, **Captura de tela**, **Manter ativo**, **Temporizador**, **Luz noturna**, and touchpad controls, plus battery, media and tray items. Calendar, **Relógio mundial** and weather live in the bar's clock and weather popovers, and the bar's notification button opens the independent Notification Center. The Home header exposes **Configurações** and **Sessão e energia**.
 
 ### Wi-Fi and Bluetooth
 

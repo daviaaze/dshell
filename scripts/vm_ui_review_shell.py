@@ -368,7 +368,6 @@ def run_review(t, theme: str, viewport: str) -> list[dict]:
         "mixer": (("Saída de áudio: opções de dispositivos", "Saída de áudio"), ("Mixer de aplicativos", "Mixer de aplicativos")),
         "displays": (("Opções de telas", "Telas"),),
         "other": (("Outros controles", "Outros controles"),),
-        "data": (("Data e clima", "Data e clima"),),
     }
     for key, control, title in (
         ("profile", "Opções do perfil de energia", "Perfil de energia"),
