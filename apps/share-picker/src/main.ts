@@ -44,6 +44,7 @@ import {
     parseWindowList,
     stopQueries,
 } from './protocol';
+import {parseSelection, type RememberedSelection, selectionLine, selectionToReplay} from './reuse';
 import {buildSources, type Sources} from './sources';
 import type {MonitorState, ParsedWindowList, PreviewHandle, SelectFn, WindowState} from './types';
 import {
@@ -75,16 +76,48 @@ interface PickerUi {
     selectedWindowPreviews: PreviewHandle[];
 }
 
-function makeSelectFn(app: Gtk.Application, token: TokenState): SelectFn {
+const LAST_SELECTION_PATH = GLib.build_filenamev([
+    GLib.get_user_runtime_dir(),
+    'dshell-picker-last-selection.json',
+]);
+
+function readLastSelection(): RememberedSelection | null {
+    try {
+        const [ok, bytes] = GLib.file_get_contents(LAST_SELECTION_PATH);
+        return ok ? parseSelection(new TextDecoder().decode(bytes)) : null;
+    } catch {
+        return null; // no previous selection
+    }
+}
+
+function makeSelectFn(app: Gtk.Application, token: TokenState, requester: string | null): SelectFn {
     return (kind, id) => {
         printerr(
             `[share-picker-trace] pid=${PICKER_PID} selected kind=${kind} id=${id} session=${GLib.getenv('XDPH_SESSION_HANDLE') ?? '(none)'}`
         );
         try {
-            printOut(`[SELECTION]${token.value ? 'r' : ''}/${kind}:${id}`);
+            printOut(selectionLine(kind, id, token.value));
         } catch (e) {
             logger.error(CAT, `select: print failed for ${kind}:${id}`, e);
             throw e;
+        }
+        if (requester !== null) {
+            // Electron asks twice per share; the second prompt replays this.
+            const remembered: RememberedSelection = {
+                requester,
+                kind,
+                id,
+                allowToken: token.value,
+                at: Date.now(),
+            };
+            try {
+                GLib.file_set_contents(
+                    LAST_SELECTION_PATH,
+                    new TextEncoder().encode(JSON.stringify(remembered))
+                );
+            } catch (e) {
+                logger.warn(CAT, 'select: could not remember the selection', e);
+            }
         }
         try {
             app.quit();
@@ -496,7 +529,7 @@ async function main(): Promise<void> {
     });
     const token: TokenState = {value: allowTokenDefault};
     const requester = requesterNameFromSessionHandle(sessionHandle);
-    const select = makeSelectFn(app, token);
+    const select = makeSelectFn(app, token, requester);
 
     let ownerAlive = sessionHandle === null;
     let requesterWatch: number | null = null;
@@ -516,6 +549,20 @@ async function main(): Promise<void> {
     const start = async (): Promise<void> => {
         const sources = await buildSources(xdphWindows.windows);
         if (shuttingDown) return;
+        const replay = selectionToReplay(readLastSelection(), requester, Date.now(), (kind, id) =>
+            kind === 'window'
+                ? xdphWindows.windows.some((window) => window.id === id)
+                : sources.monitors.some((monitor) => monitor.info.name === id)
+        );
+        if (replay) {
+            printerr(
+                `[share-picker-trace] pid=${PICKER_PID} replayed kind=${replay.kind} id=${replay.id} session=${sessionHandle ?? '(none)'}`
+            );
+            GLib.unlink(LAST_SELECTION_PATH); // one replay per selection: a third prompt asks
+            printOut(selectionLine(replay.kind, replay.id, replay.allowToken));
+            app.quit();
+            return;
+        }
         disposeCapture = onActivate(app, token, guardedSelect, xdphWindows, sources);
     };
 
