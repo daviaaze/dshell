@@ -17,14 +17,14 @@ jobs:
       - name: Build devShell
         run: nix develop --command true
       - name: Install dependencies
-        run: nix develop -c pnpm install --frozen-lockfile
+        run: nix develop -c env -u LD_PRELOAD pnpm install --frozen-lockfile
       - name: Lint
-        run: nix develop -c pnpm run lint
+        run: nix develop -c env -u LD_PRELOAD pnpm run lint
       - name: TypeScript check
-        run: nix develop -c pnpm run check
+        run: nix develop -c env -u LD_PRELOAD pnpm run check
       - name: Dependency cycle check
-        run: nix develop -c pnpm run deps:check
+        run: nix develop -c env -u LD_PRELOAD pnpm run deps:check
       - name: Tests
-        run: nix develop -c pnpm run test
+        run: nix develop -c env -u LD_PRELOAD pnpm run test
       - name: Python tooling tests
-        run: nix develop -c pnpm run test:py
+        run: nix develop -c env -u LD_PRELOAD pnpm run test:py
